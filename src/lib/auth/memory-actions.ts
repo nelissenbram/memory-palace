@@ -102,6 +102,34 @@ export async function createMemory(data: {
   return { memory };
 }
 
+export async function updateMemoryAction(
+  memoryId: string,
+  updates: { title?: string; description?: string; type?: string }
+) {
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    return { error: "Supabase not configured" };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: memory, error } = await supabase
+    .from("memories")
+    .update(updates)
+    .eq("id", memoryId)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+
+  if (error) return { error: error.message };
+  return { memory };
+}
+
 export async function deleteMemoryAction(memoryId: string) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||

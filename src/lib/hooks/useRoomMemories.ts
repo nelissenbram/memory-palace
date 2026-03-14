@@ -6,7 +6,7 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 
 export function useRoomMemories() {
   const { activeWing, activeRoomId } = usePalaceStore();
-  const { userMems, fetchRoomMemories, addMemory, deleteMemory, getRoomSharing, updateRoomSharing } =
+  const { userMems, fetchRoomMemories, addMemory, updateMemory, deleteMemory, getRoomSharing, updateRoomSharing } =
     useMemoryStore();
 
   // Fetch from Supabase when entering a room
@@ -30,6 +30,11 @@ export function useRoomMemories() {
     addMemory(activeRoomId, mem);
   };
 
+  const handleUpdateMemory = (memId: string, updates: Partial<Mem>) => {
+    if (!activeRoomId) return;
+    updateMemory(activeRoomId, memId, updates);
+  };
+
   const handleDeleteMemory = (memId: string) => {
     if (!activeRoomId) return;
     deleteMemory(activeRoomId, memId);
@@ -38,5 +43,5 @@ export function useRoomMemories() {
   const currentSharing = (roomId: string) => getRoomSharing(roomId, activeWing);
   const updateSharing = (roomId: string, updates: any) => updateRoomSharing(roomId, activeWing, updates);
 
-  return { roomMems, roomMemsKey, handleAddMemory, handleDeleteMemory, currentSharing, updateSharing };
+  return { roomMems, roomMemsKey, handleAddMemory, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing };
 }

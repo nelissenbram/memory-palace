@@ -30,7 +30,7 @@ export default function MemoryPalace(){
 
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick } = useNavigation();
-  const { roomMems, roomMemsKey, handleAddMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
+  const { roomMems, roomMemsKey, handleAddMemory, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
 
   // Load profile on mount
   useEffect(()=>{ loadProfile(); },[loadProfile]);
@@ -101,7 +101,7 @@ export default function MemoryPalace(){
       {/* Panels + overlays */}
       {showUpload&&activeRoomId&&<UploadPanel wing={wingData} room={activeRoomData} onClose={()=>setShowUpload(false)} onAdd={handleAddMemory}/>}
       {showSharing&&activeRoomId&&<SharingPanel wing={wingData} room={activeRoomData} sharing={currentSharing(activeRoomId)} onUpdate={(u: any)=>updateSharing(activeRoomId,u)} onClose={()=>setShowSharing(false)}/>}
-      {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory}/>}
+      {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory}/>}
     </div>
   );
 }

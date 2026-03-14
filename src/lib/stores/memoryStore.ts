@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
-import { createMemory, deleteMemoryAction, fetchMemories } from "@/lib/auth/memory-actions";
+import { createMemory, updateMemoryAction, deleteMemoryAction, fetchMemories } from "@/lib/auth/memory-actions";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem, SharingInfo } from "@/lib/constants/defaults";
 import { WING_ROOMS } from "@/lib/constants/wings";
@@ -17,6 +17,7 @@ interface MemoryState {
   setShowSharing: (v: boolean) => void;
   fetchRoomMemories: (roomId: string) => Promise<void>;
   addMemory: (roomId: string, mem: Mem) => Promise<void>;
+  updateMemory: (roomId: string, memId: string, updates: Partial<Mem>) => Promise<void>;
   deleteMemory: (roomId: string, memId: string) => Promise<void>;
   getRoomSharing: (roomId: string, activeWing: string | null) => SharingInfo;
   updateRoomSharing: (roomId: string, activeWing: string | null, updates: Partial<SharingInfo>) => void;
@@ -89,6 +90,23 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         return { userMems: { ...s.userMems, [roomId]: updated } };
       });
     }
+  },
+
+  updateMemory: async (roomId, memId, updates) => {
+    // Optimistic local update
+    set((s) => {
+      const cur = s.userMems[roomId] || ROOM_MEMS[roomId] || [];
+      const updated = cur.map((m) => m.id === memId ? { ...m, ...updates } : m);
+      // Also update selMem if it's the one being edited
+      const selMem = s.selMem?.id === memId ? { ...s.selMem, ...updates } : s.selMem;
+      return { userMems: { ...s.userMems, [roomId]: updated }, selMem };
+    });
+    if (!supabaseReady) return;
+    await updateMemoryAction(memId, {
+      title: updates.title,
+      description: updates.desc,
+      type: updates.type,
+    });
   },
 
   deleteMemory: async (roomId, memId) => {
