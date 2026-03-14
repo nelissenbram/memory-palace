@@ -15,6 +15,7 @@ import SearchBar from "@/components/ui/SearchBar";
 import UploadPanel from "@/components/ui/UploadPanel";
 import SharingPanel from "@/components/ui/SharingPanel";
 import MemoryDetail from "@/components/ui/MemoryDetail";
+import DirectoryPanel from "@/components/ui/DirectoryPanel";
 import ExteriorScene from "@/components/3d/ExteriorScene";
 import InteriorScene from "@/components/3d/InteriorScene";
 import CorridorScene from "@/components/3d/CorridorScene";
@@ -26,8 +27,8 @@ export default function MemoryPalace(){
     loadProfile, finishOnboarding } = useUserStore();
   const { view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim,
     setHovWing, setHovDoor, enterWing, enterRoom } = usePalaceStore();
-  const { selMem, showUpload, showSharing, searchQuery, filterType,
-    setSelMem, setShowUpload, setShowSharing, setSearchQuery, setFilterType } = useMemoryStore();
+  const { selMem, showUpload, showSharing, showDirectory, searchQuery, filterType,
+    setSelMem, setShowUpload, setShowSharing, setShowDirectory, setSearchQuery, setFilterType } = useMemoryStore();
 
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick } = useNavigation();
@@ -105,6 +106,7 @@ export default function MemoryPalace(){
       {/* Panels + overlays */}
       {showUpload&&activeRoomId&&<UploadPanel wing={wingData} room={activeRoomData} onClose={()=>setShowUpload(false)} onAdd={handleAddMemory}/>}
       {showSharing&&activeRoomId&&<SharingPanel wing={wingData} room={activeRoomData} roomId={activeRoomId} sharing={currentSharing(activeRoomId)} onUpdate={(u: any)=>updateSharing(activeRoomId,u)} onClose={()=>setShowSharing(false)}/>}
+      {showDirectory&&<DirectoryPanel onClose={()=>setShowDirectory(false)}/>}
       {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory}/>}
     </div>
   );

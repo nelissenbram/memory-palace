@@ -4,6 +4,7 @@ import { signOut } from "@/lib/auth/actions";
 import { WINGS } from "@/lib/constants/wings";
 import { useUserStore } from "@/lib/stores/userStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
+import { useMemoryStore } from "@/lib/stores/memoryStore";
 import type { Crumb } from "@/lib/hooks/useNavigation";
 
 interface TopBarProps {
@@ -13,12 +14,14 @@ interface TopBarProps {
 export default function TopBar({crumbs}: TopBarProps){
   const { userName } = useUserStore();
   const { activeWing, switchWing } = usePalaceStore();
+  const { showDirectory, setShowDirectory } = useMemoryStore();
 
   return(
     <div style={{position:"absolute",top:0,left:0,right:0,height:54,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 22px",zIndex:40,background:"linear-gradient(180deg,rgba(221,213,200,.92),rgba(221,213,200,0))"}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{width:30,height:30,borderRadius:7,background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,border:`1px solid ${T.color.sandstone}`}}>{"\u{1F3DB}\uFE0F"}</div>
+          <button onClick={()=>setShowDirectory(!showDirectory)} title="Directory" style={{width:30,height:30,borderRadius:7,border:`1px solid ${showDirectory?T.color.sandstone:T.color.cream}`,background:showDirectory?`${T.color.sandstone}30`:`${T.color.white}bb`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,cursor:"pointer",color:T.color.muted}}>{"\u{1F4C2}"}</button>
           {userName&&<span style={{fontFamily:T.font.display,fontSize:13,fontStyle:"italic",color:T.color.walnut}}>{userName}&#39;s Palace</span>}
           {/* Breadcrumb trail */}
           <div style={{display:"flex",alignItems:"center",gap:4}}>

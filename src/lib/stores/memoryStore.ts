@@ -10,6 +10,7 @@ interface MemoryState {
   selMem: Mem | null;
   showUpload: boolean;
   showSharing: boolean;
+  showDirectory: boolean;
   roomSharing: Record<string, SharingInfo>;
 
   searchQuery: string;
@@ -17,6 +18,7 @@ interface MemoryState {
   setSelMem: (mem: Mem | null) => void;
   setShowUpload: (v: boolean) => void;
   setShowSharing: (v: boolean) => void;
+  setShowDirectory: (v: boolean) => void;
   setSearchQuery: (q: string) => void;
   setFilterType: (t: string | null) => void;
   fetchRoomMemories: (roomId: string) => Promise<void>;
@@ -34,6 +36,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
   selMem: null,
   showUpload: false,
   showSharing: false,
+  showDirectory: false,
   roomSharing: {},
 
   searchQuery: "",
@@ -41,6 +44,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
   setSelMem: (mem) => set({ selMem: mem }),
   setShowUpload: (v) => set({ showUpload: v }),
   setShowSharing: (v) => set({ showSharing: v }),
+  setShowDirectory: (v) => set({ showDirectory: v }),
   setSearchQuery: (q) => set({ searchQuery: q }),
   setFilterType: (t) => set({ filterType: t }),
 
