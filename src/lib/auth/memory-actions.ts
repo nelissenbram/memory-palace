@@ -104,7 +104,7 @@ export async function createMemory(data: {
 
 export async function updateMemoryAction(
   memoryId: string,
-  updates: { title?: string; description?: string; type?: string }
+  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string }
 ) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||

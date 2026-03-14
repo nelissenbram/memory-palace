@@ -3,6 +3,7 @@ import { useState } from "react";
 import { T } from "@/lib/theme";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import ImageEditor from "@/components/ui/ImageEditor";
 
 const DISPLAY_TYPES: [string, string, string][] = [
   ["photo","\u{1F5BC}\uFE0F","Frame"],["video","\u{1F3AC}","Screen"],["album","\u{1F4D6}","Album"],
@@ -20,10 +21,16 @@ interface MemoryDetailProps {
 
 export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: MemoryDetailProps){
   const [editing,setEditing]=useState(false);
+  const [imageEditing,setImageEditing]=useState(false);
   const [title,setTitle]=useState(mem.title);
   const [desc,setDesc]=useState(mem.desc||"");
   const [type,setType]=useState(mem.type);
   const accent=wing?.accent||T.color.terracotta;
+
+  const handleImageSave=(editedDataUrl: string)=>{
+    onUpdate(mem.id,{dataUrl:editedDataUrl});
+    setImageEditing(false);
+  };
 
   const handleSave=()=>{
     const updates: Partial<Mem>={};
@@ -48,6 +55,7 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
         <div style={{height:180,background:mem.dataUrl?`url(${mem.dataUrl}) center/cover`:`linear-gradient(145deg,hsl(${mem.hue},${mem.s}%,${mem.l}%),hsl(${mem.hue+18},${mem.s-5}%,${mem.l-6}%))`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
           {!mem.dataUrl&&<span style={{fontSize:48,opacity:.25}}>{"\u{1F5BC}\uFE0F"}</span>}
           <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 40%,rgba(42,34,24,.6) 100%)"}}/>
+          {mem.dataUrl&&!editing&&<button onClick={()=>setImageEditing(true)} style={{position:"absolute",top:12,right:12,padding:"6px 12px",borderRadius:8,border:"1px solid rgba(255,255,255,.3)",background:"rgba(255,255,255,.15)",backdropFilter:"blur(8px)",fontFamily:T.font.body,fontSize:11,color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",gap:5,zIndex:2}}>{"\u{2728}"} Edit Image</button>}
           <div style={{position:"absolute",bottom:14,left:18,right:18}}>
             {editing
               ?<input value={title} onChange={e=>setTitle(e.target.value)} autoFocus
@@ -96,6 +104,7 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
           </>}
         </div>
       </div>
+      {imageEditing&&mem.dataUrl&&<ImageEditor dataUrl={mem.dataUrl} accent={accent} onSave={handleImageSave} onCancel={()=>setImageEditing(false)}/>}
     </div>
   );
 }

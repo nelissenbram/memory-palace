@@ -114,10 +114,42 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       return { userMems: { ...s.userMems, [roomId]: updated }, selMem };
     });
     if (!supabaseReady) return;
+
+    // If dataUrl changed (image was edited), upload the new version
+    let fileUrl = updates.dataUrl;
+    let filePath: string | null = null;
+    if (updates.dataUrl && updates.dataUrl.startsWith("data:")) {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const ext = updates.dataUrl.match(/data:image\/(\w+)/)?.[1] || "jpg";
+          const path = `${user.id}/${Date.now()}_edited.${ext}`;
+          const res = await fetch(updates.dataUrl);
+          const blob = await res.blob();
+          const { error: upErr } = await supabase.storage.from("memories").upload(path, blob, { contentType: blob.type });
+          if (!upErr) {
+            filePath = path;
+            const { data: urlData } = await supabase.storage.from("memories").createSignedUrl(path, 60 * 60 * 24 * 365);
+            fileUrl = urlData?.signedUrl || updates.dataUrl;
+            // Update local state with the signed URL
+            set((s) => {
+              const cur = s.userMems[roomId] || [];
+              const updated = cur.map((m) => m.id === memId ? { ...m, dataUrl: fileUrl } : m);
+              const selMem = s.selMem?.id === memId ? { ...s.selMem, dataUrl: fileUrl } : s.selMem;
+              return { userMems: { ...s.userMems, [roomId]: updated }, selMem };
+            });
+          }
+        }
+      } catch (e) { console.error("Edit upload error:", e); }
+    }
+
     await updateMemoryAction(memId, {
       title: updates.title,
       description: updates.desc,
       type: updates.type,
+      ...(fileUrl && fileUrl !== updates.dataUrl ? { file_url: fileUrl } : {}),
+      ...(filePath ? { file_path: filePath } : {}),
     });
   },
 
