@@ -117,7 +117,7 @@ export default function UploadPanel({wing,room,onClose,onAdd}: UploadPanelProps)
         {/* Display type */}
         <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:8}}>Display as</label>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:24}}>
-          {[["photo","\u{1F5BC}\uFE0F","Frame"],["video","\u{1F3AC}","Screen"],["album","\u{1F4D6}","Album"],["orb","\u{1F52E}","Orb"],["journal","\u{1F4DC}","Journal"],["case","\u{1F3FA}","Vitrine"]].map(([val,icon,label])=>(
+          {[["photo","\u{1F5BC}\uFE0F","Frame"],["video","\u{1F3AC}","Screen"],["album","\u{1F4D6}","Album"],["orb","\u{1F52E}","Orb"],["case","\u{1F3FA}","Vitrine"]].map(([val,icon,label])=>(
             <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"10px 8px",borderRadius:10,border:displayType===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
               <div style={{fontSize:20}}>{icon}</div>
               <div style={{fontFamily:T.font.body,fontSize:10,color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:400,marginTop:2}}>{label}</div>

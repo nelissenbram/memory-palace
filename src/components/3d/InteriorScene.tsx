@@ -148,7 +148,7 @@ export default function InteriorScene({roomId,memories,onMemoryClick}: {roomId: 
     const albumMems=mems.filter((m: any)=>m.type==="album");
     const videoMems=mems.filter((m: any)=>m.type==="video");
     const orbMems=mems.filter((m: any)=>m.type==="orb");
-    const audioMems=mems.filter((m: any)=>m.type==="journal"||m.type==="case");
+    const audioMems=mems.filter((m: any)=>m.type==="case");
 
     // ── PHOTO FRAMES: overmantel + wall frames ──
     if(photoMems.length>0){

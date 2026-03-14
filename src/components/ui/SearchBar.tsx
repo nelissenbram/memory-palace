@@ -3,7 +3,7 @@ import { T } from "@/lib/theme";
 
 const TYPES: [string, string, string][] = [
   ["photo","\u{1F5BC}\uFE0F","Photos"],["video","\u{1F3AC}","Videos"],["album","\u{1F4D6}","Albums"],
-  ["orb","\u{1F52E}","Orbs"],["journal","\u{1F4DC}","Journals"],["case","\u{1F3FA}","Vitrines"],
+  ["orb","\u{1F52E}","Orbs"],["case","\u{1F3FA}","Vitrines"],
 ];
 
 interface SearchBarProps {

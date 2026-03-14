@@ -7,7 +7,7 @@ import ImageEditor from "@/components/ui/ImageEditor";
 
 const DISPLAY_TYPES: [string, string, string][] = [
   ["photo","\u{1F5BC}\uFE0F","Frame"],["video","\u{1F3AC}","Screen"],["album","\u{1F4D6}","Album"],
-  ["orb","\u{1F52E}","Orb"],["journal","\u{1F4DC}","Journal"],["case","\u{1F3FA}","Vitrine"],
+  ["orb","\u{1F52E}","Orb"],["case","\u{1F3FA}","Vitrine"],
 ];
 
 interface MemoryDetailProps {
@@ -55,7 +55,6 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
         <div style={{height:180,background:mem.dataUrl?`url(${mem.dataUrl}) center/cover`:`linear-gradient(145deg,hsl(${mem.hue},${mem.s}%,${mem.l}%),hsl(${mem.hue+18},${mem.s-5}%,${mem.l-6}%))`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
           {!mem.dataUrl&&<span style={{fontSize:48,opacity:.25}}>{"\u{1F5BC}\uFE0F"}</span>}
           <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,transparent 40%,rgba(42,34,24,.6) 100%)"}}/>
-          {mem.dataUrl&&!editing&&<button onClick={()=>setImageEditing(true)} style={{position:"absolute",top:12,right:12,padding:"6px 12px",borderRadius:8,border:"1px solid rgba(255,255,255,.3)",background:"rgba(255,255,255,.15)",backdropFilter:"blur(8px)",fontFamily:T.font.body,fontSize:11,color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",gap:5,zIndex:2}}>{"\u{2728}"} Edit Image</button>}
           <div style={{position:"absolute",bottom:14,left:18,right:18}}>
             {editing
               ?<input value={title} onChange={e=>setTitle(e.target.value)} autoFocus
@@ -80,6 +79,10 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
                   <div style={{fontFamily:T.font.body,fontSize:9,color:type===val?accent:T.color.muted,fontWeight:type===val?600:400,marginTop:1}}>{label}</div>
                 </button>
               ))}
+              {mem.dataUrl&&<button onClick={()=>setImageEditing(true)} style={{padding:"8px 6px",borderRadius:8,border:`1px solid ${accent}60`,background:`${accent}08`,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
+                <div style={{fontSize:16}}>{"\u{2728}"}</div>
+                <div style={{fontFamily:T.font.body,fontSize:9,color:accent,fontWeight:600,marginTop:1}}>Edit Image</div>
+              </button>}
             </div>
             {/* Save / Cancel */}
             <div style={{display:"flex",gap:10}}>

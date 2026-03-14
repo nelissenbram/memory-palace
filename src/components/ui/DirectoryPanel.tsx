@@ -8,7 +8,7 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 
 const TYPE_ICONS: Record<string,string> = {
-  photo:"\u{1F5BC}\uFE0F",video:"\u{1F3AC}",album:"\u{1F4D6}",orb:"\u{1F52E}",journal:"\u{1F4DC}","case":"\u{1F3FA}",
+  photo:"\u{1F5BC}\uFE0F",video:"\u{1F3AC}",album:"\u{1F4D6}",orb:"\u{1F52E}","case":"\u{1F3FA}",
 };
 
 interface DirectoryPanelProps {
