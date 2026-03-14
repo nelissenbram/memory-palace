@@ -6,20 +6,31 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 
 export function useRoomMemories() {
   const { activeWing, activeRoomId } = usePalaceStore();
-  const { userMems, fetchRoomMemories, addMemory, updateMemory, deleteMemory, getRoomSharing, updateRoomSharing } =
+  const { userMems, searchQuery, filterType, fetchRoomMemories, addMemory, updateMemory, deleteMemory, getRoomSharing, updateRoomSharing, setSearchQuery, setFilterType } =
     useMemoryStore();
 
-  // Fetch from Supabase when entering a room
+  // Fetch from Supabase when entering a room + reset search
   useEffect(() => {
     if (activeRoomId) fetchRoomMemories(activeRoomId);
-  }, [activeRoomId, fetchRoomMemories]);
+    setSearchQuery("");
+    setFilterType(null);
+  }, [activeRoomId, fetchRoomMemories, setSearchQuery, setFilterType]);
 
-  // Derived room memories
-  const roomMemsRaw: Mem[] = activeRoomId
+  // Derived room memories (all)
+  const allRoomMems: Mem[] = activeRoomId
     ? userMems[activeRoomId] || ROOM_MEMS[activeRoomId] || []
     : [];
-  const roomMemsKey = JSON.stringify(roomMemsRaw.map((m) => m.id));
-  const roomMems = roomMemsRaw;
+
+  // Filtered memories
+  const roomMems = allRoomMems.filter((m) => {
+    if (filterType && m.type !== filterType) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!m.title.toLowerCase().includes(q) && !(m.desc || "").toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  const roomMemsKey = JSON.stringify(roomMems.map((m) => m.id));
 
   // Wrappers that bind activeRoomId
   const handleAddMemory = (mem: Mem) => {
@@ -43,5 +54,5 @@ export function useRoomMemories() {
   const currentSharing = (roomId: string) => getRoomSharing(roomId, activeWing);
   const updateSharing = (roomId: string, updates: any) => updateRoomSharing(roomId, activeWing, updates);
 
-  return { roomMems, roomMemsKey, handleAddMemory, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing };
+  return { roomMems, allRoomMems, roomMemsKey, handleAddMemory, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing };
 }

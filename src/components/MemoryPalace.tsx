@@ -11,6 +11,7 @@ import OnboardingWizard from "@/components/ui/OnboardingWizard";
 import TopBar from "@/components/ui/TopBar";
 import Minimap from "@/components/ui/Minimap";
 import { WingTooltip, DoorTooltip } from "@/components/ui/HoverTooltip";
+import SearchBar from "@/components/ui/SearchBar";
 import UploadPanel from "@/components/ui/UploadPanel";
 import SharingPanel from "@/components/ui/SharingPanel";
 import MemoryDetail from "@/components/ui/MemoryDetail";
@@ -25,12 +26,12 @@ export default function MemoryPalace(){
     loadProfile, finishOnboarding } = useUserStore();
   const { view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim,
     setHovWing, setHovDoor, enterWing, enterRoom } = usePalaceStore();
-  const { selMem, showUpload, showSharing,
-    setSelMem, setShowUpload, setShowSharing } = useMemoryStore();
+  const { selMem, showUpload, showSharing, searchQuery, filterType,
+    setSelMem, setShowUpload, setShowSharing, setSearchQuery, setFilterType } = useMemoryStore();
 
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick } = useNavigation();
-  const { roomMems, roomMemsKey, handleAddMemory, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
+  const { roomMems, allRoomMems, roomMemsKey, handleAddMemory, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
 
   // Load profile on mount
   useEffect(()=>{ loadProfile(); },[loadProfile]);
@@ -80,18 +81,21 @@ export default function MemoryPalace(){
       {view==="corridor"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter room</span></div>}
       {view==="room"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Click memories</span></div>}
 
-      {/* Room info badge + sharing toggle */}
-      {view==="room"&&activeRoomData&&activeRoomId&&(()=>{const rs=currentSharing(activeRoomId);return <div style={{position:"absolute",top:62,left:22,animation:"fadeIn .5s ease .4s both",display:"flex",gap:8,alignItems:"center",zIndex:30}}>
-        <div style={{background:`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,padding:"8px 14px",border:`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:16}}>{activeRoomData.icon}</span>
-          <div><div style={{fontFamily:T.font.display,fontSize:14,fontWeight:500,color:T.color.charcoal}}>{activeRoomData.name}</div>
-          <div style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>{roomMems.length} memories</div></div>
-        </div>
-        <button onClick={()=>setShowSharing(true)} style={{background:rs.shared?"#4A674118":`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,padding:"8px 14px",border:rs.shared?"1px solid #4A674133":`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
-          {rs.shared?<><div style={{width:8,height:8,borderRadius:4,background:"#4A6741"}}/><span style={{fontFamily:T.font.body,fontSize:11,color:"#4A6741",fontWeight:500}}>Shared ({rs.sharedWith.length})</span></>
-          :<span style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>Share room</span>}
-        </button>
-      </div>;})()}
+      {/* Search bar + sharing (room view) */}
+      {view==="room"&&activeRoomData&&activeRoomId&&<>
+        <SearchBar query={searchQuery} filterType={filterType} totalCount={allRoomMems.length} filteredCount={roomMems.length} accent={wingData?.accent} onQueryChange={setSearchQuery} onFilterChange={setFilterType}/>
+        {(()=>{const rs=currentSharing(activeRoomId);return <div style={{position:"absolute",top:62,right:18,zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",gap:8,alignItems:"center"}}>
+          <div style={{background:`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,padding:"8px 14px",border:`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:16}}>{activeRoomData.icon}</span>
+            <div><div style={{fontFamily:T.font.display,fontSize:14,fontWeight:500,color:T.color.charcoal}}>{activeRoomData.name}</div>
+            <div style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>{allRoomMems.length} memories</div></div>
+          </div>
+          <button onClick={()=>setShowSharing(true)} style={{background:rs.shared?"#4A674118":`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,padding:"8px 14px",border:rs.shared?"1px solid #4A674133":`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
+            {rs.shared?<><div style={{width:8,height:8,borderRadius:4,background:"#4A6741"}}/><span style={{fontFamily:T.font.body,fontSize:11,color:"#4A6741",fontWeight:500}}>Shared ({rs.sharedWith.length})</span></>
+            :<span style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>Share room</span>}
+          </button>
+        </div>;})()}
+      </>}
 
       {/* FAB: Add memory */}
       {view==="room"&&activeRoomId&&!showUpload&&!showSharing&&!selMem&&<button onClick={()=>setShowUpload(true)} style={{position:"absolute",bottom:70,right:28,width:56,height:56,borderRadius:28,border:"none",background:`linear-gradient(135deg,${wingData?.accent||T.color.terracotta},${T.color.walnut})`,color:"#FFF",fontSize:28,fontWeight:300,cursor:"pointer",boxShadow:`0 8px 32px ${T.color.walnut}40`,display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .5s both",transition:"transform .2s, box-shadow .2s"}}
