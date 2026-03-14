@@ -407,7 +407,7 @@ export default function InteriorScene({roomId,memories,onMemoryClick}: {roomId: 
       if(e.buttons===1){lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.5,Math.min(.5,lookT.current.pitch+dy*.003));prev.current={x:e.clientX,y:e.clientY};}
       const rect=el.getBoundingClientRect();const r2=new THREE.Raycaster();r2.setFromCamera(new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1),camera);
       const hits=r2.intersectObjects(memMeshes.current);
-      if(hits.length>0&&hits[0].distance<5){hovMem.current=hits[0].object.userData.isBackDoor?hits[0].object.userData:hits[0].object.userData.memory;el.style.cursor="pointer";}else{hovMem.current=null;el.style.cursor="grab";}};
+      if(hits.length>0&&hits[0].distance<12){hovMem.current=hits[0].object.userData.isBackDoor?hits[0].object.userData:hits[0].object.userData.memory;el.style.cursor="pointer";}else{hovMem.current=null;el.style.cursor="grab";}};
     const onCk=()=>{if(!drag.current&&hovMem.current){if(hovMem.current.isBackDoor)onMemoryClick("__back__");else onMemoryClick(hovMem.current);}};
     const onKD=(e: KeyboardEvent)=>{keys.current[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};const onKU=(e: KeyboardEvent)=>{keys.current[e.key.toLowerCase()]=false;};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);};
