@@ -118,6 +118,15 @@ export default function TopBar({crumbs}: TopBarProps){
                 }}>
                   {"\u{1F4C2}"} Directory
                 </button>
+                <a href="/settings" onClick={() => setMenuOpen(false)} style={{
+                  flex: 1, padding: "10px 12px", borderRadius: 10, minHeight: 44,
+                  border: `1px solid ${T.color.cream}`, background: T.color.white,
+                  fontFamily: T.font.body, fontSize: 12, color: T.color.walnut, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  textDecoration: "none",
+                }}>
+                  {"\u2699\uFE0F"} Settings
+                </a>
                 <button onClick={() => { signOut(); setMenuOpen(false); }} style={{
                   flex: 1, padding: "10px 12px", borderRadius: 10, minHeight: 44,
                   border: `1px solid ${T.color.cream}`, background: T.color.white,

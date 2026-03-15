@@ -40,6 +40,7 @@ import SharedWithMePanel from "@/components/ui/SharedWithMePanel";
 import InterviewPanel from "@/components/ui/InterviewPanel";
 import InterviewLibraryPanel from "@/components/ui/InterviewLibraryPanel";
 import InterviewHistoryPanel from "@/components/ui/InterviewHistoryPanel";
+import TouchControlsOverlay from "@/components/ui/TouchControlsOverlay";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 
@@ -51,7 +52,7 @@ export default function MemoryPalace(){
   const { profileLoading, onboarded, firstWing,
     loadProfile, finishOnboarding } = useUserStore();
   const { view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim, roomLayouts,
-    setHovWing, setHovDoor, enterWing, enterRoom, setRoomLayout } = usePalaceStore();
+    setHovWing, setHovDoor, enterWing, enterRoom, setRoomLayout, exitToPalace, exitToCorridor } = usePalaceStore();
   const { selMem, showUpload, showSharing, showDirectory, searchQuery, filterType,
     setSelMem, setShowUpload, setShowSharing, setShowDirectory, setSearchQuery, setFilterType } = useMemoryStore();
   const { getWingRooms, customRooms } = useRoomStore();
@@ -266,6 +267,9 @@ export default function MemoryPalace(){
           onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow=`0 8px 32px ${T.color.walnut}40`;}}>+</button>}
       </>}
 
+      {/* Touch controls tutorial — mobile only, one-time */}
+      {isMobile && <TouchControlsOverlay view={view} />}
+
       {/* ═══ MOBILE BOTTOM ACTION BAR ═══ */}
       {isMobile && <MobileBottomBar
         view={view}
@@ -294,6 +298,7 @@ export default function MemoryPalace(){
         onSharedWithMe={() => { closeMore(); setShowSharedWithMe(true); }}
         onInterviews={() => { closeMore(); setShowInterviewLibrary(true); }}
         getProgress={getProgress}
+        onBack={() => { closeMore(); view === "room" ? exitToCorridor() : exitToPalace(); }}
       />}
 
       {/* Panels + overlays */}
@@ -434,6 +439,7 @@ interface MobileBottomBarProps {
   onSharedWithMe: () => void;
   onInterviews: () => void;
   getProgress: () => { earned: number; total: number; percentage: number };
+  onBack: () => void;
 }
 
 function MobileBottomBar(props: MobileBottomBarProps) {
@@ -442,6 +448,11 @@ function MobileBottomBar(props: MobileBottomBarProps) {
 
   // Define primary actions based on view
   const primaryActions: { icon: string; label: string; action: () => void; accent?: boolean }[] = [];
+
+  // Back button for non-exterior views
+  if (view !== "exterior") {
+    primaryActions.push({ icon: "\u2190", label: "Back", action: props.onBack });
+  }
 
   if (view === "room" && activeRoomId && !showUpload && !showSharing && !selMem) {
     primaryActions.push({ icon: "+", label: "Add", action: props.onUpload, accent: true });

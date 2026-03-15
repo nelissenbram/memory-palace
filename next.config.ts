@@ -139,6 +139,6 @@ const nextConfig: NextConfig = {
   ...(isCapacitorBuild && { output: "export" as const }),
 };
 
-// Disable PWA wrapper on Vercel builds until next-pwa Turbopack compatibility is resolved
-const isVercel = !!process.env.VERCEL;
-export default (isCapacitorBuild || isVercel) ? nextConfig : withPWA(nextConfig);
+// PWA wrapper uses webpack plugin — works fine on production builds (webpack)
+// but skip for Capacitor (static export handles its own assets)
+export default isCapacitorBuild ? nextConfig : withPWA(nextConfig);

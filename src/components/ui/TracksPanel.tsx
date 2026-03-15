@@ -4,12 +4,14 @@ import { TRACKS } from "@/lib/constants/tracks";
 import { GOAL_TRACK_PRIORITY } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useUserStore } from "@/lib/stores/userStore";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 interface TracksPanelProps {
   onClose: () => void;
 }
 
 export default function TracksPanel({ onClose }: TracksPanelProps) {
+  const isMobile = useIsMobile();
   const { tracks, totalPoints, getLevel, getPointsToNextLevel, setSelectedTrackId } = useTrackStore();
   const { userGoal } = useUserStore();
   const level = getLevel();
@@ -50,13 +52,13 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
       }}>
         {/* Header */}
         <div style={{
-          padding: "24px 24px 20px", borderBottom: `1px solid ${T.color.cream}`,
+          padding: isMobile ? "16px 14px 14px" : "24px 24px 20px", borderBottom: `1px solid ${T.color.cream}`,
           background: `linear-gradient(180deg, ${T.color.warmStone} 0%, ${T.color.linen} 100%)`,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <h2 style={{
-                fontFamily: T.font.display, fontSize: 26, fontWeight: 500,
+                fontFamily: T.font.display, fontSize: isMobile ? 22 : 26, fontWeight: 500,
                 color: T.color.charcoal, margin: 0,
               }}>Memory Building</h2>
               <p style={{
@@ -115,7 +117,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
 
         {/* Track cards */}
         <div style={{
-          flex: 1, overflowY: "auto", padding: "16px 20px 24px",
+          flex: 1, overflowY: "auto", padding: isMobile ? "12px 12px 20px" : "16px 20px 24px",
           display: "flex", flexDirection: "column", gap: 12,
         }}>
           {sortedTracks.map((track, i) => {
@@ -133,7 +135,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                 onClick={() => handleTrackClick(track.id)}
                 style={{
                   display: "flex", flexDirection: "column", gap: 10,
-                  padding: "16px 18px", borderRadius: 14,
+                  padding: isMobile ? "12px 12px" : "16px 18px", borderRadius: 14,
                   border: isRecommended ? `2px solid ${track.color}44` : `1px solid ${T.color.cream}`,
                   background: isComplete ? `${track.color}08` : T.color.white,
                   cursor: "pointer", textAlign: "left", transition: "all .2s",
@@ -223,6 +225,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     }} />
                     <span style={{
                       fontFamily: T.font.body, fontSize: 11, color: T.color.walnut,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
                     }}>
                       Next: {nextStep.title}
                     </span>
