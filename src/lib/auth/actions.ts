@@ -61,13 +61,32 @@ export async function signIn(formData: FormData) {
   const password = formData.get("password") as string;
   const redirectTo = formData.get("redirect") as string | null;
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { error: error.message };
   }
 
-  // If there's a pending invite redirect, go there instead of /palace
+  // Check if MFA is required (AAL1 achieved but AAL2 needed)
+  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (
+    aalData &&
+    aalData.currentLevel === "aal1" &&
+    aalData.nextLevel === "aal2"
+  ) {
+    // User has MFA enrolled — return factor info so the client can prompt
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const totpFactor = factors?.totp?.[0];
+    if (totpFactor) {
+      return {
+        mfaRequired: true,
+        factorId: totpFactor.id,
+        redirect: redirectTo,
+      };
+    }
+  }
+
+  // No MFA needed — redirect as usual
   if (redirectTo && redirectTo.startsWith("/invite/")) {
     redirect(redirectTo);
   }
