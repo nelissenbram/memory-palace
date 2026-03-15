@@ -7,6 +7,7 @@ import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import NotificationBell from "@/components/ui/NotificationBell";
 import type { Crumb } from "@/lib/hooks/useNavigation";
 
 interface TopBarProps {
@@ -109,6 +110,10 @@ export default function TopBar({crumbs}: TopBarProps){
                   </button>
                 ))}
               </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: "0 2px" }}>
+                <NotificationBell />
+                <span style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut }}>Notifications</span>
+              </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => { setShowDirectory(!showDirectory); setMenuOpen(false); }} style={{
                   flex: 1, padding: "10px 12px", borderRadius: 10, minHeight: 44,
@@ -160,7 +165,7 @@ export default function TopBar({crumbs}: TopBarProps){
           </div>
         </div>
       </div>
-      <div style={{display:"flex",gap:4}}>{WINGS.map(w=><button key={w.id} onClick={()=>switchWing(w.id)} style={{padding:"4px 10px",borderRadius:16,fontFamily:T.font.body,fontSize:11,fontWeight:activeWing===w.id?600:400,border:activeWing===w.id?`1.5px solid ${w.accent}`:`1px solid ${T.color.cream}`,background:activeWing===w.id?`${w.accent}15`:`${T.color.white}bb`,color:activeWing===w.id?w.accent:T.color.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>
+      <div style={{display:"flex",gap:4,alignItems:"center"}}><NotificationBell />{WINGS.map(w=><button key={w.id} onClick={()=>switchWing(w.id)} style={{padding:"4px 10px",borderRadius:16,fontFamily:T.font.body,fontSize:11,fontWeight:activeWing===w.id?600:400,border:activeWing===w.id?`1.5px solid ${w.accent}`:`1px solid ${T.color.cream}`,background:activeWing===w.id?`${w.accent}15`:`${T.color.white}bb`,color:activeWing===w.id?w.accent:T.color.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>
         <span style={{fontSize:11}}>{w.icon}</span>{w.name}</button>)}
         <button onClick={()=>signOut()} style={{padding:"4px 10px",borderRadius:16,fontFamily:T.font.body,fontSize:11,fontWeight:400,border:`1px solid ${T.color.cream}`,background:`${T.color.white}bb`,color:T.color.muted,cursor:"pointer",marginLeft:4}}>Sign out</button>
       </div>
