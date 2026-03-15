@@ -10,6 +10,8 @@ interface BeforeInstallPromptEvent extends Event {
 
 export default function PWAInstallBanner() {
   const [show, setShow] = useState(false);
+  const [hasPrompt, setHasPrompt] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
 
@@ -21,20 +23,19 @@ export default function PWAInstallBanner() {
     // Only show on mobile/tablet
     if (!/Mobi|Android|iPad|iPhone|iPod/i.test(navigator.userAgent) && navigator.maxTouchPoints <= 1) return;
 
-    // Detect iOS (Safari doesn't fire beforeinstallprompt)
     const ua = navigator.userAgent;
     const isiOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     setIsIOS(isiOS);
 
-    // Android/Chrome: capture the beforeinstallprompt event if it fires
+    // Capture beforeinstallprompt (Android/Chrome)
     const handler = (e: Event) => {
       e.preventDefault();
       deferredPrompt.current = e as BeforeInstallPromptEvent;
+      setHasPrompt(true);
     };
     window.addEventListener("beforeinstallprompt", handler);
 
-    // Always show the banner after a short delay on mobile (don't wait for beforeinstallprompt)
-    const t = setTimeout(() => setShow(true), 3000);
+    const t = setTimeout(() => setShow(true), 2500);
 
     return () => {
       clearTimeout(t);
@@ -42,16 +43,20 @@ export default function PWAInstallBanner() {
     };
   }, []);
 
-  const canPrompt = () => !!deferredPrompt.current;
-
   const handleInstall = async () => {
     if (deferredPrompt.current) {
+      // Native install prompt available — trigger it directly
       await deferredPrompt.current.prompt();
       const { outcome } = await deferredPrompt.current.userChoice;
       if (outcome === "accepted") {
         setShow(false);
+        localStorage.setItem("mp_pwa_dismissed", "1");
       }
       deferredPrompt.current = null;
+      setHasPrompt(false);
+    } else {
+      // No native prompt — show manual instructions
+      setShowInstructions(true);
     }
   };
 
@@ -82,85 +87,98 @@ export default function PWAInstallBanner() {
           borderRadius: 18,
           padding: "18px 20px",
           boxShadow: "0 -4px 30px rgba(0,0,0,.25)",
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
         }}>
-          {/* App icon */}
-          <div style={{
-            width: 52,
-            height: 52,
-            borderRadius: 14,
-            background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 26,
-            flexShrink: 0,
-          }}>
-            {"\u{1F3DB}\uFE0F"}
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {/* App icon */}
             <div style={{
-              fontFamily: T.font.display,
-              fontSize: 16,
-              fontWeight: 600,
-              color: "#FFFFFF",
-              marginBottom: 2,
+              width: 52, height: 52, borderRadius: 14,
+              background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 26, flexShrink: 0,
             }}>
-              Install Memory Palace
+              {"\u{1F3DB}\uFE0F"}
             </div>
-            <div style={{
-              fontFamily: T.font.body,
-              fontSize: 12,
-              color: "#BBAEA0",
-              lineHeight: 1.4,
-            }}>
-              {isIOS ? (
-                <>Tap <span style={{
-                  display: "inline-flex", alignItems: "center",
-                  background: "rgba(255,255,255,.15)", borderRadius: 4,
-                  padding: "1px 5px", margin: "0 2px", fontSize: 14,
-                }}>{"\u{1F4E4}"}</span> then <strong style={{ color: "#E8DDD0" }}>&quot;Add to Home Screen&quot;</strong></>
-              ) : (
-                <>Tap <strong style={{ color: "#E8DDD0" }}>{"\u22EE"} menu</strong> then <strong style={{ color: "#E8DDD0" }}>&quot;Install app&quot;</strong> or <strong style={{ color: "#E8DDD0" }}>&quot;Add to Home Screen&quot;</strong></>
-              )}
-            </div>
-          </div>
 
-          {/* Action buttons */}
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            {canPrompt() && (
-              <button onClick={handleInstall} style={{
-                padding: "10px 18px",
-                borderRadius: 12,
-                border: "none",
-                background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                color: "#FFF",
-                fontFamily: T.font.body,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                minHeight: 44,
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: T.font.display, fontSize: 16, fontWeight: 600,
+                color: "#FFFFFF", marginBottom: 2,
               }}>
-                Install
-              </button>
-            )}
-            <button onClick={handleDismiss} style={{
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,.15)",
-              background: "transparent",
-              color: "#9A9183",
+                The Memory Palace
+              </div>
+              <div style={{
+                fontFamily: T.font.body, fontSize: 12, color: "#BBAEA0",
+              }}>
+                Install as app on your phone
+              </div>
+            </div>
+
+            {/* Always show Install button */}
+            <button onClick={handleInstall} style={{
+              padding: "12px 22px",
+              borderRadius: 14,
+              border: "none",
+              background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+              color: "#FFF",
               fontFamily: T.font.body,
-              fontSize: 12,
+              fontSize: 14,
+              fontWeight: 600,
               cursor: "pointer",
-              minHeight: 44,
+              minHeight: 48,
+              flexShrink: 0,
+              boxShadow: `0 4px 16px ${T.color.terracotta}60`,
             }}>
-              Got it
+              Install
+            </button>
+
+            {/* Small dismiss X */}
+            <button onClick={handleDismiss} style={{
+              width: 28, height: 28,
+              borderRadius: 14,
+              border: "none",
+              background: "rgba(255,255,255,.1)",
+              color: "#9A9183",
+              fontSize: 14,
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}>
+              {"\u2715"}
             </button>
           </div>
+
+          {/* Instructions — only show if native prompt not available and user tapped Install */}
+          {showInstructions && !hasPrompt && (
+            <div style={{
+              marginTop: 14,
+              padding: "12px 14px",
+              background: "rgba(255,255,255,.08)",
+              borderRadius: 12,
+              fontFamily: T.font.body,
+              fontSize: 13,
+              color: "#D4C5B2",
+              lineHeight: 1.5,
+            }}>
+              {isIOS ? (
+                <>
+                  <strong style={{ color: "#FFF" }}>On iPhone/iPad:</strong><br/>
+                  1. Tap the <span style={{
+                    display: "inline-flex", alignItems: "center",
+                    background: "rgba(255,255,255,.15)", borderRadius: 4,
+                    padding: "1px 6px", margin: "0 3px", fontSize: 15,
+                  }}>{"\u{1F4E4}"}</span> Share button at the bottom<br/>
+                  2. Scroll down and tap <strong style={{ color: "#FFF" }}>&quot;Add to Home Screen&quot;</strong><br/>
+                  3. Tap <strong style={{ color: "#FFF" }}>Add</strong>
+                </>
+              ) : (
+                <>
+                  <strong style={{ color: "#FFF" }}>On Android:</strong><br/>
+                  1. Tap the <strong style={{ color: "#FFF" }}>{"\u22EE"}</strong> menu (top-right corner)<br/>
+                  2. Tap <strong style={{ color: "#FFF" }}>&quot;Install app&quot;</strong> or <strong style={{ color: "#FFF" }}>&quot;Add to Home Screen&quot;</strong>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
