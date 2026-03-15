@@ -76,8 +76,8 @@ export default function EntranceHallScene({
       goldDark: new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, envMapIntensity: 1.0, emissive: "#B8922E", emissiveIntensity: 0.1 }),
       goldBright: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4, emissive: "#E8C84A", emissiveIntensity: 0.25 }),
       column: new THREE.MeshStandardMaterial({ color: "#F0E8DC", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.7 }),
-      door: new THREE.MeshStandardMaterial({ color: "#3A2818", roughness: 0.6, metalness: 0.0 }),
-      doorFrame: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
+      door: new THREE.MeshStandardMaterial({ color: "#5A3E28", roughness: 0.55, metalness: 0.0, emissive: "#3A2818", emissiveIntensity: 0.12 }),
+      doorFrame: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4, emissive: "#D4AF37", emissiveIntensity: 0.2 }),
       dome: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide }),
       domeGold: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
       floor: new THREE.MeshStandardMaterial({ color: "#E8DDD0", roughness: 0.08, metalness: 0.05, envMapIntensity: 1.0 }),
@@ -444,9 +444,10 @@ export default function EntranceHallScene({
       // Lateral (perpendicular to door)
       const latN = new THREE.Vector3(Math.cos(angle + Math.PI / 2), 0, Math.sin(angle + Math.PI / 2));
 
-      // Door recess / alcove (deeper, bigger)
-      const recessGeo = new THREE.BoxGeometry(DOOR_W + 1.0, DOOR_H + 1.0, 0.8);
-      const recessMesh = mk(recessGeo, MS.marbleDark,
+      // Door recess / alcove (deeper, bigger) — dark interior for contrast with door panels
+      const recessGeo = new THREE.BoxGeometry(DOOR_W + 1.0, DOOR_H + 1.0, 0.9);
+      const recessMat = new THREE.MeshStandardMaterial({ color: "#1A0E05", roughness: 0.8, metalness: 0.0 });
+      const recessMesh = mk(recessGeo, recessMat,
         dx + inN.x * 0.4, (DOOR_H + 1.0) / 2, dz + inN.z * 0.4);
       recessMesh.lookAt(0, (DOOR_H + 1.0) / 2, 0);
       scene.add(recessMesh);
@@ -505,10 +506,10 @@ export default function EntranceHallScene({
 
       // ── DOUBLE DOOR PANELS (two panels per door) ──
       const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
-      const doorMat = new THREE.MeshStandardMaterial({ color: "#3A2818", roughness: 0.6, metalness: 0.0 });
+      const doorMat = new THREE.MeshStandardMaterial({ color: "#5A3E28", roughness: 0.55, metalness: 0.0, emissive: "#3A2818", emissiveIntensity: 0.12 });
 
       // Left door panel
-      const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.12), doorMat);
+      const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.20), doorMat);
       leftPanel.position.set(
         dx + latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2),
         DOOR_H / 2,
@@ -520,7 +521,7 @@ export default function EntranceHallScene({
       scene.add(leftPanel);
 
       // Right door panel
-      const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.12), doorMat);
+      const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.20), doorMat);
       rightPanel.position.set(
         dx - latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2),
         DOOR_H / 2,
@@ -548,7 +549,7 @@ export default function EntranceHallScene({
         for (const py of [1.0, 2.8, 4.6, 6.0]) {
           const detailH = py < 3 ? 1.2 : 0.8;
           const insetGeo = new THREE.BoxGeometry(panelW * 0.7, detailH, 0.008);
-          const inset = new THREE.Mesh(insetGeo, MS.goldDark);
+          const inset = new THREE.Mesh(insetGeo, MS.goldBright);
           inset.position.set(
             dx + panelCenterLat.x + inN.x * 0.07,
             py,
@@ -586,6 +587,11 @@ export default function EntranceHallScene({
         );
         scene.add(handleMount);
       }
+
+      // Small fill light illuminating the door surface itself
+      const doorFill = new THREE.PointLight("#FFF0D0", 0.5, 6);
+      doorFill.position.set(dx + inN.x * 1.5, DOOR_H * 0.5, dz + inN.z * 1.5);
+      scene.add(doorFill);
 
       // Focused spotlight near each door (pool of light on floor)
       const doorSpot = new THREE.SpotLight(accent, 1.2, 12, Math.PI / 6, 0.6, 1.0);
@@ -779,7 +785,43 @@ export default function EntranceHallScene({
       scene.add(statueSpot);
       scene.add(statueSpot.target);
 
-      // ── FRESCO WING NAME (large 3D text via canvas texture) ──
+      // ── EYE-LEVEL WING NAME LABEL (readable from standing height) ──
+      {
+        const eyeCanvas = document.createElement("canvas");
+        eyeCanvas.width = 512;
+        eyeCanvas.height = 128;
+        const ectx = eyeCanvas.getContext("2d")!;
+        // Dark background panel
+        ectx.fillStyle = "#2A1A0A";
+        ectx.fillRect(0, 0, 512, 128);
+        // Gold border
+        ectx.strokeStyle = "#D4AF37";
+        ectx.lineWidth = 6;
+        ectx.strokeRect(6, 6, 500, 116);
+        // Wing name text
+        const eyeLabel = WING_LABELS[wingId] || wingId.toUpperCase();
+        ectx.fillStyle = "#E8C84A";
+        ectx.font = "bold 60px Georgia, 'Times New Roman', serif";
+        ectx.textAlign = "center";
+        ectx.textBaseline = "middle";
+        ectx.fillText(eyeLabel, 256, 64);
+        const eyeTex = new THREE.CanvasTexture(eyeCanvas);
+        eyeTex.colorSpace = THREE.SRGBColorSpace;
+        const eyeLabelMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(2.4, 0.6),
+          new THREE.MeshStandardMaterial({ map: eyeTex, roughness: 0.4, metalness: 0.05, emissive: "#D4AF37", emissiveIntensity: 0.08 })
+        );
+        // Position just above the door arch, facing inward so player can read it
+        eyeLabelMesh.position.set(
+          dx + inN.x * 0.12,
+          DOOR_H + 0.9,
+          dz + inN.z * 0.12
+        );
+        eyeLabelMesh.lookAt(new THREE.Vector3(0, DOOR_H + 0.9, 0));
+        scene.add(eyeLabelMesh);
+      }
+
+      // ── FRESCO WING NAME (large 3D text via canvas texture — above statues) ──
       const frescoY = DOOR_H + archH + 0.3;
       const frescoW = 4.0;
       const frescoH = 2.0;
@@ -1098,8 +1140,11 @@ export default function EntranceHallScene({
     pmrem.dispose();
 
     // ── FIRST-PERSON CAMERA ──
-    // Player starts near the exit portal (entrance), facing center
-    const startAngle = exitAngle + Math.PI; // face inward from exit
+    // Player starts near the exit portal (entrance), facing toward the room center.
+    // The look-direction formula uses: x = sin(yaw), z = -cos(yaw).
+    // From angle A on the circle, direction to center is (-cos(A), 0, -sin(A)),
+    // so the correct yaw to face inward is A - PI/2.
+    const startAngle = exitAngle - Math.PI / 2;
     pos.current.set(
       Math.cos(exitAngle) * (RADIUS - 3),
       1.7,

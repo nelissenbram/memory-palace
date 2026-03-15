@@ -48,6 +48,8 @@ import type { ActionItem } from "@/components/ui/ActionMenu";
 import StatusBar from "@/components/ui/StatusBar";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
+import { useTutorialStore } from "@/lib/stores/tutorialStore";
+import TutorialOverlay, { TourButton } from "@/components/ui/TutorialOverlay";
 
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
@@ -84,6 +86,9 @@ export default function MemoryPalace(){
   const { showLibrary: showInterviewLibrary, showHistory: showInterviewHistory, showInterview,
     setShowLibrary: setShowInterviewLibrary, setShowHistory: setShowInterviewHistory,
     setShowInterview: setShowInterviewPanel } = useInterviewStore();
+
+  // ── Tutorial ──
+  const { active: tutorialActive, completed: tutorialCompleted, start: startTutorial } = useTutorialStore();
 
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings } = useNavigation();
@@ -163,6 +168,14 @@ export default function MemoryPalace(){
     if (searchHideTimer.current) clearTimeout(searchHideTimer.current);
     searchHideTimer.current = setTimeout(() => setSearchBarVisible(false), 3000);
   }, []);
+
+  // Auto-start tutorial on first entrance-hall visit (after onboarding, not completed before)
+  useEffect(() => {
+    if (view === "entrance" && !tutorialCompleted && !tutorialActive) {
+      const t = setTimeout(startTutorial, 1200);
+      return () => clearTimeout(t);
+    }
+  }, [view, tutorialCompleted, tutorialActive, startTutorial]);
 
   const handleFinishOnboarding=async()=>{
     await finishOnboarding();
@@ -393,6 +406,12 @@ export default function MemoryPalace(){
         pointsElement={<PointsDisplay onClick={()=>setShowTracksPanel(true)} />}
       />;})()}
 
+      {/* Tutorial overlay */}
+      <TutorialOverlay />
+
+      {/* "Take the Tour" button — desktop, entrance/exterior only */}
+      {!isMobile && (view==="exterior"||view==="entrance") && !tutorialActive && <TourButton style={{position:"absolute",top:58,right:320,zIndex:35,animation:"fadeIn .4s ease 1.3s both"}} />}
+
       {/* Invites & Shared-with-me FABs — desktop only, exterior/corridor only */}
       {!isMobile && (view==="exterior"||view==="entrance"||view==="corridor") && <button onClick={()=>setShowInvites(true)} title="Pending Invitations" style={{position:"absolute",top:58,right:120,height:36,borderRadius:18,border:`1px solid ${T.color.cream}`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:6,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease 1.1s both",transition:"transform .2s",boxShadow:"0 2px 10px rgba(44,44,42,.08)"}}
         onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform="scale(1.05)";}}
@@ -556,6 +575,7 @@ function MobileBottomBar(props: MobileBottomBarProps) {
             { icon: "\uD83D\uDCDC", label: "Tracks", action: props.onTracks },
             { icon: "\u{1F4EC}", label: "Invites", action: props.onInvites },
             { icon: "\u{1F91D}", label: "Shared", action: props.onSharedWithMe },
+            { icon: "\u2728", label: "Tour", action: () => { props.onCloseMore(); useTutorialStore.getState().start(); } },
             ...(view === "room" ? [
               { icon: "\u{1F4E4}", label: "Share Card", action: props.onShare },
             ] : []),

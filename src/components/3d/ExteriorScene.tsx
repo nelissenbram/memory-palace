@@ -457,10 +457,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       sectionGroups.push({group:wg,id:def.room.id,targetY:0,currentY:0,meshes:wingMeshes,accent:def.room.accent});
 
       const tLen=5+wL+eD;
-      const ct=new THREE.Mesh(new THREE.BoxGeometry(eW+4,eH+6,tLen+4),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
-      const mid=att+tLen/2;ct.position.set(Math.sin(angle)*mid,eH/2+2,Math.cos(angle)*mid);ct.rotation.y=angle;
+      const ct=new THREE.Mesh(new THREE.BoxGeometry(eW+4,eH+6,tLen+2),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+      ct.position.set(0,eH/2+2,-(tLen+2)/2);
       ct.userData={roomId:def.room.id,wingMeshes,accent:def.room.accent};
-      scene.add(ct);clickTargets.push(ct);
+      wg.add(ct);clickTargets.push(ct);
     });
 
     // ══════════════════════════════════════════
