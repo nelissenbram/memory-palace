@@ -214,7 +214,7 @@ export default function MemoryPalace(){
     <div style={{width:"100vw",height:"100vh",background:"#DDD5C8",position:"relative",overflow:"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes portalFlash{0%{opacity:0}30%{opacity:1}70%{opacity:1}100%{opacity:0}}`}</style>
       {/* Version indicator — temporary, for debugging cache issues */}
-      <div style={{position:"fixed",bottom:2,right:4,zIndex:9999,fontFamily:"monospace",fontSize:9,color:"rgba(0,0,0,0.2)",pointerEvents:"none",background:"red",color:"white",padding:"2px 8px",borderRadius:4,fontSize:14,fontWeight:"bold"}}>v3</div>
+      <div style={{position:"fixed",bottom:4,right:8,zIndex:9999,fontFamily:"monospace",fontSize:14,color:"white",pointerEvents:"none",background:"red",padding:"2px 8px",borderRadius:4,fontWeight:"bold"}}>v3</div>
       <div style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
         {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings}/>}
         {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(wingId==="__exterior__")exitToPalace();else enterCorridor(wingId);}} wings={allWings}/>}
