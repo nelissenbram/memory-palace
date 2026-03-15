@@ -18,26 +18,31 @@ export default function PWAInstallBanner() {
     if (window.matchMedia("(display-mode: standalone)").matches) return;
     // Don't show if already dismissed
     if (localStorage.getItem("mp_pwa_dismissed")) return;
+    // Only show on mobile/tablet
+    if (!/Mobi|Android|iPad|iPhone|iPod/i.test(navigator.userAgent) && navigator.maxTouchPoints <= 1) return;
 
     // Detect iOS (Safari doesn't fire beforeinstallprompt)
     const ua = navigator.userAgent;
     const isiOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    if (isiOS) {
-      setIsIOS(true);
-      // Delay showing on iOS so it doesn't block the landing page
-      const t = setTimeout(() => setShow(true), 3000);
-      return () => clearTimeout(t);
-    }
+    setIsIOS(isiOS);
 
-    // Android/Chrome: capture the beforeinstallprompt event
+    // Android/Chrome: capture the beforeinstallprompt event if it fires
     const handler = (e: Event) => {
       e.preventDefault();
       deferredPrompt.current = e as BeforeInstallPromptEvent;
-      setTimeout(() => setShow(true), 2000);
     };
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+
+    // Always show the banner after a short delay on mobile (don't wait for beforeinstallprompt)
+    const t = setTimeout(() => setShow(true), 3000);
+
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
   }, []);
+
+  const canPrompt = () => !!deferredPrompt.current;
 
   const handleInstall = async () => {
     if (deferredPrompt.current) {
@@ -106,34 +111,27 @@ export default function PWAInstallBanner() {
             }}>
               Install Memory Palace
             </div>
-            {isIOS ? (
-              <div style={{
-                fontFamily: T.font.body,
-                fontSize: 12,
-                color: "#BBAEA0",
-                lineHeight: 1.4,
-              }}>
-                Tap <span style={{
+            <div style={{
+              fontFamily: T.font.body,
+              fontSize: 12,
+              color: "#BBAEA0",
+              lineHeight: 1.4,
+            }}>
+              {isIOS ? (
+                <>Tap <span style={{
                   display: "inline-flex", alignItems: "center",
                   background: "rgba(255,255,255,.15)", borderRadius: 4,
                   padding: "1px 5px", margin: "0 2px", fontSize: 14,
-                }}>{"\u{1F4E4}"}</span> then <strong style={{ color: "#E8DDD0" }}>&quot;Add to Home Screen&quot;</strong>
-              </div>
-            ) : (
-              <div style={{
-                fontFamily: T.font.body,
-                fontSize: 12,
-                color: "#BBAEA0",
-                lineHeight: 1.3,
-              }}>
-                Add to your home screen for the full experience
-              </div>
-            )}
+                }}>{"\u{1F4E4}"}</span> then <strong style={{ color: "#E8DDD0" }}>&quot;Add to Home Screen&quot;</strong></>
+              ) : (
+                <>Tap <strong style={{ color: "#E8DDD0" }}>{"\u22EE"} menu</strong> then <strong style={{ color: "#E8DDD0" }}>&quot;Install app&quot;</strong> or <strong style={{ color: "#E8DDD0" }}>&quot;Add to Home Screen&quot;</strong></>
+              )}
+            </div>
           </div>
 
           {/* Action buttons */}
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            {!isIOS && (
+            {canPrompt() && (
               <button onClick={handleInstall} style={{
                 padding: "10px 18px",
                 borderRadius: 12,
@@ -160,7 +158,7 @@ export default function PWAInstallBanner() {
               cursor: "pointer",
               minHeight: 44,
             }}>
-              {isIOS ? "Got it" : "Later"}
+              Got it
             </button>
           </div>
         </div>
