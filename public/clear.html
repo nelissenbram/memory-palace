@@ -50,10 +50,12 @@
     log.push('Cleared version flags');
 
     el.className = 'status done';
-    el.innerHTML = '✓ All caches cleared!<br><br>' + log.join('<br>') +
-      '<br><br><a href="/palace">→ Go to your Memory Palace</a>';
+    el.innerHTML = '✓ All caches cleared! Redirecting...';
+    // Auto-redirect back to palace with cb flag to avoid loop
+    setTimeout(function() { window.location.href = '/palace?cb=1'; }, 1500);
   } catch(e) {
-    el.innerHTML = 'Error: ' + e.message + '<br><br>' + log.join('<br>');
+    el.innerHTML = 'Error: ' + e.message + '<br><br>' + log.join('<br>') +
+      '<br><br><a href="/palace?cb=1">→ Go to your Memory Palace</a>';
   }
 })();
 </script>
