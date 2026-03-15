@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useOnlineStatus } from "@/lib/hooks/useOfflineSync";
 import { UPLOAD_DEMOS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
@@ -18,6 +19,8 @@ interface UploadPanelProps {
 
 export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onUpdateMemory,suggestedType}: UploadPanelProps){
   const isMobile = useIsMobile();
+  const isOnline = useOnlineStatus();
+  const [savedOffline,setSavedOffline]=useState(false);
   const [title,setTitle]=useState("");
   const [desc,setDesc]=useState("");
   const [displayType,setDisplayType]=useState(suggestedType||"photo");
@@ -93,6 +96,11 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
     if(locationName.trim()) mem.locationName=locationName.trim();
     if(contextAccepted&&contextPreview) mem.historicalContext=contextPreview;
     onAdd(mem);
+    if (!isOnline) {
+      setSavedOffline(true);
+      setTimeout(() => onClose(), 1500);
+      return;
+    }
     onClose();
   };
 
@@ -273,9 +281,13 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             <span>&#x1F30D;</span> Add historical context to this memory
           </button>}
         </div>}
+        {/* Saved offline indicator */}
+        {savedOffline&&<div style={{padding:"12px 16px",borderRadius:12,background:"#3D6B4F18",border:"1px solid #3D6B4F40",marginBottom:12,textAlign:"center"}}>
+          <span style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:"#3D6B4F"}}>Saved offline &mdash; will sync when connected</span>
+        </div>}
         {/* Submit */}
-        <button onClick={submit} disabled={!title.trim()||!capsuleValid} style={{width:"100%",padding:isMobile?16:14,borderRadius:12,border:"none",background:title.trim()&&capsuleValid?`linear-gradient(135deg,${accent},${T.color.walnut})`:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid?"#FFF":T.color.muted,fontFamily:T.font.body,fontSize:isMobile?16:14,fontWeight:600,cursor:title.trim()&&capsuleValid?"pointer":"default",transition:"all .2s",minHeight:48}}>
-          {timeCapsule&&revealDate?`Seal capsule until ${new Date(revealDate+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`:`Add to ${room?.name||"room"}`} {timeCapsule?"🔒":"✨"}
+        <button onClick={submit} disabled={!title.trim()||!capsuleValid||savedOffline} style={{width:"100%",padding:isMobile?16:14,borderRadius:12,border:"none",background:title.trim()&&capsuleValid&&!savedOffline?`linear-gradient(135deg,${accent},${T.color.walnut})`:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid&&!savedOffline?"#FFF":T.color.muted,fontFamily:T.font.body,fontSize:isMobile?16:14,fontWeight:600,cursor:title.trim()&&capsuleValid&&!savedOffline?"pointer":"default",transition:"all .2s",minHeight:48}}>
+          {savedOffline?"Saved!":timeCapsule&&revealDate?`Seal capsule until ${new Date(revealDate+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`:`Add to ${room?.name||"room"}`} {savedOffline?"":timeCapsule?"🔒":"✨"}
         </button>
       </div>
     </div>

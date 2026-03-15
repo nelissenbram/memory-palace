@@ -4,6 +4,7 @@ import { createMemory, updateMemoryAction, deleteMemoryAction, fetchMemories } f
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem, SharingInfo } from "@/lib/constants/defaults";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { enqueueMemory, cacheMemories, getCachedMemories, type CachedMemory } from "@/lib/offline/db";
 
 interface MemoryState {
   userMems: Record<string, Mem[]>;
@@ -51,6 +52,23 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
 
   fetchRoomMemories: async (roomId) => {
     if (!supabaseReady) return;
+
+    // If offline, serve from IndexedDB cache
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        const cached = await getCachedMemories(roomId);
+        if (cached.length > 0) {
+          const mapped: Mem[] = cached.map((m: CachedMemory) => ({
+            id: m.id, title: m.title, hue: m.hue, s: m.saturation, l: m.lightness,
+            type: m.type, desc: m.description || "", dataUrl: m.fileUrl || null,
+            _cached: true,
+          }));
+          set((s) => ({ userMems: { ...s.userMems, [roomId]: mapped } }));
+        }
+      } catch { /* IndexedDB unavailable */ }
+      return;
+    }
+
     const { memories } = await fetchMemories(roomId);
     if (memories && memories.length > 0) {
       const mapped: Mem[] = memories.map((m: any) => ({
@@ -58,6 +76,16 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         type: m.type, desc: m.description || "", dataUrl: m.file_url || null,
       }));
       set((s) => ({ userMems: { ...s.userMems, [roomId]: mapped } }));
+
+      // Cache in IndexedDB for offline viewing
+      try {
+        const toCache: CachedMemory[] = memories.map((m: any) => ({
+          id: m.id, roomId, title: m.title, description: m.description || "",
+          type: m.type, hue: m.hue, saturation: m.saturation, lightness: m.lightness,
+          fileUrl: m.file_url || null, cachedAt: Date.now(),
+        }));
+        cacheMemories(roomId, toCache).catch(() => {});
+      } catch { /* IndexedDB unavailable */ }
     }
   },
 
@@ -68,6 +96,31 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       return { userMems: { ...s.userMems, [roomId]: [...cur, mem] } };
     });
     if (!supabaseReady) return;
+
+    // If offline, queue in IndexedDB for later sync
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      try {
+        await enqueueMemory({
+          clientId: mem.id,
+          roomId,
+          title: mem.title,
+          description: mem.desc || "",
+          type: mem.type,
+          hue: mem.hue,
+          saturation: mem.s,
+          lightness: mem.l,
+          fileData: mem.dataUrl || null,
+          createdAt: mem.createdAt || new Date().toISOString(),
+        });
+        // Mark memory as queued in local state
+        set((s) => {
+          const cur = s.userMems[roomId] || [];
+          const updated = cur.map((m) => m.id === mem.id ? { ...m, _offline: true } : m);
+          return { userMems: { ...s.userMems, [roomId]: updated } };
+        });
+      } catch (e) { console.error("[Offline] Queue error:", e); }
+      return;
+    }
 
     // Upload file to Storage if it's a data URL
     let fileUrl = mem.dataUrl;
