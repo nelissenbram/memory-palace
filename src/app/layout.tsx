@@ -5,6 +5,7 @@ import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import OfflineBanner from "@/components/OfflineBanner";
 import NotificationPrompt from "@/components/NotificationPrompt";
+import CookieConsent from "@/components/CookieConsent";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -136,6 +137,7 @@ export default function RootLayout({
         <OfflineBanner />
         <NotificationPrompt />
         {children}
+        <CookieConsent />
       </body>
     </html>
   );

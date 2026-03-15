@@ -206,6 +206,27 @@ function RegisterContent() {
           Sign in
         </Link>
       </p>
+
+      <p
+        style={{
+          textAlign: "center",
+          fontSize: 11,
+          color: T.color.muted,
+          marginTop: 16,
+          marginBottom: 0,
+          lineHeight: 1.6,
+        }}
+      >
+        By creating an account, you agree to our{" "}
+        <Link href="/terms" style={{ color: T.color.terracotta, textDecoration: "none" }}>
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" style={{ color: T.color.terracotta, textDecoration: "none" }}>
+          Privacy Policy
+        </Link>
+        .
+      </p>
     </form>
   );
 }

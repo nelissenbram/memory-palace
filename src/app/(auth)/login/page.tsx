@@ -140,6 +140,24 @@ function LoginContent() {
           Create one
         </Link>
       </p>
+
+      <p
+        style={{
+          textAlign: "center",
+          fontSize: 11,
+          color: T.color.muted,
+          marginTop: 16,
+          marginBottom: 0,
+        }}
+      >
+        <Link href="/privacy" style={{ color: T.color.muted, textDecoration: "none" }}>
+          Privacy Policy
+        </Link>
+        {" · "}
+        <Link href="/terms" style={{ color: T.color.muted, textDecoration: "none" }}>
+          Terms of Service
+        </Link>
+      </p>
     </form>
   );
 }
