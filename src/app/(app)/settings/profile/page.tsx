@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteText, setDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Editable fields
   const [displayName, setDisplayName] = useState("");
@@ -128,6 +129,34 @@ export default function ProfilePage() {
     } else {
       window.location.href = "/login";
     }
+  };
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      const response = await fetch("/api/export");
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: "Export failed" }));
+        showToast(err.error || "Failed to export data.", "error");
+        setExporting(false);
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const disposition = response.headers.get("Content-Disposition");
+      const filenameMatch = disposition?.match(/filename="(.+)"/);
+      a.download = filenameMatch?.[1] || "memory-palace-export.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("Your data has been downloaded.", "success");
+    } catch {
+      showToast("Failed to export data. Please try again.", "error");
+    }
+    setExporting(false);
   };
 
   const getInitials = (name: string) => {
@@ -455,7 +484,7 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Export Data */}
+          {/* Download My Data */}
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "18px 20px", borderRadius: 12,
@@ -467,32 +496,34 @@ export default function ProfilePage() {
                 fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
                 color: T.color.charcoal,
               }}>
-                Export Your Data
+                Download My Data
               </div>
               <div style={{
                 fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-                marginTop: 4,
+                marginTop: 4, maxWidth: 380, lineHeight: 1.4,
               }}>
-                Download all your memories, photos, and stories as a ZIP file.
+                Download a copy of all your data including profile, memories, and settings.
+                Files (photos, videos) can be downloaded separately from your rooms.
               </div>
             </div>
             <button
-              onClick={() => showToast("Data export is coming soon. We are working on it!", "success")}
+              onClick={handleExportData}
+              disabled={exporting}
               style={{
                 padding: "12px 24px",
                 borderRadius: 10,
                 border: `1px solid ${T.color.cream}`,
-                background: T.color.white,
+                background: exporting ? `${T.color.sandstone}60` : T.color.white,
                 fontFamily: T.font.body,
                 fontSize: 14,
                 fontWeight: 500,
-                color: T.color.charcoal,
-                cursor: "pointer",
+                color: exporting ? T.color.muted : T.color.charcoal,
+                cursor: exporting ? "default" : "pointer",
                 transition: "all .15s",
                 flexShrink: 0,
               }}
             >
-              Export Data
+              {exporting ? "Preparing..." : "Download Data"}
             </button>
           </div>
         </div>
