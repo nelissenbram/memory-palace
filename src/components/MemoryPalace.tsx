@@ -91,6 +91,7 @@ export default function MemoryPalace(){
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [sceneLoading, setSceneLoading] = useState(true);
   const [searchBarVisible, setSearchBarVisible] = useState(true);
   const searchHideTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const { showLibrary: showInterviewLibrary, showHistory: showInterviewHistory, showInterview,
@@ -106,6 +107,13 @@ export default function MemoryPalace(){
 
   // Load profile on mount
   useEffect(()=>{ loadProfile(); },[loadProfile]);
+
+  // ── Scene loading overlay — show on view transitions, fade out after scene builds ──
+  useEffect(() => {
+    setSceneLoading(true);
+    const t = setTimeout(() => setSceneLoading(false), 1400);
+    return () => clearTimeout(t);
+  }, [view]);
 
   // ── Achievement tracking ──
   const userMems = useMemoryStore((s) => s.userMems);
@@ -232,14 +240,17 @@ export default function MemoryPalace(){
   const safeBottom = isMobile ? bottomBarHeight + 8 : 70;
 
   return(
-    <div style={{width:"100vw",height:"100vh",background:"#DDD5C8",position:"relative",overflow:"hidden"}}>
-      <style>{`*{box-sizing:border-box;margin:0}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes portalFlash{0%{opacity:0}30%{opacity:1}70%{opacity:1}100%{opacity:0}}`}</style>
+    <div style={{width:"100vw",height:"100vh",background:T.color.sandstone,position:"relative",overflow:"hidden"}}>
+      <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
       <div style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
         {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings}/>}
         {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(wingId==="__exterior__")exitToPalace();else enterCorridor(wingId);}} wings={allWings}/>}
         {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={enterRoom} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings}/>}
         {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined}/>}
       </div>
+
+      {/* Scene loading overlay — fades out after 3D canvas initializes */}
+      {sceneLoading&&<div key={view} style={{position:"absolute",inset:0,zIndex:40,display:"flex",alignItems:"center",justifyContent:"center",background:T.color.warmStone,animation:"sceneLoadFadeOut 1.4s ease-in-out forwards",pointerEvents:"none"}}><span style={{fontFamily:T.font.display,fontSize:"1.3rem",color:T.color.walnut,letterSpacing:"0.04em",animation:"sceneLoadPulse 1.2s ease-in-out infinite"}}>Loading...</span></div>}
 
       <TopBar crumbs={crumbs}/>
 
@@ -253,10 +264,10 @@ export default function MemoryPalace(){
       {!isMobile && hovDoorRoom&&view==="corridor"&&<DoorTooltip room={hovDoorRoom} wingAccent={wingData?.accent}/>}
 
       {/* Bottom hints — hide on mobile (touch controls are self-explanatory) */}
-      {!isMobile && view==="exterior"&&!hovWing&&<div style={{position:"absolute",bottom:22,left:"50%",transform:"translateX(-50%)",animation:"fadeIn .8s ease .8s both",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(8px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`}}>Drag to orbit · Scroll to zoom · Click a wing to enter</div>}
-      {!isMobile && view==="entrance"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter a wing</span></div>}
-      {!isMobile && view==="corridor"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter room</span></div>}
-      {!isMobile && view==="room"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Click memories</span></div>}
+      {!isMobile && view==="exterior"&&!hovWing&&<div style={{position:"absolute",bottom:22,left:"50%",transform:"translateX(-50%)",animation:"fadeIn .8s ease .8s both",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(8px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`}}>Drag to orbit · Scroll to zoom · Click a wing to enter</div>}
+      {!isMobile && view==="entrance"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter a wing</span></div>}
+      {!isMobile && view==="corridor"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter room</span></div>}
+      {!isMobile && view==="room"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Click memories</span></div>}
 
       {/* Search bar + room info (room view) — search auto-hides after 3s */}
       {view==="room"&&activeRoomData&&activeRoomId&&<>
@@ -386,8 +397,8 @@ export default function MemoryPalace(){
           </div>
           <span style={{
             fontFamily: T.font.body,
-            fontSize: 9,
-            color: "rgba(250,250,247,0.6)",
+            fontSize: 11,
+            color: "rgba(250,250,247,0.8)",
             textShadow: "0 1px 4px rgba(0,0,0,0.3)",
             whiteSpace: "nowrap",
           }}>Drag to look</span>
@@ -664,7 +675,7 @@ function MobileBottomBar(props: MobileBottomBarProps) {
       {/* Bottom bar */}
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 49,
-        height: 64, paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        minHeight: 64, paddingBottom: "env(safe-area-inset-bottom, 0px)",
         background: `${T.color.linen}f0`, backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
         borderTop: `1px solid ${T.color.cream}`,

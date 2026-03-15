@@ -72,7 +72,7 @@ export default function TutorialOverlay() {
           }} />
           {hl.label && (
             <span style={{
-              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontFamily: T.font.body,
               fontSize: 11,
               fontWeight: 600,
               color: "#FFEEBB",
