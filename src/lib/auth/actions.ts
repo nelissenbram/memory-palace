@@ -10,7 +10,9 @@ export async function signUp(formData: FormData) {
   const displayName = (formData.get("displayName") as string) || "";
   const redirectTo = formData.get("redirect") as string | null;
 
-  const baseCallbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  const baseCallbackUrl = `${siteUrl}/auth/callback`;
   const callbackUrl = redirectTo && redirectTo.startsWith("/invite/")
     ? `${baseCallbackUrl}?redirect=${encodeURIComponent(redirectTo)}`
     : baseCallbackUrl;
@@ -65,7 +67,7 @@ export async function resetPassword(formData: FormData) {
   const email = formData.get("email") as string;
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`,
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")}/auth/callback`,
   });
 
   if (error) {
