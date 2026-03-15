@@ -67,6 +67,11 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.9;
     el.appendChild(ren.domElement);
 
+    // Hover label overlay
+    const hovLabel=document.createElement("div");
+    hovLabel.style.cssText="position:absolute;display:none;pointer-events:none;z-index:10;transform:translate(-50%,-100%);font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 30px rgba(74,140,63,.5);padding:8px 20px;background:rgba(74,140,63,.7);border-radius:12px;backdrop-filter:blur(6px);white-space:nowrap;border:1px solid rgba(255,255,255,.2);";
+    el.appendChild(hovLabel);
+
     // Dramatic golden-hour lighting
     scene.add(new THREE.HemisphereLight("#FFF0D8","#6A8858",0.5));
     const sun=new THREE.DirectionalLight("#FFD898",2.8);sun.position.set(40,55,25);sun.castShadow=true;
@@ -787,35 +792,66 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
       // ── SECTION SPLIT / LIFT ANIMATION ──
       const anyHovered=hoveredRoomRef.current!==null;
+      const greenColor=new THREE.Color("#4A8C3F");
       sectionGroups.forEach(sg=>{
         const isHov=hoveredRoomRef.current===sg.id;
         // Hovered section lifts up; others stay at 0
-        sg.targetY=isHov?2.5:0;
+        sg.targetY=isHov?3.5:0;
         // Smooth lerp
-        sg.currentY+=(sg.targetY-sg.currentY)*.06;
+        sg.currentY+=(sg.targetY-sg.currentY)*.07;
         sg.group.position.y=sg.currentY;
 
-        // Dim non-hovered sections when something is hovered
-        const dimTarget=anyHovered&&!isHov?0.35:0;
+        // Hovered section turns green; non-hovered sections dim when something is hovered
         sg.meshes.forEach((wm: any)=>{
           if(!wm.material||wm.material.transparent)return;
-          // Track dim state on userData
-          if(wm.userData._dimAmount===undefined)wm.userData._dimAmount=0;
-          wm.userData._dimAmount+=(dimTarget-wm.userData._dimAmount)*.06;
-          // Apply dimming via emissive (darken by adding negative-ish emissive, or reduce color)
-          // We use a color multiplier approach: store original color once, then lerp
+          const mat=wm.material as THREE.MeshStandardMaterial;
+          // Store original color once
           if(!wm.userData._origColor){
-            wm.userData._origColor=(wm.material as THREE.MeshStandardMaterial).color.clone();
+            wm.userData._origColor=mat.color.clone();
           }
-          const dim=wm.userData._dimAmount;
-          if(dim>0.01){
-            const darkened=wm.userData._origColor.clone().multiplyScalar(1-dim*0.5);
-            (wm.material as THREE.MeshStandardMaterial).color.lerp(darkened,.15);
+          if(isHov){
+            // Tint green
+            mat.color.lerp(greenColor,.08);
+            mat.emissive.lerp(greenColor,.1);
+            mat.emissiveIntensity+=(0.3-mat.emissiveIntensity)*.08;
+          }else if(anyHovered){
+            // Dim non-hovered
+            const darkened=wm.userData._origColor.clone().multiplyScalar(0.5);
+            mat.color.lerp(darkened,.08);
+            mat.emissive.lerp(new THREE.Color(0,0,0),.1);
+            mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
           }else{
-            (wm.material as THREE.MeshStandardMaterial).color.lerp(wm.userData._origColor,.08);
+            // Restore to original
+            mat.color.lerp(wm.userData._origColor,.06);
+            mat.emissive.lerp(new THREE.Color(0,0,0),.1);
+            mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
           }
         });
       });
+
+      // ── HOVER LABEL — project hovered section's world position to screen ──
+      if(hovLabel&&camera){
+        const hovId=hoveredRoomRef.current;
+        if(hovId){
+          const sg=sectionGroups.find(s=>s.id===hovId);
+          if(sg){
+            const wp=new THREE.Vector3();
+            sg.group.getWorldPosition(wp);
+            wp.y+=sg.id==="__entrance__"?25:18;
+            const projected=wp.clone().project(camera);
+            const sx=(projected.x*.5+.5)*w;
+            const sy=(-(projected.y)*.5+.5)*h;
+            hovLabel.style.display="block";
+            hovLabel.style.left=sx+"px";
+            hovLabel.style.top=sy+"px";
+            // Find wing name
+            const wingDef=WINGS.find((wi: any)=>wi.id===hovId);
+            hovLabel.textContent=wingDef?`${wingDef.icon} ${wingDef.name}`:hovId==="__entrance__"?"Entrance Hall":"";
+          }
+        }else{
+          hovLabel.style.display="none";
+        }
+      }
 
       // Wing hover glow — emissive body + accent point light + window brightening
       const warmGlow=new THREE.Color("#FFE8B0");
@@ -927,6 +963,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
+      if(el.contains(hovLabel))el.removeChild(hovLabel);
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[]);
   return <div ref={mountRef} style={{width:"100%",height:"100%",cursor:hoveredRoom?"pointer":"grab"}}/>;
