@@ -64,7 +64,7 @@ function LoginContent() {
             borderRadius: 10,
             background: "#FDF2F2",
             border: "1px solid #FECACA",
-            color: "#B91C1C",
+            color: T.color.error,
             fontSize: 13,
             marginBottom: 16,
           }}
@@ -120,9 +120,9 @@ function LoginContent() {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontFamily: T.font.body,
   fontSize: 11,
-  color: "#9A9183",
+  color: T.color.muted,
   letterSpacing: ".5px",
   textTransform: "uppercase",
   display: "block",
@@ -133,18 +133,18 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "13px 16px",
   borderRadius: 10,
-  border: "1.5px solid #D4C5B2",
-  background: "#FFFFFF",
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  border: `1.5px solid ${T.color.sandstone}`,
+  background: T.color.white,
+  fontFamily: T.font.body,
   fontSize: 14,
-  color: "#2C2C2A",
+  color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box",
   transition: "border-color 0.2s",
 };
 
 const linkStyle: React.CSSProperties = {
-  color: "#C17F59",
+  color: T.color.terracotta,
   textDecoration: "none",
   fontSize: 13,
 };
@@ -155,10 +155,10 @@ const buttonStyle = (loading: boolean): React.CSSProperties => ({
   borderRadius: 12,
   border: "none",
   background: loading
-    ? "#D4C5B240"
-    : "linear-gradient(135deg, #C17F59, #8B7355)",
-  color: loading ? "#9A9183" : "#FFFFFF",
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+    ? `${T.color.sandstone}40`
+    : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+  color: loading ? T.color.muted : T.color.white,
+  fontFamily: T.font.body,
   fontSize: 15,
   fontWeight: 600,
   cursor: loading ? "default" : "pointer",

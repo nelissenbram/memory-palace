@@ -40,8 +40,12 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const [contextLoading,setContextLoading]=useState(false);
   const [contextPreview,setContextPreview]=useState("");
   const [contextAccepted,setContextAccepted]=useState(false);
+  const [fileSizeError,setFileSizeError]=useState<string|null>(null);
   const fileRef=useRef<HTMLInputElement|null>(null);
   const accent=wing?.accent||T.color.terracotta;
+
+  const MAX_IMAGE_SIZE=50*1024*1024; // 50 MB
+  const MAX_VIDEO_SIZE=100*1024*1024; // 100 MB
 
   const fetchContext=useCallback(async()=>{
     setContextLoading(true);
@@ -57,9 +61,17 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   },[title,desc,locationName]);
 
   const processFile=(file: File)=>{
+    setFileSizeError(null);
+    const isVid=file.type.startsWith("video/");
+    const maxSize=isVid?MAX_VIDEO_SIZE:MAX_IMAGE_SIZE;
+    const maxLabel=isVid?"100 MB":"50 MB";
+    if(file.size>maxSize){
+      const sizeMB=(file.size/(1024*1024)).toFixed(1);
+      setFileSizeError(`File is too large (${sizeMB} MB). Maximum allowed size for ${isVid?"videos":"images"} is ${maxLabel}.`);
+      return;
+    }
     setFileName(file.name);
     if(!title)setTitle(file.name.replace(/\.[^.]+$/,""));
-    const isVid=file.type.startsWith("video/");
     setIsVideo(isVid);
     setDisplayType(isVid?"video":"photo");
     const r=new FileReader();
@@ -109,7 +121,6 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   return(
     <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
       <div onClick={e=>e.stopPropagation()} style={{position:"absolute",right:0,top:0,bottom:0,width:isMobile?"100%":"min(380px, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":`1px solid ${T.color.cream}`,padding:isMobile?"20px 16px":"28px 24px",overflowY:"auto",animation:"slideInRight .3s cubic-bezier(.23,1,.32,1)"}}>
-        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div>
             <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>Add memory</h3>
@@ -152,6 +163,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           </div>
           <input ref={fileRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" style={{display:"none"}} onChange={e=>{if(e.target.files?.[0])processFile(e.target.files[0]);}}/>
           {fileName&&<p style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,marginBottom:8}}>File: {fileName}</p>}
+          {fileSizeError&&<p style={{fontFamily:T.font.body,fontSize:12,color:T.color.error,background:`${T.color.error}10`,padding:"10px 14px",borderRadius:10,marginBottom:12,lineHeight:1.5}}>{fileSizeError}</p>}
         </>}
 
         {/* Room memory picker */}
@@ -256,7 +268,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Reveal date</label>
             <input type="date" value={revealDate} min={todayStr} onChange={e=>setRevealDate(e.target.value)}
               style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
-            {revealDate&&revealDate<=todayStr&&<p style={{fontFamily:T.font.body,fontSize:11,color:"#C05050",margin:"6px 0 0"}}>Reveal date must be in the future</p>}
+            {revealDate&&revealDate<=todayStr&&<p style={{fontFamily:T.font.body,fontSize:11,color:T.color.error,margin:"6px 0 0"}}>Reveal date must be in the future</p>}
           </div>}
         </div>
         {/* Historical Context suggestion */}
@@ -282,8 +294,8 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           </button>}
         </div>}
         {/* Saved offline indicator */}
-        {savedOffline&&<div style={{padding:"12px 16px",borderRadius:12,background:"#3D6B4F18",border:"1px solid #3D6B4F40",marginBottom:12,textAlign:"center"}}>
-          <span style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:"#3D6B4F"}}>Saved offline &mdash; will sync when connected</span>
+        {savedOffline&&<div style={{padding:"12px 16px",borderRadius:12,background:`${T.color.success}18`,border:`1px solid ${T.color.success}40`,marginBottom:12,textAlign:"center"}}>
+          <span style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:T.color.success}}>Saved offline &mdash; will sync when connected</span>
         </div>}
         {/* Submit */}
         <button onClick={submit} disabled={!title.trim()||!capsuleValid||savedOffline} style={{width:"100%",padding:isMobile?16:14,borderRadius:12,border:"none",background:title.trim()&&capsuleValid&&!savedOffline?`linear-gradient(135deg,${accent},${T.color.walnut})`:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid&&!savedOffline?"#FFF":T.color.muted,fontFamily:T.font.body,fontSize:isMobile?16:14,fontWeight:600,cursor:title.trim()&&capsuleValid&&!savedOffline?"pointer":"default",transition:"all .2s",minHeight:48}}>

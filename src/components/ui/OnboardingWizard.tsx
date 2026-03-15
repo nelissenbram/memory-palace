@@ -140,7 +140,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
 
   return(
     <div style={{width:"100vw",height:"100vh",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone}55 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",overflow:isMobile?"auto":"hidden"}}>
-      <style>{`*{box-sizing:border-box;margin:0}@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}`}</style>
+      <style>{`*{box-sizing:border-box;margin:0}`}</style>
       <div style={{position:"absolute",top:-120,right:-80,width:380,height:380,borderRadius:"50%",background:`radial-gradient(circle,${T.color.terracotta}08,transparent 70%)`,pointerEvents:"none"}}/>
       <div style={{position:"absolute",bottom:-100,left:-60,width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle,${T.color.sage}08,transparent 70%)`,pointerEvents:"none"}}/>
       {/* Progress dots */}
@@ -166,7 +166,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
         </button>
       </div>
       {onboardStep<4&&<button onClick={()=>setOnboarded(true)}
-        style={{position:"absolute",bottom:28,fontFamily:T.font.body,fontSize:13,color:`${T.color.muted}90`,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3}}>
+        style={{position:"absolute",bottom:28,fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3}}>
         Skip and explore on my own</button>}
     </div>
   );

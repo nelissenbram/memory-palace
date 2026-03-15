@@ -10,6 +10,11 @@ export const T = {
     cream: "#EEEAE3",
     white: "#FFFFFF",
     muted: "#9A9183",
+    gold: "#D4AF37",
+    goldLight: "#C9A84C",
+    goldDark: "#B8922E",
+    error: "#C05050",
+    success: "#4A6741",
   },
   font: {
     display: "'Cormorant Garamond', Georgia, serif",
