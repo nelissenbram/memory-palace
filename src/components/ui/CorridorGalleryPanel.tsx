@@ -6,6 +6,7 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
+import { WINGS } from "@/lib/constants/wings";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 
 export interface CorridorPaintingOverride {
@@ -48,21 +49,31 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
   const [paintings, setPaintings] = useState<CorridorPaintings>(currentPaintings);
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<"all" | "wing" | "upload">("all");
 
   // Painting slots — one per room
   const slots = rooms.map((r) => r.id);
 
-  // Get all memories with images from all rooms in this wing
-  const wingRooms = getWingRooms(wing.id);
-  const allWingMems: { mem: Mem; room: WingRoom }[] = [];
-  wingRooms.forEach((room) => {
-    const mems = userMems[room.id] || ROOM_MEMS[room.id] || [];
-    mems.forEach((mem) => {
-      if (mem.dataUrl && mem.type === "photo") {
-        allWingMems.push({ mem, room });
-      }
+  // Get all memories with images from ALL wings (not just current wing)
+  const allMems: { mem: Mem; room: WingRoom; wingName: string }[] = [];
+  WINGS.forEach((w) => {
+    const wRooms = getWingRooms(w.id);
+    wRooms.forEach((room) => {
+      const mems = userMems[room.id] || ROOM_MEMS[room.id] || [];
+      mems.forEach((mem) => {
+        if (mem.dataUrl && mem.type === "photo") {
+          allMems.push({ mem, room, wingName: w.name || w.id });
+        }
+      });
     });
   });
+
+  // Filtered mems based on source filter
+  const wingRooms = getWingRooms(wing.id);
+  const wingRoomIds = new Set(wingRooms.map((r) => r.id));
+  const filteredMems = sourceFilter === "wing"
+    ? allMems.filter(({ room }) => wingRoomIds.has(room.id))
+    : allMems;
 
   const handleAssign = useCallback((slotRoomId: string, mem: Mem, fromRoomId: string) => {
     const next: CorridorPaintings = {
@@ -73,6 +84,31 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
     saveCorridorPaintings(wing.id, next);
     onPaintingsChange(next);
     setPickingSlot(null);
+  }, [paintings, wing.id, onPaintingsChange]);
+
+  const handleUpload = useCallback((slotRoomId: string) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        const title = file.name.replace(/\.[^.]+$/, "");
+        const next: CorridorPaintings = {
+          ...paintings,
+          [slotRoomId]: { url: dataUrl, title },
+        };
+        setPaintings(next);
+        saveCorridorPaintings(wing.id, next);
+        onPaintingsChange(next);
+        setPickingSlot(null);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
   }, [paintings, wing.id, onPaintingsChange]);
 
   const handleClear = useCallback((slotRoomId: string) => {
@@ -121,7 +157,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
         {/* Description */}
         <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginBottom: 18, lineHeight: 1.5 }}>
-          Customize the paintings on your corridor walls. Assign photos from any room in this wing to replace the default room preview cards.
+          Customize the paintings on your corridor walls. Choose photos from any wing, or upload your own images.
         </p>
 
         {/* Reset button */}
@@ -202,9 +238,34 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                 {/* Memory picker */}
                 {isPicking && (
                   <div>
-                    {allWingMems.length === 0 ? (
+                    {/* Upload + source filter */}
+                    <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+                      <button onClick={() => handleUpload(roomId)} style={{
+                        padding: "6px 12px", borderRadius: 8,
+                        border: `1px solid ${accent}`, background: `${accent}15`,
+                        fontFamily: T.font.body, fontSize: 11, fontWeight: 500,
+                        color: accent, cursor: "pointer",
+                      }}>
+                        Upload Image
+                      </button>
+                      <button onClick={() => setSourceFilter("all")} style={{
+                        padding: "5px 10px", borderRadius: 8,
+                        border: `1px solid ${sourceFilter === "all" ? accent : T.color.cream}`,
+                        background: sourceFilter === "all" ? `${accent}15` : T.color.warmStone,
+                        fontFamily: T.font.body, fontSize: 10, color: sourceFilter === "all" ? accent : T.color.muted,
+                        cursor: "pointer",
+                      }}>All Wings</button>
+                      <button onClick={() => setSourceFilter("wing")} style={{
+                        padding: "5px 10px", borderRadius: 8,
+                        border: `1px solid ${sourceFilter === "wing" ? accent : T.color.cream}`,
+                        background: sourceFilter === "wing" ? `${accent}15` : T.color.warmStone,
+                        fontFamily: T.font.body, fontSize: 10, color: sourceFilter === "wing" ? accent : T.color.muted,
+                        cursor: "pointer",
+                      }}>This Wing</button>
+                    </div>
+                    {filteredMems.length === 0 ? (
                       <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, textAlign: "center", padding: "16px 0" }}>
-                        No photo memories in this wing yet. Add photos to your rooms first.
+                        No photo memories found. Add photos to your rooms or upload an image.
                       </p>
                     ) : (
                       <div style={{
@@ -213,7 +274,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                         gap: 8, maxHeight: 240, overflowY: "auto",
                         padding: 2,
                       }}>
-                        {allWingMems.map(({ mem, room: memRoom }) => (
+                        {filteredMems.map(({ mem, room: memRoom, wingName }) => (
                           <button key={mem.id} onClick={() => handleAssign(roomId, mem, memRoom.id)} style={{
                             border: paintings[roomId]?.memId === mem.id ? `2px solid ${accent}` : `1px solid ${T.color.cream}`,
                             borderRadius: 10, overflow: "hidden", cursor: "pointer",
@@ -236,7 +297,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                               }}>{mem.title}</div>
                               <div style={{
                                 fontFamily: T.font.body, fontSize: 8, color: "rgba(255,255,255,.6)",
-                              }}>{memRoom.icon} {memRoom.name}</div>
+                              }}>{memRoom.icon} {memRoom.name} — {wingName}</div>
                             </div>
                           </button>
                         ))}

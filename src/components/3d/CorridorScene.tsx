@@ -316,15 +316,30 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       // Crown molding at ceiling (more elaborate)
       scene.add(mk(new THREE.BoxGeometry(.10,.14,cL-.2),MS.gold,s*(cW/2-.05),cH-.07,0));
       scene.add(mk(new THREE.BoxGeometry(.06,.08,cL-.2),MS.trim,s*(cW/2-.03),cH-.18,0));
-      // Wall panels between doors (more detailed)
+      // Wall panels between doors (skip zones occupied by doors/paintings)
+      // Collect occupied z-zones for this wall side
+      const occupiedZones: {center: number, halfW: number}[] = [];
+      rooms.forEach((_room2: any, ri: number) => {
+        const doorSide = ri % 2 === 0 ? -1 : 1;
+        const doorZ = -cL/2 + 5.5 + ri * C.sp;
+        // Door zone on its side
+        if (doorSide === s) occupiedZones.push({ center: doorZ, halfW: 1.5 });
+        // Painting zone (between this door and the next, same side as door)
+        if (doorSide === s && ri < rooms.length - 1) {
+          occupiedZones.push({ center: doorZ + C.sp / 2, halfW: 1.4 });
+        }
+        // Window on the opposite side
+        if (-doorSide === s) occupiedZones.push({ center: doorZ, halfW: 1.2 });
+      });
       const pnl=Math.floor(cL/3);
       for(let p=0;p<pnl;p++){
-        scene.add(mk(new THREE.BoxGeometry(.01,.55,1.4),MS.wainP,s*(cW/2-.01),.7,-cL/2+1.5+p*3));
-        // Upper wall panel detail
-        scene.add(mk(new THREE.BoxGeometry(.008,.8,1.2),MS.wainP,s*(cW/2-.008),2.8,-cL/2+1.5+p*3));
-        // Gold accent on upper panel
-        scene.add(mk(new THREE.BoxGeometry(.006,.02,1.25),MS.gold,s*(cW/2-.006),3.22,-cL/2+1.5+p*3));
-        scene.add(mk(new THREE.BoxGeometry(.006,.02,1.25),MS.gold,s*(cW/2-.006),2.38,-cL/2+1.5+p*3));
+        const pz = -cL/2 + 1.5 + p * 3;
+        const blocked = occupiedZones.some(z => Math.abs(pz - z.center) < z.halfW);
+        if (blocked) continue;
+        scene.add(mk(new THREE.BoxGeometry(.01,.55,1.4),MS.wainP,s*(cW/2-.01),.7,pz));
+        scene.add(mk(new THREE.BoxGeometry(.008,.8,1.2),MS.wainP,s*(cW/2-.008),2.8,pz));
+        scene.add(mk(new THREE.BoxGeometry(.006,.02,1.25),MS.gold,s*(cW/2-.006),3.22,pz));
+        scene.add(mk(new THREE.BoxGeometry(.006,.02,1.25),MS.gold,s*(cW/2-.006),2.38,pz));
       }
     }
 
@@ -435,11 +450,20 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       }
     }
 
-    // ── CANDLE SCONCES — at z_i + sp*0.25 on both walls, between door/window and painting/bench ──
+    // ── CANDLE SCONCES — at z_i + sp*0.25 on both walls, skip near paintings/doors ──
+    // Collect all painting z-positions per side for sconce overlap check
+    const paintingZBySide: Record<number, number[]> = {[-1]: [], [1]: []};
+    for(let i=0;i<rooms.length-1;i++){
+      const doorSide=i%2===0?-1:1;
+      paintingZBySide[doorSide].push(-cL/2+5.5+i*C.sp+C.sp/2);
+    }
     for(let i=0;i<rooms.length;i++){
       const sz=-cL/2+5.5+i*C.sp+C.sp*0.25;
       if(sz>cL/2-3||sz<-cL/2+3)continue;
       for(const s of[-1,1]){
+        // Skip if sconce would overlap with a painting on this wall
+        const tooClose=paintingZBySide[s].some(pz=>Math.abs(sz-pz)<1.2);
+        if(tooClose)continue;
         const sx=s*(cW/2-.03);
         scene.add(mk(new THREE.BoxGeometry(.04,.02,.12),MS.bronze,sx-(s*.06),2.6,sz));
         scene.add(mk(new THREE.CylinderGeometry(.025,.02,.1,6),MS.bronze,sx-(s*.12),2.65,sz));
@@ -495,9 +519,11 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       scene.add(new THREE.PointLight("#FFE8C0",.7,9).translateY(cH-.5).translateZ(cz));
     }
 
-    // ── SCONCES between door zones — at z_i + sp*0.75, different z from candles (sp*0.25) ──
+    // ── SCONCES between door zones — at z_i + sp*0.75, skip near paintings ──
     for(const s of[-1,1])for(let i=0;i<rooms.length;i++){
       const sz=-cL/2+5.5+i*C.sp+C.sp*0.75;if(sz>cL/2-2||sz<-cL/2+2)continue;
+      const tooClose=paintingZBySide[s].some(pz=>Math.abs(sz-pz)<1.2);
+      if(tooClose)continue;
       scene.add(mk(new THREE.BoxGeometry(.06,.14,.06),MS.sconce,s*(cW/2-.03),3.5,sz));
       scene.add(mk(new THREE.CylinderGeometry(.04,.03,.06,6),MS.sconce,s*(cW/2-.06),3.62,sz));
       const bl=new THREE.Mesh(new THREE.SphereGeometry(.025,6,6),MS.glassG);bl.position.set(s*(cW/2-.06),3.72,sz);scene.add(bl);
