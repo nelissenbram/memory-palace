@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth/actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { createMFAChallenge, verifyMFAChallenge } from "@/lib/auth/mfa-actions";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 
 export default function LoginPage() {
@@ -13,6 +14,7 @@ export default function LoginPage() {
 }
 
 function LoginContent() {
+  const { t } = useTranslation("auth");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
@@ -275,7 +277,7 @@ function LoginContent() {
             lineHeight: 1.3,
           }}
         >
-          Welcome Back
+          {t("welcomeBack")}
         </h1>
         <p
           style={{
@@ -284,7 +286,7 @@ function LoginContent() {
             marginTop: 6,
           }}
         >
-          Sign in to your Memory Palace
+          {t("signInSubtitle")}
         </p>
       </div>
 
@@ -304,32 +306,32 @@ function LoginContent() {
         </div>
       )}
 
-      <label style={labelStyle}>Email</label>
+      <label style={labelStyle}>{t("email")}</label>
       <input
         name="email"
         type="email"
         required
-        placeholder="you@example.com"
+        placeholder={t("emailPlaceholder")}
         style={inputStyle}
       />
 
-      <label style={{ ...labelStyle, marginTop: 14 }}>Password</label>
+      <label style={{ ...labelStyle, marginTop: 14 }}>{t("password")}</label>
       <input
         name="password"
         type="password"
         required
-        placeholder="Your password"
+        placeholder={t("passwordPlaceholder")}
         style={inputStyle}
       />
 
       <div style={{ textAlign: "right", marginTop: 6 }}>
         <Link href="/forgot-password" style={linkStyle}>
-          Forgot password?
+          {t("forgotPassword")}
         </Link>
       </div>
 
       <button type="submit" disabled={loading} style={buttonStyle(loading)}>
-        {loading ? "Signing in..." : "Sign In"}
+        {loading ? t("signingIn") : t("signIn")}
       </button>
 
       <div style={dividerStyle}>
@@ -365,9 +367,9 @@ function LoginContent() {
           marginBottom: 0,
         }}
       >
-        Don&apos;t have an account?{" "}
+        {t("noAccount")}{" "}
         <Link href="/register" style={{ ...linkStyle, fontWeight: 600 }}>
-          Create one
+          {t("createOne")}
         </Link>
       </p>
 

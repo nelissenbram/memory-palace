@@ -8,8 +8,10 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import NotificationBell from "@/components/ui/NotificationBell";
 import type { Crumb } from "@/lib/hooks/useNavigation";
+import type { Locale } from "@/i18n/config";
 
 interface TopBarProps {
   crumbs: Crumb[];
@@ -17,6 +19,7 @@ interface TopBarProps {
 
 export default function TopBar({crumbs}: TopBarProps){
   const isMobile = useIsMobile();
+  const { t, locale, setLocale } = useTranslation("common");
   const { userName } = useUserStore();
   const { activeWing, switchWing } = usePalaceStore();
   const { showDirectory, setShowDirectory } = useMemoryStore();
@@ -97,7 +100,7 @@ export default function TopBar({crumbs}: TopBarProps){
                     fontFamily: T.font.display, fontSize: 14, fontStyle: "italic",
                     color: T.color.walnut,
                   }}>
-                    {userName}&#39;s Palace
+                    {userName ? t("palace", { name: userName }) : t("palaceDefault")}
                   </span>
                   <LevelBadgeMobile />
                 </div>
@@ -119,7 +122,7 @@ export default function TopBar({crumbs}: TopBarProps){
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, padding: "0 2px" }}>
                 <NotificationBell />
-                <span style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut }}>Notifications</span>
+                <span style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut }}>{t("notifications")}</span>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={() => { setShowDirectory(!showDirectory); setMenuOpen(false); }} style={{
@@ -128,7 +131,7 @@ export default function TopBar({crumbs}: TopBarProps){
                   fontFamily: T.font.body, fontSize: 12, color: T.color.walnut, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                 }}>
-                  {"\u{1F4C2}"} Directory
+                  {"\u{1F4C2}"} {t("directory")}
                 </button>
                 <a href="/settings" onClick={() => setMenuOpen(false)} style={{
                   flex: 1, padding: "10px 12px", borderRadius: 10, minHeight: 44,
@@ -137,7 +140,7 @@ export default function TopBar({crumbs}: TopBarProps){
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                   textDecoration: "none",
                 }}>
-                  {"\u2699\uFE0F"} Settings
+                  {"\u2699\uFE0F"} {t("settings")}
                 </a>
                 <button onClick={() => { signOut(); setMenuOpen(false); }} style={{
                   flex: 1, padding: "10px 12px", borderRadius: 10, minHeight: 44,
@@ -145,8 +148,25 @@ export default function TopBar({crumbs}: TopBarProps){
                   fontFamily: T.font.body, fontSize: 12, color: T.color.muted, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                 }}>
-                  Sign out
+                  {t("signOut")}
                 </button>
+              </div>
+              {/* Language switcher */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 8, padding: "0 2px" }}>
+                <button onClick={() => setLocale("en")} style={{
+                  padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: T.font.body,
+                  fontWeight: locale === "en" ? 600 : 400,
+                  border: `1px solid ${locale === "en" ? T.color.terracotta : T.color.cream}`,
+                  background: locale === "en" ? `${T.color.terracotta}12` : T.color.white,
+                  color: locale === "en" ? T.color.terracotta : T.color.muted, cursor: "pointer",
+                }}>EN</button>
+                <button onClick={() => setLocale("nl")} style={{
+                  padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: T.font.body,
+                  fontWeight: locale === "nl" ? 600 : 400,
+                  border: `1px solid ${locale === "nl" ? T.color.terracotta : T.color.cream}`,
+                  background: locale === "nl" ? `${T.color.terracotta}12` : T.color.white,
+                  color: locale === "nl" ? T.color.terracotta : T.color.muted, cursor: "pointer",
+                }}>NL</button>
               </div>
             </div>
           </div>
@@ -162,7 +182,7 @@ export default function TopBar({crumbs}: TopBarProps){
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{width:30,height:30,borderRadius:7,background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,border:`1px solid ${T.color.sandstone}`}}>{"\u{1F3DB}\uFE0F"}</div>
           <button onClick={()=>setShowDirectory(!showDirectory)} title="Directory" style={{width:30,height:30,borderRadius:7,border:`1px solid ${showDirectory?T.color.sandstone:T.color.cream}`,background:showDirectory?`${T.color.sandstone}30`:`${T.color.white}bb`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,cursor:"pointer",color:T.color.muted}}>{"\u{1F4C2}"}</button>
-          {userName&&<span style={{fontFamily:T.font.display,fontSize:13,fontStyle:"italic",color:T.color.walnut}}>{userName}&#39;s Palace</span>}
+          {userName&&<span style={{fontFamily:T.font.display,fontSize:13,fontStyle:"italic",color:T.color.walnut}}>{t("palace", { name: userName })}</span>}
           <div style={{display:"flex",alignItems:"center",gap:4}}>
             {crumbs.map((c,i)=><span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
               {i>0&&<span style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>/</span>}
@@ -174,7 +194,13 @@ export default function TopBar({crumbs}: TopBarProps){
       </div>
       <div style={{display:"flex",gap:4,alignItems:"center"}}><NotificationBell />{WINGS.map(w=><button key={w.id} onClick={()=>switchWing(w.id)} style={{padding:"6px 14px",borderRadius:16,fontFamily:T.font.body,fontSize:12,fontWeight:activeWing===w.id?600:400,border:activeWing===w.id?`1.5px solid ${w.accent}`:`1px solid ${T.color.cream}`,background:activeWing===w.id?`${w.accent}15`:`${T.color.white}bb`,color:activeWing===w.id?w.accent:T.color.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>
         <span style={{fontSize:12}}>{w.icon}</span>{w.name}</button>)}
-        <button onClick={()=>signOut()} style={{padding:"6px 14px",borderRadius:16,fontFamily:T.font.body,fontSize:12,fontWeight:400,border:`1px solid ${T.color.cream}`,background:`${T.color.white}bb`,color:T.color.muted,cursor:"pointer",marginLeft:4}}>Sign out</button>
+        <button onClick={()=>signOut()} style={{padding:"6px 14px",borderRadius:16,fontFamily:T.font.body,fontSize:12,fontWeight:400,border:`1px solid ${T.color.cream}`,background:`${T.color.white}bb`,color:T.color.muted,cursor:"pointer",marginLeft:4}}>{t("signOut")}</button>
+        {/* Language switcher */}
+        <div style={{display:"flex",gap:2,marginLeft:4}}>
+          {(["en","nl"] as Locale[]).map(l=>(
+            <button key={l} onClick={()=>setLocale(l)} style={{padding:"4px 8px",borderRadius:8,fontSize:11,fontFamily:T.font.body,fontWeight:locale===l?600:400,border:`1px solid ${locale===l?T.color.terracotta:T.color.cream}`,background:locale===l?`${T.color.terracotta}12`:`${T.color.white}bb`,color:locale===l?T.color.terracotta:T.color.muted,cursor:"pointer"}}>{l.toUpperCase()}</button>
+          ))}
+        </div>
       </div>
     </div>
   );

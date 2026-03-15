@@ -5,6 +5,7 @@ import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
 import MFASetup from "@/components/settings/MFASetup";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface ProfileData {
   display_name: string;
@@ -14,14 +15,18 @@ interface ProfileData {
   avatar_url: string;
 }
 
-const GOALS = [
-  { id: "preserve", label: "Preserve my memories" },
-  { id: "legacy", label: "Build a legacy" },
-  { id: "share", label: "Share with family" },
-  { id: "organize", label: "Organize my life story" },
-];
+const GOAL_IDS = ["preserve", "legacy", "share", "organize"] as const;
+const GOAL_LABEL_KEYS: Record<string, string> = {
+  preserve: "goalPreserve",
+  legacy: "goalLegacy",
+  share: "goalShare",
+  organize: "goalOrganize",
+};
 
 export default function ProfilePage() {
+  const { t, locale, setLocale } = useTranslation("settings");
+  const { t: tOnboard } = useTranslation("onboarding");
+  const { t: tc } = useTranslation("common");
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -106,7 +111,7 @@ export default function ProfilePage() {
           ? { ...prev, display_name: displayName, bio, goal }
           : prev
       );
-      showToast("Profile saved successfully.", "success");
+      showToast(t("profileSaved"), "success");
     }
     setSaving(false);
   };
@@ -116,7 +121,7 @@ export default function ProfilePage() {
     if (result.error) {
       showToast(result.error, "error");
     } else {
-      showToast("Password reset email sent. Check your inbox.", "success");
+      showToast(t("passwordResetSent"), "success");
     }
   };
 
@@ -176,7 +181,7 @@ export default function ProfilePage() {
         padding: 48, textAlign: "center",
         fontFamily: T.font.body, fontSize: 16, color: T.color.muted,
       }}>
-        Loading your profile...
+        {t("loadingProfile")}
       </div>
     );
   }
@@ -187,7 +192,7 @@ export default function ProfilePage() {
         padding: 48, textAlign: "center",
         fontFamily: T.font.body, fontSize: 16, color: T.color.muted,
       }}>
-        Could not load profile. Please try refreshing the page.
+        {t("profileLoadError")}
       </div>
     );
   }
@@ -221,13 +226,13 @@ export default function ProfilePage() {
           fontFamily: T.font.display, fontSize: 28, fontWeight: 500,
           color: T.color.charcoal, margin: "0 0 8px",
         }}>
-          Your Profile
+          {t("yourProfile")}
         </h2>
         <p style={{
           fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
           margin: 0, lineHeight: 1.5,
         }}>
-          Manage your personal information and account settings.
+          {t("profileDescription")}
         </p>
       </div>
 
@@ -269,7 +274,7 @@ export default function ProfilePage() {
               fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
               color: T.color.charcoal,
             }}>
-              {displayName || "Your Name"}
+              {displayName || t("namePlaceholder")}
             </div>
             <div style={{
               fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
@@ -284,19 +289,19 @@ export default function ProfilePage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
           {/* Display Name */}
           <div>
-            <label style={labelStyle}>Display Name</label>
+            <label style={labelStyle}>{t("displayName")}</label>
             <input
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your name"
+              placeholder={t("namePlaceholder")}
               style={inputStyle}
             />
           </div>
 
           {/* Email (read-only) */}
           <div>
-            <label style={labelStyle}>Email Address</label>
+            <label style={labelStyle}>{t("emailAddress")}</label>
             <input
               type="email"
               value={profile.email}
@@ -312,17 +317,17 @@ export default function ProfilePage() {
               fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
               margin: "6px 0 0", lineHeight: 1.4,
             }}>
-              Your email address is managed through your login credentials and cannot be changed here.
+              {t("emailReadonlyNote")}
             </p>
           </div>
 
           {/* Bio */}
           <div>
-            <label style={labelStyle}>About Me</label>
+            <label style={labelStyle}>{t("aboutMe")}</label>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="A few words about yourself, your family, or what brings you here..."
+              placeholder={t("aboutMePlaceholder")}
               rows={4}
               style={{
                 ...inputStyle,
@@ -335,37 +340,37 @@ export default function ProfilePage() {
 
           {/* Goal */}
           <div>
-            <label style={labelStyle}>Your Goal</label>
+            <label style={labelStyle}>{t("yourGoal")}</label>
             <p style={{
               fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
               margin: "0 0 10px", lineHeight: 1.4,
             }}>
-              What matters most to you? You can change this anytime.
+              {t("goalDescription")}
             </p>
             <div style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: 10,
             }}>
-              {GOALS.map((g) => (
+              {GOAL_IDS.map((gId) => (
                 <button
-                  key={g.id}
-                  onClick={() => setGoal(g.id)}
+                  key={gId}
+                  onClick={() => setGoal(gId)}
                   style={{
                     padding: "14px 16px",
                     borderRadius: 12,
-                    border: `2px solid ${goal === g.id ? T.color.terracotta : T.color.cream}`,
-                    background: goal === g.id ? `${T.color.terracotta}12` : T.color.linen,
+                    border: `2px solid ${goal === gId ? T.color.terracotta : T.color.cream}`,
+                    background: goal === gId ? `${T.color.terracotta}12` : T.color.linen,
                     cursor: "pointer",
                     textAlign: "left",
                     transition: "all .2s",
                     fontFamily: T.font.body,
                     fontSize: 14,
-                    fontWeight: goal === g.id ? 600 : 400,
-                    color: goal === g.id ? T.color.terracotta : T.color.charcoal,
+                    fontWeight: goal === gId ? 600 : 400,
+                    color: goal === gId ? T.color.terracotta : T.color.charcoal,
                   }}
                 >
-                  {g.label}
+                  {tOnboard(GOAL_LABEL_KEYS[gId])}
                 </button>
               ))}
             </div>
@@ -393,7 +398,7 @@ export default function ProfilePage() {
               transition: "all .2s",
             }}
           >
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? t("saving") : t("saveChanges")}
           </button>
           {hasChanges && (
             <button
@@ -415,7 +420,7 @@ export default function ProfilePage() {
                 transition: "all .2s",
               }}
             >
-              Discard
+              {tc("discard")}
             </button>
           )}
         </div>
@@ -434,13 +439,13 @@ export default function ProfilePage() {
           fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
           color: T.color.charcoal, margin: "0 0 6px",
         }}>
-          Account
+          {t("account")}
         </h3>
         <p style={{
           fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
           margin: "0 0 22px", lineHeight: 1.5,
         }}>
-          Manage your password and account settings.
+          {t("accountDescription")}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -456,13 +461,13 @@ export default function ProfilePage() {
                 fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
                 color: T.color.charcoal,
               }}>
-                Change Password
+                {t("changePassword")}
               </div>
               <div style={{
                 fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
                 marginTop: 4,
               }}>
-                We will send a password reset link to your email address.
+                {t("changePasswordDesc")}
               </div>
             </div>
             <button
@@ -481,7 +486,7 @@ export default function ProfilePage() {
                 flexShrink: 0,
               }}
             >
-              Send Reset Link
+              {t("sendResetLink")}
             </button>
           </div>
 
@@ -533,6 +538,59 @@ export default function ProfilePage() {
       {/* ── Security: Two-Factor Authentication ── */}
       <MFASetup />
 
+      {/* ── Language ── */}
+      <div style={{
+        background: T.color.white,
+        borderRadius: 16,
+        border: `1px solid ${T.color.cream}`,
+        padding: "28px 32px",
+        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        marginBottom: 24,
+      }}>
+        <h3 style={{
+          fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 16px",
+        }}>
+          {tc("language")}
+        </h3>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button
+            onClick={() => setLocale("en")}
+            style={{
+              padding: "14px 24px",
+              borderRadius: 12,
+              border: `2px solid ${locale === "en" ? T.color.terracotta : T.color.cream}`,
+              background: locale === "en" ? `${T.color.terracotta}12` : T.color.linen,
+              cursor: "pointer",
+              fontFamily: T.font.body,
+              fontSize: 15,
+              fontWeight: locale === "en" ? 600 : 400,
+              color: locale === "en" ? T.color.terracotta : T.color.charcoal,
+              transition: "all .2s",
+            }}
+          >
+            {tc("english")} (EN)
+          </button>
+          <button
+            onClick={() => setLocale("nl")}
+            style={{
+              padding: "14px 24px",
+              borderRadius: 12,
+              border: `2px solid ${locale === "nl" ? T.color.terracotta : T.color.cream}`,
+              background: locale === "nl" ? `${T.color.terracotta}12` : T.color.linen,
+              cursor: "pointer",
+              fontFamily: T.font.body,
+              fontSize: 15,
+              fontWeight: locale === "nl" ? 600 : 400,
+              color: locale === "nl" ? T.color.terracotta : T.color.charcoal,
+              transition: "all .2s",
+            }}
+          >
+            {tc("dutch")} (NL)
+          </button>
+        </div>
+      </div>
+
       {/* ── Danger Zone ── */}
       <div style={{
         background: T.color.white,
@@ -545,13 +603,13 @@ export default function ProfilePage() {
           fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
           color: "#C05050", margin: "0 0 6px",
         }}>
-          Danger Zone
+          {t("dangerZone")}
         </h3>
         <p style={{
           fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
           margin: "0 0 18px", lineHeight: 1.5,
         }}>
-          Permanently delete your account and all associated data. This action cannot be undone.
+          {t("dangerDescription")}
         </p>
 
         {!deleteConfirm ? (
@@ -570,7 +628,7 @@ export default function ProfilePage() {
               transition: "all .15s",
             }}
           >
-            Delete My Account
+            {t("deleteAccount")}
           </button>
         ) : (
           <div style={{
@@ -582,20 +640,19 @@ export default function ProfilePage() {
               fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
               color: "#B91C1C", margin: "0 0 12px",
             }}>
-              Are you absolutely sure?
+              {t("deleteConfirmTitle")}
             </p>
             <p style={{
               fontFamily: T.font.body, fontSize: 14, color: "#7F1D1D",
               margin: "0 0 16px", lineHeight: 1.5,
-            }}>
-              This will permanently delete your account, all your memories, photos, and stories.
-              Type <strong>DELETE</strong> below to confirm.
-            </p>
+            }}
+              dangerouslySetInnerHTML={{ __html: t("deleteConfirmDescription") }}
+            />
             <input
               type="text"
               value={deleteText}
               onChange={(e) => setDeleteText(e.target.value)}
-              placeholder='Type "DELETE" to confirm'
+              placeholder={t("deleteConfirmPlaceholder")}
               style={{
                 ...inputStyle,
                 borderColor: "#FECACA",
@@ -628,7 +685,7 @@ export default function ProfilePage() {
                   transition: "all .15s",
                 }}
               >
-                {deleting ? "Deleting..." : "Permanently Delete Account"}
+                {deleting ? t("deleting") : t("permanentlyDelete")}
               </button>
               <button
                 onClick={() => {
@@ -648,7 +705,7 @@ export default function ProfilePage() {
                   transition: "all .15s",
                 }}
               >
-                Cancel
+                {tc("cancel")}
               </button>
             </div>
           </div>
