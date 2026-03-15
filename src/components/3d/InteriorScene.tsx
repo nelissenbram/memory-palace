@@ -845,6 +845,19 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       videoElRef.current=null;audioElRef.current=null;setShowMedia({video:false,audio:false});
       if(vinylAudio){vinylAudio.pause();vinylAudio.src="";}
       animTex.forEach(a=>{if(a.type==="video"){const vEl=a.videoEl?a.videoEl():null;if(vEl){vEl.pause();vEl.src="";}}});
+      scene.traverse((obj: any) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+          materials.forEach((m: any) => {
+            if (m.map) m.map.dispose();
+            if (m.normalMap) m.normalMap.dispose();
+            if (m.roughnessMap) m.roughnessMap.dispose();
+            if (m.emissiveMap) m.emissiveMap.dispose();
+            m.dispose();
+          });
+        }
+      });
       composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[roomId,actualRoomId,layoutOverride]);

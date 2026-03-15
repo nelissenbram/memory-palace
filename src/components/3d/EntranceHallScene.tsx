@@ -1282,6 +1282,19 @@ export default function EntranceHallScene({
       }
       envRT.texture.dispose();
       envRT.dispose();
+      scene.traverse((obj: any) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+          materials.forEach((m: any) => {
+            if (m.map) m.map.dispose();
+            if (m.normalMap) m.normalMap.dispose();
+            if (m.roughnessMap) m.roughnessMap.dispose();
+            if (m.emissiveMap) m.emissiveMap.dispose();
+            m.dispose();
+          });
+        }
+      });
       composer.dispose();
       if (el.contains(ren.domElement)) el.removeChild(ren.domElement);
       ren.dispose();
