@@ -3,12 +3,12 @@ import { useState } from "react";
 import { T } from "@/lib/theme";
 import { useTrackStore } from "@/lib/stores/trackStore";
 
-/** Small Memory Points + Level badge for the TopBar / FAB area */
+/** Small Memory Points + Level badge for the StatusBar area. Click to open tracks panel. */
 export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
-  const { totalPoints, getLevel, getPointsToNextLevel, pointsHistory } = useTrackStore();
+  const { totalPoints, getLevelInfo, getLevelProgressInfo, pointsHistory } = useTrackStore();
   const [expanded, setExpanded] = useState(false);
-  const level = getLevel();
-  const { current, needed, progress } = getPointsToNextLevel();
+  const levelInfo = getLevelInfo();
+  const progressInfo = getLevelProgressInfo();
 
   const handleClick = () => {
     if (onClick) { onClick(); return; }
@@ -20,9 +20,10 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
       {/* Main badge */}
       <button
         onClick={handleClick}
+        title={`${levelInfo.title} \u2014 ${totalPoints} Memory Points`}
         style={{
           display: "flex", alignItems: "center", gap: 6,
-          height: 32, borderRadius: 16, padding: "0 8px 0 6px",
+          height: 32, borderRadius: 16, padding: "0 10px 0 6px",
           background: "transparent",
           border: "none",
           cursor: "pointer", transition: "background .15s",
@@ -30,19 +31,20 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.sandstone}18`; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
       >
-        {/* Level badge */}
+        {/* Level emblem */}
         <div style={{
           width: 22, height: 22, borderRadius: 11,
-          background: "linear-gradient(135deg,#C9A84C,#D4AF37)",
+          background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}dd)`,
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 10, fontWeight: 700, color: "#FFF",
           fontFamily: T.font.body,
+          boxShadow: `0 1px 4px ${levelInfo.color}40`,
         }}>
-          {level}
+          {levelInfo.rank}
         </div>
-        {/* Points */}
+        {/* Points with MP suffix */}
         <span style={{ fontFamily: T.font.body, fontSize: 12, fontWeight: 600, color: T.color.walnut }}>
-          {totalPoints}
+          {totalPoints} <span style={{ fontSize: 10, fontWeight: 500, color: "#C9A84C" }}>MP</span>
         </span>
         {/* Mini progress bar */}
         <div style={{
@@ -50,8 +52,8 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
           background: `${T.color.sandstone}33`, overflow: "hidden",
         }}>
           <div style={{
-            width: `${progress * 100}%`, height: "100%", borderRadius: 2,
-            background: "linear-gradient(90deg,#C9A84C,#D4AF37)",
+            width: `${progressInfo.progress * 100}%`, height: "100%", borderRadius: 2,
+            background: `linear-gradient(90deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
             transition: "width .6s ease",
           }} />
         </div>
@@ -63,56 +65,68 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
           <div onClick={() => setExpanded(false)} style={{ position: "fixed", inset: 0, zIndex: 98 }} />
           <div style={{
             position: "absolute", top: "100%", right: 0, marginTop: 8,
-            width: 260, background: `${T.color.linen}f8`, backdropFilter: "blur(16px)",
+            width: 280, background: `${T.color.linen}f8`, backdropFilter: "blur(16px)",
             borderRadius: 14, border: `1px solid ${T.color.cream}`,
             boxShadow: "0 8px 40px rgba(44,44,42,.18)", padding: 16,
             zIndex: 99, animation: "fadeUp .25s ease",
           }}>
-            {/* Header */}
+            {/* Header with level title */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
               <div style={{
-                width: 36, height: 36, borderRadius: 18,
-                background: "linear-gradient(135deg,#C9A84C22,#D4AF3722)",
+                width: 40, height: 40, borderRadius: 20,
+                background: `linear-gradient(135deg, ${levelInfo.color}22, ${levelInfo.color}11)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 <div style={{
-                  width: 24, height: 24, borderRadius: 12,
-                  background: "linear-gradient(135deg,#C9A84C,#D4AF37)",
+                  width: 28, height: 28, borderRadius: 14,
+                  background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}dd)`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, fontWeight: 700, color: "#FFF", fontFamily: T.font.body,
-                }}>{level}</div>
+                  fontSize: 12, fontWeight: 700, color: "#FFF", fontFamily: T.font.body,
+                  boxShadow: `0 2px 8px ${levelInfo.color}30`,
+                }}>{levelInfo.rank}</div>
               </div>
               <div>
-                <div style={{ fontFamily: T.font.display, fontSize: 16, fontWeight: 600, color: T.color.charcoal }}>
-                  Level {level}
+                <div style={{ fontFamily: T.font.display, fontSize: 17, fontWeight: 600, color: T.color.charcoal }}>
+                  {levelInfo.title}
                 </div>
-                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted }}>
+                <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
                   {totalPoints} Memory Points
                 </div>
               </div>
             </div>
 
             {/* Progress to next level */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted }}>
-                  Next level
-                </span>
-                <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.walnut, fontWeight: 600 }}>
-                  {current}/{needed}
-                </span>
-              </div>
-              <div style={{
-                width: "100%", height: 6, borderRadius: 3,
-                background: `${T.color.sandstone}25`, overflow: "hidden",
-              }}>
+            {progressInfo.nextLevel ? (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                  <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted }}>
+                    Next: {progressInfo.nextLevel.title}
+                  </span>
+                  <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.walnut, fontWeight: 600 }}>
+                    {progressInfo.pointsInLevel}/{progressInfo.pointsNeeded}
+                  </span>
+                </div>
                 <div style={{
-                  width: `${progress * 100}%`, height: "100%", borderRadius: 3,
-                  background: "linear-gradient(90deg,#C9A84C,#D4AF37)",
-                  transition: "width .6s ease",
-                }} />
+                  width: "100%", height: 6, borderRadius: 3,
+                  background: `${T.color.sandstone}25`, overflow: "hidden",
+                }}>
+                  <div style={{
+                    width: `${progressInfo.progress * 100}%`, height: "100%", borderRadius: 3,
+                    background: `linear-gradient(90deg, ${levelInfo.color}, ${progressInfo.nextLevel.color})`,
+                    transition: "width .6s ease",
+                  }} />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div style={{
+                marginBottom: 14, padding: "8px 12px", borderRadius: 8,
+                background: `${levelInfo.color}10`, border: `1px solid ${levelInfo.color}20`,
+              }}>
+                <span style={{ fontFamily: T.font.body, fontSize: 11, color: levelInfo.color, fontWeight: 500 }}>
+                  Highest tier reached
+                </span>
+              </div>
+            )}
 
             {/* Recent points */}
             {pointsHistory.length > 0 && (
@@ -136,7 +150,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
                       <span style={{
                         fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
                         color: "#C9A84C",
-                      }}>+{entry.points}</span>
+                      }}>+{entry.points} MP</span>
                     </div>
                   ))}
                 </div>

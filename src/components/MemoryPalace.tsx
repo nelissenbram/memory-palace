@@ -26,6 +26,8 @@ import TracksPanel from "@/components/ui/TracksPanel";
 import TrackDetailPanel from "@/components/ui/TrackDetailPanel";
 import LegacyPanel from "@/components/ui/LegacyPanel";
 import PointsDisplay from "@/components/ui/PointsDisplay";
+import FloatingPoints from "@/components/ui/FloatingPoints";
+import ProgressSummary from "@/components/ui/ProgressSummary";
 import ExteriorScene from "@/components/3d/ExteriorScene";
 import EntranceHallScene from "@/components/3d/EntranceHallScene";
 import InteriorScene from "@/components/3d/InteriorScene";
@@ -277,6 +279,12 @@ export default function MemoryPalace(){
       {/* Time Capsule Reveal — floating card when capsules have newly opened */}
       {(view==="exterior"||view==="entrance")&&<TimeCapsuleReveal onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
 
+      {/* Progress summary — desktop, exterior/entrance views */}
+      {!isMobile && (view==="exterior"||view==="entrance") && <ProgressSummary onOpenTracks={()=>setShowTracksPanel(true)} />}
+
+      {/* Floating points animation — always present */}
+      <FloatingPoints />
+
       {/* ═══ DESKTOP ACTION MENU ═══ */}
       {!isMobile && (()=>{
         if (view==="exterior"||view==="entrance") {
@@ -483,7 +491,7 @@ export default function MemoryPalace(){
           <div style={{fontFamily:T.font.display,fontSize:14,fontWeight:600,color:T.color.charcoal}}>{trackToast.stepTitle}</div>
           <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{trackToast.trackName}</div>
         </div>
-        <div style={{fontFamily:T.font.body,fontSize:14,fontWeight:700,color:"#C9A84C"}}>+{trackToast.points}</div>
+        <div style={{fontFamily:T.font.body,fontSize:14,fontWeight:700,color:"#C9A84C"}}>+{trackToast.points} MP</div>
       </div>}
 
       {/* Track completion celebration */}
@@ -493,7 +501,7 @@ export default function MemoryPalace(){
           <div style={{fontFamily:T.font.display,fontSize:28,fontWeight:600,color:T.color.charcoal,marginBottom:8}}>Track Complete!</div>
           <div style={{fontFamily:T.font.display,fontSize:18,fontWeight:500,color:T.color.walnut,marginBottom:12,fontStyle:"italic"}}>{trackCelebration.trackName}</div>
           <div style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,marginBottom:16}}>You earned a bonus of</div>
-          <div style={{fontFamily:T.font.body,fontSize:32,fontWeight:700,color:"#C9A84C"}}>+{trackCelebration.bonus} Points</div>
+          <div style={{fontFamily:T.font.body,fontSize:32,fontWeight:700,color:"#C9A84C"}}>+{trackCelebration.bonus} MP</div>
           <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,marginTop:16}}>Tap anywhere to continue</div>
         </div>
       </div>}

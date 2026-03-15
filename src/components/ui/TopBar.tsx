@@ -6,6 +6,7 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { useTrackStore } from "@/lib/stores/trackStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import NotificationBell from "@/components/ui/NotificationBell";
 import type { Crumb } from "@/lib/hooks/useNavigation";
@@ -89,10 +90,16 @@ export default function TopBar({crumbs}: TopBarProps){
             }}>
               {userName && (
                 <div style={{
-                  fontFamily: T.font.display, fontSize: 14, fontStyle: "italic",
-                  color: T.color.walnut, marginBottom: 10, padding: "0 4px",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  marginBottom: 10, padding: "0 4px",
                 }}>
-                  {userName}&#39;s Palace
+                  <span style={{
+                    fontFamily: T.font.display, fontSize: 14, fontStyle: "italic",
+                    color: T.color.walnut,
+                  }}>
+                    {userName}&#39;s Palace
+                  </span>
+                  <LevelBadgeMobile />
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 10 }}>
@@ -169,6 +176,43 @@ export default function TopBar({crumbs}: TopBarProps){
         <span style={{fontSize:11}}>{w.icon}</span>{w.name}</button>)}
         <button onClick={()=>signOut()} style={{padding:"4px 10px",borderRadius:16,fontFamily:T.font.body,fontSize:11,fontWeight:400,border:`1px solid ${T.color.cream}`,background:`${T.color.white}bb`,color:T.color.muted,cursor:"pointer",marginLeft:4}}>Sign out</button>
       </div>
+    </div>
+  );
+}
+
+/** Compact level badge for the mobile menu header */
+function LevelBadgeMobile() {
+  const { totalPoints, getLevelInfo } = useTrackStore();
+  const levelInfo = getLevelInfo();
+
+  if (totalPoints === 0) return null;
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 5,
+      padding: "3px 8px 3px 4px", borderRadius: 12,
+      background: `${levelInfo.color}10`,
+      border: `1px solid ${levelInfo.color}20`,
+    }}>
+      <div style={{
+        width: 18, height: 18, borderRadius: 9,
+        background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 9, fontWeight: 700, color: "#FFF", fontFamily: T.font.body,
+      }}>
+        {levelInfo.rank}
+      </div>
+      <span style={{
+        fontFamily: T.font.body, fontSize: 10, fontWeight: 500,
+        color: levelInfo.color,
+      }}>
+        {levelInfo.title}
+      </span>
+      <span style={{
+        fontFamily: T.font.body, fontSize: 9, color: T.color.muted,
+      }}>
+        {totalPoints} MP
+      </span>
     </div>
   );
 }

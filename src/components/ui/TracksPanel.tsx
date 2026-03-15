@@ -12,10 +12,10 @@ interface TracksPanelProps {
 
 export default function TracksPanel({ onClose }: TracksPanelProps) {
   const isMobile = useIsMobile();
-  const { tracks, totalPoints, getLevel, getPointsToNextLevel, setSelectedTrackId } = useTrackStore();
+  const { tracks, totalPoints, getLevelInfo, getLevelProgressInfo, setSelectedTrackId } = useTrackStore();
   const { userGoal } = useUserStore();
-  const level = getLevel();
-  const { current, needed, progress } = getPointsToNextLevel();
+  const levelInfo = getLevelInfo();
+  const progressInfo = getLevelProgressInfo();
 
   const goalPriority = GOAL_TRACK_PRIORITY[userGoal] || GOAL_TRACK_PRIORITY["preserve"];
   const sortedTracks = [...TRACKS].sort((a, b) => {
@@ -78,22 +78,23 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
           <div style={{
             display: "flex", alignItems: "center", gap: 14, marginTop: 16,
             padding: "12px 16px", borderRadius: 12,
-            background: `${T.color.white}cc`, border: `1px solid #C4A96222`,
+            background: `${T.color.white}cc`, border: `1px solid ${levelInfo.color}22`,
           }}>
             <div style={{
               width: 44, height: 44, borderRadius: 22,
-              background: "linear-gradient(135deg,#C9A84C,#D4AF37)",
+              background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 16, fontWeight: 700, color: "#FFF", fontFamily: T.font.body,
               flexShrink: 0,
-            }}>{level}</div>
+              boxShadow: `0 2px 8px ${levelInfo.color}30`,
+            }}>{levelInfo.rank}</div>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <span style={{ fontFamily: T.font.display, fontSize: 18, fontWeight: 600, color: T.color.charcoal }}>
-                  {totalPoints} Points
+                  {totalPoints} MP
                 </span>
-                <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted }}>
-                  Level {level}
+                <span style={{ fontFamily: T.font.body, fontSize: 11, color: levelInfo.color, fontWeight: 500 }}>
+                  {levelInfo.title}
                 </span>
               </div>
               <div style={{
@@ -101,15 +102,19 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                 background: `${T.color.sandstone}25`, overflow: "hidden",
               }}>
                 <div style={{
-                  width: `${progress * 100}%`, height: "100%", borderRadius: 3,
-                  background: "linear-gradient(90deg,#C9A84C,#D4AF37)",
+                  width: `${progressInfo.progress * 100}%`, height: "100%", borderRadius: 3,
+                  background: progressInfo.nextLevel
+                    ? `linear-gradient(90deg, ${levelInfo.color}, ${progressInfo.nextLevel.color})`
+                    : `linear-gradient(90deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
                   transition: "width .8s ease",
                 }} />
               </div>
               <div style={{
                 fontFamily: T.font.body, fontSize: 10, color: T.color.muted, marginTop: 3,
               }}>
-                {current} / {needed} to Level {level + 1}
+                {progressInfo.nextLevel
+                  ? `${progressInfo.pointsInLevel} / ${progressInfo.pointsNeeded} to ${progressInfo.nextLevel.title}`
+                  : "Highest tier reached"}
               </div>
             </div>
           </div>
