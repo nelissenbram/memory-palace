@@ -1,19 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth/actions";
 import { T } from "@/lib/theme";
 
 export default function LoginPage() {
+  return <Suspense><LoginContent /></Suspense>;
+}
+
+function LoginContent() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
     const formData = new FormData(e.currentTarget);
+    if (redirect) formData.set("redirect", redirect);
     const result = await signIn(formData);
     // If signIn succeeds it redirects, so we only get here on error
     if (result?.error) {

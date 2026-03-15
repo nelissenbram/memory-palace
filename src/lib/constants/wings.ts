@@ -24,6 +24,7 @@ export const WINGS: Wing[] = [
   {id:"childhood",name:"Childhood",icon:"\u{1F33B}",accent:"#B8926A",wall:"#E0D8CA",floor:"#A88E6E",desc:"Where your story began",layout:"Circular rotunda"},
   {id:"career",name:"Career",icon:"\u{1F4D0}",accent:"#8B7355",wall:"#D5CFC2",floor:"#8E7C64",desc:"Milestones and achievements",layout:"Exhibition hall"},
   {id:"creativity",name:"Creativity",icon:"\u{1F3A8}",accent:"#9B6B8E",wall:"#DCD6CE",floor:"#AA9488",desc:"Art, music, and expression",layout:"Open loft studio"},
+  {id:"attic",name:"The Attic",icon:"\u{1F4E6}",accent:"#8B7355",wall:"#C8BCA8",floor:"#7A6A52",desc:"Unassigned memories waiting to find their room",layout:"Open storage loft"},
 ];
 
 export const WING_ROOMS: Record<string, WingRoom[]> = {
@@ -49,5 +50,8 @@ export const WING_ROOMS: Record<string, WingRoom[]> = {
   creativity:[
     {id:"rr1",name:"Watercolor Collection",icon:"\u{1F3A8}",shared:false,sharedWith:[],coverHue:280},
     {id:"rr2",name:"Guitar Sessions",icon:"\u{1F3B8}",shared:true,sharedWith:["bandmate@email.com"],coverHue:38},
+  ],
+  attic:[
+    {id:"at1",name:"The Attic",icon:"\u{1F4E6}",shared:false,sharedWith:[],coverHue:40},
   ],
 };

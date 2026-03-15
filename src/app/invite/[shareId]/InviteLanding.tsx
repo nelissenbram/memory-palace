@@ -1,0 +1,436 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { acceptInvite } from "@/lib/auth/invite-actions";
+import { createClient } from "@/lib/supabase/client";
+
+const T = {
+  color: {
+    linen: "#FAFAF7",
+    warmStone: "#F2EDE7",
+    sandstone: "#D4C5B2",
+    walnut: "#8B7355",
+    sage: "#4A6741",
+    terracotta: "#C17F59",
+    charcoal: "#2C2C2A",
+    cream: "#EEEAE3",
+    white: "#FFFFFF",
+    muted: "#9A9183",
+  },
+  font: {
+    display: "'Cormorant Garamond', Georgia, serif",
+    body: "'Source Sans 3', system-ui, sans-serif",
+  },
+} as const;
+
+interface InviteResult {
+  error?: string;
+  invite?: {
+    id: string;
+    permission: string;
+    status: string;
+    message: string | null;
+    createdAt: string;
+    recipientEmail: string;
+  };
+  inviter?: { name: string; avatarUrl: string | null };
+  room?: { name: string };
+  wing?: { name: string; icon: string };
+  memoryCount?: number;
+}
+
+export default function InviteLanding({ shareId, result }: { shareId: string; result: InviteResult }) {
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
+  const [accepted, setAccepted] = useState(false);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setIsLoggedIn(true);
+    });
+  }, []);
+
+  // If the invite was already accepted, show that
+  const alreadyAccepted = result.invite?.status === "accepted";
+
+  const handleAccept = async () => {
+    setAccepting(true);
+    setAcceptError(null);
+    const res = await acceptInvite(shareId) as { error?: string; success?: boolean; alreadyAccepted?: boolean };
+    if (res.error) {
+      if (res.alreadyAccepted) {
+        setAccepted(true);
+      } else {
+        setAcceptError(res.error);
+      }
+    } else {
+      setAccepted(true);
+    }
+    setAccepting(false);
+  };
+
+  const handleGoToPalace = () => {
+    router.push("/palace");
+  };
+
+  // Error state
+  if (result.error) {
+    return (
+      <div style={pageStyle}>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 48, marginBottom: 16, textAlign: "center" }}>&#x1F3DB;&#xFE0F;</div>
+          <h1 style={headingStyle}>Invitation Not Found</h1>
+          <p style={bodyTextStyle}>
+            {result.error === "Invitation not found"
+              ? "This invitation link may have expired or been removed."
+              : result.error}
+          </p>
+          <a href="/login" style={primaryBtnStyle}>
+            Visit The Memory Palace
+          </a>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const { invite, inviter, room, wing, memoryCount } = result as Required<InviteResult>;
+  const permLabel = invite.permission === "contribute" ? "view & contribute" : "view";
+  const initial = inviter.name.charAt(0).toUpperCase();
+  const timeAgo = getTimeAgo(invite.createdAt);
+
+  // Accepted state
+  if (accepted || alreadyAccepted) {
+    return (
+      <div style={pageStyle}>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 48, marginBottom: 16, textAlign: "center" }}>&#x2728;</div>
+          <h1 style={headingStyle}>Welcome!</h1>
+          <p style={bodyTextStyle}>
+            You now have access to <strong>{room.name}</strong> in {inviter.name}&rsquo;s palace.
+          </p>
+          <button onClick={handleGoToPalace} style={primaryBtnStyle}>
+            Enter The Memory Palace
+          </button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div style={pageStyle}>
+      <style>{`
+        @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.7}}
+      `}</style>
+
+      <div style={{ ...cardStyle, animation: "fadeUp .6s ease" }}>
+        {/* Decorative header */}
+        <div style={{
+          background: "linear-gradient(135deg, #C17F59 0%, #8B7355 60%, #4A6741 100%)",
+          margin: "-36px -32px 28px",
+          padding: "36px 32px 32px",
+          borderRadius: "20px 20px 0 0",
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          {/* Subtle arch decoration */}
+          <div style={{
+            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            width: 300, height: 300, borderRadius: "50%",
+            border: "1px solid rgba(255,255,255,0.08)",
+            pointerEvents: "none",
+          }} />
+          <div style={{
+            position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            width: 240, height: 240, borderRadius: "50%",
+            border: "1px solid rgba(255,255,255,0.05)",
+            pointerEvents: "none",
+          }} />
+
+          <div style={{ fontSize: 32, marginBottom: 12 }}>&#x1F3DB;&#xFE0F;</div>
+          <p style={{
+            fontFamily: T.font.body, fontSize: 12, color: "rgba(255,255,255,0.7)",
+            textTransform: "uppercase", letterSpacing: 1.5, margin: "0 0 8px",
+          }}>
+            You&rsquo;ve been invited
+          </p>
+          <h1 style={{
+            fontFamily: T.font.display, fontSize: 24, fontWeight: 400,
+            color: "#FFFFFF", margin: 0, lineHeight: 1.4,
+          }}>
+            {inviter.name} wants to share<br />memories with you
+          </h1>
+        </div>
+
+        {/* Inviter info */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 14,
+          padding: "16px 18px", background: T.color.warmStone,
+          borderRadius: 14, border: `1px solid ${T.color.cream}`,
+          marginBottom: 20,
+        }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 24,
+            background: `linear-gradient(135deg, ${T.color.terracotta}30, ${T.color.walnut}20)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: T.font.display, fontSize: 20, fontWeight: 600,
+            color: T.color.terracotta, flexShrink: 0,
+          }}>
+            {initial}
+          </div>
+          <div>
+            <div style={{ fontFamily: T.font.body, fontSize: 15, fontWeight: 600, color: T.color.charcoal }}>
+              {inviter.name}
+            </div>
+            <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
+              Invited you {timeAgo}
+            </div>
+          </div>
+        </div>
+
+        {/* Room card */}
+        <div style={{
+          padding: "20px", background: T.color.linen,
+          borderRadius: 14, border: `1px solid ${T.color.cream}`,
+          marginBottom: 20, textAlign: "center",
+        }}>
+          {wing.icon && <div style={{ fontSize: 28, marginBottom: 8 }}>{wing.icon}</div>}
+          <div style={{
+            fontFamily: T.font.display, fontSize: 20, fontWeight: 600,
+            color: T.color.charcoal, marginBottom: 4,
+          }}>
+            {room.name}
+          </div>
+          {wing.name && (
+            <div style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginBottom: 10 }}>
+              {wing.name} Wing
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+            <span style={{
+              padding: "4px 12px", borderRadius: 20,
+              background: `${T.color.terracotta}15`, fontFamily: T.font.body,
+              fontSize: 12, color: T.color.terracotta,
+            }}>
+              {memoryCount} {memoryCount === 1 ? "memory" : "memories"}
+            </span>
+            <span style={{
+              padding: "4px 12px", borderRadius: 20,
+              background: invite.permission === "contribute" ? `${T.color.sage}15` : `${T.color.walnut}15`,
+              fontFamily: T.font.body, fontSize: 12,
+              color: invite.permission === "contribute" ? T.color.sage : T.color.walnut,
+            }}>
+              Can {permLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Personal message */}
+        {invite.message && (
+          <div style={{
+            padding: "16px 20px", background: T.color.warmStone,
+            borderRadius: 14, border: `1px solid ${T.color.cream}`,
+            borderLeft: `3px solid ${T.color.terracotta}`,
+            marginBottom: 20,
+          }}>
+            <p style={{
+              fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+              textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 6px",
+            }}>
+              {inviter.name} says:
+            </p>
+            <p style={{
+              fontFamily: T.font.display, fontSize: 16, fontStyle: "italic",
+              color: T.color.charcoal, margin: 0, lineHeight: 1.6,
+            }}>
+              &ldquo;{invite.message}&rdquo;
+            </p>
+          </div>
+        )}
+
+        {/* Blurred preview teaser */}
+        <div style={{
+          padding: "28px 20px", borderRadius: 14,
+          background: `linear-gradient(135deg, ${T.color.sandstone}40, ${T.color.warmStone}60)`,
+          border: `1px solid ${T.color.cream}`,
+          marginBottom: 24, textAlign: "center",
+          position: "relative", overflow: "hidden",
+        }}>
+          {/* Decorative blurred "memory" blobs */}
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            {[
+              { left: "15%", top: "20%", bg: T.color.terracotta },
+              { left: "55%", top: "30%", bg: T.color.sage },
+              { left: "35%", top: "60%", bg: T.color.walnut },
+              { left: "75%", top: "50%", bg: T.color.sandstone },
+            ].map((b, i) => (
+              <div key={i} style={{
+                position: "absolute", left: b.left, top: b.top,
+                width: 40, height: 40, borderRadius: 8,
+                background: `${b.bg}25`, filter: "blur(8px)",
+                animation: `pulse ${2 + i * 0.5}s ease-in-out infinite`,
+              }} />
+            ))}
+          </div>
+          <p style={{
+            fontFamily: T.font.display, fontSize: 15, fontStyle: "italic",
+            color: T.color.walnut, margin: 0, position: "relative", zIndex: 1,
+          }}>
+            Memories waiting to be explored...
+          </p>
+        </div>
+
+        {/* Accept error */}
+        {acceptError && (
+          <div style={{
+            padding: "10px 14px", borderRadius: 10,
+            background: "#FDF2F2", border: "1px solid #FECACA",
+            color: "#B91C1C", fontSize: 13, marginBottom: 16,
+          }}>
+            {acceptError}
+          </div>
+        )}
+
+        {/* CTAs */}
+        {isLoggedIn ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button onClick={handleAccept} disabled={accepting} style={{
+              ...primaryBtnStyle,
+              opacity: accepting ? 0.6 : 1,
+              cursor: accepting ? "default" : "pointer",
+            }}>
+              {accepting ? "Accepting..." : "Accept Invitation"}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <a href={`/login?redirect=/invite/${shareId}`} style={primaryBtnStyle}>
+              Accept &amp; Sign In
+            </a>
+            <a href={`/register?redirect=/invite/${shareId}`} style={secondaryBtnStyle}>
+              Accept &amp; Create Account
+            </a>
+          </div>
+        )}
+      </div>
+
+      <Footer />
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <p style={{
+      fontFamily: "'Cormorant Garamond', Georgia, serif",
+      fontSize: 14, fontStyle: "italic",
+      color: "#9A9183", marginTop: 24, textAlign: "center",
+    }}>
+      The Memory Palace &mdash; Embrace Eternity
+    </p>
+  );
+}
+
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+// ── Styles ──
+
+const pageStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  background: "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
+  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  padding: "20px",
+  position: "relative",
+  overflow: "hidden",
+};
+
+const cardStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 480,
+  padding: "36px 32px",
+  background: "rgba(255,255,255,0.92)",
+  backdropFilter: "blur(20px)",
+  borderRadius: 20,
+  border: "1px solid #EEEAE3",
+  boxShadow: "0 12px 48px rgba(44,44,42,0.15)",
+  position: "relative",
+  zIndex: 1,
+};
+
+const headingStyle: React.CSSProperties = {
+  fontFamily: "'Cormorant Garamond', Georgia, serif",
+  fontSize: 26,
+  fontWeight: 400,
+  color: "#2C2C2A",
+  margin: "0 0 12px",
+  textAlign: "center",
+  lineHeight: 1.3,
+};
+
+const bodyTextStyle: React.CSSProperties = {
+  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontSize: 15,
+  color: "#9A9183",
+  lineHeight: 1.6,
+  textAlign: "center",
+  margin: "0 0 24px",
+};
+
+const primaryBtnStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  padding: "16px 24px",
+  borderRadius: 14,
+  border: "none",
+  background: "linear-gradient(135deg, #C17F59, #8B7355)",
+  color: "#FFFFFF",
+  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontSize: 16,
+  fontWeight: 600,
+  cursor: "pointer",
+  textAlign: "center",
+  textDecoration: "none",
+  boxShadow: "0 4px 16px rgba(193,127,89,0.3)",
+  transition: "all 0.2s",
+};
+
+const secondaryBtnStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  padding: "14px 24px",
+  borderRadius: 14,
+  border: "1.5px solid #D4C5B2",
+  background: "#FFFFFF",
+  color: "#8B7355",
+  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontSize: 15,
+  fontWeight: 600,
+  cursor: "pointer",
+  textAlign: "center",
+  textDecoration: "none",
+  transition: "all 0.2s",
+};

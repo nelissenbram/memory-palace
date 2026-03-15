@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite"];
 
 export async function middleware(request: NextRequest) {
   // Skip Supabase session refresh if env vars aren't configured yet
@@ -37,8 +37,10 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isPublicRoute = PUBLIC_ROUTES.some((r) => path.startsWith(r));
 
-  // Authenticated user on public route → redirect to palace
-  if (user && isPublicRoute) {
+  // Authenticated user on public route or landing → redirect to palace
+  // Exception: invite pages should be accessible to authenticated users (they need to accept)
+  const isInvitePage = path.startsWith("/invite");
+  if (user && (isPublicRoute || path === "/") && !isInvitePage) {
     return NextResponse.redirect(new URL("/palace", request.url));
   }
 

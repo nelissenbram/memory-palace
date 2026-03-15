@@ -1,7 +1,56 @@
 import * as THREE from "three";
 import type { Mem } from "@/lib/constants/defaults";
 
-export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null }) {
+function isMemLocked(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }): boolean {
+  if (!('revealDate' in m) || !m.revealDate) return false;
+  const todayStr = new Date().toISOString().split("T")[0];
+  return m.revealDate > todayStr;
+}
+
+function paintLockedTex(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 384;
+  const ctx = c.getContext("2d")!, w = 512, h = 384;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const baseHue = m.hue || 200;
+  // Dark mysterious background
+  const g = ctx.createLinearGradient(0, 0, w, h);
+  g.addColorStop(0, `hsl(${baseHue},15%,18%)`);
+  g.addColorStop(1, `hsl(${baseHue + 20},12%,12%)`);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  // Subtle glow in center
+  const glow = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, h * .6);
+  glow.addColorStop(0, `hsla(${baseHue},30%,45%,0.15)`);
+  glow.addColorStop(0.5, `hsla(${baseHue},20%,30%,0.06)`);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
+  // Lock icon
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = "72px serif";
+  ctx.fillStyle = "rgba(255,220,150,0.5)";
+  ctx.fillText("\u{1F512}", w / 2, h / 2 - 20);
+  // Obscured title
+  ctx.font = "500 18px Georgia,serif";
+  ctx.fillStyle = "rgba(255,255,255,0.25)";
+  ctx.shadowColor = "rgba(0,0,0,0.4)"; ctx.shadowBlur = 6;
+  const obscured = m.title.replace(/[a-zA-Z0-9]/g, "\u{2022}");
+  ctx.fillText(obscured, w / 2, h / 2 + 50);
+  // Shimmer particles
+  for (let i = 0; i < 12; i++) {
+    const px = w * 0.2 + Math.random() * w * 0.6;
+    const py = h * 0.15 + Math.random() * h * 0.7;
+    const r = 1 + Math.random() * 2;
+    ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(40,60%,75%,${0.1 + Math.random() * 0.2})`;
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+    ctx.fill();
+  }
+  return tex;
+}
+
+export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }) {
+  // If this is a locked time capsule, render the locked appearance
+  if (isMemLocked(m)) return paintLockedTex(m);
+
   const c = document.createElement("canvas"); c.width = 512; c.height = 384;
   const ctx = c.getContext("2d")!, w = 512, h = 384;
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;

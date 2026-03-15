@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 // ── Filter presets ──
 interface FilterPreset {
@@ -52,6 +53,7 @@ interface ImageEditorProps {
 }
 
 export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: ImageEditorProps) {
+  const isMobile = useIsMobile();
   const color = accent || T.color.terracotta;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -323,7 +325,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
 
   return (
     <div onClick={onCancel} style={{ position: "absolute", inset: 0, background: "rgba(30,26,20,.7)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55, animation: "fadeIn .2s ease" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: 20, border: `1px solid ${T.color.cream}`, boxShadow: "0 20px 80px rgba(44,44,42,.3)", maxWidth: 520, width: "94%", overflow: "hidden", animation: "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: "92vh", display: "flex", flexDirection: "column" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: isMobile ? 0 : 20, border: isMobile ? "none" : `1px solid ${T.color.cream}`, boxShadow: isMobile ? "none" : "0 20px 80px rgba(44,44,42,.3)", maxWidth: isMobile ? undefined : 520, width: isMobile ? "100%" : "94%", height: isMobile ? "100%" : undefined, overflow: "hidden", animation: isMobile ? "fadeIn .2s ease" : "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: isMobile ? "100%" : "92vh", display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
         <div style={{ padding: "16px 20px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${T.color.cream}` }}>

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createMemory, updateMemoryAction, deleteMemoryAction, fetchMemories } from "@/lib/auth/memory-actions";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem, SharingInfo } from "@/lib/constants/defaults";
-import { WING_ROOMS } from "@/lib/constants/wings";
+import { useRoomStore } from "@/lib/stores/roomStore";
 
 interface MemoryState {
   userMems: Record<string, Mem[]>;
@@ -25,6 +25,7 @@ interface MemoryState {
   addMemory: (roomId: string, mem: Mem) => Promise<void>;
   updateMemory: (roomId: string, memId: string, updates: Partial<Mem>) => Promise<void>;
   deleteMemory: (roomId: string, memId: string) => Promise<void>;
+  moveMemory: (fromRoomId: string, toRoomId: string, memId: string) => Promise<void>;
   getRoomSharing: (roomId: string, activeWing: string | null) => SharingInfo;
   updateRoomSharing: (roomId: string, activeWing: string | null, updates: Partial<SharingInfo>) => void;
 }
@@ -162,10 +163,33 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     await deleteMemoryAction(memId);
   },
 
+  moveMemory: async (fromRoomId, toRoomId, memId) => {
+    const state = get();
+    const fromList = state.userMems[fromRoomId] || ROOM_MEMS[fromRoomId] || [];
+    const mem = fromList.find((m) => m.id === memId);
+    if (!mem) return;
+
+    // Optimistic: remove from source, add to target (mark as stored in new room)
+    const movedMem = { ...mem, displayed: false };
+    set((s) => {
+      const from = (s.userMems[fromRoomId] || ROOM_MEMS[fromRoomId] || []).filter((m) => m.id !== memId);
+      const to = [...(s.userMems[toRoomId] || ROOM_MEMS[toRoomId] || []), movedMem];
+      return { userMems: { ...s.userMems, [fromRoomId]: from, [toRoomId]: to } };
+    });
+
+    if (!supabaseReady) return;
+    // In DB: delete from old room and create in new room
+    await deleteMemoryAction(memId);
+    await createMemory({
+      roomId: toRoomId, title: mem.title, description: mem.desc || "", type: mem.type,
+      hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl: mem.dataUrl, filePath: null,
+    });
+  },
+
   getRoomSharing: (roomId, activeWing) => {
     const { roomSharing } = get();
     if (roomSharing[roomId]) return roomSharing[roomId];
-    const rd = activeWing ? (WING_ROOMS[activeWing] || []).find((r) => r.id === roomId) : null;
+    const rd = activeWing ? useRoomStore.getState().getWingRooms(activeWing).find((r) => r.id === roomId) : null;
     return rd ? { shared: rd.shared, sharedWith: [...rd.sharedWith] } : { shared: false, sharedWith: [] };
   },
 

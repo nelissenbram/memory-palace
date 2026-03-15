@@ -1,9 +1,10 @@
 "use client";
 import { T } from "@/lib/theme";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 const TYPES: [string, string, string][] = [
-  ["photo","\u{1F5BC}\uFE0F","Photos"],["video","\u{1F3AC}","Videos"],["album","\u{1F4D6}","Albums"],
-  ["orb","\u{1F52E}","Orbs"],["case","\u{1F3FA}","Vitrines"],
+  ["photo","\u{1F5BC}\uFE0F","Photos"],["painting","\u{1F3A8}","Paintings"],["video","\u{1F3AC}","Videos"],["album","\u{1F4D6}","Albums"],
+  ["orb","\u{1F52E}","Orbs"],["case","\u{1F3FA}","Vitrines"],["audio","\u{1F3B5}","Audio"],["document","\u{1F4DC}","Docs"],
 ];
 
 interface SearchBarProps {
@@ -17,19 +18,20 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({query,filterType,totalCount,filteredCount,accent,onQueryChange,onFilterChange}: SearchBarProps){
+  const isMobile = useIsMobile();
   const color=accent||T.color.terracotta;
   const isFiltering=!!query||!!filterType;
 
   return(
-    <div style={{position:"absolute",top:62,left:22,zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",flexDirection:"column",gap:8,maxWidth:320}}>
+    <div style={{position:"absolute",top:isMobile?50:62,left:isMobile?8:22,right:isMobile?8:undefined,zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",flexDirection:"column",gap:8,maxWidth:isMobile?undefined:"min(320px, calc(100vw - 44px))"}}>
       {/* Search input */}
-      <div style={{background:`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,border:`1px solid ${T.color.cream}`,padding:"6px 10px",display:"flex",alignItems:"center",gap:8}}>
+      <div style={{background:`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,border:`1px solid ${T.color.cream}`,padding:isMobile?"8px 12px":"6px 10px",display:"flex",alignItems:"center",gap:8}}>
         <span style={{fontSize:13,opacity:.5}}>🔍</span>
         <input
           value={query}
           onChange={e=>onQueryChange(e.target.value)}
           placeholder="Search memories..."
-          style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:12,color:T.color.charcoal,outline:"none",padding:"4px 0"}}
+          style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:isMobile?16:12,color:T.color.charcoal,outline:"none",padding:isMobile?"6px 0":"4px 0"}}
         />
         {isFiltering&&<button onClick={()=>{onQueryChange("");onFilterChange(null);}} style={{background:"none",border:"none",color:T.color.muted,fontSize:12,cursor:"pointer",padding:"2px 4px"}}>✕</button>}
       </div>

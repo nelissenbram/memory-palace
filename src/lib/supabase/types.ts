@@ -161,6 +161,47 @@ export interface Database {
           updated_at?: string;
         };
       };
+      connected_accounts: {
+        Row: {
+          id: string;
+          user_id: string;
+          provider: string;
+          access_token: string;
+          refresh_token: string | null;
+          token_expires_at: string | null;
+          provider_user_id: string | null;
+          provider_email: string | null;
+          metadata: Json;
+          connected_at: string;
+          last_sync_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          provider: string;
+          access_token: string;
+          refresh_token?: string | null;
+          token_expires_at?: string | null;
+          provider_user_id?: string | null;
+          provider_email?: string | null;
+          metadata?: Json;
+          connected_at?: string;
+          last_sync_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          provider?: string;
+          access_token?: string;
+          refresh_token?: string | null;
+          token_expires_at?: string | null;
+          provider_user_id?: string | null;
+          provider_email?: string | null;
+          metadata?: Json;
+          connected_at?: string;
+          last_sync_at?: string | null;
+        };
+      };
       room_shares: {
         Row: {
           id: string;

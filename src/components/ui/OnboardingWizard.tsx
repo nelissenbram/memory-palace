@@ -1,8 +1,10 @@
 "use client";
 import { T } from "@/lib/theme";
+import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { WINGS } from "@/lib/constants/wings";
 import { HERO_IMG } from "@/lib/constants/defaults";
 import { useUserStore } from "@/lib/stores/userStore";
+import { TRACKS, GOAL_TRACK_PRIORITY } from "@/lib/constants/tracks";
 
 const GOALS=[
   {id:"preserve",icon:"\u{1F4DC}",label:"Preserve my memories",desc:"Keep a lifetime of moments safe and beautiful"},
@@ -16,6 +18,8 @@ interface OnboardingWizardProps {
 }
 
 export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
+  const isMobile = useIsMobile();
+  const isSmall = useIsSmall();
   const { onboardStep, userName, userGoal, firstWing,
     setOnboardStep, setUserName, setUserGoal, setFirstWing, setOnboarded } = useUserStore();
 
@@ -50,7 +54,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
           {userName?`${userName}, what`:"What"} brings you here?
         </h2>
         <p style={{fontFamily:T.font.body,fontSize:15,color:T.color.muted}}>Choose what matters most to you right now.</p>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,maxWidth:500,width:"100%"}}>
+        <div style={{display:"grid",gridTemplateColumns:isSmall?"1fr":"1fr 1fr",gap:isMobile?10:14,maxWidth:500,width:"100%"}}>
           {GOALS.map(g=>(
             <button key={g.id} onClick={()=>setUserGoal(g.id)}
               style={{padding:"18px 16px",borderRadius:14,border:`2px solid ${userGoal===g.id?T.color.terracotta:T.color.cream}`,
@@ -112,6 +116,21 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
             {GOALS.find(g=>g.id===userGoal)?.label}
           </span>}
         </div>
+        {userGoal&&(()=>{
+          const priority=GOAL_TRACK_PRIORITY[userGoal]||GOAL_TRACK_PRIORITY["preserve"];
+          const recTrack=TRACKS.find(t=>t.id===priority[0]);
+          if(!recTrack) return null;
+          return <div style={{marginTop:8,padding:"12px 18px",borderRadius:12,background:`${recTrack.color}08`,border:`1px solid ${recTrack.color}20`,maxWidth:440,width:"100%"}}>
+            <div style={{fontFamily:T.font.body,fontSize:10,fontWeight:600,color:recTrack.color,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>Recommended Track</div>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:20}}>{recTrack.icon}</span>
+              <div style={{textAlign:"left"}}>
+                <div style={{fontFamily:T.font.display,fontSize:15,fontWeight:600,color:T.color.charcoal}}>{recTrack.name}</div>
+                <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,lineHeight:1.4}}>{recTrack.description}</div>
+              </div>
+            </div>
+          </div>;
+        })()}
       </div>
     ),
   ];
@@ -120,7 +139,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
   const isLast=onboardStep===4;
 
   return(
-    <div style={{width:"100vw",height:"100vh",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone}55 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}}>
+    <div style={{width:"100vw",height:"100vh",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone}55 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",overflow:isMobile?"auto":"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0}@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}`}</style>
       <div style={{position:"absolute",top:-120,right:-80,width:380,height:380,borderRadius:"50%",background:`radial-gradient(circle,${T.color.terracotta}08,transparent 70%)`,pointerEvents:"none"}}/>
       <div style={{position:"absolute",bottom:-100,left:-60,width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle,${T.color.sage}08,transparent 70%)`,pointerEvents:"none"}}/>
@@ -139,7 +158,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
             border:`1.5px solid ${T.color.sandstone}`,background:"transparent",color:T.color.walnut,cursor:"pointer",transition:"all .2s"}}>
           ← Back</button>}
         <button onClick={()=>{if(isLast)onFinish();else setOnboardStep(s=>s+1);}} disabled={!canNext}
-          style={{fontFamily:T.font.body,fontSize:16,fontWeight:600,padding:"13px 36px",borderRadius:10,
+          style={{fontFamily:T.font.body,fontSize:isMobile?17:16,fontWeight:600,padding:isMobile?"15px 32px":"13px 36px",borderRadius:10,minHeight:48,
             border:"none",background:canNext?`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`:`${T.color.sandstone}50`,
             color:canNext?"#FFF":T.color.muted,cursor:canNext?"pointer":"default",transition:"all .3s",
             boxShadow:canNext?"0 4px 16px rgba(193,127,89,.3)":"none"}}>

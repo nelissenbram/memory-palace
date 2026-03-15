@@ -11,9 +11,45 @@ html,
 body {
   width: 100%;
   height: 100%;
-  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Prevent iOS input zoom — ensure inputs are at least 16px */
+@media screen and (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent pull-to-refresh in 3D views */
+.no-overscroll {
+  overscroll-behavior: none;
+}
+
+/* Smooth scrolling for scrollable pages */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Touch-action for interactive elements */
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Prevent text selection on UI controls during touch */
+@media (pointer: coarse) {
+  button, [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
 }
 
 /* Animations used throughout the palace */
@@ -52,7 +88,49 @@ body {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Remove Tailwind base if it causes issues with Three.js canvas */
 canvas {
   display: block;
+}
+
+/* Hide scrollbar on mobile action bars but allow scroll */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }

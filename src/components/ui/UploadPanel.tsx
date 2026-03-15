@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import { T } from "@/lib/theme";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { UPLOAD_DEMOS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
@@ -10,18 +11,28 @@ interface UploadPanelProps {
   room: WingRoom | null | undefined;
   onClose: () => void;
   onAdd: (mem: Mem) => void;
+  roomMemories?: Mem[];
+  onUpdateMemory?: (memId: string, updates: Partial<Mem>) => void;
+  suggestedType?: string;
 }
 
-export default function UploadPanel({wing,room,onClose,onAdd}: UploadPanelProps){
+export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onUpdateMemory,suggestedType}: UploadPanelProps){
+  const isMobile = useIsMobile();
   const [title,setTitle]=useState("");
   const [desc,setDesc]=useState("");
-  const [displayType,setDisplayType]=useState("photo");
+  const [displayType,setDisplayType]=useState(suggestedType||"photo");
   const [dragOver,setDragOver]=useState(false);
   const [preview,setPreview]=useState<string|null>(null);
   const [fileName,setFileName]=useState("");
   const [imageUrl,setImageUrl]=useState("");
   const [isVideo,setIsVideo]=useState(false);
   const [uploadMethod,setUploadMethod]=useState("url");
+  const [timeCapsule,setTimeCapsule]=useState(false);
+  const [revealDate,setRevealDate]=useState("");
+  const [locationName,setLocationName]=useState("");
+  const [lat,setLat]=useState<number|null>(null);
+  const [lng,setLng]=useState<number|null>(null);
+  const [geoLoading,setGeoLoading]=useState(false);
   const fileRef=useRef<HTMLInputElement|null>(null);
   const accent=wing?.accent||T.color.terracotta;
 
@@ -45,10 +56,25 @@ export default function UploadPanel({wing,room,onClose,onAdd}: UploadPanelProps)
     if(isVid)setDisplayType("video");
   };
   const handleDrop=(e: React.DragEvent)=>{e.preventDefault();setDragOver(false);if(e.dataTransfer.files?.[0])processFile(e.dataTransfer.files[0]);};
+  const useCurrentLocation=()=>{
+    if(!navigator.geolocation){return;}
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      pos=>{setLat(pos.coords.latitude);setLng(pos.coords.longitude);setGeoLoading(false);if(!locationName)setLocationName("Current location");},
+      ()=>{setGeoLoading(false);},
+      {enableHighAccuracy:true,timeout:10000}
+    );
+  };
+  const todayStr=new Date().toISOString().split("T")[0];
+  const capsuleValid=!timeCapsule||( revealDate&&revealDate>todayStr);
   const submit=()=>{
-    if(!title.trim())return;
+    if(!title.trim()||!capsuleValid)return;
     const hue=Math.floor(Math.random()*360);
-    onAdd({id:Date.now().toString(),title:title.trim(),hue,s:45+Math.floor(Math.random()*15),l:55+Math.floor(Math.random()*15),type:displayType,desc,dataUrl:preview||null,videoBlob:isVideo});
+    const mem: Mem={id:Date.now().toString(),title:title.trim(),hue,s:45+Math.floor(Math.random()*15),l:55+Math.floor(Math.random()*15),type:displayType,desc,dataUrl:preview||null,videoBlob:isVideo,createdAt:new Date().toISOString()};
+    if(timeCapsule&&revealDate) mem.revealDate=revealDate;
+    if(lat!==null&&lng!==null){mem.lat=lat;mem.lng=lng;}
+    if(locationName.trim()) mem.locationName=locationName.trim();
+    onAdd(mem);
     onClose();
   };
 
@@ -56,20 +82,20 @@ export default function UploadPanel({wing,room,onClose,onAdd}: UploadPanelProps)
 
   return(
     <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
-      <div onClick={e=>e.stopPropagation()} style={{position:"absolute",right:0,top:0,bottom:0,width:380,background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:`1px solid ${T.color.cream}`,padding:"28px 24px",overflowY:"auto",animation:"slideInRight .3s cubic-bezier(.23,1,.32,1)"}}>
+      <div onClick={e=>e.stopPropagation()} style={{position:"absolute",right:0,top:0,bottom:0,width:isMobile?"100%":"min(380px, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":`1px solid ${T.color.cream}`,padding:isMobile?"20px 16px":"28px 24px",overflowY:"auto",animation:"slideInRight .3s cubic-bezier(.23,1,.32,1)"}}>
         <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div>
             <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>Add memory</h3>
             <p style={{fontFamily:T.font.body,fontSize:12,color:accent,margin:"4px 0 0"}}>{room?.icon} {room?.name}</p>
           </div>
-          <button onClick={onClose} style={{width:32,height:32,borderRadius:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <button onClick={onClose} style={{width:isMobile?40:32,height:isMobile?40:32,borderRadius:isMobile?20:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?16:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:44,minHeight:44}}>✕</button>
         </div>
 
         {/* Method tabs */}
         <div style={{display:"flex",gap:4,marginBottom:16,background:T.color.warmStone,borderRadius:10,padding:3}}>
-          {[["url","Paste URL"],["file","Upload file"]].map(([val,label])=>(
-            <button key={val} onClick={()=>setUploadMethod(val)} style={{flex:1,padding:"8px 12px",borderRadius:8,border:"none",background:uploadMethod===val?T.color.white:"transparent",color:uploadMethod===val?T.color.charcoal:T.color.muted,fontFamily:T.font.body,fontSize:12,fontWeight:uploadMethod===val?600:400,cursor:"pointer",transition:"all .2s"}}>{label}</button>
+          {[["url","Paste URL"],["file","Upload file"],...(roomMemories.length>0?[["room","From room"]]:[] as string[][])].map(([val,label])=>(
+            <button key={val} onClick={()=>setUploadMethod(val)} style={{flex:1,padding:isMobile?"12px 12px":"8px 12px",borderRadius:8,border:"none",background:uploadMethod===val?T.color.white:"transparent",color:uploadMethod===val?T.color.charcoal:T.color.muted,fontFamily:T.font.body,fontSize:isMobile?14:12,fontWeight:uploadMethod===val?600:400,cursor:"pointer",transition:"all .2s"}}>{label}</button>
           ))}
         </div>
 
@@ -102,6 +128,60 @@ export default function UploadPanel({wing,room,onClose,onAdd}: UploadPanelProps)
           {fileName&&<p style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,marginBottom:8}}>File: {fileName}</p>}
         </>}
 
+        {/* Room memory picker */}
+        {uploadMethod==="room"&&<>
+          <p style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,marginBottom:12}}>
+            Choose a memory from this room to display as <strong style={{color:accent}}>{displayType}</strong>:
+          </p>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16,maxHeight:240,overflowY:"auto"}}>
+            {roomMemories.map(m=>{
+              const typeIcons: Record<string,string>={"photo":"\u{1F5BC}\uFE0F","painting":"\u{1F3A8}","video":"\u{1F3AC}","album":"\u{1F4D6}","orb":"\u{1F52E}","case":"\u{1F3FA}","audio":"\u{1F3B5}","document":"\u{1F4DC}","voice":"\u{1F399}\uFE0F"};
+              return(
+                <button key={m.id} onClick={()=>{
+                  if(onUpdateMemory){
+                    onUpdateMemory(m.id,{type:displayType,displayed:true});
+                    onClose();
+                  }
+                }} style={{
+                  display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,
+                  border:`1px solid ${T.color.cream}`,background:T.color.white,cursor:"pointer",
+                  textAlign:"left",transition:"all .15s",
+                }} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=accent;(e.currentTarget as HTMLElement).style.background=`${accent}08`;}}
+                   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor=T.color.cream;(e.currentTarget as HTMLElement).style.background=T.color.white;}}>
+                  {m.dataUrl?
+                    <div style={{width:44,height:44,borderRadius:8,overflow:"hidden",flexShrink:0,border:`1px solid ${T.color.cream}`}}>
+                      <img src={m.dataUrl} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
+                    </div>
+                  :
+                    <div style={{width:44,height:44,borderRadius:8,background:`hsl(${m.hue},${m.s}%,${m.l}%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>
+                      {typeIcons[m.type]||"\u{2728}"}
+                    </div>
+                  }
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:T.color.charcoal,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</div>
+                    <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>
+                      Currently: {m.type} {"\u2192"} will display as {displayType}
+                    </div>
+                  </div>
+                  <div style={{fontFamily:T.font.body,fontSize:11,color:accent,fontWeight:600,flexShrink:0}}>Assign</div>
+                </button>
+              );
+            })}
+            {roomMemories.length===0&&<p style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,textAlign:"center",padding:20}}>No memories in this room yet</p>}
+          </div>
+
+          {/* Display type selector for room picker */}
+          <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:8}}>Display as</label>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:16}}>
+            {[["photo","\u{1F5BC}\uFE0F","Frame"],["painting","\u{1F3A8}","Painting"],["video","\u{1F3AC}","Screen"],["album","\u{1F4D6}","Album"],["orb","\u{1F52E}","Orb"],["case","\u{1F3FA}","Vitrine"],["audio","\u{1F3B5}","Audio"],["document","\u{1F4DC}","Document"]].map(([val,icon,label])=>(
+              <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"10px 8px",borderRadius:10,border:displayType===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
+                <div style={{fontSize:20}}>{icon}</div>
+                <div style={{fontFamily:T.font.body,fontSize:10,color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:400,marginTop:2}}>{label}</div>
+              </button>
+            ))}
+          </div>
+        </>}
+
         {/* Preview */}
         {preview&&<div style={{borderRadius:12,overflow:"hidden",marginBottom:16,border:`1px solid ${T.color.cream}`}}>
           {isVideo?<video src={preview} style={{width:"100%",maxHeight:160,objectFit:"cover",display:"block"}} autoPlay muted loop playsInline/>
@@ -116,17 +196,46 @@ export default function UploadPanel({wing,room,onClose,onAdd}: UploadPanelProps)
         <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="What makes this moment special..." rows={2} style={{width:"100%",padding:"12px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:16,resize:"none"}}/>
         {/* Display type */}
         <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:8}}>Display as</label>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:24}}>
-          {[["photo","\u{1F5BC}\uFE0F","Frame"],["video","\u{1F3AC}","Screen"],["album","\u{1F4D6}","Album"],["orb","\u{1F52E}","Orb"],["case","\u{1F3FA}","Vitrine"]].map(([val,icon,label])=>(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:24}}>
+          {[["photo","\u{1F5BC}\uFE0F","Frame"],["painting","\u{1F3A8}","Painting"],["video","\u{1F3AC}","Screen"],["album","\u{1F4D6}","Album"],["orb","\u{1F52E}","Orb"],["case","\u{1F3FA}","Vitrine"],["audio","\u{1F3B5}","Audio"],["document","\u{1F4DC}","Document"]].map(([val,icon,label])=>(
             <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"10px 8px",borderRadius:10,border:displayType===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
               <div style={{fontSize:20}}>{icon}</div>
               <div style={{fontFamily:T.font.body,fontSize:10,color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:400,marginTop:2}}>{label}</div>
             </button>
           ))}
         </div>
+        {/* Location */}
+        <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Location (optional)</label>
+        <div style={{display:"flex",gap:6,marginBottom:6}}>
+          <input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder="e.g. Rome, Italy" style={{flex:1,padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+          <button onClick={useCurrentLocation} disabled={geoLoading} style={{padding:"10px 12px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:11,color:T.color.walnut,cursor:geoLoading?"wait":"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
+            {geoLoading?<span style={{display:"inline-block",width:12,height:12,border:"2px solid transparent",borderTopColor:T.color.walnut,borderRadius:"50%",animation:"spin .6s linear infinite"}}/>:"\uD83D\uDCCD"} GPS
+          </button>
+        </div>
+        {lat!==null&&lng!==null&&<p style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted,margin:"0 0 12px",paddingLeft:2}}>Coordinates: {lat.toFixed(4)}, {lng.toFixed(4)}</p>}
+        {(lat===null||lng===null)&&<div style={{height:12,marginBottom:4}}/>}
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        {/* Time Capsule */}
+        <div style={{marginBottom:20,padding:16,borderRadius:12,border:`1px solid ${timeCapsule?`${accent}60`:T.color.cream}`,background:timeCapsule?`${accent}08`:T.color.warmStone,transition:"all .2s"}}>
+          <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",marginBottom:timeCapsule?14:0}}>
+            <div onClick={()=>setTimeCapsule(!timeCapsule)} style={{width:38,height:22,borderRadius:11,background:timeCapsule?accent:`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
+              <div style={{width:16,height:16,borderRadius:8,background:"#FFF",position:"absolute",top:3,left:timeCapsule?19:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+            </div>
+            <div>
+              <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:T.color.charcoal}}>Make this a Time Capsule</div>
+              <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>Lock until a future date</div>
+            </div>
+          </label>
+          {timeCapsule&&<div>
+            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Reveal date</label>
+            <input type="date" value={revealDate} min={todayStr} onChange={e=>setRevealDate(e.target.value)}
+              style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+            {revealDate&&revealDate<=todayStr&&<p style={{fontFamily:T.font.body,fontSize:11,color:"#C05050",margin:"6px 0 0"}}>Reveal date must be in the future</p>}
+          </div>}
+        </div>
         {/* Submit */}
-        <button onClick={submit} disabled={!title.trim()} style={{width:"100%",padding:14,borderRadius:12,border:"none",background:title.trim()?`linear-gradient(135deg,${accent},${T.color.walnut})`:`${T.color.sandstone}40`,color:title.trim()?"#FFF":T.color.muted,fontFamily:T.font.body,fontSize:14,fontWeight:600,cursor:title.trim()?"pointer":"default",transition:"all .2s"}}>
-          Add to {room?.name||"room"} ✨
+        <button onClick={submit} disabled={!title.trim()||!capsuleValid} style={{width:"100%",padding:isMobile?16:14,borderRadius:12,border:"none",background:title.trim()&&capsuleValid?`linear-gradient(135deg,${accent},${T.color.walnut})`:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid?"#FFF":T.color.muted,fontFamily:T.font.body,fontSize:isMobile?16:14,fontWeight:600,cursor:title.trim()&&capsuleValid?"pointer":"default",transition:"all .2s",minHeight:48}}>
+          {timeCapsule&&revealDate?`Seal capsule until ${new Date(revealDate+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`:`Add to ${room?.name||"room"}`} {timeCapsule?"🔒":"✨"}
         </button>
       </div>
     </div>

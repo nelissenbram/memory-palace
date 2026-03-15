@@ -1,14 +1,15 @@
 "use client";
 import { useState, useMemo } from "react";
 import { T } from "@/lib/theme";
-import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useRoomStore } from "@/lib/stores/roomStore";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 
 const TYPE_ICONS: Record<string,string> = {
-  photo:"\u{1F5BC}\uFE0F",video:"\u{1F3AC}",album:"\u{1F4D6}",orb:"\u{1F52E}","case":"\u{1F3FA}",
+  photo:"\u{1F5BC}\uFE0F",video:"\u{1F3AC}",album:"\u{1F4D6}",orb:"\u{1F52E}","case":"\u{1F3FA}",voice:"\u{1F399}\uFE0F",document:"\u{1F4DC}",
 };
 
 interface DirectoryPanelProps {
@@ -16,17 +17,20 @@ interface DirectoryPanelProps {
 }
 
 export default function DirectoryPanel({onClose}: DirectoryPanelProps){
+  const isMobile = useIsMobile();
   const [query,setQuery]=useState("");
   const [expanded,setExpanded]=useState<Record<string,boolean>>({});
   const { userMems, setSelMem } = useMemoryStore();
   const { enterWing, enterRoom, activeWing, activeRoomId } = usePalaceStore();
+  const { getWingRooms, getWings } = useRoomStore();
+  const WINGS = getWings();
 
   const q=query.toLowerCase();
 
   // Build full tree with search filtering
   const tree=useMemo(()=>{
     return WINGS.map(wing=>{
-      const rooms=(WING_ROOMS[wing.id]||[]).map(room=>{
+      const rooms=getWingRooms(wing.id).map(room=>{
         const mems: Mem[]=userMems[room.id]||ROOM_MEMS[room.id]||[];
         const filteredMems=q?mems.filter(m=>m.title.toLowerCase().includes(q)||(m.desc||"").toLowerCase().includes(q)):mems;
         return { ...room, mems, filteredMems, matchesSearch: !q || filteredMems.length>0 || room.name.toLowerCase().includes(q) };
@@ -34,7 +38,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
       const matchingRooms=q?rooms.filter(r=>r.matchesSearch):rooms;
       return { ...wing, rooms, matchingRooms, totalMems: rooms.reduce((n,r)=>n+r.mems.length,0) };
     });
-  },[userMems,q]);
+  },[userMems,q,getWingRooms]);
 
   const toggle=(id: string)=>setExpanded(prev=>({...prev,[id]:!prev[id]}));
 
@@ -57,7 +61,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
 
   return(
     <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
-      <div onClick={e=>e.stopPropagation()} style={{position:"absolute",left:0,top:0,bottom:0,width:380,background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderRight:`1px solid ${T.color.cream}`,padding:0,overflowY:"auto",animation:"slideInLeft .3s cubic-bezier(.23,1,.32,1)"}}>
+      <div onClick={e=>e.stopPropagation()} style={{position:"absolute",left:0,top:0,bottom:0,width:isMobile?"100%":"min(380px, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderRight:isMobile?"none":`1px solid ${T.color.cream}`,padding:0,overflowY:"auto",animation:"slideInLeft .3s cubic-bezier(.23,1,.32,1)"}}>
         <style>{`@keyframes slideInLeft{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* Header */}

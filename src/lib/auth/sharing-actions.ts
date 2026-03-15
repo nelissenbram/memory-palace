@@ -61,7 +61,7 @@ export async function fetchRoomShares(localRoomId: string) {
 
   const { data: shares } = await supabase
     .from("room_shares")
-    .select("id, shared_with_email, permission, accepted, created_at")
+    .select("id, shared_with_email, permission, accepted, status, email_sent, invite_message, created_at")
     .eq("room_id", room.id)
     .eq("owner_id", user.id)
     .order("created_at", { ascending: true });
@@ -72,7 +72,7 @@ export async function fetchRoomShares(localRoomId: string) {
   };
 }
 
-export async function shareRoomWithEmail(localRoomId: string, email: string) {
+export async function shareRoomWithEmail(localRoomId: string, email: string, permission: string = "view", inviteMessage?: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { error: "Supabase not configured" };
   }
@@ -100,6 +100,8 @@ export async function shareRoomWithEmail(localRoomId: string, email: string) {
     .eq("email", email.toLowerCase())
     .single();
 
+  const validPermission = ["view", "contribute", "admin"].includes(permission) ? permission : "view";
+
   const { data: share, error } = await supabase
     .from("room_shares")
     .insert({
@@ -107,7 +109,9 @@ export async function shareRoomWithEmail(localRoomId: string, email: string) {
       owner_id: user.id,
       shared_with_email: email.toLowerCase(),
       shared_with_id: inviteeProfile?.id || null,
-      permission: "view",
+      permission: validPermission,
+      status: "pending",
+      invite_message: inviteMessage || null,
     })
     .select()
     .single();

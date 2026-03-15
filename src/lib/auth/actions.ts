@@ -8,13 +8,19 @@ export async function signUp(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const displayName = (formData.get("displayName") as string) || "";
+  const redirectTo = formData.get("redirect") as string | null;
+
+  const baseCallbackUrl = `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`;
+  const callbackUrl = redirectTo && redirectTo.startsWith("/invite/")
+    ? `${baseCallbackUrl}?redirect=${encodeURIComponent(redirectTo)}`
+    : baseCallbackUrl;
 
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { display_name: displayName },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/auth/callback`,
+      emailRedirectTo: callbackUrl,
     },
   });
 
@@ -29,11 +35,17 @@ export async function signIn(formData: FormData) {
   const supabase = await createClient();
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const redirectTo = formData.get("redirect") as string | null;
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
     return { error: error.message };
+  }
+
+  // If there's a pending invite redirect, go there instead of /palace
+  if (redirectTo && redirectTo.startsWith("/invite/")) {
+    redirect(redirectTo);
   }
 
   redirect("/palace");

@@ -1,23 +1,33 @@
 "use client";
+import { useState } from "react";
 import { T } from "@/lib/theme";
-import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
+import { useRoomStore } from "@/lib/stores/roomStore";
 
 export default function Minimap(){
+  const isMobile = useIsMobile();
   const { view, activeWing, activeRoomId, exitToPalace, enterRoom, switchWing } = usePalaceStore();
+  const { getWingRooms, getWings } = useRoomStore();
+  const WINGS = getWings();
+  const [collapsed, setCollapsed] = useState(false);
 
   if(view==="exterior") return null;
+  if(isMobile) return null; // Hidden on mobile — navigation via bottom bar + menu
 
   return(
-    <div style={{position:"absolute",top:62,right:18,zIndex:35,animation:"fadeIn .5s ease .4s both"}}>
-      <div style={{background:`${T.color.white}ee`,backdropFilter:"blur(12px)",borderRadius:14,border:`1px solid ${T.color.cream}`,padding:12,boxShadow:"0 4px 20px rgba(44,44,42,.08)"}}>
-        <div style={{fontFamily:T.font.body,fontSize:9,color:T.color.muted,textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}}>Palace map</div>
-        <div style={{display:"flex",flexDirection:"column",gap:3}}>
+    <div style={{position:"absolute",top:view==="room"?110:62,right:18,zIndex:25,animation:"fadeIn .5s ease .4s both",maxWidth:"min(220px, 40vw)"}}>
+      <div style={{background:`${T.color.white}ee`,backdropFilter:"blur(12px)",borderRadius:14,border:`1px solid ${T.color.cream}`,padding:collapsed?8:12,boxShadow:"0 4px 20px rgba(44,44,42,.08)"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:collapsed?0:8,cursor:"pointer"}} onClick={()=>setCollapsed(c=>!c)}>
+          <div style={{fontFamily:T.font.body,fontSize:9,color:T.color.muted,textTransform:"uppercase",letterSpacing:"1px"}}>{collapsed?"\uD83D\uDDFA\uFE0F":"Palace map"}</div>
+          <span style={{fontSize:9,color:T.color.muted}}>{collapsed?"\u25BC":"\u25B2"}</span>
+        </div>
+        {!collapsed&&<div style={{display:"flex",flexDirection:"column",gap:3}}>
           <button onClick={exitToPalace} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 8px",borderRadius:8,border:"none",background:view==="exterior"?`${T.color.sandstone}30`:"transparent",cursor:"pointer",fontFamily:T.font.body,fontSize:10,color:T.color.muted,textAlign:"left"}}>
             <div style={{width:6,height:6,borderRadius:3,background:T.color.sandstone,opacity:view==="exterior"?1:.3}}/>Palace overview
           </button>
           {WINGS.map(w=>{
-            const isActive=activeWing===w.id;const wRooms=WING_ROOMS[w.id]||[];
+            const isActive=activeWing===w.id;const wRooms=getWingRooms(w.id);
             return <div key={w.id}>
               <button onClick={()=>switchWing(w.id)}
                 style={{display:"flex",alignItems:"center",gap:6,padding:"4px 8px",borderRadius:8,border:"none",background:isActive&&view==="corridor"?`${w.accent}18`:"transparent",cursor:"pointer",fontFamily:T.font.body,fontSize:10,color:isActive?w.accent:T.color.muted,fontWeight:isActive?600:400,textAlign:"left",width:"100%"}}>
@@ -34,7 +44,7 @@ export default function Minimap(){
               })}
             </div>;
           })}
-        </div>
+        </div>}
       </div>
     </div>
   );

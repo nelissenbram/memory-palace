@@ -1,15 +1,16 @@
 "use client";
 import { useRef, useEffect } from "react";
 import * as THREE from "three";
-import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
+import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
+import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
-export default function CorridorScene({wingId,onDoorHover,onDoorClick,hoveredDoor}: {wingId: any,onDoorHover: any,onDoorClick: any,hoveredDoor: any}){
+export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing}){
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
-  const wing=WINGS.find(w=>w.id===wingId)!;
-  const rooms=WING_ROOMS[wingId]||[];
+  const wing=wingDataProp||DEFAULT_WINGS.find(w=>w.id===wingId)!;
+  const rooms=roomsProp||[];
   const doorMeshes=useRef<any[]>([]);
 
   useEffect(()=>{
@@ -281,8 +282,76 @@ export default function CorridorScene({wingId,onDoorHover,onDoorClick,hoveredDoo
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);
     window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);window.addEventListener("resize",onRs);
+
+    // ── TOUCH SUPPORT ──
+    let touchTap=true,touchLookId: number|null=null,touchMoveId: number|null=null;
+    const touchMoveDir={x:0,z:0};
+    const onTS=(e: TouchEvent)=>{
+      for(let i=0;i<e.changedTouches.length;i++){
+        const t=e.changedTouches[i];const rect=el.getBoundingClientRect();
+        const rx=(t.clientX-rect.left)/rect.width,ry=(t.clientY-rect.top)/rect.height;
+        if(rx<.25&&ry>.75&&touchMoveId===null){
+          // Bottom-left 25% = virtual joystick
+          touchMoveId=t.identifier;touchMoveDir.x=0;touchMoveDir.z=0;
+          prev.x=t.clientX;prev.y=t.clientY;
+        }else if(touchLookId===null){
+          touchLookId=t.identifier;drag.v=false;prev.x=t.clientX;prev.y=t.clientY;touchTap=true;
+        }
+      }
+    };
+    const onTM=(e: TouchEvent)=>{
+      e.preventDefault();
+      for(let i=0;i<e.changedTouches.length;i++){
+        const t=e.changedTouches[i];
+        if(t.identifier===touchMoveId){
+          const rect=el.getBoundingClientRect();
+          const dx=t.clientX-prev.x,dy=t.clientY-prev.y;
+          const maxR=rect.width*.12;
+          const nx=Math.max(-1,Math.min(1,dx/maxR)),nz=Math.max(-1,Math.min(1,dy/maxR));
+          touchMoveDir.x=nx;touchMoveDir.z=nz;
+        }else if(t.identifier===touchLookId){
+          const dx=t.clientX-prev.x,dy=t.clientY-prev.y;
+          if(Math.abs(dx)>2||Math.abs(dy)>2){drag.v=true;touchTap=false;}
+          lookT.yaw-=dx*.003;lookT.pitch=Math.max(-.4,Math.min(.4,lookT.pitch+dy*.003));
+          prev.x=t.clientX;prev.y=t.clientY;
+        }
+      }
+    };
+    const onTE=(e: TouchEvent)=>{
+      for(let i=0;i<e.changedTouches.length;i++){
+        const t=e.changedTouches[i];
+        if(t.identifier===touchMoveId){touchMoveId=null;touchMoveDir.x=0;touchMoveDir.z=0;}
+        if(t.identifier===touchLookId){
+          if(touchTap){
+            const rect=el.getBoundingClientRect();const rc=new THREE.Raycaster();
+            rc.setFromCamera(new THREE.Vector2(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1),camera);
+            let found: string|null=null;
+            dMeshes.forEach(d=>{const hits=rc.intersectObject(d.mesh);if(hits.length>0&&hits[0].distance<5)found=d.room.id;});
+            if(found)onDoorClick(found);
+            else{const ph=rc.intersectObject(portalHit);if(ph.length>0&&ph[0].distance<5)onDoorClick("__portal__");}
+          }
+          touchLookId=null;
+        }
+      }
+    };
+    // Patch keys to include virtual joystick
+    const touchKeys=()=>{
+      if(touchMoveId!==null){
+        if(touchMoveDir.z<-.2)keys.w=true;else keys.w=false;
+        if(touchMoveDir.z>.2)keys.s=true;else keys.s=false;
+        if(touchMoveDir.x<-.2)keys.a=true;else keys.a=false;
+        if(touchMoveDir.x>.2)keys.d=true;else keys.d=false;
+      }
+    };
+    const touchTick=setInterval(touchKeys,16);
+
+    el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});
+
     return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);
-      window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);window.removeEventListener("resize",onRs);if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
+      window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);window.removeEventListener("resize",onRs);
+      el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
+      clearInterval(touchTick);
+      if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[wingId]);
   return <div ref={mountRef} style={{width:"100%",height:"100%"}}/>;
 }

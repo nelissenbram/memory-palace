@@ -54,5 +54,5 @@ export function useRoomMemories() {
   const currentSharing = (roomId: string) => getRoomSharing(roomId, activeWing);
   const updateSharing = (roomId: string, updates: any) => updateRoomSharing(roomId, activeWing, updates);
 
-  return { roomMems, allRoomMems, roomMemsKey, handleAddMemory, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing };
+  return { roomMems, allRoomMems, roomMemsKey, handleAddMemory, addMemoryToRoom: addMemory, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing };
 }

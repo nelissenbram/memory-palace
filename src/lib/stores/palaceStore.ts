@@ -9,6 +9,7 @@ interface PalaceState {
   opacity: number;
   portalAnim: boolean;
   _timer: ReturnType<typeof setTimeout> | null;
+  roomLayouts: Record<string, string>; // roomId → layout override id
 
   setHovWing: (v: string | null) => void;
   setHovDoor: (v: string | null) => void;
@@ -18,6 +19,7 @@ interface PalaceState {
   enterRoom: (roomId: string) => void;
   exitToCorridor: () => void;
   switchWing: (id: string) => void;
+  setRoomLayout: (roomId: string, layoutId: string) => void;
 }
 
 export const usePalaceStore = create<PalaceState>((set, get) => ({
@@ -29,6 +31,7 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
   opacity: 1,
   portalAnim: false,
   _timer: null,
+  roomLayouts: {},
 
   setHovWing: (v) => set({ hovWing: v }),
   setHovDoor: (v) => set({ hovDoor: v }),
@@ -63,6 +66,10 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
   exitToCorridor: () => {
     get().fade(() => set({ view: "corridor", activeRoomId: null, opacity: 1 }));
   },
+
+  setRoomLayout: (roomId, layoutId) => set((s) => ({
+    roomLayouts: { ...s.roomLayouts, [roomId]: layoutId },
+  })),
 
   switchWing: (id) => {
     const { activeWing, view } = get();

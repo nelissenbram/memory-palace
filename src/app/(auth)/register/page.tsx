@@ -1,14 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signUp } from "@/lib/auth/actions";
 import { T } from "@/lib/theme";
 
 export default function RegisterPage() {
+  return <Suspense><RegisterContent /></Suspense>;
+}
+
+function RegisterContent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -30,6 +37,7 @@ export default function RegisterPage() {
       return;
     }
 
+    if (redirect) formData.set("redirect", redirect);
     const result = await signUp(formData);
     if (result?.error) {
       setError(result.error);
@@ -57,6 +65,11 @@ export default function RegisterPage() {
         <p style={{ fontSize: 14, color: T.color.muted, lineHeight: 1.6 }}>
           We&apos;ve sent a confirmation link to your email address. Click the
           link to activate your Memory Palace.
+          {redirect && (
+            <span style={{ display: "block", marginTop: 8, color: T.color.terracotta }}>
+              After confirming, you&apos;ll be taken to the shared room.
+            </span>
+          )}
         </p>
         <Link
           href="/login"
