@@ -733,7 +733,7 @@ export default function LandingPage() {
                 🔒 EU-hosted infrastructure
               </p>
               <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.5 }}>
-                🛡️ End-to-end encryption
+                🛡️ Bank-grade encryption
               </p>
               <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.5 }}>
                 📋 GDPR compliant
@@ -758,6 +758,12 @@ export default function LandingPage() {
             &copy; {new Date().getFullYear()} The Memory Palace. Preserve your memories for eternity.
           </p>
           <div style={{ display: "flex", gap: 20 }}>
+            <Link href="/privacy" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
+              Privacy Policy
+            </Link>
+            <Link href="/terms" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
+              Terms of Service
+            </Link>
             <Link href="/login" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
               Sign In
             </Link>
