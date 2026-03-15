@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import type { Mem } from "@/lib/constants/defaults";
@@ -29,7 +29,35 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
   const [title,setTitle]=useState(mem.title);
   const [desc,setDesc]=useState(mem.desc||"");
   const [type,setType]=useState(mem.type);
+  const [historicalContext,setHistoricalContext]=useState(mem.historicalContext||"");
+  const [contextLoading,setContextLoading]=useState(false);
+  const [contextError,setContextError]=useState("");
   const accent=wing?.accent||T.color.terracotta;
+
+  const fetchHistoricalContext=useCallback(async()=>{
+    setContextLoading(true);
+    setContextError("");
+    try{
+      const res=await fetch("/api/ai-context",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          title:mem.title,
+          description:mem.desc,
+          date:mem.createdAt,
+          location:mem.locationName,
+        }),
+      });
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to generate context");
+      setHistoricalContext(data.context);
+      onUpdate(mem.id,{historicalContext:data.context});
+    }catch(err:any){
+      setContextError(err.message||"Could not generate historical context");
+    }finally{
+      setContextLoading(false);
+    }
+  },[mem.id,mem.title,mem.desc,mem.createdAt,mem.locationName,onUpdate]);
 
   // Time Capsule logic
   const todayStr=new Date().toISOString().split("T")[0];
@@ -120,9 +148,30 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
               <span>{DISPLAY_TYPES.find(d=>d[0]===mem.type)?.[1]}</span>
               <span style={{fontStyle:"italic"}}>Displayed as {DISPLAY_TYPES.find(d=>d[0]===mem.type)?.[2]||mem.type}</span>
             </p>
-            <p style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,fontStyle:"italic",marginBottom:20}}>
+            <p style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,fontStyle:"italic",marginBottom:16}}>
               This memory lives in: {room?room.name:"Unknown room"}
             </p>
+            {/* Historical Context section */}
+            {!isLocked&&<div style={{marginBottom:16}}>
+              {historicalContext?<div style={{background:"linear-gradient(135deg,rgba(74,103,65,.06),rgba(193,127,89,.06))",border:`1px solid ${T.color.cream}`,borderRadius:12,padding:16}}>
+                <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span>Historical Context</span>
+                  <button onClick={()=>{setHistoricalContext("");onUpdate(mem.id,{historicalContext:""});}} style={{background:"none",border:"none",cursor:"pointer",fontFamily:T.font.body,fontSize:11,color:T.color.muted,padding:0,textDecoration:"underline"}}>Remove</button>
+                </div>
+                <p style={{fontFamily:T.font.body,fontSize:13,color:T.color.walnut,lineHeight:1.7,margin:0,whiteSpace:"pre-wrap"}}>{historicalContext}</p>
+              </div>
+              :contextLoading?<div style={{background:`${T.color.cream}40`,border:`1px solid ${T.color.cream}`,borderRadius:12,padding:16,textAlign:"center"}}>
+                <div style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                  <span style={{display:"inline-block",width:14,height:14,border:`2px solid ${T.color.sandstone}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+                  Discovering what the world was like...
+                </div>
+                <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+              </div>
+              :contextError?<div style={{fontFamily:T.font.body,fontSize:12,color:"#C05050",marginBottom:4}}>{contextError}</div>
+              :<button onClick={fetchHistoricalContext} style={{width:"100%",padding:"10px 16px",fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px dashed ${T.color.sandstone}`,borderRadius:10,cursor:"pointer",color:T.color.walnut,display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .15s"}}>
+                <span style={{fontSize:16}}>&#x1F30D;</span> Add Historical Context
+              </button>}
+            </div>}
             <div style={{display:"flex",gap:isMobile?8:10,flexWrap:isMobile?"wrap":"nowrap"}}>
               <button onClick={()=>{onDelete(mem.id);onClose();}} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:"1px solid #D0606080",borderRadius:10,cursor:"pointer",color:"#C05050",minHeight:44}}>Delete</button>
               <button onClick={onClose} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.cream}`,borderRadius:10,cursor:"pointer",color:T.color.muted,minHeight:44}}>Close</button>
