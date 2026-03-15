@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -106,6 +107,7 @@ export default function RootLayout({
       </head>
       <body style={{ margin: 0, padding: 0 }}>
         <ServiceWorkerRegistration />
+        <PWAInstallBanner />
         {children}
       </body>
     </html>
