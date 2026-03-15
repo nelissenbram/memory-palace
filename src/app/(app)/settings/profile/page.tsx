@@ -530,6 +530,9 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* ── Security: Two-Factor Authentication ── */}
+      <MFASetup />
+
       {/* ── Danger Zone ── */}
       <div style={{
         background: T.color.white,
