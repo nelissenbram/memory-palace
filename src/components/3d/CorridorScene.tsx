@@ -97,84 +97,164 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       portalFog:new THREE.MeshBasicMaterial({color:"#FFF8E0",transparent:true,opacity:.08,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}),
     };
 
-    // ═══ TUSCAN LANDSCAPE CANVAS TEXTURE (shared by all windows) ═══
-    const tuscanCanvas=document.createElement("canvas");tuscanCanvas.width=800;tuscanCanvas.height=600;
+    // ═══ TUSCAN LANDSCAPE CANVAS TEXTURE (shared by all windows) — photorealistic ═══
+    const tuscanCanvas=document.createElement("canvas");tuscanCanvas.width=1024;tuscanCanvas.height=768;
     const tc=tuscanCanvas.getContext("2d")!;
-    // Sky gradient — deep blue top → warm white horizon
-    const skyGrad=tc.createLinearGradient(0,0,0,300);
-    skyGrad.addColorStop(0,"#4A7AB5");skyGrad.addColorStop(0.25,"#6A9ACE");skyGrad.addColorStop(0.5,"#96BDE0");skyGrad.addColorStop(0.75,"#D4DFE8");skyGrad.addColorStop(1,"#F5E8D0");
-    tc.fillStyle=skyGrad;tc.fillRect(0,0,800,300);
-    // Wispy clouds — semi-transparent white arcs
-    tc.globalAlpha=0.25;tc.fillStyle="#FFFFFF";
-    tc.beginPath();tc.ellipse(180,80,90,18,0,0,Math.PI*2);tc.fill();
-    tc.beginPath();tc.ellipse(220,75,60,12,0.2,0,Math.PI*2);tc.fill();
-    tc.beginPath();tc.ellipse(500,100,110,20,-0.1,0,Math.PI*2);tc.fill();
-    tc.beginPath();tc.ellipse(540,95,70,14,0.15,0,Math.PI*2);tc.fill();
-    tc.beginPath();tc.ellipse(350,55,80,15,0,0,Math.PI*2);tc.fill();
-    tc.globalAlpha=1.0;
-    // Golden sun disc with radial glow
-    const sunGrad=tc.createRadialGradient(600,80,8,600,80,160);
-    sunGrad.addColorStop(0,"rgba(255,250,220,1.0)");sunGrad.addColorStop(0.05,"rgba(255,245,200,0.95)");sunGrad.addColorStop(0.15,"rgba(255,235,170,0.5)");sunGrad.addColorStop(0.4,"rgba(255,225,150,0.2)");sunGrad.addColorStop(1,"rgba(255,225,150,0)");
-    tc.fillStyle=sunGrad;tc.fillRect(0,0,800,300);
-    // Distant hills — pale blue/purple
-    tc.fillStyle="#8E9EBA";
-    tc.beginPath();tc.moveTo(0,275);
-    tc.quadraticCurveTo(80,240,180,260);tc.quadraticCurveTo(280,230,380,255);
-    tc.quadraticCurveTo(480,225,580,248);tc.quadraticCurveTo(680,235,800,250);
-    tc.lineTo(800,310);tc.lineTo(0,310);tc.fill();
-    // Second distant layer — slightly darker
-    tc.fillStyle="#8494AD";
-    tc.beginPath();tc.moveTo(0,285);
-    tc.quadraticCurveTo(120,260,220,275);tc.quadraticCurveTo(350,250,450,270);
-    tc.quadraticCurveTo(580,248,700,265);tc.lineTo(800,268);
-    tc.lineTo(800,320);tc.lineTo(0,320);tc.fill();
-    // Mid hills — olive green
-    tc.fillStyle="#7A8E5A";
-    tc.beginPath();tc.moveTo(0,310);
-    tc.quadraticCurveTo(100,285,200,300);tc.quadraticCurveTo(300,278,420,295);
-    tc.quadraticCurveTo(540,275,650,292);tc.quadraticCurveTo(740,280,800,290);
-    tc.lineTo(800,380);tc.lineTo(0,380);tc.fill();
-    // Mid-close hills — warmer olive
-    tc.fillStyle="#6E8248";
-    tc.beginPath();tc.moveTo(0,340);
-    tc.quadraticCurveTo(150,315,280,332);tc.quadraticCurveTo(400,310,520,328);
-    tc.quadraticCurveTo(650,312,800,325);
-    tc.lineTo(800,420);tc.lineTo(0,420);tc.fill();
-    // Close hills — warm golden
-    tc.fillStyle="#C8A868";
-    tc.beginPath();tc.moveTo(0,400);
-    tc.quadraticCurveTo(100,378,220,390);tc.quadraticCurveTo(380,372,500,388);
-    tc.quadraticCurveTo(640,370,800,382);
-    tc.lineTo(800,480);tc.lineTo(0,480);tc.fill();
-    // Golden field patches
-    tc.fillStyle="rgba(210,190,120,0.3)";
-    tc.fillRect(60,340,100,50);tc.fillRect(350,335,120,45);tc.fillRect(580,342,100,48);
-    // Foreground — darker earth/grass
-    tc.fillStyle="#5A7A30";
-    tc.beginPath();tc.moveTo(0,470);
-    tc.quadraticCurveTo(200,448,400,462);tc.quadraticCurveTo(600,445,800,458);
-    tc.lineTo(800,600);tc.lineTo(0,600);tc.fill();
-    tc.fillStyle="#4A6A28";
-    tc.beginPath();tc.moveTo(0,520);
-    tc.quadraticCurveTo(200,505,400,515);tc.quadraticCurveTo(600,500,800,510);
-    tc.lineTo(800,600);tc.lineTo(0,600);tc.fill();
-    // Cypress tree silhouettes — narrow dark triangles
-    const drawCypress=(cx2: number,cy: number,h2: number)=>{
-      tc.fillStyle="#2A3A1A";
-      tc.beginPath();tc.moveTo(cx2-h2*0.08,cy);
-      tc.quadraticCurveTo(cx2-h2*0.06,cy-h2*0.4,cx2,cy-h2);
-      tc.quadraticCurveTo(cx2+h2*0.06,cy-h2*0.4,cx2+h2*0.08,cy);
-      tc.fill();
+    const TW=1024,TH=768;
+
+    // ── SKY (upper 45%) ── deep cerulean → golden horizon
+    const skyGrad=tc.createLinearGradient(0,0,0,TH*0.45);
+    skyGrad.addColorStop(0,"#2A6AB5");skyGrad.addColorStop(0.3,"#5A9AD5");
+    skyGrad.addColorStop(0.65,"#C8D8E8");skyGrad.addColorStop(1.0,"#F0D8A0");
+    tc.fillStyle=skyGrad;tc.fillRect(0,0,TW,TH*0.45);
+
+    // ── WARM GOLDEN SUN with multi-stop radial glow ──
+    const sunX=750,sunY=180;
+    const sunG=tc.createRadialGradient(sunX,sunY,0,sunX,sunY,160);
+    sunG.addColorStop(0,"rgba(255,252,224,1.0)");
+    sunG.addColorStop(0.06,"rgba(255,252,224,0.98)");
+    sunG.addColorStop(0.25,"rgba(255,224,96,0.7)");
+    sunG.addColorStop(0.5,"rgba(255,208,128,0.3)");
+    sunG.addColorStop(0.75,"rgba(255,208,128,0.1)");
+    sunG.addColorStop(1.0,"rgba(255,208,128,0.0)");
+    tc.fillStyle=sunG;tc.beginPath();tc.arc(sunX,sunY,160,0,Math.PI*2);tc.fill();
+    // Extra bright core
+    const sunCore=tc.createRadialGradient(sunX,sunY,0,sunX,sunY,40);
+    sunCore.addColorStop(0,"rgba(255,255,245,1.0)");sunCore.addColorStop(1,"rgba(255,240,180,0.0)");
+    tc.fillStyle=sunCore;tc.beginPath();tc.arc(sunX,sunY,40,0,Math.PI*2);tc.fill();
+
+    // ── CLOUDS — 7 clusters of overlapping semi-transparent ellipses ──
+    const drawCloud=(cx:number,cy:number,scaleX:number,scaleY:number,count:number)=>{
+      for(let i=0;i<count;i++){
+        const ox=(i-count/2)*scaleX*0.35+Math.sin(i*1.7)*scaleX*0.15;
+        const oy=Math.cos(i*2.3)*scaleY*0.3;
+        const rx=scaleX*(0.6+Math.sin(i*0.9)*0.4);
+        const ry=scaleY*(0.5+Math.cos(i*1.1)*0.3);
+        tc.globalAlpha=0.15+Math.sin(i*1.3)*0.08;
+        tc.fillStyle="#FFFFFF";
+        tc.beginPath();tc.ellipse(cx+ox,cy+oy,rx,ry,i*0.12,0,Math.PI*2);tc.fill();
+      }
     };
-    drawCypress(100,340,70);drawCypress(125,338,55);
-    drawCypress(280,332,65);drawCypress(305,330,50);
-    drawCypress(460,328,72);
-    drawCypress(580,335,60);drawCypress(600,333,48);
-    drawCypress(720,340,66);
-    // Warm atmospheric haze overlay
-    const hazeGrad=tc.createLinearGradient(0,0,0,600);
-    hazeGrad.addColorStop(0,"rgba(255,240,210,0.03)");hazeGrad.addColorStop(0.4,"rgba(255,230,190,0.06)");hazeGrad.addColorStop(1,"rgba(255,220,170,0.12)");
-    tc.fillStyle=hazeGrad;tc.fillRect(0,0,800,600);
+    drawCloud(140,70,80,16,4);drawCloud(320,50,100,14,4);
+    drawCloud(500,90,110,18,4);drawCloud(180,130,70,12,3);
+    drawCloud(620,60,90,15,4);drawCloud(830,110,75,13,3);
+    drawCloud(420,155,65,11,3);
+    tc.globalAlpha=1.0;
+
+    // ── DISTANT MOUNTAINS — pale purple-blue undulating sine curves ──
+    const mtnY=TH*0.45;
+    // Farthest range — pale purple-blue
+    tc.fillStyle="rgba(128,144,176,0.5)";
+    tc.beginPath();tc.moveTo(0,mtnY);
+    for(let x=0;x<=TW;x+=4){
+      const y=mtnY-18-Math.sin(x*0.006)*22-Math.sin(x*0.014+1)*12-Math.sin(x*0.003)*8;
+      tc.lineTo(x,y);
+    }
+    tc.lineTo(TW,mtnY+40);tc.lineTo(0,mtnY+40);tc.fill();
+    // Closer range — blue-grey, taller peaks
+    tc.fillStyle="rgba(112,128,144,0.6)";
+    tc.beginPath();tc.moveTo(0,mtnY+10);
+    for(let x=0;x<=TW;x+=4){
+      const y=mtnY+10-14-Math.sin(x*0.008+2)*28-Math.sin(x*0.018)*14-Math.cos(x*0.005)*10;
+      tc.lineTo(x,y);
+    }
+    tc.lineTo(TW,mtnY+50);tc.lineTo(0,mtnY+50);tc.fill();
+
+    // ── ROLLING HILLS (middle ~30%) ──
+    const hillBase=TH*0.48;
+    // Layer 1 — distant olive green
+    tc.fillStyle="#6A7A4A";
+    tc.beginPath();tc.moveTo(0,hillBase);
+    for(let x=0;x<=TW;x+=4){
+      const y=hillBase-Math.sin(x*0.005)*20-Math.sin(x*0.012+0.5)*14-Math.cos(x*0.003)*8;
+      tc.lineTo(x,y);
+    }
+    tc.lineTo(TW,hillBase+80);tc.lineTo(0,hillBase+80);tc.fill();
+    // Layer 2 — richer green with height variation
+    tc.fillStyle="#5A7038";
+    tc.beginPath();tc.moveTo(0,hillBase+40);
+    for(let x=0;x<=TW;x+=4){
+      const y=hillBase+40-Math.sin(x*0.007+1)*22-Math.sin(x*0.015+2)*10-Math.cos(x*0.004)*12;
+      tc.lineTo(x,y);
+    }
+    tc.lineTo(TW,hillBase+120);tc.lineTo(0,hillBase+120);tc.fill();
+    // Layer 3 — warm green-gold transitioning to golden
+    const hill3Grad=tc.createLinearGradient(0,0,TW,0);
+    hill3Grad.addColorStop(0,"#8A9A58");hill3Grad.addColorStop(0.4,"#9AA058");
+    hill3Grad.addColorStop(0.7,"#B8A048");hill3Grad.addColorStop(1,"#A89848");
+    tc.fillStyle=hill3Grad;
+    tc.beginPath();tc.moveTo(0,hillBase+80);
+    for(let x=0;x<=TW;x+=4){
+      const y=hillBase+80-Math.sin(x*0.006+3)*18-Math.sin(x*0.013)*12-Math.cos(x*0.009+1)*8;
+      tc.lineTo(x,y);
+    }
+    tc.lineTo(TW,hillBase+160);tc.lineTo(0,hillBase+160);tc.fill();
+
+    // ── CYPRESS TREES — dark narrow silhouettes scattered on hills ──
+    const drawCypress=(cx2:number,baseY:number,h2:number,w2:number)=>{
+      tc.fillStyle="#1A2A0A";
+      // trunk
+      tc.fillRect(cx2-1.5,baseY-h2*0.15,3,h2*0.15);
+      // canopy — narrow pointed shape via quadratic curves for realism
+      tc.beginPath();tc.moveTo(cx2-w2*0.5,baseY-h2*0.12);
+      tc.quadraticCurveTo(cx2-w2*0.55,baseY-h2*0.55,cx2,baseY-h2);
+      tc.quadraticCurveTo(cx2+w2*0.55,baseY-h2*0.55,cx2+w2*0.5,baseY-h2*0.12);
+      tc.closePath();tc.fill();
+      // Highlight edge for depth
+      tc.fillStyle="rgba(40,60,20,0.5)";
+      tc.beginPath();tc.moveTo(cx2+w2*0.1,baseY-h2*0.15);
+      tc.quadraticCurveTo(cx2+w2*0.15,baseY-h2*0.5,cx2+1,baseY-h2*0.95);
+      tc.quadraticCurveTo(cx2+w2*0.45,baseY-h2*0.5,cx2+w2*0.4,baseY-h2*0.15);
+      tc.closePath();tc.fill();
+    };
+    // Scattered trees — some in pairs, some solo, varying sizes
+    drawCypress(90,hillBase+12,55,10);drawCypress(112,hillBase+10,42,8);
+    drawCypress(240,hillBase+30,60,11);drawCypress(265,hillBase+28,48,9);drawCypress(280,hillBase+32,38,7);
+    drawCypress(410,hillBase+22,58,10);
+    drawCypress(530,hillBase+45,52,9);drawCypress(555,hillBase+43,40,8);
+    drawCypress(680,hillBase+18,62,11);drawCypress(705,hillBase+20,45,8);
+    drawCypress(850,hillBase+35,50,9);drawCypress(920,hillBase+50,44,8);
+
+    // ── FOREGROUND FIELDS (bottom ~15%) — golden wheat & green patches ──
+    const fgTop=TH*0.82;
+    // Warm golden wheat base
+    const fgGrad=tc.createLinearGradient(0,fgTop,0,TH);
+    fgGrad.addColorStop(0,"#C8A050");fgGrad.addColorStop(0.5,"#B89840");fgGrad.addColorStop(1,"#A08030");
+    tc.fillStyle=fgGrad;
+    tc.beginPath();tc.moveTo(0,fgTop);
+    for(let x=0;x<=TW;x+=4){
+      const y=fgTop-Math.sin(x*0.008)*8-Math.sin(x*0.02)*4;
+      tc.lineTo(x,y);
+    }
+    tc.lineTo(TW,TH);tc.lineTo(0,TH);tc.fill();
+    // Subtle stripe texture — plowed field lines
+    tc.strokeStyle="rgba(160,120,50,0.15)";tc.lineWidth=1;
+    for(let ly=fgTop+8;ly<TH;ly+=6){
+      tc.beginPath();tc.moveTo(0,ly+Math.sin(ly*0.3)*2);
+      for(let x=0;x<=TW;x+=20) tc.lineTo(x,ly+Math.sin((x+ly)*0.04)*3);
+      tc.stroke();
+    }
+    // Darker green field patches for variety
+    tc.fillStyle="rgba(106,138,58,0.35)";
+    tc.beginPath();tc.ellipse(180,fgTop+30,90,25,-0.1,0,Math.PI*2);tc.fill();
+    tc.beginPath();tc.ellipse(550,fgTop+20,110,22,0.05,0,Math.PI*2);tc.fill();
+    tc.beginPath();tc.ellipse(880,fgTop+35,80,20,0.08,0,Math.PI*2);tc.fill();
+
+    // ── TINY VILLAGE DOTS on distant hills — suggesting buildings ──
+    tc.fillStyle="rgba(90,70,50,0.45)";
+    const villages=[[320,hillBase-8],[325,hillBase-12],[330,hillBase-9],[640,hillBase+4],[644,hillBase],[648,hillBase+2],[880,hillBase+15],[884,hillBase+12]];
+    for(const [vx,vy] of villages){tc.fillRect(vx,vy,3,3);}
+    // Tiny church tower
+    tc.fillRect(327,hillBase-17,2,6);tc.fillRect(645,hillBase-5,2,5);
+
+    // ── ATMOSPHERIC HAZE — warm aerial perspective ──
+    // Full scene warm overlay
+    tc.fillStyle="rgba(240,224,192,0.08)";tc.fillRect(0,0,TW,TH);
+    // Stronger near horizon for aerial perspective
+    const horizHaze=tc.createLinearGradient(0,TH*0.3,0,TH*0.55);
+    horizHaze.addColorStop(0,"rgba(240,216,176,0.0)");horizHaze.addColorStop(0.5,"rgba(240,216,176,0.12)");horizHaze.addColorStop(1,"rgba(240,216,176,0.0)");
+    tc.fillStyle=horizHaze;tc.fillRect(0,TH*0.3,TW,TH*0.25);
+
     const tuscanTex=new THREE.CanvasTexture(tuscanCanvas);tuscanTex.colorSpace=THREE.SRGBColorSpace;
 
     // ── FLOOR (varies by wing) ──
@@ -248,105 +328,100 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       }
     }
 
-    // ═══ TUSCAN LANDSCAPE WINDOWS (between door zones, opposite side from doors) ═══
-    const winH=2.0,winW=1.4,winY=cH*0.65;
+    // ═══ TUSCAN LANDSCAPE WINDOWS — arched gallery windows recessed into walls ═══
+    const winH=2.4,winW=1.2,winY=cH*0.58;
     const winGlassMat=new THREE.MeshBasicMaterial({color:"#B0D0F0",transparent:true,opacity:0.05,side:THREE.DoubleSide});
     const winFrameMat=new THREE.MeshStandardMaterial({color:"#D8CFC0",roughness:.3,metalness:.1});
-    const winShaftMat=new THREE.MeshBasicMaterial({color:"#FFE8A0",transparent:true,opacity:0.18,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});
-    const winShaftMat2=new THREE.MeshBasicMaterial({color:"#FFE0A0",transparent:true,opacity:0.10,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});
+    const recessD=0.3; // recess depth into wall
+    const frameTh=0.12; // frame thickness
+    const archR=winW/2; // semicircle radius = half window width
+    const archSegsW=10; // segments for arch curve
+    const rectH=winH-archR; // rectangular portion height (below the arch)
     rooms.forEach((_room: any,i: number)=>{
       const doorSide=i%2===0?-1:1;
       const winSide=-doorSide;
       const wz=-cL/2+5.5+i*C.sp;
       const wx=winSide*(cW/2);
-      const fOff=winSide*0.01; // frame offset toward interior
-      // Window recess — deep inset
-      scene.add(mk(new THREE.BoxGeometry(.2,winH+.3,winW+.3),MS.wallD,wx-(winSide*.1),winY,wz));
-      // ── Stone/marble window frame — thick pieces (0.1m) ──
+      // Wall-relative positions: outer face of wall is at wx, interior is wx - winSide*recessD
+      const outerX=wx;
+      const innerX=wx-(winSide*recessD);
+      const midX=wx-(winSide*recessD*0.5);
+      // ── Recess/alcove — cut into the wall ──
+      // Back wall of recess (dark)
+      scene.add(mk(new THREE.BoxGeometry(recessD,rectH+archR*0.5,winW+0.02),MS.wallD,midX,winY-archR*0.25,wz));
+      // Top of recess (ceiling of alcove)
+      scene.add(mk(new THREE.BoxGeometry(recessD,0.05,winW+0.02),MS.wallD,midX,winY+rectH/2+archR-0.02,wz));
+      // Side walls of recess
+      for(const zSide of[-1,1]){
+        scene.add(mk(new THREE.BoxGeometry(recessD,rectH+archR,0.05),MS.wallD,midX,winY+(archR-rectH)*0.25,wz+zSide*(winW/2+0.01)));
+      }
+      // ── Stone frame — rectangular bottom portion ──
       // Left jamb
-      scene.add(mk(new THREE.BoxGeometry(.12,winH+.2,.1),winFrameMat,wx-fOff,winY,wz-winW/2-.06));
+      scene.add(mk(new THREE.BoxGeometry(frameTh,rectH,frameTh),winFrameMat,innerX,winY-archR/2,wz-winW/2-frameTh/2));
       // Right jamb
-      scene.add(mk(new THREE.BoxGeometry(.12,winH+.2,.1),winFrameMat,wx-fOff,winY,wz+winW/2+.06));
-      // Top lintel
-      scene.add(mk(new THREE.BoxGeometry(.12,.1,winW+.32),winFrameMat,wx-fOff,winY+winH/2+.06,wz));
-      // Bottom frame
-      scene.add(mk(new THREE.BoxGeometry(.12,.1,winW+.32),winFrameMat,wx-fOff,winY-winH/2-.06,wz));
-      // ── Decorative pediment/arch at top ──
-      // Triangular pediment — center raised piece
-      scene.add(mk(new THREE.BoxGeometry(.1,.18,winW+.4),winFrameMat,wx-fOff,winY+winH/2+.16,wz));
-      // Pediment cap — gold accent
-      scene.add(mk(new THREE.BoxGeometry(.08,.06,winW+.5),MS.gold,wx-fOff,winY+winH/2+.28,wz));
-      // Keystone at center top
-      scene.add(mk(new THREE.BoxGeometry(.1,.22,.14),MS.gold,wx-fOff,winY+winH/2+.16,wz));
-      // Small corbels at pediment edges
-      scene.add(mk(new THREE.BoxGeometry(.08,.12,.08),winFrameMat,wx-fOff,winY+winH/2+.12,wz-winW/2-.1));
-      scene.add(mk(new THREE.BoxGeometry(.08,.12,.08),winFrameMat,wx-fOff,winY+winH/2+.12,wz+winW/2+.1));
-      // ── Window SILL — projects inward (small shelf) ──
-      scene.add(mk(new THREE.BoxGeometry(.22,.06,winW+.4),winFrameMat,wx-(winSide*.1),winY-winH/2-.1,wz));
-      // Sill edge — gold trim
-      scene.add(mk(new THREE.BoxGeometry(.24,.02,winW+.42),MS.gold,wx-(winSide*.1),winY-winH/2-.07,wz));
+      scene.add(mk(new THREE.BoxGeometry(frameTh,rectH,frameTh),winFrameMat,innerX,winY-archR/2,wz+winW/2+frameTh/2));
+      // Bottom sill — pronounced, projecting inward
+      scene.add(mk(new THREE.BoxGeometry(recessD+0.1,0.08,winW+frameTh*2+0.1),winFrameMat,midX,winY-rectH/2-0.04,wz));
+      // Sill gold trim
+      scene.add(mk(new THREE.BoxGeometry(recessD+0.12,0.025,winW+frameTh*2+0.12),MS.gold,midX,winY-rectH/2-0.005,wz));
+      // ── Semicircular arch at top — box segments arranged in arc ──
+      const archCenterY=winY+rectH/2; // y where arch springs from
+      for(let ai=0;ai<=archSegsW;ai++){
+        const ang=(ai/archSegsW)*Math.PI;
+        const az=Math.cos(ang)*archR;
+        const ay=Math.sin(ang)*archR;
+        // Outer arch frame segments
+        const seg=mk(new THREE.BoxGeometry(frameTh,frameTh,frameTh),winFrameMat,innerX,archCenterY+ay,wz+az);
+        scene.add(seg);
+      }
+      // Keystone at top center of arch — slightly larger
+      scene.add(mk(new THREE.BoxGeometry(frameTh+0.02,frameTh*1.5,frameTh+0.04),MS.gold,innerX,archCenterY+archR,wz));
       // ── Mullion cross — thin and elegant ──
-      scene.add(mk(new THREE.BoxGeometry(.03,.025,winW-.05),winFrameMat,wx-(winSide*.005),winY+winH*0.08,wz));
-      scene.add(mk(new THREE.BoxGeometry(.03,winH-.05,.025),winFrameMat,wx-(winSide*.005),winY,wz));
-      // ── Glass pane — near invisible, slight blue tint ──
-      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW,winH),winGlassMat);
-      glass.rotation.y=winSide*(-Math.PI/2);glass.position.set(wx-(winSide*.02),winY,wz);scene.add(glass);
-      // ── TUSCAN LANDSCAPE behind window ──
+      scene.add(mk(new THREE.BoxGeometry(0.03,0.025,winW-0.05),winFrameMat,innerX,winY-rectH*0.15,wz));
+      scene.add(mk(new THREE.BoxGeometry(0.03,rectH-0.05,0.025),winFrameMat,innerX,winY-archR/2,wz));
+      // ── Glass pane — positioned at the back of the recess (flush with outer wall) ──
+      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW,rectH+archR*0.6),winGlassMat);
+      glass.rotation.y=winSide*(-Math.PI/2);glass.position.set(outerX,winY,wz);scene.add(glass);
+      // ── TUSCAN LANDSCAPE behind window — flush with outer wall ──
       const landscapeMat=new THREE.MeshBasicMaterial({map:tuscanTex.clone(),side:THREE.DoubleSide});
-      const landscape=new THREE.Mesh(new THREE.PlaneGeometry(winW-.05,winH-.05),landscapeMat);
-      landscape.rotation.y=winSide*(-Math.PI/2);landscape.position.set(wx+(winSide*.1),winY,wz);scene.add(landscape);
-      // ── Light shafts — warm golden beams streaming in at ~35 degrees ──
-      // Main shaft — large, angled, very visible
-      const shaft1=new THREE.Mesh(new THREE.PlaneGeometry(winW*1.5,winH*1.8),winShaftMat);
-      shaft1.rotation.y=winSide*(-Math.PI/2);
-      shaft1.rotation.z=winSide*0.55; // ~30-35 degree angle
-      shaft1.position.set(wx-(winSide*1.0),winY-0.7,wz);
-      scene.add(shaft1);
-      // Secondary shaft — slightly offset for volume
-      const shaft2=new THREE.Mesh(new THREE.PlaneGeometry(winW*1.0,winH*1.4),winShaftMat2);
-      shaft2.rotation.y=winSide*(-Math.PI/2);
-      shaft2.rotation.z=winSide*0.45;
-      shaft2.position.set(wx-(winSide*0.7),winY-0.5,wz+0.15);
-      scene.add(shaft2);
-      // Third shaft — narrow bright core
-      const shaft3=new THREE.Mesh(new THREE.PlaneGeometry(winW*0.5,winH*1.2),new THREE.MeshBasicMaterial({color:"#FFF0C0",transparent:true,opacity:0.08,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
-      shaft3.rotation.y=winSide*(-Math.PI/2);
-      shaft3.rotation.z=winSide*0.5;
-      shaft3.position.set(wx-(winSide*0.85),winY-0.9,wz-0.1);
-      scene.add(shaft3);
-      // ── Curtains — draped look with fold effect (angled overlapping planes) ──
+      const landscape=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.04,rectH+archR*0.5),landscapeMat);
+      landscape.rotation.y=winSide*(-Math.PI/2);landscape.position.set(outerX+(winSide*0.01),winY,wz);scene.add(landscape);
+      // ── Curtains — thin planes hanging on each side ──
       for(const cSide of[-1,1]){
-        const cZ=wz+cSide*(winW/2+.15);
-        const cX=wx-(winSide*.05);
-        // Main curtain drape — slightly angled
-        const curtain1=mk(new THREE.BoxGeometry(.06,winH+.4,.18),MS.curtain,cX,winY,cZ);
-        curtain1.rotation.y=cSide*0.08; // slight angle for fold effect
-        scene.add(curtain1);
-        // Overlapping inner fold — second plane at slight angle
-        const curtain2=mk(new THREE.BoxGeometry(.04,winH+.3,.14),MS.curtain,cX+(winSide*0.02),winY-0.05,cZ-cSide*0.04);
-        curtain2.rotation.y=cSide*-0.12;
-        scene.add(curtain2);
-        // Curtain rod end / tie-back — gold sphere
-        scene.add(mk(new THREE.SphereGeometry(.035,8,8),MS.gold,cX,winY-.4,cZ));
-        // Curtain rod above
-        scene.add(mk(new THREE.CylinderGeometry(.015,.015,.06,6),MS.gold,cX,winY+winH/2+.15,cZ));
+        const cZ=wz+cSide*(winW/2+0.18);
+        const cX=innerX;
+        // Single thin curtain plane per side
+        const curtainPlane=new THREE.Mesh(new THREE.PlaneGeometry(0.35,winH+0.3),MS.curtain);
+        curtainPlane.rotation.y=winSide*(-Math.PI/2)+cSide*0.06;
+        curtainPlane.position.set(cX,winY,cZ);
+        scene.add(curtainPlane);
+        // Gold tie-back
+        scene.add(mk(new THREE.SphereGeometry(0.03,6,6),MS.gold,cX,winY-0.5,cZ));
       }
       // Curtain rod spanning the top
-      const rodMesh=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,winW+.6,6),MS.gold);
-      rodMesh.rotation.x=Math.PI/2;rodMesh.position.set(wx-(winSide*.05),winY+winH/2+.15,wz);scene.add(rodMesh);
-      // ── Warm sunlight point light from each window ──
-      const wLight=new THREE.PointLight("#FFF5E0",.5,8);wLight.position.set(wx-(winSide*.5),winY,wz);scene.add(wLight);
+      const rodMesh=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,winW+0.7,6),MS.gold);
+      rodMesh.rotation.x=Math.PI/2;rodMesh.position.set(innerX,winY+rectH/2+0.1,wz);scene.add(rodMesh);
+      // ── Warm sunlight — PointLight only, no floating shaft planes ──
+      const wLight=new THREE.PointLight("#FFF5E0",0.6,8);wLight.position.set(wx-(winSide*0.6),winY,wz);scene.add(wLight);
+      const wLight2=new THREE.PointLight("#FFE8C0",0.25,5);wLight2.position.set(wx-(winSide*1.2),winY-0.5,wz);scene.add(wLight2);
     });
 
-    // ═══ LOW BENCHES (between windows/doors for atmosphere) ═══
-    for(let i=0;i<rooms.length;i+=2){
+    // ═══ DECORATIONS — carefully laid out to avoid overlaps ═══
+    // Layout plan per door zone i:
+    //   Door at z_i on sideA, Window at z_i on sideB (opposite)
+    //   Painting at z_i + sp/2 on sideA (between doors, same wall as doors)
+    //   Bench at z_i + sp/2 on sideB (under window area, between windows)
+    //   Sconces at z_i + sp*0.25 on both walls (between door/window and painting/bench)
+
+    // ── BENCHES — on window side (sideB), between windows at z_i + sp/2 ──
+    for(let i=0;i<rooms.length-1;i++){
       const doorSide=i%2===0?-1:1;
-      const benchSide=-doorSide;
+      const benchSide=-doorSide; // window/bench side
       const bz=-cL/2+5.5+i*C.sp+C.sp/2;
-      if(bz>cL/2-4)continue;
+      if(bz>cL/2-4||bz<-cL/2+3)continue;
       const bx=benchSide*(cW/2-.6);
-      // Bench legs (carved style)
-      for(let lz of[-.4,.4])for(let lx of[-.08,.08]){
+      // Bench legs
+      for(const lz of[-.4,.4])for(const lx of[-.08,.08]){
         scene.add(mk(new THREE.BoxGeometry(.07,.38,.07),MS.bench,bx+lx,.19,bz+lz));
       }
       // Bench seat
@@ -354,60 +429,17 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       // Cushion
       scene.add(mk(new THREE.BoxGeometry(.48,.07,.92),MS.benchCushion,bx,.47,bz));
       // Armrests
-      for(let lz of[-.48,.48]){
+      for(const lz of[-.48,.48]){
         scene.add(mk(new THREE.BoxGeometry(.06,.2,.06),MS.bench,bx,.5,bz+lz));
         scene.add(mk(new THREE.BoxGeometry(.12,.04,.08),MS.bench,bx,.62,bz+lz));
       }
     }
 
-    // ═══ POTTED PLANTS (terracotta pots with green foliage) every 2-3 door zones ═══
-    rooms.forEach((_room: any,i: number)=>{
-      if(i%2!==0)return; // every 2 doors
-      const doorSide=i%2===0?-1:1;
-      const plantSide=doorSide; // same side as door, offset
-      const pz=-cL/2+5.5+i*C.sp-1.5;
-      if(pz<-cL/2+2||pz>cL/2-3)return;
-      const px=plantSide*(cW/2-.45);
-      // Terracotta pot
-      scene.add(mk(new THREE.CylinderGeometry(.12,.10,.03,8),MS.terracotta,px,.015,pz)); // base plate
-      scene.add(mk(new THREE.CylinderGeometry(.10,.14,.28,8),MS.terracotta,px,.155,pz)); // pot body
-      scene.add(mk(new THREE.CylinderGeometry(.15,.15,.025,8),MS.terracotta,px,.3,pz)); // rim
-      // Foliage — spheres in cluster
-      scene.add(mk(new THREE.SphereGeometry(.14,7,7),MS.foliage,px,.48,pz));
-      scene.add(mk(new THREE.SphereGeometry(.1,6,6),MS.foliageDark,px+.06,.55,pz+.05));
-      scene.add(mk(new THREE.SphereGeometry(.1,6,6),MS.foliage,px-.05,.56,pz-.04));
-      scene.add(mk(new THREE.SphereGeometry(.08,5,5),MS.foliageDark,px,.62,pz));
-    });
-
-    // ═══ SMALL PEDESTALS WITH DECORATIVE OBJECTS (between benches) ═══
-    for(let i=1;i<rooms.length;i+=2){
-      const doorSide=i%2===0?-1:1;
-      const pedSide=-doorSide;
-      const pz=-cL/2+5.5+i*C.sp+C.sp/2;
-      if(pz>cL/2-4||pz<-cL/2+3)continue;
-      const px=pedSide*(cW/2-.5);
-      // Pedestal
-      scene.add(mk(new THREE.BoxGeometry(.3,.04,.3),MS.pedestal,px,.02,pz));
-      scene.add(mk(new THREE.BoxGeometry(.22,.7,.22),MS.pedestal,px,.37,pz));
-      scene.add(mk(new THREE.BoxGeometry(.28,.04,.28),MS.gold,px,.74,pz));
-      // Decorative object — small sphere or vase
-      if(i%4===1){
-        // Mini globe
-        scene.add(mk(new THREE.SphereGeometry(.08,10,8),MS.marble,px,.84,pz));
-        const ring=new THREE.Mesh(new THREE.TorusGeometry(.09,.008,6,16),MS.gold);ring.position.set(px,.84,pz);ring.rotation.x=Math.PI/6;scene.add(ring);
-      }else{
-        // Small urn
-        scene.add(mk(new THREE.CylinderGeometry(.04,.06,.1,8),MS.bronze,px,.81,pz));
-        scene.add(mk(new THREE.CylinderGeometry(.06,.04,.06,8),MS.bronze,px,.88,pz));
-        scene.add(mk(new THREE.TorusGeometry(.06,.008,6,12),MS.gold,px,.91,pz));
-      }
-    }
-
-    // ═══ DECORATIVE DETAILS ═══
-    // Candle sconces with holders between paintings
-    for(let s of[-1,1]){
-      for(let i=1;i<rooms.length;i+=2){
-        const sz=-cL/2+3+i*C.sp-C.sp*.25;if(sz>cL/2-3||sz<-cL/2+3)continue;
+    // ── CANDLE SCONCES — at z_i + sp*0.25 on both walls, between door/window and painting/bench ──
+    for(let i=0;i<rooms.length;i++){
+      const sz=-cL/2+5.5+i*C.sp+C.sp*0.25;
+      if(sz>cL/2-3||sz<-cL/2+3)continue;
+      for(const s of[-1,1]){
         const sx=s*(cW/2-.03);
         scene.add(mk(new THREE.BoxGeometry(.04,.02,.12),MS.bronze,sx-(s*.06),2.6,sz));
         scene.add(mk(new THREE.CylinderGeometry(.025,.02,.1,6),MS.bronze,sx-(s*.12),2.65,sz));
@@ -416,11 +448,13 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         fG2.position.set(sx-(s*.12),2.8,sz);scene.add(fG2);
       }
     }
-    // Small side tables with vases near entrance/exit
-    for(let tz of[-cL/2+3,cL/2-4]){
-      for(let ts of[-1,1]){
+
+    // ── SIDE TABLES + POTTED PLANTS — corridor ends only, far from door zones ──
+    for(const tz of[-cL/2+2.5,cL/2-3.5]){
+      for(const ts of[-1,1]){
         const tx=ts*(cW/2-.7);
-        for(let lz2 of[-.12,.12])for(let lx2 of[-.12,.12])
+        // Side table
+        for(const lz2 of[-.12,.12])for(const lx2 of[-.12,.12])
           scene.add(mk(new THREE.CylinderGeometry(.02,.02,.55,4),MS.dkW,tx+lx2,.275,tz+lz2));
         scene.add(mk(new THREE.CylinderGeometry(.22,.2,.04,8),MS.dkW,tx,.57,tz));
         scene.add(mk(new THREE.CylinderGeometry(.04,.06,.15,8),MS.marble,tx,.645,tz));
@@ -429,6 +463,18 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
           const fa=(f/3)*Math.PI*2;
           scene.add(mk(new THREE.SphereGeometry(.02,4,4),new THREE.MeshStandardMaterial({color:C.accent,roughness:.8}),tx+Math.cos(fa)*.03,.82,tz+Math.sin(fa)*.03));
         }
+      }
+    }
+    // Potted plants at corridor ends (offset from side tables)
+    for(const pz of[-cL/2+1.5,cL/2-1.8]){
+      for(const px2 of[-cW/2+.45,cW/2-.45]){
+        scene.add(mk(new THREE.CylinderGeometry(.12,.10,.03,8),MS.terracotta,px2,.015,pz));
+        scene.add(mk(new THREE.CylinderGeometry(.10,.14,.28,8),MS.terracotta,px2,.155,pz));
+        scene.add(mk(new THREE.CylinderGeometry(.15,.15,.025,8),MS.terracotta,px2,.3,pz));
+        scene.add(mk(new THREE.SphereGeometry(.14,7,7),MS.foliage,px2,.48,pz));
+        scene.add(mk(new THREE.SphereGeometry(.1,6,6),MS.foliageDark,px2+.06,.55,pz+.05));
+        scene.add(mk(new THREE.SphereGeometry(.1,6,6),MS.foliage,px2-.05,.56,pz-.04));
+        scene.add(mk(new THREE.SphereGeometry(.08,5,5),MS.foliageDark,px2,.62,pz));
       }
     }
 
@@ -449,9 +495,9 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       scene.add(new THREE.PointLight("#FFE8C0",.7,9).translateY(cH-.5).translateZ(cz));
     }
 
-    // ── SCONCES between door zones ──
-    for(let s of[-1,1])for(let i=0;i<=rooms.length;i++){
-      const sz=-cL/2+3+i*C.sp;if(sz>cL/2-2)continue;
+    // ── SCONCES between door zones — at z_i + sp*0.75, different z from candles (sp*0.25) ──
+    for(const s of[-1,1])for(let i=0;i<rooms.length;i++){
+      const sz=-cL/2+5.5+i*C.sp+C.sp*0.75;if(sz>cL/2-2||sz<-cL/2+2)continue;
       scene.add(mk(new THREE.BoxGeometry(.06,.14,.06),MS.sconce,s*(cW/2-.03),3.5,sz));
       scene.add(mk(new THREE.CylinderGeometry(.04,.03,.06,6),MS.sconce,s*(cW/2-.06),3.62,sz));
       const bl=new THREE.Mesh(new THREE.SphereGeometry(.025,6,6),MS.glassG);bl.position.set(s*(cW/2-.06),3.72,sz);scene.add(bl);
@@ -470,12 +516,18 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     else{scene.add(mk(new THREE.CylinderGeometry(.1,.15,.65,8),MS.statue,0,pH2+.33,sZ));scene.add(mk(new THREE.SphereGeometry(.14,8,8),MS.statue,0,pH2+.8,sZ));}
     const sL=new THREE.SpotLight("#FFF5E0",.7,5,Math.PI/6,.5,1);sL.position.set(0,cH-.1,sZ);sL.target.position.set(0,pH2,sZ);scene.add(sL);scene.add(sL.target);
 
-    // ═══ PAINTINGS — Room preview cards showing icon + name ═══
-    const pZ: number[]=[];for(let i=0;i<rooms.length;i++){const pz=-cL/2+3+i*C.sp+C.sp/2;if(pz<cL/2-3)pZ.push(pz);}
-    const paintingMeshes: {mesh: THREE.Mesh,mat: THREE.MeshStandardMaterial,idx: number,side: number}[]=[];
-    pZ.forEach((pz,idx)=>{
-      const s=idx%2===0?1:-1;const fx=s*(cW/2-.005);const pw=1.8,ph2b=1.3;
-      const room=rooms[Math.min(idx,rooms.length-1)];
+    // ═══ PAINTINGS — on door side (sideA) at z_i + sp/2 (between doors) ═══
+    const paintingPositions: {pz: number,doorIdx: number,side: number}[]=[];
+    for(let i=0;i<rooms.length-1;i++){
+      const pz=-cL/2+5.5+i*C.sp+C.sp/2;
+      if(pz>cL/2-3||pz<-cL/2+3)continue;
+      const doorSide=i%2===0?-1:1; // same side as this door
+      paintingPositions.push({pz,doorIdx:i,side:doorSide});
+    }
+    const paintingMeshes: {mesh: THREE.Mesh,mat: THREE.MeshStandardMaterial,idx: number,side: number,doorIdx: number}[]=[];
+    paintingPositions.forEach(({pz,doorIdx,side:s},idx)=>{
+      const fx=s*(cW/2-.005);const pw=1.8,ph2b=1.3;
+      const room=rooms[Math.min(doorIdx,rooms.length-1)];
       // Ornate frame — thicker gold
       scene.add(mk(new THREE.BoxGeometry(.05,ph2b+.22,.06),MS.fG,fx,2.8,pz-pw/2-.11));
       scene.add(mk(new THREE.BoxGeometry(.05,ph2b+.22,.06),MS.fG,fx,2.8,pz+pw/2+.11));
@@ -544,19 +596,12 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       pm.rotation.y=s*(-Math.PI/2);pm.position.set(fx-(s*.003),2.8,pz);
       pm.userData={isPainting:true,idx};
       scene.add(pm);
-      paintingMeshes.push({mesh:pm,mat:paintMat,idx,side:s});
+      paintingMeshes.push({mesh:pm,mat:paintMat,idx,side:s,doorIdx});
       // Painting spotlight — warmer, brighter
       const pSpot=new THREE.SpotLight("#FFF5E0",.6,5,Math.PI/7,.5,1);pSpot.position.set(fx-(s*.5),cH-.3,pz);pSpot.target.position.set(fx,2.8,pz);scene.add(pSpot);scene.add(pSpot.target);
     });
 
-    // ── PLANTS at ends ──
-    for(let pz of[-cL/2+1.5,cL/2-1.5])for(let px of[-cW/2+.8,cW/2-.8]){
-      scene.add(mk(new THREE.CylinderGeometry(.14,.18,.3,8),MS.terracotta,px,.15,pz));
-      scene.add(mk(new THREE.CylinderGeometry(.16,.16,.025,8),MS.terracotta,px,.31,pz));
-      for(let lf=0;lf<6;lf++){const a=(lf/6)*Math.PI*2;
-        scene.add(mk(new THREE.SphereGeometry(.09,5,5),MS.foliage,px+Math.cos(a)*.09,.4+Math.random()*.15,pz+Math.sin(a)*.09));}
-      scene.add(mk(new THREE.SphereGeometry(.07,5,5),MS.foliageDark,px,.58,pz));
-    }
+    // (Plants at ends are included with the side tables above)
 
     // ══ DOORS ══
     const dMeshes: any[]=[];
@@ -811,7 +856,8 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const onCk=()=>{
       if(!drag.v&&hovDoor)onDoorClick(hovDoor);
       else if(!drag.v&&hovPainting!==null){
-        const nearestRoom=rooms[Math.min(hovPainting,rooms.length-1)];
+        const pInfo=paintingMeshes.find(p=>p.idx===hovPainting);
+        const nearestRoom=pInfo?rooms[Math.min(pInfo.doorIdx,rooms.length-1)]:null;
         if(nearestRoom)onDoorClick(nearestRoom.id);
       }
       else if(!drag.v){
@@ -870,7 +916,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
             else{
               let paintTap: number|null=null;
               paintingMeshes.forEach(p=>{const hits=rc.intersectObject(p.mesh);if(hits.length>0&&hits[0].distance<6)paintTap=p.idx;});
-              if(paintTap!==null){const nr=rooms[Math.min(paintTap,rooms.length-1)];if(nr)onDoorClick(nr.id);}
+              if(paintTap!==null){const pInfo2=paintingMeshes.find(p=>p.idx===paintTap);const nr=pInfo2?rooms[Math.min(pInfo2.doorIdx,rooms.length-1)]:null;if(nr)onDoorClick(nr.id);}
               else{const ph=rc.intersectObject(portalHit);if(ph.length>0&&ph[0].distance<5)onDoorClick("__portal__");}
             }
           }

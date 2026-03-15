@@ -34,7 +34,55 @@ export default function TutorialOverlay() {
 
   const progress = ((stepIndex + 1) / TUTORIAL_STEPS.length) * 100;
 
+  // Position map for highlight indicator
+  const highlightPositionMap: Record<string, React.CSSProperties> = {
+    "top-right": { top: 58, right: 18 },
+    "bottom-right": { bottom: 100, right: 24 },
+    "bottom-left": { bottom: 12, left: 12 },
+    "bottom-center": { bottom: 70, left: "50%", transform: "translateX(-50%)" },
+    "center": { top: "50%", left: "50%", transform: "translate(-50%, -50%)" },
+    "top-left": { top: 58, left: 18 },
+  };
+
+  const hl = step.highlight;
+  const hlPos = hl ? highlightPositionMap[hl.position] : null;
+
   return (
+    <>
+      {/* Highlight ring indicator */}
+      {hl && hlPos && (
+        <div style={{
+          position: "absolute",
+          ...hlPos,
+          zIndex: 79,
+          pointerEvents: "none",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 6,
+        }}>
+          <div style={{
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            border: "2.5px solid #D4AF37",
+            background: "transparent",
+            boxShadow: "0 0 18px rgba(212, 175, 55, 0.35), inset 0 0 18px rgba(212, 175, 55, 0.1)",
+            animation: "tutorialPulse 1.5s ease-in-out infinite",
+          }} />
+          {hl.label && (
+            <span style={{
+              fontFamily: "system-ui, -apple-system, sans-serif",
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#FFEEBB",
+              textShadow: "0 1px 6px rgba(0,0,0,0.5)",
+              whiteSpace: "nowrap",
+              letterSpacing: 0.3,
+            }}>{hl.label}</span>
+          )}
+        </div>
+      )}
     <div style={{
       position: "absolute",
       bottom: isMobile ? 80 : 32,
@@ -194,8 +242,9 @@ export default function TutorialOverlay() {
       </div>
 
       {/* Blink keyframe */}
-      <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
+      <style>{`@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}@keyframes tutorialPulse{0%,100%{transform:scale(1);opacity:0.8}50%{transform:scale(1.4);opacity:0.3}}`}</style>
     </div>
+    </>
   );
 }
 

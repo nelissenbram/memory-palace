@@ -83,8 +83,8 @@ export default function EntranceHallScene({
       goldDark: new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, envMapIntensity: 1.0, emissive: "#B8922E", emissiveIntensity: 0.1 }),
       goldBright: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4, emissive: "#E8C84A", emissiveIntensity: 0.25 }),
       column: new THREE.MeshStandardMaterial({ color: "#F0E8DC", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.7 }),
-      door: new THREE.MeshStandardMaterial({ color: "#7A5C3E", roughness: 0.45, metalness: 0.0, emissive: "#5A3E28", emissiveIntensity: 0.15 }),
-      doorFrame: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4, emissive: "#D4AF37", emissiveIntensity: 0.2 }),
+      door: new THREE.MeshStandardMaterial({ color: "#8B5E3C", roughness: 0.40, metalness: 0.0, emissive: "#5A3E28", emissiveIntensity: 0.25 }),
+      doorFrame: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.9, envMapIntensity: 1.4, emissive: "#E8C84A", emissiveIntensity: 0.25 }),
       dome: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide }),
       domeGold: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
       floor: new THREE.MeshStandardMaterial({ color: "#E8DDD0", roughness: 0.08, metalness: 0.05, envMapIntensity: 1.0 }),
@@ -460,8 +460,8 @@ export default function EntranceHallScene({
       scene.add(recessMesh);
 
       // ── THICK ORNATE GOLDEN FRAME ──
-      const frameThick = 0.3;
-      const frameDepth = 0.25;
+      const frameThick = 0.4;
+      const frameDepth = 0.3;
       // Left frame pillar
       const lpGeo = new THREE.BoxGeometry(frameThick, DOOR_H + 0.4, frameDepth);
       const lp = new THREE.Mesh(lpGeo, MS.doorFrame);
@@ -513,7 +513,7 @@ export default function EntranceHallScene({
 
       // ── DOUBLE DOOR PANELS (two panels per door) ──
       const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
-      const doorMat = new THREE.MeshStandardMaterial({ color: "#7A5C3E", roughness: 0.45, metalness: 0.0, emissive: "#5A3E28", emissiveIntensity: 0.15 });
+      const doorMat = new THREE.MeshStandardMaterial({ color: "#8B5E3C", roughness: 0.40, metalness: 0.0, emissive: accent, emissiveIntensity: 0.25 });
 
       // Left door panel — THICK for 3D depth
       const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
@@ -619,57 +619,57 @@ export default function EntranceHallScene({
       // ── LARGE BRASS RING HANDLES ──
       for (const side of [-1, 1]) {
         const handleLat = latN.clone().multiplyScalar(side * 0.4);
-        // Large ring handle (radius 0.18, thick tube)
+        // Large ring handle (radius 0.2, thick tube)
         const handleRing = new THREE.Mesh(
-          new THREE.TorusGeometry(0.18, 0.035, 10, 16),
+          new THREE.TorusGeometry(0.2, 0.045, 12, 20),
           MS.goldBright
         );
         handleRing.position.set(
-          dx + handleLat.x + inN.x * 0.14,
+          dx + handleLat.x + inN.x * 0.16,
           DOOR_H * 0.43,
-          dz + handleLat.z + inN.z * 0.14
+          dz + handleLat.z + inN.z * 0.16
         );
         handleRing.lookAt(new THREE.Vector3(0, DOOR_H * 0.43, 0));
         scene.add(handleRing);
         // Large mount plate (decorative backplate)
         const handlePlate = new THREE.Mesh(
-          new THREE.CircleGeometry(0.1, 12),
+          new THREE.CircleGeometry(0.13, 12),
           MS.goldDark
         );
         handlePlate.position.set(
-          dx + handleLat.x + inN.x * 0.13,
-          DOOR_H * 0.43 + 0.18,
-          dz + handleLat.z + inN.z * 0.13
+          dx + handleLat.x + inN.x * 0.15,
+          DOOR_H * 0.43 + 0.2,
+          dz + handleLat.z + inN.z * 0.15
         );
-        handlePlate.lookAt(new THREE.Vector3(0, DOOR_H * 0.43 + 0.18, 0));
+        handlePlate.lookAt(new THREE.Vector3(0, DOOR_H * 0.43 + 0.2, 0));
         scene.add(handlePlate);
         // Handle mount pin
         const handleMount = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.05, 0.05, 0.08, 8),
+          new THREE.CylinderGeometry(0.06, 0.06, 0.1, 8),
           MS.goldBright
         );
         handleMount.position.set(
-          dx + handleLat.x + inN.x * 0.12,
-          DOOR_H * 0.43 + 0.18,
-          dz + handleLat.z + inN.z * 0.12
+          dx + handleLat.x + inN.x * 0.14,
+          DOOR_H * 0.43 + 0.2,
+          dz + handleLat.z + inN.z * 0.14
         );
         scene.add(handleMount);
       }
 
       // WARM fill light illuminating the door surface — bright so wood is visible
-      const doorFill = new THREE.PointLight("#FFF0D0", 1.5, 8);
-      doorFill.position.set(dx + inN.x * 2.0, DOOR_H * 0.5, dz + inN.z * 2.0);
+      const doorFill = new THREE.PointLight("#FFF0D0", 2.0, 10);
+      doorFill.position.set(dx + inN.x * 2.5, DOOR_H * 0.5, dz + inN.z * 2.5);
       scene.add(doorFill);
 
-      // DEDICATED SPOTLIGHT aimed directly at door face (for label readability)
-      const doorFaceSpot = new THREE.SpotLight("#FFF5E0", 2.5, 14, Math.PI / 5, 0.4, 0.8);
-      doorFaceSpot.position.set(dx + inN.x * 5.0, DOOR_H * 0.6, dz + inN.z * 5.0);
-      doorFaceSpot.target.position.set(dx, DOOR_H * 0.45, dz);
+      // DEDICATED SPOTLIGHT aimed directly at door face (intensity 3.0, from 6m away)
+      const doorFaceSpot = new THREE.SpotLight("#FFF5E0", 3.0, 16, Math.PI / 4.5, 0.35, 0.7);
+      doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
+      doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
       scene.add(doorFaceSpot);
       scene.add(doorFaceSpot.target);
 
       // Focused spotlight near each door (pool of light on floor)
-      const doorSpot = new THREE.SpotLight(accent, 1.2, 12, Math.PI / 6, 0.6, 1.0);
+      const doorSpot = new THREE.SpotLight(accent, 1.5, 14, Math.PI / 5, 0.5, 0.9);
       doorSpot.position.set(
         dx + inN.x * 1.5,
         DOOR_H + 0.5,
@@ -682,6 +682,26 @@ export default function EntranceHallScene({
       );
       scene.add(doorSpot);
       scene.add(doorSpot.target);
+
+      // ── WING ACCENT COLOR STRIPS on each side of door frame ──
+      const accentStripW = 0.1;
+      const accentStripMat = new THREE.MeshStandardMaterial({
+        color: accent, roughness: 0.3, metalness: 0.2,
+        emissive: accent, emissiveIntensity: 0.4,
+      });
+      for (const stripSide of [-1, 1]) {
+        const stripMesh = new THREE.Mesh(
+          new THREE.BoxGeometry(accentStripW, DOOR_H + 0.4, 0.12),
+          accentStripMat
+        );
+        stripMesh.position.set(
+          dx + latN.x * stripSide * (DOOR_W / 2 + frameThick + accentStripW / 2) + inN.x * 0.05,
+          (DOOR_H + 0.4) / 2,
+          dz + latN.z * stripSide * (DOOR_W / 2 + frameThick + accentStripW / 2) + inN.z * 0.05
+        );
+        stripMesh.lookAt(new THREE.Vector3(0, (DOOR_H + 0.4) / 2, 0));
+        scene.add(stripMesh);
+      }
 
       // ── LARGE STATUE above door on pedestal ──
       const statueBaseY = DOOR_H + archH + 1.2;
@@ -860,64 +880,66 @@ export default function EntranceHallScene({
       scene.add(statueSpot);
       scene.add(statueSpot.target);
 
-      // ── LARGE WING NAME LABEL ON THE DOOR SURFACE (eye level, ~3.5m) ──
+      // ── LARGE WING NAME LABEL ON THE DOOR SURFACE (at ~3.0m height) ──
       {
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 1024;
-        labelCanvas.height = 320;
+        labelCanvas.height = 256;
         const lctx = labelCanvas.getContext("2d")!;
-        // Very dark background for maximum contrast
-        lctx.fillStyle = "#1A0E05";
-        lctx.fillRect(0, 0, 1024, 320);
-        // Double gold border
-        lctx.strokeStyle = "#D4AF37";
-        lctx.lineWidth = 8;
-        lctx.strokeRect(8, 8, 1008, 304);
+        // Solid dark background for maximum contrast
+        lctx.fillStyle = "#1A1008";
+        lctx.fillRect(0, 0, 1024, 256);
+        // Thick gold border
         lctx.strokeStyle = "#E8C84A";
-        lctx.lineWidth = 3;
-        lctx.strokeRect(18, 18, 988, 284);
+        lctx.lineWidth = 10;
+        lctx.strokeRect(6, 6, 1012, 244);
+        // Inner gold border
+        lctx.strokeStyle = "#D4AF37";
+        lctx.lineWidth = 4;
+        lctx.strokeRect(18, 18, 988, 220);
         // Wing icon (emoji) on the left
         const wingIcon = WING_ICONS[wingId] || "";
-        lctx.font = "80px sans-serif";
+        lctx.font = "90px sans-serif";
         lctx.textAlign = "left";
         lctx.textBaseline = "middle";
-        lctx.fillText(wingIcon, 50, 160);
-        // Wing name in LARGE gold text
+        lctx.fillStyle = "#FFFFFF";
+        lctx.fillText(wingIcon, 40, 128);
+        // Wing name in HUGE gold text (120px bold Georgia)
         const eyeLabel = WING_LABELS[wingId] || wingId.toUpperCase();
         lctx.fillStyle = "#E8C84A";
-        lctx.font = "bold 100px Georgia, 'Times New Roman', serif";
+        lctx.font = "bold 120px Georgia, 'Times New Roman', serif";
         lctx.textAlign = "center";
         lctx.textBaseline = "middle";
-        lctx.fillText(eyeLabel, 560, 150);
-        // Subtle gold highlight (offset text for depth effect)
-        lctx.fillStyle = "#FFF0C0";
-        lctx.globalAlpha = 0.3;
-        lctx.fillText(eyeLabel, 560, 148);
+        lctx.fillText(eyeLabel, 560, 120);
+        // Bright gold highlight (offset text for depth/glow effect)
+        lctx.fillStyle = "#FFF5D0";
+        lctx.globalAlpha = 0.35;
+        lctx.fillText(eyeLabel, 560, 117);
         lctx.globalAlpha = 1.0;
         // Decorative line under text
-        lctx.strokeStyle = "#D4AF37";
-        lctx.lineWidth = 3;
+        lctx.strokeStyle = "#E8C84A";
+        lctx.lineWidth = 4;
         lctx.beginPath();
-        lctx.moveTo(200, 220);
-        lctx.lineTo(920, 220);
+        lctx.moveTo(160, 200);
+        lctx.lineTo(864, 200);
         lctx.stroke();
 
         const labelTex = new THREE.CanvasTexture(labelCanvas);
         labelTex.colorSpace = THREE.SRGBColorSpace;
         const labelMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(2.8, 0.85),
+          new THREE.PlaneGeometry(3.0, 0.75),
           new THREE.MeshStandardMaterial({
-            map: labelTex, roughness: 0.35, metalness: 0.05,
-            emissive: "#D4AF37", emissiveIntensity: 0.2,
+            map: labelTex, roughness: 0.3, metalness: 0.1,
+            emissive: "#E8C84A", emissiveIntensity: 0.3,
           })
         );
-        // Position ON the door surface at eye level (~3.5m)
+        // Position ON the door panel surface at ~3.0m height
         labelMesh.position.set(
-          dx + inN.x * 0.14,
-          3.5,
-          dz + inN.z * 0.14
+          dx + inN.x * 0.15,
+          3.0,
+          dz + inN.z * 0.15
         );
-        labelMesh.lookAt(new THREE.Vector3(0, 3.5, 0));
+        labelMesh.lookAt(new THREE.Vector3(0, 3.0, 0));
         scene.add(labelMesh);
       }
 
@@ -1338,7 +1360,7 @@ export default function EntranceHallScene({
       );
       camera.lookAt(camera.position.clone().add(ld));
 
-      // ── Distance-based door glow ──
+      // ── Distance-based door glow (strong baseline) ──
       doorMeshes.forEach(d => {
         const wing = WINGS.find(ww => ww.id === d.wingId);
         const accent = wing?.accent || "#C8A858";
@@ -1350,11 +1372,12 @@ export default function EntranceHallScene({
           (pos.current.x - doorX) ** 2 + (pos.current.z - doorZ) ** 2
         );
         const isHover = hoveredWing === d.wingId;
-        // Glow stronger when closer (max at distance 3, fade out at distance 10)
-        const proximityGlow = Math.max(0, 1 - distToDoor / 10) * 0.3;
-        const hoverGlow = isHover ? 0.25 + Math.sin(t * 3) * 0.1 : 0;
+        // Strong baseline glow (0.25) + proximity boost + hover pulse
+        const baseGlow = 0.25;
+        const proximityGlow = Math.max(0, 1 - distToDoor / 10) * 0.35;
+        const hoverGlow = isHover ? 0.35 + Math.sin(t * 3) * 0.12 : 0;
         d.mat.emissive = new THREE.Color(accent);
-        d.mat.emissiveIntensity = Math.max(proximityGlow, hoverGlow);
+        d.mat.emissiveIntensity = Math.max(baseGlow, proximityGlow, hoverGlow);
       });
 
       // Portal pulse

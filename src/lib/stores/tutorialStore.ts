@@ -9,6 +9,11 @@ export interface TutorialStep {
   spiritPos?: [number, number, number];
   /** Action label for the "Next" button */
   nextLabel?: string;
+  /** Optional highlight indicator pointing to a UI element on screen */
+  highlight?: {
+    position: "top-right" | "bottom-right" | "bottom-left" | "top-left" | "center" | "bottom-center";
+    label?: string;
+  };
 }
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
@@ -35,6 +40,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     message:
       "This grand hall is the heart of your palace. Five doorways lead to the wings of your life — each one a gallery for a different chapter. Look for the wing names on each door.",
     nextLabel: "Tell me about the wings",
+    highlight: { position: "center", label: "Look around" },
   },
   {
     id: "five_wings",
@@ -43,6 +49,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     message:
       "Family, Travel, Childhood, Career, and Creativity — each wing is a corridor lined with rooms. Walk through a door to explore.",
     nextLabel: "What's the Attic?",
+    highlight: { position: "center", label: "The doors" },
   },
   {
     id: "attic",
@@ -67,6 +74,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     message:
       "Inside each room, your memories are displayed as paintings, videos, albums, glowing orbs, and more. Click any memory to view it in detail.",
     nextLabel: "How do I add memories?",
+    highlight: { position: "center" },
   },
   {
     id: "adding_memories",
@@ -75,6 +83,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     message:
       "Use the + button to upload photos, videos, or documents. You can also drag and drop files, or use Mass Import to add many at once.",
     nextLabel: "What about sharing?",
+    highlight: { position: "bottom-right", label: "Action menu" },
   },
   {
     id: "sharing",
@@ -83,6 +92,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     message:
       "Every room can be shared with loved ones. Use the Share button to invite family and friends to view or contribute their own memories.",
     nextLabel: "What else can I do?",
+    highlight: { position: "bottom-right", label: "Share" },
   },
   {
     id: "action_menu",
@@ -91,6 +101,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     message:
       "Look for the floating action button in the bottom-right corner. It gives you quick access to adding memories, managing rooms, and more features.",
     nextLabel: "Tell me about interviews",
+    highlight: { position: "bottom-right", label: "Action button" },
   },
   {
     id: "life_interviews",
@@ -99,6 +110,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     message:
       "Try our AI-guided Life Interviews — they help you capture stories through conversation, available from the action menu or the More menu on mobile.",
     nextLabel: "Anything else?",
+    highlight: { position: "bottom-right", label: "Interviews" },
   },
   {
     id: "tracks_achievements",
@@ -107,6 +119,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     message:
       "Complete Memory Building Tracks to earn points and unlock achievements. Check your progress in the status bar at the bottom.",
     nextLabel: "Got it!",
+    highlight: { position: "bottom-left", label: "Status bar" },
   },
   {
     id: "closing",
