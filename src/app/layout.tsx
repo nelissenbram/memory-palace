@@ -4,6 +4,7 @@ import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import OfflineBanner from "@/components/OfflineBanner";
+import NotificationPrompt from "@/components/NotificationPrompt";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -135,6 +136,7 @@ export default function RootLayout({
         <ServiceWorkerRegistration />
         <PWAInstallBanner />
         <OfflineBanner />
+        <NotificationPrompt />
         {children}
       </body>
     </html>
