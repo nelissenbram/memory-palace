@@ -36,6 +36,11 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const [lat,setLat]=useState<number|null>(null);
   const [lng,setLng]=useState<number|null>(null);
   const [geoLoading,setGeoLoading]=useState(false);
+  const [isResolution,setIsResolution]=useState(false);
+  const [goalDesc,setGoalDesc]=useState("");
+  const [targetDate,setTargetDate]=useState("");
+  const [trackProgress,setTrackProgress]=useState(false);
+  const [reminders,setReminders]=useState(false);
   const [contextOffer,setContextOffer]=useState(false);
   const [contextLoading,setContextLoading]=useState(false);
   const [contextPreview,setContextPreview]=useState("");
@@ -104,6 +109,10 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
     const hue=Math.floor(Math.random()*360);
     const mem: Mem={id:Date.now().toString(),title:title.trim(),hue,s:45+Math.floor(Math.random()*15),l:55+Math.floor(Math.random()*15),type:displayType,desc,dataUrl:preview||null,videoBlob:isVideo,createdAt:new Date().toISOString()};
     if(timeCapsule&&revealDate) mem.revealDate=revealDate;
+    if(timeCapsule&&isResolution&&goalDesc.trim()){
+      mem.resolution={goal:goalDesc.trim(),progress:trackProgress?0:undefined,reminders};
+      if(targetDate) mem.resolution.targetDate=targetDate;
+    }
     if(lat!==null&&lng!==null){mem.lat=lat;mem.lng=lng;}
     if(locationName.trim()) mem.locationName=locationName.trim();
     if(contextAccepted&&contextPreview) mem.historicalContext=contextPreview;
@@ -269,6 +278,42 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             <input type="date" value={revealDate} min={todayStr} onChange={e=>setRevealDate(e.target.value)}
               style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
             {revealDate&&revealDate<=todayStr&&<p style={{fontFamily:T.font.body,fontSize:11,color:T.color.error,margin:"6px 0 0"}}>Reveal date must be in the future</p>}
+            {/* Resolution toggle */}
+            <div style={{marginTop:16}}>
+              <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",marginBottom:isResolution?14:0}}>
+                <div onClick={()=>setIsResolution(!isResolution)} style={{width:38,height:22,borderRadius:11,background:isResolution?T.color.sage:`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
+                  <div style={{width:16,height:16,borderRadius:8,background:"#FFF",position:"absolute",top:3,left:isResolution?19:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+                </div>
+                <div>
+                  <div style={{fontFamily:T.font.body,fontSize:12,fontWeight:600,color:T.color.charcoal}}>Make this a Resolution</div>
+                  <div style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>Track a goal alongside this capsule</div>
+                </div>
+              </label>
+              {isResolution&&<div style={{display:"flex",flexDirection:"column",gap:12}}>
+                <div>
+                  <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Goal description</label>
+                  <input value={goalDesc} onChange={e=>setGoalDesc(e.target.value)} placeholder="What do you want to achieve?"
+                    style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Target date (deadline)</label>
+                  <input type="date" value={targetDate} min={todayStr} onChange={e=>setTargetDate(e.target.value)}
+                    style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+                  <div onClick={()=>setTrackProgress(!trackProgress)} style={{width:34,height:20,borderRadius:10,background:trackProgress?T.color.sage:`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
+                    <div style={{width:14,height:14,borderRadius:7,background:"#FFF",position:"absolute",top:3,left:trackProgress?17:3,transition:"left .2s",boxShadow:"0 1px 2px rgba(0,0,0,.2)"}}/>
+                  </div>
+                  <span style={{fontFamily:T.font.body,fontSize:12,color:T.color.charcoal}}>Track progress (0-100%)</span>
+                </label>
+                <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+                  <div onClick={()=>setReminders(!reminders)} style={{width:34,height:20,borderRadius:10,background:reminders?T.color.sage:`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
+                    <div style={{width:14,height:14,borderRadius:7,background:"#FFF",position:"absolute",top:3,left:reminders?17:3,transition:"left .2s",boxShadow:"0 1px 2px rgba(0,0,0,.2)"}}/>
+                  </div>
+                  <span style={{fontFamily:T.font.body,fontSize:12,color:T.color.charcoal}}>Get periodic reminders</span>
+                </label>
+              </div>}
+            </div>
           </div>}
         </div>
         {/* Historical Context suggestion */}

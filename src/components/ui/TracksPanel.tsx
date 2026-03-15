@@ -1,10 +1,14 @@
 "use client";
+import { useMemo } from "react";
 import { T } from "@/lib/theme";
 import { TRACKS } from "@/lib/constants/tracks";
 import { GOAL_TRACK_PRIORITY } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useUserStore } from "@/lib/stores/userStore";
+import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { ROOM_MEMS } from "@/lib/constants/defaults";
+import type { Mem } from "@/lib/constants/defaults";
 
 interface TracksPanelProps {
   onClose: () => void;
@@ -14,7 +18,21 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
   const isMobile = useIsMobile();
   const { tracks, totalPoints, getLevelInfo, getLevelProgressInfo, setSelectedTrackId } = useTrackStore();
   const { userGoal } = useUserStore();
+  const { userMems } = useMemoryStore();
   const levelInfo = getLevelInfo();
+
+  // Collect all resolutions from all rooms
+  const resolutions = useMemo(() => {
+    const allMems: Record<string, Mem[]> = { ...ROOM_MEMS };
+    for (const [k, v] of Object.entries(userMems)) { allMems[k] = v; }
+    const results: Mem[] = [];
+    for (const mems of Object.values(allMems)) {
+      for (const m of mems) {
+        if (m.resolution) results.push(m);
+      }
+    }
+    return results;
+  }, [userMems]);
   const progressInfo = getLevelProgressInfo();
 
   const goalPriority = GOAL_TRACK_PRIORITY[userGoal] || GOAL_TRACK_PRIORITY["preserve"];
@@ -125,6 +143,69 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
           flex: 1, overflowY: "auto", padding: isMobile ? "12px 12px 20px" : "16px 20px 24px",
           display: "flex", flexDirection: "column", gap: 12,
         }}>
+          {/* My Resolutions mini-section */}
+          {resolutions.length > 0 && <div style={{
+            padding: 16, borderRadius: 14,
+            border: `1px solid ${T.color.sage}30`,
+            background: "linear-gradient(135deg, rgba(74,103,65,.05), rgba(74,103,65,.02))",
+            marginBottom: 4,
+          }}>
+            <div style={{
+              fontFamily: T.font.display, fontSize: 17, fontWeight: 600,
+              color: T.color.sage, marginBottom: 12, display: "flex", alignItems: "center", gap: 8,
+            }}>
+              My Resolutions
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {resolutions.map((m) => {
+                const pct = m.resolution?.progress ?? 0;
+                const hasTarget = !!m.resolution?.targetDate;
+                const daysLeft = hasTarget ? Math.ceil((new Date(m.resolution!.targetDate! + "T00:00:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+                return (
+                  <div key={m.id} style={{
+                    padding: "10px 14px", borderRadius: 10,
+                    background: T.color.white, border: `1px solid ${T.color.cream}`,
+                  }}>
+                    <div style={{
+                      fontFamily: T.font.body, fontSize: 13, fontWeight: 600,
+                      color: T.color.charcoal, marginBottom: 4,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>{m.resolution?.goal}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted }}>{m.title}</span>
+                      {hasTarget && daysLeft !== null && (
+                        <span style={{
+                          fontFamily: T.font.body, fontSize: 10, fontWeight: 600,
+                          color: daysLeft > 0 ? T.color.sage : T.color.error,
+                          marginLeft: "auto",
+                        }}>
+                          {daysLeft > 0 ? `${daysLeft}d left` : "Past due"}
+                        </span>
+                      )}
+                    </div>
+                    {typeof m.resolution?.progress === "number" && <div>
+                      <div style={{
+                        width: "100%", height: 5, borderRadius: 3,
+                        background: `${T.color.sandstone}20`, overflow: "hidden",
+                      }}>
+                        <div style={{
+                          width: `${pct}%`, height: "100%", borderRadius: 3,
+                          background: pct >= 100
+                            ? `linear-gradient(90deg,${T.color.success},#5A8751)`
+                            : `linear-gradient(90deg,${T.color.sage}cc,${T.color.sage})`,
+                          transition: "width .8s ease",
+                        }} />
+                      </div>
+                      <div style={{
+                        fontFamily: T.font.body, fontSize: 10, color: T.color.muted,
+                        marginTop: 3, textAlign: "right",
+                      }}>{pct}%</div>
+                    </div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>}
           {sortedTracks.map((track, i) => {
             const progress = tracks[track.id];
             const stepsCompleted = progress?.stepsCompleted.length || 0;

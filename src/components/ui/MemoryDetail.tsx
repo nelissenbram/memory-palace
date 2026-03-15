@@ -32,6 +32,7 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
   const [historicalContext,setHistoricalContext]=useState(mem.historicalContext||"");
   const [contextLoading,setContextLoading]=useState(false);
   const [contextError,setContextError]=useState("");
+  const [resProgress,setResProgress]=useState(mem.resolution?.progress??0);
   const accent=wing?.accent||T.color.terracotta;
 
   const fetchHistoricalContext=useCallback(async()=>{
@@ -142,8 +143,40 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
                 {daysUntilReveal===1?"Opens tomorrow":daysUntilReveal<=30?`Opens in ${daysUntilReveal} days`:`Opens on ${new Date(mem.revealDate!+"T00:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}`}
               </div>
               <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted}}>This time capsule is sealed</div>
+              {mem.resolution&&<div style={{marginTop:12,padding:"10px 14px",borderRadius:10,background:"rgba(74,103,65,.08)",border:`1px solid ${T.color.sage}30`}}>
+                <div style={{fontFamily:T.font.body,fontSize:12,fontStyle:"italic",color:T.color.walnut,lineHeight:1.5}}>
+                  You set a goal... it will be revealed on {new Date(mem.revealDate!+"T00:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}
+                </div>
+              </div>}
             </div>}
             {!isLocked&&(mem.desc||desc)&&<p style={{fontFamily:T.font.body,fontSize:14,color:T.color.walnut,lineHeight:1.7,marginBottom:12}}>{mem.desc}</p>}
+            {/* Resolution progress section */}
+            {!isLocked&&mem.resolution&&<div style={{marginBottom:16,padding:16,borderRadius:12,border:`1px solid ${T.color.sage}30`,background:"linear-gradient(135deg,rgba(74,103,65,.06),rgba(74,103,65,.02))"}}>
+              <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.sage,letterSpacing:".5px",textTransform:"uppercase",marginBottom:10,fontWeight:600}}>Resolution</div>
+              <div style={{fontFamily:T.font.body,fontSize:14,color:T.color.charcoal,lineHeight:1.5,marginBottom:12}}>{mem.resolution.goal}</div>
+              {mem.resolution.targetDate&&<div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
+                <span>Target:</span>
+                <span style={{fontWeight:600,color:T.color.walnut}}>{new Date(mem.resolution.targetDate+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</span>
+                {(()=>{const d=Math.ceil((new Date(mem.resolution.targetDate!+"T00:00:00").getTime()-Date.now())/(1000*60*60*24));return d>0?<span style={{color:T.color.sage,fontStyle:"italic"}}>({d} day{d!==1?"s":""} left)</span>:<span style={{color:T.color.error,fontStyle:"italic"}}>(past due)</span>;})()}
+              </div>}
+              {typeof mem.resolution.progress==="number"&&<div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                  <span style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted}}>Progress</span>
+                  <span style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:resProgress>=100?T.color.success:T.color.sage}}>{resProgress}%</span>
+                </div>
+                <input type="range" min={0} max={100} value={resProgress} onChange={e=>setResProgress(Number(e.target.value))}
+                  style={{width:"100%",accentColor:T.color.sage,marginBottom:8}}/>
+                <div style={{width:"100%",height:6,borderRadius:3,background:`${T.color.sandstone}25`,overflow:"hidden",marginBottom:10}}>
+                  <div style={{width:`${resProgress}%`,height:"100%",borderRadius:3,background:resProgress>=100?`linear-gradient(90deg,${T.color.success},#5A8751)`:`linear-gradient(90deg,${T.color.sage}cc,${T.color.sage})`,transition:"width .3s ease"}}/>
+                </div>
+                {resProgress!==(mem.resolution.progress??0)&&<button onClick={()=>{
+                  const updatedRes={...mem.resolution!,progress:resProgress};
+                  onUpdate(mem.id,{resolution:updatedRes});
+                }} style={{width:"100%",padding:"8px 14px",borderRadius:8,border:"none",background:T.color.sage,color:"#FFF",fontFamily:T.font.body,fontSize:12,fontWeight:600,cursor:"pointer",transition:"all .15s"}}>
+                  Update Progress
+                </button>}
+              </div>}
+            </div>}
             <p style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,marginBottom:4,display:"flex",alignItems:"center",gap:6}}>
               <span>{DISPLAY_TYPES.find(d=>d[0]===mem.type)?.[1]}</span>
               <span style={{fontStyle:"italic"}}>Displayed as {DISPLAY_TYPES.find(d=>d[0]===mem.type)?.[2]||mem.type}</span>
