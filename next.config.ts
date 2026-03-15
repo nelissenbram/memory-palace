@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const isCapacitorBuild = process.env.CAPACITOR_BUILD === "true";
 
@@ -139,6 +140,9 @@ const nextConfig: NextConfig = {
   ...(isCapacitorBuild && { output: "export" as const }),
 };
 
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
 // PWA wrapper uses webpack plugin — works fine on production builds (webpack)
 // but skip for Capacitor (static export handles its own assets)
-export default isCapacitorBuild ? nextConfig : withPWA(nextConfig);
+const finalConfig = isCapacitorBuild ? nextConfig : withPWA(nextConfig);
+export default withNextIntl(finalConfig);
