@@ -6,6 +6,7 @@ import { T } from "@/lib/theme";
 
 const NAV_ITEMS = [
   { href: "/settings/connections", label: "Connections", icon: "\u{1F517}" },
+  { href: "/settings/notifications", label: "Notifications", icon: "\uD83D\uDD14" },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
