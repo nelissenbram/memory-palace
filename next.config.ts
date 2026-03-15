@@ -5,7 +5,7 @@ const isCapacitorBuild = process.env.CAPACITOR_BUILD === "true";
 
 const withPWA = withPWAInit({
   dest: "public",
-  disable: true, // TEMPORARY: disabled to deploy self-destructing SW that clears stale caches
+  disable: process.env.NODE_ENV === "development",
   register: true,
   fallbacks: {
     document: "/offline",
