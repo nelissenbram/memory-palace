@@ -138,6 +138,23 @@ export async function declineInvite(shareId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  // Verify the invite belongs to this user before declining
+  const userEmail = user.email?.toLowerCase();
+  const { data: share } = await supabase
+    .from("room_shares")
+    .select("id, shared_with_email, shared_with_id")
+    .eq("id", shareId)
+    .single();
+
+  if (!share) return { error: "Invitation not found" };
+
+  if (
+    share.shared_with_email?.toLowerCase() !== userEmail &&
+    share.shared_with_id !== user.id
+  ) {
+    return { error: "Not authorized to decline this invitation" };
+  }
+
   const { error } = await supabase
     .from("room_shares")
     .update({
@@ -162,7 +179,7 @@ export async function getPendingInvites() {
   const { data: shares } = await supabase
     .from("room_shares")
     .select("id, room_id, owner_id, permission, status, invite_message, created_at")
-    .or(`shared_with_email.eq.${user.email.toLowerCase()},shared_with_id.eq.${user.id}`)
+    .or(`shared_with_email.eq."${user.email.toLowerCase()}",shared_with_id.eq."${user.id}"`)
     .in("status", ["pending"])
     .order("created_at", { ascending: false });
 
@@ -229,7 +246,7 @@ export async function getAcceptedShares() {
   const { data: shares } = await supabase
     .from("room_shares")
     .select("id, room_id, owner_id, permission, status, accepted_at")
-    .or(`shared_with_email.eq.${user.email?.toLowerCase()},shared_with_id.eq.${user.id}`)
+    .or(`shared_with_email.eq."${user.email?.toLowerCase()}",shared_with_id.eq."${user.id}"`)
     .eq("status", "accepted")
     .order("accepted_at", { ascending: false });
 
