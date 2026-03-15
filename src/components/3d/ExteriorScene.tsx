@@ -187,61 +187,65 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     scene.add(mk(new THREE.TorusGeometry(28,.12,8,48),M.stoneD,0,.12,0));
 
     const palace=new THREE.Group(),clickTargets: THREE.Mesh[]=[];
+    // Track each section group for split/lift animation: {group, id, targetY, currentY, meshes}
+    const sectionGroups: {group:THREE.Group,id:string,targetY:number,currentY:number,meshes:THREE.Mesh[],accent:string}[]=[];
 
     // ══════════════════════════════════════════
     // GRAND CENTRAL KEEP — massive multi-tiered tower
     // ══════════════════════════════════════════
+    const centralGroup=new THREE.Group();
+    const centralBodyMeshes: THREE.Mesh[]=[];
     const cW=20,cD=20,cH=12;
 
     // Stepped base plinth with beveled edges
-    palace.add(mk(new THREE.CylinderGeometry(16,18,1.5,8),M.stoneDk,0,.75,0));
-    palace.add(mk(new THREE.CylinderGeometry(14.5,16,.8,8),M.stoneD,0,1.9,0));
-    palace.add(mk(new THREE.BoxGeometry(cW+4,.6,cD+4),M.stone,0,2.3,0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(16,18,1.5,8),M.stoneDk,0,.75,0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(14.5,16,.8,8),M.stoneD,0,1.9,0));
+    centralGroup.add(mk(new THREE.BoxGeometry(cW+4,.6,cD+4),M.stone,0,2.3,0));
 
     // Main walls — octagonal base feel with buttresses
-    palace.add(mk(new THREE.BoxGeometry(cW,cH,cD),M.stone,0,cH/2+2.6,0));
+    centralGroup.add(mk(new THREE.BoxGeometry(cW,cH,cD),M.stone,0,cH/2+2.6,0));
     // Corner buttresses (8 at each corner)
     for(let cx=-1;cx<=1;cx+=2)for(let cz=-1;cz<=1;cz+=2){
       const bx=cx*(cW/2-.5),bz=cz*(cD/2-.5);
-      palace.add(mk(new THREE.BoxGeometry(1.5,cH+2,1.5),M.stoneW,bx,cH/2+2,bz));
-      palace.add(mk(new THREE.BoxGeometry(1.8,.4,1.8),M.trim,bx,cH+3.2,bz));
+      centralGroup.add(mk(new THREE.BoxGeometry(1.5,cH+2,1.5),M.stoneW,bx,cH/2+2,bz));
+      centralGroup.add(mk(new THREE.BoxGeometry(1.8,.4,1.8),M.trim,bx,cH+3.2,bz));
       // Pinnacle on each buttress
-      palace.add(mk(new THREE.ConeGeometry(.45,2,6),M.roofSlate,bx,cH+4.4,bz));
-      palace.add(mk(new THREE.SphereGeometry(.15,6,6),M.goldBright,bx,cH+5.5,bz));
+      centralGroup.add(mk(new THREE.ConeGeometry(.45,2,6),M.roofSlate,bx,cH+4.4,bz));
+      centralGroup.add(mk(new THREE.SphereGeometry(.15,6,6),M.goldBright,bx,cH+5.5,bz));
     }
 
     // Horizontal stone bands for visual richness
     for(let band=0;band<3;band++){
       const by=5+band*3.5;
-      palace.add(mk(new THREE.BoxGeometry(cW+.5,.2,cD+.5),M.trim,0,by,0));
+      centralGroup.add(mk(new THREE.BoxGeometry(cW+.5,.2,cD+.5),M.trim,0,by,0));
     }
 
     // Grand entablature + cornice with dentil detail
-    palace.add(mk(new THREE.BoxGeometry(cW+1.5,.5,cD+1.5),M.trim,0,cH+2.85,0));
-    palace.add(mk(new THREE.BoxGeometry(cW+2,.2,cD+2),M.gold,0,cH+3.15,0));
+    centralGroup.add(mk(new THREE.BoxGeometry(cW+1.5,.5,cD+1.5),M.trim,0,cH+2.85,0));
+    centralGroup.add(mk(new THREE.BoxGeometry(cW+2,.2,cD+2),M.gold,0,cH+3.15,0));
     // Dentil moulding
     for(let di=0;di<24;di++){
       const da=(di/24)*Math.PI*2,dr=cW/2+.8;
-      palace.add(mk(new THREE.BoxGeometry(.25,.25,.25),M.stoneW,Math.cos(da)*dr,cH+2.7,Math.sin(da)*dr));
+      centralGroup.add(mk(new THREE.BoxGeometry(.25,.25,.25),M.stoneW,Math.cos(da)*dr,cH+2.7,Math.sin(da)*dr));
     }
 
     // ── DRUM (octagonal gallery for dome) ──
     const drumR=9,drumH=4;
-    palace.add(mk(new THREE.CylinderGeometry(drumR,drumR+.5,drumH,8),M.stoneW,0,cH+3.3+drumH/2,0));
-    palace.add(mk(new THREE.CylinderGeometry(drumR+.6,drumR+.4,.35,8),M.trim,0,cH+3.3+drumH+.2,0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(drumR,drumR+.5,drumH,8),M.stoneW,0,cH+3.3+drumH/2,0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(drumR+.6,drumR+.4,.35,8),M.trim,0,cH+3.3+drumH+.2,0));
     // Drum gallery windows (tall, Gothic)
     for(let dw=0;dw<8;dw++){
       const da=(dw/8)*Math.PI*2;
-      gothicWindow(palace,Math.cos(da)*(drumR+.05),cH+5.3,Math.sin(da)*(drumR+.05),da,1);
+      gothicWindow(centralGroup,Math.cos(da)*(drumR+.05),cH+5.3,Math.sin(da)*(drumR+.05),da,1);
       // Pilasters between windows
       const pa=(dw/8+1/16)*Math.PI*2;
-      palace.add(mk(new THREE.BoxGeometry(.3,drumH-.5,.3),M.col,Math.cos(pa)*(drumR+.1),cH+3.3+drumH/2,Math.sin(pa)*(drumR+.1)));
+      centralGroup.add(mk(new THREE.BoxGeometry(.3,drumH-.5,.3),M.col,Math.cos(pa)*(drumR+.1),cH+3.3+drumH/2,Math.sin(pa)*(drumR+.1)));
     }
 
     // ── GRAND DOME ──
     const domeR=8.5;
     const dome=new THREE.Mesh(new THREE.SphereGeometry(domeR,32,24,0,Math.PI*2,0,Math.PI*.42),M.copper);
-    dome.position.set(0,cH+drumH+3.6,0);dome.castShadow=true;palace.add(dome);
+    dome.position.set(0,cH+drumH+3.6,0);dome.castShadow=true;centralGroup.add(dome);
     // Dome ribs
     for(let ri=0;ri<8;ri++){
       const ra=(ri/8)*Math.PI*2;
@@ -250,81 +254,86 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         const rx=Math.cos(ra)*(domeR+.05)*Math.sin(phi);
         const ry=domeR*Math.cos(phi);
         const rz=Math.sin(ra)*(domeR+.05)*Math.sin(phi);
-        palace.add(mk(new THREE.SphereGeometry(.08,4,4),M.gold,rx,cH+drumH+3.6+ry,rz));
+        centralGroup.add(mk(new THREE.SphereGeometry(.08,4,4),M.gold,rx,cH+drumH+3.6+ry,rz));
       }
     }
     // Lantern atop dome
-    palace.add(mk(new THREE.CylinderGeometry(1.5,1.8,2.5,8),M.stoneW,0,cH+drumH+domeR+2.6,0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(1.5,1.8,2.5,8),M.stoneW,0,cH+drumH+domeR+2.6,0));
     for(let lw=0;lw<8;lw++){
       const la=(lw/8)*Math.PI*2;
-      palace.add(mk(new THREE.BoxGeometry(.05,.8,.3),M.win,Math.cos(la)*1.6,cH+drumH+domeR+2.6,Math.sin(la)*1.6));
+      centralGroup.add(mk(new THREE.BoxGeometry(.05,.8,.3),M.win,Math.cos(la)*1.6,cH+drumH+domeR+2.6,Math.sin(la)*1.6));
     }
-    palace.add(mk(new THREE.ConeGeometry(1.2,3,8),M.roof,0,cH+drumH+domeR+5.2,0));
-    palace.add(mk(new THREE.SphereGeometry(.35,8,8),M.goldBright,0,cH+drumH+domeR+6.9,0));
+    centralGroup.add(mk(new THREE.ConeGeometry(1.2,3,8),M.roof,0,cH+drumH+domeR+5.2,0));
+    centralGroup.add(mk(new THREE.SphereGeometry(.35,8,8),M.goldBright,0,cH+drumH+domeR+6.9,0));
     // Cross/finial
-    palace.add(mk(new THREE.CylinderGeometry(.06,.06,1,6),M.goldBright,0,cH+drumH+domeR+7.6,0));
-    palace.add(mk(new THREE.BoxGeometry(.5,.08,.08),M.goldBright,0,cH+drumH+domeR+7.8,0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(.06,.06,1,6),M.goldBright,0,cH+drumH+domeR+7.6,0));
+    centralGroup.add(mk(new THREE.BoxGeometry(.5,.08,.08),M.goldBright,0,cH+drumH+domeR+7.8,0));
 
     // ── FOUR GRAND CORNER TOWERS ──
     const towerOffset=cW/2+1.5;
     [[-1,-1],[-1,1],[1,-1],[1,1]].forEach(([sx,sz],ti)=>{
-      buildTower(palace,sx*towerOffset,sz*towerOffset,2.2,cH+4,5,M.stoneL,ti%2===0?M.roof:M.roofD);
+      buildTower(centralGroup,sx*towerOffset,sz*towerOffset,2.2,cH+4,5,M.stoneL,ti%2===0?M.roof:M.roofD);
     });
 
     // ── GRAND PORTICO (front entrance with twin flanking towers) ──
     const pW=18,pD=7,pH=cH+2;
     // Portico platform
-    palace.add(mk(new THREE.BoxGeometry(pW+2,.6,pD+2),M.stoneD,0,2.3,-(cD/2+pD/2)));
+    centralGroup.add(mk(new THREE.BoxGeometry(pW+2,.6,pD+2),M.stoneD,0,2.3,-(cD/2+pD/2)));
     // Portico back wall
-    palace.add(mk(new THREE.BoxGeometry(pW,pH-2,1.2),M.stone,0,(pH-2)/2+2.6,-(cD/2+pD-.4)));
+    centralGroup.add(mk(new THREE.BoxGeometry(pW,pH-2,1.2),M.stone,0,(pH-2)/2+2.6,-(cD/2+pD-.4)));
     // 12 grand columns (double row for grandeur)
     for(let row=0;row<2;row++){
       const cz=-(cD/2+1+row*(pD-2));
       for(let ci=0;ci<6;ci++){
         const cx=-pW/2+2+ci*(pW-4)/5;
         // Fluted column
-        palace.add(mk(new THREE.CylinderGeometry(.4,.5,pH-1,12),M.col,cx,(pH-1)/2+2.6,cz));
+        centralGroup.add(mk(new THREE.CylinderGeometry(.4,.5,pH-1,12),M.col,cx,(pH-1)/2+2.6,cz));
         // Ionic capital
-        palace.add(mk(new THREE.BoxGeometry(1.2,.3,1.2),M.trim,cx,pH+2.1,cz));
-        palace.add(mk(new THREE.BoxGeometry(1,.15,1),M.gold,cx,pH+2.3,cz));
+        centralGroup.add(mk(new THREE.BoxGeometry(1.2,.3,1.2),M.trim,cx,pH+2.1,cz));
+        centralGroup.add(mk(new THREE.BoxGeometry(1,.15,1),M.gold,cx,pH+2.3,cz));
         // Attic base
-        palace.add(mk(new THREE.CylinderGeometry(.55,.6,.2,12),M.stoneD,cx,2.7,cz));
+        centralGroup.add(mk(new THREE.CylinderGeometry(.55,.6,.2,12),M.stoneD,cx,2.7,cz));
       }
     }
     // Pediment — triangular with relief
-    palace.add(mk(new THREE.BoxGeometry(pW+2,.5,pD+1),M.trim,0,pH+2.5,-(cD/2+pD/2)));
-    const pedL=mk(new THREE.BoxGeometry(pW/2+1.5,.35,pD+1.5),M.roofSlate,-(pW/4+.3),pH+3.8,-(cD/2+pD/2));pedL.rotation.z=.2;palace.add(pedL);
-    const pedR=mk(new THREE.BoxGeometry(pW/2+1.5,.35,pD+1.5),M.roofSlate,(pW/4+.3),pH+3.8,-(cD/2+pD/2));pedR.rotation.z=-.2;palace.add(pedR);
+    centralGroup.add(mk(new THREE.BoxGeometry(pW+2,.5,pD+1),M.trim,0,pH+2.5,-(cD/2+pD/2)));
+    const pedL=mk(new THREE.BoxGeometry(pW/2+1.5,.35,pD+1.5),M.roofSlate,-(pW/4+.3),pH+3.8,-(cD/2+pD/2));pedL.rotation.z=.2;centralGroup.add(pedL);
+    const pedR=mk(new THREE.BoxGeometry(pW/2+1.5,.35,pD+1.5),M.roofSlate,(pW/4+.3),pH+3.8,-(cD/2+pD/2));pedR.rotation.z=-.2;centralGroup.add(pedR);
     // Pediment acroterion (decorative finials)
-    palace.add(mk(new THREE.SphereGeometry(.4,8,8),M.goldBright,0,pH+4.6,-(cD/2+pD/2)));
-    palace.add(mk(new THREE.SphereGeometry(.3,8,8),M.goldBright,-(pW/2+.5),pH+2.8,-(cD/2+pD/2)));
-    palace.add(mk(new THREE.SphereGeometry(.3,8,8),M.goldBright,(pW/2+.5),pH+2.8,-(cD/2+pD/2)));
+    centralGroup.add(mk(new THREE.SphereGeometry(.4,8,8),M.goldBright,0,pH+4.6,-(cD/2+pD/2)));
+    centralGroup.add(mk(new THREE.SphereGeometry(.3,8,8),M.goldBright,-(pW/2+.5),pH+2.8,-(cD/2+pD/2)));
+    centralGroup.add(mk(new THREE.SphereGeometry(.3,8,8),M.goldBright,(pW/2+.5),pH+2.8,-(cD/2+pD/2)));
     // Entrance towers (flanking the portico)
-    buildTower(palace,-(pW/2+2),-(cD/2+pD/2),1.8,pH+3,4.5,M.stoneW,M.roof);
-    buildTower(palace,(pW/2+2),-(cD/2+pD/2),1.8,pH+3,4.5,M.stoneW,M.roof);
+    buildTower(centralGroup,-(pW/2+2),-(cD/2+pD/2),1.8,pH+3,4.5,M.stoneW,M.roof);
+    buildTower(centralGroup,(pW/2+2),-(cD/2+pD/2),1.8,pH+3,4.5,M.stoneW,M.roof);
 
     // Grand entrance — double doors with elaborate surround
-    palace.add(mk(new THREE.BoxGeometry(5.5,7.5,.3),M.doorRich,0,6.35,-(cD/2+.1)));
-    palace.add(mk(new THREE.BoxGeometry(6,8,.15),M.trim,0,6.6,-(cD/2+.02)));
-    palace.add(mk(new THREE.BoxGeometry(6.5,.5,.2),M.gold,0,10.3,-(cD/2+.08)));
+    centralGroup.add(mk(new THREE.BoxGeometry(5.5,7.5,.3),M.doorRich,0,6.35,-(cD/2+.1)));
+    centralGroup.add(mk(new THREE.BoxGeometry(6,8,.15),M.trim,0,6.6,-(cD/2+.02)));
+    centralGroup.add(mk(new THREE.BoxGeometry(6.5,.5,.2),M.gold,0,10.3,-(cD/2+.08)));
     // Door panels
-    palace.add(mk(new THREE.BoxGeometry(.08,7,.15),M.gold,0,6.1,-(cD/2+.25)));
+    centralGroup.add(mk(new THREE.BoxGeometry(.08,7,.15),M.gold,0,6.1,-(cD/2+.25)));
     for(let dp=-1;dp<=1;dp+=2){
-      palace.add(mk(new THREE.BoxGeometry(2,3,.08),M.door,dp*1.3,5.1,-(cD/2+.28)));
-      palace.add(mk(new THREE.BoxGeometry(2,3,.08),M.door,dp*1.3,8.6,-(cD/2+.28)));
+      centralGroup.add(mk(new THREE.BoxGeometry(2,3,.08),M.door,dp*1.3,5.1,-(cD/2+.28)));
+      centralGroup.add(mk(new THREE.BoxGeometry(2,3,.08),M.door,dp*1.3,8.6,-(cD/2+.28)));
       // Door ring handles
-      palace.add(mk(new THREE.TorusGeometry(.2,.04,6,12),M.goldBright,dp*.8,6,-(cD/2+.32)));
+      centralGroup.add(mk(new THREE.TorusGeometry(.2,.04,6,12),M.goldBright,dp*.8,6,-(cD/2+.32)));
     }
     // Gothic arch over door
-    palace.add(mk(new THREE.ConeGeometry(3.2,2.5,3),M.trim,0,11.5,-(cD/2+.05)));
+    centralGroup.add(mk(new THREE.ConeGeometry(3.2,2.5,3),M.trim,0,11.5,-(cD/2+.05)));
     // Rose window above door
-    palace.add(mk(new THREE.CylinderGeometry(1.5,1.5,.1,16),M.win,0,12.5,-(cD/2+.05)));
-    palace.add(mk(new THREE.TorusGeometry(1.5,.08,8,16),M.gold,0,12.5,-(cD/2+.04)));
+    centralGroup.add(mk(new THREE.CylinderGeometry(1.5,1.5,.1,16),M.win,0,12.5,-(cD/2+.05)));
+    centralGroup.add(mk(new THREE.TorusGeometry(1.5,.08,8,16),M.gold,0,12.5,-(cD/2+.04)));
     // Window tracery
     for(let rw=0;rw<6;rw++){
       const ra=(rw/6)*Math.PI*2;
-      palace.add(mk(new THREE.BoxGeometry(.06,1.3,.06),M.gold,Math.cos(ra)*1,12.5+Math.sin(ra)*1,-(cD/2+.03)));
+      centralGroup.add(mk(new THREE.BoxGeometry(.06,1.3,.06),M.gold,Math.cos(ra)*1,12.5+Math.sin(ra)*1,-(cD/2+.03)));
     }
+    // Collect central meshes for hover/glow
+    centralGroup.traverse((child: THREE.Object3D)=>{
+      if(child instanceof THREE.Mesh && child.material && !(child.material as any).transparent) centralBodyMeshes.push(child);
+    });
+    palace.add(centralGroup);
 
     // ══════════════════════════════════════════
     // 5 GRAND WINGS — with towers, flying buttresses, Gothic windows
@@ -428,6 +437,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       wg.rotation.y=angle;const att=cD/2;
       wg.position.set(Math.sin(angle)*att,0,Math.cos(angle)*att);
       palace.add(wg);
+
+      // Register this wing group for split/lift animation
+      sectionGroups.push({group:wg,id:def.room.id,targetY:0,currentY:0,meshes:wingMeshes,accent:def.room.accent});
 
       const tLen=5+wL+eD;
       const ct=new THREE.Mesh(new THREE.BoxGeometry(eW+4,eH+6,tLen+4),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
@@ -711,16 +723,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── ENTRANCE HALL click target ──
     const entranceId="__entrance__";
-    const entranceMeshes: THREE.Mesh[]=[];
-    palace.traverse((child: THREE.Object3D)=>{
-      if(child instanceof THREE.Mesh && child.material && !(child.material as any).transparent){
-        entranceMeshes.push(child);
-      }
-    });
-    // Remove meshes that belong to wings (they're tracked separately)
-    const allWingMeshes=new Set<THREE.Mesh>();
-    clickTargets.forEach((ct: any)=>ct.userData.wingMeshes.forEach((wm: THREE.Mesh)=>allWingMeshes.add(wm)));
-    const centralMeshes=entranceMeshes.filter(m=>!allWingMeshes.has(m));
+    // centralBodyMeshes already collected from centralGroup above
+    const centralMeshes=centralBodyMeshes;
+    // Register central group for split/lift animation
+    sectionGroups.push({group:centralGroup,id:entranceId,targetY:0,currentY:0,meshes:centralMeshes,accent:"#E0C060"});
     const ect=new THREE.Mesh(new THREE.BoxGeometry(cW+8,cH+drumH+domeR+6,cD+pD+4),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
     ect.position.set(0,(cH+drumH+domeR)/2+3,-(pD/2));ect.userData={roomId:entranceId,wingMeshes:centralMeshes,accent:"#E0C060"};
     scene.add(ect);clickTargets.push(ect);
@@ -777,6 +783,38 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       fW1.material.opacity=.55+Math.sin(t*1.5)*.08;
       fW2.material.opacity=.55+Math.sin(t*1.8)*.08;
       fW3.material.opacity=.55+Math.sin(t*2.1)*.06;
+
+      // ── SECTION SPLIT / LIFT ANIMATION ──
+      const anyHovered=hoveredRoomRef.current!==null;
+      sectionGroups.forEach(sg=>{
+        const isHov=hoveredRoomRef.current===sg.id;
+        // Hovered section lifts up; others stay at 0
+        sg.targetY=isHov?2.5:0;
+        // Smooth lerp
+        sg.currentY+=(sg.targetY-sg.currentY)*.06;
+        sg.group.position.y=sg.currentY;
+
+        // Dim non-hovered sections when something is hovered
+        const dimTarget=anyHovered&&!isHov?0.35:0;
+        sg.meshes.forEach((wm: any)=>{
+          if(!wm.material||wm.material.transparent)return;
+          // Track dim state on userData
+          if(wm.userData._dimAmount===undefined)wm.userData._dimAmount=0;
+          wm.userData._dimAmount+=(dimTarget-wm.userData._dimAmount)*.06;
+          // Apply dimming via emissive (darken by adding negative-ish emissive, or reduce color)
+          // We use a color multiplier approach: store original color once, then lerp
+          if(!wm.userData._origColor){
+            wm.userData._origColor=(wm.material as THREE.MeshStandardMaterial).color.clone();
+          }
+          const dim=wm.userData._dimAmount;
+          if(dim>0.01){
+            const darkened=wm.userData._origColor.clone().multiplyScalar(1-dim*0.5);
+            (wm.material as THREE.MeshStandardMaterial).color.lerp(darkened,.15);
+          }else{
+            (wm.material as THREE.MeshStandardMaterial).color.lerp(wm.userData._origColor,.08);
+          }
+        });
+      });
 
       // Wing hover glow — emissive body + accent point light + window brightening
       const warmGlow=new THREE.Color("#FFE8B0");
@@ -853,7 +891,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);onRoomHover(hits.length>0?hits[0].object.userData.roomId:null);};
     const onCk=(e: MouseEvent)=>{if(drag.current)return;const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
-      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0&&hits[0].object.userData.roomId!==entranceId)onRoomClick(hits[0].object.userData.roomId);};
+      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0)onRoomClick(hits[0].object.userData.roomId);};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(180,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);
@@ -875,10 +913,13 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       }
     };
     const onTE=(e: TouchEvent)=>{
-      if(touchTap&&e.changedTouches.length===1){const t=e.changedTouches[0];const rect=el.getBoundingClientRect();
-        mse.current.set(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1);
+      if(touchTap&&e.changedTouches.length===1){const tc=e.changedTouches[0];const rect=el.getBoundingClientRect();
+        mse.current.set(((tc.clientX-rect.left)/rect.width)*2-1,-((tc.clientY-rect.top)/rect.height)*2+1);
         ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);
-        if(hits.length>0){const hitId=hits[0].object.userData.roomId;onRoomHover(hitId);if(hitId!==entranceId)onRoomClick(hitId);}
+        if(hits.length>0){const hitId=hits[0].object.userData.roomId;onRoomHover(hitId);
+          // Brief delay so the lift animation is visible before navigating
+          setTimeout(()=>onRoomClick(hitId),250);
+        }
       }
     };
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});

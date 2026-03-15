@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
@@ -26,6 +26,17 @@ export default function EntranceHallScene({
   const mountRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [muted, setMuted] = useState(false);
+
+  // First-person camera refs (matching InteriorScene pattern)
+  const lookA = useRef({ yaw: 0, pitch: 0 });
+  const lookT = useRef({ yaw: 0, pitch: 0 });
+  const pos = useRef(new THREE.Vector3());
+  const posT = useRef(new THREE.Vector3());
+  const keys = useRef<Record<string, boolean>>({});
+  const drag = useRef(false);
+  const prev = useRef({ x: 0, y: 0 });
+  const hovMem = useRef<any>(null);
 
   useEffect(() => {
     const el = mountRef.current;
@@ -817,17 +828,22 @@ export default function EntranceHallScene({
       scene.add(frescoMesh);
     });
 
-    // ── SPIRAL STAIRCASE TO ATTIC ──
+    // ── SPIRAL STAIRCASE TO ATTIC (positioned against the wall) ──
+    // Place it between doors 0 (family) and 4 (creativity), at a gap in the wall
+    // The staircase hugs the curved wall as it spirals up
     {
-      // Position: offset from center
-      const spiralCX = -6;
-      const spiralCZ = 6;
+      // Position: against the wall, between the family and creativity doors
+      // Door 0 (family) is at angle = -PI/2, Door 4 (creativity) at angle = -PI/2 + 4/5*2PI = ~-PI/2 + 8PI/5
+      // The gap between door 4 and door 0 (going clockwise) is centered at angle ~ PI/2 + PI/5
+      const spiralWallAngle = Math.PI / 2 + Math.PI / 5; // angle on the circular wall
+      const spiralCX = Math.cos(spiralWallAngle) * (RADIUS - 2.2);
+      const spiralCZ = Math.sin(spiralWallAngle) * (RADIUS - 2.2);
       const spiralBaseY = 0;
       const spiralTopY = 8.5;
       const spiralHeight = spiralTopY - spiralBaseY;
-      const spiralRadius = 1.8; // radius of the helix
-      const numSteps = 36; // ~2 full rotations
-      const totalRotation = Math.PI * 2 * 1.8; // 1.8 full rotations
+      const spiralRadius = 1.8;
+      const numSteps = 36;
+      const totalRotation = Math.PI * 2 * 1.8;
       const stepH = 0.15;
       const stepW = 1.2;
       const stepD = 0.35;
@@ -836,108 +852,98 @@ export default function EntranceHallScene({
       const centralCol = mk(new THREE.CylinderGeometry(0.25, 0.25, spiralHeight + 1, 16), MS.marbleDark,
         spiralCX, spiralHeight / 2 + 0.5, spiralCZ);
       scene.add(centralCol);
-      // Column base
       scene.add(mk(new THREE.CylinderGeometry(0.5, 0.55, 0.3, 16), MS.marbleDark, spiralCX, 0.15, spiralCZ));
-      // Column top
       scene.add(mk(new THREE.CylinderGeometry(0.45, 0.3, 0.25, 16), MS.gold, spiralCX, spiralHeight + 1.1, spiralCZ));
 
-      // Build steps in helix pattern
       for (let s = 0; s < numSteps; s++) {
         const t = s / numSteps;
         const stepAngle = t * totalRotation;
         const stepY = spiralBaseY + t * spiralHeight;
-
-        // Step position: radiating outward from center column
         const sx = spiralCX + Math.cos(stepAngle) * (spiralRadius * 0.5);
         const sz = spiralCZ + Math.sin(stepAngle) * (spiralRadius * 0.5);
-
-        // Wedge-shaped step (wider at outside, narrower at center)
         const stepMesh = mk(new THREE.BoxGeometry(stepW, stepH, stepD), MS.atticStairs, sx, stepY, sz);
         stepMesh.rotation.y = -stepAngle + Math.PI / 2;
         stepMesh.castShadow = true;
         stepMesh.receiveShadow = true;
         scene.add(stepMesh);
-
-        // Outer railing post every 3 steps
         if (s % 3 === 0) {
           const railX = spiralCX + Math.cos(stepAngle) * (spiralRadius + 0.1);
           const railZ = spiralCZ + Math.sin(stepAngle) * (spiralRadius + 0.1);
-          // Railing post (thin cylinder)
-          const railPost = mk(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 6), MS.spiralRailing,
-            railX, stepY + 0.5, railZ);
-          scene.add(railPost);
-          // Railing sphere top
+          scene.add(mk(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 6), MS.spiralRailing, railX, stepY + 0.5, railZ));
           scene.add(mk(new THREE.SphereGeometry(0.05, 6, 6), MS.goldBright, railX, stepY + 1.0, railZ));
         }
       }
 
-      // Railing handrail (continuous spiral tube)
+      // Outer handrail
       const handrailPoints: THREE.Vector3[] = [];
       for (let t = 0; t <= 1; t += 0.02) {
         const ha = t * totalRotation;
-        const hy = spiralBaseY + t * spiralHeight + 1.0;
-        const hx = spiralCX + Math.cos(ha) * (spiralRadius + 0.1);
-        const hz = spiralCZ + Math.sin(ha) * (spiralRadius + 0.1);
-        handrailPoints.push(new THREE.Vector3(hx, hy, hz));
+        handrailPoints.push(new THREE.Vector3(
+          spiralCX + Math.cos(ha) * (spiralRadius + 0.1),
+          spiralBaseY + t * spiralHeight + 1.0,
+          spiralCZ + Math.sin(ha) * (spiralRadius + 0.1)
+        ));
       }
       if (handrailPoints.length > 2) {
-        const handrailCurve = new THREE.CatmullRomCurve3(handrailPoints);
-        const handrailGeo = new THREE.TubeGeometry(handrailCurve, 60, 0.035, 6, false);
-        const handrail = new THREE.Mesh(handrailGeo, MS.spiralRailing);
-        scene.add(handrail);
+        scene.add(new THREE.Mesh(
+          new THREE.TubeGeometry(new THREE.CatmullRomCurve3(handrailPoints), 60, 0.035, 6, false),
+          MS.spiralRailing
+        ));
       }
 
-      // Inner railing (along central column)
+      // Inner railing
       const innerRailPoints: THREE.Vector3[] = [];
       for (let t = 0; t <= 1; t += 0.02) {
         const ha = t * totalRotation;
-        const hy = spiralBaseY + t * spiralHeight + 1.0;
-        const hx = spiralCX + Math.cos(ha) * 0.35;
-        const hz = spiralCZ + Math.sin(ha) * 0.35;
-        innerRailPoints.push(new THREE.Vector3(hx, hy, hz));
+        innerRailPoints.push(new THREE.Vector3(
+          spiralCX + Math.cos(ha) * 0.35,
+          spiralBaseY + t * spiralHeight + 1.0,
+          spiralCZ + Math.sin(ha) * 0.35
+        ));
       }
       if (innerRailPoints.length > 2) {
-        const innerRailCurve = new THREE.CatmullRomCurve3(innerRailPoints);
-        const innerRailGeo = new THREE.TubeGeometry(innerRailCurve, 60, 0.025, 6, false);
-        const innerRail = new THREE.Mesh(innerRailGeo, MS.goldDark);
-        scene.add(innerRail);
+        scene.add(new THREE.Mesh(
+          new THREE.TubeGeometry(new THREE.CatmullRomCurve3(innerRailPoints), 60, 0.025, 6, false),
+          MS.goldDark
+        ));
       }
 
-      // Landing platform at top
+      // Landing platform at top — positioned flush against the wall
       const landingY = spiralTopY;
-      const landingAngle = totalRotation;
-      const landingX = spiralCX + Math.cos(landingAngle) * (spiralRadius * 0.4);
-      const landingZ = spiralCZ + Math.sin(landingAngle) * (spiralRadius * 0.4);
+      const wallDirX = Math.cos(spiralWallAngle);
+      const wallDirZ = Math.sin(spiralWallAngle);
+      const landingX = spiralCX + wallDirX * 1.0;
+      const landingZ = spiralCZ + wallDirZ * 1.0;
       scene.add(mk(new THREE.BoxGeometry(2.0, 0.2, 1.5), MS.atticStairs, landingX, landingY, landingZ));
 
-      // Attic door at top of spiral (smaller, wooden, mysterious)
+      // Attic door SET INTO THE WALL
       const atDoorH = 2.2;
       const atDoorW = 1.0;
-      // Find wall direction from landing
-      const atWallAngle = Math.atan2(landingZ - spiralCZ, landingX - spiralCX);
-      const atDx = landingX + Math.cos(atWallAngle) * 0.6;
-      const atDz = landingZ + Math.sin(atWallAngle) * 0.6;
+      const atWallAngle = spiralWallAngle;
+      const atDx = Math.cos(atWallAngle) * (RADIUS - 0.3);
+      const atDz = Math.sin(atWallAngle) * (RADIUS - 0.3);
 
-      const atDoor = mk(new THREE.BoxGeometry(atDoorW, atDoorH, 0.1), MS.atticDoor, atDx, landingY + atDoorH / 2, atDz);
-      atDoor.rotation.y = -atWallAngle;
+      const atDoor = mk(new THREE.BoxGeometry(atDoorW, atDoorH, 0.25), MS.atticDoor, atDx, landingY + atDoorH / 2, atDz);
+      atDoor.lookAt(0, landingY + atDoorH / 2, 0);
       scene.add(atDoor);
 
+      // Door recess in the wall
+      const recessMat = new THREE.MeshStandardMaterial({ color: "#2A1A0A", roughness: 0.5 });
+      const recessMesh = mk(new THREE.BoxGeometry(atDoorW + 0.4, atDoorH + 0.3, 0.6), recessMat,
+        Math.cos(atWallAngle) * (RADIUS - 0.2), landingY + (atDoorH + 0.3) / 2, Math.sin(atWallAngle) * (RADIUS - 0.2));
+      recessMesh.lookAt(0, landingY + (atDoorH + 0.3) / 2, 0);
+      scene.add(recessMesh);
+
       // Attic door frame
-      const atFrameGeo = new THREE.BoxGeometry(0.12, atDoorH + 0.2, 0.12);
-      const atFL = new THREE.Mesh(atFrameGeo, MS.bronze);
-      atFL.position.set(
-        atDx + Math.cos(atWallAngle + Math.PI / 2) * (atDoorW / 2 + 0.06),
-        landingY + (atDoorH + 0.2) / 2,
-        atDz + Math.sin(atWallAngle + Math.PI / 2) * (atDoorW / 2 + 0.06)
-      );
-      scene.add(atFL);
-      const atFR = new THREE.Mesh(atFrameGeo, MS.bronze);
-      atFR.position.set(
-        atDx - Math.cos(atWallAngle + Math.PI / 2) * (atDoorW / 2 + 0.06),
-        landingY + (atDoorH + 0.2) / 2,
-        atDz - Math.sin(atWallAngle + Math.PI / 2) * (atDoorW / 2 + 0.06)
-      );
-      scene.add(atFR);
+      const atFrameGeo = new THREE.BoxGeometry(0.12, atDoorH + 0.2, 0.15);
+      for (const side of [-1, 1]) {
+        const latX = -Math.sin(atWallAngle) * side * (atDoorW / 2 + 0.06);
+        const latZ = Math.cos(atWallAngle) * side * (atDoorW / 2 + 0.06);
+        const atF = new THREE.Mesh(atFrameGeo, MS.bronze);
+        atF.position.set(atDx + latX, landingY + (atDoorH + 0.2) / 2, atDz + latZ);
+        atF.lookAt(0, landingY + (atDoorH + 0.2) / 2, 0);
+        scene.add(atF);
+      }
 
       // Small arch above attic door
       const atArchCurve = new THREE.EllipseCurve(0, 0, atDoorW / 2 + 0.1, 0.5, 0, Math.PI, false, 0);
@@ -945,10 +951,11 @@ export default function EntranceHallScene({
       const atArchGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(atArchPts), 16, 0.05, 6, false);
       const atArch = new THREE.Mesh(atArchGeo, MS.bronze);
       atArch.position.set(atDx, landingY + atDoorH + 0.1, atDz);
-      atArch.rotation.y = -atWallAngle;
+      atArch.lookAt(0, landingY + atDoorH + 0.1, 0);
+      atArch.rotateY(Math.PI);
       scene.add(atArch);
 
-      // "The Attic" label
+      // "The Attic" label — facing inward so player can read it
       const atCanvas = document.createElement("canvas");
       atCanvas.width = 256;
       atCanvas.height = 64;
@@ -971,16 +978,20 @@ export default function EntranceHallScene({
         new THREE.MeshStandardMaterial({ map: atTex, roughness: 0.4 })
       );
       atLabel.position.set(atDx, landingY + atDoorH + 0.6, atDz);
-      atLabel.rotation.y = -atWallAngle + Math.PI;
+      atLabel.lookAt(0, landingY + atDoorH + 0.6, 0);
       scene.add(atLabel);
 
       // Small lantern light at spiral staircase
       const spiralLight = new THREE.PointLight("#FFE0A0", 0.6, 10);
       spiralLight.position.set(spiralCX, spiralTopY + 1, spiralCZ);
       scene.add(spiralLight);
-      // Lantern mesh at top
       scene.add(mk(new THREE.SphereGeometry(0.15, 8, 8), new THREE.MeshBasicMaterial({ color: "#FFE0A0" }),
         spiralCX, spiralTopY + 1.5, spiralCZ));
+
+      // Store staircase position for collision detection
+      (scene as any).__spiralCX = spiralCX;
+      (scene as any).__spiralCZ = spiralCZ;
+      (scene as any).__spiralRadius = spiralRadius;
     }
 
     // ── DUST PARTICLES (many more) ──
@@ -1046,40 +1057,119 @@ export default function EntranceHallScene({
     portalLight.position.set(exitX - Math.cos(exitAngle) * 0.5, 2.5, exitZ - Math.sin(exitAngle) * 0.5);
     scene.add(portalLight);
 
-    // ── CAMERA ──
-    const camOrbit = { theta: 0, targetTheta: 0, autoSpeed: 0.03, radius: 10, height: 2.5, autoOrbit: true };
-    camera.position.set(0, camOrbit.height, camOrbit.radius);
-    camera.lookAt(0, 5, 0);
+    // ── FIRST-PERSON CAMERA ──
+    // Player starts near the exit portal (entrance), facing center
+    const startAngle = exitAngle + Math.PI; // face inward from exit
+    pos.current.set(
+      Math.cos(exitAngle) * (RADIUS - 3),
+      1.7,
+      Math.sin(exitAngle) * (RADIUS - 3)
+    );
+    posT.current.copy(pos.current);
+    lookT.current = { yaw: startAngle, pitch: 0 };
+    lookA.current = { yaw: startAngle, pitch: 0 };
 
-    // ── CONTROLS ──
-    const drag2 = { v: false };
-    const prev = { x: 0, y: 0 };
-    let hoveredWing: string | null = null;
+    // Store collision obstacles: column positions, staircase center
+    const colPositions: { x: number; z: number; r: number }[] = [];
+    for (let i = 0; i < NUM_COLS; i++) {
+      const angle = (i / NUM_COLS) * Math.PI * 2;
+      colPositions.push({
+        x: Math.cos(angle) * (RADIUS - 0.8),
+        z: Math.sin(angle) * (RADIUS - 0.8),
+        r: 0.7, // column collision radius
+      });
+    }
+    const spirCX = (scene as any).__spiralCX || 0;
+    const spirCZ = (scene as any).__spiralCZ || 0;
+    const spirR = (scene as any).__spiralRadius || 1.8;
+
     const clock = new THREE.Clock();
-    const mse = new THREE.Vector2();
+    let hoveredWing: string | null = null;
 
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate);
       const dt = Math.min(clock.getDelta(), 0.05);
       const t = clock.getElapsedTime();
 
-      if (camOrbit.autoOrbit) {
-        camOrbit.targetTheta += camOrbit.autoSpeed * dt;
+      // ── Smooth look interpolation ──
+      lookA.current.yaw += (lookT.current.yaw - lookA.current.yaw) * 0.08;
+      lookA.current.pitch += (lookT.current.pitch - lookA.current.pitch) * 0.08;
+
+      // ── Movement (WASD / Arrow keys) ──
+      const spd = 4.0 * dt;
+      const dir = new THREE.Vector3();
+      const k = keys.current;
+      if (k["w"] || k["arrowup"]) dir.z -= 1;
+      if (k["s"] || k["arrowdown"]) dir.z += 1;
+      if (k["a"] || k["arrowleft"]) dir.x -= 1;
+      if (k["d"] || k["arrowright"]) dir.x += 1;
+      if (dir.length() > 0) {
+        dir.normalize().multiplyScalar(spd);
+        dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), -lookA.current.yaw);
+        posT.current.add(dir);
       }
-      camOrbit.theta += (camOrbit.targetTheta - camOrbit.theta) * 0.05;
 
-      camera.position.x = Math.sin(camOrbit.theta) * camOrbit.radius;
-      camera.position.z = Math.cos(camOrbit.theta) * camOrbit.radius;
-      camera.position.y = camOrbit.height;
-      camera.lookAt(0, 5, 0);
+      // ── Collision detection ──
+      // Wall: stay within circular room
+      const distFromCenter = Math.sqrt(posT.current.x ** 2 + posT.current.z ** 2);
+      if (distFromCenter > RADIUS - 1.2) {
+        const ang = Math.atan2(posT.current.z, posT.current.x);
+        posT.current.x = Math.cos(ang) * (RADIUS - 1.2);
+        posT.current.z = Math.sin(ang) * (RADIUS - 1.2);
+      }
+      // Columns
+      for (const col of colPositions) {
+        const dx2 = posT.current.x - col.x;
+        const dz2 = posT.current.z - col.z;
+        const dist = Math.sqrt(dx2 * dx2 + dz2 * dz2);
+        if (dist < col.r) {
+          const pushAng = Math.atan2(dz2, dx2);
+          posT.current.x = col.x + Math.cos(pushAng) * col.r;
+          posT.current.z = col.z + Math.sin(pushAng) * col.r;
+        }
+      }
+      // Spiral staircase
+      const sDx = posT.current.x - spirCX;
+      const sDz = posT.current.z - spirCZ;
+      const sDist = Math.sqrt(sDx * sDx + sDz * sDz);
+      if (sDist < spirR + 0.5) {
+        const pushAng = Math.atan2(sDz, sDx);
+        posT.current.x = spirCX + Math.cos(pushAng) * (spirR + 0.5);
+        posT.current.z = spirCZ + Math.sin(pushAng) * (spirR + 0.5);
+      }
 
-      // Door hover glow
+      // Keep at eye level
+      posT.current.y = 1.7;
+
+      // Smooth position interpolation
+      pos.current.lerp(posT.current, 0.1);
+      camera.position.copy(pos.current);
+
+      // Look direction
+      const ld = new THREE.Vector3(
+        Math.sin(lookA.current.yaw) * Math.cos(lookA.current.pitch),
+        Math.sin(lookA.current.pitch),
+        -Math.cos(lookA.current.yaw) * Math.cos(lookA.current.pitch)
+      );
+      camera.lookAt(camera.position.clone().add(ld));
+
+      // ── Distance-based door glow ──
       doorMeshes.forEach(d => {
-        const isH = hoveredWing === d.wingId;
         const wing = WINGS.find(ww => ww.id === d.wingId);
         const accent = wing?.accent || "#C8A858";
-        d.mat.emissive = isH ? new THREE.Color(accent) : new THREE.Color(0);
-        d.mat.emissiveIntensity = isH ? 0.25 + Math.sin(t * 3) * 0.1 : 0;
+        // Calculate distance from player to door
+        const doorAngle = d.angle;
+        const doorX = Math.cos(doorAngle) * (RADIUS - 0.4);
+        const doorZ = Math.sin(doorAngle) * (RADIUS - 0.4);
+        const distToDoor = Math.sqrt(
+          (pos.current.x - doorX) ** 2 + (pos.current.z - doorZ) ** 2
+        );
+        const isHover = hoveredWing === d.wingId;
+        // Glow stronger when closer (max at distance 3, fade out at distance 10)
+        const proximityGlow = Math.max(0, 1 - distToDoor / 10) * 0.3;
+        const hoverGlow = isHover ? 0.25 + Math.sin(t * 3) * 0.1 : 0;
+        d.mat.emissive = new THREE.Color(accent);
+        d.mat.emissiveIntensity = Math.max(proximityGlow, hoverGlow);
       });
 
       // Portal pulse
@@ -1096,7 +1186,7 @@ export default function EntranceHallScene({
       }
       dustGeo.attributes.position.needsUpdate = true;
 
-      // Light beam breathing (wider range)
+      // Light beam breathing
       beamMesh.material.opacity = 0.04 + Math.sin(t * 0.5) * 0.015;
       beamMat2.opacity = 0.025 + Math.sin(t * 0.7) * 0.01;
       beamMat3.opacity = 0.03 + Math.sin(t * 0.9) * 0.012;
@@ -1105,58 +1195,51 @@ export default function EntranceHallScene({
     };
     animate();
 
-    // ── MOUSE CONTROLS ──
+    // ── MOUSE CONTROLS (first-person look + click) ──
     const onDown = (e: MouseEvent) => {
-      drag2.v = false;
-      prev.x = e.clientX;
-      prev.y = e.clientY;
-      camOrbit.autoOrbit = false;
+      drag.current = false;
+      prev.current = { x: e.clientX, y: e.clientY };
     };
     const onMove = (e: MouseEvent) => {
-      const dx2 = e.clientX - prev.x;
-      if (Math.abs(dx2) > 2 || Math.abs(e.clientY - prev.y) > 2) drag2.v = true;
+      const dx2 = e.clientX - prev.current.x;
+      const dy2 = e.clientY - prev.current.y;
+      if (Math.abs(dx2) > 2 || Math.abs(dy2) > 2) drag.current = true;
       if (e.buttons === 1) {
-        camOrbit.targetTheta -= dx2 * 0.004;
-        prev.x = e.clientX;
-        prev.y = e.clientY;
+        lookT.current.yaw -= dx2 * 0.003;
+        lookT.current.pitch = Math.max(-0.6, Math.min(0.6, lookT.current.pitch + dy2 * 0.003));
+        prev.current = { x: e.clientX, y: e.clientY };
       }
+      // Raycast for hover detection
       const rect = el.getBoundingClientRect();
-      mse.set(
+      const rc = new THREE.Raycaster();
+      rc.setFromCamera(new THREE.Vector2(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
         -((e.clientY - rect.top) / rect.height) * 2 + 1
-      );
-      const rc = new THREE.Raycaster();
-      rc.setFromCamera(mse, camera);
+      ), camera);
       let found: string | null = null;
       let portalHov = false;
       doorMeshes.forEach(d => {
         const hits = rc.intersectObject(d.mesh);
-        if (hits.length > 0 && hits[0].distance < 30) found = d.wingId;
+        if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
       });
-      const ph = rc.intersectObject(portalHit);
-      if (ph.length > 0 && ph[0].distance < 30) portalHov = true;
+      const pHits = rc.intersectObject(portalHit);
+      if (pHits.length > 0 && pHits[0].distance < 15) portalHov = true;
       hoveredWing = found;
+      hovMem.current = found || (portalHov ? "__exterior__" : null);
       el.style.cursor = (found || portalHov) ? "pointer" : "grab";
     };
     const onClick = () => {
-      if (!drag2.v && hoveredWing) {
-        onDoorClick(hoveredWing);
-      } else if (!drag2.v) {
-        const rect = el.getBoundingClientRect();
-        const rc = new THREE.Raycaster();
-        rc.setFromCamera(new THREE.Vector2(
-          ((prev.x - rect.left) / rect.width) * 2 - 1,
-          -((prev.y - rect.top) / rect.height) * 2 + 1
-        ), camera);
-        const ph = rc.intersectObject(portalHit);
-        if (ph.length > 0 && ph[0].distance < 30) onDoorClick("__exterior__");
+      if (!drag.current && hovMem.current) {
+        if (hovMem.current === "__exterior__") onDoorClick("__exterior__");
+        else onDoorClick(hovMem.current);
       }
     };
-    const onUp = () => {
-      setTimeout(() => { camOrbit.autoOrbit = true; }, 3000);
+    const onKD = (e: KeyboardEvent) => {
+      keys.current[e.key.toLowerCase()] = true;
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright"].includes(e.key.toLowerCase())) e.preventDefault();
     };
-    const onWheel = (e: WheelEvent) => {
-      camOrbit.radius = Math.max(5, Math.min(16, camOrbit.radius + e.deltaY * 0.01));
+    const onKU = (e: KeyboardEvent) => {
+      keys.current[e.key.toLowerCase()] = false;
     };
     const onResize = () => {
       w = el.clientWidth;
@@ -1168,74 +1251,140 @@ export default function EntranceHallScene({
     el.addEventListener("mousedown", onDown);
     el.addEventListener("mousemove", onMove);
     el.addEventListener("click", onClick);
-    el.addEventListener("mouseup", onUp);
-    el.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("keydown", onKD);
+    window.addEventListener("keyup", onKU);
     window.addEventListener("resize", onResize);
 
-    // ── TOUCH SUPPORT ──
+    // ── TOUCH SUPPORT (first-person: left side = move, right side = look) ──
     let touchTap = true;
-    let touchStartX = 0, touchStartY = 0;
+    let touchLookId: number | null = null;
+    let touchMoveId: number | null = null;
+    const touchMoveDir = { x: 0, z: 0 };
     const onTS = (e: TouchEvent) => {
-      if (e.touches.length === 1) {
-        touchTap = true;
-        camOrbit.autoOrbit = false;
-        touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY;
-        prev.x = e.touches[0].clientX;
-        prev.y = e.touches[0].clientY;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const tch = e.changedTouches[i];
+        const rect = el.getBoundingClientRect();
+        const rx = (tch.clientX - rect.left) / rect.width;
+        const ry = (tch.clientY - rect.top) / rect.height;
+        if (rx < 0.25 && ry > 0.75 && touchMoveId === null) {
+          touchMoveId = tch.identifier;
+          touchMoveDir.x = 0;
+          touchMoveDir.z = 0;
+          prev.current = { x: tch.clientX, y: tch.clientY };
+        } else if (touchLookId === null) {
+          touchLookId = tch.identifier;
+          drag.current = false;
+          prev.current = { x: tch.clientX, y: tch.clientY };
+          touchTap = true;
+        }
       }
     };
     const onTM = (e: TouchEvent) => {
       e.preventDefault();
-      if (e.touches.length === 1) {
-        const dx2 = e.touches[0].clientX - prev.x;
-        if (Math.abs(e.touches[0].clientX - touchStartX) > 8 || Math.abs(e.touches[0].clientY - touchStartY) > 8) {
-          touchTap = false;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const tch = e.changedTouches[i];
+        if (tch.identifier === touchMoveId) {
+          const rect = el.getBoundingClientRect();
+          const dx2 = tch.clientX - prev.current.x;
+          const dy2 = tch.clientY - prev.current.y;
+          const maxR = rect.width * 0.12;
+          touchMoveDir.x = Math.max(-1, Math.min(1, dx2 / maxR));
+          touchMoveDir.z = Math.max(-1, Math.min(1, dy2 / maxR));
+        } else if (tch.identifier === touchLookId) {
+          const dx2 = tch.clientX - prev.current.x;
+          const dy2 = tch.clientY - prev.current.y;
+          if (Math.abs(dx2) > 2 || Math.abs(dy2) > 2) { drag.current = true; touchTap = false; }
+          lookT.current.yaw -= dx2 * 0.003;
+          lookT.current.pitch = Math.max(-0.6, Math.min(0.6, lookT.current.pitch + dy2 * 0.003));
+          prev.current = { x: tch.clientX, y: tch.clientY };
         }
-        camOrbit.targetTheta -= dx2 * 0.004;
-        prev.x = e.touches[0].clientX;
-        prev.y = e.touches[0].clientY;
-      } else if (e.touches.length === 2) {
-        touchTap = false;
-        const d = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY
-        );
-        camOrbit.radius = Math.max(5, Math.min(16, camOrbit.radius - (d - 300) * 0.001));
       }
     };
     const onTE = (e: TouchEvent) => {
-      if (touchTap && e.changedTouches.length > 0) {
-        const t2 = e.changedTouches[0];
-        const rect = el.getBoundingClientRect();
-        const rc = new THREE.Raycaster();
-        rc.setFromCamera(new THREE.Vector2(
-          ((t2.clientX - rect.left) / rect.width) * 2 - 1,
-          -((t2.clientY - rect.top) / rect.height) * 2 + 1
-        ), camera);
-        let found: string | null = null;
-        doorMeshes.forEach(d => {
-          const hits = rc.intersectObject(d.mesh);
-          if (hits.length > 0 && hits[0].distance < 30) found = d.wingId;
-        });
-        if (found) onDoorClick(found);
-        else {
-          const ph = rc.intersectObject(portalHit);
-          if (ph.length > 0 && ph[0].distance < 30) onDoorClick("__exterior__");
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const tch = e.changedTouches[i];
+        if (tch.identifier === touchMoveId) {
+          touchMoveId = null;
+          touchMoveDir.x = 0;
+          touchMoveDir.z = 0;
+        }
+        if (tch.identifier === touchLookId) {
+          if (touchTap) {
+            const rect = el.getBoundingClientRect();
+            const rc = new THREE.Raycaster();
+            rc.setFromCamera(new THREE.Vector2(
+              ((tch.clientX - rect.left) / rect.width) * 2 - 1,
+              -((tch.clientY - rect.top) / rect.height) * 2 + 1
+            ), camera);
+            let found: string | null = null;
+            doorMeshes.forEach(d => {
+              const hits = rc.intersectObject(d.mesh);
+              if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
+            });
+            if (found) onDoorClick(found);
+            else {
+              const pHits = rc.intersectObject(portalHit);
+              if (pHits.length > 0 && pHits[0].distance < 15) onDoorClick("__exterior__");
+            }
+          }
+          touchLookId = null;
         }
       }
-      setTimeout(() => { camOrbit.autoOrbit = true; }, 3000);
     };
+    // Touch-to-keys polling (for joystick integration from MobileJoystick)
+    const touchKeys = () => {
+      if (touchMoveId !== null) {
+        const k = keys.current;
+        k.w = touchMoveDir.z < -0.2;
+        k.s = touchMoveDir.z > 0.2;
+        k.a = touchMoveDir.x < -0.2;
+        k.d = touchMoveDir.x > 0.2;
+      }
+    };
+    const touchTick = setInterval(touchKeys, 16);
     el.addEventListener("touchstart", onTS, { passive: true });
     el.addEventListener("touchmove", onTM, { passive: false });
     el.addEventListener("touchend", onTE, { passive: true });
 
-    // ── AUDIO ──
+    // ── AUDIO with fade-in ──
+    let audioFadeInterval: ReturnType<typeof setInterval> | null = null;
     try {
       const audio = new Audio("/audio/entrance-ambient.mp3");
       audio.loop = true;
-      audio.volume = 0.15;
-      audio.play().catch(() => {});
+      audio.volume = 0;
+      const targetVol = 0.3;
+      const playAudio = () => {
+        audio.play().then(() => {
+          // Fade in over ~2 seconds
+          audioFadeInterval = setInterval(() => {
+            if (audio.volume < targetVol - 0.01) {
+              audio.volume = Math.min(targetVol, audio.volume + 0.015);
+            } else {
+              audio.volume = targetVol;
+              if (audioFadeInterval) clearInterval(audioFadeInterval);
+            }
+          }, 50);
+        }).catch(() => {
+          // Autoplay blocked; play on first user interaction
+          const tryPlay = () => {
+            audio.play().then(() => {
+              audioFadeInterval = setInterval(() => {
+                if (audio.volume < targetVol - 0.01) {
+                  audio.volume = Math.min(targetVol, audio.volume + 0.015);
+                } else {
+                  audio.volume = targetVol;
+                  if (audioFadeInterval) clearInterval(audioFadeInterval);
+                }
+              }, 50);
+              document.removeEventListener("click", tryPlay);
+              document.removeEventListener("touchstart", tryPlay);
+            }).catch(() => {});
+          };
+          document.addEventListener("click", tryPlay, { once: true });
+          document.addEventListener("touchstart", tryPlay, { once: true });
+        });
+      };
+      playAudio();
       audioRef.current = audio;
     } catch (_) {}
 
@@ -1244,14 +1393,25 @@ export default function EntranceHallScene({
       el.removeEventListener("mousedown", onDown);
       el.removeEventListener("mousemove", onMove);
       el.removeEventListener("click", onClick);
-      el.removeEventListener("mouseup", onUp);
-      el.removeEventListener("wheel", onWheel);
+      window.removeEventListener("keydown", onKD);
+      window.removeEventListener("keyup", onKU);
       window.removeEventListener("resize", onResize);
       el.removeEventListener("touchstart", onTS);
       el.removeEventListener("touchmove", onTM);
       el.removeEventListener("touchend", onTE);
+      clearInterval(touchTick);
+      if (audioFadeInterval) clearInterval(audioFadeInterval);
+      // Fade out audio
       if (audioRef.current) {
-        audioRef.current.pause();
+        const a = audioRef.current;
+        const fadeOut = setInterval(() => {
+          if (a.volume > 0.02) {
+            a.volume = Math.max(0, a.volume - 0.03);
+          } else {
+            a.pause();
+            clearInterval(fadeOut);
+          }
+        }, 50);
         audioRef.current = null;
       }
       if (el.contains(ren.domElement)) el.removeChild(ren.domElement);
@@ -1259,5 +1419,45 @@ export default function EntranceHallScene({
     };
   }, []);
 
-  return <div ref={mountRef} style={{ width: "100%", height: "100%" }} />;
+  // Handle mute toggle
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.muted = muted;
+    }
+  }, [muted]);
+
+  return (
+    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+      <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
+      {/* Mute/unmute button overlay */}
+      <button
+        onClick={() => setMuted(m => !m)}
+        style={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          border: "1px solid rgba(200, 168, 104, 0.3)",
+          background: "rgba(250, 245, 235, 0.7)",
+          backdropFilter: "blur(8px)",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 18,
+          color: "#6A5A48",
+          zIndex: 40,
+          transition: "opacity 0.3s",
+          opacity: 0.7,
+        }}
+        onMouseEnter={e => { (e.target as HTMLElement).style.opacity = "1"; }}
+        onMouseLeave={e => { (e.target as HTMLElement).style.opacity = "0.7"; }}
+        title={muted ? "Unmute music" : "Mute music"}
+      >
+        {muted ? "\uD83D\uDD07" : "\uD83D\uDD0A"}
+      </button>
+    </div>
+  );
 }
