@@ -43,6 +43,9 @@ import InterviewLibraryPanel from "@/components/ui/InterviewLibraryPanel";
 import InterviewHistoryPanel from "@/components/ui/InterviewHistoryPanel";
 import TouchControlsOverlay from "@/components/ui/TouchControlsOverlay";
 import MobileJoystick from "@/components/ui/MobileJoystick";
+import ActionMenu from "@/components/ui/ActionMenu";
+import type { ActionItem } from "@/components/ui/ActionMenu";
+import StatusBar from "@/components/ui/StatusBar";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 
@@ -76,6 +79,8 @@ export default function MemoryPalace(){
   const [showInvites, setShowInvites] = useState(false);
   const [showSharedWithMe, setShowSharedWithMe] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [searchBarVisible, setSearchBarVisible] = useState(true);
+  const searchHideTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
   const { showLibrary: showInterviewLibrary, showHistory: showInterviewHistory, showInterview,
     setShowLibrary: setShowInterviewLibrary, setShowHistory: setShowInterviewHistory,
     setShowInterview: setShowInterviewPanel } = useInterviewStore();
@@ -144,6 +149,21 @@ export default function MemoryPalace(){
     return () => clearTimeout(t);
   }, [trackCelebration, dismissCelebration]);
 
+  // Auto-hide search bar in room view after 3s of inactivity
+  useEffect(() => {
+    if (view !== "room") { setSearchBarVisible(true); return; }
+    setSearchBarVisible(true);
+    if (searchHideTimer.current) clearTimeout(searchHideTimer.current);
+    searchHideTimer.current = setTimeout(() => setSearchBarVisible(false), 3000);
+    return () => { if (searchHideTimer.current) clearTimeout(searchHideTimer.current); };
+  }, [view, searchQuery, filterType]);
+
+  const revealSearchBar = useCallback(() => {
+    setSearchBarVisible(true);
+    if (searchHideTimer.current) clearTimeout(searchHideTimer.current);
+    searchHideTimer.current = setTimeout(() => setSearchBarVisible(false), 3000);
+  }, []);
+
   const handleFinishOnboarding=async()=>{
     await finishOnboarding();
     if(firstWing) setTimeout(()=>enterWing(firstWing),800);
@@ -195,81 +215,79 @@ export default function MemoryPalace(){
       {!isMobile && view==="corridor"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter room</span></div>}
       {!isMobile && view==="room"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Click memories</span></div>}
 
-      {/* Search bar + room info (room view) */}
+      {/* Search bar + room info (room view) — search auto-hides after 3s */}
       {view==="room"&&activeRoomData&&activeRoomId&&<>
-        <SearchBar query={searchQuery} filterType={filterType} totalCount={allRoomMems.length} filteredCount={roomMems.length} accent={wingData?.accent} onQueryChange={setSearchQuery} onFilterChange={setFilterType}/>
-        {!isMobile && (()=>{const rs=currentSharing(activeRoomId);return <div style={{position:"absolute",top:62,right:18,zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",gap:8,alignItems:"center"}}>
-          <div style={{background:`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,padding:"8px 14px",border:`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontSize:16}}>{activeRoomData.icon}</span>
-            <div><div style={{fontFamily:T.font.display,fontSize:14,fontWeight:500,color:T.color.charcoal}}>{activeRoomData.name}</div>
-            <div style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>{allRoomMems.length} memories</div></div>
+        <div onClick={revealSearchBar} onMouseMove={revealSearchBar} style={{
+          opacity: searchBarVisible ? 1 : 0, transform: searchBarVisible ? "translateY(0)" : "translateY(-8px)",
+          transition: "opacity .3s ease, transform .3s ease", pointerEvents: searchBarVisible ? "auto" : "none",
+        }}>
+          <SearchBar query={searchQuery} filterType={filterType} totalCount={allRoomMems.length} filteredCount={roomMems.length} accent={wingData?.accent} onQueryChange={(q)=>{setSearchQuery(q);revealSearchBar();}} onFilterChange={(f)=>{setFilterType(f);revealSearchBar();}}/>
+        </div>
+        {/* Tap zone to reveal search when hidden */}
+        {!searchBarVisible && <div onClick={revealSearchBar} style={{position:"absolute",top:0,left:0,right:0,height:54,zIndex:29,cursor:"pointer"}} />}
+        {!isMobile && (()=>{const rs=currentSharing(activeRoomId);return <div style={{position:"absolute",top:58,right:18,zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",gap:6,alignItems:"center"}}>
+          {/* Compact room info strip */}
+          <div style={{background:`${T.color.white}e6`,backdropFilter:"blur(12px)",WebkitBackdropFilter:"blur(12px)",borderRadius:16,padding:"6px 12px",border:`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:6,boxShadow:"0 2px 12px rgba(44,44,42,.06)"}}>
+            <span style={{fontSize:14}}>{activeRoomData.icon}</span>
+            <span style={{fontFamily:T.font.display,fontSize:13,fontWeight:500,color:T.color.charcoal}}>{activeRoomData.name}</span>
+            <span style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>{allRoomMems.length}</span>
+            <div style={{width:1,height:14,background:T.color.cream}} />
+            <select value={roomLayouts[activeRoomId]||""} onChange={e=>setRoomLayout(activeRoomId,e.target.value)} style={{background:"transparent",border:"none",fontFamily:T.font.body,fontSize:11,color:T.color.walnut,cursor:"pointer",outline:"none",padding:"2px 0"}}>
+              <option value="">Auto</option>
+              {ROOM_LAYOUTS.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+            <div style={{width:1,height:14,background:T.color.cream}} />
+            <button onClick={()=>setShowSharing(true)} style={{background:"transparent",border:"none",display:"flex",alignItems:"center",gap:4,cursor:"pointer",padding:"2px 4px"}}>
+              {rs.shared?<><div style={{width:6,height:6,borderRadius:3,background:"#4A6741"}}/><span style={{fontFamily:T.font.body,fontSize:10,color:"#4A6741",fontWeight:500}}>Shared</span></>
+              :<span style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>Share</span>}
+            </button>
+            <button onClick={()=>setShowRoomShare(true)} title="Share as card" style={{background:"transparent",border:"none",cursor:"pointer",fontSize:14,lineHeight:1,padding:"2px 2px",display:"flex",alignItems:"center"}}>
+              {"\uD83D\uDCE4"}
+            </button>
           </div>
-          <select value={roomLayouts[activeRoomId]||""} onChange={e=>setRoomLayout(activeRoomId,e.target.value)} style={{background:`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,padding:"8px 12px",border:`1px solid ${T.color.cream}`,fontFamily:T.font.body,fontSize:11,color:T.color.charcoal,cursor:"pointer",outline:"none"}}>
-            <option value="">Auto layout</option>
-            {ROOM_LAYOUTS.map(l=><option key={l.id} value={l.id}>{l.name} ({l.rW}×{l.rL})</option>)}
-          </select>
-          <button onClick={()=>setShowSharing(true)} style={{background:rs.shared?"#4A674118":`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,padding:"8px 14px",border:rs.shared?"1px solid #4A674133":`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}>
-            {rs.shared?<><div style={{width:8,height:8,borderRadius:4,background:"#4A6741"}}/><span style={{fontFamily:T.font.body,fontSize:11,color:"#4A6741",fontWeight:500}}>Shared ({rs.sharedWith.length})</span></>
-            :<span style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>Share room</span>}
-          </button>
-          <button onClick={()=>setShowRoomShare(true)} title="Share as card" style={{background:`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:12,padding:"8px 12px",border:`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:16,lineHeight:1}}>
-            {"\uD83D\uDCE4"}
-          </button>
         </div>;})()}
       </>}
 
       {/* OnThisDay — floating card in exterior view */}
       {view==="exterior"&&<OnThisDay onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
 
-      {/* ═══ DESKTOP FABs ═══ */}
-      {!isMobile && <>
-        {/* FAB: Life Interviews (exterior + entrance + corridor view) */}
-        {(view==="exterior"||view==="entrance"||view==="corridor")&&<button onClick={()=>setShowInterviewLibrary(true)} style={{position:"absolute",bottom:70,right:348,width:48,height:48,borderRadius:24,border:"none",background:"linear-gradient(135deg,#8B5E3C,#6B4226)",color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(107,66,38,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .65s both",transition:"transform .2s, box-shadow .2s"}}
-          onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow="0 12px 40px rgba(107,66,38,0.5)";}}
-          onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow="0 8px 32px rgba(107,66,38,0.35)";}}
-          title="Life Interviews">{"\uD83C\uDF99\uFE0F"}</button>}
-
-        {/* FAB: Mass Import (exterior + entrance + room view) */}
-        {(view==="exterior"||view==="entrance"||view==="room")&&<button onClick={()=>setShowMassImport(true)} style={{position:"absolute",bottom:70,right:view==="room"?96:284,width:48,height:48,borderRadius:24,border:"none",background:"linear-gradient(135deg,#7A5A3A,#5A3A1A)",color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(90,58,26,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .8s both",transition:"transform .2s, box-shadow .2s"}}
-          onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow="0 12px 40px rgba(90,58,26,0.5)";}}
-          onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow="0 8px 32px rgba(90,58,26,0.35)";}}
-          title="Mass Import">{"\u{1F4E6}"}</button>}
-
-        {/* FAB: Timeline (exterior + entrance view) */}
-        {(view==="exterior"||view==="entrance")&&!showTimeline&&<button onClick={()=>setShowTimeline(true)} style={{position:"absolute",bottom:70,right:220,width:48,height:48,borderRadius:24,border:"none",background:"linear-gradient(135deg,#8B6914,#C8A868)",color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(139,105,20,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .7s both",transition:"transform .2s, box-shadow .2s"}}
-          onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow="0 12px 40px rgba(139,105,20,0.5)";}}
-          onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow="0 8px 32px rgba(139,105,20,0.35)";}}
-          title="Memory Timeline">{"\uD83D\uDCC5"}</button>}
-
-        {/* FAB: Memory Map (exterior + entrance + corridor) */}
-        {(view==="exterior"||view==="entrance"||view==="corridor")&&!showMemoryMap&&<button onClick={()=>setShowMemoryMap(true)} style={{position:"absolute",bottom:70,right:156,width:48,height:48,borderRadius:24,border:"none",background:`linear-gradient(135deg,#3a5a7c,#2d4a6a)`,color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(45,74,106,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .6s both",transition:"transform .2s, box-shadow .2s"}}
-          onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow="0 12px 40px rgba(45,74,106,0.5)";}}
-          onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow="0 8px 32px rgba(45,74,106,0.35)";}}
-          title="Memory Map">{"\uD83C\uDF0D"}</button>}
-
-        {/* FAB: Customize wings (exterior + entrance view) */}
-        {(view==="exterior"||view==="entrance")&&!showWingManager&&<button onClick={()=>setShowWingManager(true)} style={{position:"absolute",bottom:70,right:28,width:56,height:56,borderRadius:28,border:"none",background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",fontSize:22,cursor:"pointer",boxShadow:`0 8px 32px ${T.color.walnut}40`,display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .5s both",transition:"transform .2s, box-shadow .2s"}}
-          onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow=`0 12px 40px ${T.color.walnut}60`;}}
-          onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow=`0 8px 32px ${T.color.walnut}40`;}}
-          title="Customize wings">{"\u{1F3DB}\uFE0F"}</button>}
-
-        {/* FAB: Manage rooms (corridor view) */}
-        {view==="corridor"&&activeWing&&!showRoomManager&&<button onClick={()=>setShowRoomManager(true)} style={{position:"absolute",bottom:70,right:28,width:56,height:56,borderRadius:28,border:"none",background:`linear-gradient(135deg,${wingData?.accent||T.color.terracotta},${T.color.walnut})`,color:"#FFF",fontSize:22,cursor:"pointer",boxShadow:`0 8px 32px ${T.color.walnut}40`,display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .5s both",transition:"transform .2s, box-shadow .2s"}}
-          onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow=`0 12px 40px ${T.color.walnut}60`;}}
-          onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow=`0 8px 32px ${T.color.walnut}40`;}}
-          title="Manage rooms">{"\u{1F6AA}"}</button>}
-
-        {/* FAB: Gallery (room view) */}
-        {view==="room"&&activeRoomId&&allRoomMems.length>0&&!showUpload&&!showSharing&&!selMem&&<button onClick={()=>setShowGallery(true)} style={{position:"absolute",bottom:70,right:96,width:48,height:48,borderRadius:24,border:"none",background:`linear-gradient(135deg,${wingData?.accent||T.color.terracotta}cc,${T.color.walnut}cc)`,color:"#FFF",fontSize:18,cursor:"pointer",boxShadow:`0 8px 32px ${T.color.walnut}30`,display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .6s both",transition:"transform .2s, box-shadow .2s"}}
-          onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";}}
-          onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";}}
-          title="Gallery & Player">{"\u{1F5BC}\uFE0F"}</button>}
-
-        {/* FAB: Add memory */}
-        {view==="room"&&activeRoomId&&!showUpload&&!showSharing&&!selMem&&<button onClick={()=>setShowUpload(true)} style={{position:"absolute",bottom:70,right:28,width:56,height:56,borderRadius:28,border:"none",background:`linear-gradient(135deg,${wingData?.accent||T.color.terracotta},${T.color.walnut})`,color:"#FFF",fontSize:28,fontWeight:300,cursor:"pointer",boxShadow:`0 8px 32px ${T.color.walnut}40`,display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .5s both",transition:"transform .2s, box-shadow .2s"}}
-          onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow=`0 12px 40px ${T.color.walnut}60`;}}
-          onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow=`0 8px 32px ${T.color.walnut}40`;}}>+</button>}
-      </>}
+      {/* ═══ DESKTOP ACTION MENU ═══ */}
+      {!isMobile && (()=>{
+        if (view==="exterior"||view==="entrance") {
+          return <ActionMenu
+            accent={T.color.terracotta}
+            primary={{ icon: "\u{1F3DB}\uFE0F", label: "Customize Wings", action: ()=>setShowWingManager(true) }}
+            secondary={[
+              { icon: "\uD83D\uDCC5", label: "Timeline", action: ()=>setShowTimeline(true), hidden: showTimeline },
+              { icon: "\uD83C\uDF0D", label: "Memory Map", action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
+              { icon: "\uD83C\uDF99\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) },
+              { icon: "\u{1F4E6}", label: "Mass Import", action: ()=>setShowMassImport(true) },
+            ]}
+          />;
+        }
+        if (view==="corridor"&&activeWing) {
+          return <ActionMenu
+            accent={wingData?.accent||T.color.terracotta}
+            primary={{ icon: "\u{1F6AA}", label: "Manage Rooms", action: ()=>setShowRoomManager(true) }}
+            secondary={[
+              { icon: "\uD83C\uDF0D", label: "Memory Map", action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
+              { icon: "\uD83C\uDF99\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) },
+            ]}
+          />;
+        }
+        if (view==="room"&&activeRoomId&&!showUpload&&!showSharing&&!selMem) {
+          return <ActionMenu
+            accent={wingData?.accent||T.color.terracotta}
+            primary={{ icon: "+", label: "Add Memory", action: ()=>setShowUpload(true) }}
+            secondary={[
+              { icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: ()=>setShowGallery(true), hidden: allRoomMems.length===0 },
+              { icon: "\u{1F91D}", label: "Share Room", action: ()=>setShowSharing(true) },
+              { icon: "\u{1F4E6}", label: "Mass Import", action: ()=>setShowMassImport(true) },
+            ]}
+          />;
+        }
+        return null;
+      })()}
 
       {/* Touch controls tutorial — mobile only, one-time */}
       {isMobile && <TouchControlsOverlay view={view} />}
@@ -367,29 +385,13 @@ export default function MemoryPalace(){
       {showMassImport&&<MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/>}
       {showGallery&&activeRoomId&&<RoomGallery mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>setShowGallery(false)} onUpdate={handleUpdateMemory} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}}/>}
 
-      {/* Trophy button — desktop only (mobile has it in bottom bar) */}
-      {!isMobile && (()=>{const p=getProgress();return <button onClick={()=>setShowAchievements(true)} title="Achievements" style={{position:"absolute",bottom:70,left:28,height:42,borderRadius:21,border:`1px solid #D4AF3744`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:8,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease .8s both",transition:"transform .2s, box-shadow .2s",boxShadow:"0 4px 16px rgba(169,124,46,.15)"}}
-        onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.05)";}}
-        onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";}}>
-        <span style={{fontSize:18}}>{"\u{1F3C6}"}</span>
-        <span style={{fontFamily:T.font.body,fontSize:11,fontWeight:500,color:T.color.walnut}}>{p.earned}/{p.total}</span>
-        <div style={{width:40,height:4,borderRadius:2,background:`${T.color.sandstone}33`,overflow:"hidden"}}>
-          <div style={{width:`${p.percentage}%`,height:"100%",borderRadius:2,background:"linear-gradient(90deg,#C9A84C,#D4AF37)",transition:"width .6s ease"}}/>
-        </div>
-      </button>;})()}
-
-      {/* Tracks FAB — desktop only */}
-      {!isMobile && <button onClick={()=>setShowTracksPanel(true)} title="Memory Building Tracks" style={{position:"absolute",bottom:70,left:190,height:42,borderRadius:21,border:`1px solid ${T.color.sage}33`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:8,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease .9s both",transition:"transform .2s, box-shadow .2s",boxShadow:"0 4px 16px rgba(74,103,65,.12)"}}
-        onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform="scale(1.05)";}}
-        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform="none";}}>
-        <span style={{fontSize:16}}>{"\uD83D\uDCDC"}</span>
-        <span style={{fontFamily:T.font.body,fontSize:11,fontWeight:500,color:T.color.sage}}>Tracks</span>
-      </button>}
-
-      {/* Points display — desktop only */}
-      {!isMobile && <div style={{position:"absolute",bottom:70,left:290,zIndex:35,animation:"fadeIn .4s ease 1s both"}}>
-        <PointsDisplay onClick={()=>setShowTracksPanel(true)} />
-      </div>}
+      {/* Status bar — desktop only: achievements + tracks + points in one strip */}
+      {!isMobile && (()=>{const p=getProgress();return <StatusBar
+        earned={p.earned} total={p.total} percentage={p.percentage}
+        onAchievements={()=>setShowAchievements(true)}
+        onTracks={()=>setShowTracksPanel(true)}
+        pointsElement={<PointsDisplay onClick={()=>setShowTracksPanel(true)} />}
+      />;})()}
 
       {/* Invites & Shared-with-me FABs — desktop only, exterior/corridor only */}
       {!isMobile && (view==="exterior"||view==="entrance"||view==="corridor") && <button onClick={()=>setShowInvites(true)} title="Pending Invitations" style={{position:"absolute",top:58,right:120,height:36,borderRadius:18,border:`1px solid ${T.color.cream}`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:6,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease 1.1s both",transition:"transform .2s",boxShadow:"0 2px 10px rgba(44,44,42,.08)"}}
@@ -526,8 +528,7 @@ function MobileBottomBar(props: MobileBottomBarProps) {
     primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
   }
 
-  // Always add directory & achievements
-  primaryActions.push({ icon: "\u{1F4C2}", label: "Directory", action: props.onDirectory });
+  // Directory moved to "More" menu for cleaner bottom bar
 
   const p = props.getProgress();
 
@@ -535,20 +536,23 @@ function MobileBottomBar(props: MobileBottomBarProps) {
     <>
       {/* More menu overlay */}
       {moreMenuOpen && <div onClick={props.onCloseMore} style={{
-        position: "absolute", inset: 0, zIndex: 48, background: "rgba(42,34,24,.3)",
+        position: "absolute", inset: 0, zIndex: 48, background: "rgba(42,34,24,.35)",
+        backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
       }}>
         <div onClick={e => e.stopPropagation()} style={{
           position: "absolute", bottom: 72, left: 12, right: 12,
-          background: `${T.color.linen}f5`, backdropFilter: "blur(16px)",
+          background: `${T.color.linen}f0`, backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
           borderRadius: 16, border: `1px solid ${T.color.cream}`,
-          boxShadow: "0 -8px 40px rgba(44,44,42,.2)", padding: 12,
+          boxShadow: "0 -8px 40px rgba(44,44,42,.18)", padding: 14,
           animation: "slideInUp .25s ease",
-          display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8,
+          display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10,
         }}>
           {[
+            { icon: "\u{1F4C2}", label: "Directory", action: props.onDirectory },
             { icon: "\uD83C\uDF99\uFE0F", label: "Interviews", action: props.onInterviews },
             { icon: "\u{1F4E6}", label: "Import", action: props.onMassImport },
-            { icon: "\u{1F3C6}", label: `${p.earned}/${p.total}`, action: props.onAchievements },
+            { icon: "\u{1F3C6}", label: `Awards ${p.earned}/${p.total}`, action: props.onAchievements },
             { icon: "\uD83D\uDCDC", label: "Tracks", action: props.onTracks },
             { icon: "\u{1F4EC}", label: "Invites", action: props.onInvites },
             { icon: "\u{1F91D}", label: "Shared", action: props.onSharedWithMe },
@@ -560,13 +564,13 @@ function MobileBottomBar(props: MobileBottomBarProps) {
             ] : []),
           ].map((item, i) => (
             <button key={i} onClick={item.action} style={{
-              padding: "14px 8px", borderRadius: 12, border: `1px solid ${T.color.cream}`,
-              background: T.color.white, cursor: "pointer", textAlign: "center",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-              minHeight: 56, justifyContent: "center",
+              padding: "16px 8px", borderRadius: 12, border: `1px solid ${T.color.cream}`,
+              background: `${T.color.white}ee`, cursor: "pointer", textAlign: "center",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+              minHeight: 64, justifyContent: "center",
             }}>
-              <span style={{ fontSize: 20 }}>{item.icon}</span>
-              <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.walnut }}>{item.label}</span>
+              <span style={{ fontSize: 22 }}>{item.icon}</span>
+              <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.walnut, fontWeight: 500 }}>{item.label}</span>
             </button>
           ))}
         </div>
@@ -577,14 +581,15 @@ function MobileBottomBar(props: MobileBottomBarProps) {
         position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 49,
         height: 64, paddingBottom: "env(safe-area-inset-bottom, 0px)",
         background: `${T.color.linen}f0`, backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
         borderTop: `1px solid ${T.color.cream}`,
         display: "flex", alignItems: "center", justifyContent: "space-around",
         padding: "0 8px",
         animation: "fadeIn .3s ease .3s both",
       }}>
-        {primaryActions.slice(0, 4).map((act, i) => (
+        {primaryActions.slice(0, 3).map((act, i) => (
           <button key={i} onClick={act.action} style={{
-            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+            flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
             padding: "8px 4px", border: "none", background: "transparent", cursor: "pointer",
             minHeight: 48, justifyContent: "center",
           }}>
@@ -600,21 +605,21 @@ function MobileBottomBar(props: MobileBottomBarProps) {
               <span style={{ fontSize: 20, lineHeight: 1 }}>{act.icon}</span>
             )}
             <span style={{
-              fontFamily: T.font.body, fontSize: 9, color: act.accent ? accent : T.color.muted,
+              fontFamily: T.font.body, fontSize: 10, color: act.accent ? accent : T.color.muted,
               fontWeight: act.accent ? 600 : 400,
             }}>{act.label}</span>
           </button>
         ))}
         {/* More button */}
         <button onClick={props.onToggleMore} style={{
-          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
           padding: "8px 4px", border: "none", background: "transparent", cursor: "pointer",
           minHeight: 48, justifyContent: "center",
         }}>
           <span style={{ fontSize: 20, lineHeight: 1, transform: moreMenuOpen ? "rotate(45deg)" : "none", transition: "transform .2s" }}>
             {moreMenuOpen ? "+" : "\u22EF"}
           </span>
-          <span style={{ fontFamily: T.font.body, fontSize: 9, color: T.color.muted }}>More</span>
+          <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted }}>More</span>
         </button>
       </div>
     </>

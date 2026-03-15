@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useEffect } from "react";
 import * as THREE from "three";
+import { EffectComposer, RenderPass, EffectPass, BloomEffect, VignetteEffect, SMAAEffect } from "postprocessing";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
@@ -17,9 +18,18 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
     const scene=new THREE.Scene();scene.background=new THREE.Color(wing.wall);
     const camera=new THREE.PerspectiveCamera(55,w/h,0.1,80);
-    const ren=new THREE.WebGLRenderer({antialias:true});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.6;
+    const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.7;
+    ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
+    // ── POST-PROCESSING ──
+    const composer=new EffectComposer(ren);
+    composer.addPass(new RenderPass(scene,camera));
+    composer.addPass(new EffectPass(camera,
+      new BloomEffect({luminanceThreshold:0.7,luminanceSmoothing:0.3,intensity:0.5}),
+      new VignetteEffect({darkness:0.35,offset:0.3}),
+      new SMAAEffect()
+    ));
     scene.add(new THREE.HemisphereLight("#FFF2E0","#C4B8A0",.5));
     const sun=new THREE.DirectionalLight("#FFE8C0",1.4);sun.position.set(8,14,-3);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);scene.add(sun);
     const fill=new THREE.DirectionalLight("#FFD8A8",.3);fill.position.set(-6,8,4);scene.add(fill);
@@ -264,7 +274,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       dMeshes.forEach(d=>{const isH=hovDoor===d.room.id;d.mat.emissive=isH?new THREE.Color(wing.accent):new THREE.Color(0);d.mat.emissiveIntensity=isH?.12+Math.sin(t*3)*.04:0;});
       portalGlow.material.opacity=.04+Math.sin(t*2)*.02;portalLight.intensity=.35+Math.sin(t*1.5)*.1;
       const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>cH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;
-      ren.render(scene,camera);
+      composer.render();
     };animate();
     const onDown=(e: MouseEvent)=>{drag.v=false;prev.x=e.clientX;prev.y=e.clientY;};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.x,dy=e.clientY-prev.y;if(Math.abs(dx)>2||Math.abs(dy)>2)drag.v=true;
@@ -279,7 +289,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       const ph3=rc2.intersectObject(portalHit);if(ph3.length>0&&ph3[0].distance<5)onDoorClick("__portal__");}};
     const onKD=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};
     const onKU=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=false;};
-    const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);};
+    const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);
     window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);window.addEventListener("resize",onRs);
 
@@ -351,6 +361,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);window.removeEventListener("resize",onRs);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       clearInterval(touchTick);
+      composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[wingId]);
   return <div ref={mountRef} style={{width:"100%",height:"100%"}}/>;

@@ -21,15 +21,14 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
       <button
         onClick={handleClick}
         style={{
-          display: "flex", alignItems: "center", gap: 8,
-          height: 38, borderRadius: 19, padding: "0 14px 0 10px",
-          background: `${T.color.white}ee`, backdropFilter: "blur(10px)",
-          border: `1px solid #C4A96233`,
-          cursor: "pointer", transition: "transform .2s, box-shadow .2s",
-          boxShadow: "0 2px 12px rgba(196,169,98,.15)",
+          display: "flex", alignItems: "center", gap: 6,
+          height: 32, borderRadius: 16, padding: "0 8px 0 6px",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer", transition: "background .15s",
         }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1.05)"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "none"; }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.sandstone}18`; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
       >
         {/* Level badge */}
         <div style={{

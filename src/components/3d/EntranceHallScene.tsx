@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
+import { EffectComposer, RenderPass, EffectPass, BloomEffect, VignetteEffect, SMAAEffect } from "postprocessing";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
@@ -48,39 +49,48 @@ export default function EntranceHallScene({
     scene.fog = new THREE.FogExp2("#E8E2D8", 0.006);
 
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
-    const ren = new THREE.WebGLRenderer({ antialias: true });
+    const ren = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
     ren.setSize(w, h);
     ren.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     ren.shadowMap.enabled = true;
     ren.shadowMap.type = THREE.PCFSoftShadowMap;
     ren.toneMapping = THREE.ACESFilmicToneMapping;
-    ren.toneMappingExposure = 1.4;
+    ren.toneMappingExposure = 1.5;
+    ren.outputColorSpace = THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
+    // ── POST-PROCESSING ──
+    const composer = new EffectComposer(ren);
+    composer.addPass(new RenderPass(scene, camera));
+    composer.addPass(new EffectPass(camera,
+      new BloomEffect({ luminanceThreshold: 0.7, luminanceSmoothing: 0.3, intensity: 0.8 }),
+      new VignetteEffect({ darkness: 0.4, offset: 0.3 }),
+      new SMAAEffect()
+    ));
 
-    // ── MATERIALS ──
+    // ── MATERIALS (PBR-upgraded) ──
     const MS = {
-      marble: new THREE.MeshStandardMaterial({ color: "#FAFAF7", roughness: 0.25, metalness: 0.05 }),
-      marbleWarm: new THREE.MeshStandardMaterial({ color: "#F0EAE0", roughness: 0.3 }),
-      marbleDark: new THREE.MeshStandardMaterial({ color: "#D4C5B2", roughness: 0.35, metalness: 0.08 }),
-      gold: new THREE.MeshStandardMaterial({ color: "#C8A858", roughness: 0.22, metalness: 0.65 }),
-      goldDark: new THREE.MeshStandardMaterial({ color: "#A08038", roughness: 0.3, metalness: 0.5 }),
-      goldBright: new THREE.MeshStandardMaterial({ color: "#D4B060", roughness: 0.2, metalness: 0.7 }),
-      column: new THREE.MeshStandardMaterial({ color: "#F2EDE7", roughness: 0.28, metalness: 0.04 }),
-      door: new THREE.MeshStandardMaterial({ color: "#3A2818", roughness: 0.4, metalness: 0.06 }),
-      doorFrame: new THREE.MeshStandardMaterial({ color: "#C8A858", roughness: 0.25, metalness: 0.55 }),
-      dome: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.4, side: THREE.BackSide }),
-      domeGold: new THREE.MeshStandardMaterial({ color: "#C8A858", roughness: 0.3, metalness: 0.5 }),
-      floor: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.2, metalness: 0.08 }),
-      floorDark: new THREE.MeshStandardMaterial({ color: "#C4B8A0", roughness: 0.25, metalness: 0.06 }),
-      floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.3, metalness: 0.1 }),
-      bust: new THREE.MeshStandardMaterial({ color: "#E8E2DA", roughness: 0.2, metalness: 0.06 }),
-      bronze: new THREE.MeshStandardMaterial({ color: "#8A7050", roughness: 0.3, metalness: 0.5 }),
-      wall: new THREE.MeshStandardMaterial({ color: "#FAFAF7", roughness: 0.35, side: THREE.BackSide }),
-      lightBeam: new THREE.MeshBasicMaterial({ color: "#FFF8E0", transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
-      atticDoor: new THREE.MeshStandardMaterial({ color: "#6A5040", roughness: 0.5 }),
-      atticStairs: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.25, metalness: 0.05 }),
-      frescoPanel: new THREE.MeshStandardMaterial({ color: "#C4A070", roughness: 0.5, metalness: 0.05 }),
-      spiralRailing: new THREE.MeshStandardMaterial({ color: "#C8A858", roughness: 0.25, metalness: 0.6 }),
+      marble: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8 }),
+      marbleWarm: new THREE.MeshStandardMaterial({ color: "#EDE5D8", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.7 }),
+      marbleDark: new THREE.MeshStandardMaterial({ color: "#C8B89A", roughness: 0.25, metalness: 0.0, envMapIntensity: 0.6 }),
+      gold: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
+      goldDark: new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, envMapIntensity: 1.0 }),
+      goldBright: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4 }),
+      column: new THREE.MeshStandardMaterial({ color: "#F0E8DC", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.7 }),
+      door: new THREE.MeshStandardMaterial({ color: "#3A2818", roughness: 0.6, metalness: 0.0 }),
+      doorFrame: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
+      dome: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide }),
+      domeGold: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
+      floor: new THREE.MeshStandardMaterial({ color: "#E8DDD0", roughness: 0.08, metalness: 0.05, envMapIntensity: 1.0 }),
+      floorDark: new THREE.MeshStandardMaterial({ color: "#C4B8A0", roughness: 0.1, metalness: 0.03, envMapIntensity: 0.9 }),
+      floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.12, metalness: 0.05, envMapIntensity: 0.8 }),
+      bust: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.5 }),
+      bronze: new THREE.MeshStandardMaterial({ color: "#8A7050", roughness: 0.3, metalness: 0.7, envMapIntensity: 0.9 }),
+      wall: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide }),
+      lightBeam: new THREE.MeshBasicMaterial({ color: "#FFF5E0", transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+      atticDoor: new THREE.MeshStandardMaterial({ color: "#6A5040", roughness: 0.6, metalness: 0.0 }),
+      atticStairs: new THREE.MeshStandardMaterial({ color: "#E8DDD0", roughness: 0.12, metalness: 0.03, envMapIntensity: 0.8 }),
+      frescoPanel: new THREE.MeshStandardMaterial({ color: "#C4A070", roughness: 0.5, metalness: 0.05, envMapIntensity: 0.4 }),
+      spiralRailing: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
     };
 
     // ── ROOM DIMENSIONS ──
@@ -97,30 +107,36 @@ export default function EntranceHallScene({
     const DOOR_W = 3.5;
     const DOOR_PANEL_GAP = 0.08; // gap between double-door panels
 
-    // ── LIGHTING ──
-    scene.add(new THREE.HemisphereLight("#FFF5E0", "#C8B8A0", 0.5));
-    const sunLight = new THREE.DirectionalLight("#FFF8E0", 2.5);
+    // ── LIGHTING (dramatic PBR upgrade) ──
+    // Hemisphere: warm sky / cool dark ground for contrast
+    scene.add(new THREE.HemisphereLight("#FFF5E6", "#2A1A0A", 0.3));
+    // Main oculus directional light — dramatic and intense
+    const sunLight = new THREE.DirectionalLight("#FFF8E0", 3.5);
     sunLight.position.set(0, TOTAL_H + 10, 0);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(2048, 2048);
     sunLight.shadow.camera.near = 1;
     sunLight.shadow.camera.far = 60;
-    sunLight.shadow.camera.left = -10;
-    sunLight.shadow.camera.right = 10;
-    sunLight.shadow.camera.top = 10;
-    sunLight.shadow.camera.bottom = -10;
+    sunLight.shadow.camera.left = -12;
+    sunLight.shadow.camera.right = 12;
+    sunLight.shadow.camera.top = 12;
+    sunLight.shadow.camera.bottom = -12;
+    sunLight.shadow.bias = -0.001;
     scene.add(sunLight);
-    const fillLight = new THREE.DirectionalLight("#FFE0C0", 0.35);
+    // Warm fill light (subtle, for depth)
+    const fillLight = new THREE.DirectionalLight("#FFE0C0", 0.2);
     fillLight.position.set(-10, 8, 5);
     scene.add(fillLight);
-    // Wider, brighter oculus spotlight
-    const oculusSpot = new THREE.SpotLight("#FFF8E0", 2.0, 50, Math.PI / 4, 0.5, 0.8);
+    // Main oculus spotlight — very dramatic beam
+    const oculusSpot = new THREE.SpotLight("#FFF8E0", 3.5, 50, Math.PI / 4, 0.5, 0.8);
     oculusSpot.position.set(0, TOTAL_H - 1, 0);
     oculusSpot.target.position.set(0, 0, 0);
+    oculusSpot.castShadow = true;
+    oculusSpot.shadow.mapSize.set(1024, 1024);
     scene.add(oculusSpot);
     scene.add(oculusSpot.target);
-    // Secondary fill from oculus
-    const oculusFill = new THREE.PointLight("#FFF0D0", 0.8, 40);
+    // Secondary warm fill from oculus
+    const oculusFill = new THREE.PointLight("#FFF0D0", 1.2, 40);
     oculusFill.position.set(0, TOTAL_H - 2, 0);
     scene.add(oculusFill);
 
@@ -304,24 +320,28 @@ export default function EntranceHallScene({
     oculusRing.position.y = TOTAL_H - 0.3;
     scene.add(oculusRing);
 
-    // ── VOLUMETRIC LIGHT BEAMS from oculus (wider, brighter) ──
-    const beamGeo = new THREE.CylinderGeometry(OCULUS_R * 1.0, OCULUS_R * 2.2, TOTAL_H, 32, 1, true);
+    // ── VOLUMETRIC LIGHT CONES from oculus (realistic overlapping cones) ──
+    const beamGeo = new THREE.ConeGeometry(8, 20, 32, 1, true);
     const beamMesh = new THREE.Mesh(beamGeo, MS.lightBeam);
-    beamMesh.position.y = TOTAL_H / 2;
+    beamMesh.position.y = TOTAL_H - 10;
     scene.add(beamMesh);
-    // Extra inner beam
-    const beamGeo2 = new THREE.CylinderGeometry(OCULUS_R * 0.5, OCULUS_R * 1.5, TOTAL_H, 32, 1, true);
-    const beamMat2 = MS.lightBeam.clone();
-    beamMat2.opacity = 0.035;
+    // Medium cone
+    const beamGeo2 = new THREE.ConeGeometry(5.5, 22, 32, 1, true);
+    const beamMat2 = new THREE.MeshBasicMaterial({
+      color: "#FFF5E0", transparent: true, opacity: 0.04,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
     const beamMesh2 = new THREE.Mesh(beamGeo2, beamMat2);
-    beamMesh2.position.y = TOTAL_H / 2;
+    beamMesh2.position.y = TOTAL_H - 11;
     scene.add(beamMesh2);
-    // Third core beam for extra drama
-    const beamGeo3 = new THREE.CylinderGeometry(OCULUS_R * 0.2, OCULUS_R * 0.8, TOTAL_H, 32, 1, true);
-    const beamMat3 = MS.lightBeam.clone();
-    beamMat3.opacity = 0.04;
+    // Tight core cone for bright center
+    const beamGeo3 = new THREE.ConeGeometry(3, 24, 32, 1, true);
+    const beamMat3 = new THREE.MeshBasicMaterial({
+      color: "#FFF8E8", transparent: true, opacity: 0.05,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
+    });
     const beamMesh3 = new THREE.Mesh(beamGeo3, beamMat3);
-    beamMesh3.position.y = TOTAL_H / 2;
+    beamMesh3.position.y = TOTAL_H - 12;
     scene.add(beamMesh3);
 
     // ── COLUMNS (instanced, with fluting detail) ──
@@ -485,7 +505,7 @@ export default function EntranceHallScene({
 
       // ── DOUBLE DOOR PANELS (two panels per door) ──
       const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
-      const doorMat = new THREE.MeshStandardMaterial({ color: "#3A2818", roughness: 0.45, metalness: 0.06 });
+      const doorMat = new THREE.MeshStandardMaterial({ color: "#3A2818", roughness: 0.6, metalness: 0.0 });
 
       // Left door panel
       const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.12), doorMat);
@@ -567,14 +587,20 @@ export default function EntranceHallScene({
         scene.add(handleMount);
       }
 
-      // Point light near each door (stronger)
-      const doorLight = new THREE.PointLight(accent, 0.6, 8);
-      doorLight.position.set(
-        dx + inN.x * 2.0,
-        4,
-        dz + inN.z * 2.0
+      // Focused spotlight near each door (pool of light on floor)
+      const doorSpot = new THREE.SpotLight(accent, 1.2, 12, Math.PI / 6, 0.6, 1.0);
+      doorSpot.position.set(
+        dx + inN.x * 1.5,
+        DOOR_H + 0.5,
+        dz + inN.z * 1.5
       );
-      scene.add(doorLight);
+      doorSpot.target.position.set(
+        dx + inN.x * 2.5,
+        0,
+        dz + inN.z * 2.5
+      );
+      scene.add(doorSpot);
+      scene.add(doorSpot.target);
 
       // ── LARGE STATUE above door on pedestal ──
       const statueBaseY = DOOR_H + archH + 1.2;
@@ -587,9 +613,10 @@ export default function EntranceHallScene({
 
       // Statue material with wing accent tint
       const statueMat = new THREE.MeshStandardMaterial({
-        color: "#E8E2DA",
-        roughness: 0.2,
-        metalness: 0.06,
+        color: "#E8E0D4",
+        roughness: 0.35,
+        metalness: 0.0,
+        envMapIntensity: 0.5,
         emissive: new THREE.Color(accent),
         emissiveIntensity: 0.05,
       });
@@ -994,21 +1021,27 @@ export default function EntranceHallScene({
       (scene as any).__spiralRadius = spiralRadius;
     }
 
-    // ── DUST PARTICLES (many more) ──
-    const dustN = 500;
+    // ── DUST PARTICLES (upgraded: varied sizes, concentrated in beam, additive glow) ──
+    const dustN = 700;
     const dustGeo = new THREE.BufferGeometry();
     const dustPos = new Float32Array(dustN * 3);
+    const dustSizes = new Float32Array(dustN);
     for (let i = 0; i < dustN; i++) {
       const a = Math.random() * Math.PI * 2;
-      const r2 = Math.random() * OCULUS_R * 3.0;
+      // 70% of particles concentrated in the light beam area
+      const inBeam = Math.random() < 0.7;
+      const r2 = inBeam ? Math.random() * OCULUS_R * 1.5 : Math.random() * RADIUS * 0.8;
       dustPos[i * 3] = Math.cos(a) * r2;
       dustPos[i * 3 + 1] = 1 + Math.random() * (TOTAL_H - 2);
       dustPos[i * 3 + 2] = Math.sin(a) * r2;
+      dustSizes[i] = 0.02 + Math.random() * 0.13; // varied sizes 0.02 to 0.15
     }
     dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+    dustGeo.setAttribute("size", new THREE.BufferAttribute(dustSizes, 1));
     const dustMat = new THREE.PointsMaterial({
-      color: "#FFF8E0", size: 0.07, transparent: true, opacity: 0.4,
+      color: "#FFF8E0", size: 0.1, transparent: true, opacity: 0.5,
       blending: THREE.AdditiveBlending, depthWrite: false,
+      sizeAttenuation: true,
     });
     scene.add(new THREE.Points(dustGeo, dustMat));
 
@@ -1056,6 +1089,13 @@ export default function EntranceHallScene({
     const portalLight = new THREE.PointLight("#FFE8C0", 0.4, 6);
     portalLight.position.set(exitX - Math.cos(exitAngle) * 0.5, 2.5, exitZ - Math.sin(exitAngle) * 0.5);
     scene.add(portalLight);
+
+    // ── ENVIRONMENT MAP (critical for PBR reflections) ──
+    const pmrem = new THREE.PMREMGenerator(ren);
+    pmrem.compileEquirectangularShader();
+    const envRT = pmrem.fromScene(scene, 0, 0.1, 100);
+    scene.environment = envRT.texture;
+    pmrem.dispose();
 
     // ── FIRST-PERSON CAMERA ──
     // Player starts near the exit portal (entrance), facing center
@@ -1176,22 +1216,26 @@ export default function EntranceHallScene({
       portalGlow.material.opacity = 0.03 + Math.sin(t * 2) * 0.015;
       portalLight.intensity = 0.35 + Math.sin(t * 1.5) * 0.1;
 
-      // Dust float
+      // Dust float (upward drift, stronger in beam area)
       const dp = dustGeo.attributes.position.array as Float32Array;
       for (let i = 0; i < dustN; i++) {
+        const px = dp[i * 3], pz = dp[i * 3 + 2];
+        const distFromCenter = Math.sqrt(px * px + pz * pz);
+        const inBeamArea = distFromCenter < OCULUS_R * 2;
+        const upDrift = inBeamArea ? 0.0025 : 0.0006;
         dp[i * 3] += Math.sin(t * 0.15 + i * 0.7) * 0.002;
-        dp[i * 3 + 1] += Math.sin(t * 0.2 + i * 0.5) * 0.001 + 0.0008;
+        dp[i * 3 + 1] += Math.sin(t * 0.2 + i * 0.5) * 0.001 + upDrift;
         dp[i * 3 + 2] += Math.cos(t * 0.15 + i * 0.3) * 0.002;
         if (dp[i * 3 + 1] > TOTAL_H - 1) dp[i * 3 + 1] = 1;
       }
       dustGeo.attributes.position.needsUpdate = true;
 
-      // Light beam breathing
-      beamMesh.material.opacity = 0.04 + Math.sin(t * 0.5) * 0.015;
-      beamMat2.opacity = 0.025 + Math.sin(t * 0.7) * 0.01;
-      beamMat3.opacity = 0.03 + Math.sin(t * 0.9) * 0.012;
+      // Light beam breathing (cone opacities)
+      (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.05 + Math.sin(t * 0.5) * 0.02;
+      beamMat2.opacity = 0.03 + Math.sin(t * 0.7) * 0.015;
+      beamMat3.opacity = 0.04 + Math.sin(t * 0.9) * 0.018;
 
-      ren.render(scene, camera);
+      composer.render();
     };
     animate();
 
@@ -1247,6 +1291,7 @@ export default function EntranceHallScene({
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       ren.setSize(w, h);
+      composer.setSize(w, h);
     };
     el.addEventListener("mousedown", onDown);
     el.addEventListener("mousemove", onMove);
@@ -1414,6 +1459,9 @@ export default function EntranceHallScene({
         }, 50);
         audioRef.current = null;
       }
+      envRT.texture.dispose();
+      envRT.dispose();
+      composer.dispose();
       if (el.contains(ren.domElement)) el.removeChild(ren.domElement);
       ren.dispose();
     };

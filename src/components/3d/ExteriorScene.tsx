@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useEffect } from "react";
 import * as THREE from "three";
+import { EffectComposer, RenderPass, EffectPass, BloomEffect, VignetteEffect, SMAAEffect } from "postprocessing";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
@@ -63,9 +64,18 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     scene.add(new THREE.Mesh(skyGeo,new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide})));
 
     const camera=new THREE.PerspectiveCamera(32,w/h,0.1,600);
-    const ren=new THREE.WebGLRenderer({antialias:true});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.9;
+    const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
+    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.0;
+    ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
+    // ── POST-PROCESSING ──
+    const composer=new EffectComposer(ren);
+    composer.addPass(new RenderPass(scene,camera));
+    composer.addPass(new EffectPass(camera,
+      new BloomEffect({luminanceThreshold:0.7,luminanceSmoothing:0.3,intensity:0.5}),
+      new VignetteEffect({darkness:0.35,offset:0.3}),
+      new SMAAEffect()
+    ));
 
     // Hover label overlay
     const hovLabel=document.createElement("div");
@@ -919,7 +929,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       for(let i=0;i<birdN;i++){bp[i*3]+=.02;bp[i*3+1]+=Math.sin(t*3+i)*.01;if(bp[i*3]>60)bp[i*3]=-60;}
       birdG.attributes.position.needsUpdate=true;
 
-      ren.render(scene,camera);
+      composer.render();
     };animate();
 
     const onDown=(e: MouseEvent)=>{drag.current=false;prev.current={x:e.clientX,y:e.clientY};};
@@ -930,7 +940,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const onCk=(e: MouseEvent)=>{if(drag.current)return;const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0)onRoomClick(hits[0].object.userData.roomId);};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(180,camD.current+e.deltaY*.05));};
-    const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);};
+    const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);
 
     // ── TOUCH SUPPORT ──
@@ -964,6 +974,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       if(el.contains(hovLabel))el.removeChild(hovLabel);
+      composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[]);
   return <div ref={mountRef} style={{width:"100%",height:"100%",cursor:hoveredRoom?"pointer":"grab"}}/>;
