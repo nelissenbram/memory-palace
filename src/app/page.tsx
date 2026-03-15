@@ -229,6 +229,23 @@ export default function LandingPage() {
           </a>
         </div>
 
+        <Link
+          href="/security"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            marginTop: 20,
+            fontSize: 14,
+            color: C.muted,
+            textDecoration: "none",
+            animation: "fadeUp 0.8s ease 0.4s both",
+            transition: "color 0.2s",
+          }}
+        >
+          🔒 Learn about our security
+        </Link>
+
         {/* Scroll hint */}
         <div
           style={{
@@ -349,8 +366,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ─── Demo Preview ─── */}
+      {/* ─── See It In Action ─── */}
       <section
+        id="see-it-in-action"
         style={{
           padding: isMobile ? "60px 20px 80px" : "80px clamp(20px, 5vw, 60px) 100px",
           background: C.linen,
@@ -372,7 +390,124 @@ export default function LandingPage() {
           story has its place — beautifully displayed in 3D.
         </p>
 
-        {/* CSS-only palace preview illustration */}
+        {/* Video or static preview */}
+        {process.env.NEXT_PUBLIC_DEMO_VIDEO_URL ? (
+          <div
+            style={{
+              maxWidth: 800,
+              margin: "0 auto 48px",
+              borderRadius: 20,
+              overflow: "hidden",
+              background: C.charcoal,
+              position: "relative",
+              paddingBottom: "56.25%",
+              height: 0,
+              border: `1px solid ${C.sandstone}60`,
+            }}
+          >
+            <iframe
+              src={process.env.NEXT_PUBLIC_DEMO_VIDEO_URL}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                border: "none",
+              }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title="Memory Palace demo video"
+            />
+          </div>
+        ) : (
+          /* Static preview gallery — 4 mockup cards */
+          <div
+            style={{
+              maxWidth: 900,
+              margin: "0 auto 48px",
+              display: "grid",
+              gridTemplateColumns: isSmall ? "1fr" : "repeat(2, 1fr)",
+              gap: isMobile ? 16 : 20,
+            }}
+          >
+            {[
+              {
+                label: "Exterior View",
+                desc: "Your palace, nestled in a serene landscape",
+                gradient: `linear-gradient(135deg, ${C.sage}30, ${C.warmStone})`,
+                icon: "🏛️",
+              },
+              {
+                label: "Grand Corridor",
+                desc: "Walk through themed wings of your life",
+                gradient: `linear-gradient(135deg, ${C.sandstone}60, ${C.cream})`,
+                icon: "🚪",
+              },
+              {
+                label: "Room Interior",
+                desc: "Memories displayed as art on the walls",
+                gradient: `linear-gradient(135deg, ${C.terracotta}25, ${C.warmStone})`,
+                icon: "🖼️",
+              },
+              {
+                label: "Upload Panel",
+                desc: "Drag, drop, or import from cloud services",
+                gradient: `linear-gradient(135deg, ${C.walnut}20, ${C.cream})`,
+                icon: "☁️",
+              },
+            ].map((card) => (
+              <div
+                key={card.label}
+                style={{
+                  background: card.gradient,
+                  borderRadius: 16,
+                  padding: isMobile ? "36px 20px" : "48px 28px",
+                  border: `1px solid ${C.sandstone}40`,
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: isMobile ? 140 : 180,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 40,
+                    display: "block",
+                    marginBottom: 14,
+                  }}
+                >
+                  {card.icon}
+                </span>
+                <p
+                  style={{
+                    fontFamily: F.display,
+                    fontSize: 20,
+                    fontWeight: 500,
+                    color: C.charcoal,
+                    marginBottom: 6,
+                  }}
+                >
+                  {card.label}
+                </p>
+                <p
+                  style={{
+                    fontSize: 14,
+                    color: C.walnut,
+                    lineHeight: 1.5,
+                    margin: 0,
+                  }}
+                >
+                  {card.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Palace wing cards beneath */}
         <div
           style={{
             maxWidth: 800,
@@ -385,7 +520,6 @@ export default function LandingPage() {
             position: "relative",
           }}
         >
-          {/* Palace interior representation */}
           <div
             style={{
               display: "grid",
@@ -427,7 +561,6 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {/* Decorative elements suggesting 3D depth */}
           <div
             style={{
               marginTop: isMobile ? 20 : 28,
@@ -738,6 +871,9 @@ export default function LandingPage() {
               <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.5 }}>
                 📋 GDPR compliant
               </p>
+              <Link href="/security" style={{ fontSize: 14, color: C.terracotta, textDecoration: "none", marginTop: 4 }}>
+                Learn more about security →
+              </Link>
             </div>
           </div>
         </div>

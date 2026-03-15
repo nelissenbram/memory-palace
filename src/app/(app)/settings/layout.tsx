@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/settings/profile", label: "Profile", icon: "\u{1F464}" },
   { href: "/settings/connections", label: "Connections", icon: "\u{1F517}" },
   { href: "/settings/notifications", label: "Notifications", icon: "\u{1F514}" },
+  { href: "/security", label: "Security & Privacy", icon: "\u{1F6E1}\u{FE0F}", external: true },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
