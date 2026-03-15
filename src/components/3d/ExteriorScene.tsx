@@ -727,8 +727,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const centralMeshes=centralBodyMeshes;
     // Register central group for split/lift animation
     sectionGroups.push({group:centralGroup,id:entranceId,targetY:0,currentY:0,meshes:centralMeshes,accent:"#E0C060"});
-    const ect=new THREE.Mesh(new THREE.BoxGeometry(cW+8,cH+drumH+domeR+6,cD+pD+4),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
-    ect.position.set(0,(cH+drumH+domeR)/2+3,-(pD/2));ect.userData={roomId:entranceId,wingMeshes:centralMeshes,accent:"#E0C060"};
+    // Entrance click target — sized to match just the central keep, NOT overlapping wings
+    const ect=new THREE.Mesh(new THREE.CylinderGeometry(cW/2-1,cW/2-1,cH+drumH+domeR+4,8),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+    ect.position.set(0,(cH+drumH+domeR)/2+2,0);ect.userData={roomId:entranceId,wingMeshes:centralMeshes,accent:"#E0C060"};
     scene.add(ect);clickTargets.push(ect);
 
     // ── HOVER POINT LIGHTS (one per wing + entrance) ──
