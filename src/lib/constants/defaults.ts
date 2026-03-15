@@ -17,6 +17,7 @@ export interface Mem {
   locationName?: string; // e.g. "Rome, Italy"
   displayed?: boolean; // whether this memory is shown as a 3D object in the room (default true for first N items)
   historicalContext?: string; // AI-generated historical context for the memory's time period
+  visibility?: "private" | "shared" | "family" | "public"; // memory visibility level (default: "shared" if room is shared, else "private")
   _offline?: boolean; // queued for offline sync
   _cached?: boolean; // loaded from IndexedDB cache
 }
