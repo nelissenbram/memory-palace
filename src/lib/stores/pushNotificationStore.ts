@@ -4,6 +4,7 @@ export interface NotificationPreferences {
   pushEnabled: boolean;
   onThisDay: boolean;
   timeCapsule: boolean;
+  emailDigest: boolean;
 }
 
 const STORAGE_KEY = "mp_notification_prefs";
@@ -12,6 +13,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
   pushEnabled: false,
   onThisDay: true,
   timeCapsule: true,
+  emailDigest: true,
 };
 
 function loadPrefs(): NotificationPreferences {

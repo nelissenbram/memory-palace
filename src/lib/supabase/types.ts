@@ -20,6 +20,8 @@ export interface Database {
           first_wing: string | null;
           onboarded: boolean;
           avatar_url: string | null;
+          email_digest: boolean;
+          last_seen_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -29,6 +31,8 @@ export interface Database {
           first_wing?: string | null;
           onboarded?: boolean;
           avatar_url?: string | null;
+          email_digest?: boolean;
+          last_seen_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -38,6 +42,8 @@ export interface Database {
           first_wing?: string | null;
           onboarded?: boolean;
           avatar_url?: string | null;
+          email_digest?: boolean;
+          last_seen_at?: string | null;
           created_at?: string;
         };
       };

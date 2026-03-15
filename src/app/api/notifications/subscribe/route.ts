@@ -129,18 +129,35 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json();
-  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
-  if (typeof body.onThisDay === "boolean") updates.on_this_day = body.onThisDay;
-  if (typeof body.timeCapsule === "boolean") updates.time_capsule = body.timeCapsule;
+  // Handle push subscription preferences
+  const pushUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  let hasPushUpdates = false;
 
-  const { error } = await supabase
-    .from("push_subscriptions")
-    .update(updates)
-    .eq("user_id", user.id);
+  if (typeof body.onThisDay === "boolean") { pushUpdates.on_this_day = body.onThisDay; hasPushUpdates = true; }
+  if (typeof body.timeCapsule === "boolean") { pushUpdates.time_capsule = body.timeCapsule; hasPushUpdates = true; }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (hasPushUpdates) {
+    const { error } = await supabase
+      .from("push_subscriptions")
+      .update(pushUpdates)
+      .eq("user_id", user.id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  }
+
+  // Handle email digest preference (stored on profiles table)
+  if (typeof body.emailDigest === "boolean") {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ email_digest: body.emailDigest })
+      .eq("id", user.id);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
   }
 
   return NextResponse.json({ success: true });
