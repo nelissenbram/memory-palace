@@ -158,7 +158,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>Share room</h3>
             <p style={{fontFamily:T.font.body,fontSize:12,color:accent,margin:"4px 0 0"}}>{room?.icon} {room?.name}</p>
           </div>
-          <button onClick={onClose} style={{width:32,height:32,borderRadius:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>&#x2715;</button>
+          <button onClick={onClose} style={{width:isMobile?40:32,height:isMobile?40:32,borderRadius:isMobile?20:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?16:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:44,minHeight:44}}>&#x2715;</button>
         </div>
 
         {/* Success toast */}
@@ -188,8 +188,8 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
         {sharing.shared&&<>
           <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Invite by email</label>
           <div style={{display:"flex",gap:8,marginBottom:10}}>
-            <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addPerson();}} placeholder="name@example.com" style={{flex:1,padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none"}}/>
-            <button onClick={addPerson} disabled={loading} style={{padding:"10px 16px",borderRadius:10,border:"none",background:loading?T.color.sandstone:accent,color:"#FFF",fontFamily:T.font.body,fontSize:12,fontWeight:600,cursor:loading?"default":"pointer",opacity:loading?.6:1}}>
+            <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addPerson();}} placeholder="name@example.com" style={{flex:1,padding:isMobile?"12px 14px":"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:isMobile?16:13,color:T.color.charcoal,outline:"none"}}/>
+            <button onClick={addPerson} disabled={loading} style={{padding:isMobile?"12px 20px":"10px 16px",borderRadius:10,border:"none",background:loading?T.color.sandstone:accent,color:"#FFF",fontFamily:T.font.body,fontSize:isMobile?14:12,fontWeight:600,cursor:loading?"default":"pointer",opacity:loading?.6:1,minHeight:44}}>
               {loading?"...":"Invite"}
             </button>
           </div>
@@ -198,10 +198,10 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           <div style={{display:"flex",gap:6,marginBottom:10}}>
             {(["view","contribute"] as const).map(p=>(
               <button key={p} onClick={()=>setPermission(p)} style={{
-                flex:1,padding:"8px 12px",borderRadius:8,
+                flex:1,padding:isMobile?"12px 12px":"8px 12px",borderRadius:8,minHeight:44,
                 border:`1px solid ${permission===p?accent+"40":T.color.cream}`,
                 background:permission===p?`${accent}10`:T.color.white,
-                cursor:"pointer",fontFamily:T.font.body,fontSize:11,
+                cursor:"pointer",fontFamily:T.font.body,fontSize:isMobile?13:11,
                 color:permission===p?accent:T.color.muted,fontWeight:permission===p?600:400,
               }}>
                 {p==="view"?"Can view":"Can contribute"}

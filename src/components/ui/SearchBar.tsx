@@ -42,11 +42,11 @@ export default function SearchBar({query,filterType,totalCount,filteredCount,acc
           const active=filterType===val;
           return(
             <button key={val} onClick={()=>onFilterChange(active?null:val)}
-              style={{padding:"4px 10px",borderRadius:16,border:active?`1.5px solid ${color}`:`1px solid ${T.color.cream}`,
+              style={{padding:isMobile?"8px 12px":"4px 10px",borderRadius:16,border:active?`1.5px solid ${color}`:`1px solid ${T.color.cream}`,
                 background:active?`${color}15`:`${T.color.white}cc`,backdropFilter:"blur(8px)",
-                fontFamily:T.font.body,fontSize:10,color:active?color:T.color.muted,
-                cursor:"pointer",display:"flex",alignItems:"center",gap:3,transition:"all .15s"}}>
-              <span style={{fontSize:10}}>{icon}</span>{label}
+                fontFamily:T.font.body,fontSize:isMobile?12:10,color:active?color:T.color.muted,
+                cursor:"pointer",display:"flex",alignItems:"center",gap:isMobile?5:3,transition:"all .15s",minHeight:isMobile?36:undefined}}>
+              <span style={{fontSize:isMobile?13:10}}>{icon}</span>{label}
             </button>
           );
         })}

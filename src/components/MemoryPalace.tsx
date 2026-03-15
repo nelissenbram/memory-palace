@@ -42,6 +42,7 @@ import InterviewPanel from "@/components/ui/InterviewPanel";
 import InterviewLibraryPanel from "@/components/ui/InterviewLibraryPanel";
 import InterviewHistoryPanel from "@/components/ui/InterviewHistoryPanel";
 import TouchControlsOverlay from "@/components/ui/TouchControlsOverlay";
+import MobileJoystick from "@/components/ui/MobileJoystick";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 
@@ -272,6 +273,55 @@ export default function MemoryPalace(){
 
       {/* Touch controls tutorial — mobile only, one-time */}
       {isMobile && <TouchControlsOverlay view={view} />}
+
+      {/* Visible mobile joystick — room & corridor views */}
+      {isMobile && (view === "room" || view === "corridor") && (
+        <MobileJoystick
+          visible={!selMem && !showUpload && !showSharing && !moreMenuOpen}
+          onMove={() => {}}
+        />
+      )}
+
+      {/* "Drag to look" hint — right side, mobile only, room & corridor views */}
+      {isMobile && (view === "room" || view === "corridor") && !selMem && !showUpload && !showSharing && !moreMenuOpen && (
+        <div style={{
+          position: "absolute",
+          bottom: 110,
+          right: 16,
+          zIndex: 47,
+          pointerEvents: "none",
+          animation: "fadeIn .8s ease 1.5s both",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 4,
+        }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            background: "rgba(42, 34, 24, 0.25)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            border: "1.5px solid rgba(212, 197, 178, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+              <circle cx="9" cy="9" r="7" stroke="rgba(250,250,247,0.5)" strokeWidth="1.5" fill="none" />
+              <path d="M9 5L9 9L13 7.5" stroke="rgba(250,250,247,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <span style={{
+            fontFamily: T.font.body,
+            fontSize: 9,
+            color: "rgba(250,250,247,0.6)",
+            textShadow: "0 1px 4px rgba(0,0,0,0.3)",
+            whiteSpace: "nowrap",
+          }}>Drag to look</span>
+        </div>
+      )}
 
       {/* ═══ MOBILE BOTTOM ACTION BAR ═══ */}
       {isMobile && <MobileBottomBar
@@ -510,9 +560,10 @@ function MobileBottomBar(props: MobileBottomBarProps) {
             ] : []),
           ].map((item, i) => (
             <button key={i} onClick={item.action} style={{
-              padding: "12px 8px", borderRadius: 12, border: `1px solid ${T.color.cream}`,
+              padding: "14px 8px", borderRadius: 12, border: `1px solid ${T.color.cream}`,
               background: T.color.white, cursor: "pointer", textAlign: "center",
               display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+              minHeight: 56, justifyContent: "center",
             }}>
               <span style={{ fontSize: 20 }}>{item.icon}</span>
               <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.walnut }}>{item.label}</span>

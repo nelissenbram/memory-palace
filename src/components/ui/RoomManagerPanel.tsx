@@ -74,10 +74,10 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
   };
 
   const iconPicker = (currentIcon: string, onPick: (icon: string) => void) => (
-    <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: 10, display: "grid", gridTemplateColumns: "repeat(8,1fr)", gap: 4, maxHeight: 160, overflowY: "auto", marginTop: 6 }}>
+    <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: isMobile ? 8 : 10, display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? 6 : 4, maxHeight: isMobile ? 200 : 160, overflowY: "auto", marginTop: 6 }}>
       {EMOJI_PRESETS.map((e, i) => (
         <button key={i} onClick={() => onPick(e)}
-          style={{ width: 32, height: 32, borderRadius: 6, border: e === currentIcon ? `2px solid ${accent}` : "1px solid transparent", background: e === currentIcon ? `${accent}15` : "transparent", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: 6, border: e === currentIcon ? `2px solid ${accent}` : "1px solid transparent", background: e === currentIcon ? `${accent}15` : "transparent", fontSize: isMobile ? 20 : 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {e}
         </button>
       ))}
@@ -95,7 +95,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
             <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>Manage Rooms</h3>
             <p style={{ fontFamily: T.font.body, fontSize: 12, color: accent, margin: "4px 0 0" }}>{wing.icon} {wing.name} Wing</p>
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+          <button onClick={onClose} style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 16 : 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}>{"\u2715"}</button>
         </div>
 
         {/* Room count */}
@@ -142,22 +142,22 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                 {/* Reorder buttons */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   <button onClick={() => reorderRoom(wing.id, room.id, -1)} disabled={i === 0}
-                    style={{ width: 22, height: 18, borderRadius: 4, border: "none", background: i === 0 ? "transparent" : T.color.warmStone, color: i === 0 ? T.color.cream : T.color.muted, fontSize: 9, cursor: i === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25B2"}</button>
+                    style={{ width: isMobile ? 32 : 22, height: isMobile ? 26 : 18, borderRadius: 4, border: "none", background: i === 0 ? "transparent" : T.color.warmStone, color: i === 0 ? T.color.cream : T.color.muted, fontSize: isMobile ? 11 : 9, cursor: i === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25B2"}</button>
                   <button onClick={() => reorderRoom(wing.id, room.id, 1)} disabled={i === rooms.length - 1}
-                    style={{ width: 22, height: 18, borderRadius: 4, border: "none", background: i === rooms.length - 1 ? "transparent" : T.color.warmStone, color: i === rooms.length - 1 ? T.color.cream : T.color.muted, fontSize: 9, cursor: i === rooms.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25BC"}</button>
+                    style={{ width: isMobile ? 32 : 22, height: isMobile ? 26 : 18, borderRadius: 4, border: "none", background: i === rooms.length - 1 ? "transparent" : T.color.warmStone, color: i === rooms.length - 1 ? T.color.cream : T.color.muted, fontSize: isMobile ? 11 : 9, cursor: i === rooms.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25BC"}</button>
                 </div>
 
                 {/* Enter room */}
                 {onEnterRoom && (
                   <button onClick={() => { onEnterRoom(room.id); onClose(); }}
-                    style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    style={{ width: isMobile ? 38 : 30, height: isMobile ? 38 : 30, borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 14 : 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}
                     title="Enter room">{"\u279C"}</button>
                 )}
 
                 {/* Delete button */}
                 {rooms.length > 1 && (
                   <button onClick={() => setConfirmDelete(confirmDelete === room.id ? null : room.id)}
-                    style={{ width: 30, height: 30, borderRadius: 8, border: confirmDelete === room.id ? "1px solid #D0606080" : `1px solid ${T.color.cream}`, background: confirmDelete === room.id ? "#D0606010" : "transparent", color: confirmDelete === room.id ? "#C05050" : T.color.muted, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    style={{ width: isMobile ? 38 : 30, height: isMobile ? 38 : 30, borderRadius: 8, border: confirmDelete === room.id ? "1px solid #D0606080" : `1px solid ${T.color.cream}`, background: confirmDelete === room.id ? "#D0606010" : "transparent", color: confirmDelete === room.id ? "#C05050" : T.color.muted, fontSize: isMobile ? 14 : 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}
                     title="Delete room">{"\u{1F5D1}"}</button>
                 )}
               </div>

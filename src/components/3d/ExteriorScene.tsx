@@ -11,6 +11,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const camO=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camOT=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camD=useRef(90);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
+  const hoveredRoomRef=useRef(hoveredRoom);
+
+  // Keep hoveredRoom ref in sync so the animation loop always reads the latest value
+  useEffect(()=>{hoveredRoomRef.current=hoveredRoom;},[hoveredRoom]);
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
@@ -777,7 +781,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       // Wing hover glow — emissive body + accent point light + window brightening
       const warmGlow=new THREE.Color("#FFE8B0");
       clickTargets.forEach((ct: any)=>{
-        const isHov=hoveredRoom===ct.userData.roomId;
+        const isHov=hoveredRoomRef.current===ct.userData.roomId;
         const accentColor=new THREE.Color(ct.userData.accent);
         // Smooth emissive glow on wing body meshes (skip cloned window mats)
         const winSet=wingWindowMats.get(ct.userData.roomId);
@@ -807,10 +811,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
       // Animate hover point lights (smooth fade in/out)
       hoverLights.forEach(hl=>{
-        const target=hoveredRoom===hl.wingId?1.8:0;
+        const target=hoveredRoomRef.current===hl.wingId?1.8:0;
         hl.light.intensity+=(target-hl.light.intensity)*.06;
         // Subtle pulse when active
-        if(hoveredRoom===hl.wingId){
+        if(hoveredRoomRef.current===hl.wingId){
           hl.light.intensity+=Math.sin(t*2.5)*.15;
         }
       });

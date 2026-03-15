@@ -65,11 +65,11 @@ export default function TopBar({crumbs}: TopBarProps){
             </div>
           </div>
           <button onClick={() => setMenuOpen(!menuOpen)} style={{
-            width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+            width: 44, height: 44, borderRadius: 12, flexShrink: 0,
             border: `1px solid ${T.color.cream}`,
             background: menuOpen ? `${T.color.sandstone}30` : `${T.color.white}bb`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 16, cursor: "pointer", color: T.color.muted,
+            fontSize: 18, cursor: "pointer", color: T.color.muted,
           }}>
             {menuOpen ? "\u2715" : "\u2630"}
           </button>

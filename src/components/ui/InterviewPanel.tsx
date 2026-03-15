@@ -307,7 +307,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
       {/* Progress bar */}
       {phase !== "intro" && phase !== "complete" && currentTemplate && (
-        <div style={{ padding: "0 32px", flexShrink: 0 }}>
+        <div style={{ padding: isMobile ? "0 20px" : "0 32px", flexShrink: 0 }}>
           <div style={{ height: 3, borderRadius: 2, background: "#3A352D", overflow: "hidden" }}>
             <div style={{
               height: "100%", borderRadius: 2,

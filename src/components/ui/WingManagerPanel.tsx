@@ -69,10 +69,10 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   };
 
   const iconPicker = (currentIcon: string, onPick: (icon: string) => void) => (
-    <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: 10, display: "grid", gridTemplateColumns: "repeat(8,1fr)", gap: 4, maxHeight: 160, overflowY: "auto", marginTop: 6 }}>
+    <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: isMobile ? 8 : 10, display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? 6 : 4, maxHeight: isMobile ? 200 : 160, overflowY: "auto", marginTop: 6 }}>
       {EMOJI_PRESETS.map((e, i) => (
         <button key={i} onClick={() => onPick(e)}
-          style={{ width: 32, height: 32, borderRadius: 6, border: e === currentIcon ? `2px solid ${T.color.terracotta}` : "1px solid transparent", background: e === currentIcon ? `${T.color.terracotta}15` : "transparent", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: 6, border: e === currentIcon ? `2px solid ${T.color.terracotta}` : "1px solid transparent", background: e === currentIcon ? `${T.color.terracotta}15` : "transparent", fontSize: isMobile ? 20 : 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {e}
         </button>
       ))}
@@ -80,11 +80,11 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   );
 
   const colorPicker = (currentColor: string, onPick: (color: string) => void) => (
-    <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: 10, display: "grid", gridTemplateColumns: "repeat(8,1fr)", gap: 6, marginTop: 6 }}>
+    <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: isMobile ? 8 : 10, display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? 8 : 6, marginTop: 6 }}>
       {ACCENT_PALETTE.map((p, i) => (
         <button key={i} onClick={() => onPick(p.color)} title={p.name}
           style={{
-            width: 32, height: 32, borderRadius: 16, border: p.color === currentColor ? "3px solid #3A2818" : "2px solid transparent",
+            width: isMobile ? 38 : 32, height: isMobile ? 38 : 32, borderRadius: isMobile ? 19 : 16, border: p.color === currentColor ? "3px solid #3A2818" : "2px solid transparent",
             background: p.color, cursor: "pointer", boxShadow: p.color === currentColor ? `0 0 0 2px ${T.color.white}, 0 2px 8px ${p.color}60` : "0 1px 4px rgba(0,0,0,.12)",
             transition: "all .15s",
           }}
@@ -104,7 +104,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
             <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>Customize Wings</h3>
             <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "4px 0 0" }}>Rename, change icons, and set accent colors</p>
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+          <button onClick={onClose} style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 16 : 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}>{"\u2715"}</button>
         </div>
 
         {/* Wing list */}
