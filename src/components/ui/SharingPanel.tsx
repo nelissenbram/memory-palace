@@ -171,7 +171,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
   const statusColor=(share: Share)=>{
     const s=share.status||(!share.accepted?"pending":"accepted");
     if(s==="accepted") return T.color.sage;
-    if(s==="declined") return "#C05050";
+    if(s==="declined") return T.color.error;
     return T.color.muted;
   };
 
@@ -185,7 +185,6 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
   return(
     <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
       <div onClick={e=>e.stopPropagation()} style={{position:"absolute",right:0,top:0,bottom:0,width:isMobile?"100%":"min(400px, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":`1px solid ${T.color.cream}`,padding:isMobile?"20px 16px":"28px 24px",overflowY:"auto",animation:"slideInRight .3s cubic-bezier(.23,1,.32,1)"}}>
-        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div>
@@ -202,9 +201,9 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
         </div>}
 
         {/* Error */}
-        {error&&<div style={{padding:"10px 14px",background:"#C0505010",border:"1px solid #C0505030",borderRadius:10,marginBottom:16,fontFamily:T.font.body,fontSize:12,color:"#C05050",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        {error&&<div style={{padding:"10px 14px",background:`${T.color.error}10`,border:`1px solid ${T.color.error}30`,borderRadius:10,marginBottom:16,fontFamily:T.font.body,fontSize:12,color:T.color.error,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span>{error}</span>
-          <button onClick={()=>setError(null)} style={{background:"none",border:"none",color:"#C05050",cursor:"pointer",fontSize:14}}>&#x2715;</button>
+          <button onClick={()=>setError(null)} style={{background:"none",border:"none",color:T.color.error,cursor:"pointer",fontSize:14}}>&#x2715;</button>
         </div>}
 
         {/* Toggle */}
@@ -213,7 +212,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>Room sharing</div>
             <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{sharing.shared?"People you invite can view this room":"Only you can see this room"}</div>
           </div>
-          <button onClick={handleToggle} style={{width:44,height:24,borderRadius:12,border:"none",background:sharing.shared?"#4A6741":T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s"}}>
+          <button onClick={handleToggle} style={{width:44,height:24,borderRadius:12,border:"none",background:sharing.shared?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s"}}>
             <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:sharing.shared?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
           </button>
         </div>
@@ -225,7 +224,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
               <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>Public link</div>
               <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{publicShare?.is_active?"Anyone with the link can view":"No account required to view"}</div>
             </div>
-            <button onClick={handleTogglePublicShare} disabled={publicLoading} style={{width:44,height:24,borderRadius:12,border:"none",background:publicShare?.is_active?"#4A6741":T.color.sandstone,cursor:publicLoading?"default":"pointer",position:"relative",transition:"background .2s",opacity:publicLoading?.6:1}}>
+            <button onClick={handleTogglePublicShare} disabled={publicLoading} style={{width:44,height:24,borderRadius:12,border:"none",background:publicShare?.is_active?T.color.success:T.color.sandstone,cursor:publicLoading?"default":"pointer",position:"relative",transition:"background .2s",opacity:publicLoading?.6:1}}>
               <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:publicShare?.is_active?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
             </button>
           </div>
@@ -284,7 +283,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           {/* Copy generic link */}
           <button onClick={copyGenericLink} style={{width:"100%",padding:"12px 16px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,cursor:"pointer",display:"flex",alignItems:"center",gap:8,marginBottom:20,transition:"all .2s"}}>
             <span style={{fontSize:14}}>{copied?"&#x2705;":"&#x1F517;"}</span>
-            <span style={{fontFamily:T.font.body,fontSize:12,color:copied?"#4A6741":T.color.walnut,fontWeight:500}}>{copied?"Link copied!":"Copy share link"}</span>
+            <span style={{fontFamily:T.font.body,fontSize:12,color:copied?T.color.success:T.color.walnut,fontWeight:500}}>{copied?"Link copied!":"Copy share link"}</span>
           </button>
 
           {/* People list */}

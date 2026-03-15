@@ -44,7 +44,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
         </div>
         {/* Points with MP suffix */}
         <span style={{ fontFamily: T.font.body, fontSize: 12, fontWeight: 600, color: T.color.walnut }}>
-          {totalPoints} <span style={{ fontSize: 10, fontWeight: 500, color: "#C9A84C" }}>MP</span>
+          {totalPoints} <span style={{ fontSize: 10, fontWeight: 500, color: T.color.goldLight }}>MP</span>
         </span>
         {/* Mini progress bar */}
         <div style={{
@@ -149,7 +149,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
                       </span>
                       <span style={{
                         fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
-                        color: "#C9A84C",
+                        color: T.color.goldLight,
                       }}>+{entry.points} MP</span>
                     </div>
                   ))}

@@ -68,7 +68,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
               </p>
             </div>
             <button onClick={onClose} style={{
-              width: 32, height: 32, borderRadius: 16, border: `1px solid ${T.color.cream}`,
+              width: 32, height: 32, minWidth: 44, minHeight: 44, borderRadius: 16, border: `1px solid ${T.color.cream}`,
               background: T.color.white, cursor: "pointer", fontSize: 16, color: T.color.muted,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>{"\u2715"}</button>
@@ -166,9 +166,9 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                   <div style={{
                     position: "absolute", top: 10, right: 12,
                     fontFamily: T.font.body, fontSize: 9, fontWeight: 600,
-                    color: "#4A6741", textTransform: "uppercase", letterSpacing: 1,
+                    color: T.color.success, textTransform: "uppercase", letterSpacing: 1,
                     padding: "3px 8px", borderRadius: 6,
-                    background: "#4A674115", border: "1px solid #4A674125",
+                    background: `${T.color.success}15`, border: `1px solid ${T.color.success}25`,
                   }}>Complete</div>
                 )}
 
@@ -200,7 +200,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     </span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
-                      color: pct >= 100 ? "#4A6741" : track.color,
+                      color: pct >= 100 ? T.color.success : track.color,
                     }}>{pct}%</span>
                   </div>
                   <div style={{
@@ -210,7 +210,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     <div style={{
                       width: `${pct}%`, height: "100%", borderRadius: 3,
                       background: isComplete
-                        ? "linear-gradient(90deg,#4A6741,#5A8751)"
+                        ? `linear-gradient(90deg,${T.color.success},#5A8751)`
                         : `linear-gradient(90deg,${track.color}cc,${track.color})`,
                       transition: "width .8s ease",
                     }} />

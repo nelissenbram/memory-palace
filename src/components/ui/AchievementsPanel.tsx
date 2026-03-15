@@ -49,7 +49,7 @@ export default function AchievementsPanel({ onClose }: Props) {
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{
               width: 48, height: 48, borderRadius: 14,
-              background: `linear-gradient(135deg, #C9A84C, #A67C2E)`,
+              background: `linear-gradient(135deg, ${T.color.goldLight}, ${T.color.goldDark})`,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 24, boxShadow: "0 4px 16px rgba(169,124,46,.3)",
             }}>{"\u{1F3C6}"}</div>
@@ -80,7 +80,7 @@ export default function AchievementsPanel({ onClose }: Props) {
         }}>
           <div style={{
             width: `${percentage}%`, height: "100%", borderRadius: 4,
-            background: `linear-gradient(90deg, #C9A84C, #D4AF37)`,
+            background: `linear-gradient(90deg, ${T.color.goldLight}, ${T.color.gold})`,
             transition: "width .6s ease",
           }} />
         </div>
@@ -126,7 +126,7 @@ function AchievementCard({ achievement, earned, earnedDate }: {
       display: "flex", alignItems: "center", gap: 12,
       padding: "12px 14px", borderRadius: 14,
       background: earned ? `${T.color.white}ee` : `${T.color.warmStone}88`,
-      border: earned ? `1px solid #D4AF3744` : `1px solid ${T.color.cream}`,
+      border: earned ? `1px solid ${T.color.gold}44` : `1px solid ${T.color.cream}`,
       opacity: earned ? 1 : 0.6,
       transition: "all .2s ease",
       position: "relative", overflow: "hidden",
@@ -135,7 +135,7 @@ function AchievementCard({ achievement, earned, earnedDate }: {
       <div style={{
         width: 42, height: 42, borderRadius: 12, flexShrink: 0,
         background: earned
-          ? `linear-gradient(135deg, #C9A84C22, #D4AF3722)`
+          ? `linear-gradient(135deg, ${T.color.goldLight}22, ${T.color.gold}22)`
           : `${T.color.sandstone}22`,
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 22, position: "relative",
@@ -159,7 +159,7 @@ function AchievementCard({ achievement, earned, earnedDate }: {
         </div>
         {earned && earnedDate && (
           <div style={{
-            fontFamily: T.font.body, fontSize: 10, color: "#C9A84C",
+            fontFamily: T.font.body, fontSize: 10, color: T.color.goldLight,
             marginTop: 2,
           }}>
             Unlocked {earnedDate}
@@ -172,7 +172,7 @@ function AchievementCard({ achievement, earned, earnedDate }: {
           position: "absolute", top: 0, right: 0,
           width: 0, height: 0,
           borderLeft: "20px solid transparent",
-          borderTop: "20px solid #D4AF3733",
+          borderTop: `20px solid ${T.color.gold}33`,
         }} />
       )}
     </div>

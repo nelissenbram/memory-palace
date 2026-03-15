@@ -58,13 +58,11 @@ interface ImportState {
   targetRoomId: string | null;
   reviewSampleRate: number;
   progress: { processed: number; total: number; committed: number; errors: number };
-  aiApiKey: string;
 
   addFiles: (files: File[]) => void;
   removeItem: (localId: string) => void;
   setMode: (mode: ImportMode) => void;
   setTarget: (wingId: string | null, roomId: string | null) => void;
-  setAiApiKey: (key: string) => void;
   updateConfirmed: (localId: string, updates: Partial<ImportItem["confirmed"]>) => void;
   acceptItem: (localId: string) => void;
   acceptAll: () => void;
@@ -101,7 +99,6 @@ export const useImportStore = create<ImportState>((set, get) => ({
   targetRoomId: null,
   reviewSampleRate: 0.3,
   progress: { processed: 0, total: 0, committed: 0, errors: 0 },
-  aiApiKey: "",
 
   addFiles: (files) => {
     const newItems: ImportItem[] = files.map((file) => ({
@@ -143,8 +140,6 @@ export const useImportStore = create<ImportState>((set, get) => ({
       ),
     }));
   },
-  setAiApiKey: (key) => set({ aiApiKey: key }),
-
   updateConfirmed: (localId, updates) =>
     set((s) => ({
       items: s.items.map((i) => (i.localId === localId ? { ...i, confirmed: { ...i.confirmed, ...updates } } : i)),
