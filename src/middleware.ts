@@ -35,12 +35,6 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-
-  // TEMPORARY: Force cache bust — redirect to /clear.html once per session
-  if (path === "/palace" && !request.nextUrl.searchParams.has("cb")) {
-    return NextResponse.redirect(new URL("/clear.html", request.url));
-  }
-
   const isPublicRoute = PUBLIC_ROUTES.some((r) => path.startsWith(r));
 
   // Authenticated user on public route or landing → redirect to palace
