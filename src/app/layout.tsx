@@ -50,6 +50,31 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${cormorant.variable} ${sourceSans.variable}`}>
       <head>
+        {/* Force clear stale PWA caches — runs before any JS bundles */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            var V="v3";
+            try{
+              var s=localStorage.getItem("mp_v");
+              if(s!==V){
+                localStorage.setItem("mp_v",V);
+                if("caches" in window){
+                  caches.keys().then(function(k){
+                    Promise.all(k.map(function(n){return caches.delete(n)})).then(function(){
+                      if(navigator.serviceWorker){
+                        navigator.serviceWorker.getRegistrations().then(function(r){
+                          Promise.all(r.map(function(reg){return reg.unregister()})).then(function(){
+                            window.location.reload();
+                          });
+                        });
+                      } else { window.location.reload(); }
+                    });
+                  });
+                }
+              }
+            }catch(e){}
+          })();
+        `}} />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/favicon.ico" sizes="32x32" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
