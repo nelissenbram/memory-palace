@@ -29,6 +29,7 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
   const [title,setTitle]=useState(mem.title);
   const [desc,setDesc]=useState(mem.desc||"");
   const [type,setType]=useState(mem.type);
+  const [visibility,setVisibility]=useState<"private"|"shared"|"family"|"public">(mem.visibility||"private");
   const [historicalContext,setHistoricalContext]=useState(mem.historicalContext||"");
   const [contextLoading,setContextLoading]=useState(false);
   const [contextError,setContextError]=useState("");
@@ -77,6 +78,7 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
     if(title.trim()&&title!==mem.title) updates.title=title.trim();
     if(desc!==( mem.desc||"")) updates.desc=desc;
     if(type!==mem.type) updates.type=type;
+    if(visibility!==(mem.visibility||"private")) updates.visibility=visibility;
     if(Object.keys(updates).length>0) onUpdate(mem.id,updates);
     setEditing(false);
   };
@@ -85,6 +87,7 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
     setTitle(mem.title);
     setDesc(mem.desc||"");
     setType(mem.type);
+    setVisibility(mem.visibility||"private");
     setEditing(false);
   };
 
@@ -129,6 +132,16 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
                 <div style={{fontSize:16}}>{"\u{2728}"}</div>
                 <div style={{fontFamily:T.font.body,fontSize:9,color:accent,fontWeight:600,marginTop:1}}>Edit Image</div>
               </button>}
+            </div>
+            {/* Visibility */}
+            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:8}}>Visibility</label>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:20}}>
+              {([["private","\u{1F512}","Private"],["shared","\u{1F465}","Shared"],["family","\u{1F46A}","Family"],["public","\u{1F30D}","Public"]] as const).map(([val,icon,label])=>(
+                <button key={val} onClick={()=>setVisibility(val)} style={{padding:"8px 6px",borderRadius:8,border:visibility===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:visibility===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
+                  <div style={{fontSize:14}}>{icon}</div>
+                  <div style={{fontFamily:T.font.body,fontSize:9,color:visibility===val?accent:T.color.muted,fontWeight:visibility===val?600:400,marginTop:1}}>{label}</div>
+                </button>
+              ))}
             </div>
             {/* Save / Cancel */}
             <div style={{display:"flex",gap:10}}>

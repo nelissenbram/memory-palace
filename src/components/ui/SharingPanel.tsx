@@ -6,6 +6,7 @@ import type { SharingInfo } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { fetchRoomShares, shareRoomWithEmail, removeRoomShare, toggleRoomSharing } from "@/lib/auth/sharing-actions";
 import { fetchPublicShare, togglePublicShare } from "@/lib/auth/public-share-actions";
+import { updateShareDownloadPermission, updateRoomPublicVisibility, updateSharePermission } from "@/lib/auth/family-actions";
 import { generateInviteLink } from "@/lib/sharing/generate-link";
 
 interface Share {
@@ -16,6 +17,7 @@ interface Share {
   status?: string;
   email_sent?: boolean;
   invite_message?: string | null;
+  allow_download?: boolean;
 }
 
 interface SharingPanelProps {
@@ -41,6 +43,10 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
   const [publicShare,setPublicShare]=useState<{id:string;slug:string;is_active:boolean;created_at?:string}|null>(null);
   const [publicLoading,setPublicLoading]=useState(false);
   const [publicCopied,setPublicCopied]=useState(false);
+  const [privacyOpen,setPrivacyOpen]=useState(false);
+  const [allowDownload,setAllowDownload]=useState(true);
+  const [showPublicPalace,setShowPublicPalace]=useState(false);
+  const [editingPermFor,setEditingPermFor]=useState<string|null>(null);
   const accent=wing?.accent||T.color.terracotta;
 
   // Load real shares from DB on mount
@@ -332,15 +338,98 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           </>}
         </>}
 
-        {/* Privacy note */}
-        <div style={{marginTop:24,padding:"12px 14px",background:`${T.color.warmStone}80`,borderRadius:10,border:`1px solid ${T.color.cream}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-            <span style={{fontSize:12}}>&#x1F512;</span>
-            <span style={{fontFamily:T.font.body,fontSize:11,fontWeight:600,color:T.color.charcoal}}>Privacy</span>
-          </div>
-          <p style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,lineHeight:1.6,margin:0}}>
-            Your wing is always private. Only this specific room can be shared. Invited people see room contents but cannot access other wings or rooms.
-          </p>
+        {/* Privacy & Permissions */}
+        <div style={{marginTop:24,borderRadius:12,border:`1px solid ${T.color.cream}`,overflow:"hidden"}}>
+          <button onClick={()=>setPrivacyOpen(!privacyOpen)} style={{width:"100%",padding:"14px 16px",background:`${T.color.warmStone}80`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:12}}>{"\u{1F512}"}</span>
+              <span style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:T.color.charcoal}}>Privacy & Permissions</span>
+            </div>
+            <span style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,transform:privacyOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",display:"inline-block"}}>{"\u25BE"}</span>
+          </button>
+          {privacyOpen&&<div style={{padding:"16px",background:T.color.white}}>
+            {/* Download permission toggle */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div>
+                <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>Allow collaborators to download media</div>
+                <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>When disabled, shared users cannot save photos or videos</div>
+              </div>
+              <button onClick={async()=>{
+                const next=!allowDownload;
+                setAllowDownload(next);
+                // Update all shares for this room
+                for(const share of shares){
+                  await updateShareDownloadPermission(share.id,next);
+                }
+              }} style={{width:44,height:24,borderRadius:12,border:"none",background:allowDownload?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+                <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:allowDownload?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+              </button>
+            </div>
+
+            {/* Show in public palace toggle */}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div>
+                <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>Show room in public palace view</div>
+                <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>For future public profiles - make this room discoverable</div>
+              </div>
+              <button onClick={async()=>{
+                const next=!showPublicPalace;
+                setShowPublicPalace(next);
+                await updateRoomPublicVisibility(roomId,next);
+              }} style={{width:44,height:24,borderRadius:12,border:"none",background:showPublicPalace?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+                <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:showPublicPalace?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+              </button>
+            </div>
+
+            {/* Per-collaborator permission editing */}
+            {shares.length>0&&<>
+              <div style={{borderTop:`1px solid ${T.color.cream}`,paddingTop:14,marginTop:4}}>
+                <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:10}}>Per-collaborator permissions</label>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {shares.map(share=>(
+                    <div key={share.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",background:T.color.linen,borderRadius:8,border:`1px solid ${T.color.cream}`}}>
+                      <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.charcoal,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"50%"}}>{share.shared_with_email}</div>
+                      {editingPermFor===share.id?(
+                        <div style={{display:"flex",gap:4}}>
+                          {(["view","contribute","admin"] as const).map(p=>(
+                            <button key={p} onClick={async()=>{
+                              setShares(prev=>prev.map(s=>s.id===share.id?{...s,permission:p}:s));
+                              setEditingPermFor(null);
+                              await updateSharePermission(share.id,p);
+                            }} style={{
+                              padding:"4px 10px",borderRadius:6,
+                              border:`1px solid ${share.permission===p?accent+"40":T.color.cream}`,
+                              background:share.permission===p?`${accent}10`:T.color.white,
+                              cursor:"pointer",fontFamily:T.font.body,fontSize:10,
+                              color:share.permission===p?accent:T.color.muted,
+                              fontWeight:share.permission===p?600:400,
+                            }}>
+                              {p==="view"?"View":p==="contribute"?"Contribute":"Admin"}
+                            </button>
+                          ))}
+                        </div>
+                      ):(
+                        <button onClick={()=>setEditingPermFor(share.id)} style={{
+                          padding:"4px 12px",borderRadius:6,
+                          border:`1px solid ${T.color.cream}`,
+                          background:T.color.white,
+                          cursor:"pointer",fontFamily:T.font.body,fontSize:11,
+                          color:T.color.walnut,fontWeight:500,
+                        }}>
+                          Can {share.permission} {"\u270E"}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>}
+
+            {/* Privacy info */}
+            <p style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,lineHeight:1.6,margin:"14px 0 0"}}>
+              Your wing is always private. Only this specific room can be shared. Invited people see room contents but cannot access other wings or rooms.
+            </p>
+          </div>}
         </div>
       </div>
     </div>
