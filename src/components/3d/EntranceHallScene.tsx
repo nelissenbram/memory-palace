@@ -62,7 +62,7 @@ export default function EntranceHallScene({
     const composer = new EffectComposer(ren);
     composer.addPass(new RenderPass(scene, camera));
     composer.addPass(new EffectPass(camera,
-      new BloomEffect({ luminanceThreshold: 0.7, luminanceSmoothing: 0.3, intensity: 0.8 }),
+      new BloomEffect({ luminanceThreshold: 0.3, luminanceSmoothing: 0.5, intensity: 1.5, mipmapBlur: true }),
       new VignetteEffect({ darkness: 0.4, offset: 0.3 }),
       new SMAAEffect()
     ));
@@ -72,9 +72,9 @@ export default function EntranceHallScene({
       marble: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8 }),
       marbleWarm: new THREE.MeshStandardMaterial({ color: "#EDE5D8", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.7 }),
       marbleDark: new THREE.MeshStandardMaterial({ color: "#C8B89A", roughness: 0.25, metalness: 0.0, envMapIntensity: 0.6 }),
-      gold: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
-      goldDark: new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, envMapIntensity: 1.0 }),
-      goldBright: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4 }),
+      gold: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2, emissive: "#D4AF37", emissiveIntensity: 0.15 }),
+      goldDark: new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, envMapIntensity: 1.0, emissive: "#B8922E", emissiveIntensity: 0.1 }),
+      goldBright: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4, emissive: "#E8C84A", emissiveIntensity: 0.25 }),
       column: new THREE.MeshStandardMaterial({ color: "#F0E8DC", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.7 }),
       door: new THREE.MeshStandardMaterial({ color: "#3A2818", roughness: 0.6, metalness: 0.0 }),
       doorFrame: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),

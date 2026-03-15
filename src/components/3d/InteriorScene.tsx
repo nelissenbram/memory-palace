@@ -41,8 +41,8 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     const composer=new EffectComposer(ren);
     composer.addPass(new RenderPass(scene,camera));
     composer.addPass(new EffectPass(camera,
-      new BloomEffect({luminanceThreshold:0.7,luminanceSmoothing:0.3,intensity:0.4}),
-      new VignetteEffect({darkness:0.3,offset:0.3}),
+      new BloomEffect({luminanceThreshold:0.4,luminanceSmoothing:0.4,intensity:0.8,mipmapBlur:true}),
+      new VignetteEffect({darkness:0.4,offset:0.25}),
       new SMAAEffect()
     ));
     scene.add(new THREE.HemisphereLight("#FFF2E0","#C4B8A0",.4));

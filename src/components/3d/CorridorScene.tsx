@@ -26,8 +26,8 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const composer=new EffectComposer(ren);
     composer.addPass(new RenderPass(scene,camera));
     composer.addPass(new EffectPass(camera,
-      new BloomEffect({luminanceThreshold:0.7,luminanceSmoothing:0.3,intensity:0.5}),
-      new VignetteEffect({darkness:0.35,offset:0.3}),
+      new BloomEffect({luminanceThreshold:0.4,luminanceSmoothing:0.4,intensity:1.0,mipmapBlur:true}),
+      new VignetteEffect({darkness:0.45,offset:0.25}),
       new SMAAEffect()
     ));
     scene.add(new THREE.HemisphereLight("#FFF2E0","#C4B8A0",.5));

@@ -72,8 +72,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const composer=new EffectComposer(ren);
     composer.addPass(new RenderPass(scene,camera));
     composer.addPass(new EffectPass(camera,
-      new BloomEffect({luminanceThreshold:0.7,luminanceSmoothing:0.3,intensity:0.5}),
-      new VignetteEffect({darkness:0.35,offset:0.3}),
+      new BloomEffect({luminanceThreshold:0.4,luminanceSmoothing:0.4,intensity:1.2,mipmapBlur:true}),
+      new VignetteEffect({darkness:0.5,offset:0.25}),
       new SMAAEffect()
     ));
 
@@ -101,8 +101,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       stoneDk:new THREE.MeshStandardMaterial({color:"#A8987C",roughness:.75}),
       // Trims and gold
       trim:new THREE.MeshStandardMaterial({color:"#D8C8B0",roughness:.45,metalness:.12}),
-      gold:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.22,metalness:.65}),
-      goldBright:new THREE.MeshStandardMaterial({color:"#E0C060",roughness:.18,metalness:.7}),
+      gold:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.22,metalness:.65,emissive:"#C8A858",emissiveIntensity:.12}),
+      goldBright:new THREE.MeshStandardMaterial({color:"#E0C060",roughness:.18,metalness:.7,emissive:"#E0C060",emissiveIntensity:.2}),
       bronze:new THREE.MeshStandardMaterial({color:"#8A7050",roughness:.3,metalness:.5}),
       copper:new THREE.MeshStandardMaterial({color:"#6A9880",roughness:.25,metalness:.45}),
       // Roofs
