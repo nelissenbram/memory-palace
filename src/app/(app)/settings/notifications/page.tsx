@@ -18,6 +18,26 @@ export default function NotificationsPage() {
     } else {
       setPermission(Notification.permission);
     }
+    // Load email digest preference from server profile
+    (async () => {
+      try {
+        const { createClient } = await import("@/lib/supabase/client");
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email_digest")
+            .eq("id", user.id)
+            .single();
+          if (profile && typeof profile.email_digest === "boolean") {
+            setPrefs({ emailDigest: profile.email_digest });
+          }
+        }
+      } catch {
+        // Silently fail — localStorage default will be used
+      }
+    })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-dismiss toast
@@ -94,6 +114,30 @@ export default function NotificationsPage() {
     }
     setSubscribing(false);
   }, [prefs.pushEnabled, setPrefs]);
+
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  const handleToggleEmailDigest = useCallback(async () => {
+    const newVal = !prefs.emailDigest;
+    setPrefs({ emailDigest: newVal });
+
+    setSavingEmail(true);
+    try {
+      await fetch("/api/notifications/subscribe", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailDigest: newVal }),
+      });
+      setToast({
+        message: newVal ? "Weekly digest enabled" : "Weekly digest disabled",
+        type: "success",
+      });
+    } catch {
+      setPrefs({ emailDigest: !newVal });
+      setToast({ message: "Failed to save preference", type: "error" });
+    }
+    setSavingEmail(false);
+  }, [prefs.emailDigest, setPrefs]);
 
   const handleToggleType = useCallback(async (key: "onThisDay" | "timeCapsule") => {
     const newVal = !prefs[key];
@@ -300,6 +344,67 @@ export default function NotificationsPage() {
         )}
       </div>
 
+      {/* Email Notifications section */}
+      <div style={{
+        marginTop: 24,
+        background: T.color.white,
+        borderRadius: 16,
+        border: `1px solid ${T.color.cream}`,
+        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        overflow: "hidden",
+      }}>
+        {/* Section header */}
+        <div style={{
+          padding: "16px 24px 8px",
+        }}>
+          <h3 style={{
+            fontFamily: T.font.display, fontSize: 16, fontWeight: 600,
+            color: T.color.muted, margin: 0,
+            textTransform: "uppercase" as const,
+            letterSpacing: 0.5,
+          }}>
+            Email
+          </h3>
+        </div>
+
+        {/* Weekly digest toggle */}
+        <div style={{
+          padding: "16px 24px",
+          display: "flex", alignItems: "center", gap: 16,
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+            background: prefs.emailDigest ? `${T.color.sage}12` : T.color.warmStone,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 20,
+          }}>
+            {"\uD83D\uDCEC"}
+          </div>
+
+          <div style={{ flex: 1 }}>
+            <h4 style={{
+              fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
+              color: T.color.charcoal, margin: "0 0 2px",
+            }}>
+              Weekly Memory Digest
+            </h4>
+            <p style={{
+              fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
+              margin: 0,
+            }}>
+              Receive a weekly email with memory anniversaries, upcoming time capsules, and shared room activity
+            </p>
+          </div>
+
+          <ToggleSwitch
+            enabled={prefs.emailDigest}
+            onChange={handleToggleEmailDigest}
+            disabled={savingEmail}
+            loading={savingEmail}
+          />
+        </div>
+      </div>
+
       {/* Info note */}
       <div style={{
         marginTop: 24, padding: "16px 20px", borderRadius: 12,
@@ -310,9 +415,9 @@ export default function NotificationsPage() {
           fontFamily: T.font.body, fontSize: 12, color: T.color.walnut,
           margin: 0, lineHeight: 1.5,
         }}>
-          Notifications are sent once daily around 9:00 AM. Your subscription data is stored
-          securely and only used to deliver the notifications you opt into. You can disable
-          notifications at any time.
+          Push notifications are sent once daily around 9:00 AM. The weekly email digest
+          is sent every Monday morning. Your data is stored securely and only used to
+          deliver the notifications you opt into. You can disable any notification at any time.
         </p>
       </div>
 
