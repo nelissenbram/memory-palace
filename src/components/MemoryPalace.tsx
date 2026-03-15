@@ -27,6 +27,7 @@ import TrackDetailPanel from "@/components/ui/TrackDetailPanel";
 import LegacyPanel from "@/components/ui/LegacyPanel";
 import PointsDisplay from "@/components/ui/PointsDisplay";
 import ExteriorScene from "@/components/3d/ExteriorScene";
+import EntranceHallScene from "@/components/3d/EntranceHallScene";
 import InteriorScene from "@/components/3d/InteriorScene";
 import CorridorScene from "@/components/3d/CorridorScene";
 import ShareCard from "@/components/ui/ShareCard";
@@ -44,7 +45,7 @@ import TouchControlsOverlay from "@/components/ui/TouchControlsOverlay";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 
-// ═══ MAIN — 3-level navigation: exterior → corridor → room ═══
+// ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
   const isMobile = useIsMobile();
 
@@ -52,7 +53,7 @@ export default function MemoryPalace(){
   const { profileLoading, onboarded, firstWing,
     loadProfile, finishOnboarding } = useUserStore();
   const { view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim, roomLayouts,
-    setHovWing, setHovDoor, enterWing, enterRoom, setRoomLayout, exitToPalace, exitToCorridor } = usePalaceStore();
+    setHovWing, setHovDoor, enterWing, enterCorridor, enterRoom, setRoomLayout, exitToPalace, exitToCorridor, exitToEntrance } = usePalaceStore();
   const { selMem, showUpload, showSharing, showDirectory, searchQuery, filterType,
     setSelMem, setShowUpload, setShowSharing, setShowDirectory, setSearchQuery, setFilterType } = useMemoryStore();
   const { getWingRooms, customRooms } = useRoomStore();
@@ -171,6 +172,7 @@ export default function MemoryPalace(){
       <style>{`*{box-sizing:border-box;margin:0}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes portalFlash{0%{opacity:0}30%{opacity:1}70%{opacity:1}100%{opacity:0}}`}</style>
       <div style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
         {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={enterWing} hoveredRoom={hovWing} wings={allWings}/>}
+        {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(wingId==="__exterior__")exitToPalace();else enterCorridor(wingId);}} wings={allWings}/>}
         {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={enterRoom} hoveredDoor={hovDoor} wingData={wingData}/>}
         {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined}/>}
       </div>
@@ -188,6 +190,7 @@ export default function MemoryPalace(){
 
       {/* Bottom hints — hide on mobile (touch controls are self-explanatory) */}
       {!isMobile && view==="exterior"&&!hovWing&&<div style={{position:"absolute",bottom:22,left:"50%",transform:"translateX(-50%)",animation:"fadeIn .8s ease .8s both",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(8px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`}}>Drag to orbit · Scroll to zoom · Click a wing to enter</div>}
+      {!isMobile && view==="entrance"&&<div style={{position:"absolute",bottom:22,left:"50%",transform:"translateX(-50%)",animation:"fadeIn .8s ease .8s both",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(8px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`}}>Drag to orbit · Scroll to zoom · Click a door to enter a wing</div>}
       {!isMobile && view==="corridor"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter room</span></div>}
       {!isMobile && view==="room"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Click memories</span></div>}
 
@@ -219,32 +222,32 @@ export default function MemoryPalace(){
 
       {/* ═══ DESKTOP FABs ═══ */}
       {!isMobile && <>
-        {/* FAB: Life Interviews (exterior + corridor view) */}
-        {(view==="exterior"||view==="corridor")&&<button onClick={()=>setShowInterviewLibrary(true)} style={{position:"absolute",bottom:70,right:view==="exterior"?284:156,width:48,height:48,borderRadius:24,border:"none",background:"linear-gradient(135deg,#8B5E3C,#6B4226)",color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(107,66,38,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .65s both",transition:"transform .2s, box-shadow .2s"}}
+        {/* FAB: Life Interviews (exterior + entrance + corridor view) */}
+        {(view==="exterior"||view==="entrance"||view==="corridor")&&<button onClick={()=>setShowInterviewLibrary(true)} style={{position:"absolute",bottom:70,right:view==="exterior"?284:156,width:48,height:48,borderRadius:24,border:"none",background:"linear-gradient(135deg,#8B5E3C,#6B4226)",color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(107,66,38,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .65s both",transition:"transform .2s, box-shadow .2s"}}
           onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow="0 12px 40px rgba(107,66,38,0.5)";}}
           onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow="0 8px 32px rgba(107,66,38,0.35)";}}
           title="Life Interviews">{"\uD83C\uDF99\uFE0F"}</button>}
 
-        {/* FAB: Mass Import (exterior + room view) */}
-        {(view==="exterior"||view==="room")&&<button onClick={()=>setShowMassImport(true)} style={{position:"absolute",bottom:view==="room"?70:70,right:view==="room"?96:220,width:48,height:48,borderRadius:24,border:"none",background:"linear-gradient(135deg,#7A5A3A,#5A3A1A)",color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(90,58,26,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .8s both",transition:"transform .2s, box-shadow .2s"}}
+        {/* FAB: Mass Import (exterior + entrance + room view) */}
+        {(view==="exterior"||view==="entrance"||view==="room")&&<button onClick={()=>setShowMassImport(true)} style={{position:"absolute",bottom:view==="room"?70:70,right:view==="room"?96:220,width:48,height:48,borderRadius:24,border:"none",background:"linear-gradient(135deg,#7A5A3A,#5A3A1A)",color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(90,58,26,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .8s both",transition:"transform .2s, box-shadow .2s"}}
           onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow="0 12px 40px rgba(90,58,26,0.5)";}}
           onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow="0 8px 32px rgba(90,58,26,0.35)";}}
           title="Mass Import">{"\u{1F4E6}"}</button>}
 
-        {/* FAB: Timeline (exterior view) */}
-        {view==="exterior"&&!showTimeline&&<button onClick={()=>setShowTimeline(true)} style={{position:"absolute",bottom:70,right:156,width:48,height:48,borderRadius:24,border:"none",background:"linear-gradient(135deg,#8B6914,#C8A868)",color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(139,105,20,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .7s both",transition:"transform .2s, box-shadow .2s"}}
+        {/* FAB: Timeline (exterior + entrance view) */}
+        {(view==="exterior"||view==="entrance")&&!showTimeline&&<button onClick={()=>setShowTimeline(true)} style={{position:"absolute",bottom:70,right:156,width:48,height:48,borderRadius:24,border:"none",background:"linear-gradient(135deg,#8B6914,#C8A868)",color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(139,105,20,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .7s both",transition:"transform .2s, box-shadow .2s"}}
           onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow="0 12px 40px rgba(139,105,20,0.5)";}}
           onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow="0 8px 32px rgba(139,105,20,0.35)";}}
           title="Memory Timeline">{"\uD83D\uDCC5"}</button>}
 
-        {/* FAB: Memory Map (exterior + corridor) */}
-        {(view==="exterior"||view==="corridor")&&!showMemoryMap&&<button onClick={()=>setShowMemoryMap(true)} style={{position:"absolute",bottom:70,right:96,width:48,height:48,borderRadius:24,border:"none",background:`linear-gradient(135deg,#3a5a7c,#2d4a6a)`,color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(45,74,106,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .6s both",transition:"transform .2s, box-shadow .2s"}}
+        {/* FAB: Memory Map (exterior + entrance + corridor) */}
+        {(view==="exterior"||view==="entrance"||view==="corridor")&&!showMemoryMap&&<button onClick={()=>setShowMemoryMap(true)} style={{position:"absolute",bottom:70,right:96,width:48,height:48,borderRadius:24,border:"none",background:`linear-gradient(135deg,#3a5a7c,#2d4a6a)`,color:"#FFF",fontSize:20,cursor:"pointer",boxShadow:"0 8px 32px rgba(45,74,106,0.35)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .6s both",transition:"transform .2s, box-shadow .2s"}}
           onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow="0 12px 40px rgba(45,74,106,0.5)";}}
           onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow="0 8px 32px rgba(45,74,106,0.35)";}}
           title="Memory Map">{"\uD83C\uDF0D"}</button>}
 
-        {/* FAB: Customize wings (exterior view) */}
-        {view==="exterior"&&!showWingManager&&<button onClick={()=>setShowWingManager(true)} style={{position:"absolute",bottom:70,right:28,width:56,height:56,borderRadius:28,border:"none",background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",fontSize:22,cursor:"pointer",boxShadow:`0 8px 32px ${T.color.walnut}40`,display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .5s both",transition:"transform .2s, box-shadow .2s"}}
+        {/* FAB: Customize wings (exterior + entrance view) */}
+        {(view==="exterior"||view==="entrance")&&!showWingManager&&<button onClick={()=>setShowWingManager(true)} style={{position:"absolute",bottom:70,right:28,width:56,height:56,borderRadius:28,border:"none",background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",fontSize:22,cursor:"pointer",boxShadow:`0 8px 32px ${T.color.walnut}40`,display:"flex",alignItems:"center",justifyContent:"center",zIndex:35,animation:"fadeIn .4s ease .5s both",transition:"transform .2s, box-shadow .2s"}}
           onMouseEnter={e=>{(e.target as HTMLElement).style.transform="scale(1.1)";(e.target as HTMLElement).style.boxShadow=`0 12px 40px ${T.color.walnut}60`;}}
           onMouseLeave={e=>{(e.target as HTMLElement).style.transform="none";(e.target as HTMLElement).style.boxShadow=`0 8px 32px ${T.color.walnut}40`;}}
           title="Customize wings">{"\u{1F3DB}\uFE0F"}</button>}
@@ -298,7 +301,7 @@ export default function MemoryPalace(){
         onSharedWithMe={() => { closeMore(); setShowSharedWithMe(true); }}
         onInterviews={() => { closeMore(); setShowInterviewLibrary(true); }}
         getProgress={getProgress}
-        onBack={() => { closeMore(); view === "room" ? exitToCorridor() : exitToPalace(); }}
+        onBack={() => { closeMore(); view === "room" ? exitToCorridor() : view === "corridor" ? exitToEntrance() : exitToPalace(); }}
       />}
 
       {/* Panels + overlays */}
@@ -339,14 +342,14 @@ export default function MemoryPalace(){
       </div>}
 
       {/* Invites & Shared-with-me FABs — desktop only, exterior/corridor only */}
-      {!isMobile && view!=="room" && <button onClick={()=>setShowInvites(true)} title="Pending Invitations" style={{position:"absolute",top:58,right:120,height:36,borderRadius:18,border:`1px solid ${T.color.cream}`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:6,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease 1.1s both",transition:"transform .2s",boxShadow:"0 2px 10px rgba(44,44,42,.08)"}}
+      {!isMobile && (view==="exterior"||view==="entrance"||view==="corridor") && <button onClick={()=>setShowInvites(true)} title="Pending Invitations" style={{position:"absolute",top:58,right:120,height:36,borderRadius:18,border:`1px solid ${T.color.cream}`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:6,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease 1.1s both",transition:"transform .2s",boxShadow:"0 2px 10px rgba(44,44,42,.08)"}}
         onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform="scale(1.05)";}}
         onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform="none";}}>
         <span style={{fontSize:14}}>{"\u{1F4EC}"}</span>
         <span style={{fontFamily:T.font.body,fontSize:11,fontWeight:500,color:T.color.walnut}}>Invites</span>
       </button>}
 
-      {!isMobile && view!=="room" && <button onClick={()=>setShowSharedWithMe(true)} title="Shared with me" style={{position:"absolute",top:58,right:220,height:36,borderRadius:18,border:`1px solid ${T.color.cream}`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:6,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease 1.2s both",transition:"transform .2s",boxShadow:"0 2px 10px rgba(44,44,42,.08)"}}
+      {!isMobile && (view==="exterior"||view==="entrance"||view==="corridor") && <button onClick={()=>setShowSharedWithMe(true)} title="Shared with me" style={{position:"absolute",top:58,right:220,height:36,borderRadius:18,border:`1px solid ${T.color.cream}`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:6,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease 1.2s both",transition:"transform .2s",boxShadow:"0 2px 10px rgba(44,44,42,.08)"}}
         onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform="scale(1.05)";}}
         onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform="none";}}>
         <span style={{fontSize:14}}>{"\u{1F91D}"}</span>
@@ -462,6 +465,10 @@ function MobileBottomBar(props: MobileBottomBarProps) {
     primaryActions.push({ icon: "\u{1F91D}", label: "Share", action: props.onShare });
   } else if (view === "corridor" && activeWing) {
     primaryActions.push({ icon: "\u{1F6AA}", label: "Rooms", action: props.onRoomManager, accent: true });
+    primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
+  } else if (view === "entrance") {
+    primaryActions.push({ icon: "\u{1F3DB}\uFE0F", label: "Wings", action: props.onWingManager, accent: true });
+    primaryActions.push({ icon: "\uD83D\uDCC5", label: "Timeline", action: props.onTimeline });
     primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
   } else if (view === "exterior") {
     primaryActions.push({ icon: "\u{1F3DB}\uFE0F", label: "Wings", action: props.onWingManager, accent: true });

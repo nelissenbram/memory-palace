@@ -233,7 +233,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const portalHit=new THREE.Mesh(new THREE.BoxGeometry(1.8,3.2,.3),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
     portalHit.position.set(0,1.8,portalZ);scene.add(portalHit);
     const plC=document.createElement("canvas");plC.width=200;plC.height=36;const plx=plC.getContext("2d")!;
-    plx.fillStyle="#C8A868";plx.font="bold 14px Georgia,serif";plx.textAlign="center";plx.fillText("\u2190 Return to Palace",100,24);
+    plx.fillStyle="#C8A868";plx.font="bold 14px Georgia,serif";plx.textAlign="center";plx.fillText("\u2190 Entrance Hall",100,24);
     const plT=new THREE.CanvasTexture(plC);plT.colorSpace=THREE.SRGBColorSpace;
     scene.add(mk(new THREE.PlaneGeometry(1.4,.25),new THREE.MeshBasicMaterial({map:plT,transparent:true}),0,3.85,portalZ));
 

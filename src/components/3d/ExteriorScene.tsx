@@ -705,6 +705,57 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     birdG.setAttribute("position",new THREE.BufferAttribute(birdP,3));
     scene.add(new THREE.Points(birdG,new THREE.PointsMaterial({color:"#2A2018",size:.15,transparent:true,opacity:.3})));
 
+    // ── ENTRANCE HALL click target ──
+    const entranceId="__entrance__";
+    const entranceMeshes: THREE.Mesh[]=[];
+    palace.traverse((child: THREE.Object3D)=>{
+      if(child instanceof THREE.Mesh && child.material && !(child.material as any).transparent){
+        entranceMeshes.push(child);
+      }
+    });
+    // Remove meshes that belong to wings (they're tracked separately)
+    const allWingMeshes=new Set<THREE.Mesh>();
+    clickTargets.forEach((ct: any)=>ct.userData.wingMeshes.forEach((wm: THREE.Mesh)=>allWingMeshes.add(wm)));
+    const centralMeshes=entranceMeshes.filter(m=>!allWingMeshes.has(m));
+    const ect=new THREE.Mesh(new THREE.BoxGeometry(cW+8,cH+drumH+domeR+6,cD+pD+4),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+    ect.position.set(0,(cH+drumH+domeR)/2+3,-(pD/2));ect.userData={roomId:entranceId,wingMeshes:centralMeshes,accent:"#E0C060"};
+    scene.add(ect);clickTargets.push(ect);
+
+    // ── HOVER POINT LIGHTS (one per wing + entrance) ──
+    const hoverLights: {light:THREE.PointLight,targetIntensity:number,wingId:string}[]=[];
+    clickTargets.forEach((ct: any)=>{
+      const pos=new THREE.Vector3();ct.getWorldPosition(pos);
+      const hl=new THREE.PointLight(ct.userData.accent,0,45);
+      hl.position.set(pos.x,12,pos.z);
+      scene.add(hl);
+      hoverLights.push({light:hl,targetIntensity:0,wingId:ct.userData.roomId});
+    });
+
+    // ── PER-WING WINDOW MATERIALS ──
+    // Clone window materials for each wing so hover glow is independent
+    const wingWindowMats: Map<string,{mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]>=new Map();
+    clickTargets.forEach((ct: any)=>{
+      const entries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
+      ct.userData.wingMeshes.forEach((wm: THREE.Mesh)=>{
+        const mat=wm.material as THREE.MeshStandardMaterial;
+        if(mat===M.win||mat===M.winBlue){
+          const cl=mat.clone();wm.material=cl;
+          entries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
+        }
+      });
+      wingWindowMats.set(ct.userData.roomId,entries);
+    });
+    // For the entrance, also clone window materials on central meshes
+    const centralWinEntries: {mesh:THREE.Mesh,cloned:THREE.MeshStandardMaterial,baseIntensity:number}[]=[];
+    centralMeshes.forEach((wm: THREE.Mesh)=>{
+      const mat=wm.material as THREE.MeshStandardMaterial;
+      if(mat===M.win||mat===M.winBlue){
+        const cl=mat.clone();wm.material=cl;
+        centralWinEntries.push({mesh:wm,cloned:cl,baseIntensity:cl.emissiveIntensity});
+      }
+    });
+    wingWindowMats.set(entranceId,centralWinEntries);
+
     scene.add(palace);
 
     let prevHovered: string|null=null;
@@ -723,16 +774,45 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       fW2.material.opacity=.55+Math.sin(t*1.8)*.08;
       fW3.material.opacity=.55+Math.sin(t*2.1)*.06;
 
-      // Wing hover glow
+      // Wing hover glow — emissive body + accent point light + window brightening
+      const warmGlow=new THREE.Color("#FFE8B0");
       clickTargets.forEach((ct: any)=>{
         const isHov=hoveredRoom===ct.userData.roomId;
         const accentColor=new THREE.Color(ct.userData.accent);
+        // Smooth emissive glow on wing body meshes (skip cloned window mats)
+        const winSet=wingWindowMats.get(ct.userData.roomId);
+        const winMeshSet=new Set(winSet?.map(e=>e.mesh));
         ct.userData.wingMeshes.forEach((wm: any)=>{
+          if(winMeshSet?.has(wm))return;// handled separately
           if(wm.material.emissive){
-            if(isHov){wm.material.emissive.copy(accentColor);wm.material.emissiveIntensity+=(0.14-wm.material.emissiveIntensity)*.1;}
-            else{wm.material.emissiveIntensity+=(0-wm.material.emissiveIntensity)*.1;}
+            if(isHov){wm.material.emissive.lerp(accentColor,.12);wm.material.emissiveIntensity+=(0.22-wm.material.emissiveIntensity)*.08;}
+            else{wm.material.emissiveIntensity+=(0-wm.material.emissiveIntensity)*.06;}
           }
         });
+        // Window glow — cloned materials, independent per wing
+        if(winSet){
+          winSet.forEach(({cloned,baseIntensity})=>{
+            const targetI=isHov?baseIntensity+0.85:baseIntensity;
+            cloned.emissiveIntensity+=(targetI-cloned.emissiveIntensity)*.08;
+            if(isHov){
+              cloned.emissive.lerp(warmGlow,.12);
+              cloned.opacity+=(0.88-cloned.opacity)*.08;
+            }else{
+              cloned.emissive.lerp(new THREE.Color("#FFF0C0"),.04);
+              cloned.opacity+=(0.6-cloned.opacity)*.06;
+            }
+          });
+        }
+      });
+
+      // Animate hover point lights (smooth fade in/out)
+      hoverLights.forEach(hl=>{
+        const target=hoveredRoom===hl.wingId?1.8:0;
+        hl.light.intensity+=(target-hl.light.intensity)*.06;
+        // Subtle pulse when active
+        if(hoveredRoom===hl.wingId){
+          hl.light.intensity+=Math.sin(t*2.5)*.15;
+        }
       });
 
       // Animate dust motes
@@ -769,7 +849,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);onRoomHover(hits.length>0?hits[0].object.userData.roomId:null);};
     const onCk=(e: MouseEvent)=>{if(drag.current)return;const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
-      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0)onRoomClick(hits[0].object.userData.roomId);};
+      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0&&hits[0].object.userData.roomId!==entranceId)onRoomClick(hits[0].object.userData.roomId);};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(180,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);
@@ -793,7 +873,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const onTE=(e: TouchEvent)=>{
       if(touchTap&&e.changedTouches.length===1){const t=e.changedTouches[0];const rect=el.getBoundingClientRect();
         mse.current.set(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1);
-        ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0)onRoomClick(hits[0].object.userData.roomId);
+        ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);
+        if(hits.length>0){const hitId=hits[0].object.userData.roomId;onRoomHover(hitId);if(hitId!==entranceId)onRoomClick(hitId);}
       }
     };
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});

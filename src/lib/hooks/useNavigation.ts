@@ -10,7 +10,7 @@ export interface Crumb {
 
 export function useNavigation() {
   const { view, activeWing, activeRoomId, hovWing,
-    exitToPalace, exitToCorridor, enterRoom } = usePalaceStore();
+    exitToPalace, exitToCorridor, exitToEntrance, enterRoom } = usePalaceStore();
   const { setSelMem, setShowUpload } = useMemoryStore();
   const { getWingRooms, getWings } = useRoomStore();
 
@@ -25,7 +25,13 @@ export function useNavigation() {
   // Breadcrumb path
   const crumbs: Crumb[] = [];
   crumbs.push({ label: "Palace", action: view !== "exterior" ? exitToPalace : null });
-  if (activeWing)
+  if (view === "entrance" || view === "corridor" || view === "room") {
+    crumbs.push({
+      label: "Entrance Hall",
+      action: view === "corridor" || view === "room" ? exitToEntrance : null,
+    });
+  }
+  if (activeWing && (view === "corridor" || view === "room"))
     crumbs.push({
       label: `${wingData?.icon} ${wingData?.name}`,
       action: view === "room" ? exitToCorridor : null,
