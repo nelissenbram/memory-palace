@@ -7,6 +7,7 @@ import { T } from "@/lib/theme";
 const NAV_ITEMS = [
   { href: "/settings/profile", label: "Profile", icon: "\u{1F464}" },
   { href: "/settings/family", label: "Family", icon: "\u{1F46A}" },
+  { href: "/settings/subscription", label: "Subscription", icon: "\u{2B50}" },
   { href: "/settings/connections", label: "Connections", icon: "\u{1F517}" },
   { href: "/settings/notifications", label: "Notifications", icon: "\u{1F514}" },
   { href: "/settings/legacy", label: "Legacy", icon: "\u{1F3DB}\u{FE0F}" },

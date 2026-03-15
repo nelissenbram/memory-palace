@@ -133,6 +133,9 @@ export default function LandingPage() {
           </span>
         </div>
         <div style={{ display: "flex", gap: isMobile ? 8 : 12, alignItems: "center" }}>
+          {!isSmall && <Link href="/pricing" style={navLink}>
+            Pricing
+          </Link>}
           {!isSmall && <Link href="/login" style={navLink}>
             Sign In
           </Link>}
@@ -847,6 +850,9 @@ export default function LandingPage() {
               <a href="#how-it-works" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
                 How It Works
               </a>
+              <Link href="/pricing" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
+                Pricing
+              </Link>
               <Link href="/login" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
                 Sign In
               </Link>
