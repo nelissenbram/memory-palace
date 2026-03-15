@@ -60,7 +60,7 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
   },[mem.id,mem.title,mem.desc,mem.createdAt,mem.locationName,onUpdate]);
 
   // Time Capsule logic
-  const todayStr=new Date().toISOString().split("T")[0];
+  const todayStr=new Date().toLocaleDateString('sv-SE');
   const isTimeCapsule=!!mem.revealDate;
   const isLocked=isTimeCapsule&&(mem.revealDate as string)>todayStr;
   const isRevealed=isTimeCapsule&&!isLocked;
@@ -167,18 +167,18 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
                 </div>
                 <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
               </div>
-              :contextError?<div style={{fontFamily:T.font.body,fontSize:12,color:"#C05050",marginBottom:4}}>{contextError}</div>
+              :contextError?<div style={{fontFamily:T.font.body,fontSize:12,color:T.color.error,marginBottom:4}}>{contextError}</div>
               :<button onClick={fetchHistoricalContext} style={{width:"100%",padding:"10px 16px",fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px dashed ${T.color.sandstone}`,borderRadius:10,cursor:"pointer",color:T.color.walnut,display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .15s"}}>
                 <span style={{fontSize:16}}>&#x1F30D;</span> Add Historical Context
               </button>}
             </div>}
             <div style={{display:"flex",gap:isMobile?8:10,flexWrap:isMobile?"wrap":"nowrap"}}>
-              <button onClick={()=>{onDelete(mem.id);onClose();}} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:"1px solid #D0606080",borderRadius:10,cursor:"pointer",color:"#C05050",minHeight:44}}>Delete</button>
+              <button onClick={()=>{onDelete(mem.id);onClose();}} disabled={isLocked} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.error}80`,borderRadius:10,cursor:isLocked?"default":"pointer",color:isLocked?T.color.muted:T.color.error,opacity:isLocked?.5:1,minHeight:44}}>Delete</button>
               <button onClick={onClose} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.cream}`,borderRadius:10,cursor:"pointer",color:T.color.muted,minHeight:44}}>Close</button>
               <button onClick={()=>setSharing(true)} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.cream}`,borderRadius:10,cursor:"pointer",color:T.color.walnut,minHeight:44}}>Share</button>
               {isLocked
-                ?<button disabled style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:`${T.color.sandstone}40`,border:"none",borderRadius:10,cursor:"default",color:T.color.muted}}>Sealed 🔒</button>
-                :<button onClick={()=>setEditing(true)} style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:accent,border:"none",borderRadius:10,cursor:"pointer",color:T.color.white}}>Edit memory</button>
+                ?<button disabled style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:`${T.color.sandstone}40`,border:"none",borderRadius:10,cursor:"default",color:T.color.muted,minWidth:44,minHeight:44}}>Sealed 🔒</button>
+                :<button onClick={()=>setEditing(true)} style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:accent,border:"none",borderRadius:10,cursor:"pointer",color:T.color.white,minWidth:44,minHeight:44}}>Edit memory</button>
               }
             </div>
           </>}

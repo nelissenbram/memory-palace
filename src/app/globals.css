@@ -121,6 +121,12 @@ button, a, [role="button"] {
   }
 }
 
+/* Focus-visible indicators for keyboard navigation (accessibility) */
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #C17F59;
+  outline-offset: 2px;
+}
+
 /* Remove Tailwind base if it causes issues with Three.js canvas */
 canvas {
   display: block;

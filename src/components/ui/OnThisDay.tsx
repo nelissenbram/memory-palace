@@ -123,6 +123,7 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
         left: 24,
         zIndex: 40,
         width: 320,
+        maxWidth: "calc(100vw - 48px)",
         background: `linear-gradient(135deg, ${T.color.linen}f5, ${T.color.warmStone}f5)`,
         backdropFilter: "blur(16px)",
         borderRadius: 16,
@@ -156,10 +157,10 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
         <div>
           <h4
             style={{
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontFamily: T.font.display,
               fontSize: 20,
               fontWeight: 500,
-              color: "#8B6914",
+              color: T.color.goldDark,
               margin: 0,
               letterSpacing: ".3px",
             }}
@@ -182,6 +183,8 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
           style={{
             width: 26,
             height: 26,
+            minWidth: 44,
+            minHeight: 44,
             borderRadius: 13,
             border: "1px solid #D4A84440",
             background: "rgba(212,168,68,.08)",

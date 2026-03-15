@@ -172,9 +172,9 @@ export default function TopBar({crumbs}: TopBarProps){
           </div>
         </div>
       </div>
-      <div style={{display:"flex",gap:4,alignItems:"center"}}><NotificationBell />{WINGS.map(w=><button key={w.id} onClick={()=>switchWing(w.id)} style={{padding:"4px 10px",borderRadius:16,fontFamily:T.font.body,fontSize:11,fontWeight:activeWing===w.id?600:400,border:activeWing===w.id?`1.5px solid ${w.accent}`:`1px solid ${T.color.cream}`,background:activeWing===w.id?`${w.accent}15`:`${T.color.white}bb`,color:activeWing===w.id?w.accent:T.color.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>
-        <span style={{fontSize:11}}>{w.icon}</span>{w.name}</button>)}
-        <button onClick={()=>signOut()} style={{padding:"4px 10px",borderRadius:16,fontFamily:T.font.body,fontSize:11,fontWeight:400,border:`1px solid ${T.color.cream}`,background:`${T.color.white}bb`,color:T.color.muted,cursor:"pointer",marginLeft:4}}>Sign out</button>
+      <div style={{display:"flex",gap:4,alignItems:"center"}}><NotificationBell />{WINGS.map(w=><button key={w.id} onClick={()=>switchWing(w.id)} style={{padding:"6px 14px",borderRadius:16,fontFamily:T.font.body,fontSize:12,fontWeight:activeWing===w.id?600:400,border:activeWing===w.id?`1.5px solid ${w.accent}`:`1px solid ${T.color.cream}`,background:activeWing===w.id?`${w.accent}15`:`${T.color.white}bb`,color:activeWing===w.id?w.accent:T.color.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>
+        <span style={{fontSize:12}}>{w.icon}</span>{w.name}</button>)}
+        <button onClick={()=>signOut()} style={{padding:"6px 14px",borderRadius:16,fontFamily:T.font.body,fontSize:12,fontWeight:400,border:`1px solid ${T.color.cream}`,background:`${T.color.white}bb`,color:T.color.muted,cursor:"pointer",marginLeft:4}}>Sign out</button>
       </div>
     </div>
   );

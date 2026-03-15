@@ -41,8 +41,8 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
         <span style={{ fontFamily: T.font.body, fontSize: 11, fontWeight: 500, color: T.color.walnut }}>
           {earned}/{total}
         </span>
-        <div style={{ width: 32, height: 4, borderRadius: 2, background: `${T.color.sandstone}33`, overflow: "hidden" }}>
-          <div style={{ width: `${percentage}%`, height: "100%", borderRadius: 2, background: "linear-gradient(90deg,#C9A84C,#D4AF37)", transition: "width .6s ease" }} />
+        <div style={{ width: 40, height: 6, borderRadius: 3, background: `${T.color.sandstone}33`, overflow: "hidden" }}>
+          <div style={{ width: `${percentage}%`, height: "100%", borderRadius: 2, background: `linear-gradient(90deg,${T.color.goldLight},${T.color.gold})`, transition: "width .6s ease" }} />
         </div>
       </button>
 
