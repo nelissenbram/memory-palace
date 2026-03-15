@@ -41,6 +41,7 @@ import SharedWithMePanel from "@/components/ui/SharedWithMePanel";
 import InterviewPanel from "@/components/ui/InterviewPanel";
 import InterviewLibraryPanel from "@/components/ui/InterviewLibraryPanel";
 import InterviewHistoryPanel from "@/components/ui/InterviewHistoryPanel";
+import CorridorGalleryPanel, { loadCorridorPaintings, type CorridorPaintings } from "@/components/ui/CorridorGalleryPanel";
 import TouchControlsOverlay from "@/components/ui/TouchControlsOverlay";
 import MobileJoystick from "@/components/ui/MobileJoystick";
 import ActionMenu from "@/components/ui/ActionMenu";
@@ -80,6 +81,8 @@ export default function MemoryPalace(){
   const [showGallery, setShowGallery] = useState(false);
   const [showInvites, setShowInvites] = useState(false);
   const [showSharedWithMe, setShowSharedWithMe] = useState(false);
+  const [showCorridorGallery, setShowCorridorGallery] = useState(false);
+  const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [searchBarVisible, setSearchBarVisible] = useState(true);
   const searchHideTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -112,6 +115,12 @@ export default function MemoryPalace(){
   useEffect(() => {
     if (activeWing) trackWingVisit(activeWing);
   }, [activeWing, trackWingVisit]);
+
+  // Load corridor paintings when wing changes
+  useEffect(() => {
+    if (activeWing) setCorridorPaintings(loadCorridorPaintings(activeWing));
+    else setCorridorPaintings({});
+  }, [activeWing]);
 
   useEffect(() => {
     if (activeRoomId) trackRoomVisit(activeRoomId);
@@ -207,7 +216,7 @@ export default function MemoryPalace(){
       <div style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
         {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings}/>}
         {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(wingId==="__exterior__")exitToPalace();else enterCorridor(wingId);}} wings={allWings}/>}
-        {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={enterRoom} hoveredDoor={hovDoor} wingData={wingData}/>}
+        {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={enterRoom} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings}/>}
         {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined}/>}
       </div>
 
@@ -283,6 +292,7 @@ export default function MemoryPalace(){
             accent={wingData?.accent||T.color.terracotta}
             primary={{ icon: "\u{1F6AA}", label: "Manage Rooms", action: ()=>setShowRoomManager(true) }}
             secondary={[
+              { icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: ()=>setShowCorridorGallery(true) },
               { icon: "\uD83C\uDF0D", label: "Memory Map", action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
               { icon: "\uD83C\uDF99\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) },
             ]}
@@ -376,6 +386,7 @@ export default function MemoryPalace(){
         onWingManager={() => { closeMore(); setShowWingManager(true); }}
         onRoomManager={() => { closeMore(); setShowRoomManager(true); }}
         onGallery={() => { closeMore(); setShowGallery(true); }}
+        onCorridorGallery={() => { closeMore(); setShowCorridorGallery(true); }}
         onShare={() => { closeMore(); setShowSharing(true); }}
         onTracks={() => { closeMore(); setShowTracksPanel(true); }}
         onInvites={() => { closeMore(); setShowInvites(true); }}
@@ -397,6 +408,7 @@ export default function MemoryPalace(){
       {showMemoryMap&&<MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigate={(roomId)=>{setShowMemoryMap(false);}}/>}
       {showMassImport&&<MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/>}
       {showGallery&&activeRoomId&&<RoomGallery mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>setShowGallery(false)} onUpdate={handleUpdateMemory} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}}/>}
+      {showCorridorGallery&&activeWing&&wingData&&<CorridorGalleryPanel wing={wingData} rooms={getWingRooms(activeWing)} onClose={()=>setShowCorridorGallery(false)} onPaintingsChange={setCorridorPaintings} currentPaintings={corridorPaintings}/>}
 
       {/* Status bar — desktop only: achievements + tracks + points in one strip */}
       {!isMobile && (()=>{const p=getProgress();return <StatusBar
@@ -507,6 +519,7 @@ interface MobileBottomBarProps {
   onWingManager: () => void;
   onRoomManager: () => void;
   onGallery: () => void;
+  onCorridorGallery: () => void;
   onShare: () => void;
   onTracks: () => void;
   onInvites: () => void;
@@ -536,6 +549,7 @@ function MobileBottomBar(props: MobileBottomBarProps) {
     primaryActions.push({ icon: "\u{1F91D}", label: "Share", action: props.onShare });
   } else if (view === "corridor" && activeWing) {
     primaryActions.push({ icon: "\u{1F6AA}", label: "Rooms", action: props.onRoomManager, accent: true });
+    primaryActions.push({ icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: props.onCorridorGallery });
     primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
   } else if (view === "entrance") {
     primaryActions.push({ icon: "\u{1F3DB}\uFE0F", label: "Wings", action: props.onWingManager, accent: true });

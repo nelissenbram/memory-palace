@@ -15,6 +15,13 @@ const WING_LABELS: Record<string,string> = {
   career: "CAREER",
   creativity: "CREATIVITY",
 };
+const WING_ICONS: Record<string,string> = {
+  family: "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}",
+  travel: "\u2708\uFE0F",
+  childhood: "\u{1F33B}",
+  career: "\u{1F4D0}",
+  creativity: "\u{1F3A8}",
+};
 
 export default function EntranceHallScene({
   onDoorClick,
@@ -76,7 +83,7 @@ export default function EntranceHallScene({
       goldDark: new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, envMapIntensity: 1.0, emissive: "#B8922E", emissiveIntensity: 0.1 }),
       goldBright: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4, emissive: "#E8C84A", emissiveIntensity: 0.25 }),
       column: new THREE.MeshStandardMaterial({ color: "#F0E8DC", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.7 }),
-      door: new THREE.MeshStandardMaterial({ color: "#5A3E28", roughness: 0.55, metalness: 0.0, emissive: "#3A2818", emissiveIntensity: 0.12 }),
+      door: new THREE.MeshStandardMaterial({ color: "#7A5C3E", roughness: 0.45, metalness: 0.0, emissive: "#5A3E28", emissiveIntensity: 0.15 }),
       doorFrame: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4, emissive: "#D4AF37", emissiveIntensity: 0.2 }),
       dome: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide }),
       domeGold: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
@@ -446,7 +453,7 @@ export default function EntranceHallScene({
 
       // Door recess / alcove (deeper, bigger) — dark interior for contrast with door panels
       const recessGeo = new THREE.BoxGeometry(DOOR_W + 1.0, DOOR_H + 1.0, 0.9);
-      const recessMat = new THREE.MeshStandardMaterial({ color: "#1A0E05", roughness: 0.8, metalness: 0.0 });
+      const recessMat = new THREE.MeshStandardMaterial({ color: "#0A0604", roughness: 0.9, metalness: 0.0 });
       const recessMesh = mk(recessGeo, recessMat,
         dx + inN.x * 0.4, (DOOR_H + 1.0) / 2, dz + inN.z * 0.4);
       recessMesh.lookAt(0, (DOOR_H + 1.0) / 2, 0);
@@ -506,10 +513,10 @@ export default function EntranceHallScene({
 
       // ── DOUBLE DOOR PANELS (two panels per door) ──
       const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
-      const doorMat = new THREE.MeshStandardMaterial({ color: "#5A3E28", roughness: 0.55, metalness: 0.0, emissive: "#3A2818", emissiveIntensity: 0.12 });
+      const doorMat = new THREE.MeshStandardMaterial({ color: "#7A5C3E", roughness: 0.45, metalness: 0.0, emissive: "#5A3E28", emissiveIntensity: 0.15 });
 
-      // Left door panel
-      const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.20), doorMat);
+      // Left door panel — THICK for 3D depth
+      const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
       leftPanel.position.set(
         dx + latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2),
         DOOR_H / 2,
@@ -520,8 +527,8 @@ export default function EntranceHallScene({
       leftPanel.userData = { wingId };
       scene.add(leftPanel);
 
-      // Right door panel
-      const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.20), doorMat);
+      // Right door panel — THICK for 3D depth
+      const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
       rightPanel.position.set(
         dx - latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2),
         DOOR_H / 2,
@@ -543,11 +550,23 @@ export default function EntranceHallScene({
       seam.lookAt(new THREE.Vector3(0, DOOR_H / 2, 0));
       scene.add(seam);
 
-      // Door panel details (inset rectangles on each panel)
+      // Door panel details: inset rectangles with gold trim + center rosette
       for (const side of [-1, 1]) {
         const panelCenterLat = latN.clone().multiplyScalar(side * (panelW / 2 + DOOR_PANEL_GAP / 2));
-        for (const py of [1.0, 2.8, 4.6, 6.0]) {
+        // Panel inset rectangles (top and bottom on each panel)
+        for (const py of [1.2, 2.8, 4.6, 5.8]) {
           const detailH = py < 3 ? 1.2 : 0.8;
+          // Darker inset recess
+          const insetBgGeo = new THREE.BoxGeometry(panelW * 0.72, detailH + 0.04, 0.006);
+          const insetBg = new THREE.Mesh(insetBgGeo, new THREE.MeshStandardMaterial({ color: "#5A3E1E", roughness: 0.6 }));
+          insetBg.position.set(
+            dx + panelCenterLat.x + inN.x * 0.06,
+            py,
+            dz + panelCenterLat.z + inN.z * 0.06
+          );
+          insetBg.lookAt(new THREE.Vector3(0, py, 0));
+          scene.add(insetBg);
+          // Gold trim border
           const insetGeo = new THREE.BoxGeometry(panelW * 0.7, detailH, 0.008);
           const inset = new THREE.Mesh(insetGeo, MS.goldBright);
           inset.position.set(
@@ -558,40 +577,96 @@ export default function EntranceHallScene({
           inset.lookAt(new THREE.Vector3(0, py, 0));
           scene.add(inset);
         }
+        // Large ROSETTE / medallion at center of each panel (~3.5m height)
+        const rosY = DOOR_H * 0.5;
+        const rosetteOuter = new THREE.Mesh(
+          new THREE.CircleGeometry(0.35, 16),
+          MS.goldBright
+        );
+        rosetteOuter.position.set(
+          dx + panelCenterLat.x + inN.x * 0.09,
+          rosY,
+          dz + panelCenterLat.z + inN.z * 0.09
+        );
+        rosetteOuter.lookAt(new THREE.Vector3(0, rosY, 0));
+        scene.add(rosetteOuter);
+        // Inner rosette
+        const rosetteInner = new THREE.Mesh(
+          new THREE.CircleGeometry(0.22, 12),
+          new THREE.MeshStandardMaterial({ color: "#8A6830", roughness: 0.3, metalness: 0.8 })
+        );
+        rosetteInner.position.set(
+          dx + panelCenterLat.x + inN.x * 0.095,
+          rosY,
+          dz + panelCenterLat.z + inN.z * 0.095
+        );
+        rosetteInner.lookAt(new THREE.Vector3(0, rosY, 0));
+        scene.add(rosetteInner);
+        // Rosette center dot
+        const rosetteDot = new THREE.Mesh(
+          new THREE.CircleGeometry(0.08, 8),
+          MS.goldBright
+        );
+        rosetteDot.position.set(
+          dx + panelCenterLat.x + inN.x * 0.1,
+          rosY,
+          dz + panelCenterLat.z + inN.z * 0.1
+        );
+        rosetteDot.lookAt(new THREE.Vector3(0, rosY, 0));
+        scene.add(rosetteDot);
       }
 
-      // ── GOLDEN DOOR HANDLES (large ring handles) ──
+      // ── LARGE BRASS RING HANDLES ──
       for (const side of [-1, 1]) {
         const handleLat = latN.clone().multiplyScalar(side * 0.4);
-        // Ring handle
+        // Large ring handle (radius 0.18, thick tube)
         const handleRing = new THREE.Mesh(
-          new THREE.TorusGeometry(0.12, 0.025, 8, 12),
+          new THREE.TorusGeometry(0.18, 0.035, 10, 16),
           MS.goldBright
         );
         handleRing.position.set(
-          dx + handleLat.x + inN.x * 0.1,
-          DOOR_H * 0.45,
-          dz + handleLat.z + inN.z * 0.1
+          dx + handleLat.x + inN.x * 0.14,
+          DOOR_H * 0.43,
+          dz + handleLat.z + inN.z * 0.14
         );
-        handleRing.lookAt(new THREE.Vector3(0, DOOR_H * 0.45, 0));
+        handleRing.lookAt(new THREE.Vector3(0, DOOR_H * 0.43, 0));
         scene.add(handleRing);
-        // Handle mount
+        // Large mount plate (decorative backplate)
+        const handlePlate = new THREE.Mesh(
+          new THREE.CircleGeometry(0.1, 12),
+          MS.goldDark
+        );
+        handlePlate.position.set(
+          dx + handleLat.x + inN.x * 0.13,
+          DOOR_H * 0.43 + 0.18,
+          dz + handleLat.z + inN.z * 0.13
+        );
+        handlePlate.lookAt(new THREE.Vector3(0, DOOR_H * 0.43 + 0.18, 0));
+        scene.add(handlePlate);
+        // Handle mount pin
         const handleMount = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.04, 0.04, 0.06, 8),
+          new THREE.CylinderGeometry(0.05, 0.05, 0.08, 8),
           MS.goldBright
         );
         handleMount.position.set(
-          dx + handleLat.x + inN.x * 0.08,
-          DOOR_H * 0.45 + 0.12,
-          dz + handleLat.z + inN.z * 0.08
+          dx + handleLat.x + inN.x * 0.12,
+          DOOR_H * 0.43 + 0.18,
+          dz + handleLat.z + inN.z * 0.12
         );
         scene.add(handleMount);
       }
 
-      // Small fill light illuminating the door surface itself
-      const doorFill = new THREE.PointLight("#FFF0D0", 0.5, 6);
-      doorFill.position.set(dx + inN.x * 1.5, DOOR_H * 0.5, dz + inN.z * 1.5);
+      // WARM fill light illuminating the door surface — bright so wood is visible
+      const doorFill = new THREE.PointLight("#FFF0D0", 1.5, 8);
+      doorFill.position.set(dx + inN.x * 2.0, DOOR_H * 0.5, dz + inN.z * 2.0);
       scene.add(doorFill);
+
+      // DEDICATED SPOTLIGHT aimed directly at door face (for label readability)
+      const doorFaceSpot = new THREE.SpotLight("#FFF5E0", 2.5, 14, Math.PI / 5, 0.4, 0.8);
+      doorFaceSpot.position.set(dx + inN.x * 5.0, DOOR_H * 0.6, dz + inN.z * 5.0);
+      doorFaceSpot.target.position.set(dx, DOOR_H * 0.45, dz);
+      scene.add(doorFaceSpot);
+      scene.add(doorFaceSpot.target);
 
       // Focused spotlight near each door (pool of light on floor)
       const doorSpot = new THREE.SpotLight(accent, 1.2, 12, Math.PI / 6, 0.6, 1.0);
@@ -785,40 +860,65 @@ export default function EntranceHallScene({
       scene.add(statueSpot);
       scene.add(statueSpot.target);
 
-      // ── EYE-LEVEL WING NAME LABEL (readable from standing height) ──
+      // ── LARGE WING NAME LABEL ON THE DOOR SURFACE (eye level, ~3.5m) ──
       {
-        const eyeCanvas = document.createElement("canvas");
-        eyeCanvas.width = 512;
-        eyeCanvas.height = 128;
-        const ectx = eyeCanvas.getContext("2d")!;
-        // Dark background panel
-        ectx.fillStyle = "#2A1A0A";
-        ectx.fillRect(0, 0, 512, 128);
-        // Gold border
-        ectx.strokeStyle = "#D4AF37";
-        ectx.lineWidth = 6;
-        ectx.strokeRect(6, 6, 500, 116);
-        // Wing name text
+        const labelCanvas = document.createElement("canvas");
+        labelCanvas.width = 1024;
+        labelCanvas.height = 320;
+        const lctx = labelCanvas.getContext("2d")!;
+        // Very dark background for maximum contrast
+        lctx.fillStyle = "#1A0E05";
+        lctx.fillRect(0, 0, 1024, 320);
+        // Double gold border
+        lctx.strokeStyle = "#D4AF37";
+        lctx.lineWidth = 8;
+        lctx.strokeRect(8, 8, 1008, 304);
+        lctx.strokeStyle = "#E8C84A";
+        lctx.lineWidth = 3;
+        lctx.strokeRect(18, 18, 988, 284);
+        // Wing icon (emoji) on the left
+        const wingIcon = WING_ICONS[wingId] || "";
+        lctx.font = "80px sans-serif";
+        lctx.textAlign = "left";
+        lctx.textBaseline = "middle";
+        lctx.fillText(wingIcon, 50, 160);
+        // Wing name in LARGE gold text
         const eyeLabel = WING_LABELS[wingId] || wingId.toUpperCase();
-        ectx.fillStyle = "#E8C84A";
-        ectx.font = "bold 60px Georgia, 'Times New Roman', serif";
-        ectx.textAlign = "center";
-        ectx.textBaseline = "middle";
-        ectx.fillText(eyeLabel, 256, 64);
-        const eyeTex = new THREE.CanvasTexture(eyeCanvas);
-        eyeTex.colorSpace = THREE.SRGBColorSpace;
-        const eyeLabelMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(2.4, 0.6),
-          new THREE.MeshStandardMaterial({ map: eyeTex, roughness: 0.4, metalness: 0.05, emissive: "#D4AF37", emissiveIntensity: 0.08 })
+        lctx.fillStyle = "#E8C84A";
+        lctx.font = "bold 100px Georgia, 'Times New Roman', serif";
+        lctx.textAlign = "center";
+        lctx.textBaseline = "middle";
+        lctx.fillText(eyeLabel, 560, 150);
+        // Subtle gold highlight (offset text for depth effect)
+        lctx.fillStyle = "#FFF0C0";
+        lctx.globalAlpha = 0.3;
+        lctx.fillText(eyeLabel, 560, 148);
+        lctx.globalAlpha = 1.0;
+        // Decorative line under text
+        lctx.strokeStyle = "#D4AF37";
+        lctx.lineWidth = 3;
+        lctx.beginPath();
+        lctx.moveTo(200, 220);
+        lctx.lineTo(920, 220);
+        lctx.stroke();
+
+        const labelTex = new THREE.CanvasTexture(labelCanvas);
+        labelTex.colorSpace = THREE.SRGBColorSpace;
+        const labelMesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(2.8, 0.85),
+          new THREE.MeshStandardMaterial({
+            map: labelTex, roughness: 0.35, metalness: 0.05,
+            emissive: "#D4AF37", emissiveIntensity: 0.2,
+          })
         );
-        // Position just above the door arch, facing inward so player can read it
-        eyeLabelMesh.position.set(
-          dx + inN.x * 0.12,
-          DOOR_H + 0.9,
-          dz + inN.z * 0.12
+        // Position ON the door surface at eye level (~3.5m)
+        labelMesh.position.set(
+          dx + inN.x * 0.14,
+          3.5,
+          dz + inN.z * 0.14
         );
-        eyeLabelMesh.lookAt(new THREE.Vector3(0, DOOR_H + 0.9, 0));
-        scene.add(eyeLabelMesh);
+        labelMesh.lookAt(new THREE.Vector3(0, 3.5, 0));
+        scene.add(labelMesh);
       }
 
       // ── FRESCO WING NAME (large 3D text via canvas texture — above statues) ──

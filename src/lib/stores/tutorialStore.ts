@@ -15,49 +15,105 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   {
     id: "welcome",
     view: "entrance",
-    title: "Welcome to Your Memory Palace",
+    title: "Welcome",
     message:
-      "This is your Memory Palace — a place where your most treasured memories live forever. Each wing holds a different chapter of your life. I am your guide, and I will show you around.",
-    nextLabel: "Show me",
+      "Welcome to your Memory Palace — a living home for your most treasured memories. Let me show you how everything works.",
+    nextLabel: "How do I move?",
+  },
+  {
+    id: "navigation",
+    view: "entrance",
+    title: "Navigation Basics",
+    message:
+      "Use WASD or arrow keys to walk. Drag to look around. Click on doors and objects to interact. On mobile, use the joystick to move and swipe to look.",
+    nextLabel: "Where am I?",
   },
   {
     id: "entrance_hall",
     view: "entrance",
     title: "The Entrance Hall",
     message:
-      "You stand in the grand Entrance Hall — the heart of your palace. From here, five magnificent doorways lead to the wings of your life. Each door is adorned with the symbol of what it holds.",
+      "This grand hall is the heart of your palace. Five doorways lead to the wings of your life — each one a gallery for a different chapter. Look for the wing names on each door.",
     nextLabel: "Tell me about the wings",
   },
   {
-    id: "wings_overview",
+    id: "five_wings",
     view: "entrance",
-    title: "Five Chapters of Your Life",
+    title: "The Five Wings",
     message:
-      "Family, Travel, Childhood, Career, and Creativity — each wing is a gallery of rooms. Inside each room, your memories are displayed as paintings, videos, albums, glowing orbs, and more.",
+      "Family, Travel, Childhood, Career, and Creativity — each wing is a corridor lined with rooms. Walk through a door to explore.",
+    nextLabel: "What's the Attic?",
+  },
+  {
+    id: "attic",
+    view: "entrance",
+    title: "The Attic",
+    message:
+      "There's also a special place called The Attic — a catch-all space for memories that don't fit neatly into a wing yet. We'll explore that more later.",
+    nextLabel: "What's inside a wing?",
+  },
+  {
+    id: "inside_wing",
+    view: "entrance",
+    title: "Inside a Wing",
+    message:
+      "Each wing corridor has doors to individual rooms. Paintings on the walls preview what's inside. The wing's name is displayed as a fresco at the far end.",
+    nextLabel: "And inside a room?",
+  },
+  {
+    id: "rooms_memories",
+    view: "entrance",
+    title: "Rooms & Memories",
+    message:
+      "Inside each room, your memories are displayed as paintings, videos, albums, glowing orbs, and more. Click any memory to view it in detail.",
     nextLabel: "How do I add memories?",
   },
   {
     id: "adding_memories",
     view: "entrance",
-    title: "Filling Your Palace",
+    title: "Adding Memories",
     message:
-      "Enter any wing, then step through a door into a room. Use the + button to upload photos, videos, or documents. You can also record life stories through our AI-guided interviews.",
+      "Use the + button to upload photos, videos, or documents. You can also drag and drop files, or use Mass Import to add many at once.",
     nextLabel: "What about sharing?",
   },
   {
     id: "sharing",
     view: "entrance",
-    title: "Sharing Your Legacy",
+    title: "Sharing",
     message:
-      "Every room can be shared with loved ones. Invite family and friends to view, or even contribute their own memories. Together, you build a living family archive.",
-    nextLabel: "I'm ready to explore",
+      "Every room can be shared with loved ones. Use the Share button to invite family and friends to view or contribute their own memories.",
+    nextLabel: "What else can I do?",
+  },
+  {
+    id: "action_menu",
+    view: "entrance",
+    title: "The Action Menu",
+    message:
+      "Look for the floating action button in the bottom-right corner. It gives you quick access to adding memories, managing rooms, and more features.",
+    nextLabel: "Tell me about interviews",
+  },
+  {
+    id: "life_interviews",
+    view: "entrance",
+    title: "Life Interviews",
+    message:
+      "Try our AI-guided Life Interviews — they help you capture stories through conversation, available from the action menu or the More menu on mobile.",
+    nextLabel: "Anything else?",
+  },
+  {
+    id: "tracks_achievements",
+    view: "entrance",
+    title: "Tracks & Achievements",
+    message:
+      "Complete Memory Building Tracks to earn points and unlock achievements. Check your progress in the status bar at the bottom.",
+    nextLabel: "Got it!",
   },
   {
     id: "closing",
     view: "entrance",
-    title: "Your Journey Begins",
+    title: "Ready to Explore",
     message:
-      "Walk through any door to begin. I will always be here if you need me — just look for the 'Take the Tour' button. Now go — your memories are waiting.",
+      "You're all set! Walk through any door to begin. You can always retake this tour from the 'Take the Tour' button. Now go — your memories are waiting.",
     nextLabel: "Let's go!",
   },
 ];

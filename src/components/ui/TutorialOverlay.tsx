@@ -26,7 +26,7 @@ export default function TutorialOverlay() {
         clearInterval(interval);
         setTyping(false);
       }
-    }, 22);
+    }, 18);
     return () => clearInterval(interval);
   }, [active, stepIndex, step]);
 
@@ -141,7 +141,7 @@ export default function TutorialOverlay() {
             onMouseEnter={e => { (e.target as HTMLElement).style.color = "rgba(250,250,247,0.7)"; }}
             onMouseLeave={e => { (e.target as HTMLElement).style.color = "rgba(250,250,247,0.4)"; }}
           >
-            Skip tour
+            {isMobile ? "Skip" : "Skip tour"}
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

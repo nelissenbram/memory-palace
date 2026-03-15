@@ -8,7 +8,7 @@ import { mk } from "@/lib/3d/meshHelpers";
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
-export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing}){
+export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>}){
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const wing=wingDataProp||DEFAULT_WINGS.find(w=>w.id===wingId)!;
   const rooms=roomsProp||[];
@@ -98,60 +98,83 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     };
 
     // ═══ TUSCAN LANDSCAPE CANVAS TEXTURE (shared by all windows) ═══
-    const tuscanCanvas=document.createElement("canvas");tuscanCanvas.width=600;tuscanCanvas.height=400;
+    const tuscanCanvas=document.createElement("canvas");tuscanCanvas.width=800;tuscanCanvas.height=600;
     const tc=tuscanCanvas.getContext("2d")!;
-    // Sky gradient — soft blue to warm white
-    const skyGrad=tc.createLinearGradient(0,0,0,200);
-    skyGrad.addColorStop(0,"#6BA3D6");skyGrad.addColorStop(0.3,"#8DBDE8");skyGrad.addColorStop(0.6,"#C8DFF0");skyGrad.addColorStop(1,"#F0E8D8");
-    tc.fillStyle=skyGrad;tc.fillRect(0,0,600,200);
-    // Sun glow in upper-right
-    const sunGrad=tc.createRadialGradient(460,60,10,460,60,120);
-    sunGrad.addColorStop(0,"rgba(255,248,220,0.9)");sunGrad.addColorStop(0.3,"rgba(255,230,180,0.4)");sunGrad.addColorStop(1,"rgba(255,230,180,0)");
-    tc.fillStyle=sunGrad;tc.fillRect(0,0,600,200);
-    // Distant mountain haze
-    tc.fillStyle="rgba(160,170,195,0.35)";
-    tc.beginPath();tc.moveTo(0,180);
-    tc.quadraticCurveTo(80,140,160,165);tc.quadraticCurveTo(240,135,340,160);
-    tc.quadraticCurveTo(440,130,520,155);tc.quadraticCurveTo(570,140,600,150);
-    tc.lineTo(600,200);tc.lineTo(0,200);tc.fill();
-    // Rolling hills — golden/green
-    const hillGrad=tc.createLinearGradient(0,180,0,400);
-    hillGrad.addColorStop(0,"#8AAA58");hillGrad.addColorStop(0.3,"#7A9A48");hillGrad.addColorStop(0.6,"#B8A060");hillGrad.addColorStop(1,"#6A8A38");
-    tc.fillStyle=hillGrad;
-    tc.beginPath();tc.moveTo(0,210);
-    tc.quadraticCurveTo(60,185,130,200);tc.quadraticCurveTo(200,175,280,195);
-    tc.quadraticCurveTo(360,170,440,190);tc.quadraticCurveTo(520,175,600,195);
-    tc.lineTo(600,400);tc.lineTo(0,400);tc.fill();
-    // Second hill layer — darker green
-    tc.fillStyle="#6A8838";
-    tc.beginPath();tc.moveTo(0,250);
-    tc.quadraticCurveTo(100,225,200,245);tc.quadraticCurveTo(300,220,400,240);
-    tc.quadraticCurveTo(500,225,600,238);
-    tc.lineTo(600,400);tc.lineTo(0,400);tc.fill();
+    // Sky gradient — deep blue top → warm white horizon
+    const skyGrad=tc.createLinearGradient(0,0,0,300);
+    skyGrad.addColorStop(0,"#4A7AB5");skyGrad.addColorStop(0.25,"#6A9ACE");skyGrad.addColorStop(0.5,"#96BDE0");skyGrad.addColorStop(0.75,"#D4DFE8");skyGrad.addColorStop(1,"#F5E8D0");
+    tc.fillStyle=skyGrad;tc.fillRect(0,0,800,300);
+    // Wispy clouds — semi-transparent white arcs
+    tc.globalAlpha=0.25;tc.fillStyle="#FFFFFF";
+    tc.beginPath();tc.ellipse(180,80,90,18,0,0,Math.PI*2);tc.fill();
+    tc.beginPath();tc.ellipse(220,75,60,12,0.2,0,Math.PI*2);tc.fill();
+    tc.beginPath();tc.ellipse(500,100,110,20,-0.1,0,Math.PI*2);tc.fill();
+    tc.beginPath();tc.ellipse(540,95,70,14,0.15,0,Math.PI*2);tc.fill();
+    tc.beginPath();tc.ellipse(350,55,80,15,0,0,Math.PI*2);tc.fill();
+    tc.globalAlpha=1.0;
+    // Golden sun disc with radial glow
+    const sunGrad=tc.createRadialGradient(600,80,8,600,80,160);
+    sunGrad.addColorStop(0,"rgba(255,250,220,1.0)");sunGrad.addColorStop(0.05,"rgba(255,245,200,0.95)");sunGrad.addColorStop(0.15,"rgba(255,235,170,0.5)");sunGrad.addColorStop(0.4,"rgba(255,225,150,0.2)");sunGrad.addColorStop(1,"rgba(255,225,150,0)");
+    tc.fillStyle=sunGrad;tc.fillRect(0,0,800,300);
+    // Distant hills — pale blue/purple
+    tc.fillStyle="#8E9EBA";
+    tc.beginPath();tc.moveTo(0,275);
+    tc.quadraticCurveTo(80,240,180,260);tc.quadraticCurveTo(280,230,380,255);
+    tc.quadraticCurveTo(480,225,580,248);tc.quadraticCurveTo(680,235,800,250);
+    tc.lineTo(800,310);tc.lineTo(0,310);tc.fill();
+    // Second distant layer — slightly darker
+    tc.fillStyle="#8494AD";
+    tc.beginPath();tc.moveTo(0,285);
+    tc.quadraticCurveTo(120,260,220,275);tc.quadraticCurveTo(350,250,450,270);
+    tc.quadraticCurveTo(580,248,700,265);tc.lineTo(800,268);
+    tc.lineTo(800,320);tc.lineTo(0,320);tc.fill();
+    // Mid hills — olive green
+    tc.fillStyle="#7A8E5A";
+    tc.beginPath();tc.moveTo(0,310);
+    tc.quadraticCurveTo(100,285,200,300);tc.quadraticCurveTo(300,278,420,295);
+    tc.quadraticCurveTo(540,275,650,292);tc.quadraticCurveTo(740,280,800,290);
+    tc.lineTo(800,380);tc.lineTo(0,380);tc.fill();
+    // Mid-close hills — warmer olive
+    tc.fillStyle="#6E8248";
+    tc.beginPath();tc.moveTo(0,340);
+    tc.quadraticCurveTo(150,315,280,332);tc.quadraticCurveTo(400,310,520,328);
+    tc.quadraticCurveTo(650,312,800,325);
+    tc.lineTo(800,420);tc.lineTo(0,420);tc.fill();
+    // Close hills — warm golden
+    tc.fillStyle="#C8A868";
+    tc.beginPath();tc.moveTo(0,400);
+    tc.quadraticCurveTo(100,378,220,390);tc.quadraticCurveTo(380,372,500,388);
+    tc.quadraticCurveTo(640,370,800,382);
+    tc.lineTo(800,480);tc.lineTo(0,480);tc.fill();
     // Golden field patches
-    tc.fillStyle="rgba(200,180,100,0.25)";
-    tc.fillRect(50,220,80,60);tc.fillRect(280,225,100,55);tc.fillRect(460,230,90,50);
-    // Cypress tree silhouettes
-    const drawCypress=(cx2: number,cy: number,h2: number)=>{
-      tc.fillStyle="#2A3A18";
-      tc.beginPath();tc.moveTo(cx2,cy);tc.lineTo(cx2-h2*0.12,cy);
-      tc.quadraticCurveTo(cx2-h2*0.08,cy-h2*0.5,cx2,cy-h2);
-      tc.quadraticCurveTo(cx2+h2*0.08,cy-h2*0.5,cx2+h2*0.12,cy);
-      tc.fill();
-    };
-    drawCypress(90,240,55);drawCypress(110,238,48);
-    drawCypress(250,235,52);drawCypress(270,233,42);
-    drawCypress(390,232,58);drawCypress(415,230,45);
-    drawCypress(530,236,50);drawCypress(555,234,40);
+    tc.fillStyle="rgba(210,190,120,0.3)";
+    tc.fillRect(60,340,100,50);tc.fillRect(350,335,120,45);tc.fillRect(580,342,100,48);
     // Foreground — darker earth/grass
     tc.fillStyle="#5A7A30";
-    tc.beginPath();tc.moveTo(0,320);
-    tc.quadraticCurveTo(150,300,300,315);tc.quadraticCurveTo(450,295,600,310);
-    tc.lineTo(600,400);tc.lineTo(0,400);tc.fill();
+    tc.beginPath();tc.moveTo(0,470);
+    tc.quadraticCurveTo(200,448,400,462);tc.quadraticCurveTo(600,445,800,458);
+    tc.lineTo(800,600);tc.lineTo(0,600);tc.fill();
+    tc.fillStyle="#4A6A28";
+    tc.beginPath();tc.moveTo(0,520);
+    tc.quadraticCurveTo(200,505,400,515);tc.quadraticCurveTo(600,500,800,510);
+    tc.lineTo(800,600);tc.lineTo(0,600);tc.fill();
+    // Cypress tree silhouettes — narrow dark triangles
+    const drawCypress=(cx2: number,cy: number,h2: number)=>{
+      tc.fillStyle="#2A3A1A";
+      tc.beginPath();tc.moveTo(cx2-h2*0.08,cy);
+      tc.quadraticCurveTo(cx2-h2*0.06,cy-h2*0.4,cx2,cy-h2);
+      tc.quadraticCurveTo(cx2+h2*0.06,cy-h2*0.4,cx2+h2*0.08,cy);
+      tc.fill();
+    };
+    drawCypress(100,340,70);drawCypress(125,338,55);
+    drawCypress(280,332,65);drawCypress(305,330,50);
+    drawCypress(460,328,72);
+    drawCypress(580,335,60);drawCypress(600,333,48);
+    drawCypress(720,340,66);
     // Warm atmospheric haze overlay
-    const hazeGrad=tc.createLinearGradient(0,0,0,400);
-    hazeGrad.addColorStop(0,"rgba(255,240,210,0.05)");hazeGrad.addColorStop(0.5,"rgba(255,230,190,0.1)");hazeGrad.addColorStop(1,"rgba(255,220,170,0.15)");
-    tc.fillStyle=hazeGrad;tc.fillRect(0,0,600,400);
+    const hazeGrad=tc.createLinearGradient(0,0,0,600);
+    hazeGrad.addColorStop(0,"rgba(255,240,210,0.03)");hazeGrad.addColorStop(0.4,"rgba(255,230,190,0.06)");hazeGrad.addColorStop(1,"rgba(255,220,170,0.12)");
+    tc.fillStyle=hazeGrad;tc.fillRect(0,0,800,600);
     const tuscanTex=new THREE.CanvasTexture(tuscanCanvas);tuscanTex.colorSpace=THREE.SRGBColorSpace;
 
     // ── FLOOR (varies by wing) ──
@@ -226,48 +249,93 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     }
 
     // ═══ TUSCAN LANDSCAPE WINDOWS (between door zones, opposite side from doors) ═══
-    const winH=2.2,winW=1.4,winY=cH*0.5;
+    const winH=2.0,winW=1.4,winY=cH*0.65;
+    const winGlassMat=new THREE.MeshBasicMaterial({color:"#B0D0F0",transparent:true,opacity:0.05,side:THREE.DoubleSide});
+    const winFrameMat=new THREE.MeshStandardMaterial({color:"#D8CFC0",roughness:.3,metalness:.1});
+    const winShaftMat=new THREE.MeshBasicMaterial({color:"#FFE8A0",transparent:true,opacity:0.18,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});
+    const winShaftMat2=new THREE.MeshBasicMaterial({color:"#FFE0A0",transparent:true,opacity:0.10,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});
     rooms.forEach((_room: any,i: number)=>{
       const doorSide=i%2===0?-1:1;
       const winSide=-doorSide;
       const wz=-cL/2+5.5+i*C.sp;
       const wx=winSide*(cW/2);
-      // Window recess
-      scene.add(mk(new THREE.BoxGeometry(.15,winH+.25,winW+.25),MS.wallD,wx-(winSide*.07),winY,wz));
-      // Window frame — 4 sides
-      scene.add(mk(new THREE.BoxGeometry(.07,winH+.14,.09),MS.windowFrame,wx-(winSide*.01),winY,wz-winW/2-.05));
-      scene.add(mk(new THREE.BoxGeometry(.07,winH+.14,.09),MS.windowFrame,wx-(winSide*.01),winY,wz+winW/2+.05));
-      scene.add(mk(new THREE.BoxGeometry(.07,.09,winW+.24),MS.windowFrame,wx-(winSide*.01),winY+winH/2+.05,wz));
-      scene.add(mk(new THREE.BoxGeometry(.07,.09,winW+.24),MS.windowFrame,wx-(winSide*.01),winY-winH/2-.05,wz));
-      // Arched top piece
-      scene.add(mk(new THREE.BoxGeometry(.06,.12,winW+.1),MS.gold,wx-(winSide*.01),winY+winH/2+.12,wz));
-      // Mullions (cross bars)
-      scene.add(mk(new THREE.BoxGeometry(.04,.04,winW),MS.windowFrame,wx-(winSide*.005),winY,wz));
-      scene.add(mk(new THREE.BoxGeometry(.04,winH,.04),MS.windowFrame,wx-(winSide*.005),winY,wz));
-      // Glass pane — very transparent
-      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW,winH),MS.windowGlass);
+      const fOff=winSide*0.01; // frame offset toward interior
+      // Window recess — deep inset
+      scene.add(mk(new THREE.BoxGeometry(.2,winH+.3,winW+.3),MS.wallD,wx-(winSide*.1),winY,wz));
+      // ── Stone/marble window frame — thick pieces (0.1m) ──
+      // Left jamb
+      scene.add(mk(new THREE.BoxGeometry(.12,winH+.2,.1),winFrameMat,wx-fOff,winY,wz-winW/2-.06));
+      // Right jamb
+      scene.add(mk(new THREE.BoxGeometry(.12,winH+.2,.1),winFrameMat,wx-fOff,winY,wz+winW/2+.06));
+      // Top lintel
+      scene.add(mk(new THREE.BoxGeometry(.12,.1,winW+.32),winFrameMat,wx-fOff,winY+winH/2+.06,wz));
+      // Bottom frame
+      scene.add(mk(new THREE.BoxGeometry(.12,.1,winW+.32),winFrameMat,wx-fOff,winY-winH/2-.06,wz));
+      // ── Decorative pediment/arch at top ──
+      // Triangular pediment — center raised piece
+      scene.add(mk(new THREE.BoxGeometry(.1,.18,winW+.4),winFrameMat,wx-fOff,winY+winH/2+.16,wz));
+      // Pediment cap — gold accent
+      scene.add(mk(new THREE.BoxGeometry(.08,.06,winW+.5),MS.gold,wx-fOff,winY+winH/2+.28,wz));
+      // Keystone at center top
+      scene.add(mk(new THREE.BoxGeometry(.1,.22,.14),MS.gold,wx-fOff,winY+winH/2+.16,wz));
+      // Small corbels at pediment edges
+      scene.add(mk(new THREE.BoxGeometry(.08,.12,.08),winFrameMat,wx-fOff,winY+winH/2+.12,wz-winW/2-.1));
+      scene.add(mk(new THREE.BoxGeometry(.08,.12,.08),winFrameMat,wx-fOff,winY+winH/2+.12,wz+winW/2+.1));
+      // ── Window SILL — projects inward (small shelf) ──
+      scene.add(mk(new THREE.BoxGeometry(.22,.06,winW+.4),winFrameMat,wx-(winSide*.1),winY-winH/2-.1,wz));
+      // Sill edge — gold trim
+      scene.add(mk(new THREE.BoxGeometry(.24,.02,winW+.42),MS.gold,wx-(winSide*.1),winY-winH/2-.07,wz));
+      // ── Mullion cross — thin and elegant ──
+      scene.add(mk(new THREE.BoxGeometry(.03,.025,winW-.05),winFrameMat,wx-(winSide*.005),winY+winH*0.08,wz));
+      scene.add(mk(new THREE.BoxGeometry(.03,winH-.05,.025),winFrameMat,wx-(winSide*.005),winY,wz));
+      // ── Glass pane — near invisible, slight blue tint ──
+      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW,winH),winGlassMat);
       glass.rotation.y=winSide*(-Math.PI/2);glass.position.set(wx-(winSide*.02),winY,wz);scene.add(glass);
       // ── TUSCAN LANDSCAPE behind window ──
       const landscapeMat=new THREE.MeshBasicMaterial({map:tuscanTex.clone(),side:THREE.DoubleSide});
       const landscape=new THREE.Mesh(new THREE.PlaneGeometry(winW-.05,winH-.05),landscapeMat);
-      landscape.rotation.y=winSide*(-Math.PI/2);landscape.position.set(wx+(winSide*.08),winY,wz);scene.add(landscape);
-      // Light glow — volumetric light shaft
-      const shaft=new THREE.Mesh(new THREE.PlaneGeometry(winW*1.2,winH*.8),MS.windowGlow);
-      shaft.rotation.y=winSide*(-Math.PI/2);shaft.position.set(wx-(winSide*.4),winY-.3,wz);scene.add(shaft);
-      // Second light shaft at angle
-      const shaft2=new THREE.Mesh(new THREE.PlaneGeometry(winW*.6,cH*.4),new THREE.MeshBasicMaterial({color:"#FFF8E0",transparent:true,opacity:.06,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
-      shaft2.rotation.y=winSide*(-Math.PI/2);shaft2.rotation.z=winSide*.3;shaft2.position.set(wx-(winSide*.6),winY-.8,wz);scene.add(shaft2);
-      // Curtains
-      for(let cSide of[-1,1]){
-        const curtain=mk(new THREE.BoxGeometry(.1,winH+.4,.22),MS.curtain,wx-(winSide*.04),winY,wz+cSide*(winW/2+.14));
-        scene.add(curtain);
-        // Curtain tie-back
-        scene.add(mk(new THREE.SphereGeometry(.03,6,6),MS.gold,wx-(winSide*.06),winY-.3,wz+cSide*(winW/2+.14)));
+      landscape.rotation.y=winSide*(-Math.PI/2);landscape.position.set(wx+(winSide*.1),winY,wz);scene.add(landscape);
+      // ── Light shafts — warm golden beams streaming in at ~35 degrees ──
+      // Main shaft — large, angled, very visible
+      const shaft1=new THREE.Mesh(new THREE.PlaneGeometry(winW*1.5,winH*1.8),winShaftMat);
+      shaft1.rotation.y=winSide*(-Math.PI/2);
+      shaft1.rotation.z=winSide*0.55; // ~30-35 degree angle
+      shaft1.position.set(wx-(winSide*1.0),winY-0.7,wz);
+      scene.add(shaft1);
+      // Secondary shaft — slightly offset for volume
+      const shaft2=new THREE.Mesh(new THREE.PlaneGeometry(winW*1.0,winH*1.4),winShaftMat2);
+      shaft2.rotation.y=winSide*(-Math.PI/2);
+      shaft2.rotation.z=winSide*0.45;
+      shaft2.position.set(wx-(winSide*0.7),winY-0.5,wz+0.15);
+      scene.add(shaft2);
+      // Third shaft — narrow bright core
+      const shaft3=new THREE.Mesh(new THREE.PlaneGeometry(winW*0.5,winH*1.2),new THREE.MeshBasicMaterial({color:"#FFF0C0",transparent:true,opacity:0.08,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
+      shaft3.rotation.y=winSide*(-Math.PI/2);
+      shaft3.rotation.z=winSide*0.5;
+      shaft3.position.set(wx-(winSide*0.85),winY-0.9,wz-0.1);
+      scene.add(shaft3);
+      // ── Curtains — draped look with fold effect (angled overlapping planes) ──
+      for(const cSide of[-1,1]){
+        const cZ=wz+cSide*(winW/2+.15);
+        const cX=wx-(winSide*.05);
+        // Main curtain drape — slightly angled
+        const curtain1=mk(new THREE.BoxGeometry(.06,winH+.4,.18),MS.curtain,cX,winY,cZ);
+        curtain1.rotation.y=cSide*0.08; // slight angle for fold effect
+        scene.add(curtain1);
+        // Overlapping inner fold — second plane at slight angle
+        const curtain2=mk(new THREE.BoxGeometry(.04,winH+.3,.14),MS.curtain,cX+(winSide*0.02),winY-0.05,cZ-cSide*0.04);
+        curtain2.rotation.y=cSide*-0.12;
+        scene.add(curtain2);
+        // Curtain rod end / tie-back — gold sphere
+        scene.add(mk(new THREE.SphereGeometry(.035,8,8),MS.gold,cX,winY-.4,cZ));
+        // Curtain rod above
+        scene.add(mk(new THREE.CylinderGeometry(.015,.015,.06,6),MS.gold,cX,winY+winH/2+.15,cZ));
       }
-      // Warm sunlight from each window
-      const wLight=new THREE.PointLight("#FFF5E0",.35,6);wLight.position.set(wx-(winSide*.5),winY,wz);scene.add(wLight);
-      // Gold sill at bottom
-      scene.add(mk(new THREE.BoxGeometry(.1,.05,winW+.35),MS.gold,wx-(winSide*.04),winY-winH/2-.08,wz));
+      // Curtain rod spanning the top
+      const rodMesh=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,winW+.6,6),MS.gold);
+      rodMesh.rotation.x=Math.PI/2;rodMesh.position.set(wx-(winSide*.05),winY+winH/2+.15,wz);scene.add(rodMesh);
+      // ── Warm sunlight point light from each window ──
+      const wLight=new THREE.PointLight("#FFF5E0",.5,8);wLight.position.set(wx-(winSide*.5),winY,wz);scene.add(wLight);
     });
 
     // ═══ LOW BENCHES (between windows/doors for atmosphere) ═══
@@ -419,39 +487,59 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       scene.add(mk(new THREE.BoxGeometry(.04,.02,pw+.08),MS.gold,fx-(s*.003),2.8-ph2b/2-.02,pz));
       scene.add(mk(new THREE.BoxGeometry(.04,.02,pw+.08),MS.gold,fx-(s*.003),2.8+ph2b/2+.02,pz));
 
-      // Canvas painting — room preview card with icon and name
+      // Canvas painting — room preview card with icon and name (or override image)
+      const overrideData=corridorPaintings&&room?corridorPaintings[room.id]:undefined;
       const cv=document.createElement("canvas");cv.width=480;cv.height=340;const cx=cv.getContext("2d")!;
-      // Background gradient using room's coverHue
       const hue=room?room.coverHue:((parseInt(wing.accent.slice(1),16)%360)+idx*50)%360;
-      const g=cx.createLinearGradient(0,0,480,340);
-      g.addColorStop(0,`hsl(${hue},40%,35%)`);g.addColorStop(0.5,`hsl(${(hue+15)%360},35%,28%)`);g.addColorStop(1,`hsl(${(hue+30)%360},30%,22%)`);
-      cx.fillStyle=g;cx.fillRect(0,0,480,340);
-      // Subtle texture overlay
-      for(let n=0;n<20;n++){cx.fillStyle=`rgba(255,255,255,${Math.random()*.03})`;cx.fillRect(Math.random()*480,Math.random()*340,Math.random()*60+20,Math.random()*5+1);}
-      // Decorative border inside canvas
-      cx.strokeStyle=`hsla(${hue},30%,60%,0.4)`;cx.lineWidth=2;
-      cx.strokeRect(15,15,450,310);
-      // Room icon — large emoji in center
-      if(room){
-        cx.font="80px serif";cx.textAlign="center";cx.textBaseline="middle";
-        cx.shadowColor="rgba(0,0,0,0.4)";cx.shadowBlur=12;cx.shadowOffsetY=4;
-        cx.fillText(room.icon,240,140);
-        cx.shadowColor="transparent";
-        // Room name below
-        cx.fillStyle=`hsl(${hue},25%,85%)`;cx.font="bold 28px Georgia,serif";
-        cx.fillText(room.name,240,240);
-        // Subtle divider line
-        cx.strokeStyle=`hsla(${hue},30%,65%,0.5)`;cx.lineWidth=1;
-        cx.beginPath();cx.moveTo(140,205);cx.lineTo(340,205);cx.stroke();
-        // Wing name small
-        cx.fillStyle=`hsl(${hue},20%,70%)`;cx.font="italic 16px Georgia,serif";
-        cx.fillText((wing.name||wingId),240,275);
-      }else{
-        cx.font="bold 32px Georgia,serif";cx.textAlign="center";cx.textBaseline="middle";
-        cx.fillStyle=`hsl(${hue},30%,75%)`;cx.fillText("Gallery",240,170);
-      }
+      // Draw default content first (used as fallback and initial state)
+      const drawDefault=()=>{
+        const g=cx.createLinearGradient(0,0,480,340);
+        g.addColorStop(0,`hsl(${hue},40%,35%)`);g.addColorStop(0.5,`hsl(${(hue+15)%360},35%,28%)`);g.addColorStop(1,`hsl(${(hue+30)%360},30%,22%)`);
+        cx.fillStyle=g;cx.fillRect(0,0,480,340);
+        for(let n=0;n<20;n++){cx.fillStyle=`rgba(255,255,255,${Math.random()*.03})`;cx.fillRect(Math.random()*480,Math.random()*340,Math.random()*60+20,Math.random()*5+1);}
+        cx.strokeStyle=`hsla(${hue},30%,60%,0.4)`;cx.lineWidth=2;cx.strokeRect(15,15,450,310);
+        if(room){
+          cx.font="80px serif";cx.textAlign="center";cx.textBaseline="middle";
+          cx.shadowColor="rgba(0,0,0,0.4)";cx.shadowBlur=12;cx.shadowOffsetY=4;
+          cx.fillText(room.icon,240,140);cx.shadowColor="transparent";
+          cx.fillStyle=`hsl(${hue},25%,85%)`;cx.font="bold 28px Georgia,serif";cx.fillText(room.name,240,240);
+          cx.strokeStyle=`hsla(${hue},30%,65%,0.5)`;cx.lineWidth=1;cx.beginPath();cx.moveTo(140,205);cx.lineTo(340,205);cx.stroke();
+          cx.fillStyle=`hsl(${hue},20%,70%)`;cx.font="italic 16px Georgia,serif";cx.fillText((wing.name||wingId),240,275);
+        }else{
+          cx.font="bold 32px Georgia,serif";cx.textAlign="center";cx.textBaseline="middle";
+          cx.fillStyle=`hsl(${hue},30%,75%)`;cx.fillText("Gallery",240,170);
+        }
+      };
+      drawDefault();
       const tex=new THREE.CanvasTexture(cv);tex.colorSpace=THREE.SRGBColorSpace;
       const paintMat=new THREE.MeshStandardMaterial({map:tex,roughness:.75,emissive:"#000000",emissiveIntensity:0});
+      // If there's an override URL, load the image and update the texture
+      if(overrideData?.url){
+        const img=new Image();img.crossOrigin="anonymous";
+        img.onload=()=>{
+          cx.clearRect(0,0,480,340);
+          // Fill with dark bg first
+          cx.fillStyle="#1a1a1a";cx.fillRect(0,0,480,340);
+          // Draw image cover-fit
+          const ar=img.width/img.height,tr=480/340;
+          let sw=480,sh=340,sx=0,sy=0;
+          if(ar>tr){sw=Math.round(340*ar);sx=Math.round((sw-480)/2);}
+          else{sh=Math.round(480/ar);sy=Math.round((sh-340)/2);}
+          cx.drawImage(img,-sx,-sy,sw,sh);
+          // Subtle vignette overlay
+          const vig=cx.createRadialGradient(240,170,80,240,170,280);
+          vig.addColorStop(0,"rgba(0,0,0,0)");vig.addColorStop(1,"rgba(0,0,0,0.3)");
+          cx.fillStyle=vig;cx.fillRect(0,0,480,340);
+          // Title at bottom
+          if(overrideData.title){
+            cx.fillStyle="rgba(0,0,0,0.5)";cx.fillRect(0,280,480,60);
+            cx.fillStyle="#F0EAE0";cx.font="bold 18px Georgia,serif";cx.textAlign="center";cx.textBaseline="middle";
+            cx.fillText(overrideData.title,240,310);
+          }
+          tex.needsUpdate=true;
+        };
+        img.src=overrideData.url;
+      }
       const pm=new THREE.Mesh(new THREE.PlaneGeometry(pw,ph2b),paintMat);
       pm.rotation.y=s*(-Math.PI/2);pm.position.set(fx-(s*.003),2.8,pz);
       pm.userData={isPainting:true,idx};
