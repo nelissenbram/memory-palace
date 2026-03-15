@@ -5,8 +5,30 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+
+  const rawEmail = formData.get("email");
+  const rawPassword = formData.get("password");
+
+  if (typeof rawEmail !== "string" || !rawEmail.trim()) {
+    return { error: "Email is required." };
+  }
+  if (typeof rawPassword !== "string" || !rawPassword) {
+    return { error: "Password is required." };
+  }
+
+  const email = rawEmail.trim();
+  const password = rawPassword;
+
+  // Basic email format validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { error: "Please enter a valid email address." };
+  }
+
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters long." };
+  }
+
   const displayName = (formData.get("displayName") as string) || "";
   const redirectTo = formData.get("redirect") as string | null;
 

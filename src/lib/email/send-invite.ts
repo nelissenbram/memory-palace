@@ -1,5 +1,15 @@
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
+/** Escape user-provided strings before inserting into HTML templates. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 interface InviteEmailParams {
   inviterName: string;
   recipientEmail: string;
@@ -11,8 +21,13 @@ interface InviteEmailParams {
 }
 
 export function generateInviteEmailHtml(params: InviteEmailParams): string {
-  const { inviterName, roomName, wingName, shareId, permission, personalMessage } = params;
-  const acceptUrl = `${SITE_URL}/invite/${shareId}`;
+  const { shareId, permission } = params;
+  const inviterName = escapeHtml(params.inviterName);
+  const roomName = escapeHtml(params.roomName);
+  const wingName = params.wingName ? escapeHtml(params.wingName) : "";
+  const personalMessage = params.personalMessage ? escapeHtml(params.personalMessage) : null;
+  const recipientEmail = escapeHtml(params.recipientEmail);
+  const acceptUrl = `${SITE_URL}/invite/${encodeURIComponent(shareId)}`;
   const permissionText = permission === "contribute"
     ? "see and contribute to"
     : "explore";
@@ -86,7 +101,7 @@ export function generateInviteEmailHtml(params: InviteEmailParams): string {
       The Memory Palace &mdash; Embrace Eternity
     </p>
     <p style="margin:0;font-family:'Georgia',serif;font-size:11px;color:#D4C5B2;">
-      You received this because ${inviterName} shared a room with ${params.recipientEmail}.
+      You received this because ${inviterName} shared a room with ${recipientEmail}.
     </p>
   </td></tr>
 
@@ -98,7 +113,7 @@ export function generateInviteEmailHtml(params: InviteEmailParams): string {
 }
 
 export function generateInviteEmailSubject(inviterName: string): string {
-  return `${inviterName} invited you to explore their Memory Palace`;
+  return `${escapeHtml(inviterName)} invited you to explore their Memory Palace`;
 }
 
 // Send invite email using Resend (if configured) or Supabase Edge Function fallback

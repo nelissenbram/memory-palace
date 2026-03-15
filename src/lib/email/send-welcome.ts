@@ -1,12 +1,22 @@
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
+/** Escape user-provided strings before inserting into HTML templates. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 interface WelcomeEmailParams {
   recipientEmail: string;
   displayName: string;
 }
 
 export function generateWelcomeEmailHtml(params: WelcomeEmailParams): string {
-  const { displayName } = params;
+  const displayName = escapeHtml(params.displayName);
   const palaceUrl = `${SITE_URL}/palace`;
 
   return `<!DOCTYPE html>
@@ -101,7 +111,7 @@ export function generateWelcomeEmailHtml(params: WelcomeEmailParams): string {
 }
 
 export function generateWelcomeEmailSubject(displayName: string): string {
-  return `Welcome to The Memory Palace, ${displayName}`;
+  return `Welcome to The Memory Palace, ${escapeHtml(displayName)}`;
 }
 
 export async function sendWelcomeEmail(params: WelcomeEmailParams): Promise<{ success: boolean; error?: string }> {
