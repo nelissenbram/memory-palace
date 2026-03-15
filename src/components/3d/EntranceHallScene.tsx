@@ -451,11 +451,11 @@ export default function EntranceHallScene({
       // Lateral (perpendicular to door)
       const latN = new THREE.Vector3(Math.cos(angle + Math.PI / 2), 0, Math.sin(angle + Math.PI / 2));
 
-      // Door recess / alcove (deeper, bigger) — dark interior for contrast with door panels
+      // Door recess / alcove — recessed INTO the wall (behind door panels)
       const recessGeo = new THREE.BoxGeometry(DOOR_W + 1.0, DOOR_H + 1.0, 0.9);
-      const recessMat = new THREE.MeshStandardMaterial({ color: "#0A0604", roughness: 0.9, metalness: 0.0 });
+      const recessMat = new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 });
       const recessMesh = mk(recessGeo, recessMat,
-        dx + inN.x * 0.4, (DOOR_H + 1.0) / 2, dz + inN.z * 0.4);
+        dx - inN.x * 0.5, (DOOR_H + 1.0) / 2, dz - inN.z * 0.5);
       recessMesh.lookAt(0, (DOOR_H + 1.0) / 2, 0);
       scene.add(recessMesh);
 
@@ -507,7 +507,7 @@ export default function EntranceHallScene({
       scene.add(archMesh);
       // Keystone at top of arch
       const keystone = mk(new THREE.BoxGeometry(0.4, 0.5, 0.2), MS.goldBright,
-        dx + inN.x * 0.1, DOOR_H + 0.6 + archH, dz + inN.z * 0.1);
+        dx + inN.x * 0.44, DOOR_H + 0.6 + archH, dz + inN.z * 0.44);
       keystone.lookAt(new THREE.Vector3(0, DOOR_H + 0.6 + archH, 0));
       scene.add(keystone);
 
@@ -515,24 +515,24 @@ export default function EntranceHallScene({
       const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
       const doorMat = new THREE.MeshStandardMaterial({ color: "#B07848", roughness: 0.35, metalness: 0.0, emissive: "#A06830", emissiveIntensity: 0.45 });
 
-      // Left door panel — THICK for 3D depth
+      // Left door panel — positioned in front of recess, toward center
       const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
       leftPanel.position.set(
-        dx + latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2),
+        dx + latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2) + inN.x * 0.2,
         DOOR_H / 2,
-        dz + latN.z * (panelW / 2 + DOOR_PANEL_GAP / 2)
+        dz + latN.z * (panelW / 2 + DOOR_PANEL_GAP / 2) + inN.z * 0.2
       );
       leftPanel.lookAt(new THREE.Vector3(0, DOOR_H / 2, 0));
       leftPanel.castShadow = true;
       leftPanel.userData = { wingId };
       scene.add(leftPanel);
 
-      // Right door panel — THICK for 3D depth
+      // Right door panel — positioned in front of recess, toward center
       const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
       rightPanel.position.set(
-        dx - latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2),
+        dx - latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2) + inN.x * 0.2,
         DOOR_H / 2,
-        dz - latN.z * (panelW / 2 + DOOR_PANEL_GAP / 2)
+        dz - latN.z * (panelW / 2 + DOOR_PANEL_GAP / 2) + inN.z * 0.2
       );
       rightPanel.lookAt(new THREE.Vector3(0, DOOR_H / 2, 0));
       rightPanel.castShadow = true;
@@ -546,7 +546,7 @@ export default function EntranceHallScene({
       // Center seam line (golden strip between panels)
       const seamGeo = new THREE.BoxGeometry(0.06, DOOR_H - 0.2, 0.005);
       const seam = new THREE.Mesh(seamGeo, MS.gold);
-      seam.position.set(dx, DOOR_H / 2, dz);
+      seam.position.set(dx + inN.x * 0.35, DOOR_H / 2, dz + inN.z * 0.35);
       seam.lookAt(new THREE.Vector3(0, DOOR_H / 2, 0));
       scene.add(seam);
 
@@ -560,9 +560,9 @@ export default function EntranceHallScene({
           const insetBgGeo = new THREE.BoxGeometry(panelW * 0.72, detailH + 0.04, 0.05);
           const insetBg = new THREE.Mesh(insetBgGeo, new THREE.MeshStandardMaterial({ color: "#5A3E1E", roughness: 0.6 }));
           insetBg.position.set(
-            dx + panelCenterLat.x + inN.x * 0.06,
+            dx + panelCenterLat.x + inN.x * 0.36,
             py,
-            dz + panelCenterLat.z + inN.z * 0.06
+            dz + panelCenterLat.z + inN.z * 0.36
           );
           insetBg.lookAt(new THREE.Vector3(0, py, 0));
           scene.add(insetBg);
@@ -570,9 +570,9 @@ export default function EntranceHallScene({
           const insetGeo = new THREE.BoxGeometry(panelW * 0.7, detailH, 0.06);
           const inset = new THREE.Mesh(insetGeo, MS.goldBright);
           inset.position.set(
-            dx + panelCenterLat.x + inN.x * 0.07,
+            dx + panelCenterLat.x + inN.x * 0.38,
             py,
-            dz + panelCenterLat.z + inN.z * 0.07
+            dz + panelCenterLat.z + inN.z * 0.38
           );
           inset.lookAt(new THREE.Vector3(0, py, 0));
           scene.add(inset);
@@ -584,9 +584,9 @@ export default function EntranceHallScene({
           new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, emissive: "#E8C84A", emissiveIntensity: 0.25, side: THREE.DoubleSide })
         );
         rosetteOuter.position.set(
-          dx + panelCenterLat.x + inN.x * 0.09,
+          dx + panelCenterLat.x + inN.x * 0.40,
           rosY,
-          dz + panelCenterLat.z + inN.z * 0.09
+          dz + panelCenterLat.z + inN.z * 0.40
         );
         rosetteOuter.lookAt(new THREE.Vector3(0, rosY, 0));
         scene.add(rosetteOuter);
@@ -596,9 +596,9 @@ export default function EntranceHallScene({
           new THREE.MeshStandardMaterial({ color: "#8A6830", roughness: 0.3, metalness: 0.8, side: THREE.DoubleSide })
         );
         rosetteInner.position.set(
-          dx + panelCenterLat.x + inN.x * 0.095,
+          dx + panelCenterLat.x + inN.x * 0.42,
           rosY,
-          dz + panelCenterLat.z + inN.z * 0.095
+          dz + panelCenterLat.z + inN.z * 0.405
         );
         rosetteInner.lookAt(new THREE.Vector3(0, rosY, 0));
         scene.add(rosetteInner);
@@ -608,7 +608,7 @@ export default function EntranceHallScene({
           new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, emissive: "#E8C84A", emissiveIntensity: 0.25, side: THREE.DoubleSide })
         );
         rosetteDot.position.set(
-          dx + panelCenterLat.x + inN.x * 0.1,
+          dx + panelCenterLat.x + inN.x * 0.44,
           rosY,
           dz + panelCenterLat.z + inN.z * 0.1
         );
@@ -625,9 +625,9 @@ export default function EntranceHallScene({
           MS.goldBright
         );
         handleRing.position.set(
-          dx + handleLat.x + inN.x * 0.16,
+          dx + handleLat.x + inN.x * 0.46,
           DOOR_H * 0.43,
-          dz + handleLat.z + inN.z * 0.16
+          dz + handleLat.z + inN.z * 0.46
         );
         handleRing.lookAt(new THREE.Vector3(0, DOOR_H * 0.43, 0));
         scene.add(handleRing);
@@ -637,9 +637,9 @@ export default function EntranceHallScene({
           new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, emissive: "#B8922E", emissiveIntensity: 0.1, side: THREE.DoubleSide })
         );
         handlePlate.position.set(
-          dx + handleLat.x + inN.x * 0.15,
+          dx + handleLat.x + inN.x * 0.45,
           DOOR_H * 0.43 + 0.2,
-          dz + handleLat.z + inN.z * 0.15
+          dz + handleLat.z + inN.z * 0.45
         );
         handlePlate.lookAt(new THREE.Vector3(0, DOOR_H * 0.43 + 0.2, 0));
         scene.add(handlePlate);
@@ -649,9 +649,9 @@ export default function EntranceHallScene({
           MS.goldBright
         );
         handleMount.position.set(
-          dx + handleLat.x + inN.x * 0.14,
+          dx + handleLat.x + inN.x * 0.44,
           DOOR_H * 0.43 + 0.2,
-          dz + handleLat.z + inN.z * 0.14
+          dz + handleLat.z + inN.z * 0.44
         );
         scene.add(handleMount);
       }
@@ -781,7 +781,7 @@ export default function EntranceHallScene({
         // Playful seated figure reading
         // Seated body (shorter torso, angled)
         scene.add(mk(new THREE.CylinderGeometry(0.3, 0.35, 1.2, 10), statueMat, sBx, sY + 0.6, sBz)); // torso
-        scene.add(mk(new THREE.SphereGeometry(0.28, 12, 12), statueMat, sBx + inN.x * 0.1, sY + 1.5, sBz + inN.z * 0.1)); // head (tilted forward reading)
+        scene.add(mk(new THREE.SphereGeometry(0.28, 12, 12), statueMat, sBx + inN.x * 0.44, sY + 1.5, sBz + inN.z * 0.44)); // head (tilted forward reading)
         // Legs (crossed/seated)
         const seatLeg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.9, 6), statueMat);
         seatLeg1.position.set(sBx + latN.x * 0.2, sY + 0.0, sBz + latN.z * 0.2);
@@ -932,11 +932,11 @@ export default function EntranceHallScene({
             map: labelTex, side: THREE.DoubleSide,
           })
         );
-        // Position ON the door panel surface at ~3.0m height
+        // Position ON the door panel surface at ~3.0m height (in front of panels)
         labelMesh.position.set(
-          dx + inN.x * 0.15,
+          dx + inN.x * 0.45,
           3.0,
-          dz + inN.z * 0.15
+          dz + inN.z * 0.45
         );
         labelMesh.lookAt(new THREE.Vector3(0, 3.0, 0));
         scene.add(labelMesh);
@@ -960,13 +960,13 @@ export default function EntranceHallScene({
       const trimDepth = 0.04;
       // Top border
       const topTrim = new THREE.Mesh(new THREE.BoxGeometry(frescoW + 0.8, trimThick, trimDepth), MS.goldBright);
-      topTrim.position.set(dx + inN.x * 0.06, frescoY + frescoH + 0.22, dz + inN.z * 0.06);
+      topTrim.position.set(dx + inN.x * 0.36, frescoY + frescoH + 0.22, dz + inN.z * 0.36);
       topTrim.lookAt(new THREE.Vector3(0, frescoY + frescoH + 0.22, 0));
       topTrim.rotateY(Math.PI);
       scene.add(topTrim);
       // Bottom border
       const botTrim = new THREE.Mesh(new THREE.BoxGeometry(frescoW + 0.8, trimThick, trimDepth), MS.goldBright);
-      botTrim.position.set(dx + inN.x * 0.06, frescoY - 0.02, dz + inN.z * 0.06);
+      botTrim.position.set(dx + inN.x * 0.36, frescoY - 0.02, dz + inN.z * 0.36);
       botTrim.lookAt(new THREE.Vector3(0, frescoY - 0.02, 0));
       botTrim.rotateY(Math.PI);
       scene.add(botTrim);
