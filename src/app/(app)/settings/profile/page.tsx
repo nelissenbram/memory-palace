@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
+import MFASetup from "@/components/settings/MFASetup";
 
 interface ProfileData {
   display_name: string;

@@ -112,10 +112,10 @@ export const TRACKS: Track[] = [
     completionBonus: 50,
     relevantGoals: ["legacy"],
     steps: [
-      { id: "l_legacy_contact", title: "Designate a legacy contact", description: "Choose someone to receive access to your palace.", hint: "Open Legacy Settings and add a trusted person as your legacy contact.", pointValue: 10, navigateTo: "legacy" },
-      { id: "l_final_message", title: "Create a final message", description: "Write a special message for your loved ones.", hint: "Create a journal memory that you want your legacy contacts to see.", pointValue: 10, navigateTo: "upload" },
-      { id: "l_wing_access", title: "Set up posthumous wing access", description: "Choose which wings your legacy contacts can access.", hint: "In Legacy Settings, configure which wings each contact can see.", pointValue: 10, navigateTo: "legacy" },
-      { id: "l_review", title: "Review your digital will", description: "Confirm all your legacy settings are in order.", hint: "Open Legacy Settings and review everything is set up as you wish.", pointValue: 10, navigateTo: "legacy" },
+      { id: "l_legacy_contact", title: "Designate a legacy contact", description: "Add at least one person who will inherit access to your palace.", hint: "Go to Settings > Legacy > Legacy Contacts and add a trusted person.", pointValue: 10, navigateTo: "legacy" },
+      { id: "l_final_message", title: "Write a final message", description: "Compose a heartfelt letter for a loved one.", hint: "Go to Settings > Legacy > Final Messages and write a letter to someone special.", pointValue: 10, navigateTo: "legacy" },
+      { id: "l_wing_access", title: "Set wing access for a contact", description: "Choose which wings a legacy contact can see.", hint: "Edit a legacy contact and set their access level to specific wings.", pointValue: 10, navigateTo: "legacy" },
+      { id: "l_review", title: "Review legacy settings", description: "Set your inactivity trigger and trusted verifier.", hint: "Go to Settings > Legacy > Legacy Settings and configure your inactivity period and trusted verifier.", pointValue: 10, navigateTo: "legacy" },
     ],
   },
 
