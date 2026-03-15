@@ -33,6 +33,14 @@ function formatBytes(b: number): string {
   return (b / (1024 * 1024)).toFixed(1) + " MB";
 }
 
+const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50 MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+
+function isFileTooLarge(file: File): boolean {
+  const maxSize = file.type.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+  return file.size > maxSize;
+}
+
 // ═══ Main Panel ═══
 export default function MassImportPanel({ onClose, initialWingId, initialRoomId }: Props) {
   const isMobile = useIsMobile();
@@ -44,6 +52,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
   const [dragOver, setDragOver] = useState(false);
   const [tab, setTab] = useState<"review" | "accepted" | "rejected" | "all">("review");
   const [showCloud, setShowCloud] = useState(false);
+  const [skippedOversized, setSkippedOversized] = useState(0);
 
   // Initialize targets from props
   useEffect(() => {
@@ -51,10 +60,13 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFiles = useCallback((files: FileList | File[]) => {
-    const arr = Array.from(files).filter(
+    const supported = Array.from(files).filter(
       (f) => f.type.startsWith("image/") || f.type.startsWith("video/") || f.type.startsWith("audio/") ||
         f.type.includes("pdf") || f.type.includes("document") || f.type.includes("word")
     );
+    const oversized = supported.filter(isFileTooLarge);
+    const arr = supported.filter((f) => !isFileTooLarge(f));
+    if (oversized.length > 0) setSkippedOversized((prev) => prev + oversized.length);
     if (arr.length > 0) store.addFiles(arr);
   }, [store]);
 
@@ -103,7 +115,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
     // Phase 2: AI tagging (if AI mode + API key)
     const readyItems = useImportStore.getState().items.filter((i) => i.status === "extracting");
-    if (store.mode === "ai" && store.aiApiKey.trim()) {
+    if (store.mode === "ai") {
       // Batch into groups of 10
       for (let i = 0; i < readyItems.length; i += 10) {
         const batch = readyItems.slice(i, i + 10);
@@ -119,7 +131,6 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              apiKey: store.aiApiKey,
               items: batch.map((item) => ({
                 fileName: item.fileName,
                 fileType: item.fileType,
@@ -165,7 +176,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
     } else {
       // Manual mode or no API key — all go to ready, all need review
       for (const item of readyItems) {
-        store.updateItem(item.localId, { status: store.mode === "manual" ? "ready" : "ready", needsReview: store.mode === "ai" });
+        store.updateItem(item.localId, { status: "ready", needsReview: false });
       }
     }
 
@@ -218,7 +229,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
     store.setStep("done");
   };
 
-  const { step, items, mode, progress, targetWingId, targetRoomId, aiApiKey } = store;
+  const { step, items, mode, progress, targetWingId, targetRoomId } = store;
   const totalSize = items.reduce((n, i) => n + i.fileSizeBytes, 0);
 
   return (
@@ -330,14 +341,6 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               </button>
             </div>
 
-            {/* AI API Key (only for AI mode) */}
-            {mode === "ai" && <div style={{ marginBottom: 16 }}>
-              <label style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", display: "block", marginBottom: 6 }}>Anthropic API Key</label>
-              <input value={aiApiKey} onChange={(e) => store.setAiApiKey(e.target.value)} type="password" placeholder="sk-ant-..."
-                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
-              <p style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, margin: "4px 0 0" }}>Uses Claude Haiku for fast, affordable tagging. Key is never stored.</p>
-            </div>}
-
             {/* Target selection */}
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 16 }}>
               <div>
@@ -388,6 +391,16 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               style={{ display: "none" }}
               onChange={(e) => { if (e.target.files) handleFiles(e.target.files); e.target.value = ""; }} />
 
+            {/* Oversized files warning */}
+            {skippedOversized > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: "#C0505010", border: "1px solid #C0505033", marginBottom: 12 }}>
+                <span style={{ fontFamily: T.font.body, fontSize: 12, color: "#C05050", lineHeight: 1.5, flex: 1 }}>
+                  {skippedOversized} file{skippedOversized > 1 ? "s were" : " was"} skipped because {skippedOversized > 1 ? "they exceed" : "it exceeds"} the size limit (50 MB for images, 100 MB for videos).
+                </span>
+                <button onClick={() => setSkippedOversized(0)} style={{ background: "none", border: "none", color: "#C05050", fontSize: 14, cursor: "pointer", padding: 4, flexShrink: 0 }}>{"\u2715"}</button>
+              </div>
+            )}
+
             {/* File list */}
             {items.length > 0 && <>
               <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
@@ -422,7 +435,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 fontFamily: T.font.body, fontSize: 14, fontWeight: 600, cursor: (mode === "manual" && (!targetWingId || !targetRoomId)) ? "default" : "pointer",
               }}
             >
-              {mode === "ai" && aiApiKey.trim() ? `Process ${items.length} files with AI` : `Process ${items.length} files`} {"\u{1F680}"}
+              {mode === "ai" ? `Process ${items.length} files with AI` : `Process ${items.length} files`} {"\u{1F680}"}
             </button>}
           </>}
 
@@ -698,6 +711,10 @@ function filteredItems(items: ImportItem[], tab: string): ImportItem[] {
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
+  if (isFileTooLarge(file)) {
+    const maxLabel = file.type.startsWith("video/") ? "100 MB" : "50 MB";
+    return Promise.reject(new Error(`File too large (${(file.size / (1024 * 1024)).toFixed(1)} MB). Maximum is ${maxLabel}.`));
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);

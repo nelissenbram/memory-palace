@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
-import { createMemory, updateMemoryAction, deleteMemoryAction, fetchMemories } from "@/lib/auth/memory-actions";
+import { createMemory, updateMemoryAction, deleteMemoryAction, moveMemoryAction, fetchMemories } from "@/lib/auth/memory-actions";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem, SharingInfo } from "@/lib/constants/defaults";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -31,7 +31,7 @@ interface MemoryState {
   updateRoomSharing: (roomId: string, activeWing: string | null, updates: Partial<SharingInfo>) => void;
 }
 
-const supabaseReady = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+function isSupabaseReady() { return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY); }
 
 export const useMemoryStore = create<MemoryState>((set, get) => ({
   userMems: {},
@@ -51,7 +51,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
   setFilterType: (t) => set({ filterType: t }),
 
   fetchRoomMemories: async (roomId) => {
-    if (!supabaseReady) return;
+    if (!isSupabaseReady()) return;
 
     // If offline, serve from IndexedDB cache
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -95,7 +95,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       const cur = s.userMems[roomId] || ROOM_MEMS[roomId] || [];
       return { userMems: { ...s.userMems, [roomId]: [...cur, mem] } };
     });
-    if (!supabaseReady) return;
+    if (!isSupabaseReady()) return;
 
     // If offline, queue in IndexedDB for later sync
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -167,7 +167,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       const selMem = s.selMem?.id === memId ? { ...s.selMem, ...updates } : s.selMem;
       return { userMems: { ...s.userMems, [roomId]: updated }, selMem };
     });
-    if (!supabaseReady) return;
+    if (!isSupabaseReady()) return;
 
     // If dataUrl changed (image was edited), upload the new version
     let fileUrl = updates.dataUrl;
@@ -212,7 +212,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       const cur = s.userMems[roomId] || ROOM_MEMS[roomId] || [];
       return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== memId) } };
     });
-    if (!supabaseReady) return;
+    if (!isSupabaseReady()) return;
     await deleteMemoryAction(memId);
   },
 
@@ -230,13 +230,9 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       return { userMems: { ...s.userMems, [fromRoomId]: from, [toRoomId]: to } };
     });
 
-    if (!supabaseReady) return;
-    // In DB: delete from old room and create in new room
-    await deleteMemoryAction(memId);
-    await createMemory({
-      roomId: toRoomId, title: mem.title, description: mem.desc || "", type: mem.type,
-      hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl: mem.dataUrl, filePath: null,
-    });
+    if (!isSupabaseReady()) return;
+    // In DB: update room_id in a single operation to avoid data loss
+    await moveMemoryAction(memId, toRoomId);
   },
 
   getRoomSharing: (roomId, activeWing) => {

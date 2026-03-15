@@ -2,12 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-const supabaseReady = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+function isSupabaseReady() { return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY); }
 
 // ─── Track Progress ───
 
 export async function fetchTrackProgress() {
-  if (!supabaseReady) return { tracks: [], points: 0, history: [] };
+  if (!isSupabaseReady()) return { tracks: [], points: 0, history: [] };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { tracks: [], points: 0, history: [] };
@@ -37,7 +37,7 @@ export async function fetchTrackProgress() {
 }
 
 export async function completeTrackStep(trackId: string, stepId: string, pointValue: number) {
-  if (!supabaseReady) return { success: true };
+  if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
@@ -93,7 +93,7 @@ export async function completeTrackStep(trackId: string, stepId: string, pointVa
 }
 
 export async function completeTrackBonus(trackId: string, bonusPoints: number) {
-  if (!supabaseReady) return { success: true };
+  if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
@@ -131,7 +131,7 @@ function getTrackStepCount(trackId: string): number {
 // ─── Legacy Contacts ───
 
 export async function fetchLegacyContacts() {
-  if (!supabaseReady) return { contacts: [] };
+  if (!isSupabaseReady()) return { contacts: [] };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { contacts: [] };
@@ -158,7 +158,7 @@ export async function addLegacyContact(data: {
   accessibleWings?: string[];
   accessibleRooms?: string[];
 }) {
-  if (!supabaseReady) return { success: true };
+  if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
@@ -192,7 +192,7 @@ export async function updateLegacyContact(
     accessibleRooms?: string[];
   },
 ) {
-  if (!supabaseReady) return { success: true };
+  if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
@@ -216,7 +216,7 @@ export async function updateLegacyContact(
 }
 
 export async function removeLegacyContact(contactId: string) {
-  if (!supabaseReady) return { success: true };
+  if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
