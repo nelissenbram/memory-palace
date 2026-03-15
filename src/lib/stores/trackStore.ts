@@ -3,6 +3,7 @@ import { TRACKS, TRACK_MAP, GOAL_TRACK_PRIORITY } from "@/lib/constants/tracks";
 import type { Track, TrackStep } from "@/lib/constants/tracks";
 import { checkAllTrackProgress, type TrackCheckState } from "@/lib/tracks/progress-checker";
 import { fetchTrackProgress, completeTrackStep, completeTrackBonus } from "@/lib/auth/track-actions";
+import { getLevelForPoints, getLevelProgress, type Level } from "@/lib/constants/levels";
 
 // ─── Types ───
 
@@ -41,9 +42,15 @@ interface TrackState {
   hasUsedMassImport: boolean;
   legacyReviewed: boolean;
 
+  // Floating points animation queue
+  floatingPoints: { id: string; amount: number; label: string }[];
+
   // Computed
   getLevel: () => number;
+  getLevelInfo: () => Level;
+  getLevelTitle: () => string;
   getPointsToNextLevel: () => { current: number; needed: number; progress: number };
+  getLevelProgressInfo: () => ReturnType<typeof getLevelProgress>;
   getRecommendedTrack: (userGoal: string) => Track | null;
   getTrackProgress: (trackId: string) => TrackProgress;
   getNextStep: (trackId: string) => TrackStep | null;
@@ -54,6 +61,7 @@ interface TrackState {
   setShowLegacyPanel: (v: boolean) => void;
   dismissToast: () => void;
   dismissCelebration: () => void;
+  dismissFloatingPoints: (id: string) => void;
   loadProgress: () => Promise<void>;
   runProgressCheck: (state: TrackCheckState) => void;
   markMassImportUsed: () => void;
@@ -110,16 +118,26 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   showLegacyPanel: false,
   toast: null,
   celebration: null,
+  floatingPoints: [],
   hasUsedMassImport: loadFlag("mp_mass_import_used"),
   legacyReviewed: loadFlag("mp_legacy_reviewed"),
 
-  getLevel: () => Math.floor(get().totalPoints / 100),
+  getLevel: () => getLevelForPoints(get().totalPoints).rank,
+
+  getLevelInfo: () => getLevelForPoints(get().totalPoints),
+
+  getLevelTitle: () => getLevelForPoints(get().totalPoints).title,
 
   getPointsToNextLevel: () => {
-    const total = get().totalPoints;
-    const currentLevelPoints = total % 100;
-    return { current: currentLevelPoints, needed: 100, progress: currentLevelPoints / 100 };
+    const info = getLevelProgress(get().totalPoints);
+    return {
+      current: info.pointsInLevel,
+      needed: info.pointsNeeded || 1,
+      progress: info.progress,
+    };
   },
+
+  getLevelProgressInfo: () => getLevelProgress(get().totalPoints),
 
   getRecommendedTrack: (userGoal: string) => {
     const priority = GOAL_TRACK_PRIORITY[userGoal] || GOAL_TRACK_PRIORITY["preserve"];
@@ -156,6 +174,9 @@ export const useTrackStore = create<TrackState>((set, get) => ({
   setShowLegacyPanel: (v) => set({ showLegacyPanel: v }),
   dismissToast: () => set({ toast: null }),
   dismissCelebration: () => set({ celebration: null }),
+  dismissFloatingPoints: (id: string) => set((s) => ({
+    floatingPoints: s.floatingPoints.filter((f) => f.id !== id),
+  })),
 
   markMassImportUsed: () => {
     set({ hasUsedMassImport: true });
@@ -206,6 +227,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     const newTracks = { ...tracks };
     let toastInfo: { stepTitle: string; trackName: string; points: number } | null = null;
     let celebrationInfo: { trackId: string; trackName: string; bonus: number } | null = null;
+    const newFloating: { id: string; amount: number; label: string }[] = [];
 
     for (const track of TRACKS) {
       const newSteps = completed[track.id] || [];
@@ -248,6 +270,13 @@ export const useTrackStore = create<TrackState>((set, get) => ({
             // Show toast for the most recent step
             toastInfo = { stepTitle: step.title, trackName: track.name, points: step.pointValue };
 
+            // Queue floating points animation
+            newFloating.push({
+              id: `float_${Date.now()}_${stepId}`,
+              amount: step.pointValue,
+              label: step.title,
+            });
+
             // Persist to server (fire and forget)
             completeTrackStep(track.id, stepId, step.pointValue).catch(() => {});
           }
@@ -265,6 +294,11 @@ export const useTrackStore = create<TrackState>((set, get) => ({
           };
           newHistory = [bonusEntry, ...newHistory];
           celebrationInfo = { trackId: track.id, trackName: track.name, bonus: track.completionBonus };
+          newFloating.push({
+            id: `float_bonus_${Date.now()}_${track.id}`,
+            amount: track.completionBonus,
+            label: `${track.name} complete!`,
+          });
           completeTrackBonus(track.id, track.completionBonus).catch(() => {});
         }
       }
@@ -273,13 +307,14 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     // Only update if something changed
     const hasChanges = JSON.stringify(newTracks) !== JSON.stringify(tracks);
     if (hasChanges) {
-      set({
+      set((s) => ({
         tracks: newTracks,
         totalPoints: newPoints,
         pointsHistory: newHistory.slice(0, 100), // keep last 100
         toast: toastInfo,
         celebration: celebrationInfo,
-      });
+        floatingPoints: [...s.floatingPoints, ...newFloating],
+      }));
       saveLocalTracks(newTracks);
       saveLocalPoints(newPoints, newHistory.slice(0, 100));
     }
