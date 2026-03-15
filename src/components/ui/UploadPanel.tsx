@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { UPLOAD_DEMOS } from "@/lib/constants/defaults";
@@ -33,8 +33,25 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const [lat,setLat]=useState<number|null>(null);
   const [lng,setLng]=useState<number|null>(null);
   const [geoLoading,setGeoLoading]=useState(false);
+  const [contextOffer,setContextOffer]=useState(false);
+  const [contextLoading,setContextLoading]=useState(false);
+  const [contextPreview,setContextPreview]=useState("");
+  const [contextAccepted,setContextAccepted]=useState(false);
   const fileRef=useRef<HTMLInputElement|null>(null);
   const accent=wing?.accent||T.color.terracotta;
+
+  const fetchContext=useCallback(async()=>{
+    setContextLoading(true);
+    try{
+      const res=await fetch("/api/ai-context",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({title:title.trim(),description:desc,date:new Date().toISOString(),location:locationName}),
+      });
+      const data=await res.json();
+      if(res.ok&&data.context){setContextPreview(data.context);setContextOffer(true);}
+    }catch{}finally{setContextLoading(false);}
+  },[title,desc,locationName]);
 
   const processFile=(file: File)=>{
     setFileName(file.name);
@@ -74,6 +91,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
     if(timeCapsule&&revealDate) mem.revealDate=revealDate;
     if(lat!==null&&lng!==null){mem.lat=lat;mem.lng=lng;}
     if(locationName.trim()) mem.locationName=locationName.trim();
+    if(contextAccepted&&contextPreview) mem.historicalContext=contextPreview;
     onAdd(mem);
     onClose();
   };
@@ -233,6 +251,28 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             {revealDate&&revealDate<=todayStr&&<p style={{fontFamily:T.font.body,fontSize:11,color:"#C05050",margin:"6px 0 0"}}>Reveal date must be in the future</p>}
           </div>}
         </div>
+        {/* Historical Context suggestion */}
+        {title.trim()&&!timeCapsule&&<div style={{marginBottom:20}}>
+          {contextOffer&&contextPreview?<div style={{padding:14,borderRadius:12,border:`1px solid ${T.color.cream}`,background:"linear-gradient(135deg,rgba(74,103,65,.06),rgba(193,127,89,.06))"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase"}}>Historical Context</span>
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={()=>{setContextAccepted(true);}} style={{fontFamily:T.font.body,fontSize:11,fontWeight:600,color:contextAccepted?T.color.sage:accent,background:"none",border:"none",cursor:"pointer",padding:0}}>{contextAccepted?"Added":"Accept"}</button>
+                <button onClick={()=>{setContextOffer(false);setContextPreview("");setContextAccepted(false);}} style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,background:"none",border:"none",cursor:"pointer",padding:0}}>Dismiss</button>
+              </div>
+            </div>
+            <p style={{fontFamily:T.font.body,fontSize:12,color:T.color.walnut,lineHeight:1.6,margin:0,maxHeight:120,overflowY:"auto",whiteSpace:"pre-wrap"}}>{contextPreview}</p>
+          </div>
+          :contextLoading?<div style={{padding:12,borderRadius:10,border:`1px solid ${T.color.cream}`,background:`${T.color.cream}40`,textAlign:"center"}}>
+            <span style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,display:"inline-flex",alignItems:"center",gap:6}}>
+              <span style={{display:"inline-block",width:12,height:12,border:`2px solid ${T.color.sandstone}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+              Generating historical context...
+            </span>
+          </div>
+          :<button onClick={fetchContext} style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px dashed ${T.color.sandstone}`,background:"transparent",fontFamily:T.font.body,fontSize:12,color:T.color.walnut,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+            <span>&#x1F30D;</span> Add historical context to this memory
+          </button>}
+        </div>}
         {/* Submit */}
         <button onClick={submit} disabled={!title.trim()||!capsuleValid} style={{width:"100%",padding:isMobile?16:14,borderRadius:12,border:"none",background:title.trim()&&capsuleValid?`linear-gradient(135deg,${accent},${T.color.walnut})`:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid?"#FFF":T.color.muted,fontFamily:T.font.body,fontSize:isMobile?16:14,fontWeight:600,cursor:title.trim()&&capsuleValid?"pointer":"default",transition:"all .2s",minHeight:48}}>
           {timeCapsule&&revealDate?`Seal capsule until ${new Date(revealDate+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}`:`Add to ${room?.name||"room"}`} {timeCapsule?"🔒":"✨"}
