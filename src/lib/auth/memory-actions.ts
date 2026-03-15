@@ -99,6 +99,33 @@ export async function createMemory(data: {
     .single();
 
   if (error) return { error: error.message };
+
+  // ── Notify room owner if this is a shared room contribution ──
+  try {
+    const { data: shareRecord } = await supabase
+      .from("room_shares")
+      .select("owner_id")
+      .eq("room_id", dbRoomId)
+      .eq("shared_with_id", user.id)
+      .eq("status", "accepted")
+      .limit(1)
+      .single();
+
+    if (shareRecord && shareRecord.owner_id !== user.id) {
+      // Dynamically import to avoid circular deps
+      const { createContributionNotification } = await import(
+        "@/lib/auth/notification-actions"
+      );
+      await createContributionNotification({
+        roomDbId: dbRoomId,
+        contributorId: user.id,
+        memoryTitle: data.title,
+      });
+    }
+  } catch {
+    // Non-critical — don't block memory creation if notification fails
+  }
+
   return { memory };
 }
 
