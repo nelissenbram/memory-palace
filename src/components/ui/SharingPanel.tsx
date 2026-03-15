@@ -5,6 +5,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import type { SharingInfo } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { fetchRoomShares, shareRoomWithEmail, removeRoomShare, toggleRoomSharing } from "@/lib/auth/sharing-actions";
+import { fetchPublicShare, togglePublicShare } from "@/lib/auth/public-share-actions";
 import { generateInviteLink } from "@/lib/sharing/generate-link";
 
 interface Share {
@@ -37,6 +38,9 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
   const [success,setSuccess]=useState<string|null>(null);
   const [shares,setShares]=useState<Share[]>([]);
   const [sendingEmailFor,setSendingEmailFor]=useState<string|null>(null);
+  const [publicShare,setPublicShare]=useState<{id:string;slug:string;is_active:boolean;created_at?:string}|null>(null);
+  const [publicLoading,setPublicLoading]=useState(false);
+  const [publicCopied,setPublicCopied]=useState(false);
   const accent=wing?.accent||T.color.terracotta;
 
   // Load real shares from DB on mount
@@ -48,6 +52,36 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
       }
     });
   },[roomId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load public share status on mount
+  useEffect(()=>{
+    fetchPublicShare(roomId).then(result=>{
+      if(result.publicShare) setPublicShare(result.publicShare);
+    });
+  },[roomId]);
+
+  const handleTogglePublicShare=async()=>{
+    setPublicLoading(true);setError(null);
+    const result=await togglePublicShare(roomId);
+    setPublicLoading(false);
+    if(result.error){
+      setError(result.error);
+    }else if(result.publicShare){
+      setPublicShare(result.publicShare);
+      if(result.publicShare.is_active){
+        setSuccess("Public link created!");
+        setTimeout(()=>setSuccess(null),3000);
+      }
+    }
+  };
+
+  const copyPublicLink=()=>{
+    if(!publicShare?.slug) return;
+    const url=`${window.location.origin}/public/${publicShare.slug}`;
+    navigator.clipboard.writeText(url).catch(()=>{});
+    setPublicCopied(true);
+    setTimeout(()=>setPublicCopied(false),2000);
+  };
 
   const sendInviteEmail=async(shareId: string)=>{
     setSendingEmailFor(shareId);
@@ -182,6 +216,29 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           <button onClick={handleToggle} style={{width:44,height:24,borderRadius:12,border:"none",background:sharing.shared?"#4A6741":T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s"}}>
             <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:sharing.shared?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
           </button>
+        </div>
+
+        {/* Public link section */}
+        <div style={{padding:"14px 16px",background:T.color.warmStone,borderRadius:12,border:`1px solid ${T.color.cream}`,marginBottom:20}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:publicShare?.is_active?12:0}}>
+            <div>
+              <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>Public link</div>
+              <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{publicShare?.is_active?"Anyone with the link can view":"No account required to view"}</div>
+            </div>
+            <button onClick={handleTogglePublicShare} disabled={publicLoading} style={{width:44,height:24,borderRadius:12,border:"none",background:publicShare?.is_active?"#4A6741":T.color.sandstone,cursor:publicLoading?"default":"pointer",position:"relative",transition:"background .2s",opacity:publicLoading?.6:1}}>
+              <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:publicShare?.is_active?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+            </button>
+          </div>
+          {publicShare?.is_active&&(
+            <div style={{display:"flex",gap:8}}>
+              <div style={{flex:1,padding:"8px 12px",borderRadius:8,background:T.color.white,border:`1px solid ${T.color.cream}`,fontFamily:T.font.body,fontSize:11,color:T.color.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",lineHeight:"20px"}}>
+                {typeof window!=="undefined"?`${window.location.origin}/public/${publicShare.slug}`:`/public/${publicShare.slug}`}
+              </div>
+              <button onClick={copyPublicLink} style={{padding:"8px 14px",borderRadius:8,border:"none",background:publicCopied?`${T.color.sage}15`:accent,color:publicCopied?T.color.sage:T.color.white,fontFamily:T.font.body,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",transition:"all .15s"}}>
+                {publicCopied?"\u2713 Copied":"Copy"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Invite section */}

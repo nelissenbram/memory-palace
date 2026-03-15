@@ -3,3 +3,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== "undefin
 export function generateInviteLink(shareId: string): string {
   return `${SITE_URL}/invite/${shareId}`;
 }
+
+export function generatePublicLink(slug: string): string {
+  return `${SITE_URL}/public/${slug}`;
+}
