@@ -513,7 +513,7 @@ export default function EntranceHallScene({
 
       // ── DOUBLE DOOR PANELS (two panels per door) ──
       const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
-      const doorMat = new THREE.MeshStandardMaterial({ color: "#8B5E3C", roughness: 0.40, metalness: 0.0, emissive: accent, emissiveIntensity: 0.25 });
+      const doorMat = new THREE.MeshStandardMaterial({ color: "#B07848", roughness: 0.35, metalness: 0.0, emissive: "#A06830", emissiveIntensity: 0.45 });
 
       // Left door panel — THICK for 3D depth
       const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
@@ -557,7 +557,7 @@ export default function EntranceHallScene({
         for (const py of [1.2, 2.8, 4.6, 5.8]) {
           const detailH = py < 3 ? 1.2 : 0.8;
           // Darker inset recess
-          const insetBgGeo = new THREE.BoxGeometry(panelW * 0.72, detailH + 0.04, 0.006);
+          const insetBgGeo = new THREE.BoxGeometry(panelW * 0.72, detailH + 0.04, 0.05);
           const insetBg = new THREE.Mesh(insetBgGeo, new THREE.MeshStandardMaterial({ color: "#5A3E1E", roughness: 0.6 }));
           insetBg.position.set(
             dx + panelCenterLat.x + inN.x * 0.06,
@@ -567,7 +567,7 @@ export default function EntranceHallScene({
           insetBg.lookAt(new THREE.Vector3(0, py, 0));
           scene.add(insetBg);
           // Gold trim border
-          const insetGeo = new THREE.BoxGeometry(panelW * 0.7, detailH, 0.008);
+          const insetGeo = new THREE.BoxGeometry(panelW * 0.7, detailH, 0.06);
           const inset = new THREE.Mesh(insetGeo, MS.goldBright);
           inset.position.set(
             dx + panelCenterLat.x + inN.x * 0.07,
@@ -581,7 +581,7 @@ export default function EntranceHallScene({
         const rosY = DOOR_H * 0.5;
         const rosetteOuter = new THREE.Mesh(
           new THREE.CircleGeometry(0.35, 16),
-          MS.goldBright
+          new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, emissive: "#E8C84A", emissiveIntensity: 0.25, side: THREE.DoubleSide })
         );
         rosetteOuter.position.set(
           dx + panelCenterLat.x + inN.x * 0.09,
@@ -593,7 +593,7 @@ export default function EntranceHallScene({
         // Inner rosette
         const rosetteInner = new THREE.Mesh(
           new THREE.CircleGeometry(0.22, 12),
-          new THREE.MeshStandardMaterial({ color: "#8A6830", roughness: 0.3, metalness: 0.8 })
+          new THREE.MeshStandardMaterial({ color: "#8A6830", roughness: 0.3, metalness: 0.8, side: THREE.DoubleSide })
         );
         rosetteInner.position.set(
           dx + panelCenterLat.x + inN.x * 0.095,
@@ -605,7 +605,7 @@ export default function EntranceHallScene({
         // Rosette center dot
         const rosetteDot = new THREE.Mesh(
           new THREE.CircleGeometry(0.08, 8),
-          MS.goldBright
+          new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, emissive: "#E8C84A", emissiveIntensity: 0.25, side: THREE.DoubleSide })
         );
         rosetteDot.position.set(
           dx + panelCenterLat.x + inN.x * 0.1,
@@ -634,7 +634,7 @@ export default function EntranceHallScene({
         // Large mount plate (decorative backplate)
         const handlePlate = new THREE.Mesh(
           new THREE.CircleGeometry(0.13, 12),
-          MS.goldDark
+          new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, emissive: "#B8922E", emissiveIntensity: 0.1, side: THREE.DoubleSide })
         );
         handlePlate.position.set(
           dx + handleLat.x + inN.x * 0.15,
@@ -928,9 +928,8 @@ export default function EntranceHallScene({
         labelTex.colorSpace = THREE.SRGBColorSpace;
         const labelMesh = new THREE.Mesh(
           new THREE.PlaneGeometry(3.0, 0.75),
-          new THREE.MeshStandardMaterial({
-            map: labelTex, roughness: 0.3, metalness: 0.1,
-            emissive: "#E8C84A", emissiveIntensity: 0.3,
+          new THREE.MeshBasicMaterial({
+            map: labelTex, side: THREE.DoubleSide,
           })
         );
         // Position ON the door panel surface at ~3.0m height
