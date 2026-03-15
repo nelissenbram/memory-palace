@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth/actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
+import { createMFAChallenge, verifyMFAChallenge } from "@/lib/auth/mfa-actions";
 import { T } from "@/lib/theme";
 
 export default function LoginPage() {
@@ -17,6 +18,14 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
 
+  // MFA state
+  const [mfaStep, setMfaStep] = useState(false);
+  const [mfaFactorId, setMfaFactorId] = useState("");
+  const [mfaRedirect, setMfaRedirect] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState(["", "", "", "", "", ""]);
+  const [mfaLoading, setMfaLoading] = useState(false);
+  const mfaInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -24,6 +33,17 @@ function LoginContent() {
     const formData = new FormData(e.currentTarget);
     if (redirect) formData.set("redirect", redirect);
     const result = await signIn(formData);
+
+    if (result?.mfaRequired) {
+      // Switch to MFA challenge screen
+      setMfaFactorId(result.factorId);
+      setMfaRedirect(result.redirect ?? null);
+      setMfaStep(true);
+      setLoading(false);
+      setTimeout(() => mfaInputRefs.current[0]?.focus(), 100);
+      return;
+    }
+
     // If signIn succeeds it redirects, so we only get here on error
     if (result?.error) {
       setError(result.error);
@@ -31,6 +51,216 @@ function LoginContent() {
     }
   }
 
+  function handleMfaCodeChange(index: number, value: string) {
+    if (!/^\d*$/.test(value)) return;
+    const newCode = [...mfaCode];
+    newCode[index] = value.slice(-1);
+    setMfaCode(newCode);
+
+    if (value && index < 5) {
+      mfaInputRefs.current[index + 1]?.focus();
+    }
+
+    if (value && index === 5 && newCode.every((d) => d !== "")) {
+      handleMfaVerify(newCode.join(""));
+    }
+  }
+
+  function handleMfaKeyDown(index: number, e: React.KeyboardEvent) {
+    if (e.key === "Backspace" && !mfaCode[index] && index > 0) {
+      mfaInputRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handleMfaPaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+    const newCode = [...mfaCode];
+    for (let i = 0; i < 6; i++) {
+      newCode[i] = pasted[i] || "";
+    }
+    setMfaCode(newCode);
+    const focusIdx = Math.min(pasted.length, 5);
+    mfaInputRefs.current[focusIdx]?.focus();
+    if (pasted.length === 6) {
+      handleMfaVerify(pasted);
+    }
+  }
+
+  async function handleMfaVerify(code?: string) {
+    const fullCode = code || mfaCode.join("");
+    if (fullCode.length !== 6) {
+      setError("Please enter all 6 digits.");
+      return;
+    }
+
+    setMfaLoading(true);
+    setError("");
+
+    const challengeResult = await createMFAChallenge(mfaFactorId);
+    if (challengeResult.error) {
+      setError(challengeResult.error);
+      setMfaLoading(false);
+      return;
+    }
+
+    const verifyResult = await verifyMFAChallenge(
+      mfaFactorId,
+      challengeResult.challengeId!,
+      fullCode
+    );
+
+    if (verifyResult.error) {
+      setError("Invalid code. Please try again.");
+      setMfaCode(["", "", "", "", "", ""]);
+      mfaInputRefs.current[0]?.focus();
+      setMfaLoading(false);
+      return;
+    }
+
+    // MFA verified — redirect
+    if (mfaRedirect && mfaRedirect.startsWith("/invite/")) {
+      window.location.href = mfaRedirect;
+    } else {
+      window.location.href = "/palace";
+    }
+  }
+
+  // ── MFA Challenge Screen ──
+  if (mfaStep) {
+    return (
+      <div>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: 32,
+            background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 16px", fontSize: 32,
+          }}>
+            <ShieldIcon />
+          </div>
+          <h1
+            style={{
+              fontFamily: T.font.display,
+              fontSize: 28,
+              fontWeight: 400,
+              color: T.color.charcoal,
+              margin: 0,
+              lineHeight: 1.3,
+            }}
+          >
+            Verification Required
+          </h1>
+          <p
+            style={{
+              fontSize: 16,
+              color: T.color.muted,
+              marginTop: 10,
+              lineHeight: 1.6,
+              fontFamily: T.font.body,
+            }}
+          >
+            Open your authenticator app and enter<br />
+            the 6-digit code to continue.
+          </p>
+        </div>
+
+        {error && (
+          <div
+            style={{
+              padding: "12px 16px",
+              borderRadius: 10,
+              background: "#FDF2F2",
+              border: "1px solid #FECACA",
+              color: T.color.error,
+              fontSize: 15,
+              marginBottom: 20,
+              textAlign: "center",
+              fontFamily: T.font.body,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* 6-digit code input */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 10,
+            marginBottom: 28,
+          }}
+          onPaste={handleMfaPaste}
+        >
+          {mfaCode.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => { mfaInputRefs.current[i] = el; }}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleMfaCodeChange(i, e.target.value)}
+              onKeyDown={(e) => handleMfaKeyDown(i, e)}
+              autoFocus={i === 0}
+              style={{
+                width: 52,
+                height: 64,
+                textAlign: "center",
+                fontSize: 26,
+                fontFamily: T.font.body,
+                fontWeight: 600,
+                color: T.color.charcoal,
+                borderRadius: 12,
+                border: `2px solid ${digit ? T.color.terracotta : T.color.sandstone}`,
+                background: T.color.white,
+                outline: "none",
+                transition: "border-color 0.2s",
+                caretColor: T.color.terracotta,
+              }}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={() => handleMfaVerify()}
+          disabled={mfaLoading || mfaCode.some((d) => !d)}
+          style={buttonStyle(mfaLoading || mfaCode.some((d) => !d))}
+        >
+          {mfaLoading ? "Verifying..." : "Verify Code"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setMfaStep(false);
+            setMfaCode(["", "", "", "", "", ""]);
+            setError("");
+          }}
+          style={{
+            display: "block",
+            width: "100%",
+            margin: "14px auto 0",
+            padding: 12,
+            background: "none",
+            border: `1px solid ${T.color.cream}`,
+            borderRadius: 12,
+            color: T.color.muted,
+            fontFamily: T.font.body,
+            fontSize: 14,
+            cursor: "pointer",
+            transition: "all 0.2s",
+          }}
+        >
+          Back to login
+        </button>
+      </div>
+    );
+  }
+
+  // ── Normal Login Screen ──
   return (
     <form onSubmit={handleSubmit}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
@@ -153,12 +383,21 @@ function LoginContent() {
         <Link href="/privacy" style={{ color: T.color.muted, textDecoration: "none" }}>
           Privacy Policy
         </Link>
-        {" · "}
+        {" \u00B7 "}
         <Link href="/terms" style={{ color: T.color.muted, textDecoration: "none" }}>
           Terms of Service
         </Link>
       </p>
     </form>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <path d="M9 12l2 2 4-4"/>
+    </svg>
   );
 }
 
@@ -192,19 +431,19 @@ const linkStyle: React.CSSProperties = {
   fontSize: 13,
 };
 
-const buttonStyle = (loading: boolean): React.CSSProperties => ({
+const buttonStyle = (disabled: boolean): React.CSSProperties => ({
   width: "100%",
   padding: 14,
   borderRadius: 12,
   border: "none",
-  background: loading
+  background: disabled
     ? `${T.color.sandstone}40`
     : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-  color: loading ? T.color.muted : T.color.white,
+  color: disabled ? T.color.muted : T.color.white,
   fontFamily: T.font.body,
   fontSize: 15,
   fontWeight: 600,
-  cursor: loading ? "default" : "pointer",
+  cursor: disabled ? "default" : "pointer",
   marginTop: 20,
   transition: "all 0.2s",
 });
