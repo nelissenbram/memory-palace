@@ -15,13 +15,12 @@ const WING_LABELS: Record<string,string> = {
   career: "CAREER",
   creativity: "CREATIVITY",
 };
-const WING_ICONS: Record<string,string> = {
-  family: "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}",
-  travel: "\u2708\uFE0F",
-  childhood: "\u{1F33B}",
-  career: "\u{1F4D0}",
-  creativity: "\u{1F3A8}",
-};
+// Door angles pre-computed for column skip logic
+const DOOR_ANGLES = HALL_WINGS.map((_, i) => {
+  let a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+  while (a < 0) a += Math.PI * 2;
+  return a;
+});
 
 export default function EntranceHallScene({
   onDoorClick,
@@ -351,77 +350,84 @@ export default function EntranceHallScene({
     beamMesh3.position.y = TOTAL_H - 12;
     scene.add(beamMesh3);
 
-    // ── COLUMNS (instanced, with fluting detail) ──
+    // ── COLUMNS (skip columns that would block doors) ──
     const colR = 0.4;
     const colH = WALL_H - 0.5;
+    const COL_SKIP_THRESHOLD = 0.22; // skip columns within ~12.5° of a door center
+    const validColAngles: number[] = [];
+    for (let i = 0; i < NUM_COLS; i++) {
+      let colAngle = (i / NUM_COLS) * Math.PI * 2;
+      let skip = false;
+      for (const dA of DOOR_ANGLES) {
+        let diff = Math.abs(colAngle - dA);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff < COL_SKIP_THRESHOLD) { skip = true; break; }
+      }
+      if (!skip) validColAngles.push(colAngle);
+    }
+    const NUM_VALID_COLS = validColAngles.length;
+
     // Column shaft
     const colShaftGeo = new THREE.CylinderGeometry(colR, colR * 1.08, colH, 16);
-    const colBaseMesh = new THREE.InstancedMesh(colShaftGeo, MS.column, NUM_COLS);
+    const colBaseMesh = new THREE.InstancedMesh(colShaftGeo, MS.column, NUM_VALID_COLS);
     colBaseMesh.castShadow = true;
     colBaseMesh.receiveShadow = true;
     const colMatrix = new THREE.Matrix4();
-    for (let i = 0; i < NUM_COLS; i++) {
-      const angle = (i / NUM_COLS) * Math.PI * 2;
+    validColAngles.forEach((angle, idx) => {
       const cx = Math.cos(angle) * (RADIUS - 0.8);
       const cz = Math.sin(angle) * (RADIUS - 0.8);
       colMatrix.makeTranslation(cx, colH / 2, cz);
-      colBaseMesh.setMatrixAt(i, colMatrix);
-    }
+      colBaseMesh.setMatrixAt(idx, colMatrix);
+    });
     colBaseMesh.instanceMatrix.needsUpdate = true;
     scene.add(colBaseMesh);
 
-    // Column capitals (larger, more ornate)
+    // Column capitals
     const capGeo = new THREE.CylinderGeometry(colR * 1.8, colR * 1.1, 0.6, 16);
-    const capMesh = new THREE.InstancedMesh(capGeo, MS.gold, NUM_COLS);
-    for (let i = 0; i < NUM_COLS; i++) {
-      const angle = (i / NUM_COLS) * Math.PI * 2;
+    const capMesh = new THREE.InstancedMesh(capGeo, MS.gold, NUM_VALID_COLS);
+    validColAngles.forEach((angle, idx) => {
       const cx = Math.cos(angle) * (RADIUS - 0.8);
       const cz = Math.sin(angle) * (RADIUS - 0.8);
       colMatrix.makeTranslation(cx, colH + 0.3, cz);
-      capMesh.setMatrixAt(i, colMatrix);
-    }
+      capMesh.setMatrixAt(idx, colMatrix);
+    });
     capMesh.instanceMatrix.needsUpdate = true;
     scene.add(capMesh);
 
-    // Capital abacus (square top) for Corinthian look
+    // Capital abacus
     const abacusGeo = new THREE.BoxGeometry(colR * 3.2, 0.12, colR * 3.2);
-    const abacusMesh = new THREE.InstancedMesh(abacusGeo, MS.marbleWarm, NUM_COLS);
-    for (let i = 0; i < NUM_COLS; i++) {
-      const angle = (i / NUM_COLS) * Math.PI * 2;
+    const abacusMesh = new THREE.InstancedMesh(abacusGeo, MS.marbleWarm, NUM_VALID_COLS);
+    validColAngles.forEach((angle, idx) => {
       const cx = Math.cos(angle) * (RADIUS - 0.8);
       const cz = Math.sin(angle) * (RADIUS - 0.8);
       colMatrix.makeTranslation(cx, colH + 0.66, cz);
-      abacusMesh.setMatrixAt(i, colMatrix);
-    }
+      abacusMesh.setMatrixAt(idx, colMatrix);
+    });
     abacusMesh.instanceMatrix.needsUpdate = true;
     scene.add(abacusMesh);
 
-    // Column bases (instanced)
+    // Column bases
     const baseGeo = new THREE.CylinderGeometry(colR * 1.3, colR * 1.5, 0.35, 16);
-    const baseMeshI = new THREE.InstancedMesh(baseGeo, MS.marbleDark, NUM_COLS);
-    for (let i = 0; i < NUM_COLS; i++) {
-      const angle = (i / NUM_COLS) * Math.PI * 2;
+    const baseMeshI = new THREE.InstancedMesh(baseGeo, MS.marbleDark, NUM_VALID_COLS);
+    validColAngles.forEach((angle, idx) => {
       const cx = Math.cos(angle) * (RADIUS - 0.8);
       const cz = Math.sin(angle) * (RADIUS - 0.8);
       colMatrix.makeTranslation(cx, 0.175, cz);
-      baseMeshI.setMatrixAt(i, colMatrix);
-    }
+      baseMeshI.setMatrixAt(idx, colMatrix);
+    });
     baseMeshI.instanceMatrix.needsUpdate = true;
     scene.add(baseMeshI);
 
-    // Column fluting (vertical grooves simulated with rings + vertical lines)
-    for (let i = 0; i < NUM_COLS; i++) {
-      const angle = (i / NUM_COLS) * Math.PI * 2;
+    // Column fluting
+    for (const angle of validColAngles) {
       const cx = Math.cos(angle) * (RADIUS - 0.8);
       const cz = Math.sin(angle) * (RADIUS - 0.8);
-      // Rings at top, middle, bottom
       for (const ry of [0.7, colH * 0.33, colH * 0.66, colH - 0.5]) {
         const ring2 = new THREE.Mesh(new THREE.TorusGeometry(colR + 0.02, 0.03, 6, 16), MS.marbleWarm);
         ring2.rotation.x = Math.PI / 2;
         ring2.position.set(cx, ry, cz);
         scene.add(ring2);
       }
-      // Fluting lines (vertical tubes around column)
       for (let f = 0; f < 8; f++) {
         const fa = (f / 8) * Math.PI * 2;
         const fx = cx + Math.cos(fa) * (colR + 0.01);
@@ -451,71 +457,74 @@ export default function EntranceHallScene({
       // Lateral (perpendicular to door)
       const latN = new THREE.Vector3(Math.cos(angle + Math.PI / 2), 0, Math.sin(angle + Math.PI / 2));
 
-      // Door recess / alcove — recessed INTO the wall (behind door panels)
-      const recessGeo = new THREE.BoxGeometry(DOOR_W + 1.0, DOOR_H + 1.0, 0.9);
+      // Door recess / alcove — recessed INTO the wall
+      const recessGeo = new THREE.BoxGeometry(DOOR_W + 0.8, DOOR_H + 0.6, 0.9);
       const recessMat = new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 });
       const recessMesh = mk(recessGeo, recessMat,
-        dx - inN.x * 0.5, (DOOR_H + 1.0) / 2, dz - inN.z * 0.5);
-      recessMesh.lookAt(0, (DOOR_H + 1.0) / 2, 0);
+        dx - inN.x * 0.5, (DOOR_H + 0.6) / 2, dz - inN.z * 0.5);
+      recessMesh.lookAt(0, (DOOR_H + 0.6) / 2, 0);
       scene.add(recessMesh);
 
-      // ── THICK ORNATE GOLDEN FRAME ──
-      const frameThick = 0.4;
-      const frameDepth = 0.3;
+      // ── ELEGANT MARBLE FRAME (not gold — classy stone) ──
+      const frameThick = 0.3;
+      const frameDepth = 0.25;
+      const frameMat = MS.marbleDark;
       // Left frame pillar
-      const lpGeo = new THREE.BoxGeometry(frameThick, DOOR_H + 0.4, frameDepth);
-      const lp = new THREE.Mesh(lpGeo, MS.doorFrame);
+      const lpGeo = new THREE.BoxGeometry(frameThick, DOOR_H + 0.3, frameDepth);
+      const lp = new THREE.Mesh(lpGeo, frameMat);
       lp.position.set(
         dx + latN.x * (DOOR_W / 2 + frameThick / 2) + inN.x * 0.05,
-        (DOOR_H + 0.4) / 2,
+        (DOOR_H + 0.3) / 2,
         dz + latN.z * (DOOR_W / 2 + frameThick / 2) + inN.z * 0.05
       );
-      lp.lookAt(new THREE.Vector3(0, (DOOR_H + 0.4) / 2, 0));
+      lp.lookAt(new THREE.Vector3(0, (DOOR_H + 0.3) / 2, 0));
       scene.add(lp);
       // Right frame pillar
-      const rp = new THREE.Mesh(lpGeo, MS.doorFrame);
+      const rp = new THREE.Mesh(lpGeo, frameMat);
       rp.position.set(
         dx - latN.x * (DOOR_W / 2 + frameThick / 2) + inN.x * 0.05,
-        (DOOR_H + 0.4) / 2,
+        (DOOR_H + 0.3) / 2,
         dz - latN.z * (DOOR_W / 2 + frameThick / 2) + inN.z * 0.05
       );
-      rp.lookAt(new THREE.Vector3(0, (DOOR_H + 0.4) / 2, 0));
+      rp.lookAt(new THREE.Vector3(0, (DOOR_H + 0.3) / 2, 0));
       scene.add(rp);
       // Top lintel
-      const lintelGeo = new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.4, 0.4, frameDepth);
-      const lintel = new THREE.Mesh(lintelGeo, MS.doorFrame);
-      lintel.position.set(dx + inN.x * 0.05, DOOR_H + 0.4, dz + inN.z * 0.05);
-      lintel.lookAt(new THREE.Vector3(0, DOOR_H + 0.4, 0));
+      const lintelGeo = new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.2, 0.35, frameDepth);
+      const lintel = new THREE.Mesh(lintelGeo, frameMat);
+      lintel.position.set(dx + inN.x * 0.05, DOOR_H + 0.3, dz + inN.z * 0.05);
+      lintel.lookAt(new THREE.Vector3(0, DOOR_H + 0.3, 0));
       scene.add(lintel);
       // Bottom threshold
-      const threshGeo = new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.4, 0.15, frameDepth);
-      const thresh = new THREE.Mesh(threshGeo, MS.goldDark);
-      thresh.position.set(dx + inN.x * 0.05, 0.075, dz + inN.z * 0.05);
-      thresh.lookAt(new THREE.Vector3(0, 0.075, 0));
+      const threshGeo = new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.2, 0.12, frameDepth);
+      const thresh = new THREE.Mesh(threshGeo, MS.marbleDark);
+      thresh.position.set(dx + inN.x * 0.05, 0.06, dz + inN.z * 0.05);
+      thresh.lookAt(new THREE.Vector3(0, 0.06, 0));
       scene.add(thresh);
 
-      // ── ROMAN ARCH above door ──
-      const archW = DOOR_W / 2 + 0.5;
-      const archH = 1.5;
+      // ── SUBTLE ARCH above door (thin, elegant) ──
+      const archW = DOOR_W / 2 + 0.3;
+      const archH = 1.2;
       const archCurve = new THREE.EllipseCurve(0, 0, archW, archH, 0, Math.PI, false, 0);
       const archPoints = archCurve.getPoints(30).map(p => new THREE.Vector3(p.x, p.y, 0));
-      const archGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(archPoints), 30, 0.14, 8, false);
-      const archMesh = new THREE.Mesh(archGeo, MS.gold);
-      archMesh.position.set(dx + inN.x * 0.05, DOOR_H + 0.6, dz + inN.z * 0.05);
-      archMesh.lookAt(new THREE.Vector3(0, DOOR_H + 0.6, 0));
+      const archGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(archPoints), 30, 0.08, 8, false);
+      const archMesh = new THREE.Mesh(archGeo, MS.goldDark);
+      archMesh.position.set(dx + inN.x * 0.05, DOOR_H + 0.45, dz + inN.z * 0.05);
+      archMesh.lookAt(new THREE.Vector3(0, DOOR_H + 0.45, 0));
       archMesh.rotateY(Math.PI);
       scene.add(archMesh);
-      // Keystone at top of arch
-      const keystone = mk(new THREE.BoxGeometry(0.4, 0.5, 0.2), MS.goldBright,
-        dx + inN.x * 0.44, DOOR_H + 0.6 + archH, dz + inN.z * 0.44);
-      keystone.lookAt(new THREE.Vector3(0, DOOR_H + 0.6 + archH, 0));
+      // Small keystone
+      const keystone = mk(new THREE.BoxGeometry(0.25, 0.35, 0.15), MS.goldDark,
+        dx + inN.x * 0.3, DOOR_H + 0.45 + archH, dz + inN.z * 0.3);
+      keystone.lookAt(new THREE.Vector3(0, DOOR_H + 0.45 + archH, 0));
       scene.add(keystone);
 
-      // ── DOUBLE DOOR PANELS (two panels per door) ──
+      // ── DOUBLE DOOR PANELS ──
       const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
-      const doorMat = new THREE.MeshStandardMaterial({ color: "#B07848", roughness: 0.35, metalness: 0.0, emissive: "#A06830", emissiveIntensity: 0.45 });
+      const doorMat = new THREE.MeshStandardMaterial({
+        color: "#7A5030", roughness: 0.45, metalness: 0.0,
+        emissive: "#5A3A20", emissiveIntensity: 0.2,
+      });
 
-      // Left door panel — positioned in front of recess, toward center
       const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
       leftPanel.position.set(
         dx + latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2) + inN.x * 0.2,
@@ -527,7 +536,6 @@ export default function EntranceHallScene({
       leftPanel.userData = { wingId };
       scene.add(leftPanel);
 
-      // Right door panel — positioned in front of recess, toward center
       const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
       rightPanel.position.set(
         dx - latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2) + inN.x * 0.2,
@@ -539,483 +547,130 @@ export default function EntranceHallScene({
       rightPanel.userData = { wingId };
       scene.add(rightPanel);
 
-      // Use left panel as the main hit target
       doorMeshes.push({ mesh: leftPanel, mat: doorMat, wingId, angle });
       doorMeshes.push({ mesh: rightPanel, mat: doorMat, wingId, angle });
 
-      // Center seam line (golden strip between panels)
-      const seamGeo = new THREE.BoxGeometry(0.06, DOOR_H - 0.2, 0.005);
-      const seam = new THREE.Mesh(seamGeo, MS.gold);
+      // Thin seam line between panels
+      const seamGeo = new THREE.BoxGeometry(0.04, DOOR_H - 0.3, 0.005);
+      const seam = new THREE.Mesh(seamGeo, MS.goldDark);
       seam.position.set(dx + inN.x * 0.35, DOOR_H / 2, dz + inN.z * 0.35);
       seam.lookAt(new THREE.Vector3(0, DOOR_H / 2, 0));
       scene.add(seam);
 
-      // Door panel details: inset rectangles with gold trim + center rosette
+      // ── SIMPLE INSET PANELS (2 per door panel, subtle depth) ──
       for (const side of [-1, 1]) {
         const panelCenterLat = latN.clone().multiplyScalar(side * (panelW / 2 + DOOR_PANEL_GAP / 2));
-        // Panel inset rectangles (top and bottom on each panel)
-        for (const py of [1.2, 2.8, 4.6, 5.8]) {
-          const detailH = py < 3 ? 1.2 : 0.8;
-          // Darker inset recess
-          const insetBgGeo = new THREE.BoxGeometry(panelW * 0.72, detailH + 0.04, 0.05);
-          const insetBg = new THREE.Mesh(insetBgGeo, new THREE.MeshStandardMaterial({ color: "#5A3E1E", roughness: 0.6 }));
-          insetBg.position.set(
+        // Upper and lower inset
+        for (const py of [2.0, 4.8]) {
+          const detailH = 1.8;
+          // Recessed darker wood panel
+          const insetGeo = new THREE.BoxGeometry(panelW * 0.65, detailH, 0.04);
+          const inset = new THREE.Mesh(insetGeo, new THREE.MeshStandardMaterial({
+            color: "#5A3A1E", roughness: 0.55, metalness: 0.0,
+          }));
+          inset.position.set(
             dx + panelCenterLat.x + inN.x * 0.36,
             py,
             dz + panelCenterLat.z + inN.z * 0.36
           );
-          insetBg.lookAt(new THREE.Vector3(0, py, 0));
-          scene.add(insetBg);
-          // Gold trim border
-          const insetGeo = new THREE.BoxGeometry(panelW * 0.7, detailH, 0.06);
-          const inset = new THREE.Mesh(insetGeo, MS.goldBright);
-          inset.position.set(
-            dx + panelCenterLat.x + inN.x * 0.38,
-            py,
-            dz + panelCenterLat.z + inN.z * 0.38
-          );
           inset.lookAt(new THREE.Vector3(0, py, 0));
           scene.add(inset);
+          // Thin gold border around inset
+          const borderGeo = new THREE.BoxGeometry(panelW * 0.68, detailH + 0.06, 0.02);
+          const border = new THREE.Mesh(borderGeo, MS.goldDark);
+          border.position.set(
+            dx + panelCenterLat.x + inN.x * 0.35,
+            py,
+            dz + panelCenterLat.z + inN.z * 0.35
+          );
+          border.lookAt(new THREE.Vector3(0, py, 0));
+          scene.add(border);
         }
-        // Large ROSETTE / medallion at center of each panel (~3.5m height)
-        const rosY = DOOR_H * 0.5;
-        const rosetteOuter = new THREE.Mesh(
-          new THREE.CircleGeometry(0.35, 16),
-          new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, emissive: "#E8C84A", emissiveIntensity: 0.25, side: THREE.DoubleSide })
-        );
-        rosetteOuter.position.set(
-          dx + panelCenterLat.x + inN.x * 0.40,
-          rosY,
-          dz + panelCenterLat.z + inN.z * 0.40
-        );
-        rosetteOuter.lookAt(new THREE.Vector3(0, rosY, 0));
-        scene.add(rosetteOuter);
-        // Inner rosette
-        const rosetteInner = new THREE.Mesh(
-          new THREE.CircleGeometry(0.22, 12),
-          new THREE.MeshStandardMaterial({ color: "#8A6830", roughness: 0.3, metalness: 0.8, side: THREE.DoubleSide })
-        );
-        rosetteInner.position.set(
-          dx + panelCenterLat.x + inN.x * 0.42,
-          rosY,
-          dz + panelCenterLat.z + inN.z * 0.405
-        );
-        rosetteInner.lookAt(new THREE.Vector3(0, rosY, 0));
-        scene.add(rosetteInner);
-        // Rosette center dot
-        const rosetteDot = new THREE.Mesh(
-          new THREE.CircleGeometry(0.08, 8),
-          new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, emissive: "#E8C84A", emissiveIntensity: 0.25, side: THREE.DoubleSide })
-        );
-        rosetteDot.position.set(
-          dx + panelCenterLat.x + inN.x * 0.44,
-          rosY,
-          dz + panelCenterLat.z + inN.z * 0.1
-        );
-        rosetteDot.lookAt(new THREE.Vector3(0, rosY, 0));
-        scene.add(rosetteDot);
       }
 
-      // ── LARGE BRASS RING HANDLES ──
+      // ── SIMPLE RING HANDLES (one per panel, centered) ──
       for (const side of [-1, 1]) {
-        const handleLat = latN.clone().multiplyScalar(side * 0.4);
-        // Large ring handle (radius 0.2, thick tube)
+        const handleLat = latN.clone().multiplyScalar(side * 0.35);
         const handleRing = new THREE.Mesh(
-          new THREE.TorusGeometry(0.2, 0.045, 12, 20),
-          MS.goldBright
+          new THREE.TorusGeometry(0.14, 0.03, 10, 16),
+          MS.goldDark
         );
         handleRing.position.set(
-          dx + handleLat.x + inN.x * 0.46,
-          DOOR_H * 0.43,
-          dz + handleLat.z + inN.z * 0.46
+          dx + handleLat.x + inN.x * 0.42,
+          DOOR_H * 0.48,
+          dz + handleLat.z + inN.z * 0.42
         );
-        handleRing.lookAt(new THREE.Vector3(0, DOOR_H * 0.43, 0));
+        handleRing.lookAt(new THREE.Vector3(0, DOOR_H * 0.48, 0));
         scene.add(handleRing);
-        // Large mount plate (decorative backplate)
+        // Small mount plate
         const handlePlate = new THREE.Mesh(
-          new THREE.CircleGeometry(0.13, 12),
-          new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, emissive: "#B8922E", emissiveIntensity: 0.1, side: THREE.DoubleSide })
+          new THREE.CircleGeometry(0.06, 10),
+          new THREE.MeshStandardMaterial({ color: "#8A7040", roughness: 0.3, metalness: 0.7, side: THREE.DoubleSide })
         );
         handlePlate.position.set(
-          dx + handleLat.x + inN.x * 0.45,
-          DOOR_H * 0.43 + 0.2,
-          dz + handleLat.z + inN.z * 0.45
+          dx + handleLat.x + inN.x * 0.41,
+          DOOR_H * 0.48 + 0.14,
+          dz + handleLat.z + inN.z * 0.41
         );
-        handlePlate.lookAt(new THREE.Vector3(0, DOOR_H * 0.43 + 0.2, 0));
+        handlePlate.lookAt(new THREE.Vector3(0, DOOR_H * 0.48 + 0.14, 0));
         scene.add(handlePlate);
-        // Handle mount pin
-        const handleMount = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.06, 0.06, 0.1, 8),
-          MS.goldBright
-        );
-        handleMount.position.set(
-          dx + handleLat.x + inN.x * 0.44,
-          DOOR_H * 0.43 + 0.2,
-          dz + handleLat.z + inN.z * 0.44
-        );
-        scene.add(handleMount);
       }
 
-      // WARM fill light illuminating the door surface — bright so wood is visible
-      const doorFill = new THREE.PointLight("#FFF0D0", 2.0, 10);
+      // Warm fill light for door visibility
+      const doorFill = new THREE.PointLight("#FFF0D0", 1.5, 10);
       doorFill.position.set(dx + inN.x * 2.5, DOOR_H * 0.5, dz + inN.z * 2.5);
       scene.add(doorFill);
 
-      // DEDICATED SPOTLIGHT aimed directly at door face (intensity 3.0, from 6m away)
-      const doorFaceSpot = new THREE.SpotLight("#FFF5E0", 3.0, 16, Math.PI / 4.5, 0.35, 0.7);
+      // Spotlight on door face
+      const doorFaceSpot = new THREE.SpotLight("#FFF5E0", 2.0, 16, Math.PI / 4.5, 0.4, 0.7);
       doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
       doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
       scene.add(doorFaceSpot);
       scene.add(doorFaceSpot.target);
 
-      // Focused spotlight near each door (pool of light on floor)
-      const doorSpot = new THREE.SpotLight(accent, 1.5, 14, Math.PI / 5, 0.5, 0.9);
-      doorSpot.position.set(
-        dx + inN.x * 1.5,
-        DOOR_H + 0.5,
-        dz + inN.z * 1.5
-      );
-      doorSpot.target.position.set(
-        dx + inN.x * 2.5,
-        0,
-        dz + inN.z * 2.5
-      );
-      scene.add(doorSpot);
-      scene.add(doorSpot.target);
-
-      // ── WING ACCENT COLOR STRIPS on each side of door frame ──
-      const accentStripW = 0.1;
-      const accentStripMat = new THREE.MeshStandardMaterial({
-        color: accent, roughness: 0.3, metalness: 0.2,
-        emissive: accent, emissiveIntensity: 0.4,
-      });
-      for (const stripSide of [-1, 1]) {
-        const stripMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(accentStripW, DOOR_H + 0.4, 0.12),
-          accentStripMat
-        );
-        stripMesh.position.set(
-          dx + latN.x * stripSide * (DOOR_W / 2 + frameThick + accentStripW / 2) + inN.x * 0.05,
-          (DOOR_H + 0.4) / 2,
-          dz + latN.z * stripSide * (DOOR_W / 2 + frameThick + accentStripW / 2) + inN.z * 0.05
-        );
-        stripMesh.lookAt(new THREE.Vector3(0, (DOOR_H + 0.4) / 2, 0));
-        scene.add(stripMesh);
-      }
-
-      // ── LARGE STATUE above door on pedestal ──
-      const statueBaseY = DOOR_H + archH + 1.2;
-      const sBx = dx + inN.x * 0.15;
-      const sBz = dz + inN.z * 0.15;
-
-      // Large pedestal
-      scene.add(mk(new THREE.BoxGeometry(2.0, 0.4, 0.8), MS.marbleDark, sBx, statueBaseY, sBz));
-      scene.add(mk(new THREE.BoxGeometry(1.6, 0.2, 0.7), MS.marble, sBx, statueBaseY + 0.3, sBz));
-
-      // Statue material with wing accent tint
-      const statueMat = new THREE.MeshStandardMaterial({
-        color: "#E8E0D4",
-        roughness: 0.35,
-        metalness: 0.0,
-        envMapIntensity: 0.5,
-        emissive: new THREE.Color(accent),
-        emissiveIntensity: 0.05,
-      });
-
-      // Build statue based on wing type
-      const sY = statueBaseY + 0.4; // base of statue
-      const statueH = 3.5;
-
-      if (wingId === "family") {
-        // Parent holding child — two figures
-        // Adult body
-        scene.add(mk(new THREE.CylinderGeometry(0.35, 0.45, 1.6, 10), statueMat, sBx, sY + 0.8, sBz)); // torso
-        scene.add(mk(new THREE.SphereGeometry(0.3, 12, 12), statueMat, sBx, sY + 1.9, sBz)); // head
-        // Arms reaching down to child
-        const armGeo = new THREE.CylinderGeometry(0.08, 0.07, 1.0, 6);
-        const lArm = new THREE.Mesh(armGeo, statueMat);
-        lArm.position.set(sBx + latN.x * 0.45, sY + 1.2, sBz + latN.z * 0.45);
-        lArm.rotation.z = 0.4;
-        scene.add(lArm);
-        const rArm = new THREE.Mesh(armGeo, statueMat);
-        rArm.position.set(sBx - latN.x * 0.3, sY + 1.0, sBz - latN.z * 0.3);
-        rArm.rotation.z = -0.6;
-        scene.add(rArm);
-        // Child figure
-        scene.add(mk(new THREE.CylinderGeometry(0.2, 0.25, 0.9, 8), statueMat, sBx - latN.x * 0.4, sY + 0.45, sBz - latN.z * 0.4));
-        scene.add(mk(new THREE.SphereGeometry(0.2, 10, 10), statueMat, sBx - latN.x * 0.4, sY + 1.1, sBz - latN.z * 0.4));
-        // Legs
-        scene.add(mk(new THREE.CylinderGeometry(0.12, 0.14, 1.0, 6), statueMat, sBx + latN.x * 0.15, sY + 0.0 - 0.1, sBz + latN.z * 0.15));
-        scene.add(mk(new THREE.CylinderGeometry(0.12, 0.14, 1.0, 6), statueMat, sBx - latN.x * 0.1, sY + 0.0 - 0.1, sBz - latN.z * 0.1));
-      } else if (wingId === "travel") {
-        // Figure with globe, adventurous stance
-        // Body
-        scene.add(mk(new THREE.CylinderGeometry(0.35, 0.4, 1.8, 10), statueMat, sBx, sY + 0.9, sBz)); // torso
-        scene.add(mk(new THREE.SphereGeometry(0.3, 12, 12), statueMat, sBx, sY + 2.1, sBz)); // head
-        // Legs (one forward, adventurous)
-        scene.add(mk(new THREE.CylinderGeometry(0.12, 0.14, 1.1, 6), statueMat, sBx + latN.x * 0.15, sY - 0.1, sBz + latN.z * 0.15));
-        const legFwd = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 1.1, 6), statueMat);
-        legFwd.position.set(sBx - latN.x * 0.15 + inN.x * 0.3, sY - 0.05, sBz - latN.z * 0.15 + inN.z * 0.3);
-        legFwd.rotation.x = 0.3;
-        scene.add(legFwd);
-        // Right arm holding globe up
-        const armUp = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 1.2, 6), statueMat);
-        armUp.position.set(sBx + latN.x * 0.5, sY + 1.8, sBz + latN.z * 0.5);
-        armUp.rotation.z = -0.8;
-        scene.add(armUp);
-        // Globe
-        scene.add(mk(new THREE.SphereGeometry(0.3, 12, 12), MS.goldDark, sBx + latN.x * 0.8, sY + 2.5, sBz + latN.z * 0.8));
-        // Globe latitude lines
-        for (const lat of [0.1, 0.2]) {
-          const gRing = new THREE.Mesh(new THREE.TorusGeometry(0.3 * Math.cos(Math.asin(lat / 0.3)), 0.01, 4, 12), MS.gold);
-          gRing.position.set(sBx + latN.x * 0.8, sY + 2.5 + lat, sBz + latN.z * 0.8);
-          gRing.rotation.x = Math.PI / 2;
-          scene.add(gRing);
-        }
-        // Left arm on hip
-        const armHip = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 0.9, 6), statueMat);
-        armHip.position.set(sBx - latN.x * 0.5, sY + 1.2, sBz - latN.z * 0.5);
-        armHip.rotation.z = 0.6;
-        scene.add(armHip);
-      } else if (wingId === "childhood") {
-        // Playful seated figure reading
-        // Seated body (shorter torso, angled)
-        scene.add(mk(new THREE.CylinderGeometry(0.3, 0.35, 1.2, 10), statueMat, sBx, sY + 0.6, sBz)); // torso
-        scene.add(mk(new THREE.SphereGeometry(0.28, 12, 12), statueMat, sBx + inN.x * 0.44, sY + 1.5, sBz + inN.z * 0.44)); // head (tilted forward reading)
-        // Legs (crossed/seated)
-        const seatLeg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.9, 6), statueMat);
-        seatLeg1.position.set(sBx + latN.x * 0.2, sY + 0.0, sBz + latN.z * 0.2);
-        seatLeg1.rotation.z = Math.PI / 2 * 0.8;
-        scene.add(seatLeg1);
-        const seatLeg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.9, 6), statueMat);
-        seatLeg2.position.set(sBx - latN.x * 0.15 + inN.x * 0.15, sY + 0.0, sBz - latN.z * 0.15 + inN.z * 0.15);
-        seatLeg2.rotation.x = 0.5;
-        scene.add(seatLeg2);
-        // Arms holding book
-        const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.8, 6), statueMat);
-        armR.position.set(sBx + latN.x * 0.35 + inN.x * 0.2, sY + 0.9, sBz + latN.z * 0.35 + inN.z * 0.2);
-        armR.rotation.z = 0.5;
-        scene.add(armR);
-        const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.8, 6), statueMat);
-        armL.position.set(sBx - latN.x * 0.35 + inN.x * 0.2, sY + 0.9, sBz - latN.z * 0.35 + inN.z * 0.2);
-        armL.rotation.z = -0.5;
-        scene.add(armL);
-        // Book
-        scene.add(mk(new THREE.BoxGeometry(0.5, 0.06, 0.35), MS.goldDark, sBx + inN.x * 0.4, sY + 0.9, sBz + inN.z * 0.4));
-      } else if (wingId === "career") {
-        // Toga-wearing figure with scroll, dignified standing
-        // Body with wider toga shape
-        scene.add(mk(new THREE.CylinderGeometry(0.4, 0.5, 2.0, 10), statueMat, sBx, sY + 1.0, sBz)); // toga torso
-        scene.add(mk(new THREE.SphereGeometry(0.3, 12, 12), statueMat, sBx, sY + 2.3, sBz)); // head
-        // Legs
-        scene.add(mk(new THREE.CylinderGeometry(0.13, 0.15, 1.0, 6), statueMat, sBx + latN.x * 0.15, sY - 0.05, sBz + latN.z * 0.15));
-        scene.add(mk(new THREE.CylinderGeometry(0.13, 0.15, 1.0, 6), statueMat, sBx - latN.x * 0.15, sY - 0.05, sBz - latN.z * 0.15));
-        // Right arm holding scroll outward
-        const armScroll = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 1.2, 6), statueMat);
-        armScroll.position.set(sBx + latN.x * 0.55, sY + 1.5, sBz + latN.z * 0.55);
-        armScroll.rotation.z = -1.0;
-        scene.add(armScroll);
-        // Scroll
-        scene.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 0.6, 8), MS.marbleWarm, sBx + latN.x * 0.9, sY + 1.8, sBz + latN.z * 0.9));
-        // Left arm at side
-        const armSide = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 1.0, 6), statueMat);
-        armSide.position.set(sBx - latN.x * 0.45, sY + 1.2, sBz - latN.z * 0.45);
-        armSide.rotation.z = 0.15;
-        scene.add(armSide);
-        // Laurel wreath on head
-        const laurel = new THREE.Mesh(
-          new THREE.TorusGeometry(0.32, 0.04, 6, 16),
-          MS.goldBright
-        );
-        laurel.position.set(sBx, sY + 2.45, sBz);
-        laurel.rotation.x = Math.PI / 6;
-        scene.add(laurel);
-      } else if (wingId === "creativity") {
-        // Figure with lyre, artistic pose
-        // Body (slight lean)
-        const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.42, 1.8, 10), statueMat);
-        torso.position.set(sBx, sY + 0.9, sBz);
-        torso.rotation.z = 0.08;
-        scene.add(torso);
-        scene.add(mk(new THREE.SphereGeometry(0.3, 12, 12), statueMat, sBx + latN.x * 0.05, sY + 2.1, sBz + latN.z * 0.05)); // head tilted
-        // Legs
-        scene.add(mk(new THREE.CylinderGeometry(0.12, 0.14, 1.0, 6), statueMat, sBx + latN.x * 0.15, sY - 0.05, sBz + latN.z * 0.15));
-        scene.add(mk(new THREE.CylinderGeometry(0.12, 0.14, 1.0, 6), statueMat, sBx - latN.x * 0.15, sY - 0.05, sBz - latN.z * 0.15));
-        // Left arm holding lyre
-        const armLyre = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 1.0, 6), statueMat);
-        armLyre.position.set(sBx - latN.x * 0.5, sY + 1.3, sBz - latN.z * 0.5);
-        armLyre.rotation.z = 0.7;
-        scene.add(armLyre);
-        // Lyre (simplified: U-shape + crossbar)
-        const lyreX = sBx - latN.x * 0.75;
-        const lyreZ = sBz - latN.z * 0.75;
-        const lyreY = sY + 1.5;
-        // U-shape arms
-        for (const s of [-1, 1]) {
-          const lyreArm = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.7, 6), MS.goldBright);
-          lyreArm.position.set(lyreX + latN.x * s * 0.15, lyreY + 0.35, lyreZ + latN.z * s * 0.15);
-          scene.add(lyreArm);
-        }
-        // Crossbar
-        scene.add(mk(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 6), MS.goldBright, lyreX, lyreY + 0.65, lyreZ));
-        // Strings
-        for (let s = -1; s <= 1; s++) {
-          const str = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.6, 4), MS.gold);
-          str.position.set(lyreX + latN.x * s * 0.06, lyreY + 0.3, lyreZ + latN.z * s * 0.06);
-          scene.add(str);
-        }
-        // Lyre body (rounded base)
-        scene.add(mk(new THREE.SphereGeometry(0.18, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), MS.goldDark, lyreX, lyreY, lyreZ));
-        // Right arm reaching up artistically
-        const armUp = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.06, 1.1, 6), statueMat);
-        armUp.position.set(sBx + latN.x * 0.5, sY + 1.7, sBz + latN.z * 0.5);
-        armUp.rotation.z = -0.9;
-        scene.add(armUp);
-      }
-
-      // Statue spotlight from above
-      const statueSpot = new THREE.SpotLight("#FFF8E0", 0.8, 12, Math.PI / 8, 0.5, 1);
-      statueSpot.position.set(sBx + inN.x * 2, WALL_H - 1, sBz + inN.z * 2);
-      statueSpot.target.position.set(sBx, statueBaseY + 1.5, sBz);
-      scene.add(statueSpot);
-      scene.add(statueSpot.target);
-
-      // ── LARGE WING NAME LABEL ON THE DOOR SURFACE (at ~3.0m height) ──
+      // ── ELEGANT WING NAME LABEL (upper portion of door, above handles) ──
       {
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 1024;
-        labelCanvas.height = 256;
+        labelCanvas.height = 192;
         const lctx = labelCanvas.getContext("2d")!;
-        // Solid dark background for maximum contrast
-        lctx.fillStyle = "#1A1008";
-        lctx.fillRect(0, 0, 1024, 256);
-        // Thick gold border
-        lctx.strokeStyle = "#E8C84A";
-        lctx.lineWidth = 10;
-        lctx.strokeRect(6, 6, 1012, 244);
-        // Inner gold border
-        lctx.strokeStyle = "#D4AF37";
-        lctx.lineWidth = 4;
-        lctx.strokeRect(18, 18, 988, 220);
-        // Wing icon (emoji) on the left
-        const wingIcon = WING_ICONS[wingId] || "";
-        lctx.font = "90px sans-serif";
-        lctx.textAlign = "left";
-        lctx.textBaseline = "middle";
-        lctx.fillStyle = "#FFFFFF";
-        lctx.fillText(wingIcon, 40, 128);
-        // Wing name in HUGE gold text (120px bold Georgia)
+        // Transparent dark wood background
+        lctx.fillStyle = "#3A2818";
+        lctx.fillRect(0, 0, 1024, 192);
+        // Thin elegant gold border
+        lctx.strokeStyle = "#C8A050";
+        lctx.lineWidth = 3;
+        lctx.strokeRect(12, 12, 1000, 168);
+        // Wing name in refined serif
         const eyeLabel = WING_LABELS[wingId] || wingId.toUpperCase();
-        lctx.fillStyle = "#E8C84A";
-        lctx.font = "bold 120px Georgia, 'Times New Roman', serif";
+        lctx.fillStyle = "#D4B878";
+        lctx.font = "bold 100px Georgia, 'Times New Roman', serif";
         lctx.textAlign = "center";
         lctx.textBaseline = "middle";
-        lctx.fillText(eyeLabel, 560, 120);
-        // Bright gold highlight (offset text for depth/glow effect)
-        lctx.fillStyle = "#FFF5D0";
-        lctx.globalAlpha = 0.35;
-        lctx.fillText(eyeLabel, 560, 117);
-        lctx.globalAlpha = 1.0;
-        // Decorative line under text
-        lctx.strokeStyle = "#E8C84A";
-        lctx.lineWidth = 4;
+        lctx.fillText(eyeLabel, 512, 96);
+        // Subtle decorative line under text
+        lctx.strokeStyle = "#C8A050";
+        lctx.lineWidth = 2;
         lctx.beginPath();
-        lctx.moveTo(160, 200);
-        lctx.lineTo(864, 200);
+        lctx.moveTo(280, 155);
+        lctx.lineTo(744, 155);
         lctx.stroke();
 
         const labelTex = new THREE.CanvasTexture(labelCanvas);
         labelTex.colorSpace = THREE.SRGBColorSpace;
         const labelMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(3.0, 0.75),
-          new THREE.MeshBasicMaterial({
-            map: labelTex, side: THREE.DoubleSide,
-          })
+          new THREE.PlaneGeometry(2.8, 0.54),
+          new THREE.MeshBasicMaterial({ map: labelTex, side: THREE.DoubleSide })
         );
-        // Position ON the door panel surface at ~3.0m height (in front of panels)
+        // Position at upper third of door (y=5.5), well above handles (y=3.36)
         labelMesh.position.set(
-          dx + inN.x * 0.45,
-          3.0,
-          dz + inN.z * 0.45
+          dx + inN.x * 0.40,
+          5.5,
+          dz + inN.z * 0.40
         );
-        labelMesh.lookAt(new THREE.Vector3(0, 3.0, 0));
+        labelMesh.lookAt(new THREE.Vector3(0, 5.5, 0));
         scene.add(labelMesh);
       }
-
-      // ── FRESCO WING NAME (large 3D text via canvas texture — above statues) ──
-      const frescoY = DOOR_H + archH + 0.3;
-      const frescoW = 4.0;
-      const frescoH = 2.0;
-
-      // Fresco background panel
-      const frescoPanelGeo = new THREE.BoxGeometry(frescoW + 0.6, frescoH + 0.4, 0.08);
-      const frescoBg = new THREE.Mesh(frescoPanelGeo, MS.frescoPanel);
-      frescoBg.position.set(dx + inN.x * 0.02, frescoY + frescoH / 2, dz + inN.z * 0.02);
-      frescoBg.lookAt(new THREE.Vector3(0, frescoY + frescoH / 2, 0));
-      frescoBg.rotateY(Math.PI);
-      scene.add(frescoBg);
-
-      // Gold border trim around fresco (4 edges)
-      const trimThick = 0.12;
-      const trimDepth = 0.04;
-      // Top border
-      const topTrim = new THREE.Mesh(new THREE.BoxGeometry(frescoW + 0.8, trimThick, trimDepth), MS.goldBright);
-      topTrim.position.set(dx + inN.x * 0.36, frescoY + frescoH + 0.22, dz + inN.z * 0.36);
-      topTrim.lookAt(new THREE.Vector3(0, frescoY + frescoH + 0.22, 0));
-      topTrim.rotateY(Math.PI);
-      scene.add(topTrim);
-      // Bottom border
-      const botTrim = new THREE.Mesh(new THREE.BoxGeometry(frescoW + 0.8, trimThick, trimDepth), MS.goldBright);
-      botTrim.position.set(dx + inN.x * 0.36, frescoY - 0.02, dz + inN.z * 0.36);
-      botTrim.lookAt(new THREE.Vector3(0, frescoY - 0.02, 0));
-      botTrim.rotateY(Math.PI);
-      scene.add(botTrim);
-
-      // Fresco text (canvas texture for large text)
-      const frescoCanvas = document.createElement("canvas");
-      frescoCanvas.width = 1024;
-      frescoCanvas.height = 512;
-      const fCtx = frescoCanvas.getContext("2d")!;
-      // Warm fresco background
-      const gradient = fCtx.createLinearGradient(0, 0, 0, 512);
-      gradient.addColorStop(0, "#C4A070");
-      gradient.addColorStop(0.5, "#B89060");
-      gradient.addColorStop(1, "#C4A070");
-      fCtx.fillStyle = gradient;
-      fCtx.fillRect(0, 0, 1024, 512);
-      // Aged texture effect
-      fCtx.globalAlpha = 0.15;
-      for (let p = 0; p < 200; p++) {
-        fCtx.fillStyle = Math.random() > 0.5 ? "#A08050" : "#D4B888";
-        fCtx.fillRect(Math.random() * 1024, Math.random() * 512, Math.random() * 30 + 5, Math.random() * 30 + 5);
-      }
-      fCtx.globalAlpha = 1.0;
-      // Large golden text
-      fCtx.fillStyle = "#D4B060";
-      fCtx.strokeStyle = "#8A6830";
-      fCtx.lineWidth = 3;
-      fCtx.font = "bold 140px Georgia, 'Times New Roman', serif";
-      fCtx.textAlign = "center";
-      fCtx.textBaseline = "middle";
-      const label = WING_LABELS[wingId] || wingId.toUpperCase();
-      fCtx.strokeText(label, 512, 256);
-      fCtx.fillText(label, 512, 256);
-      // Gold highlight
-      fCtx.fillStyle = "#E8C870";
-      fCtx.globalAlpha = 0.4;
-      fCtx.fillText(label, 512, 254);
-      fCtx.globalAlpha = 1.0;
-
-      const frescoTex = new THREE.CanvasTexture(frescoCanvas);
-      frescoTex.colorSpace = THREE.SRGBColorSpace;
-      const frescoMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(frescoW, frescoH),
-        new THREE.MeshStandardMaterial({ map: frescoTex, roughness: 0.45, metalness: 0.05 })
-      );
-      frescoMesh.position.set(dx + inN.x * 0.08, frescoY + frescoH / 2, dz + inN.z * 0.08);
-      frescoMesh.lookAt(new THREE.Vector3(0, frescoY + frescoH / 2, 0));
-      frescoMesh.rotateY(Math.PI);
-      scene.add(frescoMesh);
     });
 
     // ── SPIRAL STAIRCASE TO ATTIC (positioned against the wall) ──
@@ -1277,12 +932,11 @@ export default function EntranceHallScene({
 
     // Store collision obstacles: column positions, staircase center
     const colPositions: { x: number; z: number; r: number }[] = [];
-    for (let i = 0; i < NUM_COLS; i++) {
-      const angle = (i / NUM_COLS) * Math.PI * 2;
+    for (const angle of validColAngles) {
       colPositions.push({
         x: Math.cos(angle) * (RADIUS - 0.8),
         z: Math.sin(angle) * (RADIUS - 0.8),
-        r: 0.7, // column collision radius
+        r: 0.7,
       });
     }
     const spirCX = (scene as any).__spiralCX || 0;
