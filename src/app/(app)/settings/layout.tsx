@@ -5,7 +5,9 @@ import Link from "next/link";
 import { T } from "@/lib/theme";
 
 const NAV_ITEMS = [
+  { href: "/settings/profile", label: "Profile", icon: "\u{1F464}" },
   { href: "/settings/connections", label: "Connections", icon: "\u{1F517}" },
+  { href: "/settings/notifications", label: "Notifications", icon: "\u{1F514}" },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

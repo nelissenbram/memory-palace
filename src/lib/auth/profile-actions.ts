@@ -84,5 +84,107 @@ export async function getProfile() {
     .eq("id", user.id)
     .single();
 
-  return profile;
+  return profile ? { ...profile, email: user.email } : null;
+}
+
+export async function updateProfile(data: {
+  displayName?: string;
+  goal?: string;
+  bio?: string;
+  avatarUrl?: string;
+}) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { success: true };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "Not authenticated" };
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (data.displayName !== undefined) updates.display_name = data.displayName;
+  if (data.goal !== undefined) updates.goal = data.goal;
+  if (data.bio !== undefined) updates.bio = data.bio;
+  if (data.avatarUrl !== undefined) updates.avatar_url = data.avatarUrl;
+
+  if (Object.keys(updates).length === 0) {
+    return { error: "No fields to update" };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update(updates)
+    .eq("id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function requestPasswordReset() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { success: true };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user?.email) {
+    return { error: "Not authenticated" };
+  }
+
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000");
+
+  const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+    redirectTo: `${siteUrl}/auth/callback`,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function deleteAccount() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { success: true };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "Not authenticated" };
+  }
+
+  // Delete the profile (cascades via FK on delete cascade from auth.users)
+  // We delete from profiles first, then sign the user out.
+  // Note: full user deletion from auth.users requires a service-role key
+  // or Supabase Edge Function. For now we clear profile data and sign out.
+  const { error: deleteError } = await supabase
+    .from("profiles")
+    .delete()
+    .eq("id", user.id);
+
+  if (deleteError) {
+    return { error: deleteError.message };
+  }
+
+  await supabase.auth.signOut();
+  return { success: true, redirect: "/login" };
 }
