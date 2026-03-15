@@ -33,6 +33,7 @@ import CorridorScene from "@/components/3d/CorridorScene";
 import ShareCard from "@/components/ui/ShareCard";
 import MemoryMap from "@/components/ui/MemoryMap";
 import OnThisDay from "@/components/ui/OnThisDay";
+import TimeCapsuleReveal from "@/components/ui/TimeCapsuleReveal";
 import MemoryTimeline from "@/components/ui/MemoryTimeline";
 import MassImportPanel from "@/components/ui/MassImportPanel";
 import RoomGallery from "@/components/ui/RoomGallery";
@@ -272,6 +273,9 @@ export default function MemoryPalace(){
 
       {/* OnThisDay — floating card in exterior view */}
       {view==="exterior"&&<OnThisDay onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
+
+      {/* Time Capsule Reveal — floating card when capsules have newly opened */}
+      {(view==="exterior"||view==="entrance")&&<TimeCapsuleReveal onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
 
       {/* ═══ DESKTOP ACTION MENU ═══ */}
       {!isMobile && (()=>{
