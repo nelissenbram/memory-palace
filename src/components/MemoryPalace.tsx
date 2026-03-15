@@ -51,6 +51,9 @@ import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 import { useTutorialStore } from "@/lib/stores/tutorialStore";
 import TutorialOverlay, { TourButton } from "@/components/ui/TutorialOverlay";
+import FeatureSpotlight, { allSpotlightsSeen } from "@/components/ui/FeatureSpotlight";
+import GettingStartedChecklist, { setOnboardDate, markChecklistItem } from "@/components/ui/GettingStartedChecklist";
+import ContextualTooltip from "@/components/ui/ContextualTooltip";
 
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
@@ -83,6 +86,7 @@ export default function MemoryPalace(){
   const [showSharedWithMe, setShowSharedWithMe] = useState(false);
   const [showCorridorGallery, setShowCorridorGallery] = useState(false);
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
+  const [showSpotlight, setShowSpotlight] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [searchBarVisible, setSearchBarVisible] = useState(true);
   const searchHideTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -186,9 +190,23 @@ export default function MemoryPalace(){
     }
   }, [view, tutorialCompleted, tutorialActive, startTutorial]);
 
+  // Show feature spotlight for returning users who haven't seen all cards yet
+  useEffect(() => {
+    if (onboarded && !showSpotlight && !tutorialActive && !allSpotlightsSeen()) {
+      // Only show on first entrance/exterior view, with a delay
+      if (view === "exterior" || view === "entrance") {
+        const t = setTimeout(() => setShowSpotlight(true), 3000);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [onboarded, view, tutorialActive]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleFinishOnboarding=async()=>{
     await finishOnboarding();
+    setOnboardDate();
     if(firstWing) setTimeout(()=>enterWing(firstWing),800);
+    // Show feature spotlight after entering the palace
+    if(!allSpotlightsSeen()) setTimeout(()=>setShowSpotlight(true),1500);
   };
 
   if(profileLoading){
@@ -397,10 +415,10 @@ export default function MemoryPalace(){
       />}
 
       {/* Panels + overlays */}
-      {showUpload&&activeRoomId&&<UploadPanel wing={wingData} room={activeRoomData} onClose={()=>setShowUpload(false)} onAdd={handleAddMemory} roomMemories={allRoomMems} onUpdateMemory={handleUpdateMemory}/>}
-      {showSharing&&activeRoomId&&<SharingPanel wing={wingData} room={activeRoomData} roomId={activeRoomId} sharing={currentSharing(activeRoomId)} onUpdate={(u: any)=>updateSharing(activeRoomId,u)} onClose={()=>setShowSharing(false)}/>}
+      {showUpload&&activeRoomId&&<UploadPanel wing={wingData} room={activeRoomData} onClose={()=>setShowUpload(false)} onAdd={(mem: any)=>{handleAddMemory(mem);markChecklistItem("upload_memory");}} roomMemories={allRoomMems} onUpdateMemory={handleUpdateMemory}/>}
+      {showSharing&&activeRoomId&&<SharingPanel wing={wingData} room={activeRoomData} roomId={activeRoomId} sharing={currentSharing(activeRoomId)} onUpdate={(u: any)=>{updateSharing(activeRoomId,u);markChecklistItem("share_room");}} onClose={()=>setShowSharing(false)}/>}
       {showDirectory&&<DirectoryPanel onClose={()=>setShowDirectory(false)}/>}
-      {showRoomManager&&activeWing&&wingData&&<RoomManagerPanel wing={wingData} onClose={()=>setShowRoomManager(false)} onEnterRoom={enterRoom}/>}
+      {showRoomManager&&activeWing&&wingData&&<RoomManagerPanel wing={wingData} onClose={()=>{setShowRoomManager(false);markChecklistItem("customize_room");}} onEnterRoom={enterRoom}/>}
       {showWingManager&&<WingManagerPanel onClose={()=>setShowWingManager(false)}/>}
       {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory}/>}
       {showRoomShare&&activeRoomData&&wingData&&<ShareCard roomName={activeRoomData.name} roomIcon={activeRoomData.icon} wingName={wingData.name} wingIcon={wingData.icon} memCount={allRoomMems.length} accent={wingData.accent} onClose={()=>setShowRoomShare(false)}/>}
@@ -420,6 +438,27 @@ export default function MemoryPalace(){
 
       {/* Tutorial overlay */}
       <TutorialOverlay />
+
+      {/* Feature spotlight — shown once after onboarding completes */}
+      {showSpotlight && !tutorialActive && <FeatureSpotlight
+        onImport={() => { setShowSpotlight(false); setShowMassImport(true); }}
+        onInterview={() => { setShowSpotlight(false); setShowInterviewLibrary(true); }}
+        onTimeCapsule={() => { setShowSpotlight(false); /* Navigate to a room to create time capsule */ }}
+        onShare={() => { setShowSpotlight(false); if (activeRoomId) setShowSharing(true); }}
+      />}
+
+      {/* Getting Started checklist — first 7 days */}
+      {!tutorialActive && !showSpotlight && (view==="exterior"||view==="entrance") && <GettingStartedChecklist
+        onUpload={() => { if (activeRoomId) setShowUpload(true); else setShowMassImport(true); }}
+        onInterview={() => setShowInterviewLibrary(true)}
+        onCustomize={() => { if (activeWing) setShowRoomManager(true); else setShowWingManager(true); }}
+        onShare={() => { if (activeRoomId) setShowSharing(true); }}
+      />}
+
+      {/* Contextual tooltips — shown once per context */}
+      <ContextualTooltip tooltipId="corridor_click_door" show={view==="corridor"&&!tutorialActive&&!showSpotlight} />
+      <ContextualTooltip tooltipId="room_click_furniture" show={view==="room"&&!tutorialActive&&!showSpotlight&&roomMems.length>0} />
+      <ContextualTooltip tooltipId="room_empty_upload" show={view==="room"&&!tutorialActive&&!showSpotlight&&roomMems.length===0&&!showUpload} delay={2000} />
 
       {/* "Take the Tour" button — desktop, entrance/exterior only */}
       {!isMobile && (view==="exterior"||view==="entrance") && !tutorialActive && <TourButton style={{position:"absolute",top:58,right:320,zIndex:35,animation:"fadeIn .4s ease 1.3s both"}} />}
@@ -458,7 +497,7 @@ export default function MemoryPalace(){
       {/* Interview panels */}
       {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
       {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
-      {showInterview&&<InterviewPanel onClose={()=>setShowInterviewPanel(false)} onCreateMemory={(mem, wingId)=>{
+      {showInterview&&<InterviewPanel onClose={()=>{setShowInterviewPanel(false);markChecklistItem("complete_interview");}} onCreateMemory={(mem, wingId)=>{
         // Place interview memory in the first room of the relevant wing (or attic if general)
         const targetWing = wingId === "general" ? "family" : wingId;
         const prefix = {family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"}[targetWing]||"fr";
