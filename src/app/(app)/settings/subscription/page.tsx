@@ -378,7 +378,7 @@ export default function SubscriptionPage() {
         </div>
 
         {/* Near-limit upgrade prompt — hidden in native app */}
-        {!nativeApp && isFree && usage && (usage.wings >= 1 || usage.rooms >= 2 || usage.memories >= 40) && (
+        {!nativeApp && isFree && usage && (usage.wings >= 2 || usage.rooms >= 4 || usage.memories >= 80) && (
           <div style={{
             marginTop: 20,
             padding: "16px 20px",

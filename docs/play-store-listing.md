@@ -37,7 +37,7 @@ KEY FEATURES
 PRIVACY AND SECURITY
 Your memories are private by default. All data is encrypted in transit and at rest, hosted on EU infrastructure, and fully GDPR compliant. You own your data — export or delete everything at any time.
 
-Start free with 1 wing, 3 rooms, and 50 memories. Upgrade for more space and premium features like AI organization and family sharing.
+Start free with 2 wings, 5 rooms, and 100 memories. Upgrade for more space and premium features like AI organization and family sharing.
 
 ## Category
 Lifestyle
