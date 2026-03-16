@@ -174,5 +174,33 @@
     "legacyVault": "Legacy Vault",
     "timeCapsule": "Time Capsule",
     "familyTree": "Family Tree"
+  },
+  "walkthrough": {
+    "phase0": "Welcome to your Memory Palace, {name}. Click the entrance to step inside.",
+    "phase0Mobile": "Welcome to your Memory Palace, {name}. Tap the entrance to step inside.",
+    "phase1": "This grand hall connects five wings of your life — each one a gallery for a different chapter.",
+    "phase2Desktop": "Use arrow keys or WASD to walk. Drag to look around. Walk to the {wingName} door and step through.",
+    "phase2Mobile": "Use the joystick to walk. Swipe to look around. Walk to the {wingName} door and tap it.",
+    "phase3": "Welcome to your {wingName} wing. Each door leads to a room. Walk to {roomName} and enter.",
+    "phase4": "This is {roomName}. Let's bring it to life with your first memory.",
+    "skipIntro": "Skip intro",
+    "clickEntrance": "Click the entrance"
+  },
+  "discovery": {
+    "title": "Your Palace is Alive",
+    "subtitle": "Here's what you can do next",
+    "massImport": "Mass Import",
+    "massImportDesc": "Bring in hundreds of photos at once",
+    "lifeInterviews": "Life Interviews",
+    "lifeInterviewsDesc": "AI captures your stories through conversation",
+    "timeCapsules": "Time Capsules",
+    "timeCapsuleDesc": "Seal a room to open on a future date",
+    "shareFamily": "Share with Family",
+    "shareFamilyDesc": "Invite loved ones to view or contribute",
+    "tracksAchievements": "Tracks & Achievements",
+    "tracksAchievementsDesc": "Follow guided tracks and earn points",
+    "customizeRooms": "Customize Rooms",
+    "customizeRoomsDesc": "Rename, restyle, and rearrange",
+    "exploreOnMyOwn": "Explore on my own"
   }
 }

@@ -174,5 +174,33 @@
     "legacyVault": "Nalatenschapskluis",
     "timeCapsule": "Tijdcapsule",
     "familyTree": "Stamboom"
+  },
+  "walkthrough": {
+    "phase0": "Welkom in je Memory Palace, {name}. Klik op de ingang om naar binnen te gaan.",
+    "phase0Mobile": "Welkom in je Memory Palace, {name}. Tik op de ingang om naar binnen te gaan.",
+    "phase1": "Deze grote hal verbindt vijf vleugels van je leven — elk een galerij voor een ander hoofdstuk.",
+    "phase2Desktop": "Gebruik pijltjestoetsen of WASD om te lopen. Sleep om rond te kijken. Loop naar de {wingName}-deur en ga erdoor.",
+    "phase2Mobile": "Gebruik de joystick om te lopen. Veeg om rond te kijken. Loop naar de {wingName}-deur en tik erop.",
+    "phase3": "Welkom in je {wingName}-vleugel. Elke deur leidt naar een kamer. Loop naar {roomName} en ga naar binnen.",
+    "phase4": "Dit is {roomName}. Laten we het tot leven brengen met je eerste herinnering.",
+    "skipIntro": "Intro overslaan",
+    "clickEntrance": "Klik op de ingang"
+  },
+  "discovery": {
+    "title": "Je Paleis Leeft",
+    "subtitle": "Dit kun je allemaal doen",
+    "massImport": "Massa-import",
+    "massImportDesc": "Importeer honderden foto's tegelijk",
+    "lifeInterviews": "Levensverhalen",
+    "lifeInterviewsDesc": "AI vangt je verhalen via gesprekken",
+    "timeCapsules": "Tijdcapsules",
+    "timeCapsuleDesc": "Verzegel een kamer om op een toekomstige datum te openen",
+    "shareFamily": "Delen met familie",
+    "shareFamilyDesc": "Nodig dierbaren uit om te bekijken of bij te dragen",
+    "tracksAchievements": "Trajecten & Prestaties",
+    "tracksAchievementsDesc": "Volg geleide trajecten en verdien punten",
+    "customizeRooms": "Kamers aanpassen",
+    "customizeRoomsDesc": "Hernoem, restylen en herschikken",
+    "exploreOnMyOwn": "Zelf verkennen"
   }
 }

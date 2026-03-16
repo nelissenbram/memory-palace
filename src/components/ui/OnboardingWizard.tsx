@@ -4,6 +4,7 @@ import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { WINGS } from "@/lib/constants/wings";
 import { HERO_IMG } from "@/lib/constants/defaults";
 import { useUserStore } from "@/lib/stores/userStore";
+import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface OnboardingWizardProps {
@@ -110,7 +111,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
           {isLast?`\uD83C\uDFDB\uFE0F  ${t("enterPalace")}`:onboardStep===0?`${t("letsBegin")} \u2192`:`${tc("continue")} \u2192`}
         </button>
       </div>
-      {onboardStep<2&&<button onClick={()=>{ensureGoal();setOnboarded(true);}}
+      {onboardStep<2&&<button onClick={()=>{ensureGoal();useWalkthroughStore.getState().skip();setOnboarded(true);}}
         style={{position:"absolute",bottom:28,fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3}}>
         {t("skipOnboarding")}</button>}
     </div>

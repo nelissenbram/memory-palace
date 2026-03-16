@@ -57,6 +57,9 @@ import FeatureSpotlight, { allSpotlightsSeen } from "@/components/ui/FeatureSpot
 import GettingStartedChecklist, { setOnboardDate, markChecklistItem } from "@/components/ui/GettingStartedChecklist";
 import ContextualTooltip from "@/components/ui/ContextualTooltip";
 import FirstMemoryPrompt from "@/components/ui/FirstMemoryPrompt";
+import CinematicWalkthrough from "@/components/ui/CinematicWalkthrough";
+import DiscoveryMenu from "@/components/ui/DiscoveryMenu";
+import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
@@ -91,6 +94,9 @@ export default function MemoryPalace(){
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const { isActive: walkthroughActive, showDiscoveryMenu, setShowDiscoveryMenu } = useWalkthroughStore();
+  const walkthroughStart = useWalkthroughStore((s) => s.start);
+  const walkthroughCompleted = useWalkthroughStore((s) => s.completed);
   const [sceneLoading, setSceneLoading] = useState(true);
   const [searchBarVisible, setSearchBarVisible] = useState(true);
   const searchHideTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -241,17 +247,12 @@ export default function MemoryPalace(){
     await finishOnboarding();
     setOnboardDate();
     justOnboardedRef.current = true;
-    // Navigate directly to the first room of the chosen wing
+    // Start cinematic walkthrough — user walks themselves, system narrates
     if(firstWing) {
       const rooms = getWingRooms(firstWing);
       const firstRoom = rooms[0];
-      if(firstRoom) {
-        // Chain: entrance → corridor → room with smooth transitions
-        setTimeout(() => enterCorridor(firstWing), 400);
-        setTimeout(() => enterRoom(firstRoom.id), 1000);
-      } else {
-        setTimeout(() => enterCorridor(firstWing), 400);
-      }
+      walkthroughStart(firstWing, firstRoom?.id || "");
+      // View stays at "exterior" — user sees the palace from outside first
     }
     // Do NOT show feature spotlight immediately — defer to second visit
   };
@@ -288,25 +289,25 @@ export default function MemoryPalace(){
       {/* Scene loading overlay — fades out after 3D canvas initializes */}
       {sceneLoading&&<div key={view} style={{position:"absolute",inset:0,zIndex:40,display:"flex",alignItems:"center",justifyContent:"center",background:T.color.warmStone,animation:"sceneLoadFadeOut 1.4s ease-in-out forwards",pointerEvents:"none"}}><span style={{fontFamily:T.font.display,fontSize:"1.3rem",color:T.color.walnut,letterSpacing:"0.04em",animation:"sceneLoadPulse 1.2s ease-in-out infinite"}}>Loading...</span></div>}
 
-      <TopBar crumbs={crumbs}/>
+      {!walkthroughActive && <TopBar crumbs={crumbs}/>}
 
       {/* Portal transition overlay */}
       {portalAnim&&<div style={{position:"absolute",inset:0,zIndex:45,pointerEvents:"none",animation:"portalFlash .5s ease both",background:"radial-gradient(ellipse at center,rgba(200,168,104,.6) 0%,rgba(200,168,104,.15) 40%,transparent 70%)"}}/>}
 
-      {!isMobile && <Minimap/>}
+      {!isMobile && !walkthroughActive && <Minimap/>}
 
       {/* Hover tooltips — desktop only */}
       {!isMobile && hovWingData&&view==="exterior"&&<WingTooltip wing={hovWingData}/>}
       {!isMobile && hovDoorRoom&&view==="corridor"&&<DoorTooltip room={hovDoorRoom} wingAccent={wingData?.accent}/>}
 
       {/* Bottom hints — hide on mobile (touch controls are self-explanatory), only show first 3 visits */}
-      {showHints && !isMobile && view==="exterior"&&!hovWing&&<div style={{position:"absolute",bottom:22,left:"50%",transform:"translateX(-50%)",animation:"fadeIn .8s ease .8s both",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(8px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`}}>Drag to orbit · Scroll to zoom · Click a wing to enter</div>}
-      {showHints && !isMobile && view==="entrance"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter a wing</span></div>}
-      {showHints && !isMobile && view==="corridor"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter room</span></div>}
-      {showHints && !isMobile && view==="room"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Click memories</span></div>}
+      {showHints && !isMobile && !walkthroughActive && view==="exterior"&&!hovWing&&<div style={{position:"absolute",bottom:22,left:"50%",transform:"translateX(-50%)",animation:"fadeIn .8s ease .8s both",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(8px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`}}>Drag to orbit · Scroll to zoom · Click a wing to enter</div>}
+      {showHints && !isMobile && !walkthroughActive && view==="entrance"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter a wing</span></div>}
+      {showHints && !isMobile && !walkthroughActive && view==="corridor"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter room</span></div>}
+      {showHints && !isMobile && !walkthroughActive && view==="room"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Click memories</span></div>}
 
       {/* Search bar + room info (room view) — search auto-hides after 3s */}
-      {view==="room"&&activeRoomData&&activeRoomId&&<>
+      {!walkthroughActive&&view==="room"&&activeRoomData&&activeRoomId&&<>
         <div onClick={revealSearchBar} onMouseMove={revealSearchBar} style={{
           opacity: searchBarVisible ? 1 : 0, transform: searchBarVisible ? "translateY(0)" : "translateY(-8px)",
           transition: "opacity .3s ease, transform .3s ease", pointerEvents: searchBarVisible ? "auto" : "none",
@@ -339,16 +340,16 @@ export default function MemoryPalace(){
       </>}
 
       {/* OnThisDay — floating card in exterior view */}
-      {view==="exterior"&&<OnThisDay onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
+      {!walkthroughActive&&view==="exterior"&&<OnThisDay onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
 
       {/* Time Capsule Reveal — floating card when capsules have newly opened */}
-      {(view==="exterior"||view==="entrance")&&<TimeCapsuleReveal onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
+      {!walkthroughActive&&(view==="exterior"||view==="entrance")&&<TimeCapsuleReveal onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
 
       {/* Floating points animation — always present */}
       <FloatingPoints />
 
       {/* ═══ DESKTOP ACTION MENU ═══ */}
-      {!isMobile && (()=>{
+      {!isMobile && !walkthroughActive && (()=>{
         if (view==="exterior"||view==="entrance") {
           return <ActionMenu
             accent={T.color.terracotta}
@@ -398,7 +399,7 @@ export default function MemoryPalace(){
       )}
 
       {/* ═══ MOBILE BOTTOM ACTION BAR ═══ */}
-      {isMobile && <MobileBottomBar
+      {isMobile && !walkthroughActive && <MobileBottomBar
         view={view}
         activeWing={activeWing}
         activeRoomId={activeRoomId}
@@ -430,7 +431,16 @@ export default function MemoryPalace(){
       />}
 
       {/* Panels + overlays */}
-      {showUpload&&activeRoomId&&<UploadPanel wing={wingData} room={activeRoomData} onClose={()=>setShowUpload(false)} onAdd={(mem: any)=>{handleAddMemory(mem);markChecklistItem("upload_memory");}} roomMemories={allRoomMems} onUpdateMemory={handleUpdateMemory}/>}
+      {showUpload&&activeRoomId&&<UploadPanel wing={wingData} room={activeRoomData} onClose={()=>setShowUpload(false)} onAdd={(mem: any)=>{
+        const wasFirst = Object.values(userMems).every(a => a.length === 0) && allRoomMems.length === 0;
+        handleAddMemory(mem);
+        markChecklistItem("upload_memory");
+        if (wasFirst && !walkthroughCompleted) {
+          // Don't show if already shown
+          try { if (localStorage.getItem("mp_discovery_menu_shown") === "true") return; } catch {}
+          setTimeout(() => setShowDiscoveryMenu(true), 1500);
+        }
+      }} roomMemories={allRoomMems} onUpdateMemory={handleUpdateMemory}/>}
       {showSharing&&activeRoomId&&<SharingPanel wing={wingData} room={activeRoomData} roomId={activeRoomId} sharing={currentSharing(activeRoomId)} onUpdate={(u: any)=>{updateSharing(activeRoomId,u);markChecklistItem("share_room");}} onClose={()=>setShowSharing(false)}/>}
       {showDirectory&&<DirectoryPanel onClose={()=>setShowDirectory(false)}/>}
       {showRoomManager&&activeWing&&wingData&&<RoomManagerPanel wing={wingData} onClose={()=>{setShowRoomManager(false);markChecklistItem("customize_room");}} onEnterRoom={enterRoom}/>}
@@ -444,7 +454,7 @@ export default function MemoryPalace(){
       {showCorridorGallery&&activeWing&&wingData&&<CorridorGalleryPanel wing={wingData} rooms={getWingRooms(activeWing)} onClose={()=>setShowCorridorGallery(false)} onPaintingsChange={setCorridorPaintings} currentPaintings={corridorPaintings}/>}
 
       {/* Status bar — desktop only: achievements + tracks + points in one strip */}
-      {!isMobile && (()=>{const p=getProgress();return <StatusBar
+      {!isMobile && !walkthroughActive && (()=>{const p=getProgress();return <StatusBar
         earned={p.earned} total={p.total} percentage={p.percentage}
         onAchievements={()=>setShowAchievements(true)}
         onTracks={()=>setShowTracksPanel(true)}
@@ -455,7 +465,7 @@ export default function MemoryPalace(){
       <TutorialOverlay />
 
       {/* Feature spotlight — shown once after onboarding completes */}
-      {showSpotlight && !tutorialActive && <FeatureSpotlight
+      {showSpotlight && !tutorialActive && !walkthroughActive && <FeatureSpotlight
         onImport={() => { setShowSpotlight(false); setShowMassImport(true); }}
         onInterview={() => { setShowSpotlight(false); setShowInterviewLibrary(true); }}
         onTimeCapsule={() => { setShowSpotlight(false); /* Navigate to a room to create time capsule */ }}
@@ -463,7 +473,7 @@ export default function MemoryPalace(){
       />}
 
       {/* Getting Started checklist — first 7 days, shown in all views */}
-      {!tutorialActive && !showSpotlight && !showUpload && !selMem && <GettingStartedChecklist
+      {!tutorialActive && !showSpotlight && !walkthroughActive && !showUpload && !selMem && <GettingStartedChecklist
         onUpload={() => { if (activeRoomId) setShowUpload(true); else setShowMassImport(true); }}
         onInterview={() => setShowInterviewLibrary(true)}
         onCustomize={() => { if (activeWing) setShowRoomManager(true); else setShowWingManager(true); }}
@@ -475,9 +485,23 @@ export default function MemoryPalace(){
         <FirstMemoryPrompt wing={wingData} room={activeRoomData} onUpload={()=>setShowUpload(true)} />}
 
       {/* Contextual tooltips — shown once per context */}
-      <ContextualTooltip tooltipId="corridor_click_door" show={view==="corridor"&&!tutorialActive&&!showSpotlight} />
-      <ContextualTooltip tooltipId="room_click_furniture" show={view==="room"&&!tutorialActive&&!showSpotlight&&roomMems.length>0} />
+      <ContextualTooltip tooltipId="corridor_click_door" show={view==="corridor"&&!tutorialActive&&!showSpotlight&&!walkthroughActive} />
+      <ContextualTooltip tooltipId="room_click_furniture" show={view==="room"&&!tutorialActive&&!showSpotlight&&!walkthroughActive&&roomMems.length>0} />
       {/* room_empty_upload tooltip removed — replaced by FirstMemoryPrompt */}
+
+      {/* Cinematic walkthrough overlay — narration + directional indicator */}
+      {walkthroughActive && <CinematicWalkthrough />}
+
+      {/* Discovery menu — shown after first memory upload */}
+      {showDiscoveryMenu && <DiscoveryMenu
+        onMassImport={() => setShowMassImport(true)}
+        onInterview={() => setShowInterviewLibrary(true)}
+        onTimeCapsule={() => {/* navigate to room for time capsule */}}
+        onShare={() => { if (activeRoomId) setShowSharing(true); }}
+        onTracks={() => setShowTracksPanel(true)}
+        onCustomize={() => { if (activeWing) setShowRoomManager(true); else setShowWingManager(true); }}
+        onDismiss={() => setShowDiscoveryMenu(false)}
+      />}
 
       {/* Achievement toast notification */}
       {achToast&&<div onClick={()=>{dismissAchToast();setShowAchievements(true);}} style={{position:"absolute",top:isMobile?12:66,right:isMobile?12:22,left:isMobile?12:undefined,zIndex:90,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(12px)",borderRadius:16,padding:"14px 18px",border:"1.5px solid #D4AF3766",boxShadow:"0 8px 32px rgba(169,124,46,.25)",display:"flex",alignItems:"center",gap:12,maxWidth:isMobile?undefined:320}}>
