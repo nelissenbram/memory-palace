@@ -56,6 +56,7 @@ import TutorialOverlay from "@/components/ui/TutorialOverlay";
 import FeatureSpotlight, { allSpotlightsSeen } from "@/components/ui/FeatureSpotlight";
 import GettingStartedChecklist, { setOnboardDate, markChecklistItem } from "@/components/ui/GettingStartedChecklist";
 import ContextualTooltip from "@/components/ui/ContextualTooltip";
+import FirstMemoryPrompt from "@/components/ui/FirstMemoryPrompt";
 
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
@@ -204,18 +205,28 @@ export default function MemoryPalace(){
     searchHideTimer.current = setTimeout(() => setSearchBarVisible(false), 3000);
   }, []);
 
-  // Auto-start tutorial on first entrance-hall visit (after onboarding, not completed before)
+  // Auto-start tutorial on first entrance-hall visit — but NOT right after onboarding
+  // (users who just onboarded go straight to their first room instead)
   useEffect(() => {
     if (view === "entrance" && !tutorialCompleted && !tutorialActive) {
+      if (justOnboardedRef.current) {
+        justOnboardedRef.current = false;
+        return; // Skip — they're navigating to their first room
+      }
       const t = setTimeout(startTutorial, 1200);
       return () => clearTimeout(t);
     }
   }, [view, tutorialCompleted, tutorialActive, startTutorial]);
 
   // Show feature spotlight for returning users who haven't seen all cards yet
+  // Deferred: only show on 2nd+ visit (not during the first session after onboarding)
   useEffect(() => {
     if (onboarded && !showSpotlight && !tutorialActive && !allSpotlightsSeen()) {
-      // Only show on first entrance/exterior view, with a delay
+      // Check if user has visited before (hint_visits > 0 means they've been here before)
+      try {
+        const visits = parseInt(localStorage.getItem("mp_hint_visits") || "0", 10);
+        if (visits <= 1) return; // First visit — don't show spotlight yet
+      } catch {}
       if (view === "exterior" || view === "entrance") {
         const t = setTimeout(() => setShowSpotlight(true), 3000);
         return () => clearTimeout(t);
@@ -223,25 +234,27 @@ export default function MemoryPalace(){
     }
   }, [onboarded, view, tutorialActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Ref to remember the chosen wing until the tutorial finishes
-  const pendingWingRef = useRef<string|null>(null);
+  // Track that we just finished onboarding — suppress tutorial auto-start
+  const justOnboardedRef = useRef(false);
 
   const handleFinishOnboarding=async()=>{
     await finishOnboarding();
     setOnboardDate();
-    if(firstWing) pendingWingRef.current = firstWing;
-    // Show feature spotlight after entering the palace (deferred until after tutorial)
-    if(!allSpotlightsSeen()) setTimeout(()=>setShowSpotlight(true),1500);
-  };
-
-  // After the tutorial completes, navigate to the pending wing if one was chosen during onboarding
-  useEffect(() => {
-    if (tutorialCompleted && pendingWingRef.current) {
-      const wing = pendingWingRef.current;
-      pendingWingRef.current = null;
-      setTimeout(() => enterCorridor(wing), 600);
+    justOnboardedRef.current = true;
+    // Navigate directly to the first room of the chosen wing
+    if(firstWing) {
+      const rooms = getWingRooms(firstWing);
+      const firstRoom = rooms[0];
+      if(firstRoom) {
+        // Chain: entrance → corridor → room with smooth transitions
+        setTimeout(() => enterCorridor(firstWing), 400);
+        setTimeout(() => enterRoom(firstRoom.id), 1000);
+      } else {
+        setTimeout(() => enterCorridor(firstWing), 400);
+      }
     }
-  }, [tutorialCompleted, enterCorridor]);
+    // Do NOT show feature spotlight immediately — defer to second visit
+  };
 
   if(profileLoading){
     return(<div style={{width:"100vw",height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone} 100%)`,fontFamily:T.font.display}}>
@@ -449,18 +462,22 @@ export default function MemoryPalace(){
         onShare={() => { setShowSpotlight(false); if (activeRoomId) setShowSharing(true); }}
       />}
 
-      {/* Getting Started checklist — first 7 days */}
-      {!tutorialActive && !showSpotlight && (view==="exterior"||view==="entrance") && <GettingStartedChecklist
+      {/* Getting Started checklist — first 7 days, shown in all views */}
+      {!tutorialActive && !showSpotlight && !showUpload && !selMem && <GettingStartedChecklist
         onUpload={() => { if (activeRoomId) setShowUpload(true); else setShowMassImport(true); }}
         onInterview={() => setShowInterviewLibrary(true)}
         onCustomize={() => { if (activeWing) setShowRoomManager(true); else setShowWingManager(true); }}
         onShare={() => { if (activeRoomId) setShowSharing(true); }}
       />}
 
+      {/* First memory prompt — shown in empty rooms when upload panel is closed */}
+      {view==="room"&&activeRoomId&&allRoomMems.length===0&&!showUpload&&!selMem&&!showSharing&&!tutorialActive&&
+        <FirstMemoryPrompt wing={wingData} room={activeRoomData} onUpload={()=>setShowUpload(true)} />}
+
       {/* Contextual tooltips — shown once per context */}
       <ContextualTooltip tooltipId="corridor_click_door" show={view==="corridor"&&!tutorialActive&&!showSpotlight} />
       <ContextualTooltip tooltipId="room_click_furniture" show={view==="room"&&!tutorialActive&&!showSpotlight&&roomMems.length>0} />
-      <ContextualTooltip tooltipId="room_empty_upload" show={view==="room"&&!tutorialActive&&!showSpotlight&&roomMems.length===0&&!showUpload} delay={2000} />
+      {/* room_empty_upload tooltip removed — replaced by FirstMemoryPrompt */}
 
       {/* Achievement toast notification */}
       {achToast&&<div onClick={()=>{dismissAchToast();setShowAchievements(true);}} style={{position:"absolute",top:isMobile?12:66,right:isMobile?12:22,left:isMobile?12:undefined,zIndex:90,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(12px)",borderRadius:16,padding:"14px 18px",border:"1.5px solid #D4AF3766",boxShadow:"0 8px 32px rgba(169,124,46,.25)",display:"flex",alignItems:"center",gap:12,maxWidth:isMobile?undefined:320}}>
