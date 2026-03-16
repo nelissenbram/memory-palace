@@ -15,6 +15,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Android/iOS safe area: prevent system bars from covering app content */
+html {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
 /* Prevent iOS input zoom — ensure inputs are at least 16px */
 @media screen and (max-width: 767px) {
   input, select, textarea {
