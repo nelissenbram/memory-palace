@@ -15,7 +15,14 @@
     "palaceDefault": "Your Palace",
     "language": "Language",
     "english": "English",
-    "dutch": "Dutch"
+    "dutch": "Dutch",
+    "profile": "Profile",
+    "family": "Family",
+    "subscription": "Subscription",
+    "connections": "Connections",
+    "legacy": "Legacy",
+    "security": "Security & Privacy",
+    "userMenu": "User menu"
   },
   "auth": {
     "welcomeBack": "Welcome Back",
@@ -71,6 +78,15 @@
     "recommendedTrack": "Recommended Track",
     "enterPalace": "Enter Your Palace",
     "letsBegin": "Let's Begin",
+    "navigationTitle": "Navigating Your Palace",
+    "navigationDescription": "Here's how to explore your palace",
+    "controlClick": "Click to interact",
+    "controlDrag": "Drag to look around",
+    "controlScroll": "Scroll to zoom",
+    "controlTap": "Tap to interact",
+    "controlSwipe": "Swipe to look around",
+    "controlPinch": "Pinch to zoom",
+    "navigationReassurance": "There will be a guided tour once you enter!",
     "skipOnboarding": "Skip and explore on my own",
     "backButton": "Back"
   },

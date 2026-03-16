@@ -5,6 +5,7 @@ import Link from "next/link";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { PLANS, type PlanId } from "@/lib/constants/plans";
+import { isNative } from "@/lib/native/platform";
 
 const F = T.font;
 const C = T.color;
@@ -23,6 +24,7 @@ interface UsageData {
 }
 
 export default function SubscriptionPage() {
+  const nativeApp = isNative();
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -252,61 +254,63 @@ export default function SubscriptionPage() {
           </p>
         )}
 
-        {/* Actions */}
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {isPaid && (
-            <button
-              onClick={handleManageBilling}
-              disabled={portalLoading}
-              style={{
-                padding: "12px 24px",
-                borderRadius: 12,
-                border: `1px solid ${C.cream}`,
-                background: C.white,
-                fontFamily: F.body, fontSize: 14, fontWeight: 500,
-                color: C.charcoal,
-                cursor: portalLoading ? "wait" : "pointer",
-                transition: "all .15s",
-              }}
-            >
-              {portalLoading ? "Opening..." : "Manage Billing"}
-            </button>
-          )}
-          {isFree && (
-            <Link
-              href="/pricing"
-              style={{
-                padding: "12px 24px",
-                borderRadius: 12,
-                border: "none",
-                background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                fontFamily: F.body, fontSize: 14, fontWeight: 600,
-                color: C.white,
-                textDecoration: "none",
-                transition: "all .15s",
-              }}
-            >
-              Upgrade Plan
-            </Link>
-          )}
-          {sub?.plan === "keeper" && (
-            <button
-              onClick={() => handleUpgrade("guardian")}
-              style={{
-                padding: "12px 24px",
-                borderRadius: 12,
-                border: "none",
-                background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                fontFamily: F.body, fontSize: 14, fontWeight: 600,
-                color: C.white,
-                cursor: "pointer",
-                transition: "all .15s",
-              }}
-            >
-              Upgrade to Guardian
-            </button>
-          )}
-        </div>
+        {/* Actions — hidden in native app (Google Play policy: no external payment links) */}
+        {!nativeApp && (
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {isPaid && (
+              <button
+                onClick={handleManageBilling}
+                disabled={portalLoading}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: 12,
+                  border: `1px solid ${C.cream}`,
+                  background: C.white,
+                  fontFamily: F.body, fontSize: 14, fontWeight: 500,
+                  color: C.charcoal,
+                  cursor: portalLoading ? "wait" : "pointer",
+                  transition: "all .15s",
+                }}
+              >
+                {portalLoading ? "Opening..." : "Manage Billing"}
+              </button>
+            )}
+            {isFree && (
+              <Link
+                href="/pricing"
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                  fontFamily: F.body, fontSize: 14, fontWeight: 600,
+                  color: C.white,
+                  textDecoration: "none",
+                  transition: "all .15s",
+                }}
+              >
+                Upgrade Plan
+              </Link>
+            )}
+            {sub?.plan === "keeper" && (
+              <button
+                onClick={() => handleUpgrade("guardian")}
+                style={{
+                  padding: "12px 24px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                  fontFamily: F.body, fontSize: 14, fontWeight: 600,
+                  color: C.white,
+                  cursor: "pointer",
+                  transition: "all .15s",
+                }}
+              >
+                Upgrade to Guardian
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Usage Stats */}
@@ -373,8 +377,8 @@ export default function SubscriptionPage() {
           })}
         </div>
 
-        {/* Near-limit upgrade prompt */}
-        {isFree && usage && (usage.wings >= 1 || usage.rooms >= 2 || usage.memories >= 40) && (
+        {/* Near-limit upgrade prompt — hidden in native app */}
+        {!nativeApp && isFree && usage && (usage.wings >= 1 || usage.rooms >= 2 || usage.memories >= 40) && (
           <div style={{
             marginTop: 20,
             padding: "16px 20px",
@@ -466,17 +470,19 @@ export default function SubscriptionPage() {
           })}
         </div>
 
-        <div style={{ marginTop: 16, textAlign: "center" }}>
-          <Link
-            href="/pricing"
-            style={{
-              fontFamily: F.body, fontSize: 14, fontWeight: 500,
-              color: C.terracotta, textDecoration: "none",
-            }}
-          >
-            View full plan comparison {"\u2192"}
-          </Link>
-        </div>
+        {!nativeApp && (
+          <div style={{ marginTop: 16, textAlign: "center" }}>
+            <Link
+              href="/pricing"
+              style={{
+                fontFamily: F.body, fontSize: 14, fontWeight: 500,
+                color: C.terracotta, textDecoration: "none",
+              }}
+            >
+              View full plan comparison {"\u2192"}
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

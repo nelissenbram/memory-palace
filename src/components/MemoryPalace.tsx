@@ -27,7 +27,6 @@ import TrackDetailPanel from "@/components/ui/TrackDetailPanel";
 import LegacyPanel from "@/components/ui/LegacyPanel";
 import PointsDisplay from "@/components/ui/PointsDisplay";
 import FloatingPoints from "@/components/ui/FloatingPoints";
-import ProgressSummary from "@/components/ui/ProgressSummary";
 import ExteriorScene from "@/components/3d/ExteriorScene";
 import EntranceHallScene from "@/components/3d/EntranceHallScene";
 import InteriorScene from "@/components/3d/InteriorScene";
@@ -53,7 +52,7 @@ import StatusBar from "@/components/ui/StatusBar";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 import { useTutorialStore } from "@/lib/stores/tutorialStore";
-import TutorialOverlay, { TourButton } from "@/components/ui/TutorialOverlay";
+import TutorialOverlay from "@/components/ui/TutorialOverlay";
 import FeatureSpotlight, { allSpotlightsSeen } from "@/components/ui/FeatureSpotlight";
 import GettingStartedChecklist, { setOnboardDate, markChecklistItem } from "@/components/ui/GettingStartedChecklist";
 import ContextualTooltip from "@/components/ui/ContextualTooltip";
@@ -97,6 +96,18 @@ export default function MemoryPalace(){
   const { showLibrary: showInterviewLibrary, showHistory: showInterviewHistory, showInterview,
     setShowLibrary: setShowInterviewLibrary, setShowHistory: setShowInterviewHistory,
     setShowInterview: setShowInterviewPanel } = useInterviewStore();
+
+  // ── Hint bars — show only on first 3 visits ──
+  const [showHints, setShowHints] = useState(false);
+  useEffect(() => {
+    try {
+      const count = parseInt(localStorage.getItem("mp_hint_visits") || "0", 10);
+      if (count < 3) {
+        setShowHints(true);
+        localStorage.setItem("mp_hint_visits", String(count + 1));
+      }
+    } catch { /* ignore localStorage errors */ }
+  }, []);
 
   // ── Tutorial ──
   const { active: tutorialActive, completed: tutorialCompleted, start: startTutorial } = useTutorialStore();
@@ -212,13 +223,25 @@ export default function MemoryPalace(){
     }
   }, [onboarded, view, tutorialActive]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Ref to remember the chosen wing until the tutorial finishes
+  const pendingWingRef = useRef<string|null>(null);
+
   const handleFinishOnboarding=async()=>{
     await finishOnboarding();
     setOnboardDate();
-    if(firstWing) setTimeout(()=>enterWing(firstWing),800);
-    // Show feature spotlight after entering the palace
+    if(firstWing) pendingWingRef.current = firstWing;
+    // Show feature spotlight after entering the palace (deferred until after tutorial)
     if(!allSpotlightsSeen()) setTimeout(()=>setShowSpotlight(true),1500);
   };
+
+  // After the tutorial completes, navigate to the pending wing if one was chosen during onboarding
+  useEffect(() => {
+    if (tutorialCompleted && pendingWingRef.current) {
+      const wing = pendingWingRef.current;
+      pendingWingRef.current = null;
+      setTimeout(() => enterCorridor(wing), 600);
+    }
+  }, [tutorialCompleted, enterCorridor]);
 
   if(profileLoading){
     return(<div style={{width:"100vw",height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone} 100%)`,fontFamily:T.font.display}}>
@@ -263,11 +286,11 @@ export default function MemoryPalace(){
       {!isMobile && hovWingData&&view==="exterior"&&<WingTooltip wing={hovWingData}/>}
       {!isMobile && hovDoorRoom&&view==="corridor"&&<DoorTooltip room={hovDoorRoom} wingAccent={wingData?.accent}/>}
 
-      {/* Bottom hints — hide on mobile (touch controls are self-explanatory) */}
-      {!isMobile && view==="exterior"&&!hovWing&&<div style={{position:"absolute",bottom:22,left:"50%",transform:"translateX(-50%)",animation:"fadeIn .8s ease .8s both",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(8px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`}}>Drag to orbit · Scroll to zoom · Click a wing to enter</div>}
-      {!isMobile && view==="entrance"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter a wing</span></div>}
-      {!isMobile && view==="corridor"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter room</span></div>}
-      {!isMobile && view==="room"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Click memories</span></div>}
+      {/* Bottom hints — hide on mobile (touch controls are self-explanatory), only show first 3 visits */}
+      {showHints && !isMobile && view==="exterior"&&!hovWing&&<div style={{position:"absolute",bottom:22,left:"50%",transform:"translateX(-50%)",animation:"fadeIn .8s ease .8s both",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(8px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`}}>Drag to orbit · Scroll to zoom · Click a wing to enter</div>}
+      {showHints && !isMobile && view==="entrance"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter a wing</span></div>}
+      {showHints && !isMobile && view==="corridor"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>Click a door to enter room</span></div>}
+      {showHints && !isMobile && view==="room"&&<div style={{position:"absolute",bottom:20,left:"50%",transform:"translateX(-50%)",fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:`${T.color.white}cc`,backdropFilter:"blur(10px)",padding:"7px 18px",borderRadius:16,border:`1px solid ${T.color.cream}`,animation:"fadeIn .6s ease .3s both",display:"flex",gap:14}}><span>Drag to look</span><span style={{color:T.color.sandstone}}>|</span><span>WASD / Arrow keys to walk</span><span style={{color:T.color.sandstone}}>|</span><span>Click memories</span></div>}
 
       {/* Search bar + room info (room view) — search auto-hides after 3s */}
       {view==="room"&&activeRoomData&&activeRoomId&&<>
@@ -307,9 +330,6 @@ export default function MemoryPalace(){
 
       {/* Time Capsule Reveal — floating card when capsules have newly opened */}
       {(view==="exterior"||view==="entrance")&&<TimeCapsuleReveal onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
-
-      {/* Progress summary — desktop, exterior/entrance views */}
-      {!isMobile && (view==="exterior"||view==="entrance") && <ProgressSummary onOpenTracks={()=>setShowTracksPanel(true)} />}
 
       {/* Floating points animation — always present */}
       <FloatingPoints />
@@ -362,47 +382,6 @@ export default function MemoryPalace(){
           visible={!selMem && !showUpload && !showSharing && !moreMenuOpen}
           onMove={() => {}}
         />
-      )}
-
-      {/* "Drag to look" hint — right side, mobile only, room, corridor & entrance views */}
-      {isMobile && (view === "room" || view === "corridor" || view === "entrance") && !selMem && !showUpload && !showSharing && !moreMenuOpen && (
-        <div style={{
-          position: "absolute",
-          bottom: 110,
-          right: 16,
-          zIndex: 47,
-          pointerEvents: "none",
-          animation: "fadeIn .8s ease 1.5s both",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 4,
-        }}>
-          <div style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            background: "rgba(42, 34, 24, 0.25)",
-            backdropFilter: "blur(6px)",
-            WebkitBackdropFilter: "blur(6px)",
-            border: "1.5px solid rgba(212, 197, 178, 0.3)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}>
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <circle cx="9" cy="9" r="7" stroke="rgba(250,250,247,0.5)" strokeWidth="1.5" fill="none" />
-              <path d="M9 5L9 9L13 7.5" stroke="rgba(250,250,247,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <span style={{
-            fontFamily: T.font.body,
-            fontSize: 11,
-            color: "rgba(250,250,247,0.8)",
-            textShadow: "0 1px 4px rgba(0,0,0,0.3)",
-            whiteSpace: "nowrap",
-          }}>Drag to look</span>
-        </div>
       )}
 
       {/* ═══ MOBILE BOTTOM ACTION BAR ═══ */}
@@ -482,24 +461,6 @@ export default function MemoryPalace(){
       <ContextualTooltip tooltipId="corridor_click_door" show={view==="corridor"&&!tutorialActive&&!showSpotlight} />
       <ContextualTooltip tooltipId="room_click_furniture" show={view==="room"&&!tutorialActive&&!showSpotlight&&roomMems.length>0} />
       <ContextualTooltip tooltipId="room_empty_upload" show={view==="room"&&!tutorialActive&&!showSpotlight&&roomMems.length===0&&!showUpload} delay={2000} />
-
-      {/* "Take the Tour" button — desktop, entrance/exterior only */}
-      {!isMobile && (view==="exterior"||view==="entrance") && !tutorialActive && <TourButton style={{position:"absolute",top:58,right:320,zIndex:35,animation:"fadeIn .4s ease 1.3s both"}} />}
-
-      {/* Invites & Shared-with-me FABs — desktop only, exterior/corridor only */}
-      {!isMobile && (view==="exterior"||view==="entrance"||view==="corridor") && <button onClick={()=>setShowInvites(true)} title="Pending Invitations" style={{position:"absolute",top:58,right:120,height:36,borderRadius:18,border:`1px solid ${T.color.cream}`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:6,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease 1.1s both",transition:"transform .2s",boxShadow:"0 2px 10px rgba(44,44,42,.08)"}}
-        onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform="scale(1.05)";}}
-        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform="none";}}>
-        <span style={{fontSize:14}}>{"\u{1F4EC}"}</span>
-        <span style={{fontFamily:T.font.body,fontSize:11,fontWeight:500,color:T.color.walnut}}>Invites</span>
-      </button>}
-
-      {!isMobile && (view==="exterior"||view==="entrance"||view==="corridor") && <button onClick={()=>setShowSharedWithMe(true)} title="Shared with me" style={{position:"absolute",top:58,right:220,height:36,borderRadius:18,border:`1px solid ${T.color.cream}`,background:`${T.color.white}ee`,backdropFilter:"blur(10px)",padding:"0 14px 0 10px",display:"flex",alignItems:"center",gap:6,cursor:"pointer",zIndex:35,animation:"fadeIn .4s ease 1.2s both",transition:"transform .2s",boxShadow:"0 2px 10px rgba(44,44,42,.08)"}}
-        onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.transform="scale(1.05)";}}
-        onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform="none";}}>
-        <span style={{fontSize:14}}>{"\u{1F91D}"}</span>
-        <span style={{fontFamily:T.font.body,fontSize:11,fontWeight:500,color:T.color.walnut}}>Shared</span>
-      </button>}
 
       {/* Achievement toast notification */}
       {achToast&&<div onClick={()=>{dismissAchToast();setShowAchievements(true);}} style={{position:"absolute",top:isMobile?12:66,right:isMobile?12:22,left:isMobile?12:undefined,zIndex:90,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(12px)",borderRadius:16,padding:"14px 18px",border:"1.5px solid #D4AF3766",boxShadow:"0 8px 32px rgba(169,124,46,.25)",display:"flex",alignItems:"center",gap:12,maxWidth:isMobile?undefined:320}}>
@@ -654,9 +615,6 @@ function MobileBottomBar(props: MobileBottomBarProps) {
             { icon: "\u2728", label: "Tour", action: () => { props.onCloseMore(); useTutorialStore.getState().start(); } },
             ...(view === "room" ? [
               { icon: "\u{1F4E4}", label: "Share Card", action: props.onShare },
-            ] : []),
-            ...(view === "exterior" ? [
-              { icon: "\uD83D\uDCC5", label: "Timeline", action: props.onTimeline },
             ] : []),
           ].map((item, i) => (
             <button key={i} onClick={item.action} style={{

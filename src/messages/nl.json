@@ -15,7 +15,14 @@
     "palaceDefault": "Jouw Paleis",
     "language": "Taal",
     "english": "Engels",
-    "dutch": "Nederlands"
+    "dutch": "Nederlands",
+    "profile": "Profiel",
+    "family": "Familie",
+    "subscription": "Abonnement",
+    "connections": "Koppelingen",
+    "legacy": "Nalatenschap",
+    "security": "Beveiliging & Privacy",
+    "userMenu": "Gebruikersmenu"
   },
   "auth": {
     "welcomeBack": "Welkom terug",
@@ -71,6 +78,15 @@
     "recommendedTrack": "Aanbevolen Traject",
     "enterPalace": "Betreed je Paleis",
     "letsBegin": "Laten we beginnen",
+    "navigationTitle": "Je Paleis Verkennen",
+    "navigationDescription": "Zo verken je je paleis",
+    "controlClick": "Klik om te interageren",
+    "controlDrag": "Sleep om rond te kijken",
+    "controlScroll": "Scroll om in/uit te zoomen",
+    "controlTap": "Tik om te interageren",
+    "controlSwipe": "Veeg om rond te kijken",
+    "controlPinch": "Knijp om in/uit te zoomen",
+    "navigationReassurance": "Er volgt een rondleiding zodra je binnenkomt!",
     "skipOnboarding": "Overslaan en zelf verkennen",
     "backButton": "Terug"
   },

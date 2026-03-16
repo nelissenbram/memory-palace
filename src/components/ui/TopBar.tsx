@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { signOut } from "@/lib/auth/actions";
 import { useUserStore } from "@/lib/stores/userStore";
@@ -26,6 +26,25 @@ export default function TopBar({crumbs}: TopBarProps){
   const { getWings } = useRoomStore();
   const WINGS = getWings();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const userBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Close user menu on Escape or click outside
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setUserMenuOpen(false); userBtnRef.current?.focus(); }
+    };
+    const handleClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    document.addEventListener("mousedown", handleClick);
+    return () => { document.removeEventListener("keydown", handleKey); document.removeEventListener("mousedown", handleClick); };
+  }, [userMenuOpen]);
 
   // Mobile: show only current location + menu toggle
   if (isMobile) {
@@ -175,7 +194,9 @@ export default function TopBar({crumbs}: TopBarProps){
     );
   }
 
-  // Desktop: original layout
+  // Desktop: original layout with user menu
+  const initials = userName ? userName.split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 2) : "";
+
   return(
     <div style={{position:"absolute",top:0,left:0,right:0,height:54,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 22px",zIndex:40,background:"linear-gradient(180deg,rgba(221,213,200,.92),rgba(221,213,200,0))"}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -192,16 +213,333 @@ export default function TopBar({crumbs}: TopBarProps){
           </div>
         </div>
       </div>
-      <div style={{display:"flex",gap:4,alignItems:"center"}}><NotificationBell />{WINGS.map(w=><button key={w.id} onClick={()=>switchWing(w.id)} style={{padding:"6px 14px",borderRadius:16,fontFamily:T.font.body,fontSize:12,fontWeight:activeWing===w.id?600:400,border:activeWing===w.id?`1.5px solid ${w.accent}`:`1px solid ${T.color.cream}`,background:activeWing===w.id?`${w.accent}15`:`${T.color.white}bb`,color:activeWing===w.id?w.accent:T.color.muted,cursor:"pointer",display:"flex",alignItems:"center",gap:3}}>
-        <span style={{fontSize:12}}>{w.icon}</span>{w.name}</button>)}
-        <button onClick={()=>signOut()} style={{padding:"6px 14px",borderRadius:16,fontFamily:T.font.body,fontSize:12,fontWeight:400,border:`1px solid ${T.color.cream}`,background:`${T.color.white}bb`,color:T.color.muted,cursor:"pointer",marginLeft:4}}>{t("signOut")}</button>
-        {/* Language switcher */}
-        <div style={{display:"flex",gap:2,marginLeft:4}}>
-          {(["en","nl"] as Locale[]).map(l=>(
-            <button key={l} onClick={()=>setLocale(l)} style={{padding:"4px 8px",borderRadius:8,fontSize:11,fontFamily:T.font.body,fontWeight:locale===l?600:400,border:`1px solid ${locale===l?T.color.terracotta:T.color.cream}`,background:locale===l?`${T.color.terracotta}12`:`${T.color.white}bb`,color:locale===l?T.color.terracotta:T.color.muted,cursor:"pointer"}}>{l.toUpperCase()}</button>
-          ))}
+      <div style={{display:"flex",gap:4,alignItems:"center"}}>
+        <NotificationBell />
+        <WingsDropdown wings={WINGS} activeWing={activeWing} switchWing={switchWing} />
+
+        {/* User menu button + dropdown */}
+        <div ref={userMenuRef} style={{ position: "relative", marginLeft: 6 }}>
+          <button
+            ref={userBtnRef}
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            aria-label={t("userMenu")}
+            aria-expanded={userMenuOpen}
+            aria-haspopup="true"
+            style={{
+              width: 36, height: 36, borderRadius: 18, cursor: "pointer",
+              border: userMenuOpen ? `2px solid ${T.color.terracotta}` : `2px solid ${T.color.sandstone}`,
+              background: `linear-gradient(135deg, ${T.color.walnut}, ${T.color.terracotta})`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontFamily: T.font.body, fontSize: 13, fontWeight: 700,
+              color: T.color.white, letterSpacing: 0.5,
+              boxShadow: userMenuOpen ? `0 0 0 3px ${T.color.terracotta}30` : "0 1px 4px rgba(44,44,42,.15)",
+            }}
+          >
+            {initials || "\u{1F464}"}
+          </button>
+
+          {/* Dropdown */}
+          {userMenuOpen && (
+            <DesktopUserMenu
+              userName={userName}
+              locale={locale}
+              setLocale={setLocale}
+              t={t}
+              onClose={() => { setUserMenuOpen(false); userBtnRef.current?.focus(); }}
+            />
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** ─── Desktop User Dropdown Menu ─── */
+
+const USER_MENU_ITEMS = [
+  { href: "/settings/profile", labelKey: "profile", icon: "\u{1F464}" },
+  { href: "/settings/family", labelKey: "family", icon: "\u{1F46A}" },
+  { href: "/settings/subscription", labelKey: "subscription", icon: "\u2B50" },
+  { href: "/settings/connections", labelKey: "connections", icon: "\u{1F517}" },
+  { href: "/settings/notifications", labelKey: "notifications", icon: "\u{1F514}" },
+  { href: "/settings/legacy", labelKey: "legacy", icon: "\u{1F3DB}\uFE0F" },
+  { href: "/security", labelKey: "security", icon: "\u{1F6E1}\uFE0F" },
+] as const;
+
+function DesktopUserMenu({ userName, locale, setLocale, t, onClose }: {
+  userName: string;
+  locale: Locale;
+  setLocale: (l: Locale) => void;
+  t: (key: string, params?: Record<string, string>) => string;
+  onClose: () => void;
+}) {
+  const menuListRef = useRef<HTMLDivElement>(null);
+  const [focusIdx, setFocusIdx] = useState(-1);
+  const { totalPoints, getLevelInfo } = useTrackStore();
+  const levelInfo = getLevelInfo();
+
+  // Total focusable items: menu links + sign-out + 2 lang buttons = items.length + 3
+  const totalItems = USER_MENU_ITEMS.length + 3;
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setFocusIdx(prev => (prev + 1) % totalItems);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setFocusIdx(prev => (prev - 1 + totalItems) % totalItems);
+    } else if (e.key === "Tab") {
+      // Let tab work naturally but close on shift-tab from first or tab from last
+    }
+  }, [totalItems]);
+
+  // Focus the active item when focusIdx changes
+  useEffect(() => {
+    if (focusIdx >= 0 && menuListRef.current) {
+      const focusables = menuListRef.current.querySelectorAll<HTMLElement>("[data-menu-item]");
+      focusables[focusIdx]?.focus();
+    }
+  }, [focusIdx]);
+
+  const itemBase: React.CSSProperties = {
+    display: "flex", alignItems: "center", gap: 10,
+    padding: "10px 14px", borderRadius: 10,
+    fontFamily: T.font.body, fontSize: 14, fontWeight: 400,
+    color: T.color.charcoal, textDecoration: "none",
+    border: "none", background: "transparent",
+    cursor: "pointer", width: "100%", textAlign: "left",
+    minHeight: 42,
+  };
+
+  return (
+    <div
+      role="menu"
+      aria-label={t("userMenu")}
+      onKeyDown={handleKeyDown}
+      ref={menuListRef}
+      style={{
+        position: "absolute", top: "calc(100% + 8px)", right: 0,
+        width: 280, background: `${T.color.linen}f8`,
+        backdropFilter: "blur(20px)",
+        borderRadius: 16, border: `1px solid ${T.color.cream}`,
+        boxShadow: "0 12px 48px rgba(44,44,42,.18), 0 2px 8px rgba(44,44,42,.08)",
+        padding: 0, overflow: "hidden", zIndex: 100,
+      }}
+    >
+      {/* User header */}
+      <div style={{
+        padding: "16px 16px 12px", borderBottom: `1px solid ${T.color.cream}`,
+        display: "flex", alignItems: "center", gap: 12,
+      }}>
+        <div style={{
+          width: 42, height: 42, borderRadius: 21, flexShrink: 0,
+          background: `linear-gradient(135deg, ${T.color.walnut}, ${T.color.terracotta})`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: T.font.body, fontSize: 15, fontWeight: 700,
+          color: T.color.white, letterSpacing: 0.5,
+        }}>
+          {userName ? userName.split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 2) : "\u{1F464}"}
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{
+            fontFamily: T.font.display, fontSize: 16, fontWeight: 600,
+            color: T.color.charcoal,
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          }}>
+            {userName || t("palaceDefault")}
+          </div>
+          {totalPoints > 0 && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6, marginTop: 3,
+            }}>
+              <div style={{
+                width: 16, height: 16, borderRadius: 8,
+                background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 8, fontWeight: 700, color: "#FFF", fontFamily: T.font.body,
+              }}>
+                {levelInfo.rank}
+              </div>
+              <span style={{
+                fontFamily: T.font.body, fontSize: 12, fontWeight: 500,
+                color: levelInfo.color,
+              }}>
+                {levelInfo.title}
+              </span>
+              <span style={{
+                fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+              }}>
+                {totalPoints} MP
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Menu items */}
+      <div style={{ padding: "6px 6px" }}>
+        {USER_MENU_ITEMS.map((item, i) => (
+          <a
+            key={item.href}
+            href={item.href}
+            role="menuitem"
+            data-menu-item
+            tabIndex={-1}
+            onClick={onClose}
+            onMouseEnter={() => setFocusIdx(i)}
+            onFocus={() => setFocusIdx(i)}
+            style={{
+              ...itemBase,
+              ...(focusIdx === i ? {
+                background: `${T.color.terracotta}10`,
+                color: T.color.terracotta,
+              } : {}),
+            }}
+          >
+            <span style={{ fontSize: 16, width: 22, textAlign: "center", flexShrink: 0 }}>{item.icon}</span>
+            {t(item.labelKey)}
+          </a>
+        ))}
+      </div>
+
+      {/* Language switcher */}
+      <div style={{
+        padding: "8px 16px", borderTop: `1px solid ${T.color.cream}`,
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span style={{
+          fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginRight: "auto",
+        }}>
+          {t("language")}
+        </span>
+        {(["en", "nl"] as Locale[]).map((l, li) => (
+          <button
+            key={l}
+            role="menuitem"
+            data-menu-item
+            tabIndex={-1}
+            onClick={() => { setLocale(l); onClose(); }}
+            onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + li)}
+            onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + li)}
+            style={{
+              padding: "5px 12px", borderRadius: 8,
+              fontSize: 13, fontFamily: T.font.body,
+              fontWeight: locale === l ? 600 : 400,
+              border: `1px solid ${locale === l ? T.color.terracotta : T.color.cream}`,
+              background: locale === l ? `${T.color.terracotta}12` : T.color.white,
+              color: locale === l ? T.color.terracotta : T.color.muted,
+              cursor: "pointer",
+              ...(focusIdx === USER_MENU_ITEMS.length + li ? {
+                outline: `2px solid ${T.color.terracotta}`,
+                outlineOffset: 1,
+              } : {}),
+            }}
+          >
+            {l.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      {/* Sign out */}
+      <div style={{ padding: "6px 6px 8px", borderTop: `1px solid ${T.color.cream}` }}>
+        <button
+          role="menuitem"
+          data-menu-item
+          tabIndex={-1}
+          onClick={() => { signOut(); onClose(); }}
+          onMouseEnter={() => setFocusIdx(totalItems - 1)}
+          onFocus={() => setFocusIdx(totalItems - 1)}
+          style={{
+            ...itemBase,
+            color: T.color.muted,
+            fontWeight: 500,
+            ...(focusIdx === totalItems - 1 ? {
+              background: `${T.color.error}08`,
+              color: T.color.error,
+            } : {}),
+          }}
+        >
+          <span style={{ fontSize: 15, width: 22, textAlign: "center", flexShrink: 0 }}>{"\u{1F6AA}"}</span>
+          {t("signOut")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Wings dropdown — collapses individual wing pill-buttons into a single dropdown */
+function WingsDropdown({ wings, activeWing, switchWing }: {
+  wings: { id: string; name: string; icon: string; accent: string }[];
+  activeWing: string | null;
+  switchWing: (id: string) => void;
+}) {
+  const [wingsOpen, setWingsOpen] = useState(false);
+  const wingsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!wingsOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (wingsRef.current && !wingsRef.current.contains(e.target as Node)) {
+        setWingsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [wingsOpen]);
+
+  const activeWingData = wings.find(w => w.id === activeWing);
+
+  return (
+    <div ref={wingsRef} style={{ position: "relative" }}>
+      <button
+        onClick={() => setWingsOpen(!wingsOpen)}
+        style={{
+          padding: "6px 14px", borderRadius: 16,
+          fontFamily: T.font.body, fontSize: 12, fontWeight: 500,
+          border: `1px solid ${activeWingData ? activeWingData.accent : T.color.cream}`,
+          background: activeWingData ? `${activeWingData.accent}15` : `${T.color.white}bb`,
+          color: activeWingData ? activeWingData.accent : T.color.walnut,
+          cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
+        }}
+      >
+        <span style={{ fontSize: 12 }}>{activeWingData ? activeWingData.icon : "\u{1F3DB}\uFE0F"}</span>
+        {activeWingData ? activeWingData.name : "Wings"}
+        <span style={{ fontSize: 10, marginLeft: 2, transition: "transform .2s", transform: wingsOpen ? "rotate(180deg)" : "none" }}>{"\u25BE"}</span>
+      </button>
+
+      {wingsOpen && (
+        <div style={{
+          position: "absolute", top: "calc(100% + 6px)", right: 0,
+          minWidth: 200, background: `${T.color.linen}f8`,
+          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          borderRadius: 14, border: `1px solid ${T.color.cream}`,
+          boxShadow: "0 8px 32px rgba(44,44,42,.14)",
+          padding: 6, zIndex: 100,
+          display: "flex", flexDirection: "column", gap: 2,
+        }}>
+          {wings.map(w => (
+            <button
+              key={w.id}
+              onClick={() => { switchWing(w.id); setWingsOpen(false); }}
+              style={{
+                padding: "9px 12px", borderRadius: 10,
+                fontFamily: T.font.body, fontSize: 13,
+                fontWeight: activeWing === w.id ? 600 : 400,
+                border: activeWing === w.id ? `1.5px solid ${w.accent}` : `1px solid transparent`,
+                background: activeWing === w.id ? `${w.accent}15` : "transparent",
+                color: activeWing === w.id ? w.accent : T.color.charcoal,
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                textAlign: "left", width: "100%",
+              }}
+              onMouseEnter={e => { if (activeWing !== w.id) (e.currentTarget.style.background = `${T.color.sandstone}20`); }}
+              onMouseLeave={e => { if (activeWing !== w.id) (e.currentTarget.style.background = "transparent"); }}
+            >
+              <span style={{ fontSize: 15 }}>{w.icon}</span>
+              {w.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

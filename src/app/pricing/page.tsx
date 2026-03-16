@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
+import { isNative } from "@/lib/native/platform";
 
 const F = T.font;
 const C = T.color;
@@ -13,6 +15,15 @@ export default function PricingPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
   const [loading, setLoading] = useState<PlanId | null>(null);
+  const router = useRouter();
+
+  // Redirect away from pricing page in native app — Google Play forbids
+  // directing users to external payment flows
+  useEffect(() => {
+    if (isNative()) {
+      router.replace("/palace");
+    }
+  }, [router]);
 
   const handleSubscribe = async (planId: PlanId) => {
     if (planId === "free") {

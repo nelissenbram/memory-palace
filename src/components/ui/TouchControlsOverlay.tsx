@@ -12,7 +12,7 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (view !== "corridor" && view !== "room") return;
+    if (view !== "corridor" && view !== "room" && view !== "entrance") return;
     if (localStorage.getItem(LS_KEY)) return;
     setVisible(true);
     const timer = setTimeout(() => dismiss(), 5000);
@@ -26,7 +26,7 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
 
   if (!visible) return null;
 
-  const isCorridor = view === "corridor";
+  const isCorridor = view === "corridor" || view === "entrance";
 
   return (
     <div

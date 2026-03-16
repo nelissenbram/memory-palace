@@ -93,7 +93,31 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
         </div>
       </div>
     ),
-    // Step 4: Ready
+    // Step 4: Navigating Your Palace
+    ()=>(
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:22,animation:"fadeUp .6s ease"}}>
+        <h2 style={{fontFamily:T.font.display,fontSize:28,fontWeight:400,color:T.color.charcoal}}>{t("navigationTitle")}</h2>
+        <p style={{fontFamily:T.font.body,fontSize:15,color:T.color.muted,maxWidth:420}}>{t("navigationDescription")}</p>
+        <div style={{display:"flex",flexDirection:"column",gap:12,width:"100%",maxWidth:360}}>
+          {(isMobile?[
+            {icon:"\u{1F446}",label:t("controlTap")},
+            {icon:"\u{1F4F1}",label:t("controlSwipe")},
+            {icon:"\u{1F90F}",label:t("controlPinch")},
+          ]:[
+            {icon:"\u{1F5B1}\uFE0F",label:t("controlClick")},
+            {icon:"\u270B",label:t("controlDrag")},
+            {icon:"\u{1F5D8}\uFE0F",label:t("controlScroll")},
+          ]).map((c,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:14,padding:"14px 20px",borderRadius:12,background:T.color.linen,border:`1.5px solid ${T.color.cream}`}}>
+              <span style={{fontSize:24,width:36,textAlign:"center",flexShrink:0}}>{c.icon}</span>
+              <span style={{fontFamily:T.font.body,fontSize:16,color:T.color.charcoal}}>{c.label}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.sage,fontStyle:"italic",marginTop:8}}>{t("navigationReassurance")}</p>
+      </div>
+    ),
+    // Step 5: Ready
     ()=>(
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:20,animation:"fadeUp .6s ease"}}>
         <h2 style={{fontFamily:T.font.display,fontSize:34,fontWeight:400,color:T.color.charcoal,fontStyle:"italic"}}>
@@ -138,8 +162,8 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
     ),
   ];
 
-  const canNext=onboardStep===0||(onboardStep===1&&userName.trim().length>0)||(onboardStep===2&&!!userGoal)||(onboardStep===3&&!!firstWing)||onboardStep===4;
-  const isLast=onboardStep===4;
+  const canNext=onboardStep===0||(onboardStep===1&&userName.trim().length>0)||(onboardStep===2&&!!userGoal)||(onboardStep===3&&!!firstWing)||onboardStep===4||onboardStep===5;
+  const isLast=onboardStep===5;
 
   return(
     <div style={{width:"100vw",height:"100vh",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone}55 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",overflow:isMobile?"auto":"hidden"}}>
@@ -148,7 +172,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
       <div style={{position:"absolute",bottom:-100,left:-60,width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle,${T.color.sage}08,transparent 70%)`,pointerEvents:"none"}}/>
       {/* Progress dots */}
       <div style={{position:"absolute",top:32,display:"flex",gap:10,alignItems:"center"}}>
-        {[0,1,2,3,4].map(i=>(
+        {[0,1,2,3,4,5].map(i=>(
           <div key={i} style={{width:i===onboardStep?28:8,height:8,borderRadius:4,
             background:i<onboardStep?T.color.terracotta:i===onboardStep?T.color.terracotta:`${T.color.sandstone}60`,
             transition:"all .4s ease"}}/>
@@ -168,7 +192,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
           {isLast?`\u{1F3DB}\uFE0F  ${t("enterPalace")}`:onboardStep===0?`${t("letsBegin")} \u2192`:`${tc("continue")} \u2192`}
         </button>
       </div>
-      {onboardStep<4&&<button onClick={()=>setOnboarded(true)}
+      {onboardStep<5&&<button onClick={()=>setOnboarded(true)}
         style={{position:"absolute",bottom:28,fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3}}>
         {t("skipOnboarding")}</button>}
     </div>

@@ -164,8 +164,8 @@ export default function GettingStartedChecklist({
         onClick={() => setCollapsed(false)}
         style={{
           position: "absolute",
-          top: isMobile ? "auto" : 100,
-          bottom: isMobile ? 80 : "auto",
+          top: 100,
+          bottom: "auto",
           left: isMobile ? 12 : 18,
           zIndex: 36,
           background: `${T.color.white}ee`,
@@ -236,8 +236,8 @@ export default function GettingStartedChecklist({
     <div
       style={{
         position: "absolute",
-        top: isMobile ? "auto" : 100,
-        bottom: isMobile ? 80 : "auto",
+        top: 100,
+        bottom: "auto",
         left: isMobile ? 12 : 18,
         zIndex: 36,
         width: isMobile ? "calc(100% - 24px)" : 300,

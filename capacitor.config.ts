@@ -5,9 +5,10 @@ const config: CapacitorConfig = {
   appName: 'The Memory Palace',
   webDir: 'out',
   server: {
-    // Uncomment for live-reload during development:
-    // url: 'http://localhost:3000',
-    // cleartext: true,
+    // Load from live production server — the app uses Server Actions and
+    // API routes which are incompatible with static export. This also means
+    // web deploys instantly update the native app (no Play Store release needed).
+    url: 'https://thememorypalace.ai',
     androidScheme: 'https',
   },
   plugins: {

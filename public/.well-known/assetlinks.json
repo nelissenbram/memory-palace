@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.memorypalace.app",
+      "sha256_cert_fingerprints": [
+        "9E:8A:DE:22:EE:A6:C8:9B:2F:22:C4:DD:7F:48:5A:EA:74:72:8F:CC:1E:E4:8E:88:D4:E1:3B:C7:97:26:77:AE"
+      ]
+    }
+  }
+]

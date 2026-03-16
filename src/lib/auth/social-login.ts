@@ -8,13 +8,24 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import { isNative } from "@/lib/native/platform";
+
+function getRedirectUrl(): string {
+  // In Capacitor, window.location.origin is "https://localhost" which won't work
+  // for OAuth callbacks. Use the production URL so Android App Links can
+  // intercept the redirect and open it back in the app.
+  if (isNative()) {
+    return "https://thememorypalace.ai/auth/callback";
+  }
+  return window.location.origin + "/auth/callback";
+}
 
 export async function signInWithGoogle() {
   const supabase = createClient();
   return supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: window.location.origin + "/auth/callback",
+      redirectTo: getRedirectUrl(),
     },
   });
 }
@@ -24,7 +35,7 @@ export async function signInWithApple() {
   return supabase.auth.signInWithOAuth({
     provider: "apple",
     options: {
-      redirectTo: window.location.origin + "/auth/callback",
+      redirectTo: getRedirectUrl(),
     },
   });
 }
