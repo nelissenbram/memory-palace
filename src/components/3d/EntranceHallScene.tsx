@@ -1,10 +1,13 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
-import { EffectComposer, RenderPass, EffectPass, BloomEffect, VignetteEffect, SMAAEffect } from "postprocessing";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
+import { createPostProcessing } from "@/lib/3d/postprocessing";
+import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
+import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
+import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 
 // ═══ ENTRANCE HALL — Grand Roman Senate / Pantheon Chamber ═══
 const HALL_WINGS = ["family","travel","childhood","career","creativity"];
@@ -70,39 +73,55 @@ export default function EntranceHallScene({
     ren.toneMappingExposure = 1.5;
     ren.outputColorSpace = THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
-    // ── POST-PROCESSING ──
-    const composer = new EffectComposer(ren);
-    composer.addPass(new RenderPass(scene, camera));
-    composer.addPass(new EffectPass(camera,
-      new BloomEffect({ luminanceThreshold: 0.3, luminanceSmoothing: 0.5, intensity: 1.5, mipmapBlur: true }),
-      new VignetteEffect({ darkness: 0.4, offset: 0.3 }),
-      new SMAAEffect()
-    ));
 
-    // ── MATERIALS (PBR-upgraded) ──
+    // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
+    const envMapProc = createInteriorEnvMap(ren, { warmth: 0.8, brightness: 0.5 });
+    scene.environment = envMapProc;
+    scene.environmentIntensity = 1.0;
+    let envMapHDRI: THREE.Texture | null = null;
+    loadHDRI(ren, HDRI_INTERIOR).then((hdr) => {
+      envMapHDRI = hdr;
+      scene.environment = hdr;
+      scene.environmentIntensity = 1.0;
+    }).catch(() => {}); // keep procedural fallback
+
+    // ── POST-PROCESSING (with SSAO) ──
+    const composer = createPostProcessing(ren, scene, camera, "entrance", {
+      bloom: { luminanceThreshold: 0.3, luminanceSmoothing: 0.5, intensity: 1.5 },
+      vignette: { darkness: 0.4, offset: 0.3 },
+    });
+
+    // ── REAL PBR TEXTURES (from Poly Haven) ──
+    const marbleTex = loadMarbleTextures([6, 6]);
+    const floorTileTex = loadFloorTileTextures([4, 4]);
+    const woodDoorTex = loadDarkWoodTextures([2, 3]);
+    const wallTex = loadPlasterWallTextures([4, 4]);
+    const allTexSets: PBRTextureSet[] = [marbleTex, floorTileTex, woodDoorTex, wallTex];
+
+    // ── MATERIALS (PBR-upgraded with real textures + env map) ──
     const MS = {
-      marble: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8 }),
-      marbleWarm: new THREE.MeshStandardMaterial({ color: "#EDE5D8", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.7 }),
-      marbleDark: new THREE.MeshStandardMaterial({ color: "#C8B89A", roughness: 0.25, metalness: 0.0, envMapIntensity: 0.6 }),
-      gold: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2, emissive: "#D4AF37", emissiveIntensity: 0.15 }),
-      goldDark: new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, envMapIntensity: 1.0, emissive: "#B8922E", emissiveIntensity: 0.1 }),
-      goldBright: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.4, emissive: "#E8C84A", emissiveIntensity: 0.25 }),
-      column: new THREE.MeshStandardMaterial({ color: "#F0E8DC", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.7 }),
-      door: new THREE.MeshStandardMaterial({ color: "#8B5E3C", roughness: 0.40, metalness: 0.0, emissive: "#5A3E28", emissiveIntensity: 0.25 }),
-      doorFrame: new THREE.MeshStandardMaterial({ color: "#E8C84A", roughness: 0.15, metalness: 0.9, envMapIntensity: 1.4, emissive: "#E8C84A", emissiveIntensity: 0.25 }),
-      dome: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide }),
-      domeGold: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
-      floor: new THREE.MeshStandardMaterial({ color: "#E8DDD0", roughness: 0.08, metalness: 0.05, envMapIntensity: 1.0 }),
-      floorDark: new THREE.MeshStandardMaterial({ color: "#C4B8A0", roughness: 0.1, metalness: 0.03, envMapIntensity: 0.9 }),
-      floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.12, metalness: 0.05, envMapIntensity: 0.8 }),
-      bust: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.5 }),
-      bronze: new THREE.MeshStandardMaterial({ color: "#8A7050", roughness: 0.3, metalness: 0.7, envMapIntensity: 0.9 }),
-      wall: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide }),
+      marble: new THREE.MeshPhysicalMaterial({ color: "#F5F0E8", roughness: 0.12, metalness: 0.0, envMapIntensity: 1.0, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.4, .4), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.3, clearcoatRoughness: 0.15, reflectivity: 0.7 }),
+      marbleWarm: new THREE.MeshPhysicalMaterial({ color: "#EDE5D8", roughness: 0.18, metalness: 0.0, envMapIntensity: 0.9, map: floorTileTex.map, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: floorTileTex.roughnessMap, aoMap: floorTileTex.aoMap, aoMapIntensity: 0.7, clearcoat: 0.2, clearcoatRoughness: 0.2 }),
+      marbleDark: new THREE.MeshStandardMaterial({ color: "#C8B89A", roughness: 0.25, metalness: 0.0, envMapIntensity: 0.8, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.2, .2) }),
+      gold: new THREE.MeshPhysicalMaterial({ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, emissive: "#D4AF37", emissiveIntensity: 0.15, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
+      goldDark: new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, envMapIntensity: 1.2, emissive: "#B8922E", emissiveIntensity: 0.1 }),
+      goldBright: new THREE.MeshPhysicalMaterial({ color: "#E8C84A", roughness: 0.1, metalness: 0.95, envMapIntensity: 1.8, emissive: "#E8C84A", emissiveIntensity: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.05 }),
+      column: new THREE.MeshStandardMaterial({ color: "#F0E8DC", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.9, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.3, .3) }),
+      door: new THREE.MeshStandardMaterial({ color: "#8B5E3C", roughness: 0.40, metalness: 0.0, emissive: "#5A3E28", emissiveIntensity: 0.25, map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(.4, .4), roughnessMap: woodDoorTex.roughnessMap, aoMap: woodDoorTex.aoMap, aoMapIntensity: 0.6 }),
+      doorFrame: new THREE.MeshPhysicalMaterial({ color: "#E8C84A", roughness: 0.1, metalness: 0.95, envMapIntensity: 1.8, emissive: "#E8C84A", emissiveIntensity: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.05 }),
+      dome: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.2, .2) }),
+      domeGold: new THREE.MeshPhysicalMaterial({ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
+      floor: new THREE.MeshPhysicalMaterial({ color: "#E8DDD0", roughness: 0.06, metalness: 0.05, envMapIntensity: 1.2, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.4, clearcoatRoughness: 0.1, reflectivity: 0.8 }),
+      floorDark: new THREE.MeshPhysicalMaterial({ color: "#C4B8A0", roughness: 0.08, metalness: 0.03, envMapIntensity: 1.0, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.2, .2), clearcoat: 0.3, clearcoatRoughness: 0.15 }),
+      floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.12, metalness: 0.05, envMapIntensity: 0.9 }),
+      bust: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.7, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.15, .15) }),
+      bronze: new THREE.MeshPhysicalMaterial({ color: "#8A7050", roughness: 0.25, metalness: 0.8, envMapIntensity: 1.1, clearcoat: 0.2, clearcoatRoughness: 0.3 }),
+      wall: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.2, .2), roughnessMap: wallTex.roughnessMap }),
       lightBeam: new THREE.MeshBasicMaterial({ color: "#FFF5E0", transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
-      atticDoor: new THREE.MeshStandardMaterial({ color: "#6A5040", roughness: 0.6, metalness: 0.0 }),
-      atticStairs: new THREE.MeshStandardMaterial({ color: "#E8DDD0", roughness: 0.12, metalness: 0.03, envMapIntensity: 0.8 }),
-      frescoPanel: new THREE.MeshStandardMaterial({ color: "#C4A070", roughness: 0.5, metalness: 0.05, envMapIntensity: 0.4 }),
-      spiralRailing: new THREE.MeshStandardMaterial({ color: "#D4AF37", roughness: 0.2, metalness: 0.9, envMapIntensity: 1.2 }),
+      atticDoor: new THREE.MeshStandardMaterial({ color: "#6A5040", roughness: 0.6, metalness: 0.0, map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: woodDoorTex.roughnessMap }),
+      atticStairs: new THREE.MeshPhysicalMaterial({ color: "#E8DDD0", roughness: 0.1, metalness: 0.03, envMapIntensity: 1.0, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.2, .2), clearcoat: 0.2, clearcoatRoughness: 0.2 }),
+      frescoPanel: new THREE.MeshStandardMaterial({ color: "#C4A070", roughness: 0.5, metalness: 0.05, envMapIntensity: 0.5 }),
+      spiralRailing: new THREE.MeshPhysicalMaterial({ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
     };
 
     // ── ROOM DIMENSIONS ──
@@ -961,6 +980,14 @@ export default function EntranceHallScene({
     });
     const goldColor=new THREE.Color("#D4AF37");
 
+    // ── DUST PARTICLES (oculus light beam) ──
+    const dust = createDustParticles({ count: 150, bounds: { x: 8, y: 10, z: 8 }, center: new THREE.Vector3(0, 12, 0), opacity: 0.2, size: 0.04, color: "#FFF8D0" });
+    scene.add(dust.points);
+
+    // ── VOLUMETRIC LIGHT BEAM from oculus ──
+    const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: new THREE.Vector3(0, -1, 0), length: TOTAL_H - 1, radius: 3.5, color: "#FFF8D0", opacity: 0.04 });
+    scene.add(oculusBeam.mesh);
+
     const clock = new THREE.Clock();
     let hoveredWing: string | null = null;
 
@@ -1087,6 +1114,9 @@ export default function EntranceHallScene({
       (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.05 + Math.sin(t * 0.5) * 0.02;
       beamMat2.opacity = 0.03 + Math.sin(t * 0.7) * 0.015;
       beamMat3.opacity = 0.04 + Math.sin(t * 0.9) * 0.018;
+
+      dust.update(t, dt);
+      oculusBeam.update(t);
 
       composer.render();
     };
@@ -1327,6 +1357,11 @@ export default function EntranceHallScene({
           });
         }
       });
+      dust.dispose();
+      oculusBeam.dispose();
+      allTexSets.forEach(disposePBRSet);
+      envMapProc.dispose();
+      if (envMapHDRI) envMapHDRI.dispose();
       composer.dispose();
       if (el.contains(ren.domElement)) el.removeChild(ren.domElement);
       ren.dispose();

@@ -1,10 +1,13 @@
 "use client";
 import { useRef, useEffect } from "react";
 import * as THREE from "three";
-import { EffectComposer, RenderPass, EffectPass, BloomEffect, VignetteEffect, SMAAEffect } from "postprocessing";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
+import { createPostProcessing } from "@/lib/3d/postprocessing";
+import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
+import { createDustParticles } from "@/lib/3d/atmosphericEffects";
+import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
@@ -28,16 +31,21 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.8;
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
-    // ── POST-PROCESSING ──
-    const composer=new EffectComposer(ren);
-    composer.addPass(new RenderPass(scene,camera));
-    composer.addPass(new EffectPass(camera,
-      new BloomEffect({luminanceThreshold:0.35,luminanceSmoothing:0.4,intensity:1.2,mipmapBlur:true}),
-      new VignetteEffect({darkness:0.5,offset:0.25}),
-      new SMAAEffect()
-    ));
+
+    // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
+    const envMapProc=createInteriorEnvMap(ren,{warmth:0.7,brightness:0.45});
+    scene.environment=envMapProc;
+    scene.environmentIntensity=0.9;
+    let envMapHDRI: THREE.Texture|null=null;
+    loadHDRI(ren,HDRI_INTERIOR).then((hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.9;}).catch(()=>{});
+
+    // ── POST-PROCESSING (with SSAO) ──
+    const composer=createPostProcessing(ren,scene,camera,"corridor");
+
     scene.add(new THREE.HemisphereLight("#FFF2E0","#C4B8A0",.55));
-    const sun=new THREE.DirectionalLight("#FFE8C0",1.5);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);scene.add(sun);
+    const sun=new THREE.DirectionalLight("#FFE8C0",1.5);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+    sun.shadow.camera.near=0.5;sun.shadow.camera.far=60;sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;
+    scene.add(sun);
     const fill=new THREE.DirectionalLight("#FFD8A8",.35);fill.position.set(-6,10,4);scene.add(fill);
 
     // ── WING LAYOUTS: each wing is a different museum section ──
@@ -57,47 +65,57 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const C=(cfg as any)[wingId]||cfg.family;
     const cW=C.cW,cH=C.cH,cL=rooms.length*C.sp+14;
 
+    // ── REAL PBR TEXTURES (Poly Haven) ──
+    const marbleTex=loadMarbleTextures([4,4]);
+    const woodTex=loadDarkWoodTextures([3,4]);
+    const wallStoneTex=loadPlasterWallTextures([3,3]);
+    // Use herringbone for herringbone/parquet wings, floor tiles for others
+    const floorTileTex=(C.floorPat==="herringbone"||C.floorPat==="dark_parquet")?loadHerringboneTextures([3,3]):loadFloorTileTextures([3,3]);
+    const rugFabricTex=loadFabricTextures([2,2]);
+    const velvetTex=loadVelvetTextures([2,2]);
+    const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallStoneTex,floorTileTex,rugFabricTex,velvetTex];
+
     const MS={
-      wall:new THREE.MeshStandardMaterial({color:wing.wall,roughness:.85}),
-      wallD:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.8}),
-      floor:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.45,metalness:.1}),
-      floorL:new THREE.MeshStandardMaterial({color:"#D0C0A0",roughness:.5}),
-      floorD:new THREE.MeshStandardMaterial({color:"#8A7858",roughness:.5,metalness:.08}),
+      wall:new THREE.MeshStandardMaterial({color:wing.wall,roughness:.85,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3),envMapIntensity:.5}),
+      wallD:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.8,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
+      floor:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.45,metalness:.1,map:floorTileTex.map,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:floorTileTex.roughnessMap,aoMap:floorTileTex.aoMap,aoMapIntensity:.7,envMapIntensity:.6}),
+      floorL:new THREE.MeshStandardMaterial({color:"#D0C0A0",roughness:.5,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
+      floorD:new THREE.MeshStandardMaterial({color:"#8A7858",roughness:.5,metalness:.08,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       ceil:new THREE.MeshStandardMaterial({color:"#F0EAE0",roughness:.92}),
-      trim:new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.5,metalness:.12}),
-      gold:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.25,metalness:.6}),
-      wain:new THREE.MeshStandardMaterial({color:"#C8BCA8",roughness:.6}),
-      wainP:new THREE.MeshStandardMaterial({color:"#BEB4A0",roughness:.65}),
-      dkW:new THREE.MeshStandardMaterial({color:"#4A3828",roughness:.5}),
-      door:new THREE.MeshStandardMaterial({color:"#5A3E28",roughness:.4,metalness:.06}),
-      doorD:new THREE.MeshStandardMaterial({color:"#3A2818",roughness:.45}),
-      handle:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.22,metalness:.65}),
-      bronze:new THREE.MeshStandardMaterial({color:"#8A7050",roughness:.3,metalness:.5}),
-      marble:new THREE.MeshStandardMaterial({color:"#E8E2DA",roughness:.2,metalness:.06}),
+      trim:new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.5,metalness:.12,envMapIntensity:.6}),
+      gold:new THREE.MeshPhysicalMaterial({color:"#C8A858",roughness:.18,metalness:.85,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
+      wain:new THREE.MeshStandardMaterial({color:"#C8BCA8",roughness:.6,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
+      wainP:new THREE.MeshStandardMaterial({color:"#BEB4A0",roughness:.65,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
+      dkW:new THREE.MeshStandardMaterial({color:"#4A3828",roughness:.5,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.4,.4)}),
+      door:new THREE.MeshStandardMaterial({color:"#5A3E28",roughness:.4,metalness:.06,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:woodTex.roughnessMap,aoMap:woodTex.aoMap,aoMapIntensity:.6}),
+      doorD:new THREE.MeshStandardMaterial({color:"#3A2818",roughness:.45,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
+      handle:new THREE.MeshPhysicalMaterial({color:"#C8A858",roughness:.15,metalness:.85,clearcoat:.4,clearcoatRoughness:.08,envMapIntensity:1.5}),
+      bronze:new THREE.MeshPhysicalMaterial({color:"#8A7050",roughness:.25,metalness:.7,clearcoat:.2,clearcoatRoughness:.3,envMapIntensity:1.0}),
+      marble:new THREE.MeshPhysicalMaterial({color:"#E8E2DA",roughness:.12,metalness:.06,map:marbleTex.map,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:marbleTex.roughnessMap,aoMap:marbleTex.aoMap,aoMapIntensity:.8,clearcoat:.3,clearcoatRoughness:.15,reflectivity:.6,envMapIntensity:.8}),
       shared:new THREE.MeshStandardMaterial({color:"#4A6741",roughness:.4,emissive:"#4A6741",emissiveIntensity:.3}),
-      rug:new THREE.MeshStandardMaterial({color:C.rugC,roughness:.9}),
+      rug:new THREE.MeshStandardMaterial({color:C.rugC,roughness:.9,map:rugFabricTex.map,normalMap:rugFabricTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:rugFabricTex.roughnessMap,aoMap:rugFabricTex.aoMap,aoMapIntensity:.5}),
       rugB:new THREE.MeshStandardMaterial({color:C.rugB,roughness:.8}),
-      sconce:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.25,metalness:.55}),
+      sconce:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.25,metalness:.55,envMapIntensity:.8}),
       glassG:new THREE.MeshStandardMaterial({color:"#FFF8E0",emissive:"#FFE8B0",emissiveIntensity:.6,transparent:true,opacity:.6}),
-      curtain:new THREE.MeshStandardMaterial({color:C.accent,roughness:.92,side:THREE.DoubleSide}),
-      velvet:new THREE.MeshStandardMaterial({color:C.accent,roughness:.92}),
-      statue:new THREE.MeshStandardMaterial({color:"#E0D8CC",roughness:.22,metalness:.08}),
-      fG:new THREE.MeshStandardMaterial({color:"#B89850",roughness:.25,metalness:.65}),
-      windowFrame:new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.4,metalness:.15}),
-      windowGlass:new THREE.MeshBasicMaterial({color:"#C8E0F0",transparent:true,opacity:.08,side:THREE.DoubleSide}),
+      curtain:new THREE.MeshPhysicalMaterial({color:C.accent,roughness:.92,side:THREE.DoubleSide,sheen:.3,sheenRoughness:.8,sheenColor:new THREE.Color(C.accent).offsetHSL(0,0,.2),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
+      velvet:new THREE.MeshPhysicalMaterial({color:C.accent,roughness:.92,sheen:.4,sheenRoughness:.7,sheenColor:new THREE.Color(C.accent).offsetHSL(0,-.1,.15),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:velvetTex.roughnessMap}),
+      statue:new THREE.MeshStandardMaterial({color:"#E0D8CC",roughness:.22,metalness:.08,envMapIntensity:.7}),
+      fG:new THREE.MeshPhysicalMaterial({color:"#B89850",roughness:.2,metalness:.85,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
+      windowFrame:new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.4,metalness:.15,envMapIntensity:.6}),
+      windowGlass:new THREE.MeshPhysicalMaterial({color:"#C8E0F0",transparent:true,opacity:.1,side:THREE.DoubleSide,transmission:.6,ior:1.5,roughness:.02,thickness:.3}),
       windowGlow:new THREE.MeshBasicMaterial({color:"#FFF8E0",transparent:true,opacity:.15,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}),
-      bench:new THREE.MeshStandardMaterial({color:"#6A5240",roughness:.6,metalness:.04}),
-      benchCushion:new THREE.MeshStandardMaterial({color:C.accent,roughness:.92}),
-      portalArch:new THREE.MeshStandardMaterial({color:"#D4AF37",roughness:.2,metalness:.85,emissive:"#D4AF37",emissiveIntensity:.2}),
-      portalPillar:new THREE.MeshStandardMaterial({color:"#E8E0D4",roughness:.15,metalness:.04}),
-      portalKeystone:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.2,metalness:.7,emissive:"#C8A858",emissiveIntensity:.25}),
-      portalGoldTrim:new THREE.MeshStandardMaterial({color:"#FFD700",roughness:.15,metalness:.9,emissive:"#FFD700",emissiveIntensity:.1}),
+      bench:new THREE.MeshStandardMaterial({color:"#6A5240",roughness:.6,metalness:.04,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
+      benchCushion:new THREE.MeshPhysicalMaterial({color:C.accent,roughness:.92,sheen:.3,sheenRoughness:.8,sheenColor:new THREE.Color(C.accent).offsetHSL(0,0,.15),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
+      portalArch:new THREE.MeshPhysicalMaterial({color:"#D4AF37",roughness:.15,metalness:.9,emissive:"#D4AF37",emissiveIntensity:.2,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.5}),
+      portalPillar:new THREE.MeshPhysicalMaterial({color:"#E8E0D4",roughness:.12,metalness:.04,clearcoat:.2,clearcoatRoughness:.2,envMapIntensity:.7}),
+      portalKeystone:new THREE.MeshPhysicalMaterial({color:"#C8A858",roughness:.15,metalness:.85,emissive:"#C8A858",emissiveIntensity:.25,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
+      portalGoldTrim:new THREE.MeshPhysicalMaterial({color:"#FFD700",roughness:.1,metalness:.95,emissive:"#FFD700",emissiveIntensity:.1,clearcoat:.4,clearcoatRoughness:.05,envMapIntensity:1.8}),
       frescoBase:new THREE.MeshStandardMaterial({color:wing.wall,roughness:.9}),
       terracotta:new THREE.MeshStandardMaterial({color:"#C4704A",roughness:.8,metalness:.02}),
       foliage:new THREE.MeshStandardMaterial({color:"#3A6828",roughness:.85}),
       foliageDark:new THREE.MeshStandardMaterial({color:"#2A5020",roughness:.85}),
-      pedestal:new THREE.MeshStandardMaterial({color:"#D8D0C4",roughness:.3,metalness:.05}),
-      floorGoldStrip:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.3,metalness:.5}),
+      pedestal:new THREE.MeshStandardMaterial({color:"#D8D0C4",roughness:.3,metalness:.05,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.2,.2),envMapIntensity:.6}),
+      floorGoldStrip:new THREE.MeshPhysicalMaterial({color:"#C8A858",roughness:.2,metalness:.8,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.2}),
       portalFog:new THREE.MeshBasicMaterial({color:"#FFF8E0",transparent:true,opacity:.08,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}),
     };
 
@@ -1325,6 +1343,11 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const lookA={yaw:0,pitch:0},lookT={yaw:0,pitch:0};
     const pos=camera.position.clone(),posT=pos.clone();
     const keys: Record<string,boolean>={},drag={v:false},prev={x:0,y:0};let hovDoor: string|null=null;let hovPainting: number|null=null;
+
+    // ── DUST PARTICLES ──
+    const dust=createDustParticles({count:130,bounds:{x:cW/2-.5,y:cH/2,z:cL/2},center:new THREE.Vector3(0,cH/2,-cL/2+cL/2),opacity:0.2,size:0.03});
+    scene.add(dust.points);
+
     const clock=new THREE.Clock();
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();
@@ -1369,6 +1392,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       sparkG.attributes.position.needsUpdate=true;
       (sparkPoints.material as THREE.PointsMaterial).opacity=.35+Math.sin(t*3)*.2;
       const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>cH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;
+      dust.update(t,dt);
       composer.render();
     };animate();
     const onDown=(e: MouseEvent)=>{drag.v=false;prev.x=e.clientX;prev.y=e.clientY;};
@@ -1481,6 +1505,10 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
           });
         }
       });
+      dust.dispose();
+      allTexSets.forEach(disposePBRSet);
+      envMapProc.dispose();
+      if(envMapHDRI)envMapHDRI.dispose();
       composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[wingId]);

@@ -1,12 +1,15 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
-import { EffectComposer, RenderPass, EffectPass, BloomEffect, VignetteEffect, SMAAEffect } from "postprocessing";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
 import { paintTex } from "@/lib/3d/textureHelpers";
 import { mk } from "@/lib/3d/meshHelpers";
 import { layoutForRoom } from "@/lib/3d/roomLayouts";
+import { createPostProcessing } from "@/lib/3d/postprocessing";
+import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
+import { createDustParticles } from "@/lib/3d/atmosphericEffects";
+import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { useRoomStore } from "@/lib/stores/roomStore";
 
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
@@ -40,39 +43,55 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.7;
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
-    // ── POST-PROCESSING ──
-    const composer=new EffectComposer(ren);
-    composer.addPass(new RenderPass(scene,camera));
-    composer.addPass(new EffectPass(camera,
-      new BloomEffect({luminanceThreshold:0.4,luminanceSmoothing:0.4,intensity:0.8,mipmapBlur:true}),
-      new VignetteEffect({darkness:0.4,offset:0.25}),
-      new SMAAEffect()
-    ));
+
+    // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
+    const envMapProc=createInteriorEnvMap(ren,{warmth:0.75,brightness:0.45});
+    scene.environment=envMapProc;
+    scene.environmentIntensity=0.8;
+    let envMapHDRI: THREE.Texture|null=null;
+    loadHDRI(ren,HDRI_INTERIOR).then((hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.8;}).catch(()=>{});
+
+    // ── POST-PROCESSING (with SSAO) ──
+    const composer=createPostProcessing(ren,scene,camera,"interior");
+
+    // ── ATMOSPHERIC FOG ──
+    scene.fog=new THREE.Fog("#D8CFC0",3,22);
+
     scene.add(new THREE.HemisphereLight("#FFF2E0","#C4B8A0",.4));
-    const sun=new THREE.DirectionalLight("#FFE8C0",1.1);sun.position.set(10,14,-4);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);scene.add(sun);
+    const sun=new THREE.DirectionalLight("#FFE8C0",1.1);sun.position.set(10,14,-4);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+    sun.shadow.camera.near=0.5;sun.shadow.camera.far=30;sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=12;sun.shadow.camera.bottom=-12;
+    scene.add(sun);
     const ambL=new THREE.PointLight("#FFD8A0",.3,15);ambL.position.set(0,4,0);scene.add(ambL);
 
+    // ── REAL PBR TEXTURES (Poly Haven) ──
+    const marbleTex=loadMarbleTextures([3,3]);
+    const woodTex=loadHerringboneTextures([4,4]);
+    const wallTex=loadPlasterWallTextures([3,3]);
+    const rugTex=loadFabricTextures([2,2]);
+    const velvetTex=loadVelvetTextures([2,2]);
+    const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallTex,rugTex,velvetTex];
+
     const MS={
-      wall:new THREE.MeshStandardMaterial({color:wing?.wall||"#DDD4C6",roughness:.88}),
-      floor:new THREE.MeshStandardMaterial({color:"#8A7358",roughness:.45,metalness:.1}),
-      floorL:new THREE.MeshStandardMaterial({color:"#B8A480",roughness:.5}),
+      wall:new THREE.MeshStandardMaterial({color:wing?.wall||"#DDD4C6",roughness:.88,map:wallTex.map,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:wallTex.roughnessMap,aoMap:wallTex.aoMap,aoMapIntensity:.6}),
+      floor:new THREE.MeshStandardMaterial({color:"#8A7358",roughness:.45,metalness:.1,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:woodTex.roughnessMap,aoMap:woodTex.aoMap,aoMapIntensity:.7}),
+      floorL:new THREE.MeshStandardMaterial({color:"#B8A480",roughness:.5,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       ceil:new THREE.MeshStandardMaterial({color:"#F0EAE0",roughness:.95}),
       trim:new THREE.MeshStandardMaterial({color:"#CFC3AE",roughness:.55,metalness:.12}),
       gold:new THREE.MeshStandardMaterial({color:"#C8A868",roughness:.28,metalness:.6}),
-      dkW:new THREE.MeshStandardMaterial({color:"#3E2A18",roughness:.5,metalness:.08}),
-      ltW:new THREE.MeshStandardMaterial({color:"#A08060",roughness:.55}),
-      wain:new THREE.MeshStandardMaterial({color:"#B8A890",roughness:.65}),
-      leather:new THREE.MeshStandardMaterial({color:"#5A3020",roughness:.55,metalness:.05}),
-      leatherD:new THREE.MeshStandardMaterial({color:"#4A2818",roughness:.5,metalness:.04}),
+      dkW:new THREE.MeshStandardMaterial({color:"#3E2A18",roughness:.5,metalness:.08,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.4,.4),aoMap:woodTex.aoMap,aoMapIntensity:.5}),
+      ltW:new THREE.MeshStandardMaterial({color:"#A08060",roughness:.55,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
+      wain:new THREE.MeshStandardMaterial({color:"#B8A890",roughness:.65,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.2,.2),roughnessMap:wallTex.roughnessMap}),
+      leather:new THREE.MeshStandardMaterial({color:"#5A3020",roughness:.55,metalness:.05,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
+      leatherD:new THREE.MeshStandardMaterial({color:"#4A2818",roughness:.5,metalness:.04,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.12,.12)}),
       button:new THREE.MeshStandardMaterial({color:"#3A1E10",roughness:.3,metalness:.1}),
       bronze:new THREE.MeshStandardMaterial({color:"#8A7050",roughness:.32,metalness:.48}),
-      marble:new THREE.MeshStandardMaterial({color:"#E8E2DA",roughness:.22,metalness:.06}),
+      marble:new THREE.MeshPhysicalMaterial({color:"#E8E2DA",roughness:.15,metalness:.06,map:marbleTex.map,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:marbleTex.roughnessMap,aoMap:marbleTex.aoMap,aoMapIntensity:.8,clearcoat:.3,clearcoatRoughness:.2,reflectivity:.6}),
       brick:new THREE.MeshStandardMaterial({color:"#8A5040",roughness:.9}),
       brickD:new THREE.MeshStandardMaterial({color:"#6A3830",roughness:.85}),
       iron:new THREE.MeshStandardMaterial({color:"#3A3A3A",roughness:.5,metalness:.4}),
       fire:new THREE.MeshBasicMaterial({color:"#FF8030",transparent:true,opacity:.7}),
       fireG:new THREE.MeshBasicMaterial({color:"#FFD060",transparent:true,opacity:.5}),
-      rug:new THREE.MeshStandardMaterial({color:"#6A2028",roughness:.9}),
+      rug:new THREE.MeshStandardMaterial({color:"#6A2028",roughness:.9,map:rugTex.map,normalMap:rugTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:rugTex.roughnessMap,aoMap:rugTex.aoMap,aoMapIntensity:.5}),
       rugB:new THREE.MeshStandardMaterial({color:"#C8A868",roughness:.8}),
       rugN:new THREE.MeshStandardMaterial({color:"#1A2438",roughness:.9}),
       sconce:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.28,metalness:.55}),
@@ -82,14 +101,14 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       vinylL:new THREE.MeshStandardMaterial({color:wing?.accent||"#C17F59",roughness:.3}),
       pot:new THREE.MeshStandardMaterial({color:"#B8926A",roughness:.6}),
       plant:new THREE.MeshStandardMaterial({color:"#4A7838",roughness:.85}),
-      curtain:new THREE.MeshStandardMaterial({color:"#8A6848",roughness:.95,side:THREE.DoubleSide}),
+      curtain:new THREE.MeshPhysicalMaterial({color:"#8A6848",roughness:.95,side:THREE.DoubleSide,sheen:0.3,sheenRoughness:0.8,sheenColor:new THREE.Color("#D4B896"),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
       fG:new THREE.MeshStandardMaterial({color:"#B89850",roughness:.28,metalness:.65}),
       fB:new THREE.MeshStandardMaterial({color:"#7A6040",roughness:.38,metalness:.5}),
       matF:new THREE.MeshStandardMaterial({color:"#F2EDE4",roughness:.95}),
       lamp:new THREE.MeshStandardMaterial({color:"#E8D8C0",roughness:.7,transparent:true,opacity:.8}),
       lampG:new THREE.MeshBasicMaterial({color:"#FFF0D0",transparent:true,opacity:.15}),
-      handle:new THREE.MeshStandardMaterial({color:"#C8A858",roughness:.22,metalness:.65}),
-      glass:new THREE.MeshStandardMaterial({color:"#E8F0F0",transparent:true,opacity:.2,roughness:.05,metalness:.1}),
+      handle:new THREE.MeshPhysicalMaterial({color:"#C8A858",roughness:.18,metalness:.85,clearcoat:.4,clearcoatRoughness:.1}),
+      glass:new THREE.MeshPhysicalMaterial({color:"#E8F0F0",transparent:true,opacity:.15,roughness:.02,metalness:.0,transmission:.85,ior:1.5,thickness:.5}),
     };
     const fMats=[MS.fG,MS.fB,MS.gold];
     memMeshes.current=[];
@@ -756,6 +775,10 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     pos.current.set(0,1.7,rL/2-2.5);posT.current.set(0,1.7,rL/2-2.5);
     lookT.current={yaw:0,pitch:0};lookA.current={yaw:0,pitch:0};
 
+    // ── DUST PARTICLES ──
+    const dust=createDustParticles({count:100,bounds:{x:rW/2-.5,y:rH/2,z:rL/2-.5},center:new THREE.Vector3(0,rH/2,0),opacity:0.25,size:0.025});
+    scene.add(dust.points);
+
     const clock=new THREE.Clock();
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();
@@ -808,6 +831,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
         }
       });
       const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>rH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;
+      dust.update(t,dt);
       composer.render();
     };animate();
 
@@ -928,6 +952,10 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
           });
         }
       });
+      dust.dispose();
+      allTexSets.forEach(disposePBRSet);
+      envMapProc.dispose();
+      if(envMapHDRI)envMapHDRI.dispose();
       composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[roomId,actualRoomId,layoutOverride]);
