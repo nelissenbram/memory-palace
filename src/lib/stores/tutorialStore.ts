@@ -48,15 +48,15 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     title: "The Five Wings",
     message:
       "Family, Travel, Childhood, Career, and Creativity — each wing is a corridor lined with rooms. Walk through a door to explore.",
-    nextLabel: "What's the Attic?",
+    nextLabel: "What's the Storage Room?",
     highlight: { position: "center", label: "The doors" },
   },
   {
     id: "attic",
     view: "entrance",
-    title: "The Attic",
+    title: "Storage Room",
     message:
-      "There's also a special place called The Attic — a catch-all space for memories that don't fit neatly into a wing yet. We'll explore that more later.",
+      "There's also a special place called the Storage Room — a catch-all space for memories that don't fit neatly into a wing yet. We'll explore that more later.",
     nextLabel: "What's inside a wing?",
   },
   {

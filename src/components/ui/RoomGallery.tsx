@@ -368,6 +368,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                       if (playerIdx < filtered.length - 1) setPlayerIdx(playerIdx + 1);
                       else setPlaying(false);
                     }}
+                    playsInline
                     style={{ width: "100%", maxHeight: 420, objectFit: "contain", display: "block" }}
                   />
                 ) : playerMem.type === "audio" || playerMem.voiceBlob ? (

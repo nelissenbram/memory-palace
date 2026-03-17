@@ -49,6 +49,8 @@ export function loadHDRI(
 export const HDRI_INTERIOR = "/textures/hdri/ballroom_1k.hdr";
 /** Exterior HDRI — courtyard with warm daylight */
 export const HDRI_EXTERIOR = "/textures/hdri/courtyard_1k.hdr";
+/** Tuscan landscape HDRI — Alps field panorama for realistic background */
+export const HDRI_TUSCAN_LANDSCAPE = "/textures/hdri/tuscan_landscape_2k.hdr";
 
 // ════════════════════════════════════════════
 // PBR TEXTURE SETS

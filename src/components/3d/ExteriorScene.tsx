@@ -6,7 +6,7 @@ import type { Wing } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
-import { loadHDRI, HDRI_EXTERIOR, loadPlasterWallTextures, loadDarkWoodTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadDarkWoodTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 
 // ═══ EXTERIOR — Fantasy Castle ═══
 export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null}){
@@ -26,45 +26,88 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
     const scene=new THREE.Scene();scene.fog=new THREE.FogExp2("#C8B8A0",.0018);
-    // ── GOLDEN HOUR SKY ──
-    const skyGeo=new THREE.SphereGeometry(500,48,32);
-    const skyC=document.createElement("canvas");skyC.width=2048;skyC.height=1024;
+    // ── PHOTOREALISTIC TUSCAN GOLDEN HOUR SKY ──
+    const skyGeo=new THREE.SphereGeometry(500,64,40);
+    const skyC=document.createElement("canvas");skyC.width=4096;skyC.height=2048;
     const skx=skyC.getContext("2d")!;
-    const skyG=skx.createLinearGradient(0,0,0,1024);
-    skyG.addColorStop(0,"#1A2850");skyG.addColorStop(.08,"#2A4878");skyG.addColorStop(.18,"#3A6898");
-    skyG.addColorStop(.3,"#5A98C0");skyG.addColorStop(.42,"#88B8D8");skyG.addColorStop(.52,"#B0D0E0");
-    skyG.addColorStop(.6,"#D0DDE0");skyG.addColorStop(.7,"#E8D8C0");skyG.addColorStop(.8,"#F0C898");
-    skyG.addColorStop(.88,"#E8A870");skyG.addColorStop(.94,"#D08850");skyG.addColorStop(1,"#B07040");
-    skx.fillStyle=skyG;skx.fillRect(0,0,2048,1024);
-    // Layered clouds with depth
-    for(let layer=0;layer<4;layer++){
-      const yBase=60+layer*50,alpha=.04+layer*.015;
-      for(let ci=0;ci<25;ci++){
-        skx.fillStyle=`rgba(255,${245-layer*10},${230-layer*15},${alpha+Math.random()*.03})`;
-        skx.beginPath();
-        skx.ellipse(Math.random()*2048,yBase+Math.random()*60,60+Math.random()*120,4+Math.random()*8,Math.random()*.3,0,Math.PI*2);
-        skx.fill();
+    // Base gradient — warm Tuscan golden hour with subtle atmospheric scattering
+    const skyG=skx.createLinearGradient(0,0,0,2048);
+    skyG.addColorStop(0,"#0D1B38");skyG.addColorStop(.04,"#152848");skyG.addColorStop(.1,"#1E3A60");
+    skyG.addColorStop(.18,"#2A5078");skyG.addColorStop(.26,"#3A6890");skyG.addColorStop(.34,"#5590B0");
+    skyG.addColorStop(.42,"#78B0C8");skyG.addColorStop(.5,"#98C8D8");skyG.addColorStop(.56,"#B8D8E0");
+    skyG.addColorStop(.62,"#D0E0E0");skyG.addColorStop(.68,"#E0DDD0");skyG.addColorStop(.74,"#E8D4B8");
+    skyG.addColorStop(.8,"#F0C898");skyG.addColorStop(.86,"#ECA870");skyG.addColorStop(.91,"#E09058");
+    skyG.addColorStop(.95,"#D07840");skyG.addColorStop(.98,"#C06830");skyG.addColorStop(1,"#A05828");
+    skx.fillStyle=skyG;skx.fillRect(0,0,4096,2048);
+    // Atmospheric haze band at horizon — warm golden shimmer
+    const hazeG=skx.createLinearGradient(0,1400,0,2048);
+    hazeG.addColorStop(0,"rgba(240,220,180,0)");hazeG.addColorStop(.3,"rgba(240,210,170,0.08)");
+    hazeG.addColorStop(.6,"rgba(235,200,155,0.15)");hazeG.addColorStop(1,"rgba(220,185,140,0.2)");
+    skx.fillStyle=hazeG;skx.fillRect(0,1400,4096,648);
+    // High cirrus clouds — delicate wispy streaks
+    for(let layer=0;layer<6;layer++){
+      const yBase=80+layer*65,alpha=.025+layer*.01;
+      for(let ci=0;ci<40;ci++){
+        const cx2=Math.random()*4096,cy=yBase+Math.random()*50;
+        const cw=80+Math.random()*200,ch2=2+Math.random()*5;
+        skx.fillStyle=`rgba(255,${250-layer*8},${238-layer*12},${alpha+Math.random()*.02})`;
+        skx.beginPath();skx.ellipse(cx2,cy,cw,ch2,Math.random()*.2-.1,0,Math.PI*2);skx.fill();
+        // Sub-wisps for texture
+        for(let sw=0;sw<3;sw++){
+          skx.fillStyle=`rgba(255,${248-layer*8},${235-layer*10},${alpha*.4})`;
+          skx.beginPath();skx.ellipse(cx2+Math.random()*cw-cw/2,cy+Math.random()*8-4,cw*.4,ch2*.6,Math.random()*.15,0,Math.PI*2);skx.fill();
+        }
       }
     }
-    // Sun with dramatic rays
-    const sunX=1400,sunY=780;
-    for(let r=0;r<5;r++){
-      const rad=80+r*60,a=.12-.02*r;
-      const sg=skx.createRadialGradient(sunX,sunY,0,sunX,sunY,rad);
-      sg.addColorStop(0,`rgba(255,248,220,${a})`);sg.addColorStop(.5,`rgba(255,220,160,${a*.6})`);sg.addColorStop(1,"rgba(255,200,120,0)");
-      skx.fillStyle=sg;skx.fillRect(0,0,2048,1024);
+    // Mid-level cumulus clouds — softer, more voluminous
+    for(let ci=0;ci<18;ci++){
+      const cx2=Math.random()*4096,cy=400+Math.random()*250;
+      const baseW=100+Math.random()*160;
+      // Build cloud from overlapping ovals
+      for(let p=0;p<8;p++){
+        const pw=baseW*(0.4+Math.random()*.6),ph=(8+Math.random()*12)*(1-p*.05);
+        skx.fillStyle=`rgba(255,${250-p*2},${240-p*4},${.03+Math.random()*.015})`;
+        skx.beginPath();skx.ellipse(cx2+Math.random()*baseW*.6-baseW*.3,cy+Math.random()*15-7,pw,ph,Math.random()*.1,0,Math.PI*2);skx.fill();
+      }
     }
-    // God rays
-    for(let gr=0;gr<8;gr++){
-      const angle=-Math.PI*.6+gr*.15;const len=400;
-      skx.strokeStyle=`rgba(255,240,200,${.02+Math.random()*.02})`;
-      skx.lineWidth=8+Math.random()*12;skx.beginPath();
+    // Low horizon clouds — backlit golden edges
+    for(let ci=0;ci<25;ci++){
+      const cx2=Math.random()*4096,cy=1500+Math.random()*200;
+      const cw=60+Math.random()*180;
+      // Dark underside
+      skx.fillStyle=`rgba(180,140,100,${.04+Math.random()*.03})`;
+      skx.beginPath();skx.ellipse(cx2,cy+5,cw,6+Math.random()*8,0,0,Math.PI*2);skx.fill();
+      // Golden top edge (backlit)
+      skx.fillStyle=`rgba(255,220,160,${.06+Math.random()*.04})`;
+      skx.beginPath();skx.ellipse(cx2,cy-3,cw*.9,3+Math.random()*4,0,0,Math.PI*2);skx.fill();
+    }
+    // Sun with realistic glow layers and atmospheric diffusion
+    const sunX=2800,sunY=1560;
+    // Outer atmospheric glow
+    for(let r=0;r<8;r++){
+      const rad=60+r*80,a=.08-.008*r;
+      const sg=skx.createRadialGradient(sunX,sunY,0,sunX,sunY,rad);
+      sg.addColorStop(0,`rgba(255,250,230,${a})`);sg.addColorStop(.3,`rgba(255,235,190,${a*.7})`);
+      sg.addColorStop(.7,`rgba(255,210,150,${a*.3})`);sg.addColorStop(1,"rgba(255,190,120,0)");
+      skx.fillStyle=sg;skx.fillRect(0,0,4096,2048);
+    }
+    // Sun core — hot white center
+    const sunCore=skx.createRadialGradient(sunX,sunY,0,sunX,sunY,35);
+    sunCore.addColorStop(0,"rgba(255,255,248,0.9)");sunCore.addColorStop(.4,"rgba(255,248,220,0.6)");
+    sunCore.addColorStop(1,"rgba(255,230,180,0)");
+    skx.fillStyle=sunCore;skx.fillRect(sunX-60,sunY-60,120,120);
+    // God rays — longer, more varied, softer
+    for(let gr=0;gr<14;gr++){
+      const angle=-Math.PI*.7+gr*.11+Math.random()*.04;const len=300+Math.random()*300;
+      skx.strokeStyle=`rgba(255,235,190,${.01+Math.random()*.015})`;
+      skx.lineWidth=10+Math.random()*20;skx.beginPath();
       skx.moveTo(sunX,sunY);skx.lineTo(sunX+Math.cos(angle)*len,sunY+Math.sin(angle)*len);skx.stroke();
     }
-    // Stars in upper sky
-    for(let si=0;si<60;si++){
-      skx.fillStyle=`rgba(255,255,240,${.03+Math.random()*.05})`;
-      skx.beginPath();skx.arc(Math.random()*2048,Math.random()*200,Math.random()*1.5,.0,Math.PI*2);skx.fill();
+    // Stars in deep sky
+    for(let si=0;si<120;si++){
+      const sy=Math.random()*500;
+      skx.fillStyle=`rgba(255,255,245,${.02+Math.random()*.04*(1-sy/500)})`;
+      skx.beginPath();skx.arc(Math.random()*4096,sy,Math.random()*1.2,.0,Math.PI*2);skx.fill();
     }
     const skyTex=new THREE.CanvasTexture(skyC);skyTex.colorSpace=THREE.SRGBColorSpace;
     scene.add(new THREE.Mesh(skyGeo,new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide})));
@@ -81,6 +124,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     scene.environmentIntensity=0.6;
     let envMapHDRI: THREE.Texture|null=null;
     loadHDRI(ren,HDRI_EXTERIOR).then((hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.7;}).catch(()=>{});
+    // Load Tuscan landscape HDRI as background panorama for photorealistic horizon
+    loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{scene.background=hdr;scene.backgroundIntensity=0.35;scene.backgroundBlurriness=0.02;}).catch(()=>{});
 
     // ── POST-PROCESSING (with SSAO) ──
     const composer=createPostProcessing(ren,scene,camera,"exterior");
@@ -480,8 +525,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // COURTYARD GARDENS — grand formal parterre
     // ══════════════════════════════════════════
 
-    // Grand tiered fountain (3 levels)
-    const fX=0,fZ=-18;
+    // Grand tiered fountain (3 levels) — moved further from palace
+    const fX=0,fZ=-28;
     // Bottom basin
     scene.add(mk(new THREE.CylinderGeometry(5,5.5,1,32),M.marble,fX,.5,fZ));
     scene.add(mk(new THREE.CylinderGeometry(4.5,4.5,.15,32),M.marbleVein,fX,1.05,fZ));
@@ -499,7 +544,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     scene.add(mk(new THREE.SphereGeometry(.3,8,8),M.goldBright,fX,6.7,fZ));
 
     // Symmetrical parterre gardens with flower beds
-    const parterreData=[[-12,-12],[12,-12],[-12,-24],[12,-24],[-18,-18],[18,-18]];
+    const parterreData=[[-14,-18],[14,-18],[-14,-38],[14,-38],[-22,-28],[22,-28]];
     parterreData.forEach(([hx,hz])=>{
       // Hedge border
       scene.add(mk(new THREE.BoxGeometry(7,.9,5),M.hedge,hx,.45,hz));
@@ -519,7 +564,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const pool=new THREE.Mesh(new THREE.BoxGeometry(4.2,.08,21),M.waterDeep);pool.position.set(fX,.42,fZ);scene.add(pool);
 
     // Topiary — conical, spiral, and ball shapes
-    const topPositions=[[-7,-8,"cone"],[7,-8,"cone"],[-7,-28,"ball"],[7,-28,"ball"],[-20,-10,"spiral"],[20,-10,"spiral"],[-20,-26,"cone"],[20,-26,"cone"]];
+    const topPositions=[[-8,-18,"cone"],[8,-18,"cone"],[-8,-38,"ball"],[8,-38,"ball"],[-24,-18,"spiral"],[24,-18,"spiral"],[-24,-38,"cone"],[24,-38,"cone"]];
     topPositions.forEach(([tx,tz,shape]: any)=>{
       scene.add(mk(new THREE.CylinderGeometry(.12,.18,2,6),M.barkD,tx,1,tz));
       scene.add(mk(new THREE.CylinderGeometry(.5,.5,.1,10),M.stoneD,tx,.06,tz));
@@ -534,7 +579,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     });
 
     // Stone urns on pedestals (along paths)
-    for(const[ux,uz]of[[-5,-8],[5,-8],[-5,-28],[5,-28],[-15,-8],[15,-8],[-15,-28],[15,-28]]){
+    for(const[ux,uz]of[[-6,-18],[6,-18],[-6,-38],[6,-38],[-18,-18],[18,-18],[-18,-38],[18,-38]]){
       scene.add(mk(new THREE.BoxGeometry(.5,.5,.5),M.marble,ux,.25,uz));
       scene.add(mk(new THREE.BoxGeometry(.6,.1,.6),M.trim,ux,.52,uz));
       scene.add(mk(new THREE.CylinderGeometry(.18,.25,.7,8),M.marble,ux,.9,uz));
@@ -545,170 +590,284 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     }
 
     // Stone benches
-    for(const[bx,bz]of[[-9,-18],[9,-18]]){
+    for(const[bx,bz]of[[-11,-28],[11,-28]]){
       scene.add(mk(new THREE.BoxGeometry(2.5,.06,1),M.marble,bx,.54,bz));
       scene.add(mk(new THREE.BoxGeometry(2.5,.35,.7),M.marbleVein,bx,.18+.17,bz));
       for(const s of[-.9,.9])scene.add(mk(new THREE.BoxGeometry(.4,.35,.7),M.stoneD,bx+s,.18+.17,bz));
     }
 
     // Gravel paths (radiating)
-    for(let pi=0;pi<25;pi++)scene.add(mk(new THREE.BoxGeometry(3.5,.05,.7),M.pathD,0,.04,-7-pi*1.3));
+    for(let pi=0;pi<25;pi++)scene.add(mk(new THREE.BoxGeometry(3.5,.05,.7),M.pathD,0,.04,-16-pi*1.3));
 
     // ══════════════════════════════════════════
-    // TUSCAN LANDSCAPE — dramatically improved
-    // ══════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════
+    // PHOTOREALISTIC TUSCAN LANDSCAPE — summery Val d'Orcia
+    // ══════════════════════════════════════════════════════════
 
-    // Distant rolling hills with varied shapes and layers
+    // Helper: atmospheric color — objects fade to blue-golden haze with distance
+    const atmosColor=(baseColor: string,dist: number)=>{
+      const c=new THREE.Color(baseColor);const haze=new THREE.Color("#C8BDA0");
+      const f=Math.min(1,Math.max(0,(dist-60)/400));
+      c.lerp(haze,f*.65);return c;
+    };
+
+    // ── TERRAIN: Gently undulating ground plane extending to horizon ──
+    // Base terrain — large ground disc
+    const terrainGeo=new THREE.CylinderGeometry(500,500,2,64);
+    const terrainMat=new THREE.MeshStandardMaterial({color:"#6A9848",roughness:.9});
+    const terrain=new THREE.Mesh(terrainGeo,terrainMat);
+    terrain.position.set(0,-1.5,0);terrain.receiveShadow=true;scene.add(terrain);
+
+    // ── ROLLING HILLS: 5 depth layers with atmospheric perspective ──
     const hillLayers=[
-      // Far background hills
-      {dist:350,count:8,rMin:100,rMax:180,hMin:4,hMax:8,colors:["#4A6838","#3A5828","#506840","#445830"]},
-      // Mid-distance hills
-      {dist:220,count:12,rMin:60,rMax:120,hMin:3,hMax:7,colors:["#5A7840","#4A6830","#5A8838","#6A8848"]},
-      // Near hills
-      {dist:140,count:10,rMin:40,rMax:80,hMin:2,hMax:5,colors:["#6A9848","#5A8840","#7AA850","#6A9040"]},
+      {dist:420,count:12,rMin:140,rMax:250,hMin:5,hMax:12,sat:25,light:42},// very far — hazy blue-green
+      {dist:320,count:14,rMin:100,rMax:200,hMin:4,hMax:10,sat:30,light:38},// far
+      {dist:230,count:16,rMin:60,rMax:140,hMin:3,hMax:8,sat:38,light:34},// mid-far
+      {dist:160,count:14,rMin:40,rMax:100,hMin:2,hMax:6,sat:42,light:30},// mid
+      {dist:100,count:10,rMin:30,rMax:70,hMin:1.5,hMax:4,sat:48,light:28},// near
     ];
     hillLayers.forEach(layer=>{
       for(let i=0;i<layer.count;i++){
-        const angle=((i/layer.count)+Math.random()*.1)*Math.PI*2;
-        const dist=layer.dist+Math.random()*60-30;
-        const hx=Math.cos(angle)*dist,hz=Math.sin(angle)*dist-60;
+        const angle=((i/layer.count)+Math.random()*.08)*Math.PI*2;
+        const dist=layer.dist+Math.random()*50-25;
+        const hx=Math.cos(angle)*dist,hz=Math.sin(angle)*dist-40;
         const hr=layer.rMin+Math.random()*(layer.rMax-layer.rMin);
         const hh=layer.hMin+Math.random()*(layer.hMax-layer.hMin);
-        const col=layer.colors[i%layer.colors.length];
-        const hm=new THREE.Mesh(new THREE.SphereGeometry(hr,20,14),new THREE.MeshStandardMaterial({color:col,roughness:.88}));
-        hm.position.set(hx,-hr+hh+Math.random()*2,hz);hm.scale.y=.08+Math.random()*.04;
+        const hue=100+Math.random()*30;
+        const col=atmosColor(`hsl(${hue},${layer.sat+Math.random()*10}%,${layer.light+Math.random()*8}%)`,dist);
+        const hm=new THREE.Mesh(new THREE.SphereGeometry(hr,24,16),new THREE.MeshStandardMaterial({color:col,roughness:.88}));
+        hm.position.set(hx,-hr+hh+Math.random()*2,hz);hm.scale.y=.06+Math.random()*.04;
         hm.receiveShadow=true;scene.add(hm);
       }
     });
 
-    // Patchwork agricultural fields (golden wheat, green crops, lavender, sunflowers)
-    const fieldColors=["#C8B848","#D8C850","#98B838","#B8A840","#88A830","#D0C058","#A8C048","#B8A038",
-      "#9878B0","#D8C040","#78A028","#E0C848","#C0A838","#8898C0","#A8B830","#C8B040"];
-    for(let fi=0;fi<70;fi++){
+    // ── PATCHWORK FIELDS: golden wheat, green crops, lavender, sunflowers ──
+    // Realistic Tuscan agriculture — denser, more color variety, organized patches
+    const fieldPalette=[
+      "#C8B440","#D4C448","#B8A838","#D0BC40",// golden wheat
+      "#88A830","#78A028","#90B838","#98C040",// green crops
+      "#A088B8","#9878B0","#B098C0","#8878A8",// lavender
+      "#D8C040","#E0C848","#C8B838","#E8D050",// sunflower gold
+      "#708828","#608020","#809830","#68882A",// olive/artichoke green
+      "#C0A430","#B89828","#D0B448","#A89028",// dry summer grass
+    ];
+    for(let fi=0;fi<120;fi++){
       const angle=Math.random()*Math.PI*2;
-      const dist=90+Math.random()*280;
+      const dist=80+Math.random()*340;
       const fx=Math.cos(angle)*dist,fz=Math.sin(angle)*dist-40;
-      if(Math.sqrt(fx*fx+(fz+40)*(fz+40))<80)continue;// skip palace area
-      const fw=15+Math.random()*35,fl=10+Math.random()*28;
-      const fm=new THREE.Mesh(new THREE.PlaneGeometry(fw,fl),new THREE.MeshStandardMaterial({color:fieldColors[fi%fieldColors.length],roughness:.85}));
-      fm.rotation.x=-Math.PI/2;fm.position.set(fx,.15+Math.random()*.5,fz);fm.rotation.z=Math.random()*.6-.3;scene.add(fm);
+      if(Math.sqrt(fx*fx+(fz+40)*(fz+40))<75)continue;
+      const fw=12+Math.random()*40,fl=8+Math.random()*30;
+      const fCol=atmosColor(fieldPalette[fi%fieldPalette.length],Math.sqrt(fx*fx+fz*fz));
+      const fm=new THREE.Mesh(new THREE.PlaneGeometry(fw,fl),new THREE.MeshStandardMaterial({color:fCol,roughness:.88}));
+      fm.rotation.x=-Math.PI/2;fm.position.set(fx,.2+Math.random()*.3,fz);fm.rotation.z=Math.random()*.5-.25;scene.add(fm);
+      // Subtle field texture lines (plowing rows)
+      if(Math.random()>.5){
+        for(let row=0;row<Math.min(8,Math.floor(fl/3));row++){
+          const rowM=new THREE.Mesh(new THREE.PlaneGeometry(fw*.9,.15),
+            new THREE.MeshStandardMaterial({color:fCol.clone().multiplyScalar(.85),roughness:.9}));
+          rowM.rotation.x=-Math.PI/2;rowM.position.set(fx+Math.random()*2-1,.22,fz-fl/2+row*(fl/8)+Math.random()*2);
+          rowM.rotation.z=Math.random()*.5-.25;scene.add(rowM);
+        }
+      }
     }
 
-    // Vineyard rows — more numerous and organized
+    // ── VINEYARDS: organized rows on gentle slopes ──
     const vineM=[new THREE.MeshStandardMaterial({color:"#3A5828",roughness:.85}),new THREE.MeshStandardMaterial({color:"#4A6830",roughness:.82})];
-    for(let vi=0;vi<8;vi++){
+    for(let vi=0;vi<14;vi++){
       const vAngle=Math.random()*Math.PI*2;
-      const vDist=100+vi*35+Math.random()*20;
+      const vDist=90+vi*28+Math.random()*25;
       const vx=Math.cos(vAngle)*vDist,vz=Math.sin(vAngle)*vDist-40;
-      if(Math.sqrt(vx*vx+(vz+40)*(vz+40))<90)continue;
-      const vRot=vAngle+Math.PI/2+Math.random()*.3-.15;
-      for(let row=0;row<20;row++){
-        const rm=mk(new THREE.BoxGeometry(.4,.8,18+Math.random()*8),vineM[row%2],vx+Math.cos(vRot)*row*2.2,.4,vz+Math.sin(vRot)*row*2.2);
+      if(Math.sqrt(vx*vx+(vz+40)*(vz+40))<85)continue;
+      const vRot=vAngle+Math.PI/2+Math.random()*.2-.1;
+      const nRows=12+Math.floor(Math.random()*15);
+      for(let row=0;row<nRows;row++){
+        const rx=vx+Math.cos(vRot)*row*1.8,rz=vz+Math.sin(vRot)*row*1.8;
+        const rowLen=14+Math.random()*10;
+        const vCol=atmosColor(vineM[row%2].color.getStyle(),Math.sqrt(rx*rx+rz*rz));
+        const rm=mk(new THREE.BoxGeometry(.35,.7,rowLen),new THREE.MeshStandardMaterial({color:vCol,roughness:.84}),rx,.35,rz);
         rm.rotation.y=vRot;scene.add(rm);
       }
     }
 
-    // Cypress trees — THE Tuscan signature, many more, clustered along roads and ridges
+    // ── CYPRESS TREES: dense Tuscan signature ──
     const cypressPositions: number[][]=[];
-    // Line along winding road
-    for(let ri=0;ri<35;ri++){
-      const rz=-45-ri*9;const rx=Math.sin(ri*.25)*25;
-      if(Math.random()>.4)cypressPositions.push([rx-4+Math.random()*2,rz+Math.random()*3]);
-      if(Math.random()>.4)cypressPositions.push([rx+4+Math.random()*2,rz+Math.random()*3]);
+    // Along winding road — dense avenue
+    for(let ri=0;ri<50;ri++){
+      const rz=-45-ri*7;const rx=Math.sin(ri*.22)*28;
+      if(Math.random()>.3)cypressPositions.push([rx-4.5+Math.random()*1.5,rz+Math.random()*2]);
+      if(Math.random()>.3)cypressPositions.push([rx+4.5+Math.random()*1.5,rz+Math.random()*2]);
     }
-    // Clusters on hilltops
-    for(let ci=0;ci<20;ci++){
-      const angle=Math.random()*Math.PI*2,dist=60+Math.random()*200;
+    // Hilltop clusters
+    for(let ci=0;ci<35;ci++){
+      const angle=Math.random()*Math.PI*2,dist=55+Math.random()*280;
       cypressPositions.push([Math.cos(angle)*dist,Math.sin(angle)*dist-50]);
     }
-    // Groups of 3-5 on ridges
-    for(let g=0;g<8;g++){
-      const gx=-180+Math.random()*360,gz=-80-Math.random()*250;
-      for(let t=0;t<3+Math.floor(Math.random()*3);t++){
-        cypressPositions.push([gx+Math.random()*6-3,gz+Math.random()*6-3]);
+    // Iconic ridge lines of 4-8 trees
+    for(let g=0;g<12;g++){
+      const gx=-250+Math.random()*500,gz=-60-Math.random()*320;
+      const gCount=4+Math.floor(Math.random()*5);
+      const gAngle=Math.random()*Math.PI;
+      for(let t=0;t<gCount;t++){
+        cypressPositions.push([gx+Math.cos(gAngle)*t*4+Math.random()*1.5,gz+Math.sin(gAngle)*t*4+Math.random()*1.5]);
       }
     }
-    cypressPositions.forEach(([cx,cz])=>{
-      if(Math.sqrt(cx*cx+cz*cz)<45)return;// skip courtyard
-      const ch=5+Math.random()*5;
-      scene.add(mk(new THREE.CylinderGeometry(.12,.2,ch*.2,6),M.barkD,cx,ch*.1,cz));
-      const cone=new THREE.Mesh(new THREE.ConeGeometry(.5+Math.random()*.25,ch,7),
-        new THREE.MeshStandardMaterial({color:`hsl(${125+Math.random()*15},${38+Math.random()*12}%,${22+Math.random()*10}%)`,roughness:.85}));
-      cone.position.set(cx,ch*.55,cz);cone.castShadow=true;scene.add(cone);
+    // Farmhouse accompaniment
+    for(let f=0;f<20;f++){
+      const angle=Math.random()*Math.PI*2,dist=100+Math.random()*250;
+      for(let t=0;t<2+Math.floor(Math.random()*3);t++){
+        cypressPositions.push([Math.cos(angle)*dist+Math.random()*6-3,Math.sin(angle)*dist-50+Math.random()*6-3]);
+      }
+    }
+    cypressPositions.forEach(([cx2,cz])=>{
+      if(Math.sqrt(cx2*cx2+cz*cz)<50)return;
+      const d=Math.sqrt(cx2*cx2+cz*cz);
+      const ch=4+Math.random()*6;
+      const cCol=atmosColor(`hsl(${128+Math.random()*12},${40+Math.random()*10}%,${20+Math.random()*8}%)`,d);
+      scene.add(mk(new THREE.CylinderGeometry(.1,.18,ch*.18,5),M.barkD,cx2,ch*.09,cz));
+      const cone=new THREE.Mesh(new THREE.ConeGeometry(.4+Math.random()*.2,ch,6),new THREE.MeshStandardMaterial({color:cCol,roughness:.85}));
+      cone.position.set(cx2,ch*.55,cz);cone.castShadow=d<150;scene.add(cone);
     });
 
-    // Olive trees — gnarled trunks, silver-green canopies
-    for(let oi=0;oi<24;oi++){
-      const angle=Math.random()*Math.PI*2,dist=40+Math.random()*80;
+    // ── OLIVE GROVES: silver-green, gnarled ──
+    for(let oi=0;oi<40;oi++){
+      const angle=Math.random()*Math.PI*2,dist=38+Math.random()*120;
       const ox=Math.cos(angle)*dist,oz=Math.sin(angle)*dist-20;
-      if(Math.sqrt(ox*ox+oz*oz)<35)continue;
-      scene.add(mk(new THREE.CylinderGeometry(.15,.22,2.2,5),M.bark,ox,1.1,oz));
-      // Wider, flatter canopy
-      const cn=new THREE.Mesh(new THREE.SphereGeometry(2.2+Math.random()*.8,8,8),
-        new THREE.MeshStandardMaterial({color:`hsl(${105+Math.random()*15},${25+Math.random()*15}%,${38+Math.random()*10}%)`,roughness:.82}));
-      cn.position.set(ox,3.2+Math.random()*.4,oz);cn.scale.set(1,.45,1);cn.castShadow=true;scene.add(cn);
+      if(Math.sqrt(ox*ox+oz*oz)<48)continue;
+      const d=Math.sqrt(ox*ox+oz*oz);
+      const oCol=atmosColor(`hsl(${102+Math.random()*18},${22+Math.random()*18}%,${36+Math.random()*12}%)`,d);
+      scene.add(mk(new THREE.CylinderGeometry(.12,.2,2,5),M.bark,ox,1,oz));
+      const cn=new THREE.Mesh(new THREE.SphereGeometry(1.8+Math.random()*.8,8,7),new THREE.MeshStandardMaterial({color:oCol,roughness:.84}));
+      cn.position.set(ox,2.8+Math.random()*.3,oz);cn.scale.set(1,.4,1);cn.castShadow=d<120;scene.add(cn);
     }
 
-    // Stone pine trees (umbrella pines) — iconic Mediterranean
-    for(let pi=0;pi<10;pi++){
-      const angle=Math.random()*Math.PI*2,dist=80+Math.random()*150;
+    // ── STONE PINES (umbrella pines) ──
+    for(let pi=0;pi<18;pi++){
+      const angle=Math.random()*Math.PI*2,dist=70+Math.random()*200;
       const px=Math.cos(angle)*dist,pz=Math.sin(angle)*dist-50;
-      if(Math.sqrt(px*px+(pz+50)*(pz+50))<60)continue;
-      const ph=6+Math.random()*3;
-      scene.add(mk(new THREE.CylinderGeometry(.2,.3,ph,6),M.bark,px,ph/2,pz));
-      // Flat umbrella canopy
-      const canopy=new THREE.Mesh(new THREE.SphereGeometry(3+Math.random(),10,8),
-        new THREE.MeshStandardMaterial({color:"#3A6830",roughness:.82}));
-      canopy.position.set(px,ph+1,pz);canopy.scale.set(1,.3,1);canopy.castShadow=true;scene.add(canopy);
+      if(Math.sqrt(px*px+(pz+50)*(pz+50))<55)continue;
+      const d=Math.sqrt(px*px+pz*pz);
+      const ph=5+Math.random()*4;
+      const pCol=atmosColor("#3A6830",d);
+      scene.add(mk(new THREE.CylinderGeometry(.18,.28,ph,6),M.bark,px,ph/2,pz));
+      const canopy=new THREE.Mesh(new THREE.SphereGeometry(2.5+Math.random()*1.2,10,8),new THREE.MeshStandardMaterial({color:pCol,roughness:.82}));
+      canopy.position.set(px,ph+.8,pz);canopy.scale.set(1,.28,1);canopy.castShadow=d<130;scene.add(canopy);
     }
 
-    // Distant farmhouses & villas with terracotta roofs
-    const farmData=[[-120,-160],[140,-130],[-60,-220],[100,-250],[-180,-120],[200,-170],[-40,-290],[70,-310],
-      [-160,-210],[170,-230],[-90,-300],[110,-180],[-200,-150],[230,-120],[-130,-270],[160,-290]];
-    farmData.forEach(([fx,fz])=>{
-      const fh=2+Math.random()*2;const fw=3+Math.random()*3;
-      scene.add(mk(new THREE.BoxGeometry(fw,fh,fw*.7),new THREE.MeshStandardMaterial({color:`hsl(30,${20+Math.random()*15}%,${80+Math.random()*10}%)`,roughness:.75}),fx,fh/2+.5,fz));
-      const fr=mk(new THREE.BoxGeometry(fw+1,.2,fw*.7+.5),M.tile,fx,fh+.7,fz);fr.rotation.z=.1+Math.random()*.08;scene.add(fr);
-      // Some with towers
-      if(Math.random()>.6){
-        const th=fh+2+Math.random()*2;
-        scene.add(mk(new THREE.BoxGeometry(fw*.3,th,fw*.3),new THREE.MeshStandardMaterial({color:"#E8D8C0",roughness:.7}),fx+fw*.4,th/2+.5,fz));
-        scene.add(mk(new THREE.ConeGeometry(fw*.25,1.5,4),M.tile,fx+fw*.4,th+1.2,fz));
+    // ── FARMHOUSES & VILLAS: warm stone, terracotta roofs, shutters ──
+    const farmPositions=[[-110,-140],[135,-120],[-55,-200],[95,-230],[-170,-110],[190,-160],[-35,-270],[65,-290],
+      [-150,-195],[165,-215],[-85,-280],[105,-165],[-195,-140],[225,-110],[-125,-250],[155,-275],
+      [-40,-150],[130,-190],[-90,-110],[180,-250],[-210,-200],[250,-180],[-160,-300],[200,-310]];
+    farmPositions.forEach(([fx,fz])=>{
+      const d=Math.sqrt(fx*fx+fz*fz);
+      const fh=2+Math.random()*2.5;const fw=3.5+Math.random()*3;const fd=fw*.65+Math.random();
+      const wallCol=atmosColor(`hsl(${28+Math.random()*10},${18+Math.random()*12}%,${78+Math.random()*10}%)`,d);
+      // Main building
+      scene.add(mk(new THREE.BoxGeometry(fw,fh,fd),new THREE.MeshStandardMaterial({color:wallCol,roughness:.78}),fx,fh/2+.3,fz));
+      // Terracotta roof — slight overhang
+      const roofCol=atmosColor("#C07048",d);
+      const rf=mk(new THREE.BoxGeometry(fw+.8,.25,fd+.6),new THREE.MeshStandardMaterial({color:roofCol,roughness:.6}),fx,fh+.5,fz);
+      rf.rotation.z=.08+Math.random()*.06;scene.add(rf);
+      // Chimney
+      if(Math.random()>.4){
+        scene.add(mk(new THREE.BoxGeometry(.4,1.2,.4),new THREE.MeshStandardMaterial({color:wallCol,roughness:.75}),fx+fw*.3,fh+1,fz));
+      }
+      // Shutters (tiny boxes on walls)
+      const shutterCol=atmosColor(`hsl(${140+Math.random()*40},${25+Math.random()*15}%,${30+Math.random()*15}%)`,d);
+      for(let wi=0;wi<2;wi++){
+        scene.add(mk(new THREE.BoxGeometry(fw*.15,.25,.03),new THREE.MeshStandardMaterial({color:shutterCol,roughness:.7}),fx-fw*.25+wi*fw*.5,fh*.6,fz+fd/2+.02));
+      }
+      // Extension wing on larger farms
+      if(Math.random()>.55){
+        const eh=fh*.7,ew=fw*.6;
+        scene.add(mk(new THREE.BoxGeometry(ew,eh,fd*.8),new THREE.MeshStandardMaterial({color:wallCol,roughness:.78}),fx+fw*.5+ew*.4,eh/2+.3,fz));
+        scene.add(mk(new THREE.BoxGeometry(ew+.5,.2,fd*.8+.4),new THREE.MeshStandardMaterial({color:roofCol,roughness:.6}),fx+fw*.5+ew*.4,eh+.5,fz));
+      }
+      // Warm window glow
+      if(d<250){
+        const wl=new THREE.PointLight("#FFE0A0",.15,8);wl.position.set(fx,fh*.6,fz+fd/2+1);scene.add(wl);
       }
     });
 
-    // Winding Tuscan road
-    for(let ri=0;ri<40;ri++){
-      const rz=-45-ri*8;const rx=Math.sin(ri*.25)*25;
-      const rw=3+Math.sin(ri*.5)*.5;
-      scene.add(mk(new THREE.BoxGeometry(rw,.04,7),M.pathD,rx,.12,rz));
+    // ── WINDING WHITE ROAD (strada bianca) ──
+    for(let ri=0;ri<55;ri++){
+      const rz=-42-ri*6.5;const rx=Math.sin(ri*.2)*30+Math.cos(ri*.08)*12;
+      const rw=2.8+Math.sin(ri*.4)*.4;
+      const d=Math.sqrt(rx*rx+rz*rz);
+      const roadCol=atmosColor("#D8C8A8",d);
+      scene.add(mk(new THREE.BoxGeometry(rw,.03,6),new THREE.MeshStandardMaterial({color:roadCol,roughness:.88}),rx,.12,rz));
     }
 
-    // Ancient stone bridge over a small stream
-    const bridgeZ=-90;
-    scene.add(mk(new THREE.BoxGeometry(8,.4,4),M.stoneD,15,.8,bridgeZ));
-    scene.add(mk(new THREE.BoxGeometry(.6,1.2,4),M.stoneD,11,.6,bridgeZ));
-    scene.add(mk(new THREE.BoxGeometry(.6,1.2,4),M.stoneD,19,.6,bridgeZ));
-    // Stream
-    for(let si=0;si<15;si++){
-      const sw=new THREE.Mesh(new THREE.BoxGeometry(2+Math.random(),.05,3),M.water);
-      sw.position.set(10+si*3+Math.random()*2,.15+Math.random()*.2,bridgeZ+Math.sin(si*.4)*3);
-      sw.rotation.y=Math.random()*.3;scene.add(sw);
+    // ── STONE BRIDGE over winding stream ──
+    const bridgeZ=-85;
+    scene.add(mk(new THREE.BoxGeometry(7,.35,3.5),M.stoneD,18,.75,bridgeZ));
+    // Arch support
+    scene.add(mk(new THREE.CylinderGeometry(.4,.5,1,8),M.stoneD,15,.5,bridgeZ));
+    scene.add(mk(new THREE.CylinderGeometry(.4,.5,1,8),M.stoneD,21,.5,bridgeZ));
+    // Bridge walls
+    scene.add(mk(new THREE.BoxGeometry(.3,.5,3.5),M.stoneD,14.5,1.2,bridgeZ));
+    scene.add(mk(new THREE.BoxGeometry(.3,.5,3.5),M.stoneD,21.5,1.2,bridgeZ));
+    // Winding stream — longer, more natural
+    for(let si=0;si<30;si++){
+      const sx=8+si*2.5+Math.sin(si*.3)*4;const sz=bridgeZ+Math.sin(si*.35)*6-si*.5;
+      const sw=new THREE.Mesh(new THREE.BoxGeometry(2.5+Math.random()*.5,.04,2.2),M.water);
+      sw.position.set(sx,.12+Math.random()*.1,sz);sw.rotation.y=Math.atan2(Math.cos(si*.35)*6*.35,2.5)+Math.random()*.2;
+      scene.add(sw);
     }
 
-    // Distant medieval hilltop village
-    const villageX=-200,villageZ=-280;
-    const villageHill=new THREE.Mesh(new THREE.SphereGeometry(25,12,10),new THREE.MeshStandardMaterial({color:"#5A8040",roughness:.85}));
-    villageHill.position.set(villageX,-20,villageZ);villageHill.scale.y=.15;scene.add(villageHill);
-    for(let vi=0;vi<8;vi++){
-      const vx=villageX-8+Math.random()*16,vz=villageZ-4+Math.random()*8;
-      const vh=1.5+Math.random()*2;
-      scene.add(mk(new THREE.BoxGeometry(2+Math.random(),vh,2+Math.random()),new THREE.MeshStandardMaterial({color:"#E8D8C0",roughness:.7}),vx,vh/2+2,vz));
-      scene.add(mk(new THREE.BoxGeometry(2.5,.15,2.5),M.tile,vx,vh+2.1,vz));
+    // ── MEDIEVAL HILLTOP VILLAGES (2 villages for depth) ──
+    [[-195,-270,20],[-280,-190,15],[250,-300,18]].forEach(([vx,vz,vr])=>{
+      const d=Math.sqrt(vx*vx+vz*vz);
+      const hillCol=atmosColor("#5A8040",d);
+      const vh=new THREE.Mesh(new THREE.SphereGeometry(vr,14,10),new THREE.MeshStandardMaterial({color:hillCol,roughness:.86}));
+      vh.position.set(vx,-(vr as number)+3,vz);vh.scale.y=.12;scene.add(vh);
+      const nHouses=6+Math.floor(Math.random()*6);
+      for(let hi=0;hi<nHouses;hi++){
+        const hx=vx-6+Math.random()*12,hz=vz-4+Math.random()*8;
+        const hh=1.2+Math.random()*1.8;
+        const wCol=atmosColor("#E8D8C0",d);
+        scene.add(mk(new THREE.BoxGeometry(1.5+Math.random(),hh,1.5+Math.random()),new THREE.MeshStandardMaterial({color:wCol,roughness:.72}),hx,hh/2+1.8,hz));
+        scene.add(mk(new THREE.BoxGeometry(2,.12,2),new THREE.MeshStandardMaterial({color:atmosColor("#C07048",d),roughness:.6}),hx,hh+2,hz));
+      }
+      // Bell tower / church
+      const tCol=atmosColor("#E0D0B8",d);
+      scene.add(mk(new THREE.BoxGeometry(1.8,5,1.8),new THREE.MeshStandardMaterial({color:tCol,roughness:.68}),vx,4.5,vz));
+      scene.add(mk(new THREE.ConeGeometry(1.2,2.5,4),new THREE.MeshStandardMaterial({color:atmosColor("#C07048",d),roughness:.6}),vx,8,vz));
+    });
+
+    // ── SUNFLOWER FIELDS: bright yellow patches ──
+    for(let sf=0;sf<8;sf++){
+      const angle=Math.random()*Math.PI*2,dist=100+Math.random()*180;
+      const sx=Math.cos(angle)*dist,sz=Math.sin(angle)*dist-30;
+      if(Math.sqrt(sx*sx+(sz+30)*(sz+30))<80)continue;
+      const d=Math.sqrt(sx*sx+sz*sz);
+      const sfCol=atmosColor("#E8C830",d);
+      const sfm=new THREE.Mesh(new THREE.PlaneGeometry(20+Math.random()*15,15+Math.random()*10),
+        new THREE.MeshStandardMaterial({color:sfCol,roughness:.82}));
+      sfm.rotation.x=-Math.PI/2;sfm.position.set(sx,.25,sz);sfm.rotation.z=Math.random()*.4;scene.add(sfm);
     }
-    // Church tower
-    scene.add(mk(new THREE.BoxGeometry(2,6,2),new THREE.MeshStandardMaterial({color:"#E0D0B8",roughness:.65}),villageX,5,villageZ));
-    scene.add(mk(new THREE.ConeGeometry(1.5,3,4),M.tile,villageX,9.5,villageZ));
+
+    // ── STONE WALLS: dry stone walls between fields ──
+    for(let sw=0;sw<20;sw++){
+      const angle=Math.random()*Math.PI*2,dist=60+Math.random()*200;
+      const wx=Math.cos(angle)*dist,wz=Math.sin(angle)*dist-40;
+      if(Math.sqrt(wx*wx+(wz+40)*(wz+40))<70)continue;
+      const wLen=8+Math.random()*20,wAng=Math.random()*Math.PI;
+      const d=Math.sqrt(wx*wx+wz*wz);
+      const wCol=atmosColor("#B0A888",d);
+      const wall=mk(new THREE.BoxGeometry(wLen,.5,.3),new THREE.MeshStandardMaterial({color:wCol,roughness:.9}),wx,.3,wz);
+      wall.rotation.y=wAng;scene.add(wall);
+    }
+
+    // ── DISTANT MOUNTAIN RANGE (far horizon) ──
+    for(let mi=0;mi<8;mi++){
+      const mAngle=-Math.PI*.3+mi*.25+Math.random()*.1;
+      const mDist=450+Math.random()*50;
+      const mx=Math.cos(mAngle)*mDist,mz=Math.sin(mAngle)*mDist-80;
+      const mr=80+Math.random()*60,mh=15+Math.random()*12;
+      const mCol=atmosColor(`hsl(${210+Math.random()*20},${15+Math.random()*10}%,${55+Math.random()*10}%)`,mDist);
+      const mm=new THREE.Mesh(new THREE.ConeGeometry(mr,mh,8),new THREE.MeshStandardMaterial({color:mCol,roughness:.9}));
+      mm.position.set(mx,mh*.3,mz);mm.scale.set(1.5,.5,1);scene.add(mm);
+    }
 
     // ══════════════════════════════════════════
     // ATMOSPHERIC EFFECTS

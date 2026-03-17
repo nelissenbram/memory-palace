@@ -237,16 +237,14 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     // Show painting type first, fall back to first photo, else clickable station
     const bigPaintMem=paintingMems.length>0?paintingMems[0]:photoMems.length>0?photoMems[0]:null;
     const bigPaintUsedPhoto=paintingMems.length===0&&photoMems.length>0;// track if we borrowed a photo
-    scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
-    scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.gold,fpX,2.4,fpZ+.08));
-    const fpSp=new THREE.SpotLight("#FFF5E0",.8,5,Math.PI/7,.5,1.2);fpSp.position.set(fpX,rH-.2,fpZ+.5);fpSp.target.position.set(fpX,2.4,fpZ);scene.add(fpSp);scene.add(fpSp.target);
     if(bigPaintMem){
+      // Frame only shown when there's actual content
+      scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
+      scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.gold,fpX,2.4,fpZ+.08));
+      const fpSp=new THREE.SpotLight("#FFF5E0",.8,5,Math.PI/7,.5,1.2);fpSp.position.set(fpX,rH-.2,fpZ+.5);fpSp.target.position.set(fpX,2.4,fpZ);scene.add(fpSp);scene.add(fpSp.target);
       const om=bigPaintMem;const t=paintTex(om);
       const omc=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),new THREE.MeshStandardMaterial({map:t,roughness:.8}));
       omc.position.set(fpX,2.4,fpZ+.12);omc.userData={memory:om};scene.add(omc);memMeshes.current.push(omc);
-    }else{
-      const paintHit=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.1,.15),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
-      paintHit.position.set(fpX,2.4,fpZ+.05);paintHit.userData={isStation:true};scene.add(paintHit);memMeshes.current.push(paintHit);
     }
 
     // ── PHOTO FRAMES: small fireplace frame + wall frames ──
@@ -482,17 +480,10 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     // ═══════════════════════════════════════════
     const rugZ=(sofaZ+fpZ)/2+.2;
     if(layout.rugStyle==="persian"){
-    scene.add(mk(new THREE.BoxGeometry(4.5,.005,3.5),MS.rugB,0,.003,rugZ));
-    scene.add(mk(new THREE.BoxGeometry(4.2,.007,3.2),MS.rug,0,.006,rugZ));
-    scene.add(mk(new THREE.BoxGeometry(3.6,.008,2.6),MS.rugN,0,.008,rugZ));
-    scene.add(mk(new THREE.BoxGeometry(3,.009,2),MS.rug,0,.01,rugZ));
-    const rugMed=new THREE.Mesh(new THREE.CylinderGeometry(.6,.6,.003,20),MS.rugB);rugMed.position.set(0,.013,rugZ);scene.add(rugMed);
+    scene.add(mk(new THREE.BoxGeometry(4,.012,3),MS.rug,0,.006,rugZ));
     }else{
     const rr=Math.min(rW,rL)*0.2;
-    scene.add(mk(new THREE.CylinderGeometry(rr,rr,.003,24),MS.rugB,0,.003,rugZ));
-    scene.add(mk(new THREE.CylinderGeometry(rr-.2,rr-.2,.005,24),MS.rug,0,.005,rugZ));
-    scene.add(mk(new THREE.CylinderGeometry(rr-.5,rr-.5,.007,24),MS.rugN,0,.007,rugZ));
-    scene.add(mk(new THREE.CylinderGeometry(rr-.8,rr-.8,.008,20),MS.rugB,0,.008,rugZ));
+    scene.add(mk(new THREE.CylinderGeometry(rr,rr,.012,24),MS.rug,0,.006,rugZ));
     }
 
     // ═══════════════════════════════════════════

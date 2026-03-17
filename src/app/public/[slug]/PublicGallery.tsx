@@ -567,9 +567,11 @@ function MemoryLightbox({
               src={mem.fileUrl!}
               controls
               autoPlay
+              playsInline
               style={{
                 width: "100%",
                 maxHeight: "60vh",
+                objectFit: "contain",
                 display: "block",
               }}
             />
