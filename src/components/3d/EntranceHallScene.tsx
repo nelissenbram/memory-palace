@@ -973,9 +973,9 @@ export default function EntranceHallScene({
       const hlTarget=highlightDoorRef.current;
       doorMeshes.forEach(d=>{
         if(hlTarget===d.wingId){
-          const pulse=0.3+Math.sin(t*2.5)*.15;
-          d.mat.emissive.lerp(goldColor,.15);
-          d.mat.emissiveIntensity+=(pulse-d.mat.emissiveIntensity)*.1;
+          const pulse=0.6+Math.sin(t*2.5)*.25;
+          d.mat.emissive=goldColor.clone();
+          d.mat.emissiveIntensity+=(pulse-d.mat.emissiveIntensity)*.12;
         }
       });
       hlDoorLights.forEach((light,id)=>{
@@ -1047,9 +1047,10 @@ export default function EntranceHallScene({
 
       // ── Distance-based door glow (strong baseline) ──
       doorMeshes.forEach(d => {
+        // Skip normal glow for walkthrough-highlighted door
+        if(hlTarget===d.wingId)return;
         const wing = WINGS.find(ww => ww.id === d.wingId);
         const accent = wing?.accent || "#C8A858";
-        // Calculate distance from player to door
         const doorAngle = d.angle;
         const doorX = Math.cos(doorAngle) * (RADIUS - 0.4);
         const doorZ = Math.sin(doorAngle) * (RADIUS - 0.4);
@@ -1057,7 +1058,6 @@ export default function EntranceHallScene({
           (pos.current.x - doorX) ** 2 + (pos.current.z - doorZ) ** 2
         );
         const isHover = hoveredWing === d.wingId;
-        // Strong baseline glow (0.25) + proximity boost + hover pulse
         const baseGlow = 0.25;
         const proximityGlow = Math.max(0, 1 - distToDoor / 10) * 0.35;
         const hoverGlow = isHover ? 0.35 + Math.sin(t * 3) * 0.12 : 0;

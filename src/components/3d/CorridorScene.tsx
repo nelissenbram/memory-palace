@@ -1337,14 +1337,17 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       pos.lerp(posT,.1);camera.position.copy(pos);
       const ld=new THREE.Vector3(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
       camera.lookAt(camera.position.clone().add(ld));
-      dMeshes.forEach(d=>{const isH=hovDoor===d.room.id;d.mat.emissive=isH?new THREE.Color(wing.accent):new THREE.Color(0);d.mat.emissiveIntensity=isH?.12+Math.sin(t*3)*.04:0;});
-      // Walkthrough highlight — golden emissive pulse on target door
       const hlTarget=highlightDoorRef.current;
       dMeshes.forEach(d=>{
         if(hlTarget===d.room.id){
-          const pulse=0.3+Math.sin(t*2.5)*.15;
-          d.mat.emissive.lerp(goldColor,.15);
-          d.mat.emissiveIntensity+=(pulse-d.mat.emissiveIntensity)*.1;
+          // Walkthrough golden glow — strong pulse
+          const pulse=0.6+Math.sin(t*2.5)*.25;
+          d.mat.emissive=goldColor.clone();
+          d.mat.emissiveIntensity+=(pulse-d.mat.emissiveIntensity)*.12;
+        }else{
+          const isH=hovDoor===d.room.id;
+          d.mat.emissive=isH?new THREE.Color(wing.accent):new THREE.Color(0);
+          d.mat.emissiveIntensity=isH?.12+Math.sin(t*3)*.04:0;
         }
       });
       hlDoorLights.forEach((light,id)=>{

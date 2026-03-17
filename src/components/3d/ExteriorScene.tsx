@@ -841,6 +841,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         sg.group.position.y=sg.currentY;
 
         // Hovered section turns green; non-hovered sections dim when something is hovered
+        // Skip color/emissive changes if walkthrough is highlighting this section
+        const isWtHighlight=hlTarget===sg.id;
         sg.meshes.forEach((wm: any)=>{
           if(!wm.material||wm.material.transparent)return;
           const mat=wm.material as THREE.MeshStandardMaterial;
@@ -848,7 +850,12 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
           if(!wm.userData._origColor){
             wm.userData._origColor=mat.color.clone();
           }
-          if(isHov){
+          if(isWtHighlight){
+            // Walkthrough golden glow — strong pulse
+            mat.color.lerp(wm.userData._origColor,.06);
+            mat.emissive.lerp(goldColor,.12);
+            mat.emissiveIntensity+=(0.4+Math.sin(t*2.5)*.2-mat.emissiveIntensity)*.1;
+          }else if(isHov){
             // Tint green
             mat.color.lerp(greenColor,.08);
             mat.emissive.lerp(greenColor,.1);
@@ -857,6 +864,12 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
             // Dim non-hovered
             const darkened=wm.userData._origColor.clone().multiplyScalar(0.5);
             mat.color.lerp(darkened,.08);
+            mat.emissive.lerp(new THREE.Color(0,0,0),.1);
+            mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
+          }else if(hlTarget){
+            // Walkthrough active but this isn't the target — dim it
+            const darkened=wm.userData._origColor.clone().multiplyScalar(0.6);
+            mat.color.lerp(darkened,.04);
             mat.emissive.lerp(new THREE.Color(0,0,0),.1);
             mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
           }else{
@@ -896,12 +909,14 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const warmGlow=new THREE.Color("#FFE8B0");
       clickTargets.forEach((ct: any)=>{
         const isHov=hoveredRoomRef.current===ct.userData.roomId;
+        const isWtHl=hlTarget===ct.userData.roomId;
         const accentColor=new THREE.Color(ct.userData.accent);
-        // Smooth emissive glow on wing body meshes (skip cloned window mats)
+        // Smooth emissive glow on wing body meshes (skip cloned window mats + walkthrough highlighted)
         const winSet=wingWindowMats.get(ct.userData.roomId);
         const winMeshSet=new Set(winSet?.map(e=>e.mesh));
         ct.userData.wingMeshes.forEach((wm: any)=>{
           if(winMeshSet?.has(wm))return;// handled separately
+          if(isWtHl)return;// walkthrough glow handled above
           if(wm.material.emissive){
             if(isHov){wm.material.emissive.lerp(accentColor,.12);wm.material.emissiveIntensity+=(0.22-wm.material.emissiveIntensity)*.08;}
             else{wm.material.emissiveIntensity+=(0-wm.material.emissiveIntensity)*.06;}
