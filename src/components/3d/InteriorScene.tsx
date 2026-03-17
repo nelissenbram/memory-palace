@@ -558,6 +558,39 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     }
 
     // ═══════════════════════════════════════════
+    // CHRISTMAS TREE — special decoration for Christmas Traditions room
+    // ═══════════════════════════════════════════
+    if((actualRoomId||roomId)==="fr1"){
+      const txX=rW/2-2,txZ=-rL/2+2;
+      // Trunk
+      scene.add(mk(new THREE.CylinderGeometry(.08,.12,0.5,8),MS.dkW,txX,.25,txZ));
+      // Tree tiers (3 stacked cones)
+      const treeMat=new THREE.MeshStandardMaterial({color:"#1A5C1A",roughness:.85,emissive:"#0A2A0A",emissiveIntensity:.1});
+      const treeMat2=new THREE.MeshStandardMaterial({color:"#1E6B1E",roughness:.82,emissive:"#0A2A0A",emissiveIntensity:.1});
+      scene.add(mk(new THREE.ConeGeometry(.9,1.4,8),treeMat,txX,1.2,txZ));
+      scene.add(mk(new THREE.ConeGeometry(.7,1.2,8),treeMat2,txX,2.1,txZ));
+      scene.add(mk(new THREE.ConeGeometry(.45,.9,8),treeMat,txX,2.8,txZ));
+      // Star on top
+      const starMat=new THREE.MeshStandardMaterial({color:"#FFD700",emissive:"#FFD700",emissiveIntensity:.8,metalness:.9,roughness:.2});
+      scene.add(mk(new THREE.OctahedronGeometry(.12,0),starMat,txX,3.35,txZ));
+      // Ornaments (baubles scattered on the tree)
+      const ornColors=["#C41E3A","#FFD700","#1E90FF","#C41E3A","#FFD700","#FF6B35","#C41E3A","#1E90FF"];
+      ornColors.forEach((c,i)=>{
+        const a=(i/ornColors.length)*Math.PI*2+Math.random()*.3;
+        const tier=i<3?0:i<6?1:2;
+        const baseY=[1.0,1.9,2.6][tier];
+        const r2=[.7,.5,.3][tier];
+        const oy=baseY+Math.random()*.4;
+        const ox=txX+Math.cos(a)*r2;const oz=txZ+Math.sin(a)*r2;
+        const ornMat=new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.3,metalness:.8,roughness:.2});
+        scene.add(mk(new THREE.SphereGeometry(.05,8,8),ornMat,ox,oy,oz));
+      });
+      // Warm glow light from tree
+      const treeLight=new THREE.PointLight("#FFE8A0",1.2,8);treeLight.position.set(txX,2,txZ);scene.add(treeLight);
+      animTex.push({type:"xmasTree" as any,mesh:null as any,light:treeLight,star:null as any,x:txX,z:txZ});
+    }
+
+    // ═══════════════════════════════════════════
     // OPTIONAL: GLOBE (decorative, near desk)
     // ═══════════════════════════════════════════
     if(layout.globe){
@@ -709,6 +742,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
           if(vinylAudio){const vo=volOverride.current.audio;vinylAudio.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(new THREE.Vector3(vpX,1,vpZ))/8));}
         }
         if(a.type==="globe"){a.mesh.rotation.y=t*.15;}
+        if((a as any).type==="xmasTree"){const xl=(a as any).light as THREE.PointLight;xl.intensity=1+Math.sin(t*1.5)*.4+Math.sin(t*3.7)*.2;}
         if(a.type==="video"){
           const cx=a.ctx,cw=a.w,ch=a.h,m=a.mem,ph=t*.5+a.phase;
           const vEl=a.videoEl?a.videoEl():null;
