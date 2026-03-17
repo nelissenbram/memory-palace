@@ -13,9 +13,11 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
   const camO=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camOT=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camD=useRef(90);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
+  const onRoomClickRef=useRef(onRoomClick);
 
-  // Keep hoveredRoom ref in sync so the animation loop always reads the latest value
+  // Keep refs in sync so event listeners always read the latest value
   useEffect(()=>{hoveredRoomRef.current=hoveredRoom;},[hoveredRoom]);
+  useEffect(()=>{onRoomClickRef.current=onRoomClick;},[onRoomClick]);
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
@@ -938,7 +940,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);onRoomHover(hits.length>0?hits[0].object.userData.roomId:null);};
     const onCk=(e: MouseEvent)=>{if(drag.current)return;const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
-      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0)onRoomClick(hits[0].object.userData.roomId);};
+      ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0)onRoomClickRef.current(hits[0].object.userData.roomId);};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(180,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);
@@ -965,7 +967,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);
         if(hits.length>0){const hitId=hits[0].object.userData.roomId;onRoomHover(hitId);
           // Brief delay so the lift animation is visible before navigating
-          setTimeout(()=>onRoomClick(hitId),250);
+          setTimeout(()=>onRoomClickRef.current(hitId),250);
         }
       }
     };

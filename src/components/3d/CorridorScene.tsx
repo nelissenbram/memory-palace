@@ -10,6 +10,8 @@ import { mk } from "@/lib/3d/meshHelpers";
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
 export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>}){
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
+  const onDoorClickRef=useRef(onDoorClick);
+  useEffect(()=>{onDoorClickRef.current=onDoorClick;},[onDoorClick]);
   const wing=wingDataProp||DEFAULT_WINGS.find(w=>w.id===wingId)!;
   const rooms=roomsProp||[];
   const doorMeshes=useRef<any[]>([]);
@@ -1354,15 +1356,15 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       hovPainting=paintHov;
       hovDoor=found;el.style.cursor=(found||portalHov||paintHov!==null)?"pointer":"grab";onDoorHover(found||(portalHov?"__portal__":null));};
     const onCk=()=>{
-      if(!drag.v&&hovDoor)onDoorClick(hovDoor);
+      if(!drag.v&&hovDoor)onDoorClickRef.current(hovDoor);
       else if(!drag.v&&hovPainting!==null){
         const pInfo=paintingMeshes.find(p=>p.idx===hovPainting);
         const nearestRoom=pInfo?rooms[Math.min(pInfo.doorIdx,rooms.length-1)]:null;
-        if(nearestRoom)onDoorClick(nearestRoom.id);
+        if(nearestRoom)onDoorClickRef.current(nearestRoom.id);
       }
       else if(!drag.v){
         const rect2=el.getBoundingClientRect();const rc2=new THREE.Raycaster();rc2.setFromCamera(new THREE.Vector2(((prev.x-rect2.left)/rect2.width)*2-1,-((prev.y-rect2.top)/rect2.height)*2+1),camera);
-        const ph3=rc2.intersectObject(portalHit);if(ph3.length>0&&ph3[0].distance<5)onDoorClick("__portal__");}};
+        const ph3=rc2.intersectObject(portalHit);if(ph3.length>0&&ph3[0].distance<5)onDoorClickRef.current("__portal__");}};
     const onKD=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};
     const onKU=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=false;};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
@@ -1412,12 +1414,12 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
             rc.setFromCamera(new THREE.Vector2(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1),camera);
             let found: string|null=null;
             dMeshes.forEach(d=>{const hits=rc.intersectObject(d.mesh);if(hits.length>0&&hits[0].distance<5)found=d.room.id;});
-            if(found)onDoorClick(found);
+            if(found)onDoorClickRef.current(found);
             else{
               let paintTap: number|null=null;
               paintingMeshes.forEach(p=>{const hits=rc.intersectObject(p.mesh);if(hits.length>0&&hits[0].distance<6)paintTap=p.idx;});
-              if(paintTap!==null){const pInfo2=paintingMeshes.find(p=>p.idx===paintTap);const nr=pInfo2?rooms[Math.min(pInfo2.doorIdx,rooms.length-1)]:null;if(nr)onDoorClick(nr.id);}
-              else{const ph=rc.intersectObject(portalHit);if(ph.length>0&&ph[0].distance<5)onDoorClick("__portal__");}
+              if(paintTap!==null){const pInfo2=paintingMeshes.find(p=>p.idx===paintTap);const nr=pInfo2?rooms[Math.min(pInfo2.doorIdx,rooms.length-1)]:null;if(nr)onDoorClickRef.current(nr.id);}
+              else{const ph=rc.intersectObject(portalHit);if(ph.length>0&&ph[0].distance<5)onDoorClickRef.current("__portal__");}
             }
           }
           touchLookId=null;

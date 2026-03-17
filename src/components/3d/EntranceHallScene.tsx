@@ -32,6 +32,8 @@ export default function EntranceHallScene({
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
+  const onDoorClickRef = useRef(onDoorClick);
+  useEffect(() => { onDoorClickRef.current = onDoorClick; }, [onDoorClick]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [muted, setMuted] = useState(false);
 
@@ -1095,8 +1097,8 @@ export default function EntranceHallScene({
     };
     const onClick = () => {
       if (!drag.current && hovMem.current) {
-        if (hovMem.current === "__exterior__") onDoorClick("__exterior__");
-        else onDoorClick(hovMem.current);
+        if (hovMem.current === "__exterior__") onDoorClickRef.current("__exterior__");
+        else onDoorClickRef.current(hovMem.current);
       }
     };
     const onKD = (e: KeyboardEvent) => {
@@ -1187,10 +1189,10 @@ export default function EntranceHallScene({
               const hits = rc.intersectObject(d.mesh);
               if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
             });
-            if (found) onDoorClick(found);
+            if (found) onDoorClickRef.current(found);
             else {
               const pHits = rc.intersectObject(portalHit);
-              if (pHits.length > 0 && pHits[0].distance < 15) onDoorClick("__exterior__");
+              if (pHits.length > 0 && pHits[0].distance < 15) onDoorClickRef.current("__exterior__");
             }
           }
           touchLookId = null;
