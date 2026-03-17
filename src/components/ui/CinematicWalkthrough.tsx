@@ -87,7 +87,8 @@ export default function CinematicWalkthrough() {
   } else if (phase === 2 && targetWing) {
     // Point toward wing door — calculate angle from hall center
     const idx = WING_INDEX[targetWing] ?? 0;
-    const angle = ((idx / 5) * 360 - 90) * (Math.PI / 180);
+    let angle = (idx / 5) * Math.PI * 2 - Math.PI / 2;
+    while (angle < 0) angle += Math.PI * 2;
     const radius = isMobile ? 28 : 32; // % from center
     const cx = 50 + Math.cos(angle) * radius;
     const cy = 50 + Math.sin(angle) * radius;
@@ -159,19 +160,19 @@ export default function CinematicWalkthrough() {
         <div style={{ ...arrowStyle, zIndex: 79, pointerEvents: "none" }}>
           {/* Pulsing golden ring */}
           <div style={{
-            width: 48, height: 48, borderRadius: 24,
-            border: `2.5px solid ${T.color.gold}`,
-            background: `${T.color.gold}18`,
+            width: 96, height: 96, borderRadius: 48,
+            border: `3px solid ${T.color.gold}`,
+            background: `${T.color.gold}22`,
             animation: "wtPulse 1.5s ease-in-out infinite",
             position: "absolute", left: "50%", top: "50%",
             transform: "translate(-50%, -50%)",
           }} />
           {/* Chevron */}
           <div style={{
-            position: "absolute", left: "50%", top: -18,
+            position: "absolute", left: "50%", top: -24,
             transform: "translate(-50%, -50%)",
             animation: "wtChevron 1.2s ease-in-out infinite",
-            fontSize: 18,
+            fontSize: 22,
             color: T.color.gold,
             textShadow: "0 2px 8px rgba(212,175,55,.5)",
           }}>
@@ -180,11 +181,11 @@ export default function CinematicWalkthrough() {
           {/* Label */}
           {arrowLabel && (
             <div style={{
-              position: "absolute", left: "50%", top: 38,
+              position: "absolute", left: "50%", top: 60,
               transform: "translateX(-50%)",
               whiteSpace: "nowrap",
               fontFamily: T.font.body,
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: 600,
               color: T.color.gold,
               textShadow: "0 1px 6px rgba(0,0,0,.5)",
