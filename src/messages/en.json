@@ -184,7 +184,9 @@
     "phase3": "Welcome to your {wingName} wing. Each door leads to a room. Walk to {roomName} and enter.",
     "phase4": "This is {roomName}. Let's bring it to life with your first memory.",
     "skipIntro": "Skip intro",
-    "clickEntrance": "Click the entrance"
+    "clickEntrance": "Enter the Entrance Hall",
+    "enterWing": "Enter the {wingName} Wing",
+    "enterRoom": "Enter {roomName}"
   },
   "discovery": {
     "title": "Your Palace is Alive",

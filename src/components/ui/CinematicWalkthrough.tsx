@@ -96,14 +96,14 @@ export default function CinematicWalkthrough() {
       position: "absolute", left: `${cx}%`, top: `${cy}%`,
       transform: "translate(-50%, -50%)",
     };
-    arrowLabel = wingName;
+    arrowLabel = t("enterWing", { wingName });
   } else if (phase === 3) {
-    // Point forward down corridor
+    // Point toward first room door — first door (i=0) is on the left wall
     arrowStyle = {
-      position: "absolute", left: "50%", top: "40%",
+      position: "absolute", left: isMobile ? "25%" : "30%", top: "45%",
       transform: "translate(-50%, -50%)",
     };
-    arrowLabel = roomName;
+    arrowLabel = t("enterRoom", { roomName });
   }
 
   return (

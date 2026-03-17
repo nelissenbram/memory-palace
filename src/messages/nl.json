@@ -184,7 +184,9 @@
     "phase3": "Welkom in je {wingName}-vleugel. Elke deur leidt naar een kamer. Loop naar {roomName} en ga naar binnen.",
     "phase4": "Dit is {roomName}. Laten we het tot leven brengen met je eerste herinnering.",
     "skipIntro": "Intro overslaan",
-    "clickEntrance": "Klik op de ingang"
+    "clickEntrance": "Betreed de Entrance Hall",
+    "enterWing": "Betreed de {wingName}-vleugel",
+    "enterRoom": "Betreed {roomName}"
   },
   "discovery": {
     "title": "Je Paleis Leeft",
