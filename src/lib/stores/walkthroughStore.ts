@@ -29,8 +29,9 @@ export const useWalkthroughStore = create<WalkthroughState>((set, get) => ({
   targetRoom: null,
 
   start: (wing, roomId) => {
-    if (get().completed) return;
-    set({ isActive: true, phase: 0, targetWing: wing, targetRoom: roomId });
+    // Reset completed flag — allows walkthrough to restart after re-onboarding
+    try { localStorage.removeItem("mp_walkthrough_completed"); } catch {}
+    set({ isActive: true, phase: 0, completed: false, targetWing: wing, targetRoom: roomId });
   },
 
   advancePhase: () => {
