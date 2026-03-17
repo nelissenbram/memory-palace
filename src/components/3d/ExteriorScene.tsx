@@ -788,31 +788,34 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     scene.add(palace);
 
-    // ── WALKTHROUGH HIGHLIGHT RINGS ──
-    const hlRings: Map<string,{ring:THREE.Mesh,light:THREE.PointLight}>=new Map();
-    const goldRingMat=new THREE.MeshBasicMaterial({color:"#D4AF37",transparent:true,opacity:.7,side:THREE.DoubleSide});
+    // ── WALKTHROUGH HIGHLIGHT — golden glow on target wing/entrance meshes ──
+    const hlLights: Map<string,THREE.PointLight>=new Map();
     clickTargets.forEach((ct: any)=>{
       const pos=new THREE.Vector3();ct.getWorldPosition(pos);
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(8,0.3,8,48),goldRingMat.clone());
-      ring.rotation.x=Math.PI/2;ring.position.set(pos.x,2,pos.z);ring.visible=false;scene.add(ring);
-      const light=new THREE.PointLight("#D4AF37",0,50);light.position.set(pos.x,6,pos.z);scene.add(light);
-      hlRings.set(ct.userData.roomId,{ring,light});
+      const light=new THREE.PointLight("#D4AF37",0,50);light.position.set(pos.x,12,pos.z);scene.add(light);
+      hlLights.set(ct.userData.roomId,light);
     });
 
     let prevHovered: string|null=null;
     const clock=new THREE.Clock();
+    const goldColor=new THREE.Color("#D4AF37");
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const t=clock.getElapsedTime();
 
-      // Walkthrough highlight ring pulse
-      hlRings.forEach(({ring,light},id)=>{
-        const active=highlightDoorRef.current===id;
-        ring.visible=active;
+      // Walkthrough highlight — pulse golden emissive on target meshes
+      const hlTarget=highlightDoorRef.current;
+      clickTargets.forEach((ct: any)=>{
+        const active=hlTarget===ct.userData.roomId;
+        const hl=hlLights.get(ct.userData.roomId);
         if(active){
-          ring.scale.setScalar(1+Math.sin(t*2)*.15);
-          (ring.material as THREE.MeshBasicMaterial).opacity=.5+Math.sin(t*3)*.25;
-          light.intensity=2+Math.sin(t*2.5);
-        }else{light.intensity=0;}
+          const pulse=0.15+Math.sin(t*2.5)*.1;
+          ct.userData.wingMeshes.forEach((wm: any)=>{
+            if(wm.material.emissive){wm.material.emissive.lerp(goldColor,.15);wm.material.emissiveIntensity+=(pulse-wm.material.emissiveIntensity)*.1;}
+          });
+          if(hl)hl.intensity=3+Math.sin(t*2)*1.5;
+        }else{
+          if(hl&&!hoveredRoomRef.current)hl.intensity+=(0-hl.intensity)*.05;
+        }
       });
       camO.current.theta+=(camOT.current.theta-camO.current.theta)*.04;
       camO.current.phi+=(camOT.current.phi-camO.current.phi)*.04;

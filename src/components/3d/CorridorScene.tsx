@@ -1147,15 +1147,13 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     });
     doorMeshes.current=dMeshes;
 
-    // ── WALKTHROUGH HIGHLIGHT RINGS ──
-    const hlRings: Map<string,{ring:THREE.Mesh,light:THREE.PointLight}>=new Map();
+    // ── WALKTHROUGH HIGHLIGHT — golden glow on target door ──
+    const hlDoorLights: Map<string,THREE.PointLight>=new Map();
     dMeshes.forEach(d=>{
-      const ringMat=new THREE.MeshBasicMaterial({color:"#D4AF37",transparent:true,opacity:.7,side:THREE.DoubleSide});
-      const ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,0.06,8,32),ringMat);
-      ring.rotation.x=Math.PI/2;ring.position.set(d.x-(d.side*.5),0.15,d.z);ring.visible=false;scene.add(ring);
       const light=new THREE.PointLight("#D4AF37",0,10);light.position.set(d.x-(d.side*.5),2.5,d.z);scene.add(light);
-      hlRings.set(d.room.id,{ring,light});
+      hlDoorLights.set(d.room.id,light);
     });
+    const goldColor=new THREE.Color("#D4AF37");
 
     // ═══ DRAMATIC EXIT PORTAL — Grand Archway to Entrance Hall ═══
     const portalZ=cL/2-1.2;
@@ -1340,12 +1338,18 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       const ld=new THREE.Vector3(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
       camera.lookAt(camera.position.clone().add(ld));
       dMeshes.forEach(d=>{const isH=hovDoor===d.room.id;d.mat.emissive=isH?new THREE.Color(wing.accent):new THREE.Color(0);d.mat.emissiveIntensity=isH?.12+Math.sin(t*3)*.04:0;});
-      // Walkthrough highlight ring pulse
-      hlRings.forEach(({ring,light},id)=>{
-        const active=highlightDoorRef.current===id;
-        ring.visible=active;
-        if(active){ring.scale.setScalar(1+Math.sin(t*2)*.2);(ring.material as THREE.MeshBasicMaterial).opacity=.5+Math.sin(t*3)*.3;light.intensity=2+Math.sin(t*2.5);}
-        else{light.intensity=0;}
+      // Walkthrough highlight — golden emissive pulse on target door
+      const hlTarget=highlightDoorRef.current;
+      dMeshes.forEach(d=>{
+        if(hlTarget===d.room.id){
+          const pulse=0.3+Math.sin(t*2.5)*.15;
+          d.mat.emissive.lerp(goldColor,.15);
+          d.mat.emissiveIntensity+=(pulse-d.mat.emissiveIntensity)*.1;
+        }
+      });
+      hlDoorLights.forEach((light,id)=>{
+        if(hlTarget===id)light.intensity=3+Math.sin(t*2)*1.5;
+        else light.intensity+=(0-light.intensity)*.05;
       });
       // Painting hover animation
       paintingMeshes.forEach(p=>{
