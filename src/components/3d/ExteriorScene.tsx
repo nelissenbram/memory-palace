@@ -9,7 +9,7 @@ import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadDarkWoodTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 
 // ═══ EXTERIOR — Fantasy Castle ═══
-export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null}){
+export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman"}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string}){
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const camO=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camOT=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camD=useRef(90);
@@ -263,11 +263,182 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Track each section group for split/lift animation: {group, id, targetY, currentY, meshes}
     const sectionGroups: {group:THREE.Group,id:string,targetY:number,currentY:number,meshes:THREE.Mesh[],accent:string}[]=[];
 
+    const isRenaissance = styleEra === "renaissance";
+
+    // Shared variables for entrance click target (assigned inside era branch)
+    let centralGroup: THREE.Group;
+    let centralBodyMeshes: THREE.Mesh[];
+    let entrClickRadius = 10, entrClickHeight = 20;
+
+    // ═══ RENAISSANCE PALAZZO — alternative to castle when era is "renaissance" ═══
+    if (isRenaissance) {
+      centralGroup = new THREE.Group();
+      centralBodyMeshes = [];
+      // Rusticated 3-story palazzo
+      const pzW = 28, pzD = 18, pzH = 14;
+      // Base plinth
+      centralGroup.add(mk(new THREE.BoxGeometry(pzW + 4, 1.2, pzD + 4), M.stoneD, 0, 0.6, 0));
+
+      // Main building body
+      centralGroup.add(mk(new THREE.BoxGeometry(pzW, pzH, pzD), M.stone, 0, pzH / 2 + 1.2, 0));
+
+      // Rustication grooves (horizontal lines on facade)
+      for (let gy = 0; gy < 6; gy++) {
+        const by = 2.5 + gy * 2;
+        centralGroup.add(mk(new THREE.BoxGeometry(pzW + 0.3, 0.08, pzD + 0.3), M.stoneD, 0, by, 0));
+      }
+
+      // Heavy cornice at top
+      centralGroup.add(mk(new THREE.BoxGeometry(pzW + 2, 0.6, pzD + 2), M.trim, 0, pzH + 1.4, 0));
+      centralGroup.add(mk(new THREE.BoxGeometry(pzW + 2.5, 0.25, pzD + 2.5), M.gold, 0, pzH + 1.8, 0));
+      // Cornice brackets
+      for (let bi = 0; bi < 20; bi++) {
+        const bx = -pzW / 2 + 1.5 + bi * (pzW - 3) / 19;
+        centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.5, 0.4), M.trim, bx, pzH + 1.0, -(pzD / 2 + 0.01)));
+        centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.5, 0.4), M.trim, bx, pzH + 1.0, (pzD / 2 + 0.01)));
+      }
+
+      // Ground-floor loggia — open arcade with round arches (front)
+      const archCount = 7;
+      for (let ai = 0; ai < archCount; ai++) {
+        const ax = -pzW / 2 + 2.5 + ai * (pzW - 5) / (archCount - 1);
+        // Columns
+        centralGroup.add(mk(new THREE.CylinderGeometry(0.35, 0.4, 4.5, 10), M.col, ax, 3.45, -(pzD / 2 - 0.1)));
+        centralGroup.add(mk(new THREE.BoxGeometry(0.9, 0.2, 0.9), M.trim, ax, 5.8, -(pzD / 2 - 0.1)));
+        // Round arch between columns
+        if (ai < archCount - 1) {
+          const archMid = ax + (pzW - 5) / (archCount - 1) / 2;
+          const archGeo = new THREE.TorusGeometry(1.2, 0.12, 8, 12, Math.PI);
+          const archMesh = new THREE.Mesh(archGeo, M.trim);
+          archMesh.position.set(archMid, 5.6, -(pzD / 2 - 0.05));
+          centralGroup.add(archMesh);
+        }
+      }
+
+      // Windows — grid pattern on floors 2-3 with pietra serena surrounds
+      for (let floor = 0; floor < 2; floor++) {
+        const wy = 7 + floor * 3.5;
+        for (let wi = 0; wi < 8; wi++) {
+          const wx = -pzW / 2 + 2 + wi * (pzW - 4) / 7;
+          // Window opening
+          centralGroup.add(mk(new THREE.BoxGeometry(1.4, 2, 0.15), M.win, wx, wy, -(pzD / 2 + 0.05)));
+          // Window surround (pietra serena)
+          centralGroup.add(mk(new THREE.BoxGeometry(1.8, 0.15, 0.2), M.trim, wx, wy + 1.1, -(pzD / 2 + 0.02)));
+          centralGroup.add(mk(new THREE.BoxGeometry(1.8, 0.15, 0.2), M.trim, wx, wy - 1.1, -(pzD / 2 + 0.02)));
+          // Back windows
+          centralGroup.add(mk(new THREE.BoxGeometry(1.4, 2, 0.15), M.win, wx, wy, (pzD / 2 + 0.05)));
+          // Side windows
+          if (wi < 4) {
+            centralGroup.add(mk(new THREE.BoxGeometry(0.15, 2, 1.4), M.win, -(pzW / 2 + 0.05), wy, -pzD / 2 + 2 + wi * 4));
+            centralGroup.add(mk(new THREE.BoxGeometry(0.15, 2, 1.4), M.win, (pzW / 2 + 0.05), wy, -pzD / 2 + 2 + wi * 4));
+          }
+        }
+      }
+
+      // Grand entrance — arched double doors
+      centralGroup.add(mk(new THREE.BoxGeometry(4.5, 6, 0.3), M.doorRich, 0, 4.2, -(pzD / 2 + 0.1)));
+      centralGroup.add(mk(new THREE.BoxGeometry(5, 6.5, 0.15), M.trim, 0, 4.5, -(pzD / 2 + 0.02)));
+      // Semicircular arch above door
+      const entranceArch = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.15, 8, 16, Math.PI), M.trim);
+      entranceArch.position.set(0, 7.2, -(pzD / 2 + 0.02));
+      centralGroup.add(entranceArch);
+      // Coat of arms above entrance
+      centralGroup.add(mk(new THREE.CircleGeometry(1, 24), M.goldBright, 0, 9.5, -(pzD / 2 + 0.08)));
+      centralGroup.add(mk(new THREE.TorusGeometry(1, 0.08, 8, 24), M.gold, 0, 9.5, -(pzD / 2 + 0.06)));
+
+      // Low-pitched roof (barely visible)
+      centralGroup.add(mk(new THREE.BoxGeometry(pzW + 1, 0.3, pzD + 1), M.roofSlate, 0, pzH + 2.1, 0));
+
+      centralGroup.traverse((child: THREE.Object3D) => {
+        if (child instanceof THREE.Mesh && child.material && !(child.material as any).transparent) centralBodyMeshes.push(child);
+      });
+      palace.add(centralGroup);
+      entrClickRadius = 14; entrClickHeight = 16;
+
+      // ═══ 5 RENAISSANCE WINGS — connected galleries ═══
+      const wingDefs = [{ room: WINGS[0], length: 30 }, { room: WINGS[1], length: 26 }, { room: WINGS[2], length: 24 }, { room: WINGS[3], length: 25 }, { room: WINGS[4], length: 28 }];
+      wingDefs.forEach((def, i) => {
+        const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+        const wg = new THREE.Group();
+        const wW = 6, wH = 10, wL = def.length;
+        const wingMeshes: THREE.Mesh[] = [];
+        function addM(m: any) { wg.add(m); if (m.material && !m.material.transparent) wingMeshes.push(m); return m; }
+
+        // Gallery body
+        addM(mk(new THREE.BoxGeometry(wW, wH, wL), M.stoneL, 0, wH / 2 + 1.2, -(pzD / 2 + wL / 2)));
+        // Rustication
+        for (let gy = 0; gy < 4; gy++) {
+          addM(mk(new THREE.BoxGeometry(wW + 0.2, 0.06, wL + 0.2), M.stoneD, 0, 2.5 + gy * 2.5, -(pzD / 2 + wL / 2)));
+        }
+        // Arched windows along gallery
+        const nWins = Math.floor(wL / 3);
+        for (let wi = 0; wi < nWins; wi++) {
+          const wz = -(pzD / 2 + 2 + wi * 3);
+          for (let s = -1; s <= 1; s += 2) {
+            const wx = s * (wW / 2 + 0.05);
+            addM(mk(new THREE.BoxGeometry(0.15, 2.2, 1.2), M.win, wx, wH * 0.5 + 1.2, wz));
+            // Arch above window
+            const archGeo = new THREE.TorusGeometry(0.6, 0.06, 6, 10, Math.PI);
+            const arch = new THREE.Mesh(archGeo, M.trim);
+            arch.position.set(wx, wH * 0.5 + 2.4, wz);
+            arch.rotation.y = s > 0 ? -Math.PI / 2 : Math.PI / 2;
+            addM(arch);
+          }
+        }
+        // Cornice
+        addM(mk(new THREE.BoxGeometry(wW + 1, 0.35, wL + 0.5), M.trim, 0, wH + 1.35, -(pzD / 2 + wL / 2)));
+        // Low roof
+        addM(mk(new THREE.BoxGeometry(wW + 0.5, 0.25, wL + 0.3), M.roofSlate, 0, wH + 1.8, -(pzD / 2 + wL / 2)));
+
+        // End pavilion
+        const eW = wW + 4, eD = 7, eH = wH + 2;
+        const eZ = -(pzD / 2 + wL + eD / 2);
+        addM(mk(new THREE.BoxGeometry(eW, eH, eD), M.stone, 0, eH / 2 + 1.2, eZ));
+        addM(mk(new THREE.BoxGeometry(eW + 1, 0.4, eD + 1), M.trim, 0, eH + 1.4, eZ));
+        // End pavilion windows
+        for (let wi = 0; wi < 3; wi++) {
+          addM(mk(new THREE.BoxGeometry(1.4, 2, 0.15), M.win, -eW / 2 + 2 + wi * (eW - 4) / 2, eH * 0.5, eZ - eD / 2 - 0.05));
+        }
+        // End pavilion entrance
+        addM(mk(new THREE.BoxGeometry(3, 5, 0.25), M.doorRich, 0, 3.7, eZ - eD / 2 - 0.08));
+
+        wg.rotation.y = angle;
+        const att = pzD / 2;
+        wg.position.set(Math.sin(angle) * att, 0, Math.cos(angle) * att);
+        palace.add(wg);
+        sectionGroups.push({ group: wg, id: def.room.id, targetY: 0, currentY: 0, meshes: wingMeshes, accent: def.room.accent });
+
+        const tLen = pzD / 2 + wL + eD;
+        const ct = new THREE.Mesh(new THREE.BoxGeometry(eW + 4, eH + 6, tLen + 2), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+        ct.position.set(0, eH / 2 + 2, -(tLen + 2) / 2);
+        ct.userData = { roomId: def.room.id, wingMeshes, accent: def.room.accent };
+        wg.add(ct);
+        clickTargets.push(ct);
+      });
+
+      // Distance: Arno river
+      const arnoGeo = new THREE.PlaneGeometry(200, 15);
+      const arnoMat = new THREE.MeshPhysicalMaterial({ color: "#5A8A7A", roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6, envMapIntensity: 1.0 });
+      const arno = new THREE.Mesh(arnoGeo, arnoMat);
+      arno.rotation.x = -Math.PI / 2;
+      arno.position.set(0, 0.1, -85);
+      scene.add(arno);
+
+      // Distant dome silhouette (Duomo-like)
+      const distDome = new THREE.Mesh(new THREE.SphereGeometry(8, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.4), M.copper);
+      distDome.position.set(-60, 6, -120);
+      scene.add(distDome);
+      const distDrum = mk(new THREE.CylinderGeometry(7, 7.5, 5, 8), M.stoneD, -60, 3, -120);
+      scene.add(distDrum);
+
+    } else {
+    // ═══ ROMAN / DEFAULT — existing castle construction ═══
+    centralGroup = new THREE.Group();
+    centralBodyMeshes = [];
+
     // ══════════════════════════════════════════
     // GRAND CENTRAL KEEP — massive multi-tiered tower
     // ══════════════════════════════════════════
-    const centralGroup=new THREE.Group();
-    const centralBodyMeshes: THREE.Mesh[]=[];
     const cW=20,cD=20,cH=12;
 
     // Stepped base plinth with beveled edges
@@ -407,6 +578,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       if(child instanceof THREE.Mesh && child.material && !(child.material as any).transparent) centralBodyMeshes.push(child);
     });
     palace.add(centralGroup);
+    entrClickRadius = cW/2-1; entrClickHeight = cH+drumH+domeR+4;
 
     // ══════════════════════════════════════════
     // 5 GRAND WINGS — with towers, flying buttresses, Gothic windows
@@ -520,6 +692,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       ct.userData={roomId:def.room.id,wingMeshes,accent:def.room.accent};
       wg.add(ct);clickTargets.push(ct);
     });
+    } // end else (Roman castle)
 
     // ══════════════════════════════════════════
     // COURTYARD GARDENS — grand formal parterre
@@ -910,13 +1083,11 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── ENTRANCE HALL click target ──
     const entranceId="__entrance__";
-    // centralBodyMeshes already collected from centralGroup above
     const centralMeshes=centralBodyMeshes;
-    // Register central group for split/lift animation
     sectionGroups.push({group:centralGroup,id:entranceId,targetY:0,currentY:0,meshes:centralMeshes,accent:"#E0C060"});
-    // Entrance click target — sized to match just the central keep, NOT overlapping wings
-    const ect=new THREE.Mesh(new THREE.CylinderGeometry(cW/2-1,cW/2-1,cH+drumH+domeR+4,8),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
-    ect.position.set(0,(cH+drumH+domeR)/2+2,0);ect.userData={roomId:entranceId,wingMeshes:centralMeshes,accent:"#E0C060"};
+    // Entrance click target
+    const ect=new THREE.Mesh(new THREE.CylinderGeometry(entrClickRadius,entrClickRadius,entrClickHeight,8),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
+    ect.position.set(0,entrClickHeight/2+2,0);ect.userData={roomId:entranceId,wingMeshes:centralMeshes,accent:"#E0C060"};
     scene.add(ect);clickTargets.push(ect);
 
     // ── HOVER POINT LIGHTS (one per wing + entrance) ──

@@ -15,7 +15,7 @@ import { useRoomStore } from "@/lib/stores/roomStore";
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
 // wall, screen, vinyl player, vitrine, orbs. Layout varies size & décor.
-export default function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClick,wingData:wingDataProp}: {roomId: any,actualRoomId?: string,layoutOverride?: string,memories: any,onMemoryClick: any,wingData?: Wing}){
+export default function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClick,wingData:wingDataProp,styleEra="roman"}: {roomId: any,actualRoomId?: string,layoutOverride?: string,memories: any,onMemoryClick: any,wingData?: Wing,styleEra?: string}){
   const { getWingRooms } = useRoomStore();
   const currentRoomName = getWingRooms(roomId).find(r => r.id === (actualRoomId || roomId))?.name || "";
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
@@ -131,6 +131,46 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     const bw=new THREE.Mesh(new THREE.PlaneGeometry(rW,rH),MS.wall);bw.rotation.y=Math.PI;bw.position.set(0,rH/2,rL/2);bw.receiveShadow=true;scene.add(bw);
     for(let s=-1;s<=1;s+=2){scene.add(mk(new THREE.BoxGeometry(.05,1.2,rL-.3),MS.wain,s*(rW/2-.025),.6,0));scene.add(mk(new THREE.BoxGeometry(.06,.07,rL-.2),MS.gold,s*(rW/2-.03),1.23,0));scene.add(mk(new THREE.BoxGeometry(.08,.18,rL-.1),MS.dkW,s*(rW/2-.04),.09,0));}
     scene.add(mk(new THREE.BoxGeometry(rW-.3,1.2,.05),MS.wain,0,.6,-rL/2+.025));scene.add(mk(new THREE.BoxGeometry(rW-.2,.07,.06),MS.gold,0,1.23,-rL/2+.03));
+
+    // ── ERA-SPECIFIC ROOM MODIFICATIONS ──
+    if (styleEra === "renaissance") {
+      // Coffered ceiling — grid of recessed squares
+      const cofferN = 3;
+      const cofferSize = Math.min(rW, rL) / (cofferN + 1);
+      for (let cx = 0; cx < cofferN; cx++) {
+        for (let cz = 0; cz < cofferN; cz++) {
+          const cofX = -rW / 2 + cofferSize + cx * (rW - cofferSize * 2) / (cofferN - 1);
+          const cofZ = -rL / 2 + cofferSize + cz * (rL - cofferSize * 2) / (cofferN - 1);
+          scene.add(mk(new THREE.BoxGeometry(cofferSize * 0.7, 0.06, cofferSize * 0.7), MS.trim, cofX, rH - 0.03, cofZ));
+          scene.add(mk(new THREE.BoxGeometry(cofferSize * 0.75, 0.02, cofferSize * 0.75), MS.gold, cofX, rH - 0.06, cofZ));
+        }
+      }
+      // Wood-paneled lower walls (walnut wainscoting extension)
+      for (let s = -1; s <= 1; s += 2) {
+        scene.add(mk(new THREE.BoxGeometry(0.04, 1.6, rL - 0.4), MS.dkW, s * (rW / 2 - 0.02), 0.8, 0));
+      }
+    } else {
+      // Roman room — mosaic floor accent, fresco panels
+      // Mosaic floor border pattern
+      const mosaicBorderW = 0.15;
+      for (let s = -1; s <= 1; s += 2) {
+        scene.add(mk(new THREE.BoxGeometry(mosaicBorderW, 0.005, rL - 1), new THREE.MeshStandardMaterial({ color: "#C17040", roughness: 0.6 }),
+          s * (rW / 2 - 1.2), 0.003, 0));
+        scene.add(mk(new THREE.BoxGeometry(rW - 1, 0.005, mosaicBorderW), new THREE.MeshStandardMaterial({ color: "#C17040", roughness: 0.6 }),
+          0, 0.003, s * (rL / 2 - 1.2)));
+      }
+      // Upper wall fresco panels (colored rectangles)
+      const frescoColors = ["#B85C38", "#8B7D6B", "#C17040", "#9A8060"];
+      for (let fi = 0; fi < 3; fi++) {
+        const fz = -rL / 2 + 1 + fi * (rL - 2) / 2;
+        for (let s = -1; s <= 1; s += 2) {
+          const fPanel = mk(new THREE.BoxGeometry(0.01, 0.8, 1.2),
+            new THREE.MeshStandardMaterial({ color: frescoColors[(fi + (s > 0 ? 2 : 0)) % frescoColors.length], roughness: 0.7 }),
+            s * (rW / 2 - 0.01), rH * 0.7, fz);
+          scene.add(fPanel);
+        }
+      }
+    }
 
     // ═══════════════════════════════════════════
     // FIREPLACE (back wall center)

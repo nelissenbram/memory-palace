@@ -40,6 +40,7 @@ export default function ProfilePage() {
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [goal, setGoal] = useState("");
+  const [styleEra, setStyleEra] = useState("");
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -79,6 +80,7 @@ export default function ProfilePage() {
           setDisplayName(p.display_name);
           setBio(p.bio);
           setGoal(p.goal);
+          setStyleEra(data.style_era || "roman");
         }
       } catch {
         // ignore
@@ -371,6 +373,53 @@ export default function ProfilePage() {
                   }}
                 >
                   {tOnboard(GOAL_LABEL_KEYS[gId])}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Palace Style */}
+          <div>
+            <label style={labelStyle}>Palace Style</label>
+            <p style={{
+              fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
+              margin: "0 0 10px", lineHeight: 1.4,
+            }}>
+              Change the historic period of your palace architecture.
+            </p>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 10,
+            }}>
+              {(["roman", "renaissance"] as const).map((era) => (
+                <button
+                  key={era}
+                  onClick={async () => {
+                    setStyleEra(era);
+                    await updateProfile({ styleEra: era });
+                    showToast("Palace style updated. Reload to see changes.", "success");
+                  }}
+                  style={{
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: `2px solid ${styleEra === era ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.cream}`,
+                    background: styleEra === era ? `${era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent}12` : T.color.linen,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all .2s",
+                    fontFamily: T.font.body,
+                    fontSize: 14,
+                    fontWeight: styleEra === era ? 600 : 400,
+                    color: styleEra === era ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.charcoal,
+                  }}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: 2 }}>
+                    {era === "roman" ? "Republican Rome" : "Renaissance Florence"}
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 400, color: T.color.muted }}>
+                    {era === "roman" ? "Marble atriums, mosaic floors" : "Frescoed galleries, coffered ceilings"}
+                  </div>
                 </button>
               ))}
             </div>

@@ -61,14 +61,16 @@ import FirstMemoryPrompt from "@/components/ui/FirstMemoryPrompt";
 import CinematicWalkthrough from "@/components/ui/CinematicWalkthrough";
 import DiscoveryMenu from "@/components/ui/DiscoveryMenu";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
+import { updateProfile } from "@/lib/auth/profile-actions";
+import BustBuilderPanel from "@/components/ui/BustBuilderPanel";
 
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
   const isMobile = useIsMobile();
 
   // ── Stores ──
-  const { profileLoading, onboarded, firstWing,
-    loadProfile, finishOnboarding } = useUserStore();
+  const { profileLoading, onboarded, firstWing, styleEra,
+    loadProfile, finishOnboarding, setStyleEra } = useUserStore();
   const { view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim, roomLayouts,
     setHovWing, setHovDoor, enterWing, enterEntrance, enterCorridor, enterRoom, setRoomLayout, exitToPalace, exitToCorridor, exitToEntrance } = usePalaceStore();
   const { selMem, showUpload, showSharing, showDirectory, searchQuery, filterType,
@@ -93,6 +95,9 @@ export default function MemoryPalace(){
   const [showInvites, setShowInvites] = useState(false);
   const [showSharedWithMe, setShowSharedWithMe] = useState(false);
   const [showCorridorGallery, setShowCorridorGallery] = useState(false);
+  const [showEraPicker, setShowEraPicker] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showBustBuilder, setShowBustBuilder] = useState(false);
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -130,6 +135,11 @@ export default function MemoryPalace(){
 
   // Load profile on mount
   useEffect(()=>{ loadProfile(); },[loadProfile]);
+
+  // Show era picker for existing users who haven't chosen a style
+  useEffect(() => {
+    if (onboarded && !styleEra && !profileLoading) setShowEraPicker(true);
+  }, [onboarded, styleEra, profileLoading]);
 
   // ── Scene loading overlay — show on view transitions, fade out after scene builds ──
   useEffect(() => {
@@ -285,10 +295,10 @@ export default function MemoryPalace(){
     <div style={{width:"100vw",height:"100vh",background:T.color.sandstone,position:"relative",overflow:"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
       <div style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
-        {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===0?"__entrance__":null}/>}
-        {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else enterCorridor(wingId);}} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null}/>}
-        {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null}/>}
-        {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined}/>}
+        {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===0?"__entrance__":null} styleEra={styleEra||"roman"}/>}
+        {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else enterCorridor(wingId);}} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={()=>setShowBustBuilder(true)}/>}
+        {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)}/>}
+        {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined} styleEra={styleEra||"roman"}/>}
       </div>
 
       {/* Scene loading overlay — fades out after 3D canvas initializes */}
@@ -508,6 +518,50 @@ export default function MemoryPalace(){
         onCustomize={() => { if (activeWing) setShowRoomManager(true); else setShowWingManager(true); }}
         onDismiss={() => setShowDiscoveryMenu(false)}
       />}
+
+      {/* Era picker modal — for existing users who haven't chosen a style */}
+      {showEraPicker && <div style={{position:"absolute",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(44,44,42,.6)",backdropFilter:"blur(6px)"}}>
+        <div style={{background:T.color.linen,borderRadius:20,padding:isMobile?"28px 20px":"36px 40px",maxWidth:480,width:"90%",textAlign:"center",boxShadow:"0 12px 48px rgba(0,0,0,.2)"}}>
+          <h2 style={{fontFamily:T.font.display,fontSize:isMobile?22:26,fontWeight:400,color:T.color.charcoal,marginBottom:8}}>Choose Your Palace Style</h2>
+          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,marginBottom:20}}>Pick a historic era for your palace architecture.</p>
+          <div style={{display:"flex",gap:12,marginBottom:20}}>
+            {(["roman","renaissance"] as const).map(era=>(
+              <button key={era} onClick={async()=>{setStyleEra(era);await updateProfile({styleEra:era});setShowEraPicker(false);}}
+                style={{flex:1,padding:"16px 12px",borderRadius:14,border:`2px solid ${era==="roman"?T.era.roman.secondary:T.era.renaissance.accent}40`,
+                  background:T.color.linen,cursor:"pointer",transition:"all .2s"}}>
+                <div style={{fontFamily:T.font.display,fontSize:17,fontWeight:600,color:T.color.charcoal,marginBottom:4}}>
+                  {era==="roman"?"Republican Rome":"Renaissance Florence"}
+                </div>
+                <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,lineHeight:1.4}}>
+                  {era==="roman"?"Marble atriums, colonnaded gardens, mosaic floors":"Frescoed galleries, coffered ceilings, grand courtyards"}
+                </div>
+              </button>
+            ))}
+          </div>
+          <button onClick={async()=>{setStyleEra("roman");await updateProfile({styleEra:"roman"});setShowEraPicker(false);}}
+            style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:"none",border:"none",cursor:"pointer",textDecoration:"underline"}}>
+            Skip (default: Roman)
+          </button>
+        </div>
+      </div>}
+
+      {/* Upgrade prompt overlay — triggered by clicking locked inlays */}
+      {showUpgradePrompt && <div style={{position:"absolute",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(44,44,42,.5)",backdropFilter:"blur(4px)"}}
+        onClick={()=>setShowUpgradePrompt(false)}>
+        <div onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:18,padding:"32px 36px",maxWidth:380,textAlign:"center",boxShadow:"0 8px 40px rgba(0,0,0,.18)"}}>
+          <div style={{fontSize:40,marginBottom:12}}>{"🔒"}</div>
+          <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,marginBottom:8}}>Locked Wing</h3>
+          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,lineHeight:1.5,marginBottom:20}}>Upgrade to unlock additional wings and rooms for your palace.</p>
+          <button onClick={()=>setShowUpgradePrompt(false)}
+            style={{fontFamily:T.font.body,fontSize:15,fontWeight:600,padding:"12px 32px",borderRadius:10,border:"none",
+              background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer"}}>
+            Got it
+          </button>
+        </div>
+      </div>}
+
+      {/* Bust builder panel */}
+      {showBustBuilder && <BustBuilderPanel onClose={() => setShowBustBuilder(false)} />}
 
       {/* Achievement toast notification */}
       {achToast&&<div onClick={()=>{dismissAchToast();setShowAchievements(true);}} style={{position:"absolute",top:isMobile?12:66,right:isMobile?12:22,left:isMobile?12:undefined,zIndex:90,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(12px)",borderRadius:16,padding:"14px 18px",border:"1.5px solid #D4AF3766",boxShadow:"0 8px 32px rgba(169,124,46,.25)",display:"flex",alignItems:"center",gap:12,maxWidth:isMobile?undefined:320}}>

@@ -16,11 +16,16 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
   const isSmall = useIsSmall();
   const { t } = useTranslation("onboarding");
   const { t: tc } = useTranslation("common");
-  const { onboardStep, userName, firstWing,
-    setOnboardStep, setUserName, setUserGoal, setFirstWing, setOnboarded } = useUserStore();
+  const { onboardStep, userName, firstWing, styleEra,
+    setOnboardStep, setUserName, setUserGoal, setFirstWing, setStyleEra, setOnboarded } = useUserStore();
 
   // Default goal to "preserve" since we removed the goal step
   const ensureGoal = () => { useUserStore.getState().setUserGoal("preserve"); };
+
+  const eraOptions = [
+    { id: "roman", img: "/textures/onboarding/roman_villa.jpg", fallbackColor: T.era.roman.primary },
+    { id: "renaissance", img: "/textures/onboarding/renaissance_palazzo.jpg", fallbackColor: T.era.renaissance.primary },
+  ];
 
   const steps=[
     // Step 0: Welcome + Name (combined)
@@ -40,7 +45,44 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
         </div>
       </div>
     ),
-    // Step 1: Pick your first wing
+    // Step 1: Style choice — Roman vs Renaissance
+    ()=>(
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:20,animation:"fadeUp .6s ease"}}>
+        <h2 style={{fontFamily:T.font.display,fontSize:isMobile?24:28,fontWeight:400,color:T.color.charcoal}}>
+          {t("styleChoiceTitle")}
+        </h2>
+        <div style={{display:"flex",flexDirection:isMobile?"column":"row",gap:16,width:"100%",maxWidth:520}}>
+          {eraOptions.map(era=>{
+            const selected = styleEra === era.id;
+            const borderColor = selected ? (era.id === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.cream;
+            return (
+              <button key={era.id} onClick={()=>setStyleEra(era.id)}
+                style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:12,padding:16,borderRadius:16,
+                  border:`3px solid ${borderColor}`,
+                  background:selected?`${borderColor}12`:T.color.linen,cursor:"pointer",transition:"all .25s",
+                  boxShadow:selected?"0 4px 20px rgba(0,0,0,.1)":"0 2px 8px rgba(0,0,0,.04)"}}>
+                <div style={{width:"100%",aspectRatio:"4/3",borderRadius:12,overflow:"hidden",
+                  background:era.fallbackColor,position:"relative"}}>
+                  <img src={era.img} alt={t(era.id === "roman" ? "styleRoman" : "styleRenaissance")}
+                    style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}
+                    onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
+                  {selected && <div style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:"50%",
+                    background:borderColor,display:"flex",alignItems:"center",justifyContent:"center",
+                    color:"#FFF",fontSize:16,fontWeight:700}}>{"\u2713"}</div>}
+                </div>
+                <div style={{fontFamily:T.font.display,fontSize:isMobile?18:20,fontWeight:600,color:T.color.charcoal}}>
+                  {t(era.id === "roman" ? "styleRoman" : "styleRenaissance")}
+                </div>
+                <div style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,lineHeight:1.4}}>
+                  {t(era.id === "roman" ? "styleRomanDesc" : "styleRenaissanceDesc")}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    ),
+    // Step 2: Pick your first wing
     ()=>(
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:18,animation:"fadeUp .6s ease"}}>
         <h2 style={{fontFamily:T.font.display,fontSize:isMobile?24:28,fontWeight:400,color:T.color.charcoal}}>
@@ -64,7 +106,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
         </div>
       </div>
     ),
-    // Step 2: Ready — short confirmation
+    // Step 3: Ready — short confirmation
     ()=>(
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:20,animation:"fadeUp .6s ease"}}>
         <div style={{fontSize:56,lineHeight:1}}>{"\uD83C\uDFDB\uFE0F"}</div>
@@ -77,12 +119,15 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
         {firstWing&&<span style={{fontFamily:T.font.body,fontSize:13,padding:"6px 14px",borderRadius:20,background:`${WINGS.find(w=>w.id===firstWing)?.accent}20`,color:WINGS.find(w=>w.id===firstWing)?.accent,border:`1px solid ${WINGS.find(w=>w.id===firstWing)?.accent}40`}}>
           {t("startingIn", { wing: WINGS.find(w=>w.id===firstWing)?.name || "" })}
         </span>}
+        {styleEra&&<span style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,marginTop:-8}}>
+          {t(styleEra === "roman" ? "styleRoman" : "styleRenaissance")}
+        </span>}
       </div>
     ),
   ];
 
-  const canNext=onboardStep===0?(userName.trim().length>0):onboardStep===1?(!!firstWing):true;
-  const isLast=onboardStep===2;
+  const canNext=onboardStep===0?(userName.trim().length>0):onboardStep===1?(!!styleEra):onboardStep===2?(!!firstWing):true;
+  const isLast=onboardStep===3;
 
   return(
     <div style={{width:"100vw",height:"100vh",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone}55 100%)`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",overflow:isMobile?"auto":"hidden"}}>
@@ -91,7 +136,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
       <div style={{position:"absolute",bottom:-100,left:-60,width:300,height:300,borderRadius:"50%",background:`radial-gradient(circle,${T.color.sage}08,transparent 70%)`,pointerEvents:"none"}}/>
       {/* Progress dots */}
       <div style={{position:"absolute",top:32,display:"flex",gap:10,alignItems:"center"}}>
-        {[0,1,2].map(i=>(
+        {[0,1,2,3].map(i=>(
           <div key={i} style={{width:i===onboardStep?28:8,height:8,borderRadius:4,
             background:i<onboardStep?T.color.terracotta:i===onboardStep?T.color.terracotta:`${T.color.sandstone}60`,
             transition:"all .4s ease"}}/>
@@ -111,7 +156,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
           {isLast?`\uD83C\uDFDB\uFE0F  ${t("enterPalace")}`:onboardStep===0?`${t("letsBegin")} \u2192`:`${tc("continue")} \u2192`}
         </button>
       </div>
-      {onboardStep<2&&<button onClick={()=>{ensureGoal();useWalkthroughStore.getState().skip();setOnboarded(true);}}
+      {onboardStep<3&&<button onClick={()=>{ensureGoal();useUserStore.getState().setStyleEra("roman");useWalkthroughStore.getState().skip();setOnboarded(true);}}
         style={{position:"absolute",bottom:28,fontFamily:T.font.body,fontSize:13,color:T.color.muted,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textUnderlineOffset:3}}>
         {t("skipOnboarding")}</button>}
     </div>

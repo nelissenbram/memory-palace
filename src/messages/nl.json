@@ -91,7 +91,12 @@
     "controlPinch": "Knijp om in/uit te zoomen",
     "navigationReassurance": "Er volgt een rondleiding zodra je binnenkomt!",
     "skipOnboarding": "Overslaan en zelf verkennen",
-    "backButton": "Terug"
+    "backButton": "Terug",
+    "styleChoiceTitle": "Welke historische periode inspireert jou het meest?",
+    "styleRoman": "Romeins Republiek",
+    "styleRomanDesc": "Een weelderige Romeinse villa met marmeren atria en zuilengangen",
+    "styleRenaissance": "Renaissance Florence",
+    "styleRenaissanceDesc": "Een Medici-palazzo met fresco-galerijen en grootse binnenplaatsen"
   },
   "palace": {
     "uploadMemory": "Herinnering uploaden",

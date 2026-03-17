@@ -91,7 +91,12 @@
     "controlPinch": "Pinch to zoom",
     "navigationReassurance": "There will be a guided tour once you enter!",
     "skipOnboarding": "Skip and explore on my own",
-    "backButton": "Back"
+    "backButton": "Back",
+    "styleChoiceTitle": "Which historic period inspires you most?",
+    "styleRoman": "Republican Rome",
+    "styleRomanDesc": "A lavish Roman villa with marble atriums and colonnaded gardens",
+    "styleRenaissance": "Renaissance Florence",
+    "styleRenaissanceDesc": "A Medici palazzo with frescoed galleries and grand courtyards"
   },
   "palace": {
     "uploadMemory": "Upload Memory",

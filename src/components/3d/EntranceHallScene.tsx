@@ -29,10 +29,16 @@ export default function EntranceHallScene({
   onDoorClick,
   wings: wingsProp,
   highlightDoor,
+  styleEra = "roman",
+  onInlayClick,
+  onBustClick,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
   highlightDoor?: string | null;
+  styleEra?: string;
+  onInlayClick?: () => void;
+  onBustClick?: (pedestalIndex: number) => void;
 }) {
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -696,6 +702,127 @@ export default function EntranceHallScene({
       }
     });
 
+    // ── LOCKED INLAY PANELS — between wing doors ──
+    const inlayMeshes: THREE.Mesh[] = [];
+    for (let i = 0; i < NUM_DOORS; i++) {
+      const a1 = DOOR_ANGLES[i];
+      const a2 = DOOR_ANGLES[(i + 1) % NUM_DOORS];
+      // Midpoint angle between two consecutive doors
+      let midA = (a1 + a2) / 2;
+      if (a2 < a1) midA = ((a1 + a2 + Math.PI * 2) / 2) % (Math.PI * 2);
+      const inlR = RADIUS - 0.3;
+      const ix = Math.cos(midA) * inlR, iz = Math.sin(midA) * inlR;
+      const inlN = new THREE.Vector3(ix, 0, iz).normalize();
+
+      // Stone panel (recessed)
+      const panelW = 2.0, panelH = 3.5, panelD = 0.12;
+      const panelMat = styleEra === "renaissance"
+        ? new THREE.MeshStandardMaterial({ color: "#9A9A8A", roughness: 0.5 })
+        : new THREE.MeshStandardMaterial({ color: "#D4C5A9", roughness: 0.65 });
+      const panel = mk(new THREE.BoxGeometry(panelD, panelH, panelW), panelMat,
+        ix - inlN.x * 0.1, panelH / 2, iz - inlN.z * 0.1);
+      panel.lookAt(0, panelH / 2, 0);
+      scene.add(panel);
+
+      // Arch outline at top
+      const archGeo = new THREE.TorusGeometry(0.7, 0.05, 8, 14, Math.PI);
+      const archMat = MS.gold;
+      const archMesh = new THREE.Mesh(archGeo, archMat);
+      archMesh.position.set(ix, panelH - 0.2, iz);
+      archMesh.lookAt(0, panelH - 0.2, 0);
+      scene.add(archMesh);
+
+      // Seal/lock circle
+      const sealMat = styleEra === "renaissance" ? MS.gold : MS.bronze;
+      const seal = new THREE.Mesh(new THREE.CircleGeometry(0.3, 20), sealMat);
+      seal.position.set(ix + inlN.x * 0.08, panelH * 0.45, iz + inlN.z * 0.08);
+      seal.lookAt(new THREE.Vector3(ix + inlN.x * 2, panelH * 0.45, iz + inlN.z * 2));
+      scene.add(seal);
+
+      // Invisible click target for inlay
+      const inlayClick = new THREE.Mesh(
+        new THREE.BoxGeometry(0.3, panelH, panelW),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+      );
+      inlayClick.position.set(ix, panelH / 2, iz);
+      inlayClick.lookAt(0, panelH / 2, 0);
+      inlayClick.userData = { isInlay: true };
+      scene.add(inlayClick);
+      inlayMeshes.push(inlayClick);
+    }
+
+    // ── BUST PEDESTALS — between every 3rd column ──
+    const bustMeshes: THREE.Mesh[] = [];
+    const bustCount = 8;
+    for (let bi = 0; bi < bustCount; bi++) {
+      const bustAngle = (bi / bustCount) * Math.PI * 2 + Math.PI / bustCount;
+      // Check we're not overlapping a door
+      const tooCloseToAny = DOOR_ANGLES.some(da => {
+        let diff = Math.abs(bustAngle - da);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        return diff < Math.PI / 8;
+      });
+      if (tooCloseToAny) continue;
+
+      const bR = RADIUS - 2.5;
+      const bx = Math.cos(bustAngle) * bR, bz = Math.sin(bustAngle) * bR;
+
+      // Pedestal base
+      scene.add(mk(new THREE.BoxGeometry(0.6, 0.2, 0.6), MS.marble, bx, 0.1, bz));
+      // Pedestal column
+      scene.add(mk(new THREE.CylinderGeometry(0.2, 0.25, 1.4, 8), MS.marble, bx, 0.9, bz));
+      // Pedestal top
+      scene.add(mk(new THREE.BoxGeometry(0.5, 0.12, 0.5), MS.marble, bx, 1.66, bz));
+
+      // Bust — simple head + shoulders
+      const bustMat = styleEra === "renaissance"
+        ? new THREE.MeshStandardMaterial({ color: "#7A6850", roughness: 0.3, metalness: 0.6, envMapIntensity: 0.8 })
+        : MS.bust;
+      // Shoulders
+      scene.add(mk(new THREE.CylinderGeometry(0.22, 0.28, 0.4, 8), bustMat, bx, 1.92, bz));
+      // Head
+      const head = mk(new THREE.SphereGeometry(0.16, 10, 8), bustMat, bx, 2.28, bz);
+      head.scale.set(1, 1.15, 0.95);
+      scene.add(head);
+
+      // Click target
+      const bustClick = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.35, 0.35, 1.8, 8),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+      );
+      bustClick.position.set(bx, 1.6, bz);
+      bustClick.userData = { isBust: true, pedestalIndex: bi };
+      scene.add(bustClick);
+      bustMeshes.push(bustClick);
+    }
+
+    // ── ERA-SPECIFIC MODIFICATIONS ──
+    if (styleEra === "renaissance") {
+      // Square pilaster accents between columns (Renaissance cortile feel)
+      for (let pi = 0; pi < 12; pi++) {
+        const pAngle = (pi / 12) * Math.PI * 2;
+        const pR = RADIUS - 0.15;
+        const px = Math.cos(pAngle) * pR, pz = Math.sin(pAngle) * pR;
+        const pilaster = mk(new THREE.BoxGeometry(0.2, WALL_H * 0.9, 0.5), MS.column, px, WALL_H * 0.45, pz);
+        pilaster.lookAt(0, WALL_H * 0.45, 0);
+        scene.add(pilaster);
+      }
+    } else {
+      // Roman atrium — impluvium (sunken pool) replaces center medallion
+      const implW = 4, implD = 3;
+      const implMat = new THREE.MeshPhysicalMaterial({
+        color: "#5A8A7A", roughness: 0.05, metalness: 0.15, transparent: true, opacity: 0.7,
+        envMapIntensity: 1.2,
+      });
+      const impluvium = mk(new THREE.BoxGeometry(implW, 0.06, implD), implMat, 0, 0.01, 0);
+      scene.add(impluvium);
+      // Marble rim
+      scene.add(mk(new THREE.BoxGeometry(implW + 0.3, 0.15, 0.15), MS.marble, 0, 0.08, implD / 2 + 0.07));
+      scene.add(mk(new THREE.BoxGeometry(implW + 0.3, 0.15, 0.15), MS.marble, 0, 0.08, -(implD / 2 + 0.07)));
+      scene.add(mk(new THREE.BoxGeometry(0.15, 0.15, implD + 0.3), MS.marble, implW / 2 + 0.07, 0.08, 0));
+      scene.add(mk(new THREE.BoxGeometry(0.15, 0.15, implD + 0.3), MS.marble, -(implW / 2 + 0.07), 0.08, 0));
+    }
+
     // ── STORAGE ROOM — small door in the wall ──
     {
       const srAngle = Math.PI / 2 + Math.PI / 5; // same position as old staircase
@@ -1003,19 +1130,33 @@ export default function EntranceHallScene({
       ), camera);
       let found: string | null = null;
       let portalHov = false;
+      let inlayHov = false;
+      let bustHov: number | null = null;
       doorMeshes.forEach(d => {
         const hits = rc.intersectObject(d.mesh);
         if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
       });
       const pHits = rc.intersectObject(portalHit);
       if (pHits.length > 0 && pHits[0].distance < 15) portalHov = true;
+      // Check inlay clicks
+      inlayMeshes.forEach(im => {
+        const hits = rc.intersectObject(im);
+        if (hits.length > 0 && hits[0].distance < 15) inlayHov = true;
+      });
+      // Check bust clicks
+      bustMeshes.forEach(bm => {
+        const hits = rc.intersectObject(bm);
+        if (hits.length > 0 && hits[0].distance < 15) bustHov = bm.userData.pedestalIndex;
+      });
       hoveredWing = found;
-      hovMem.current = found || (portalHov ? "__exterior__" : null);
-      el.style.cursor = (found || portalHov) ? "pointer" : "grab";
+      hovMem.current = found || (portalHov ? "__exterior__" : (inlayHov ? "__inlay__" : (bustHov !== null ? `__bust_${bustHov}__` : null)));
+      el.style.cursor = (found || portalHov || inlayHov || bustHov !== null) ? "pointer" : "grab";
     };
     const onClick = () => {
       if (!drag.current && hovMem.current) {
         if (hovMem.current === "__exterior__") onDoorClickRef.current("__exterior__");
+        else if (hovMem.current === "__inlay__") onInlayClick?.();
+        else if (hovMem.current.startsWith("__bust_")) onBustClick?.(parseInt(hovMem.current.replace("__bust_","").replace("__","")));
         else onDoorClickRef.current(hovMem.current);
       }
     };

@@ -131,6 +131,46 @@ export function loadVelvetTextures(repeat: [number, number] = [2, 2]): PBRTextur
   return loadPBRSet("/textures/pbr/velvet", "velour_velvet", { repeat });
 }
 
+// ── Era-specific texture loaders (Roman) ──
+
+/** Travertine stone — Roman walls, columns */
+export function loadTravertineTextures(repeat: [number, number] = [3, 3]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/travertine", "travertine", { repeat });
+}
+
+/** Terracotta tiles — Roman roofing, accents */
+export function loadTerracottaTileTextures(repeat: [number, number] = [3, 3]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/terracotta_tiles", "terracotta_tiles", { repeat });
+}
+
+/** Roman mosaic — decorative floors */
+export function loadRomanMosaicTextures(repeat: [number, number] = [2, 2]): PBRTextureSet {
+  // Falls back to floor tiles if mosaic textures unavailable
+  return loadPBRSet("/textures/pbr/floor_tiles", "floor_tiles_02", { repeat });
+}
+
+// ── Era-specific texture loaders (Renaissance) ──
+
+/** Sandstone (pietra serena grey) — Renaissance columns, trim */
+export function loadSandstoneTextures(repeat: [number, number] = [3, 3]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/sandstone", "sandstone", { repeat });
+}
+
+/** Ornate plaster — Renaissance frescoed/textured walls */
+export function loadOrnatePlasterTextures(repeat: [number, number] = [3, 3]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/ornate_plaster", "ornate_plaster", { repeat });
+}
+
+/** Florentine tile — Renaissance floor tiles */
+export function loadFlorentineTileTextures(repeat: [number, number] = [4, 4]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/floor_tiles", "floor_tiles_02", { repeat });
+}
+
+/** Walnut wood — Renaissance furniture, coffered ceilings */
+export function loadWalnutWoodTextures(repeat: [number, number] = [2, 3]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/walnut_wood", "walnut_wood", { repeat });
+}
+
 // ════════════════════════════════════════════
 // DISPOSAL
 // ════════════════════════════════════════════

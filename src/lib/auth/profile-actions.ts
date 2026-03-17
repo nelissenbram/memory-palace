@@ -14,6 +14,7 @@ export async function completeOnboarding(data: {
   displayName: string;
   goal: string;
   firstWing: string;
+  styleEra?: string;
 }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { success: true }; // Skip when Supabase isn't configured
@@ -35,6 +36,7 @@ export async function completeOnboarding(data: {
       display_name: data.displayName,
       goal: data.goal,
       first_wing: data.firstWing,
+      style_era: data.styleEra || "roman",
       onboarded: true,
     })
     .eq("id", user.id);
@@ -92,6 +94,8 @@ export async function updateProfile(data: {
   goal?: string;
   bio?: string;
   avatarUrl?: string;
+  styleEra?: string;
+  bustTextureUrl?: string;
 }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { success: true };
@@ -111,6 +115,8 @@ export async function updateProfile(data: {
   if (data.goal !== undefined) updates.goal = data.goal;
   if (data.bio !== undefined) updates.bio = data.bio;
   if (data.avatarUrl !== undefined) updates.avatar_url = data.avatarUrl;
+  if (data.styleEra !== undefined) updates.style_era = data.styleEra;
+  if (data.bustTextureUrl !== undefined) updates.bust_texture_url = data.bustTextureUrl;
 
   if (Object.keys(updates).length === 0) {
     return { error: "No fields to update" };

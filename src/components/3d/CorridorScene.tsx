@@ -11,7 +11,7 @@ import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, load
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
-export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>,highlightDoor?: string|null}){
+export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void}){
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const onDoorClickRef=useRef(onDoorClick);
   useEffect(()=>{onDoorClickRef.current=onDoorClick;},[onDoorClick]);
@@ -1085,6 +1085,79 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     });
     doorMeshes.current=dMeshes;
 
+    // ── ROOM INLAY PANELS — locked room slots on opposite wall ──
+    const MAX_ROOMS_PER_WING = 8;
+    const inlayCount = MAX_ROOMS_PER_WING - rooms.length;
+    const inlayClickMeshes: THREE.Mesh[] = [];
+    if (inlayCount > 0) {
+      for (let ii = 0; ii < inlayCount; ii++) {
+        const side = (rooms.length + ii) % 2 === 0 ? -1 : 1;
+        const z = -cL / 2 + 5.5 + (rooms.length + ii) * C.sp;
+        if (z > cL / 2 - 3) break; // Don't place past corridor end
+        const wx = side * (cW / 2);
+        const panelW = 1.2, panelH = 2.2, panelD = 0.08;
+        const inlayMat = styleEra === "renaissance"
+          ? new THREE.MeshStandardMaterial({ color: "#9A9A8A", roughness: 0.5 })
+          : new THREE.MeshStandardMaterial({ color: "#D4C5A9", roughness: 0.65 });
+        scene.add(mk(new THREE.BoxGeometry(panelD, panelH, panelW), inlayMat, wx - (side * 0.01), panelH / 2, z));
+        // Arch outline
+        const archGeo = new THREE.TorusGeometry(0.45, 0.03, 6, 10, Math.PI);
+        const archMesh = new THREE.Mesh(archGeo, MS.gold);
+        archMesh.position.set(wx, panelH - 0.15, z);
+        archMesh.rotation.y = side * (-Math.PI / 2);
+        scene.add(archMesh);
+        // Lock seal
+        const sealMat = styleEra === "renaissance" ? MS.gold : MS.handle;
+        scene.add(new THREE.Mesh(new THREE.CircleGeometry(0.15, 16), sealMat).translateX(wx - (side * 0.02)).translateY(panelH * 0.45).translateZ(z));
+        // Click target
+        const inlClick = new THREE.Mesh(
+          new THREE.BoxGeometry(0.3, panelH, panelW),
+          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+        );
+        inlClick.position.set(wx, panelH / 2, z);
+        inlClick.userData = { isInlay: true };
+        scene.add(inlClick);
+        inlayClickMeshes.push(inlClick);
+      }
+    }
+
+    // ── ERA-SPECIFIC CORRIDOR MODIFICATIONS ──
+    if (styleEra === "renaissance") {
+      // Barrel-vaulted ceiling (half-cylinder)
+      const vaultGeo = new THREE.CylinderGeometry(cW / 2, cW / 2, cL, 16, 1, true, 0, Math.PI);
+      const vaultMat = new THREE.MeshStandardMaterial({
+        color: "#F0EAE0", roughness: 0.8, side: THREE.BackSide,
+      });
+      const vault = new THREE.Mesh(vaultGeo, vaultMat);
+      vault.rotation.z = Math.PI / 2;
+      vault.rotation.x = Math.PI / 2;
+      vault.position.set(0, cH, 0);
+      scene.add(vault);
+
+      // Pietra serena door frames (darker trim on doors)
+      dMeshes.forEach(d => {
+        scene.add(mk(new THREE.BoxGeometry(0.06, 3.8, 0.1), MS.trim, d.x - (d.side * 0.01), 1.9, d.z - 0.9));
+        scene.add(mk(new THREE.BoxGeometry(0.06, 3.8, 0.1), MS.trim, d.x - (d.side * 0.01), 1.9, d.z + 0.9));
+      });
+    } else {
+      // Roman peristyle — one wall with column row
+      // Add Roman-style wall niches between doors
+      dMeshes.forEach((d, di) => {
+        if (di < dMeshes.length - 1) {
+          const nicheZ = (d.z + dMeshes[di + 1].z) / 2;
+          const side = d.side;
+          const nW = 0.8, nH = 1.6, nD = 0.3;
+          scene.add(mk(new THREE.BoxGeometry(nD, nH, nW), MS.wallD, side * (cW / 2 - nD / 2), nH / 2 + 0.5, nicheZ));
+          // Arch top
+          const archGeo = new THREE.TorusGeometry(nW / 2 - 0.05, 0.03, 6, 10, Math.PI);
+          const arch = new THREE.Mesh(archGeo, MS.trim);
+          arch.position.set(side * (cW / 2 - 0.02), nH + 0.5, nicheZ);
+          arch.rotation.y = side * (-Math.PI / 2);
+          scene.add(arch);
+        }
+      });
+    }
+
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target door ──
     const hlDoorLights: Map<string,THREE.PointLight>=new Map();
     dMeshes.forEach(d=>{
@@ -1314,12 +1387,18 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       let found=null;let portalHov=false;
       dMeshes.forEach(d=>{const hits=rc.intersectObject(d.mesh);if(hits.length>0&&hits[0].distance<5)found=d.room.id;});
       const ph2=rc.intersectObject(portalHit);if(ph2.length>0&&ph2[0].distance<5)portalHov=true;
-      hovDoor=found;el.style.cursor=(found||portalHov)?"pointer":"grab";onDoorHover(found||(portalHov?"__portal__":null));};
+      let inlHov=false;
+      inlayClickMeshes.forEach(im=>{const hits=rc.intersectObject(im);if(hits.length>0&&hits[0].distance<5)inlHov=true;});
+      hovDoor=found;el.style.cursor=(found||portalHov||inlHov)?"pointer":"grab";onDoorHover(found||(portalHov?"__portal__":null));
+      if(inlHov&&!found&&!portalHov)el.style.cursor="pointer";};
     const onCk=()=>{
       if(!drag.v&&hovDoor)onDoorClickRef.current(hovDoor);
       else if(!drag.v){
         const rect2=el.getBoundingClientRect();const rc2=new THREE.Raycaster();rc2.setFromCamera(new THREE.Vector2(((prev.x-rect2.left)/rect2.width)*2-1,-((prev.y-rect2.top)/rect2.height)*2+1),camera);
-        const ph3=rc2.intersectObject(portalHit);if(ph3.length>0&&ph3[0].distance<5)onDoorClickRef.current("__portal__");}};
+        const ph3=rc2.intersectObject(portalHit);if(ph3.length>0&&ph3[0].distance<5)onDoorClickRef.current("__portal__");
+        let inlHit=false;inlayClickMeshes.forEach(im=>{const h=rc2.intersectObject(im);if(h.length>0&&h[0].distance<5)inlHit=true;});
+        if(inlHit)onInlayClick?.();}};
+
     const onKD=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};
     const onKU=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=false;};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
