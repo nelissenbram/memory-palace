@@ -564,33 +564,66 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     // CHRISTMAS TREE — special decoration for Christmas Traditions room
     // ═══════════════════════════════════════════
     if(currentRoomName==="Christmas Traditions"){
-      const txX=rW/2-2,txZ=-rL/2+2;
-      // Trunk
-      scene.add(mk(new THREE.CylinderGeometry(.08,.12,0.5,8),MS.dkW,txX,.25,txZ));
-      // Tree tiers (3 stacked cones)
-      const treeMat=new THREE.MeshStandardMaterial({color:"#1A5C1A",roughness:.85,emissive:"#0A2A0A",emissiveIntensity:.1});
-      const treeMat2=new THREE.MeshStandardMaterial({color:"#1E6B1E",roughness:.82,emissive:"#0A2A0A",emissiveIntensity:.1});
-      scene.add(mk(new THREE.ConeGeometry(.9,1.4,8),treeMat,txX,1.2,txZ));
-      scene.add(mk(new THREE.ConeGeometry(.7,1.2,8),treeMat2,txX,2.1,txZ));
-      scene.add(mk(new THREE.ConeGeometry(.45,.9,8),treeMat,txX,2.8,txZ));
-      // Star on top
-      const starMat=new THREE.MeshStandardMaterial({color:"#FFD700",emissive:"#FFD700",emissiveIntensity:.8,metalness:.9,roughness:.2});
-      scene.add(mk(new THREE.OctahedronGeometry(.12,0),starMat,txX,3.35,txZ));
-      // Ornaments (baubles scattered on the tree)
-      const ornColors=["#C41E3A","#FFD700","#1E90FF","#C41E3A","#FFD700","#FF6B35","#C41E3A","#1E90FF"];
-      ornColors.forEach((c,i)=>{
-        const a=(i/ornColors.length)*Math.PI*2+Math.random()*.3;
-        const tier=i<3?0:i<6?1:2;
-        const baseY=[1.0,1.9,2.6][tier];
-        const r2=[.7,.5,.3][tier];
-        const oy=baseY+Math.random()*.4;
-        const ox=txX+Math.cos(a)*r2;const oz=txZ+Math.sin(a)*r2;
-        const ornMat=new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.3,metalness:.8,roughness:.2});
-        scene.add(mk(new THREE.SphereGeometry(.05,8,8),ornMat,ox,oy,oz));
+      const txX=-rW/2+1.8,txZ=-rL/2+1.8;
+      // ── Elegant tree stand — turned walnut base with brass rim ──
+      scene.add(mk(new THREE.CylinderGeometry(.35,.4,.08,16),MS.dkW,txX,.04,txZ));
+      scene.add(mk(new THREE.CylinderGeometry(.37,.37,.02,16),MS.gold,txX,.08,txZ));
+      // Trunk — tapered, natural
+      scene.add(mk(new THREE.CylinderGeometry(.06,.09,0.55,6),new THREE.MeshStandardMaterial({color:"#5A3A20",roughness:.9}),txX,.35,txZ));
+      // ── Foliage — 4 layered tiers, high-poly cones for fullness ──
+      const fol=new THREE.MeshStandardMaterial({color:"#1B4D1B",roughness:.92,metalness:0,emissive:"#0A1F0A",emissiveIntensity:.05});
+      const folD=new THREE.MeshStandardMaterial({color:"#163F16",roughness:.95,metalness:0,emissive:"#081808",emissiveIntensity:.04});
+      scene.add(mk(new THREE.ConeGeometry(.95,1.1,12),fol,txX,.95,txZ));
+      scene.add(mk(new THREE.ConeGeometry(.78,1.0,12),folD,txX,1.6,txZ));
+      scene.add(mk(new THREE.ConeGeometry(.58,.85,12),fol,txX,2.15,txZ));
+      scene.add(mk(new THREE.ConeGeometry(.35,.7,10),folD,txX,2.65,txZ));
+      // ── Star topper — faceted crystal with warm glow ──
+      const starMat=new THREE.MeshStandardMaterial({color:"#F0D060",emissive:"#F0D060",emissiveIntensity:.6,metalness:.95,roughness:.1});
+      const star=new THREE.Mesh(new THREE.OctahedronGeometry(.1,0),starMat);
+      star.position.set(txX,3.08,txZ);star.rotation.y=Math.PI/4;scene.add(star);
+      // Subtle star light halo
+      const starLight=new THREE.PointLight("#FFF0C0",.6,4);starLight.position.set(txX,3.1,txZ);scene.add(starLight);
+      // ── Ornaments — matte glass baubles, muted palette ──
+      const ornDefs=[
+        {c:"#8B1A1A",e:"#5A1010",tier:0},{c:"#C8A858",e:"#8A7030",tier:0},{c:"#8B1A1A",e:"#5A1010",tier:0},
+        {c:"#E8D5B0",e:"#A09070",tier:1},{c:"#C8A858",e:"#8A7030",tier:1},{c:"#8B1A1A",e:"#5A1010",tier:1},
+        {c:"#E8D5B0",e:"#A09070",tier:2},{c:"#C8A858",e:"#8A7030",tier:2},
+      ];
+      ornDefs.forEach((o,i)=>{
+        const a=(i/ornDefs.length)*Math.PI*2+i*.4;
+        const baseY=[.75,1.45,2.05][o.tier];
+        const r2=[.75,.55,.38][o.tier];
+        const oy=baseY+.2+Math.sin(i*1.7)*.15;
+        const ox=txX+Math.cos(a)*r2,oz=txZ+Math.sin(a)*r2;
+        const mat=new THREE.MeshStandardMaterial({color:o.c,emissive:o.e,emissiveIntensity:.15,metalness:.4,roughness:.35});
+        scene.add(mk(new THREE.SphereGeometry(.045,10,10),mat,ox,oy,oz));
       });
-      // Warm glow light from tree
-      const treeLight=new THREE.PointLight("#FFE8A0",1.2,8);treeLight.position.set(txX,2,txZ);scene.add(treeLight);
-      animTex.push({type:"xmasTree" as any,mesh:null as any,light:treeLight,star:null as any,x:txX,z:txZ});
+      // ── Thin gold tinsel lines spiraling up ──
+      const tinselMat=new THREE.MeshStandardMaterial({color:"#D4AF37",emissive:"#B8922E",emissiveIntensity:.2,metalness:.85,roughness:.15});
+      for(let ti=0;ti<24;ti++){
+        const frac=ti/24;const ty=.6+frac*2.2;
+        const tr=.85-frac*.55;const ta=frac*Math.PI*6;
+        scene.add(mk(new THREE.SphereGeometry(.012,4,4),tinselMat,txX+Math.cos(ta)*tr,ty,txZ+Math.sin(ta)*tr));
+      }
+      // ── Presents under the tree ──
+      const presentMat1=new THREE.MeshStandardMaterial({color:"#8B1A1A",roughness:.7});
+      const presentMat2=new THREE.MeshStandardMaterial({color:"#1B4D3E",roughness:.7});
+      const ribbonMat=new THREE.MeshStandardMaterial({color:"#D4AF37",metalness:.7,roughness:.2});
+      // Present 1 — small square
+      scene.add(mk(new THREE.BoxGeometry(.28,.22,.28),presentMat1,txX+.35,.11,txZ+.3));
+      scene.add(mk(new THREE.BoxGeometry(.3,.02,.04),ribbonMat,txX+.35,.22,txZ+.3));
+      scene.add(mk(new THREE.BoxGeometry(.04,.02,.3),ribbonMat,txX+.35,.22,txZ+.3));
+      // Present 2 — wider box
+      scene.add(mk(new THREE.BoxGeometry(.38,.16,.26),presentMat2,txX-.3,.08,txZ+.45));
+      scene.add(mk(new THREE.BoxGeometry(.4,.02,.04),ribbonMat,txX-.3,.16,txZ+.45));
+      scene.add(mk(new THREE.BoxGeometry(.04,.02,.28),ribbonMat,txX-.3,.16,txZ+.45));
+      // Present 3 — tiny
+      scene.add(mk(new THREE.BoxGeometry(.18,.14,.18),presentMat1,txX+.08,.07,txZ+.5));
+      scene.add(mk(new THREE.BoxGeometry(.2,.02,.03),ribbonMat,txX+.08,.14,txZ+.5));
+      // ── Warm ambient glow — like the tree is lit from within ──
+      const treeLight=new THREE.PointLight("#FFE0A0",.8,6);treeLight.position.set(txX,1.5,txZ);scene.add(treeLight);
+      const treeLight2=new THREE.PointLight("#FFF5D0",.4,4);treeLight2.position.set(txX,2.5,txZ);scene.add(treeLight2);
+      animTex.push({type:"xmasTree" as any,mesh:star as any,light:treeLight,star:starLight as any,x:txX,z:txZ});
     }
 
     // ═══════════════════════════════════════════
@@ -745,7 +778,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
           if(vinylAudio){const vo=volOverride.current.audio;vinylAudio.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(new THREE.Vector3(vpX,1,vpZ))/8));}
         }
         if(a.type==="globe"){a.mesh.rotation.y=t*.15;}
-        if((a as any).type==="xmasTree"){const xl=(a as any).light as THREE.PointLight;xl.intensity=1+Math.sin(t*1.5)*.4+Math.sin(t*3.7)*.2;}
+        if((a as any).type==="xmasTree"){const xl=(a as any).light as THREE.PointLight;xl.intensity=.7+Math.sin(t*1.2)*.15;const sl=(a as any).star as THREE.PointLight;if(sl)sl.intensity=.5+Math.sin(t*2)*.2;const sm=(a as any).mesh;if(sm)sm.rotation.y=t*.3;}
         if(a.type==="video"){
           const cx=a.ctx,cw=a.w,ch=a.h,m=a.mem,ph=t*.5+a.phase;
           const vEl=a.videoEl?a.videoEl():null;
