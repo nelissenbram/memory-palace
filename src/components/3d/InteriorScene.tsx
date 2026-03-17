@@ -7,11 +7,14 @@ import type { Wing } from "@/lib/constants/wings";
 import { paintTex } from "@/lib/3d/textureHelpers";
 import { mk } from "@/lib/3d/meshHelpers";
 import { layoutForRoom } from "@/lib/3d/roomLayouts";
+import { useRoomStore } from "@/lib/stores/roomStore";
 
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
 // wall, screen, vinyl player, vitrine, orbs. Layout varies size & décor.
 export default function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClick,wingData:wingDataProp}: {roomId: any,actualRoomId?: string,layoutOverride?: string,memories: any,onMemoryClick: any,wingData?: Wing}){
+  const { getWingRooms } = useRoomStore();
+  const currentRoomName = getWingRooms(roomId).find(r => r.id === (actualRoomId || roomId))?.name || "";
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const lookA=useRef({yaw:0,pitch:0}),lookT=useRef({yaw:0,pitch:0});
   const pos=useRef(new THREE.Vector3()),posT=useRef(new THREE.Vector3());
@@ -560,7 +563,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     // ═══════════════════════════════════════════
     // CHRISTMAS TREE — special decoration for Christmas Traditions room
     // ═══════════════════════════════════════════
-    if((actualRoomId||roomId)==="fr1"){
+    if(currentRoomName==="Christmas Traditions"){
       const txX=rW/2-2,txZ=-rL/2+2;
       // Trunk
       scene.add(mk(new THREE.CylinderGeometry(.08,.12,0.5,8),MS.dkW,txX,.25,txZ));
