@@ -8,10 +8,12 @@ import { mk } from "@/lib/3d/meshHelpers";
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
-export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>}){
+export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>,highlightDoor?: string|null}){
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const onDoorClickRef=useRef(onDoorClick);
   useEffect(()=>{onDoorClickRef.current=onDoorClick;},[onDoorClick]);
+  const highlightDoorRef=useRef(highlightDoor);
+  useEffect(()=>{highlightDoorRef.current=highlightDoor;},[highlightDoor]);
   const wing=wingDataProp||DEFAULT_WINGS.find(w=>w.id===wingId)!;
   const rooms=roomsProp||[];
   const doorMeshes=useRef<any[]>([]);
@@ -1145,6 +1147,16 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     });
     doorMeshes.current=dMeshes;
 
+    // ── WALKTHROUGH HIGHLIGHT RINGS ──
+    const hlRings: Map<string,{ring:THREE.Mesh,light:THREE.PointLight}>=new Map();
+    dMeshes.forEach(d=>{
+      const ringMat=new THREE.MeshBasicMaterial({color:"#D4AF37",transparent:true,opacity:.7,side:THREE.DoubleSide});
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(1.2,0.06,8,32),ringMat);
+      ring.rotation.x=Math.PI/2;ring.position.set(d.x-(d.side*.5),0.15,d.z);ring.visible=false;scene.add(ring);
+      const light=new THREE.PointLight("#D4AF37",0,10);light.position.set(d.x-(d.side*.5),2.5,d.z);scene.add(light);
+      hlRings.set(d.room.id,{ring,light});
+    });
+
     // ═══ DRAMATIC EXIT PORTAL — Grand Archway to Entrance Hall ═══
     const portalZ=cL/2-1.2;
     const pW=2.8,pH=cH-1;
@@ -1328,6 +1340,13 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       const ld=new THREE.Vector3(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
       camera.lookAt(camera.position.clone().add(ld));
       dMeshes.forEach(d=>{const isH=hovDoor===d.room.id;d.mat.emissive=isH?new THREE.Color(wing.accent):new THREE.Color(0);d.mat.emissiveIntensity=isH?.12+Math.sin(t*3)*.04:0;});
+      // Walkthrough highlight ring pulse
+      hlRings.forEach(({ring,light},id)=>{
+        const active=highlightDoorRef.current===id;
+        ring.visible=active;
+        if(active){ring.scale.setScalar(1+Math.sin(t*2)*.2);(ring.material as THREE.MeshBasicMaterial).opacity=.5+Math.sin(t*3)*.3;light.intensity=2+Math.sin(t*2.5);}
+        else{light.intensity=0;}
+      });
       // Painting hover animation
       paintingMeshes.forEach(p=>{
         const isH=hovPainting===p.idx;

@@ -7,17 +7,19 @@ import type { Wing } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
 
 // ═══ EXTERIOR — Fantasy Castle ═══
-export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[]}){
+export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null}){
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const camO=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camOT=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camD=useRef(90);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
   const onRoomClickRef=useRef(onRoomClick);
+  const highlightDoorRef=useRef(highlightDoor);
 
   // Keep refs in sync so event listeners always read the latest value
   useEffect(()=>{hoveredRoomRef.current=hoveredRoom;},[hoveredRoom]);
   useEffect(()=>{onRoomClickRef.current=onRoomClick;},[onRoomClick]);
+  useEffect(()=>{highlightDoorRef.current=highlightDoor;},[highlightDoor]);
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
@@ -786,10 +788,32 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     scene.add(palace);
 
+    // ── WALKTHROUGH HIGHLIGHT RINGS ──
+    const hlRings: Map<string,{ring:THREE.Mesh,light:THREE.PointLight}>=new Map();
+    const goldRingMat=new THREE.MeshBasicMaterial({color:"#D4AF37",transparent:true,opacity:.7,side:THREE.DoubleSide});
+    clickTargets.forEach((ct: any)=>{
+      const pos=new THREE.Vector3();ct.getWorldPosition(pos);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(8,0.3,8,48),goldRingMat.clone());
+      ring.rotation.x=Math.PI/2;ring.position.set(pos.x,2,pos.z);ring.visible=false;scene.add(ring);
+      const light=new THREE.PointLight("#D4AF37",0,50);light.position.set(pos.x,6,pos.z);scene.add(light);
+      hlRings.set(ct.userData.roomId,{ring,light});
+    });
+
     let prevHovered: string|null=null;
     const clock=new THREE.Clock();
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const t=clock.getElapsedTime();
+
+      // Walkthrough highlight ring pulse
+      hlRings.forEach(({ring,light},id)=>{
+        const active=highlightDoorRef.current===id;
+        ring.visible=active;
+        if(active){
+          ring.scale.setScalar(1+Math.sin(t*2)*.15);
+          (ring.material as THREE.MeshBasicMaterial).opacity=.5+Math.sin(t*3)*.25;
+          light.intensity=2+Math.sin(t*2.5);
+        }else{light.intensity=0;}
+      });
       camO.current.theta+=(camOT.current.theta-camO.current.theta)*.04;
       camO.current.phi+=(camOT.current.phi-camO.current.phi)*.04;
       const r=camD.current;

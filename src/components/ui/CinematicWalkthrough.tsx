@@ -72,46 +72,10 @@ export default function CinematicWalkthrough() {
       break;
   }
 
-  // Directional indicator config
-  const showArrow = phase === 0 || phase === 2 || phase === 3;
-  let arrowStyle: React.CSSProperties = {};
-  let arrowLabel = "";
-
-  if (phase === 0) {
-    // Point at entrance — center of screen
-    arrowStyle = {
-      position: "absolute", left: "50%", top: "45%",
-      transform: "translate(-50%, -50%)",
-    };
-    arrowLabel = t("clickEntrance");
-  } else if (phase === 2 && targetWing) {
-    // Point toward wing door — calculate angle from hall center
-    const idx = WING_INDEX[targetWing] ?? 0;
-    let angle = (idx / 5) * Math.PI * 2 - Math.PI / 2;
-    while (angle < 0) angle += Math.PI * 2;
-    const radius = isMobile ? 28 : 32; // % from center
-    const cx = 50 + Math.cos(angle) * radius;
-    const cy = 50 + Math.sin(angle) * radius;
-    arrowStyle = {
-      position: "absolute", left: `${cx}%`, top: `${cy}%`,
-      transform: "translate(-50%, -50%)",
-    };
-    arrowLabel = t("enterWing", { wingName });
-  } else if (phase === 3) {
-    // Point toward first room door — first door (i=0) is on the left wall
-    arrowStyle = {
-      position: "absolute", left: isMobile ? "25%" : "30%", top: "45%",
-      transform: "translate(-50%, -50%)",
-    };
-    arrowLabel = t("enterRoom", { roomName });
-  }
-
   return (
     <>
       <style>{`
         @keyframes wtNarrationIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes wtPulse { 0%,100% { transform:translate(-50%,-50%) scale(1); opacity:.9; } 50% { transform:translate(-50%,-50%) scale(1.3); opacity:.5; } }
-        @keyframes wtChevron { 0%,100% { transform:translate(-50%,-50%) translateY(0); } 50% { transform:translate(-50%,-50%) translateY(-6px); } }
       `}</style>
 
       {/* Narration bubble */}
@@ -154,48 +118,6 @@ export default function CinematicWalkthrough() {
           {t("skipIntro")}
         </button>
       </div>
-
-      {/* Directional indicator */}
-      {showArrow && (
-        <div style={{ ...arrowStyle, zIndex: 79, pointerEvents: "none" }}>
-          {/* Pulsing golden ring */}
-          <div style={{
-            width: 96, height: 96, borderRadius: 48,
-            border: `3px solid ${T.color.gold}`,
-            background: `${T.color.gold}22`,
-            animation: "wtPulse 1.5s ease-in-out infinite",
-            position: "absolute", left: "50%", top: "50%",
-            transform: "translate(-50%, -50%)",
-          }} />
-          {/* Chevron */}
-          <div style={{
-            position: "absolute", left: "50%", top: -24,
-            transform: "translate(-50%, -50%)",
-            animation: "wtChevron 1.2s ease-in-out infinite",
-            fontSize: 22,
-            color: T.color.gold,
-            textShadow: "0 2px 8px rgba(212,175,55,.5)",
-          }}>
-            ▼
-          </div>
-          {/* Label */}
-          {arrowLabel && (
-            <div style={{
-              position: "absolute", left: "50%", top: 60,
-              transform: "translateX(-50%)",
-              whiteSpace: "nowrap",
-              fontFamily: T.font.body,
-              fontSize: 13,
-              fontWeight: 600,
-              color: T.color.gold,
-              textShadow: "0 1px 6px rgba(0,0,0,.5)",
-              letterSpacing: "0.03em",
-            }}>
-              {arrowLabel}
-            </div>
-          )}
-        </div>
-      )}
     </>
   );
 }

@@ -25,15 +25,19 @@ const DOOR_ANGLES = HALL_WINGS.map((_, i) => {
 export default function EntranceHallScene({
   onDoorClick,
   wings: wingsProp,
+  highlightDoor,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
+  highlightDoor?: string | null;
 }) {
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const onDoorClickRef = useRef(onDoorClick);
   useEffect(() => { onDoorClickRef.current = onDoorClick; }, [onDoorClick]);
+  const highlightDoorRef = useRef(highlightDoor);
+  useEffect(() => { highlightDoorRef.current = highlightDoor; }, [highlightDoor]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [muted, setMuted] = useState(false);
 
@@ -945,6 +949,19 @@ export default function EntranceHallScene({
     const spirCZ = (scene as any).__spiralCZ || 0;
     const spirR = (scene as any).__spiralRadius || 1.8;
 
+    // ── WALKTHROUGH HIGHLIGHT RINGS ──
+    const hlRings: Map<string,{ring:THREE.Mesh,light:THREE.PointLight}>=new Map();
+    const seenWings=new Set<string>();
+    doorMeshes.forEach(d=>{
+      if(seenWings.has(d.wingId))return;seenWings.add(d.wingId);
+      const dx2=Math.cos(d.angle)*(RADIUS-2);const dz2=Math.sin(d.angle)*(RADIUS-2);
+      const ringMat=new THREE.MeshBasicMaterial({color:"#D4AF37",transparent:true,opacity:.7,side:THREE.DoubleSide});
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(1.8,0.08,8,32),ringMat);
+      ring.rotation.x=Math.PI/2;ring.position.set(dx2,0.15,dz2);ring.visible=false;scene.add(ring);
+      const light=new THREE.PointLight("#D4AF37",0,15);light.position.set(dx2,3,dz2);scene.add(light);
+      hlRings.set(d.wingId,{ring,light});
+    });
+
     const clock = new THREE.Clock();
     let hoveredWing: string | null = null;
 
@@ -952,6 +969,17 @@ export default function EntranceHallScene({
       frameRef.current = requestAnimationFrame(animate);
       const dt = Math.min(clock.getDelta(), 0.05);
       const t = clock.getElapsedTime();
+
+      // Walkthrough highlight ring pulse
+      hlRings.forEach(({ring,light},id)=>{
+        const active=highlightDoorRef.current===id;
+        ring.visible=active;
+        if(active){
+          ring.scale.setScalar(1+Math.sin(t*2)*.2);
+          (ring.material as THREE.MeshBasicMaterial).opacity=.5+Math.sin(t*3)*.3;
+          light.intensity=2+Math.sin(t*2.5);
+        }else{light.intensity=0;}
+      });
 
       // ── Smooth look interpolation ──
       lookA.current.yaw += (lookT.current.yaw - lookA.current.yaw) * 0.08;
