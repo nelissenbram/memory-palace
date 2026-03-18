@@ -805,21 +805,17 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     scene.add(mk(new THREE.PlaneGeometry(cW,cH),MS.wall,0,cH/2,-cL/2));
     const wB=new THREE.Mesh(new THREE.PlaneGeometry(cW,cH),MS.wall);wB.rotation.y=Math.PI;wB.position.set(0,cH/2,cL/2);scene.add(wB);
     for(let s of[-1,1]){
-      // Wainscoting
-      scene.add(mk(new THREE.BoxGeometry(.05,1.4,cL-.4),MS.wain,s*(cW/2-.025),.7,0));
-      scene.add(mk(new THREE.BoxGeometry(.06,.07,cL-.3),MS.gold,s*(cW/2-.03),1.43,0));
-      scene.add(mk(new THREE.BoxGeometry(.08,.18,cL-.2),MS.dkW,s*(cW/2-.04),.09,0));
-      // Crown molding at ceiling (more elaborate)
-      scene.add(mk(new THREE.BoxGeometry(.10,.14,cL-.2),MS.gold,s*(cW/2-.05),cH-.07,0));
-      scene.add(mk(new THREE.BoxGeometry(.06,.08,cL-.2),MS.trim,s*(cW/2-.03),cH-.18,0));
-      // Wall panels between doors (skip zones occupied by doors/paintings)
-      // Collect occupied z-zones for this wall side
+      // Collect door zones for this wall side (used by wainscoting + panels)
+      const doorZonesForSide: {center: number, halfW: number}[] = [];
       const occupiedZones: {center: number, halfW: number}[] = [];
       rooms.forEach((_room2: any, ri: number) => {
         const doorSide = ri % 2 === 0 ? -1 : 1;
         const doorZ = -cL/2 + 5.5 + ri * C.sp;
         // Door zone on its side
-        if (doorSide === s) occupiedZones.push({ center: doorZ, halfW: 1.5 });
+        if (doorSide === s) {
+          doorZonesForSide.push({ center: doorZ, halfW: 1.3 });
+          occupiedZones.push({ center: doorZ, halfW: 1.5 });
+        }
         // Painting zone (between this door and the next, same side as door)
         if (doorSide === s && ri < rooms.length - 1) {
           occupiedZones.push({ center: doorZ + C.sp / 2, halfW: 1.4 });
@@ -827,6 +823,46 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         // Window on the opposite side
         if (-doorSide === s) occupiedZones.push({ center: doorZ, halfW: 1.2 });
       });
+      // Also add locked niche zones
+      const MAX_ROOMS_PER_WING_TMP = 8;
+      const inlayCountTmp = MAX_ROOMS_PER_WING_TMP - rooms.length;
+      for (let ii = 0; ii < inlayCountTmp; ii++) {
+        const inlaySide = (rooms.length + ii) % 2 === 0 ? -1 : 1;
+        const inlayZ = -cL / 2 + 5.5 + (rooms.length + ii) * C.sp;
+        if (inlayZ > cL / 2 - 3) break;
+        if (inlaySide === s) doorZonesForSide.push({ center: inlayZ, halfW: 1.3 });
+      }
+      // Wainscoting — split into segments that skip door frames
+      // Sort door zones by z
+      const sortedDoorZones = [...doorZonesForSide].sort((a, b) => a.center - b.center);
+      // Build wainscoting segments between door zones
+      const wainStart = -cL/2 + 0.2;
+      const wainEnd = cL/2 - 0.2;
+      const wainSegments: {start: number, end: number}[] = [];
+      let segStart = wainStart;
+      for (const dz of sortedDoorZones) {
+        const doorLeft = dz.center - dz.halfW;
+        const doorRight = dz.center + dz.halfW;
+        if (doorLeft > segStart + 0.2) {
+          wainSegments.push({ start: segStart, end: doorLeft });
+        }
+        segStart = doorRight;
+      }
+      if (wainEnd > segStart + 0.2) {
+        wainSegments.push({ start: segStart, end: wainEnd });
+      }
+      // Render each wainscoting segment
+      for (const seg of wainSegments) {
+        const segLen = seg.end - seg.start;
+        const segCenter = (seg.start + seg.end) / 2;
+        scene.add(mk(new THREE.BoxGeometry(.05,1.4,segLen),MS.wain,s*(cW/2-.025),.7,segCenter));
+        scene.add(mk(new THREE.BoxGeometry(.06,.07,segLen),MS.gold,s*(cW/2-.03),1.43,segCenter));
+        scene.add(mk(new THREE.BoxGeometry(.08,.18,segLen),MS.dkW,s*(cW/2-.04),.09,segCenter));
+      }
+      // Crown molding at ceiling (continuous, doesn't clip doors)
+      scene.add(mk(new THREE.BoxGeometry(.10,.14,cL-.2),MS.gold,s*(cW/2-.05),cH-.07,0));
+      scene.add(mk(new THREE.BoxGeometry(.06,.08,cL-.2),MS.trim,s*(cW/2-.03),cH-.18,0));
+      // Wall panels between doors (skip zones occupied by doors/paintings)
       const pnl=Math.floor(cL/3);
       for(let p=0;p<pnl;p++){
         const pz = -cL/2 + 1.5 + p * 3;
@@ -866,30 +902,30 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       for(const zSide of[-1,1]){
         scene.add(mk(new THREE.BoxGeometry(recessD,rectH+archR,0.05),MS.wallD,midX,winY+(archR-rectH)*0.25,wz+zSide*(winW/2+0.01)));
       }
-      // ── Stone frame — rectangular bottom portion ──
+      // ── Stone frame — rectangular bottom portion, flush with wall face ──
       // Left jamb
-      scene.add(mk(new THREE.BoxGeometry(frameTh,rectH,frameTh),winFrameMat,innerX,winY-archR/2,wz-winW/2-frameTh/2));
+      scene.add(mk(new THREE.BoxGeometry(frameTh,rectH,frameTh),winFrameMat,outerX,winY-archR/2,wz-winW/2-frameTh/2));
       // Right jamb
-      scene.add(mk(new THREE.BoxGeometry(frameTh,rectH,frameTh),winFrameMat,innerX,winY-archR/2,wz+winW/2+frameTh/2));
+      scene.add(mk(new THREE.BoxGeometry(frameTh,rectH,frameTh),winFrameMat,outerX,winY-archR/2,wz+winW/2+frameTh/2));
       // Bottom sill — pronounced, projecting inward
       scene.add(mk(new THREE.BoxGeometry(recessD+0.1,0.08,winW+frameTh*2+0.1),winFrameMat,midX,winY-rectH/2-0.04,wz));
       // Sill gold trim
       scene.add(mk(new THREE.BoxGeometry(recessD+0.12,0.025,winW+frameTh*2+0.12),MS.gold,midX,winY-rectH/2-0.005,wz));
-      // ── Semicircular arch at top — box segments arranged in arc ──
+      // ── Semicircular arch at top — box segments arranged in arc, flush with wall ──
       const archCenterY=winY+rectH/2; // y where arch springs from
       for(let ai=0;ai<=archSegsW;ai++){
         const ang=(ai/archSegsW)*Math.PI;
         const az=Math.cos(ang)*archR;
         const ay=Math.sin(ang)*archR;
-        // Outer arch frame segments
-        const seg=mk(new THREE.BoxGeometry(frameTh,frameTh,frameTh),winFrameMat,innerX,archCenterY+ay,wz+az);
+        // Outer arch frame segments — flush with wall surface
+        const seg=mk(new THREE.BoxGeometry(frameTh,frameTh,frameTh),winFrameMat,outerX,archCenterY+ay,wz+az);
         scene.add(seg);
       }
       // Keystone at top center of arch — slightly larger
-      scene.add(mk(new THREE.BoxGeometry(frameTh+0.02,frameTh*1.5,frameTh+0.04),MS.gold,innerX,archCenterY+archR,wz));
+      scene.add(mk(new THREE.BoxGeometry(frameTh+0.02,frameTh*1.5,frameTh+0.04),MS.gold,outerX,archCenterY+archR,wz));
       // ── Mullion cross — thin and elegant ──
-      scene.add(mk(new THREE.BoxGeometry(0.03,0.025,winW-0.05),winFrameMat,innerX,winY-rectH*0.15,wz));
-      scene.add(mk(new THREE.BoxGeometry(0.03,rectH-0.05,0.025),winFrameMat,innerX,winY-archR/2,wz));
+      scene.add(mk(new THREE.BoxGeometry(0.03,0.025,winW-0.05),winFrameMat,outerX,winY-rectH*0.15,wz));
+      scene.add(mk(new THREE.BoxGeometry(0.03,rectH-0.05,0.025),winFrameMat,outerX,winY-archR/2,wz));
       // ── Glass pane — positioned at the back of the recess (flush with outer wall) ──
       const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW,rectH+archR*0.6),winGlassMat);
       glass.rotation.y=winSide*(-Math.PI/2);glass.position.set(outerX,winY,wz);scene.add(glass);
@@ -897,10 +933,10 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       const landscapeMat=new THREE.MeshBasicMaterial({map:tuscanTex.clone(),side:THREE.DoubleSide});
       const landscape=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.04,rectH+archR*0.5),landscapeMat);
       landscape.rotation.y=winSide*(-Math.PI/2);landscape.position.set(outerX+(winSide*0.01),winY,wz);scene.add(landscape);
-      // ── Curtains — thin planes hanging on each side ──
+      // ── Curtains — thin planes hanging on each side, flush with wall ──
       for(const cSide of[-1,1]){
         const cZ=wz+cSide*(winW/2+0.18);
-        const cX=innerX;
+        const cX=outerX;
         // Single thin curtain plane per side
         const curtainPlane=new THREE.Mesh(new THREE.PlaneGeometry(0.35,winH+0.3),MS.curtain);
         curtainPlane.rotation.y=winSide*(-Math.PI/2)+cSide*0.06;
@@ -911,7 +947,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       }
       // Curtain rod spanning the top
       const rodMesh=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,winW+0.7,6),MS.gold);
-      rodMesh.rotation.x=Math.PI/2;rodMesh.position.set(innerX,winY+rectH/2+0.1,wz);scene.add(rodMesh);
+      rodMesh.rotation.x=Math.PI/2;rodMesh.position.set(outerX,winY+rectH/2+0.1,wz);scene.add(rodMesh);
       // ── Warm sunlight — PointLight only, no floating shaft planes ──
       const wLight=new THREE.PointLight("#FFF5E0",0.6,8);wLight.position.set(wx-(winSide*0.6),winY,wz);scene.add(wLight);
       const wLight2=new THREE.PointLight("#FFE8C0",0.25,5);wLight2.position.set(wx-(winSide*1.2),winY-0.5,wz);scene.add(wLight2);
@@ -947,7 +983,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     }
 
     // ── CANDLE SCONCES — at z_i + sp*0.25 on both walls, skip near paintings/doors ──
-    // Collect all painting z-positions per side for sconce overlap check
+    // Collect all painting z-positions per side for sconce overlap check (wider margin for new frames)
     const paintingZBySide: Record<number, number[]> = {[-1]: [], [1]: []};
     for(let i=0;i<rooms.length-1;i++){
       const doorSide=i%2===0?-1:1;
@@ -958,7 +994,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       if(sz>cL/2-3||sz<-cL/2+3)continue;
       for(const s of[-1,1]){
         // Skip if sconce would overlap with a painting on this wall
-        const tooClose=paintingZBySide[s].some(pz=>Math.abs(sz-pz)<1.2);
+        const tooClose=paintingZBySide[s].some(pz=>Math.abs(sz-pz)<1.5);
         if(tooClose)continue;
         const sx=s*(cW/2-.03);
         scene.add(mk(new THREE.BoxGeometry(.04,.02,.12),MS.bronze,sx-(s*.06),2.6,sz));
@@ -1016,7 +1052,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     // ── SCONCES between door zones — at z_i + sp*0.75, skip near paintings ──
     for(const s of[-1,1])for(let i=0;i<rooms.length;i++){
       const sz=-cL/2+5.5+i*C.sp+C.sp*0.75;if(sz>cL/2-2||sz<-cL/2+2)continue;
-      const tooClose=paintingZBySide[s].some(pz=>Math.abs(sz-pz)<1.2);
+      const tooClose=paintingZBySide[s].some(pz=>Math.abs(sz-pz)<1.5);
       if(tooClose)continue;
       scene.add(mk(new THREE.BoxGeometry(.06,.14,.06),MS.sconce,s*(cW/2-.03),3.5,sz));
       scene.add(mk(new THREE.CylinderGeometry(.04,.03,.06,6),MS.sconce,s*(cW/2-.06),3.62,sz));
@@ -1036,17 +1072,57 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     else{scene.add(mk(new THREE.CylinderGeometry(.1,.15,.65,8),MS.statue,0,pH2+.33,sZ));scene.add(mk(new THREE.SphereGeometry(.14,8,8),MS.statue,0,pH2+.8,sZ));}
     const sL=new THREE.SpotLight("#FFF5E0",.7,5,Math.PI/6,.5,1);sL.position.set(0,cH-.1,sZ);sL.target.position.set(0,pH2,sZ);scene.add(sL);scene.add(sL.target);
 
-    // ═══ WALL SCONCE PANELS — decorative panels between doors (replacing paintings) ═══
+    // ═══ INTERACTIVE PAINTING/MEDIA SLOTS — between doors on same wall ═══
+    const paintingClickMeshes: {mesh: THREE.Mesh, slotKey: string}[] = [];
     for(let i=0;i<rooms.length-1;i++){
       const pz=-cL/2+5.5+i*C.sp+C.sp/2;
       if(pz>cL/2-3||pz<-cL/2+3)continue;
       const s=i%2===0?-1:1;
       const fx=s*(cW/2-.005);
-      // Decorative wall panel — subtle raised panel with trim
-      scene.add(mk(new THREE.BoxGeometry(.02,1.6,1.2),MS.trim,fx,2.8,pz));
-      scene.add(mk(new THREE.BoxGeometry(.025,1.4,1.0),MS.wall,fx-(s*.005),2.8,pz));
-      // Small gold accent at top center
-      scene.add(mk(new THREE.BoxGeometry(.03,.08,.3),MS.gold,fx-(s*.008),3.55,pz));
+      const slotKey=`corridor-${wingId}-painting-${i}`;
+      const paintingData=corridorPaintings?.[slotKey];
+      const fw=1.3,fh=1.0,frameW=0.07;
+      // Gold frame — ornate border
+      scene.add(mk(new THREE.BoxGeometry(.03,frameW,fw+frameW*2),MS.gold,fx,2.8+fh/2+frameW/2,pz)); // top
+      scene.add(mk(new THREE.BoxGeometry(.03,frameW,fw+frameW*2),MS.gold,fx,2.8-fh/2-frameW/2,pz)); // bottom
+      scene.add(mk(new THREE.BoxGeometry(.03,fh,frameW),MS.gold,fx,2.8,pz-fw/2-frameW/2)); // left
+      scene.add(mk(new THREE.BoxGeometry(.03,fh,frameW),MS.gold,fx,2.8,pz+fw/2+frameW/2)); // right
+      // Inner frame accent
+      scene.add(mk(new THREE.BoxGeometry(.025,frameW*.4,fw+frameW),MS.trim,fx-(s*.002),2.8+fh/2+frameW*.15,pz));
+      scene.add(mk(new THREE.BoxGeometry(.025,frameW*.4,fw+frameW),MS.trim,fx-(s*.002),2.8-fh/2-frameW*.15,pz));
+      // Canvas / painting surface
+      if(paintingData?.url){
+        // If there's an actual image, load it as texture
+        const loader=new THREE.TextureLoader();
+        const pUrl=paintingData.url;
+        loader.load(pUrl,(tex: THREE.Texture)=>{
+          tex.colorSpace=THREE.SRGBColorSpace;
+          const canvasMat=new THREE.MeshStandardMaterial({map:tex,roughness:.65});
+          const canvasMesh=new THREE.Mesh(new THREE.PlaneGeometry(fw-.04,fh-.04),canvasMat);
+          canvasMesh.rotation.y=s*(-Math.PI/2);
+          canvasMesh.position.set(fx-(s*.008),2.8,pz);
+          scene.add(canvasMesh);
+        });
+      }else{
+        // Empty slot — subtle warm canvas placeholder inviting interaction
+        const emptyMat=new THREE.MeshStandardMaterial({color:"#C8BCA0",roughness:.85,emissive:"#C8BCA0",emissiveIntensity:.03});
+        const emptyCanvas=mk(new THREE.BoxGeometry(.008,fh-.06,fw-.06),emptyMat,fx-(s*.008),2.8,pz);
+        scene.add(emptyCanvas);
+        // Small "+" hint in center
+        scene.add(mk(new THREE.BoxGeometry(.006,.2,.03),MS.trim,fx-(s*.01),2.8,pz));
+        scene.add(mk(new THREE.BoxGeometry(.006,.03,.2),MS.trim,fx-(s*.01),2.8,pz));
+      }
+      // Small gold ornament at top center of frame
+      scene.add(mk(new THREE.BoxGeometry(.035,.06,.15),MS.gold,fx-(s*.003),2.8+fh/2+frameW+.01,pz));
+      // Invisible click target for painting interaction
+      const paintClick=new THREE.Mesh(
+        new THREE.BoxGeometry(.3,fh+frameW*2,fw+frameW*2),
+        new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})
+      );
+      paintClick.position.set(fx,2.8,pz);
+      paintClick.userData={isPaintingSlot:true,slotKey};
+      scene.add(paintClick);
+      paintingClickMeshes.push({mesh:paintClick,slotKey});
     }
 
     // (Plants at ends are included with the side tables above)
@@ -1085,36 +1161,67 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     });
     doorMeshes.current=dMeshes;
 
-    // ── ROOM INLAY PANELS — locked room slots on opposite wall ──
+    // ── LOCKED ROOM NICHES — sealed archway alcoves for locked room slots ──
     const MAX_ROOMS_PER_WING = 8;
     const inlayCount = MAX_ROOMS_PER_WING - rooms.length;
     const inlayClickMeshes: THREE.Mesh[] = [];
     if (inlayCount > 0) {
+      const dW=1.7,dH=3.6; // match real door dimensions
+      const nicheDepth=0.2; // recess depth
+      const nicheMat=new THREE.MeshStandardMaterial({color:"#B8AE9C",roughness:.75,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)});
+      const nicheBackMat=new THREE.MeshStandardMaterial({color:"#A09888",roughness:.85});
       for (let ii = 0; ii < inlayCount; ii++) {
         const side = (rooms.length + ii) % 2 === 0 ? -1 : 1;
         const z = -cL / 2 + 5.5 + (rooms.length + ii) * C.sp;
-        if (z > cL / 2 - 3) break; // Don't place past corridor end
+        if (z > cL / 2 - 3) break;
         const wx = side * (cW / 2);
-        const panelW = 1.2, panelH = 2.2, panelD = 0.08;
-        const inlayMat = styleEra === "renaissance"
-          ? new THREE.MeshStandardMaterial({ color: "#9A9A8A", roughness: 0.5 })
-          : new THREE.MeshStandardMaterial({ color: "#D4C5A9", roughness: 0.65 });
-        scene.add(mk(new THREE.BoxGeometry(panelD, panelH, panelW), inlayMat, wx - (side * 0.01), panelH / 2, z));
-        // Arch outline
-        const archGeo = new THREE.TorusGeometry(0.45, 0.03, 6, 10, Math.PI);
-        const archMesh = new THREE.Mesh(archGeo, MS.gold);
-        archMesh.position.set(wx, panelH - 0.15, z);
+        const nicheX = wx - (side * nicheDepth / 2);
+        // Recessed back wall of niche
+        scene.add(mk(new THREE.BoxGeometry(nicheDepth, dH - 0.2, dW - 0.1), nicheBackMat, nicheX, (dH - 0.2) / 2, z));
+        // Side walls of niche recess
+        for (const zSide of [-1, 1]) {
+          scene.add(mk(new THREE.BoxGeometry(nicheDepth, dH - 0.1, 0.06), nicheMat, nicheX, (dH - 0.1) / 2, z + zSide * (dW / 2)));
+        }
+        // Top of niche recess
+        scene.add(mk(new THREE.BoxGeometry(nicheDepth, 0.06, dW), nicheMat, nicheX, dH - 0.05, z));
+        // Arch outline at top — elegant sealed archway
+        const archRadius = dW / 2 - 0.1;
+        const archGeo = new THREE.TorusGeometry(archRadius, 0.04, 8, 14, Math.PI);
+        const archMesh = new THREE.Mesh(archGeo, MS.trim);
+        archMesh.position.set(wx - (side * 0.005), dH - 0.15, z);
         archMesh.rotation.y = side * (-Math.PI / 2);
         scene.add(archMesh);
-        // Lock seal
+        // Subtle arch fill — semicircular sealed panel
+        const archFillGeo = new THREE.CircleGeometry(archRadius - 0.04, 16, 0, Math.PI);
+        const archFillMat = new THREE.MeshStandardMaterial({ color: "#C4B8A4", roughness: 0.7, transparent: true, opacity: 0.6 });
+        const archFill = new THREE.Mesh(archFillGeo, archFillMat);
+        archFill.position.set(wx - (side * 0.008), dH - 0.15, z);
+        archFill.rotation.y = side * (-Math.PI / 2);
+        scene.add(archFill);
+        // Vertical trim pilasters flanking the niche
+        for (const zSide of [-1, 1]) {
+          scene.add(mk(new THREE.BoxGeometry(0.06, dH, 0.1), MS.trim, wx - (side * 0.01), dH / 2, z + zSide * (dW / 2 + 0.05)));
+        }
+        // Lintel above niche
+        scene.add(mk(new THREE.BoxGeometry(0.05, 0.1, dW + 0.3), MS.trim, wx - (side * 0.01), dH + 0.05, z));
+        // Lock seal — small circular medallion
         const sealMat = styleEra === "renaissance" ? MS.gold : MS.handle;
-        scene.add(new THREE.Mesh(new THREE.CircleGeometry(0.15, 16), sealMat).translateX(wx - (side * 0.02)).translateY(panelH * 0.45).translateZ(z));
-        // Click target
+        const seal = new THREE.Mesh(new THREE.CircleGeometry(0.12, 16), sealMat);
+        seal.position.set(wx - (side * 0.012), dH * 0.4, z);
+        seal.rotation.y = side * (-Math.PI / 2);
+        scene.add(seal);
+        // Small keyhole on seal
+        const keyholeOuter = new THREE.Mesh(new THREE.CircleGeometry(0.04, 10), nicheBackMat);
+        keyholeOuter.position.set(wx - (side * 0.015), dH * 0.4 + 0.015, z);
+        keyholeOuter.rotation.y = side * (-Math.PI / 2);
+        scene.add(keyholeOuter);
+        scene.add(mk(new THREE.BoxGeometry(0.005, 0.06, 0.025), nicheBackMat, wx - (side * 0.015), dH * 0.4 - 0.035, z));
+        // Click target (same size as real door for consistent UX)
         const inlClick = new THREE.Mesh(
-          new THREE.BoxGeometry(0.3, panelH, panelW),
+          new THREE.BoxGeometry(0.3, dH, dW),
           new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
         );
-        inlClick.position.set(wx, panelH / 2, z);
+        inlClick.position.set(wx, dH / 2, z);
         inlClick.userData = { isInlay: true };
         scene.add(inlClick);
         inlayClickMeshes.push(inlClick);
@@ -1123,7 +1230,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
 
     // ── ERA-SPECIFIC CORRIDOR MODIFICATIONS ──
     if (styleEra === "renaissance") {
-      // Barrel-vaulted ceiling (half-cylinder)
+      // ── BARREL VAULT ──
       const vaultGeo = new THREE.CylinderGeometry(cW / 2, cW / 2, cL, 16, 1, true, 0, Math.PI);
       const vaultMat = new THREE.MeshStandardMaterial({
         color: "#F0EAE0", roughness: 0.8, side: THREE.BackSide,
@@ -1134,28 +1241,463 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       vault.position.set(0, cH, 0);
       scene.add(vault);
 
-      // Pietra serena door frames (darker trim on doors)
-      dMeshes.forEach(d => {
-        scene.add(mk(new THREE.BoxGeometry(0.06, 3.8, 0.1), MS.trim, d.x - (d.side * 0.01), 1.9, d.z - 0.9));
-        scene.add(mk(new THREE.BoxGeometry(0.06, 3.8, 0.1), MS.trim, d.x - (d.side * 0.01), 1.9, d.z + 0.9));
-      });
-    } else {
-      // Roman peristyle — one wall with column row
-      // Add Roman-style wall niches between doors
+      // ── VAULT RIBS (transverse arched strips) ──
+      const ribCount = 7;
+      const ribSpacing = cL / (ribCount + 1);
+      const ribMat = new THREE.MeshStandardMaterial({ color: "#B8AA90", roughness: 0.5, metalness: 0.15 });
+      for (let ri = 1; ri <= ribCount; ri++) {
+        const ribZ = -cL / 2 + ri * ribSpacing;
+        const ribGeo = new THREE.TorusGeometry(cW / 2 - 0.02, 0.04, 6, 16, Math.PI);
+        const rib = new THREE.Mesh(ribGeo, ribMat);
+        rib.position.set(0, cH, ribZ);
+        rib.rotation.y = Math.PI / 2;
+        scene.add(rib);
+        // Boss at crown of each rib
+        scene.add(mk(new THREE.SphereGeometry(0.06, 8, 8), MS.gold, 0, cH + cW / 2 - 0.04, ribZ));
+      }
+
+      // ── FRESCOED LUNETTES above every door ──
+      const lunetteColors = ["#2D4A7A", "#A0522D", "#6B7B4E", "#6B1A2A"];
       dMeshes.forEach((d, di) => {
-        if (di < dMeshes.length - 1) {
-          const nicheZ = (d.z + dMeshes[di + 1].z) / 2;
-          const side = d.side;
-          const nW = 0.8, nH = 1.6, nD = 0.3;
-          scene.add(mk(new THREE.BoxGeometry(nD, nH, nW), MS.wallD, side * (cW / 2 - nD / 2), nH / 2 + 0.5, nicheZ));
-          // Arch top
-          const archGeo = new THREE.TorusGeometry(nW / 2 - 0.05, 0.03, 6, 10, Math.PI);
-          const arch = new THREE.Mesh(archGeo, MS.trim);
-          arch.position.set(side * (cW / 2 - 0.02), nH + 0.5, nicheZ);
-          arch.rotation.y = side * (-Math.PI / 2);
-          scene.add(arch);
+        const lColor = lunetteColors[di % lunetteColors.length];
+        const lMat = new THREE.MeshStandardMaterial({ color: lColor, roughness: 0.85 });
+        // Semicircular panel
+        const lunGeo = new THREE.CircleGeometry(0.7, 16, 0, Math.PI);
+        const lun = new THREE.Mesh(lunGeo, lMat);
+        lun.position.set(d.x - (d.side * 0.005), 3.8, d.z);
+        lun.rotation.y = d.side * (-Math.PI / 2);
+        scene.add(lun);
+        // Pietra serena border frame
+        const borderGeo = new THREE.TorusGeometry(0.7, 0.04, 6, 16, Math.PI);
+        const border = new THREE.Mesh(borderGeo, MS.trim);
+        border.position.set(d.x - (d.side * 0.003), 3.8, d.z);
+        border.rotation.y = d.side * (-Math.PI / 2);
+        scene.add(border);
+      });
+
+      // ── CANDELABRA WALL SCONCES ──
+      const sconceLightCount = Math.min(8, Math.floor(cL / 3));
+      const sconceSpacing = cL / (sconceLightCount + 1);
+      const candleMat = new THREE.MeshStandardMaterial({ color: "#C8A858", roughness: 0.2, metalness: 0.8 });
+      let rLightIdx = 0;
+      for (let si = 1; si <= sconceLightCount; si++) {
+        const sz = -cL / 2 + si * sconceSpacing;
+        const sSide = si % 2 === 0 ? -1 : 1;
+        const sx = sSide * (cW / 2 - 0.05);
+        // Wall plate
+        scene.add(mk(new THREE.BoxGeometry(0.04, 0.15, 0.1), candleMat, sx, 2.8, sz));
+        // Main stem
+        scene.add(mk(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 6), candleMat, sx - sSide * 0.12, 2.95, sz));
+        // Three branches
+        for (let br = -1; br <= 1; br++) {
+          const bz = sz + br * 0.12;
+          scene.add(mk(new THREE.CylinderGeometry(0.01, 0.01, 0.18, 5), candleMat, sx - sSide * 0.18, 3.15, bz));
+          // Candle cup
+          scene.add(mk(new THREE.CylinderGeometry(0.025, 0.02, 0.04, 6), candleMat, sx - sSide * 0.18, 3.25, bz));
+          // Candle stick
+          scene.add(mk(new THREE.CylinderGeometry(0.012, 0.012, 0.1, 5),
+            new THREE.MeshStandardMaterial({ color: "#F5F0E0", roughness: 0.9 }),
+            sx - sSide * 0.18, 3.32, bz));
+        }
+        // PointLight (limit to 8 total)
+        if (rLightIdx < 8) {
+          const sLight = new THREE.PointLight("#FFE0A0", 0.3, 4);
+          sLight.position.set(sx - sSide * 0.18, 3.4, sz);
+          scene.add(sLight);
+          rLightIdx++;
+        }
+      }
+
+      // ── INTERACTIVE PAINTING FRAMES between doors (renaissance era) ──
+      const paintColors = ["#C8A040", "#A0522D", "#6B7B4E", "#8B6B4A", "#7A6840", "#A08060"];
+      let paintIdx = 0;
+      dMeshes.forEach((d, di) => {
+        if (di < dMeshes.length - 1 && dMeshes[di + 1].side === d.side) {
+          const pz = (d.z + dMeshes[di + 1].z) / 2;
+          const pSide = d.side;
+          const px = pSide * (cW / 2 - 0.02);
+          const fw = 1.2, fh = 0.8, fb = 0.08;
+          const rSlotKey = `corridor-${wingId}-ren-painting-${paintIdx}`;
+          const rPaintData = corridorPaintings?.[rSlotKey];
+          // Gold frame border (4 strips)
+          scene.add(mk(new THREE.BoxGeometry(0.03, fb, fw + fb * 2), MS.gold, px, 2.2 + fh / 2 + fb / 2, pz)); // top
+          scene.add(mk(new THREE.BoxGeometry(0.03, fb, fw + fb * 2), MS.gold, px, 2.2 - fh / 2 - fb / 2, pz)); // bottom
+          scene.add(mk(new THREE.BoxGeometry(0.03, fh, fb), MS.gold, px, 2.2, pz - fw / 2 - fb / 2)); // left
+          scene.add(mk(new THREE.BoxGeometry(0.03, fh, fb), MS.gold, px, 2.2, pz + fw / 2 + fb / 2)); // right
+          // Canvas inset — use corridorPaintings if available
+          if (rPaintData?.url) {
+            const loader2 = new THREE.TextureLoader();
+            loader2.load(rPaintData.url, (tex: THREE.Texture) => {
+              tex.colorSpace = THREE.SRGBColorSpace;
+              const cMat2 = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65 });
+              const canvas2 = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), cMat2);
+              canvas2.rotation.y = pSide * (-Math.PI / 2);
+              canvas2.position.set(px + pSide * 0.01, 2.2, pz);
+              scene.add(canvas2);
+            });
+          } else {
+            const canvasMat = new THREE.MeshStandardMaterial({ color: paintColors[paintIdx % paintColors.length], roughness: 0.75 });
+            scene.add(mk(new THREE.BoxGeometry(0.01, fh, fw), canvasMat, px + pSide * 0.01, 2.2, pz));
+          }
+          // Click target for painting interaction
+          const rPaintClick = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, fh + fb * 2, fw + fb * 2),
+            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+          );
+          rPaintClick.position.set(px, 2.2, pz);
+          rPaintClick.userData = { isPaintingSlot: true, slotKey: rSlotKey };
+          scene.add(rPaintClick);
+          paintingClickMeshes.push({ mesh: rPaintClick, slotKey: rSlotKey });
+          paintIdx++;
         }
       });
+      // Extra paintings on walls without adjacent same-side doors
+      for (let ep = 0; ep < 3; ep++) {
+        const epz = -cL / 2 + 3 + ep * (cL / 4);
+        const epSide = ep % 2 === 0 ? 1 : -1;
+        const epx = epSide * (cW / 2 - 0.02);
+        const tooClose2 = dMeshes.some(d => Math.abs(d.z - epz) < 2 && d.side === epSide);
+        if (!tooClose2) {
+          const epSlotKey = `corridor-${wingId}-ren-extra-${ep}`;
+          const epPaintData = corridorPaintings?.[epSlotKey];
+          scene.add(mk(new THREE.BoxGeometry(0.03, 0.08, 1.36), MS.gold, epx, 2.64, epz));
+          scene.add(mk(new THREE.BoxGeometry(0.03, 0.08, 1.36), MS.gold, epx, 1.76, epz));
+          scene.add(mk(new THREE.BoxGeometry(0.03, 0.8, 0.08), MS.gold, epx, 2.2, epz - 0.68));
+          scene.add(mk(new THREE.BoxGeometry(0.03, 0.8, 0.08), MS.gold, epx, 2.2, epz + 0.68));
+          if (epPaintData?.url) {
+            const loader3 = new THREE.TextureLoader();
+            loader3.load(epPaintData.url, (tex: THREE.Texture) => {
+              tex.colorSpace = THREE.SRGBColorSpace;
+              const eMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65 });
+              const eCanvas = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), eMat);
+              eCanvas.rotation.y = epSide * (-Math.PI / 2);
+              eCanvas.position.set(epx + epSide * 0.01, 2.2, epz);
+              scene.add(eCanvas);
+            });
+          } else {
+            const cMat = new THREE.MeshStandardMaterial({ color: paintColors[(paintIdx + ep) % paintColors.length], roughness: 0.75 });
+            scene.add(mk(new THREE.BoxGeometry(0.01, 0.8, 1.2), cMat, epx + epSide * 0.01, 2.2, epz));
+          }
+          // Click target
+          const epClick = new THREE.Mesh(
+            new THREE.BoxGeometry(0.3, 0.96, 1.52),
+            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+          );
+          epClick.position.set(epx, 2.2, epz);
+          epClick.userData = { isPaintingSlot: true, slotKey: epSlotKey };
+          scene.add(epClick);
+          paintingClickMeshes.push({ mesh: epClick, slotKey: epSlotKey });
+        }
+      }
+
+      // ── DIAMOND FLOOR PATTERN (InstancedMesh) ──
+      const tileSz = 0.6;
+      const tileGeo = new THREE.PlaneGeometry(tileSz, tileSz);
+      const tileDarkMat = new THREE.MeshStandardMaterial({ color: "#4A4A42", roughness: 0.5, metalness: 0.08 });
+      const tileLightMat = new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.5, metalness: 0.05 });
+      const tilesX = Math.ceil(cW / tileSz) + 2;
+      const tilesZ = Math.ceil(cL / tileSz) + 2;
+      const totalTiles = tilesX * tilesZ;
+      const halfTiles = Math.ceil(totalTiles / 2);
+      const darkInst = new THREE.InstancedMesh(tileGeo, tileDarkMat, halfTiles);
+      const lightInst = new THREE.InstancedMesh(tileGeo, tileLightMat, halfTiles);
+      const tMat4 = new THREE.Matrix4();
+      const tQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, Math.PI / 4));
+      let dIdx = 0, lIdx = 0;
+      for (let tx = 0; tx < tilesX; tx++) {
+        for (let tz = 0; tz < tilesZ; tz++) {
+          const fx = -cW / 2 + tx * tileSz;
+          const fz = -cL / 2 + tz * tileSz;
+          tMat4.compose(new THREE.Vector3(fx, 0.005, fz), tQuat, new THREE.Vector3(1, 1, 1));
+          if ((tx + tz) % 2 === 0) { if (dIdx < halfTiles) darkInst.setMatrixAt(dIdx++, tMat4); }
+          else { if (lIdx < halfTiles) lightInst.setMatrixAt(lIdx++, tMat4); }
+        }
+      }
+      darkInst.count = dIdx; lightInst.count = lIdx;
+      darkInst.instanceMatrix.needsUpdate = true;
+      lightInst.instanceMatrix.needsUpdate = true;
+      scene.add(darkInst); scene.add(lightInst);
+
+      // ── PIETRA SERENA DOOR FRAMES (enhanced with pediment + keystone) ──
+      const pietraMat = MS.trim;
+      dMeshes.forEach(d => {
+        // Vertical jambs
+        scene.add(mk(new THREE.BoxGeometry(0.06, 3.8, 0.1), pietraMat, d.x - (d.side * 0.01), 1.9, d.z - 0.9));
+        scene.add(mk(new THREE.BoxGeometry(0.06, 3.8, 0.1), pietraMat, d.x - (d.side * 0.01), 1.9, d.z + 0.9));
+        // Lintel
+        scene.add(mk(new THREE.BoxGeometry(0.06, 0.12, 2.0), pietraMat, d.x - (d.side * 0.01), 3.85, d.z));
+        // Cornice pediment (triangular - two angled pieces)
+        const pedH = 0.35, pedW = 1.0;
+        for (let ps = -1; ps <= 1; ps += 2) {
+          const pedGeo = new THREE.BoxGeometry(0.05, pedH, 0.08);
+          const ped = new THREE.Mesh(pedGeo, pietraMat);
+          ped.position.set(d.x - (d.side * 0.01), 4.05, d.z + ps * pedW / 2);
+          // Angle each side of pediment
+          ped.rotation.x = ps * 0.4;
+          scene.add(ped);
+        }
+        // Keystone at top center
+        scene.add(mk(new THREE.BoxGeometry(0.07, 0.18, 0.14), MS.gold, d.x - (d.side * 0.01), 4.18, d.z));
+      });
+
+      // ── BUST NICHES (3-4 between doors on alternating walls) ──
+      const bustMat = new THREE.MeshStandardMaterial({ color: "#E0D8CC", roughness: 0.25, metalness: 0.06 });
+      let bustCount = 0;
+      dMeshes.forEach((d, di) => {
+        if (di < dMeshes.length - 1 && bustCount < 4) {
+          const nextD = dMeshes[di + 1];
+          if (nextD.side !== d.side) {
+            const nz = (d.z + nextD.z) / 2;
+            const nSide = d.side;
+            const nx = nSide * (cW / 2 - 0.01);
+            // Niche cavity
+            scene.add(mk(new THREE.BoxGeometry(0.25, 1.4, 0.7), MS.wallD, nx - nSide * 0.12, 1.5, nz));
+            // Semicircular niche top (shell)
+            const shellGeo = new THREE.CircleGeometry(0.35, 12, 0, Math.PI);
+            const shell = new THREE.Mesh(shellGeo, MS.trim);
+            shell.position.set(nx - nSide * 0.005, 2.2, nz);
+            shell.rotation.y = nSide * (-Math.PI / 2);
+            scene.add(shell);
+            // Pietra serena frame around niche
+            const nArchGeo = new THREE.TorusGeometry(0.35, 0.04, 6, 12, Math.PI);
+            const nArch = new THREE.Mesh(nArchGeo, pietraMat);
+            nArch.position.set(nx - nSide * 0.003, 2.2, nz);
+            nArch.rotation.y = nSide * (-Math.PI / 2);
+            scene.add(nArch);
+            // Bust shape (head + neck + shoulders)
+            scene.add(mk(new THREE.SphereGeometry(0.12, 8, 8), bustMat, nx - nSide * 0.13, 1.85, nz)); // head
+            scene.add(mk(new THREE.CylinderGeometry(0.06, 0.08, 0.15, 6), bustMat, nx - nSide * 0.13, 1.68, nz)); // neck
+            scene.add(mk(new THREE.CylinderGeometry(0.18, 0.2, 0.25, 8), bustMat, nx - nSide * 0.13, 1.48, nz)); // shoulders
+            // Small pedestal
+            scene.add(mk(new THREE.BoxGeometry(0.2, 0.4, 0.2), pietraMat, nx - nSide * 0.13, 1.15, nz));
+            bustCount++;
+          }
+        }
+      });
+
+    } else {
+      // ═══ ROMAN PERISTYLE CORRIDOR ═══
+
+      // ── OPEN COLONNADE on side=1 wall ──
+      const colSpacing = 2.5;
+      const colCount = Math.floor(cL / colSpacing);
+      const colR = 0.25;
+      const colH = cH - 0.5;
+      const colX = 1 * (cW / 2); // side=1 wall
+      const capitalMat = new THREE.MeshStandardMaterial({ color: "#E0D8CC", roughness: 0.3, metalness: 0.05 });
+
+      for (let ci = 0; ci <= colCount; ci++) {
+        const cz = -cL / 2 + 0.5 + ci * colSpacing;
+        // Column base
+        scene.add(mk(new THREE.CylinderGeometry(colR + 0.08, colR + 0.1, 0.15, 12), MS.marble, colX, 0.075, cz));
+        // Column shaft
+        scene.add(mk(new THREE.CylinderGeometry(colR, colR, colH, 12), MS.marble, colX, colH / 2 + 0.15, cz));
+        // Capital (wider top)
+        scene.add(mk(new THREE.CylinderGeometry(colR + 0.12, colR, 0.2, 12), capitalMat, colX, colH + 0.15 + 0.1, cz));
+        // Abacus block
+        scene.add(mk(new THREE.BoxGeometry(0.6, 0.08, 0.6), capitalMat, colX, colH + 0.39, cz));
+      }
+
+      // Low railing between columns
+      scene.add(mk(new THREE.BoxGeometry(0.12, 0.6, cL - 1), MS.marble, colX, 0.3, 0));
+      // Railing cap
+      scene.add(mk(new THREE.BoxGeometry(0.18, 0.06, cL - 0.8), capitalMat, colX, 0.63, 0));
+
+      // Entablature beam above columns
+      scene.add(mk(new THREE.BoxGeometry(0.3, 0.2, cL), capitalMat, colX, colH + 0.5, 0));
+      // Frieze strip
+      scene.add(mk(new THREE.BoxGeometry(0.25, 0.12, cL), MS.trim, colX + 0.02, colH + 0.36, 0));
+
+      // ── VISIBLE GARDEN beyond colonnade ──
+      const gardenMat = new THREE.MeshStandardMaterial({ color: "#4A7A38", roughness: 0.9 });
+      const gardenGround = new THREE.Mesh(new THREE.PlaneGeometry(8, cL + 4), gardenMat);
+      gardenGround.rotation.x = -Math.PI / 2;
+      gardenGround.position.set(cW / 2 + 4, -0.02, 0);
+      scene.add(gardenGround);
+
+      // Garden path (stone strip)
+      const pathMat = new THREE.MeshStandardMaterial({ color: "#C4B8A0", roughness: 0.7 });
+      scene.add(mk(new THREE.PlaneGeometry(1.2, cL - 2), pathMat, cW / 2 + 3, 0.001, 0));
+      // rotate path to lie flat
+      const pathMesh = scene.children[scene.children.length - 1] as THREE.Mesh;
+      pathMesh.rotation.x = -Math.PI / 2;
+
+      // Topiary bushes (4-6)
+      const topiaryMat = new THREE.MeshStandardMaterial({ color: "#2E6428", roughness: 0.85 });
+      const topiaryTrunkMat = new THREE.MeshStandardMaterial({ color: "#6A5040", roughness: 0.7 });
+      for (let ti = 0; ti < 5; ti++) {
+        const tz = -cL / 2 + 4 + ti * (cL / 5);
+        const tx = cW / 2 + (ti % 2 === 0 ? 2 : 5.5);
+        // Trunk
+        scene.add(mk(new THREE.CylinderGeometry(0.06, 0.08, 0.8, 6), topiaryTrunkMat, tx, 0.4, tz));
+        // Foliage ball
+        scene.add(mk(new THREE.SphereGeometry(0.5, 8, 8), topiaryMat, tx, 1.2, tz));
+      }
+
+      // Flowering hedgerows
+      const hedgeMat = new THREE.MeshStandardMaterial({ color: "#3A6030", roughness: 0.9 });
+      scene.add(mk(new THREE.BoxGeometry(0.6, 0.8, cL - 6), hedgeMat, cW / 2 + 1.2, 0.4, 0));
+      scene.add(mk(new THREE.BoxGeometry(0.6, 0.8, cL - 6), hedgeMat, cW / 2 + 7, 0.4, 0));
+
+      // Low stone garden wall at perimeter
+      const gardenWallMat = new THREE.MeshStandardMaterial({ color: "#B8AE9C", roughness: 0.7 });
+      scene.add(mk(new THREE.BoxGeometry(0.25, 1.0, cL + 2), gardenWallMat, cW / 2 + 8, 0.5, 0));
+      // Wall cap
+      scene.add(mk(new THREE.BoxGeometry(0.35, 0.08, cL + 2.5), capitalMat, cW / 2 + 8, 1.04, 0));
+
+      // Terracotta planter pots (2)
+      const tcMat = MS.terracotta;
+      for (let pi = 0; pi < 2; pi++) {
+        const pz = -cL / 4 + pi * (cL / 2);
+        const px = cW / 2 + 4.5;
+        scene.add(mk(new THREE.CylinderGeometry(0.35, 0.25, 0.5, 10), tcMat, px, 0.25, pz));
+        // Rim
+        scene.add(mk(new THREE.CylinderGeometry(0.38, 0.35, 0.06, 10), tcMat, px, 0.53, pz));
+        // Foliage in pot
+        scene.add(mk(new THREE.SphereGeometry(0.35, 8, 6), topiaryMat, px, 0.75, pz));
+      }
+
+      // ── AEDICULE NICHES on solid wall (side=-1) ──
+      const nicheWall = -1;
+      const nicheX = nicheWall * (cW / 2);
+      let nicheCount = 0;
+      const nicheMat = MS.wallD;
+      const pilasterMat = MS.trim;
+      dMeshes.forEach((d, di) => {
+        if (di < dMeshes.length - 1 && nicheCount < 6) {
+          const nextD = dMeshes[di + 1];
+          // Only place niches on the solid wall between doors
+          if (d.side === nicheWall && nextD.side === nicheWall) {
+            const nz = (d.z + nextD.z) / 2;
+            nicheCount++;
+            // Recessed niche cavity
+            scene.add(mk(new THREE.BoxGeometry(0.25, 1.4, 0.7), nicheMat, nicheX + 0.12, 1.5, nz));
+            // Pilaster columns flanking
+            scene.add(mk(new THREE.BoxGeometry(0.1, 1.8, 0.1), pilasterMat, nicheX + 0.05, 1.4, nz - 0.45));
+            scene.add(mk(new THREE.BoxGeometry(0.1, 1.8, 0.1), pilasterMat, nicheX + 0.05, 1.4, nz + 0.45));
+            // Triangular pediment (two angled pieces)
+            for (let ps = -1; ps <= 1; ps += 2) {
+              const pedGeo = new THREE.BoxGeometry(0.06, 0.3, 0.35);
+              const ped = new THREE.Mesh(pedGeo, pilasterMat);
+              ped.position.set(nicheX + 0.03, 2.5, nz + ps * 0.22);
+              ped.rotation.x = ps * 0.35;
+              scene.add(ped);
+            }
+            // Pediment cap
+            scene.add(mk(new THREE.BoxGeometry(0.06, 0.06, 1.0), pilasterMat, nicheX + 0.03, 2.35, nz));
+            // Shell/fan at niche top
+            const shellGeo = new THREE.CircleGeometry(0.3, 10, 0, Math.PI);
+            const shell = new THREE.Mesh(shellGeo, MS.gold);
+            shell.position.set(nicheX + 0.01, 2.2, nz);
+            shell.rotation.y = nicheWall * (-Math.PI / 2);
+            scene.add(shell);
+            // Bust/urn inside niche
+            if (nicheCount % 2 === 0) {
+              // Urn shape
+              scene.add(mk(new THREE.CylinderGeometry(0.1, 0.15, 0.4, 8), MS.marble, nicheX + 0.14, 1.2, nz));
+              scene.add(mk(new THREE.CylinderGeometry(0.14, 0.1, 0.08, 8), MS.marble, nicheX + 0.14, 1.44, nz));
+              scene.add(mk(new THREE.SphereGeometry(0.06, 6, 6), MS.gold, nicheX + 0.14, 1.5, nz));
+            } else {
+              // Bust shape
+              scene.add(mk(new THREE.SphereGeometry(0.1, 8, 8), MS.marble, nicheX + 0.14, 1.75, nz));
+              scene.add(mk(new THREE.CylinderGeometry(0.05, 0.07, 0.12, 6), MS.marble, nicheX + 0.14, 1.6, nz));
+              scene.add(mk(new THREE.CylinderGeometry(0.15, 0.17, 0.2, 8), MS.marble, nicheX + 0.14, 1.42, nz));
+            }
+            // Small pedestal
+            scene.add(mk(new THREE.BoxGeometry(0.18, 0.5, 0.18), pilasterMat, nicheX + 0.14, 1.0, nz));
+          }
+        }
+        // Also fill between doors on same wall if not already covered
+        if (di < dMeshes.length - 1 && nicheCount < 6) {
+          const nextD2 = dMeshes[di + 1];
+          if (d.side !== nicheWall && nextD2.side !== nicheWall) {
+            const nz2 = (d.z + nextD2.z) / 2;
+            nicheCount++;
+            scene.add(mk(new THREE.BoxGeometry(0.25, 1.4, 0.7), nicheMat, nicheX + 0.12, 1.5, nz2));
+            scene.add(mk(new THREE.BoxGeometry(0.1, 1.8, 0.1), pilasterMat, nicheX + 0.05, 1.4, nz2 - 0.45));
+            scene.add(mk(new THREE.BoxGeometry(0.1, 1.8, 0.1), pilasterMat, nicheX + 0.05, 1.4, nz2 + 0.45));
+            const shellGeo2 = new THREE.CircleGeometry(0.3, 10, 0, Math.PI);
+            const shell2 = new THREE.Mesh(shellGeo2, MS.gold);
+            shell2.position.set(nicheX + 0.01, 2.2, nz2);
+            shell2.rotation.y = nicheWall * (-Math.PI / 2);
+            scene.add(shell2);
+            scene.add(mk(new THREE.SphereGeometry(0.1, 8, 8), MS.marble, nicheX + 0.14, 1.75, nz2));
+            scene.add(mk(new THREE.CylinderGeometry(0.05, 0.07, 0.12, 6), MS.marble, nicheX + 0.14, 1.6, nz2));
+            scene.add(mk(new THREE.CylinderGeometry(0.15, 0.17, 0.2, 8), MS.marble, nicheX + 0.14, 1.42, nz2));
+            scene.add(mk(new THREE.BoxGeometry(0.18, 0.5, 0.18), pilasterMat, nicheX + 0.14, 1.0, nz2));
+          }
+        }
+      });
+
+      // ── MOSAIC FLOOR RUNNER (central strip) ──
+      const mosaicW = 1.5;
+      const mTerracotta = new THREE.MeshStandardMaterial({ color: "#C4704A", roughness: 0.6 });
+      const mCream = new THREE.MeshStandardMaterial({ color: "#F0E8D8", roughness: 0.55 });
+      const mBlack = new THREE.MeshStandardMaterial({ color: "#2A2A28", roughness: 0.5 });
+      // Border strips
+      scene.add(mk(new THREE.BoxGeometry(0.08, 0.004, cL - 2), mBlack, -mosaicW / 2 - 0.04, 0.006, 0));
+      scene.add(mk(new THREE.BoxGeometry(0.08, 0.004, cL - 2), mBlack, mosaicW / 2 + 0.04, 0.006, 0));
+      // Diamond/chevron tiles (InstancedMesh)
+      const mTileSz = 0.25;
+      const mTilesZ = Math.ceil(cL / mTileSz);
+      const mTilesX = Math.ceil(mosaicW / mTileSz);
+      const mTotal = mTilesX * mTilesZ;
+      const mGeo = new THREE.PlaneGeometry(mTileSz * 0.9, mTileSz * 0.9);
+      const mMats = [mTerracotta, mCream, mBlack];
+      const mInsts = mMats.map(m => new THREE.InstancedMesh(mGeo, m, Math.ceil(mTotal / 3) + 1));
+      const mIdxs = [0, 0, 0];
+      const mMat4 = new THREE.Matrix4();
+      const mQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, Math.PI / 4));
+      for (let mx = 0; mx < mTilesX; mx++) {
+        for (let mz = 0; mz < mTilesZ; mz++) {
+          const fx = -mosaicW / 2 + mTileSz / 2 + mx * mTileSz;
+          const fz = -cL / 2 + 1 + mz * mTileSz;
+          const mci = (mx + mz) % 3;
+          mMat4.compose(new THREE.Vector3(fx, 0.007, fz), mQuat, new THREE.Vector3(1, 1, 1));
+          const maxPer = Math.ceil(mTotal / 3) + 1;
+          if (mIdxs[mci] < maxPer) mInsts[mci].setMatrixAt(mIdxs[mci]++, mMat4);
+        }
+      }
+      mInsts.forEach((inst, i) => { inst.count = mIdxs[i]; inst.instanceMatrix.needsUpdate = true; scene.add(inst); });
+
+      // ── OIL LAMP BRACKETS on solid wall ──
+      const lampBracketMat = MS.bronze;
+      const lampCount = Math.min(10, Math.floor(cL / 3));
+      const lampSpacing = cL / (lampCount + 1);
+      let lampLightCount = 0;
+      for (let li = 1; li <= lampCount; li++) {
+        const lz = -cL / 2 + li * lampSpacing;
+        const lx = nicheWall * (cW / 2 - 0.03);
+        // Wall bracket arm
+        scene.add(mk(new THREE.BoxGeometry(0.04, 0.04, 0.04), lampBracketMat, lx, 2.6, lz));
+        scene.add(mk(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 6), lampBracketMat, lx - nicheWall * 0.12, 2.55, lz));
+        // Oil dish
+        scene.add(mk(new THREE.CylinderGeometry(0.08, 0.06, 0.04, 8), lampBracketMat, lx - nicheWall * 0.2, 2.5, lz));
+        // Flame glow
+        scene.add(mk(new THREE.SphereGeometry(0.02, 5, 5),
+          new THREE.MeshBasicMaterial({ color: "#FFE080" }),
+          lx - nicheWall * 0.2, 2.56, lz));
+        // PointLight (limit to 8)
+        if (lampLightCount < 8) {
+          const lLight = new THREE.PointLight("#FF9040", 0.4, 6);
+          lLight.position.set(lx - nicheWall * 0.2, 2.6, lz);
+          scene.add(lLight);
+          lampLightCount++;
+        }
+      }
+
+      // ── CEILING BEAMS (exposed timber) ──
+      const beamMat = new THREE.MeshStandardMaterial({ color: "#4A3020", roughness: 0.7, metalness: 0.02 });
+      const beamCount = 11;
+      const beamSpacing = cL / (beamCount + 1);
+      for (let bi = 1; bi <= beamCount; bi++) {
+        const bz = -cL / 2 + bi * beamSpacing;
+        scene.add(mk(new THREE.BoxGeometry(cW - 0.4, 0.2, 0.15), beamMat, 0, cH - 0.1, bz));
+        // Decorative bracket at each wall junction
+        for (let bs = -1; bs <= 1; bs += 2) {
+          scene.add(mk(new THREE.BoxGeometry(0.08, 0.15, 0.15), beamMat, bs * (cW / 2 - 0.24), cH - 0.22, bz));
+        }
+      }
     }
 
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target door ──
@@ -1389,15 +1931,20 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       const ph2=rc.intersectObject(portalHit);if(ph2.length>0&&ph2[0].distance<5)portalHov=true;
       let inlHov=false;
       inlayClickMeshes.forEach(im=>{const hits=rc.intersectObject(im);if(hits.length>0&&hits[0].distance<5)inlHov=true;});
-      hovDoor=found;el.style.cursor=(found||portalHov||inlHov)?"pointer":"grab";onDoorHover(found||(portalHov?"__portal__":null));
-      if(inlHov&&!found&&!portalHov)el.style.cursor="pointer";};
+      let paintHov=false;
+      paintingClickMeshes.forEach(pm=>{const hits=rc.intersectObject(pm.mesh);if(hits.length>0&&hits[0].distance<5)paintHov=true;});
+      hovDoor=found;el.style.cursor=(found||portalHov||inlHov||paintHov)?"pointer":"grab";onDoorHover(found||(portalHov?"__portal__":null));
+      if((inlHov||paintHov)&&!found&&!portalHov)el.style.cursor="pointer";};
     const onCk=()=>{
       if(!drag.v&&hovDoor)onDoorClickRef.current(hovDoor);
       else if(!drag.v){
         const rect2=el.getBoundingClientRect();const rc2=new THREE.Raycaster();rc2.setFromCamera(new THREE.Vector2(((prev.x-rect2.left)/rect2.width)*2-1,-((prev.y-rect2.top)/rect2.height)*2+1),camera);
         const ph3=rc2.intersectObject(portalHit);if(ph3.length>0&&ph3[0].distance<5)onDoorClickRef.current("__portal__");
         let inlHit=false;inlayClickMeshes.forEach(im=>{const h=rc2.intersectObject(im);if(h.length>0&&h[0].distance<5)inlHit=true;});
-        if(inlHit)onInlayClick?.();}};
+        if(inlHit){onInlayClick?.();return;}
+        // Check painting slot clicks
+        paintingClickMeshes.forEach(pm=>{const h=rc2.intersectObject(pm.mesh);if(h.length>0&&h[0].distance<5){onInlayClick?.();}});
+      }};
 
     const onKD=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};
     const onKU=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=false;};

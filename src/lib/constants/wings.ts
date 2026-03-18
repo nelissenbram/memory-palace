@@ -7,6 +7,7 @@ export interface Wing {
   floor: string;
   desc: string;
   layout: string;
+  unlocked?: boolean; // defaults to true if not set
 }
 
 export interface WingRoom {

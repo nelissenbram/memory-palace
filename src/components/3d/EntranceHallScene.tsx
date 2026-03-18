@@ -32,6 +32,7 @@ export default function EntranceHallScene({
   styleEra = "roman",
   onInlayClick,
   onBustClick,
+  bustTextureUrl,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
@@ -39,6 +40,7 @@ export default function EntranceHallScene({
   styleEra?: string;
   onInlayClick?: () => void;
   onBustClick?: (pedestalIndex: number) => void;
+  bustTextureUrl?: string | null;
 }) {
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -476,6 +478,7 @@ export default function EntranceHallScene({
     HALL_WINGS.forEach((wingId, i) => {
       const wing = WINGS.find(ww => ww.id === wingId);
       if (!wing) return;
+      const isUnlocked = wing.unlocked !== false; // default true
       const accent = wing.accent;
       const angle = (i / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
       const dx = Math.cos(angle) * (RADIUS - 0.4);
@@ -488,7 +491,9 @@ export default function EntranceHallScene({
 
       // Door recess / alcove — recessed INTO the wall
       const recessGeo = new THREE.BoxGeometry(DOOR_W + 0.8, DOOR_H + 0.6, 0.9);
-      const recessMat = new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 });
+      const recessMat = isUnlocked
+        ? new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 })
+        : new THREE.MeshStandardMaterial({ color: "#D8D0C4", roughness: 0.35, metalness: 0.0, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.15, .15) });
       const recessMesh = mk(recessGeo, recessMat,
         dx - inN.x * 0.5, (DOOR_H + 0.6) / 2, dz - inN.z * 0.5);
       recessMesh.lookAt(0, (DOOR_H + 0.6) / 2, 0);
@@ -547,7 +552,8 @@ export default function EntranceHallScene({
       keystone.lookAt(new THREE.Vector3(0, DOOR_H + 0.45 + archH, 0));
       scene.add(keystone);
 
-      // ── DOUBLE DOOR PANELS ──
+      if (isUnlocked) {
+      // ── DOUBLE DOOR PANELS (unlocked wing) ──
       const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
       const doorMat = new THREE.MeshStandardMaterial({
         color: "#7A5030", roughness: 0.45, metalness: 0.0,
@@ -644,60 +650,176 @@ export default function EntranceHallScene({
         handlePlate.lookAt(new THREE.Vector3(0, DOOR_H * 0.48 + 0.14, 0));
         scene.add(handlePlate);
       }
+      } else {
+      // ── SEALED WALL NICHE (locked wing) ──
+      // Flat stone panel filling the alcove — slightly recessed from wall surface
+      const nicheMat = new THREE.MeshStandardMaterial({
+        color: "#E0D8CC", roughness: 0.3, metalness: 0.0,
+        envMapIntensity: 0.6,
+        normalMap: wallTex.normalMap,
+        normalScale: new THREE.Vector2(.2, .2),
+      });
+      const nichePanel = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W, DOOR_H, 0.15), nicheMat);
+      nichePanel.position.set(
+        dx + inN.x * 0.1,
+        DOOR_H / 2,
+        dz + inN.z * 0.1
+      );
+      nichePanel.lookAt(new THREE.Vector3(0, DOOR_H / 2, 0));
+      nichePanel.castShadow = true;
+      nichePanel.userData = { wingId };
+      scene.add(nichePanel);
 
-      // Warm fill light for door visibility
-      const doorFill = new THREE.PointLight("#FFF0D0", 1.5, 10);
+      // Register niche as clickable (still triggers door click for upgrade prompt)
+      doorMeshes.push({ mesh: nichePanel, mat: nicheMat, wingId, angle });
+
+      // Subtle recessed arch outline on the sealed surface (thin gold line)
+      const nicheArchW = DOOR_W / 2 - 0.15;
+      const nicheArchH = 1.0;
+      const nicheArchCurve = new THREE.EllipseCurve(0, 0, nicheArchW, nicheArchH, 0, Math.PI, false, 0);
+      const nicheArchPts = nicheArchCurve.getPoints(24).map(p => new THREE.Vector3(p.x, p.y, 0));
+      const nicheArchGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(nicheArchPts), 24, 0.035, 6, false);
+      const nicheArchOutlineMat = new THREE.MeshStandardMaterial({
+        color: "#B8A070", roughness: 0.3, metalness: 0.5,
+        emissive: "#B8A070", emissiveIntensity: 0.08,
+      });
+      const nicheArchOutline = new THREE.Mesh(nicheArchGeo, nicheArchOutlineMat);
+      nicheArchOutline.position.set(dx + inN.x * 0.19, DOOR_H * 0.75, dz + inN.z * 0.19);
+      nicheArchOutline.lookAt(new THREE.Vector3(0, DOOR_H * 0.75, 0));
+      nicheArchOutline.rotateY(Math.PI);
+      scene.add(nicheArchOutline);
+
+      // Vertical side lines connecting arch to floor (faint etched lines)
+      const etchMat = new THREE.MeshStandardMaterial({
+        color: "#B8A070", roughness: 0.35, metalness: 0.4,
+        emissive: "#B8A070", emissiveIntensity: 0.06,
+      });
+      for (const side of [-1, 1]) {
+        const etchLine = new THREE.Mesh(
+          new THREE.BoxGeometry(0.06, DOOR_H * 0.75, 0.02),
+          etchMat
+        );
+        etchLine.position.set(
+          dx + latN.x * side * (nicheArchW - 0.02) + inN.x * 0.19,
+          DOOR_H * 0.75 / 2,
+          dz + latN.z * side * (nicheArchW - 0.02) + inN.z * 0.19
+        );
+        etchLine.lookAt(new THREE.Vector3(0, DOOR_H * 0.75 / 2, 0));
+        scene.add(etchLine);
+      }
+
+      // Small lock medallion in center of niche
+      const lockMedallionGeo = new THREE.CircleGeometry(0.22, 24);
+      const lockMedallionMat = new THREE.MeshStandardMaterial({
+        color: "#C8B080", roughness: 0.25, metalness: 0.7,
+        emissive: "#C8B080", emissiveIntensity: 0.05,
+        side: THREE.DoubleSide,
+      });
+      const lockMedallion = new THREE.Mesh(lockMedallionGeo, lockMedallionMat);
+      lockMedallion.position.set(
+        dx + inN.x * 0.20,
+        DOOR_H * 0.45,
+        dz + inN.z * 0.20
+      );
+      lockMedallion.lookAt(new THREE.Vector3(0, DOOR_H * 0.45, 0));
+      scene.add(lockMedallion);
+
+      // Lock keyhole shape (small dark circle + triangle below)
+      const keyholeCircle = new THREE.Mesh(
+        new THREE.CircleGeometry(0.06, 12),
+        new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide })
+      );
+      keyholeCircle.position.set(
+        dx + inN.x * 0.21,
+        DOOR_H * 0.45 + 0.03,
+        dz + inN.z * 0.21
+      );
+      keyholeCircle.lookAt(new THREE.Vector3(0, DOOR_H * 0.45 + 0.03, 0));
+      scene.add(keyholeCircle);
+      // Keyhole slot (small narrow rect below circle)
+      const keyholeSlot = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.035, 0.1),
+        new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide })
+      );
+      keyholeSlot.position.set(
+        dx + inN.x * 0.21,
+        DOOR_H * 0.45 - 0.06,
+        dz + inN.z * 0.21
+      );
+      keyholeSlot.lookAt(new THREE.Vector3(0, DOOR_H * 0.45 - 0.06, 0));
+      scene.add(keyholeSlot);
+      }
+
+      // Warm fill light for door visibility (dimmer for locked niches)
+      const doorFill = new THREE.PointLight("#FFF0D0", isUnlocked ? 1.5 : 0.5, 10);
       doorFill.position.set(dx + inN.x * 2.5, DOOR_H * 0.5, dz + inN.z * 2.5);
       scene.add(doorFill);
 
-      // Spotlight on door face
-      const doorFaceSpot = new THREE.SpotLight("#FFF5E0", 2.0, 16, Math.PI / 4.5, 0.4, 0.7);
+      // Spotlight on door face (dimmer for locked niches)
+      const doorFaceSpot = new THREE.SpotLight("#FFF5E0", isUnlocked ? 2.0 : 0.6, 16, Math.PI / 4.5, 0.4, 0.7);
       doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
       doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
       scene.add(doorFaceSpot);
       scene.add(doorFaceSpot.target);
 
-      // ── ELEGANT WING NAME LABEL (upper portion of door, above handles) ──
+      // ── ELEGANT WING NAME LABEL (upper portion of door/niche) ──
       {
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 1024;
         labelCanvas.height = 192;
         const lctx = labelCanvas.getContext("2d")!;
-        // Transparent dark wood background
-        lctx.fillStyle = "#3A2818";
-        lctx.fillRect(0, 0, 1024, 192);
-        // Thin elegant gold border
-        lctx.strokeStyle = "#C8A050";
-        lctx.lineWidth = 3;
-        lctx.strokeRect(12, 12, 1000, 168);
-        // Wing name in refined serif
-        const eyeLabel = WING_LABELS[wingId] || wingId.toUpperCase();
-        lctx.fillStyle = "#D4B878";
-        lctx.font = "bold 100px Georgia, 'Times New Roman', serif";
-        lctx.textAlign = "center";
-        lctx.textBaseline = "middle";
-        lctx.fillText(eyeLabel, 512, 96);
-        // Subtle decorative line under text
-        lctx.strokeStyle = "#C8A050";
-        lctx.lineWidth = 2;
-        lctx.beginPath();
-        lctx.moveTo(280, 155);
-        lctx.lineTo(744, 155);
-        lctx.stroke();
+        if (isUnlocked) {
+          // Transparent dark wood background
+          lctx.fillStyle = "#3A2818";
+          lctx.fillRect(0, 0, 1024, 192);
+          // Thin elegant gold border
+          lctx.strokeStyle = "#C8A050";
+          lctx.lineWidth = 3;
+          lctx.strokeRect(12, 12, 1000, 168);
+          // Wing name in refined serif
+          const eyeLabel = WING_LABELS[wingId] || wingId.toUpperCase();
+          lctx.fillStyle = "#D4B878";
+          lctx.font = "bold 100px Georgia, 'Times New Roman', serif";
+          lctx.textAlign = "center";
+          lctx.textBaseline = "middle";
+          lctx.fillText(eyeLabel, 512, 96);
+          // Subtle decorative line under text
+          lctx.strokeStyle = "#C8A050";
+          lctx.lineWidth = 2;
+          lctx.beginPath();
+          lctx.moveTo(280, 155);
+          lctx.lineTo(744, 155);
+          lctx.stroke();
+        } else {
+          // Muted stone-colored label for locked niche
+          lctx.fillStyle = "#C8BFA8";
+          lctx.fillRect(0, 0, 1024, 192);
+          // Subtle border
+          lctx.strokeStyle = "#A89878";
+          lctx.lineWidth = 2;
+          lctx.strokeRect(12, 12, 1000, 168);
+          // Wing name — dimmer, with lock symbol
+          const eyeLabel = WING_LABELS[wingId] || wingId.toUpperCase();
+          lctx.fillStyle = "#8A7E68";
+          lctx.font = "bold 90px Georgia, 'Times New Roman', serif";
+          lctx.textAlign = "center";
+          lctx.textBaseline = "middle";
+          lctx.fillText(eyeLabel, 512, 96);
+        }
 
         const labelTex = new THREE.CanvasTexture(labelCanvas);
         labelTex.colorSpace = THREE.SRGBColorSpace;
         const labelMesh = new THREE.Mesh(
           new THREE.PlaneGeometry(2.8, 0.54),
-          new THREE.MeshBasicMaterial({ map: labelTex, side: THREE.DoubleSide })
+          new THREE.MeshBasicMaterial({ map: labelTex, side: THREE.DoubleSide, transparent: !isUnlocked, opacity: isUnlocked ? 1.0 : 0.7 })
         );
-        // Position at upper third of door (y=5.5), well above handles (y=3.36)
+        // Position at upper third of door/niche
         labelMesh.position.set(
           dx + inN.x * 0.40,
-          5.5,
+          isUnlocked ? 5.5 : 5.2,
           dz + inN.z * 0.40
         );
-        labelMesh.lookAt(new THREE.Vector3(0, 5.5, 0));
+        labelMesh.lookAt(new THREE.Vector3(0, isUnlocked ? 5.5 : 5.2, 0));
         scene.add(labelMesh);
       }
     });
@@ -754,6 +876,7 @@ export default function EntranceHallScene({
     // ── BUST PEDESTALS — between every 3rd column ──
     const bustMeshes: THREE.Mesh[] = [];
     const bustCount = 8;
+    let firstBustPlaced = false;
     for (let bi = 0; bi < bustCount; bi++) {
       const bustAngle = (bi / bustCount) * Math.PI * 2 + Math.PI / bustCount;
       // Check we're not overlapping a door
@@ -780,10 +903,29 @@ export default function EntranceHallScene({
         : MS.bust;
       // Shoulders
       scene.add(mk(new THREE.CylinderGeometry(0.22, 0.28, 0.4, 8), bustMat, bx, 1.92, bz));
-      // Head
-      const head = mk(new THREE.SphereGeometry(0.16, 10, 8), bustMat, bx, 2.28, bz);
-      head.scale.set(1, 1.15, 0.95);
+
+      // Head — first bust gets custom texture if provided
+      const isFirstBust = !firstBustPlaced;
+      let headMat: THREE.Material = bustMat;
+      if (isFirstBust && bustTextureUrl) {
+        const bustTex = new THREE.TextureLoader().load(bustTextureUrl);
+        bustTex.colorSpace = THREE.SRGBColorSpace;
+        headMat = new THREE.MeshStandardMaterial({
+          map: bustTex,
+          color: "#D8D0C4",
+          roughness: 0.35,
+          metalness: 0.0,
+          envMapIntensity: 0.7,
+        });
+      }
+      const head = mk(new THREE.SphereGeometry(0.16, 10, 8), headMat, bx, 2.28, bz);
+      if (isFirstBust && bustTextureUrl) {
+        head.scale.set(1, 1.2, 0.9);
+      } else {
+        head.scale.set(1, 1.15, 0.95);
+      }
       scene.add(head);
+      if (!firstBustPlaced) firstBustPlaced = true;
 
       // Click target
       const bustClick = new THREE.Mesh(
@@ -798,29 +940,572 @@ export default function EntranceHallScene({
 
     // ── ERA-SPECIFIC MODIFICATIONS ──
     if (styleEra === "renaissance") {
-      // Square pilaster accents between columns (Renaissance cortile feel)
-      for (let pi = 0; pi < 12; pi++) {
-        const pAngle = (pi / 12) * Math.PI * 2;
-        const pR = RADIUS - 0.15;
-        const px = Math.cos(pAngle) * pR, pz = Math.sin(pAngle) * pR;
-        const pilaster = mk(new THREE.BoxGeometry(0.2, WALL_H * 0.9, 0.5), MS.column, px, WALL_H * 0.45, pz);
-        pilaster.lookAt(0, WALL_H * 0.45, 0);
-        scene.add(pilaster);
+      // ═══ RENAISSANCE CORTILE ═══
+
+      // ── Brunelleschi Arcade: round arches between ALL columns ──
+      const COL_R_POS = RADIUS - 0.8; // column center radius (matches column placement)
+      for (let ci = 0; ci < validColAngles.length; ci++) {
+        const a1 = validColAngles[ci];
+        const a2 = validColAngles[(ci + 1) % validColAngles.length];
+        const x1 = Math.cos(a1) * COL_R_POS, z1 = Math.sin(a1) * COL_R_POS;
+        const x2 = Math.cos(a2) * COL_R_POS, z2 = Math.sin(a2) * COL_R_POS;
+        const midX = (x1 + x2) / 2, midZ = (z1 + z2) / 2;
+        const span = Math.sqrt((x2 - x1) ** 2 + (z2 - z1) ** 2);
+        const archY = colH + 0.3; // top of capital
+        const archRadius = span / 2;
+
+        // Semicircular arch (TorusGeometry, half-ring)
+        const archGeo = new THREE.TorusGeometry(archRadius, 0.12, 8, 16, Math.PI);
+        const arch = new THREE.Mesh(archGeo, MS.column);
+        arch.position.set(midX, archY, midZ);
+        // Orient arch to face center and stand upright
+        arch.lookAt(0, archY, 0);
+        arch.rotateX(Math.PI / 2);
+        arch.rotateZ(Math.PI / 2);
+        arch.castShadow = true;
+        scene.add(arch);
+
+        // Springer stones where arch meets columns
+        const springerGeo = new THREE.BoxGeometry(0.25, 0.2, 0.25);
+        const sp1 = mk(springerGeo, MS.marble, x1, archY, z1);
+        sp1.lookAt(0, archY, 0);
+        scene.add(sp1);
+        const sp2 = mk(springerGeo, MS.marble, x2, archY, z2);
+        sp2.lookAt(0, archY, 0);
+        scene.add(sp2);
+
+        // Spandrel medallion between arches (above arch peak)
+        const medallionY = archY + archRadius + 0.3;
+        const spandrelMat = ci % 2 === 0 ? MS.gold : MS.marble;
+        const medallion = new THREE.Mesh(new THREE.CircleGeometry(0.2, 16), spandrelMat);
+        medallion.position.set(midX, medallionY, midZ);
+        medallion.lookAt(0, medallionY, 0);
+        scene.add(medallion);
+
+        // Entablature beam spanning columns
+        const entGeo = new THREE.BoxGeometry(span, 0.2, 0.35);
+        const ent = mk(entGeo, MS.column, midX, archY + archRadius + 0.08, midZ);
+        ent.lookAt(0, archY + archRadius + 0.08, 0);
+        ent.rotateY(Math.PI / 2);
+        scene.add(ent);
       }
-    } else {
-      // Roman atrium — impluvium (sunken pool) replaces center medallion
-      const implW = 4, implD = 3;
-      const implMat = new THREE.MeshPhysicalMaterial({
-        color: "#5A8A7A", roughness: 0.05, metalness: 0.15, transparent: true, opacity: 0.7,
-        envMapIntensity: 1.2,
+
+      // ── Column Enhancement: Corinthian capitals + Attic bases ──
+      validColAngles.forEach((angle) => {
+        const cx = Math.cos(angle) * COL_R_POS;
+        const cz = Math.sin(angle) * COL_R_POS;
+
+        // Corinthian capital: flared box
+        const capFlare = mk(new THREE.BoxGeometry(0.65, 0.15, 0.65), MS.column, cx, colH + 0.05, cz);
+        scene.add(capFlare);
+        // Abacus plate
+        const abacus = mk(new THREE.BoxGeometry(0.75, 0.06, 0.75), MS.marble, cx, colH + 0.18, cz);
+        scene.add(abacus);
+        // 4 volute details at corners
+        const voluteGeo = new THREE.SphereGeometry(0.06, 6, 4);
+        for (let v = 0; v < 4; v++) {
+          const va = (v / 4) * Math.PI * 2 + Math.PI / 4;
+          const vx = cx + Math.cos(va) * 0.28;
+          const vz = cz + Math.sin(va) * 0.28;
+          scene.add(mk(voluteGeo, MS.gold, vx, colH + 0.1, vz));
+        }
+
+        // Attic base: wider cylinder + torus molding
+        const atkBase = mk(new THREE.CylinderGeometry(colR * 1.6, colR * 1.8, 0.15, 16), MS.marble, cx, 0.075, cz);
+        scene.add(atkBase);
+        const torusMold = new THREE.Mesh(new THREE.TorusGeometry(colR * 1.4, 0.04, 6, 16), MS.column);
+        torusMold.position.set(cx, 0.18, cz);
+        torusMold.rotation.x = Math.PI / 2;
+        scene.add(torusMold);
       });
-      const impluvium = mk(new THREE.BoxGeometry(implW, 0.06, implD), implMat, 0, 0.01, 0);
-      scene.add(impluvium);
-      // Marble rim
-      scene.add(mk(new THREE.BoxGeometry(implW + 0.3, 0.15, 0.15), MS.marble, 0, 0.08, implD / 2 + 0.07));
-      scene.add(mk(new THREE.BoxGeometry(implW + 0.3, 0.15, 0.15), MS.marble, 0, 0.08, -(implD / 2 + 0.07)));
-      scene.add(mk(new THREE.BoxGeometry(0.15, 0.15, implD + 0.3), MS.marble, implW / 2 + 0.07, 0.08, 0));
-      scene.add(mk(new THREE.BoxGeometry(0.15, 0.15, implD + 0.3), MS.marble, -(implW / 2 + 0.07), 0.08, 0));
+
+      // ── Groin Vault Ribs: cross-ribs on ceiling between column bays ──
+      for (let ci = 0; ci < validColAngles.length; ci++) {
+        const a1 = validColAngles[ci];
+        const a2 = validColAngles[(ci + 1) % validColAngles.length];
+        const aMid = (a1 + a2) / 2;
+        // Inner and outer points for the bay
+        const outerR = COL_R_POS;
+        const innerR = COL_R_POS - 4;
+        const ribY = WALL_H - 0.3;
+        const ribPeak = WALL_H + 1.0;
+
+        // Two diagonal ribs per bay
+        for (let d = 0; d < 2; d++) {
+          const startA = d === 0 ? a1 : a1;
+          const endA = d === 0 ? a2 : a2;
+          const startR = d === 0 ? outerR : innerR;
+          const endR = d === 0 ? innerR : outerR;
+
+          const p0 = new THREE.Vector3(Math.cos(startA) * startR, ribY, Math.sin(startA) * startR);
+          const p3 = new THREE.Vector3(Math.cos(endA) * endR, ribY, Math.sin(endA) * endR);
+          const mid = new THREE.Vector3((p0.x + p3.x) / 2, ribPeak, (p0.z + p3.z) / 2);
+          const curve = new THREE.CatmullRomCurve3([p0, mid, p3]);
+          const tubeGeo = new THREE.TubeGeometry(curve, 12, 0.06, 6, false);
+          const rib = new THREE.Mesh(tubeGeo, MS.column);
+          rib.castShadow = true;
+          scene.add(rib);
+        }
+
+        // Central boss at intersection
+        const bossX = Math.cos(aMid) * ((outerR + innerR) / 2);
+        const bossZ = Math.sin(aMid) * ((outerR + innerR) / 2);
+        scene.add(mk(new THREE.SphereGeometry(0.08, 8, 6), MS.gold, bossX, ribPeak, bossZ));
+      }
+
+      // ── Checkerboard Floor: diamond-rotated 45° in center, alternating tiles ──
+      {
+        const tileSz = 1.0;
+        const darkFloorMat = new THREE.MeshStandardMaterial({ color: "#4A4A42", roughness: 0.15, metalness: 0.05, envMapIntensity: 0.8 });
+        const lightFloorMat = new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.12, metalness: 0.03, envMapIntensity: 0.9 });
+        const tileGeo = new THREE.BoxGeometry(tileSz, 0.02, tileSz);
+
+        // Use InstancedMesh for performance
+        const darkPositions: THREE.Matrix4[] = [];
+        const lightPositions: THREE.Matrix4[] = [];
+        const mat4 = new THREE.Matrix4();
+        const rot45 = new THREE.Matrix4().makeRotationY(Math.PI / 4);
+
+        for (let tx = -18; tx <= 18; tx += 1) {
+          for (let tz = -18; tz <= 18; tz += 1) {
+            const dist = Math.sqrt(tx * tx + tz * tz);
+            if (dist > RADIUS - 2) continue;
+            const isDark = (tx + tz) % 2 !== 0;
+            const m = new THREE.Matrix4();
+            if (dist < 5) {
+              // Diamond rotation in center zone
+              m.multiply(new THREE.Matrix4().makeTranslation(tx * tileSz, 0.003, tz * tileSz));
+              m.multiply(rot45);
+            } else {
+              m.makeTranslation(tx * tileSz, 0.003, tz * tileSz);
+            }
+            (isDark ? darkPositions : lightPositions).push(m);
+          }
+        }
+
+        const darkInst = new THREE.InstancedMesh(tileGeo, darkFloorMat, darkPositions.length);
+        darkPositions.forEach((m, i) => darkInst.setMatrixAt(i, m));
+        darkInst.instanceMatrix.needsUpdate = true;
+        darkInst.receiveShadow = true;
+        scene.add(darkInst);
+
+        const lightInst = new THREE.InstancedMesh(tileGeo, lightFloorMat, lightPositions.length);
+        lightPositions.forEach((m, i) => lightInst.setMatrixAt(i, m));
+        lightInst.instanceMatrix.needsUpdate = true;
+        lightInst.receiveShadow = true;
+        scene.add(lightInst);
+      }
+
+      // ── Upper Gallery: windows with pietra serena surrounds + portrait medallions ──
+      {
+        const galleryY = colH + 3.0;
+        const pietraSerenaMat = new THREE.MeshStandardMaterial({ color: "#8A8A80", roughness: 0.4, metalness: 0.0 });
+        for (let ci = 0; ci < validColAngles.length; ci++) {
+          const a = validColAngles[ci];
+          const aNext = validColAngles[(ci + 1) % validColAngles.length];
+          const aMid = (a + aNext) / 2;
+          const wR = RADIUS - 0.3;
+
+          // Window surround
+          const wx = Math.cos(aMid) * wR, wz = Math.sin(aMid) * wR;
+          const surround = mk(new THREE.BoxGeometry(0.12, 1.6, 1.0), pietraSerenaMat, wx, galleryY, wz);
+          surround.lookAt(0, galleryY, 0);
+          scene.add(surround);
+          // Window opening (lighter recessed area)
+          const windowPane = mk(new THREE.BoxGeometry(0.06, 1.2, 0.7), MS.marble, wx, galleryY, wz);
+          windowPane.lookAt(0, galleryY, 0);
+          scene.add(windowPane);
+
+          // Portrait medallion roundel between windows
+          const pmY = galleryY + 1.4;
+          const pmx = Math.cos(aMid) * (wR + 0.05), pmz = Math.sin(aMid) * (wR + 0.05);
+          const pm = new THREE.Mesh(new THREE.CircleGeometry(0.25, 16), MS.bronze);
+          pm.position.set(pmx, pmY, pmz);
+          pm.lookAt(0, pmY, 0);
+          scene.add(pm);
+        }
+      }
+
+      // ── Coat of Arms above entrance ──
+      {
+        const entranceAngle = DOOR_ANGLES[0]; // first door
+        const coaR = RADIUS - 0.15;
+        const coaX = Math.cos(entranceAngle) * coaR;
+        const coaZ = Math.sin(entranceAngle) * coaR;
+        const coaY = DOOR_H + 1.2;
+
+        // Shield
+        const shield = mk(new THREE.BoxGeometry(0.1, 1.0, 0.8), MS.gold, coaX, coaY, coaZ);
+        shield.lookAt(0, coaY, 0);
+        scene.add(shield);
+
+        // Flanking scroll brackets
+        for (const side of [-1, 1]) {
+          const perpX = -Math.sin(entranceAngle) * 0.6 * side;
+          const perpZ = Math.cos(entranceAngle) * 0.6 * side;
+          const scroll = mk(new THREE.TorusGeometry(0.15, 0.04, 6, 8, Math.PI), MS.gold,
+            coaX + perpX, coaY, coaZ + perpZ);
+          scroll.lookAt(0, coaY, 0);
+          scene.add(scroll);
+        }
+      }
+
+      // ── Candelabra Wall Sconces (6 pieces) ──
+      {
+        const candelPositions: number[] = [];
+        // Pick 6 evenly-spaced column bays that don't overlap doors
+        for (let ci = 0; ci < validColAngles.length && candelPositions.length < 6; ci += Math.max(1, Math.floor(validColAngles.length / 6))) {
+          const a = validColAngles[ci];
+          const aNext = validColAngles[(ci + 1) % validColAngles.length];
+          candelPositions.push((a + aNext) / 2);
+        }
+
+        const candleTipMat = new THREE.MeshStandardMaterial({
+          color: "#FFE8A0", emissive: "#FFE8A0", emissiveIntensity: 0.5, roughness: 0.3,
+        });
+
+        candelPositions.forEach((cAngle) => {
+          const cR = RADIUS - 0.4;
+          const cx = Math.cos(cAngle) * cR, cz = Math.sin(cAngle) * cR;
+          const baseY = 3.5;
+
+          // Vertical stem
+          scene.add(mk(new THREE.CylinderGeometry(0.02, 0.03, 0.8, 6), MS.bronze, cx, baseY, cz));
+
+          // Three branches
+          for (let b = -1; b <= 1; b++) {
+            const perpX = -Math.sin(cAngle) * 0.15 * b;
+            const perpZ = Math.cos(cAngle) * 0.15 * b;
+            const branchY = baseY + 0.3 + Math.abs(b) * 0.1;
+            // Horizontal arm
+            const arm = mk(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 4), MS.bronze,
+              cx + perpX, branchY, cz + perpZ);
+            arm.rotation.z = Math.PI / 2;
+            scene.add(arm);
+            // Candle tip (emissive cone)
+            scene.add(mk(new THREE.ConeGeometry(0.025, 0.08, 6), candleTipMat,
+              cx + perpX, branchY + 0.06, cz + perpZ));
+          }
+
+          // PointLight per candelabra
+          const candleLight = new THREE.PointLight("#FFF5E0", 0.3, 4);
+          candleLight.position.set(cx, baseY + 0.5, cz);
+          scene.add(candleLight);
+        });
+      }
+
+    } else {
+      // ═══ ROMAN ATRIUM ═══
+
+      // ── Grand Impluvium: recessed pool 7×5 ──
+      const implW = 7, implD = 5, implDepth = 0.35;
+      const waterMat = new THREE.MeshPhysicalMaterial({
+        color: "#4A8A7A", roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.65,
+        envMapIntensity: 1.4, clearcoat: 0.6, clearcoatRoughness: 0.05,
+      });
+
+      // Pool bottom
+      scene.add(mk(new THREE.BoxGeometry(implW, 0.06, implD), MS.marble, 0, -implDepth, 0));
+      // Pool walls (4 sides)
+      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), MS.marble, 0, -implDepth / 2, implD / 2));
+      scene.add(mk(new THREE.BoxGeometry(implW, implDepth, 0.08), MS.marble, 0, -implDepth / 2, -implD / 2));
+      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), MS.marble, implW / 2, -implDepth / 2, 0));
+      scene.add(mk(new THREE.BoxGeometry(0.08, implDepth, implD), MS.marble, -implW / 2, -implDepth / 2, 0));
+
+      // Water surface
+      const water = mk(new THREE.BoxGeometry(implW - 0.1, 0.03, implD - 0.1), waterMat, 0, -0.05, 0);
+      scene.add(water);
+
+      // Marble rim with double molding
+      const rimH = 0.12;
+      // Outer rim
+      scene.add(mk(new THREE.BoxGeometry(implW + 0.6, rimH, 0.2), MS.marble, 0, rimH / 2, implD / 2 + 0.2));
+      scene.add(mk(new THREE.BoxGeometry(implW + 0.6, rimH, 0.2), MS.marble, 0, rimH / 2, -(implD / 2 + 0.2)));
+      scene.add(mk(new THREE.BoxGeometry(0.2, rimH, implD + 0.6), MS.marble, implW / 2 + 0.2, rimH / 2, 0));
+      scene.add(mk(new THREE.BoxGeometry(0.2, rimH, implD + 0.6), MS.marble, -(implW / 2 + 0.2), rimH / 2, 0));
+      // Inner rim (second molding)
+      scene.add(mk(new THREE.BoxGeometry(implW + 0.3, rimH * 0.7, 0.1), MS.marble, 0, rimH * 0.35, implD / 2 + 0.05));
+      scene.add(mk(new THREE.BoxGeometry(implW + 0.3, rimH * 0.7, 0.1), MS.marble, 0, rimH * 0.35, -(implD / 2 + 0.05)));
+      scene.add(mk(new THREE.BoxGeometry(0.1, rimH * 0.7, implD + 0.3), MS.marble, implW / 2 + 0.05, rimH * 0.35, 0));
+      scene.add(mk(new THREE.BoxGeometry(0.1, rimH * 0.7, implD + 0.3), MS.marble, -(implW / 2 + 0.05), rimH * 0.35, 0));
+
+      // Central fountain pedestal with bust figure
+      scene.add(mk(new THREE.CylinderGeometry(0.25, 0.35, 0.8, 8), MS.marble, 0, -implDepth + 0.4, 0));
+      scene.add(mk(new THREE.CylinderGeometry(0.15, 0.2, 0.3, 8), MS.marble, 0, -implDepth + 0.95, 0));
+      scene.add(mk(new THREE.SphereGeometry(0.12, 8, 6), MS.bust, 0, -implDepth + 1.2, 0));
+
+      // 4 short columns at impluvium corners
+      const implCorners = [
+        [implW / 2 + 0.4, implD / 2 + 0.4],
+        [-(implW / 2 + 0.4), implD / 2 + 0.4],
+        [implW / 2 + 0.4, -(implD / 2 + 0.4)],
+        [-(implW / 2 + 0.4), -(implD / 2 + 0.4)],
+      ];
+      implCorners.forEach(([icx, icz]) => {
+        scene.add(mk(new THREE.CylinderGeometry(0.12, 0.14, 1.2, 8), MS.column, icx, 0.6, icz));
+        scene.add(mk(new THREE.SphereGeometry(0.08, 6, 4), MS.marble, icx, 1.24, icz));
+      });
+
+      // ── Mosaic Floor: concentric rings + Greek key border ──
+      {
+        const mosaicBlack = new THREE.MeshStandardMaterial({ color: "#1A1A18", roughness: 0.2, metalness: 0.0 });
+        const mosaicWhite = new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0 });
+        const terracottaMat = new THREE.MeshStandardMaterial({ color: "#C17040", roughness: 0.4, metalness: 0.0 });
+        const creamMat = new THREE.MeshStandardMaterial({ color: "#F0E8D8", roughness: 0.3, metalness: 0.0 });
+        const tileGeo = new THREE.BoxGeometry(0.4, 0.01, 0.4);
+
+        // Concentric ring tiles around impluvium
+        const ringDark: THREE.Matrix4[] = [];
+        const ringLight: THREE.Matrix4[] = [];
+        for (let ring = 0; ring < 6; ring++) {
+          const rDist = 4.5 + ring * 1.2;
+          const numSegs = Math.floor(rDist * 4);
+          for (let s = 0; s < numSegs; s++) {
+            const a = (s / numSegs) * Math.PI * 2;
+            const tx = Math.cos(a) * rDist;
+            const tz = Math.sin(a) * rDist;
+            if (Math.sqrt(tx * tx + tz * tz) > RADIUS - 3) continue;
+            const m = new THREE.Matrix4().makeTranslation(tx, 0.002, tz);
+            (ring % 2 === 0 ? ringDark : ringLight).push(m);
+          }
+        }
+
+        if (ringDark.length > 0) {
+          const darkRingInst = new THREE.InstancedMesh(tileGeo, mosaicBlack, ringDark.length);
+          ringDark.forEach((m, i) => darkRingInst.setMatrixAt(i, m));
+          darkRingInst.instanceMatrix.needsUpdate = true;
+          darkRingInst.receiveShadow = true;
+          scene.add(darkRingInst);
+        }
+        if (ringLight.length > 0) {
+          const lightRingInst = new THREE.InstancedMesh(tileGeo, mosaicWhite, ringLight.length);
+          ringLight.forEach((m, i) => lightRingInst.setMatrixAt(i, m));
+          lightRingInst.instanceMatrix.needsUpdate = true;
+          lightRingInst.receiveShadow = true;
+          scene.add(lightRingInst);
+        }
+
+        // Greek key border: meander pattern around edge of floor
+        const borderR = RADIUS - 2;
+        const keySegGeo = new THREE.BoxGeometry(0.3, 0.012, 0.12);
+        const keyPositionsTerra: THREE.Matrix4[] = [];
+        const keyPositionsCream: THREE.Matrix4[] = [];
+        const keySegments = 80;
+        for (let s = 0; s < keySegments; s++) {
+          const a = (s / keySegments) * Math.PI * 2;
+          const kx = Math.cos(a) * borderR;
+          const kz = Math.sin(a) * borderR;
+          const m = new THREE.Matrix4();
+          m.makeTranslation(kx, 0.006, kz);
+          m.multiply(new THREE.Matrix4().makeRotationY(-a));
+          (s % 2 === 0 ? keyPositionsTerra : keyPositionsCream).push(m);
+        }
+
+        if (keyPositionsTerra.length > 0) {
+          const terraInst = new THREE.InstancedMesh(keySegGeo, terracottaMat, keyPositionsTerra.length);
+          keyPositionsTerra.forEach((m, i) => terraInst.setMatrixAt(i, m));
+          terraInst.instanceMatrix.needsUpdate = true;
+          terraInst.receiveShadow = true;
+          scene.add(terraInst);
+        }
+        if (keyPositionsCream.length > 0) {
+          const creamInst = new THREE.InstancedMesh(keySegGeo, creamMat, keyPositionsCream.length);
+          keyPositionsCream.forEach((m, i) => creamInst.setMatrixAt(i, m));
+          creamInst.instanceMatrix.needsUpdate = true;
+          creamInst.receiveShadow = true;
+          scene.add(creamInst);
+        }
+      }
+
+      // ── Pompeian Wall Paintings (12 panels between columns) ──
+      {
+        const dadoMat = new THREE.MeshStandardMaterial({ color: "#1A1A18", roughness: 0.5, metalness: 0.0 });
+        const pomRedMat = new THREE.MeshStandardMaterial({ color: "#8B2500", roughness: 0.45, metalness: 0.0 });
+        const ochreMat = new THREE.MeshStandardMaterial({ color: "#C17040", roughness: 0.45, metalness: 0.0 });
+        const blackPanelMat = new THREE.MeshStandardMaterial({ color: "#1A1A18", roughness: 0.4, metalness: 0.0 });
+        const friezeMat = new THREE.MeshStandardMaterial({ color: "#D8C8B0", roughness: 0.35, metalness: 0.0 });
+        const panelColors = [pomRedMat, ochreMat, blackPanelMat];
+        const wallPanelR = RADIUS - 0.12;
+
+        for (let ci = 0; ci < validColAngles.length; ci++) {
+          const a1 = validColAngles[ci];
+          const a2 = validColAngles[(ci + 1) % validColAngles.length];
+          const aMid = (a1 + a2) / 2;
+          const px = Math.cos(aMid) * wallPanelR;
+          const pz = Math.sin(aMid) * wallPanelR;
+
+          // Dado zone (bottom 0.8m)
+          const dado = mk(new THREE.BoxGeometry(0.04, 0.8, 2.0), dadoMat, px, 0.4, pz);
+          dado.lookAt(0, 0.4, 0);
+          scene.add(dado);
+
+          // Main panel (middle ~4m)
+          const mainPanelMat = panelColors[ci % 3];
+          const mainPanel = mk(new THREE.BoxGeometry(0.04, 4.0, 2.0), mainPanelMat, px, 2.8, pz);
+          mainPanel.lookAt(0, 2.8, 0);
+          scene.add(mainPanel);
+
+          // Gold frame border (thin strips around main panel)
+          const frameThick = 0.05;
+          // Top frame
+          const ft = mk(new THREE.BoxGeometry(0.05, frameThick, 2.1), MS.gold, px, 4.8, pz);
+          ft.lookAt(0, 4.8, 0);
+          scene.add(ft);
+          // Bottom frame
+          const fb = mk(new THREE.BoxGeometry(0.05, frameThick, 2.1), MS.gold, px, 0.8, pz);
+          fb.lookAt(0, 0.8, 0);
+          scene.add(fb);
+          // Left frame
+          const fl = mk(new THREE.BoxGeometry(0.05, 4.1, frameThick), MS.gold, px, 2.8, pz);
+          fl.lookAt(0, 2.8, 0);
+          fl.rotateY(Math.PI / 2);
+          scene.add(fl);
+          // Right frame
+          const fr = mk(new THREE.BoxGeometry(0.05, 4.1, frameThick), MS.gold, px, 2.8, pz);
+          fr.lookAt(0, 2.8, 0);
+          fr.rotateY(-Math.PI / 2);
+          scene.add(fr);
+
+          // Upper frieze (top 1m)
+          const frieze = mk(new THREE.BoxGeometry(0.04, 1.0, 2.0), friezeMat, px, 5.3, pz);
+          frieze.lookAt(0, 5.3, 0);
+          scene.add(frieze);
+        }
+      }
+
+      // ── Oil Lamp Illumination (8 lamps between every other column) ──
+      {
+        const lampBronzeMat = MS.bronze;
+        const lampGlowMat = new THREE.MeshStandardMaterial({
+          color: "#FF9040", emissive: "#FF9040", emissiveIntensity: 0.3, roughness: 0.4,
+        });
+
+        for (let ci = 0; ci < validColAngles.length && ci < 16; ci += 2) {
+          const a = validColAngles[ci];
+          const aNext = validColAngles[(ci + 1) % validColAngles.length];
+          const lAngle = (a + aNext) / 2;
+          const lR = RADIUS - 0.35;
+          const lx = Math.cos(lAngle) * lR, lz = Math.sin(lAngle) * lR;
+          const lY = 3.2;
+
+          // Wall bracket (horizontal arm)
+          const arm = mk(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 6), lampBronzeMat, lx, lY, lz);
+          arm.lookAt(0, lY, 0);
+          arm.rotateX(Math.PI / 2);
+          scene.add(arm);
+
+          // Dish
+          const inwardX = Math.cos(lAngle) * (lR - 0.35);
+          const inwardZ = Math.sin(lAngle) * (lR - 0.35);
+          scene.add(mk(new THREE.CylinderGeometry(0.1, 0.08, 0.04, 8), lampBronzeMat, inwardX, lY, inwardZ));
+
+          // Emissive glow on dish
+          scene.add(mk(new THREE.SphereGeometry(0.04, 6, 4), lampGlowMat, inwardX, lY + 0.05, inwardZ));
+
+          // PointLight per lamp
+          const lampLight = new THREE.PointLight("#FF9040", 0.4, 6);
+          lampLight.position.set(inwardX, lY + 0.15, inwardZ);
+          scene.add(lampLight);
+        }
+      }
+
+      // ── Marble Benches (4 benches between bust pedestals) ──
+      {
+        const benchAngles = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
+        benchAngles.forEach((bAngle) => {
+          const benchR = RADIUS - 3.5;
+          const bx = Math.cos(bAngle) * benchR;
+          const bz = Math.sin(bAngle) * benchR;
+
+          // Seat
+          const seat = mk(new THREE.BoxGeometry(1.2, 0.08, 0.4), MS.marble, bx, 0.54, bz);
+          seat.lookAt(0, 0.54, 0);
+          seat.rotateY(Math.PI / 2);
+          scene.add(seat);
+
+          // Two slab legs
+          for (const offset of [-0.4, 0.4]) {
+            const perpX = -Math.sin(bAngle) * offset;
+            const perpZ = Math.cos(bAngle) * offset;
+            const leg = mk(new THREE.BoxGeometry(0.35, 0.5, 0.06), MS.marble, bx + perpX, 0.25, bz + perpZ);
+            leg.lookAt(0, 0.25, 0);
+            leg.rotateY(Math.PI / 2);
+            scene.add(leg);
+          }
+        });
+      }
+
+      // ── Decorative Amphorae (4 pieces) ──
+      {
+        const terracottaMat = new THREE.MeshStandardMaterial({ color: "#C17040", roughness: 0.5, metalness: 0.0 });
+        const amphoraAngles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
+        amphoraAngles.forEach((aAngle) => {
+          // Check not too close to a door
+          const tooClose = DOOR_ANGLES.some(da => {
+            let diff = Math.abs(aAngle - da);
+            if (diff > Math.PI) diff = Math.PI * 2 - diff;
+            return diff < Math.PI / 6;
+          });
+          if (tooClose) return;
+
+          const aR = RADIUS - 1.8;
+          const ax = Math.cos(aAngle) * aR, az = Math.sin(aAngle) * aR;
+
+          // Body (tapered cylinder)
+          scene.add(mk(new THREE.CylinderGeometry(0.12, 0.18, 0.6, 8), terracottaMat, ax, 0.3, az));
+          // Neck
+          scene.add(mk(new THREE.CylinderGeometry(0.06, 0.1, 0.2, 8), terracottaMat, ax, 0.7, az));
+          // Lip
+          scene.add(mk(new THREE.CylinderGeometry(0.08, 0.06, 0.04, 8), terracottaMat, ax, 0.82, az));
+          // Handles (torus on each side)
+          for (const side of [-1, 1]) {
+            const hx = ax + (-Math.sin(aAngle) * 0.16 * side);
+            const hz = az + (Math.cos(aAngle) * 0.16 * side);
+            const handle = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.015, 4, 8, Math.PI), terracottaMat);
+            handle.position.set(hx, 0.5, hz);
+            handle.lookAt(ax, 0.5, az);
+            handle.rotateX(Math.PI / 2);
+            scene.add(handle);
+          }
+        });
+      }
+
+      // ── Ceiling Coffers around Oculus ──
+      {
+        const OCULUS_R_LOCAL = OCULUS_R || 3.0;
+        const cofferRingR = OCULUS_R_LOCAL + 2.5;
+        const numCoffers = 12;
+        const cofferGeo = new THREE.BoxGeometry(1.2, 0.15, 1.8);
+        const cofferFrameGeo = new THREE.BoxGeometry(1.3, 0.06, 1.9);
+
+        for (let c = 0; c < numCoffers; c++) {
+          const cAngle = (c / numCoffers) * Math.PI * 2;
+          const ccx = Math.cos(cAngle) * cofferRingR;
+          const ccz = Math.sin(cAngle) * cofferRingR;
+          const cofferY = WALL_H - 0.5;
+
+          // Recessed panel
+          const coffer = mk(cofferGeo, MS.wall, ccx, cofferY, ccz);
+          coffer.lookAt(0, cofferY, 0);
+          scene.add(coffer);
+
+          // Gold trim frame
+          const frame = mk(cofferFrameGeo, MS.gold, ccx, cofferY + 0.1, ccz);
+          frame.lookAt(0, cofferY + 0.1, 0);
+          scene.add(frame);
+
+          // Rosette in alternating coffers
+          if (c % 2 === 0) {
+            const rosetteR2 = OCULUS_R_LOCAL + 2.5;
+            const rx = Math.cos(cAngle) * rosetteR2;
+            const rz = Math.sin(cAngle) * rosetteR2;
+            const rosette = new THREE.Mesh(new THREE.CircleGeometry(0.25, 12), MS.gold);
+            rosette.position.set(rx, cofferY + 0.12, rz);
+            rosette.lookAt(0, cofferY + 0.12, 0);
+            scene.add(rosette);
+          }
+        }
+      }
     }
 
     // ── STORAGE ROOM — small door in the wall ──

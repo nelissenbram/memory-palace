@@ -134,41 +134,366 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
 
     // ── ERA-SPECIFIC ROOM MODIFICATIONS ──
     if (styleEra === "renaissance") {
-      // Coffered ceiling — grid of recessed squares
-      const cofferN = 3;
-      const cofferSize = Math.min(rW, rL) / (cofferN + 1);
-      for (let cx = 0; cx < cofferN; cx++) {
-        for (let cz = 0; cz < cofferN; cz++) {
-          const cofX = -rW / 2 + cofferSize + cx * (rW - cofferSize * 2) / (cofferN - 1);
-          const cofZ = -rL / 2 + cofferSize + cz * (rL - cofferSize * 2) / (cofferN - 1);
-          scene.add(mk(new THREE.BoxGeometry(cofferSize * 0.7, 0.06, cofferSize * 0.7), MS.trim, cofX, rH - 0.03, cofZ));
-          scene.add(mk(new THREE.BoxGeometry(cofferSize * 0.75, 0.02, cofferSize * 0.75), MS.gold, cofX, rH - 0.06, cofZ));
+      // ─── RICH COFFERED CEILING (5×5 grid) ───
+      const cofN=5;
+      const cSpanX=(rW-0.6)/cofN, cSpanZ=(rL-0.6)/cofN;
+      for(let cx=0;cx<cofN;cx++){for(let cz=0;cz<cofN;cz++){
+        const cofX=-rW/2+0.3+cSpanX*(cx+0.5), cofZ=-rL/2+0.3+cSpanZ*(cz+0.5);
+        const cW=cSpanX*0.75, cD=cSpanZ*0.75;
+        // outer frame
+        scene.add(mk(new THREE.BoxGeometry(cW+0.06,0.04,cD+0.06),MS.trim,cofX,rH-0.02,cofZ));
+        // inner frame
+        scene.add(mk(new THREE.BoxGeometry(cW,0.06,cD),MS.gold,cofX,rH-0.05,cofZ));
+        // recessed coffer panel
+        scene.add(mk(new THREE.BoxGeometry(cW-0.08,0.02,cD-0.08),MS.trim,cofX,rH-0.15,cofZ));
+        // center rosette
+        const ros=new THREE.Mesh(new THREE.CircleGeometry(Math.min(cW,cD)*0.18,12),MS.gold);
+        ros.rotation.x=Math.PI/2;ros.position.set(cofX,rH-0.149,cofZ);scene.add(ros);
+        // boss
+        scene.add(mk(new THREE.SphereGeometry(Math.min(cW,cD)*0.06,8,8),MS.gold,cofX,rH-0.13,cofZ));
+      }}
+      // Ceiling beams between coffers
+      for(let bx=0;bx<=cofN;bx++){
+        const x=-rW/2+0.3+bx*cSpanX;
+        scene.add(mk(new THREE.BoxGeometry(0.06,0.08,rL-0.4),MS.trim,x,rH-0.04,0));
+      }
+      for(let bz=0;bz<=cofN;bz++){
+        const z=-rL/2+0.3+bz*cSpanZ;
+        scene.add(mk(new THREE.BoxGeometry(rW-0.4,0.08,0.06),MS.trim,0,rH-0.04,z));
+      }
+      // Molding strip at ceiling-wall junction
+      for(let s=-1;s<=1;s+=2){
+        scene.add(mk(new THREE.BoxGeometry(0.08,0.06,rL-0.1),MS.gold,s*(rW/2-0.04),rH-0.03,0));
+        scene.add(mk(new THREE.BoxGeometry(rW-0.1,0.06,0.08),MS.gold,0,rH-0.03,s*(rL/2-0.04)));
+      }
+
+      // ─── FULL WAINSCOTING (all 4 walls) ───
+      const wainH=1.2, baseH=0.12, chairH=0.07;
+      // Side walls: 4 panels each
+      for(let s=-1;s<=1;s+=2){
+        const wx=s*(rW/2-0.025);
+        // base rail
+        scene.add(mk(new THREE.BoxGeometry(0.06,baseH,rL-0.3),MS.dkW,wx,baseH/2,0));
+        // chair rail
+        scene.add(mk(new THREE.BoxGeometry(0.07,chairH,rL-0.2),MS.gold,wx,wainH+chairH/2,0));
+        // panel backing
+        scene.add(mk(new THREE.BoxGeometry(0.04,wainH-baseH-chairH,rL-0.3),MS.wain,wx,(baseH+wainH)/2,0));
+        // 4 raised panels
+        const panelLen=(rL-0.6)/4;
+        for(let p=0;p<4;p++){
+          const pz=-rL/2+0.3+panelLen*(p+0.5);
+          scene.add(mk(new THREE.BoxGeometry(0.02,wainH-baseH-chairH-0.12,panelLen-0.12),MS.wain,wx+s*0.025,(baseH+wainH)/2,pz));
+          // stile between panels
+          if(p<3) scene.add(mk(new THREE.BoxGeometry(0.05,wainH-baseH,0.04),MS.dkW,wx,(baseH+wainH)/2,-rL/2+0.3+panelLen*(p+1)));
         }
       }
-      // Wood-paneled lower walls (walnut wainscoting extension)
-      for (let s = -1; s <= 1; s += 2) {
-        scene.add(mk(new THREE.BoxGeometry(0.04, 1.6, rL - 0.4), MS.dkW, s * (rW / 2 - 0.02), 0.8, 0));
+      // Back wall (behind fireplace skipped — do front wall)
+      {
+        const wz=rL/2-0.025;
+        scene.add(mk(new THREE.BoxGeometry(rW-0.3,baseH,0.06),MS.dkW,0,baseH/2,wz));
+        scene.add(mk(new THREE.BoxGeometry(rW-0.2,chairH,0.07),MS.gold,0,wainH+chairH/2,wz));
+        scene.add(mk(new THREE.BoxGeometry(rW-0.3,wainH-baseH-chairH,0.04),MS.wain,0,(baseH+wainH)/2,wz));
+        const panelLen2=(rW-0.6)/3;
+        for(let p=0;p<3;p++){
+          const px=-rW/2+0.3+panelLen2*(p+0.5);
+          scene.add(mk(new THREE.BoxGeometry(panelLen2-0.12,wainH-baseH-chairH-0.12,0.02),MS.wain,px,(baseH+wainH)/2,wz-0.025));
+          if(p<2) scene.add(mk(new THREE.BoxGeometry(0.04,wainH-baseH,0.05),MS.dkW,-rW/2+0.3+panelLen2*(p+1),(baseH+wainH)/2,wz));
+        }
       }
+      // Back wall wainscoting (flanking fireplace)
+      {
+        const wz2=-rL/2+0.025;
+        // left of fireplace
+        scene.add(mk(new THREE.BoxGeometry((rW/2-1.5),wainH-baseH-chairH,0.04),MS.wain,-(rW/2+1.5)/2,(baseH+wainH)/2,wz2));
+        // right of fireplace
+        scene.add(mk(new THREE.BoxGeometry((rW/2-1.5),wainH-baseH-chairH,0.04),MS.wain,(rW/2+1.5)/2,(baseH+wainH)/2,wz2));
+      }
+
+      // ─── TAPESTRY PANELS (above wainscoting) ───
+      const tapColors=["#6B1A2A","#2D4A2D","#1A2A6B","#6B1A2A"];
+      const tapW=1.2, tapH2=1.8;
+      // Side walls: 2 tapestries each
+      for(let s=-1;s<=1;s+=2){
+        for(let ti=0;ti<2;ti++){
+          const tz=-rL/4+ti*(rL/2);
+          const tapMat=new THREE.MeshStandardMaterial({color:tapColors[(s>0?0:2)+ti],roughness:0.85,side:THREE.DoubleSide});
+          const tap=new THREE.Mesh(new THREE.PlaneGeometry(tapH2,tapW),tapMat);
+          tap.rotation.y=s*(-Math.PI/2);tap.position.set(s*(rW/2-0.03),wainH+0.15+tapW/2,tz);scene.add(tap);
+          // gold hanging rod
+          const rod=mk(new THREE.CylinderGeometry(0.015,0.015,tapH2+0.15,6),MS.gold,s*(rW/2-0.04),wainH+0.15+tapW+0.02,tz);
+          rod.rotation.z=Math.PI/2;scene.add(rod);
+          // tassels at bottom corners
+          for(let tc=-1;tc<=1;tc+=2){
+            scene.add(mk(new THREE.CylinderGeometry(0.015,0.015,0.12,4),MS.gold,s*(rW/2-0.04),wainH+0.09,tz+tc*(tapH2/2-0.05)));
+            scene.add(mk(new THREE.ConeGeometry(0.025,0.06,4),MS.gold,s*(rW/2-0.04),wainH+0.02,tz+tc*(tapH2/2-0.05)));
+          }
+        }
+      }
+
+      // ─── GLOBE ON STAND ───
+      const globeX=rW/2-1.2, globeZ=rL/2-1.5, globeY=0.9;
+      const globeMat=new THREE.MeshStandardMaterial({color:"#4A6A5A",roughness:0.5,metalness:0.15});
+      scene.add(mk(new THREE.SphereGeometry(0.18,16,16),globeMat,globeX,globeY+0.18,globeZ));
+      // meridian ring (tilted 23°)
+      const meridian=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.008,8,32),MS.gold);
+      meridian.position.set(globeX,globeY+0.18,globeZ);meridian.rotation.z=23*Math.PI/180;scene.add(meridian);
+      // horizon ring
+      const horizon=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.008,8,32),MS.gold);
+      horizon.position.set(globeX,globeY+0.18,globeZ);horizon.rotation.x=Math.PI/2;scene.add(horizon);
+      // 3 curved legs
+      for(let li=0;li<3;li++){
+        const la=li*(Math.PI*2/3);
+        const lx=Math.cos(la)*0.12, lz2=Math.sin(la)*0.12;
+        scene.add(mk(new THREE.CylinderGeometry(0.012,0.018,globeY,6),MS.dkW,globeX+lx,globeY/2,globeZ+lz2));
+      }
+      // base
+      scene.add(mk(new THREE.CylinderGeometry(0.15,0.15,0.02,12),MS.dkW,globeX,0.01,globeZ));
+
+      // ─── WRITING DESK ENHANCEMENTS ───
+      const dkXr=-rW/2+1.8, dkZr=rL/2-2.2, dkYr=0.82;
+      // Open book: two angled pages
+      const pageL=new THREE.Mesh(new THREE.PlaneGeometry(0.14,0.2),new THREE.MeshStandardMaterial({color:"#FFFFF0",roughness:0.9,side:THREE.DoubleSide}));
+      pageL.position.set(dkXr-0.07,dkYr+0.02,dkZr+0.05);pageL.rotation.set(-0.15,0,0.08);scene.add(pageL);
+      const pageR=new THREE.Mesh(new THREE.PlaneGeometry(0.14,0.2),new THREE.MeshStandardMaterial({color:"#FFFFF0",roughness:0.9,side:THREE.DoubleSide}));
+      pageR.position.set(dkXr+0.07,dkYr+0.02,dkZr+0.05);pageR.rotation.set(-0.15,0,-0.08);scene.add(pageR);
+      // Ink well
+      scene.add(mk(new THREE.CylinderGeometry(0.03,0.035,0.04,8),new THREE.MeshStandardMaterial({color:"#1A1A1A",roughness:0.4,metalness:0.3}),dkXr+0.4,dkYr+0.02,dkZr-0.15));
+      // Quill pen
+      const quill=mk(new THREE.CylinderGeometry(0.004,0.004,0.25,4),new THREE.MeshStandardMaterial({color:"#E8D8B8",roughness:0.7}),dkXr+0.42,dkYr+0.06,dkZr-0.12);
+      quill.rotation.set(0,0.3,-0.5);scene.add(quill);
+      // Scroll
+      scene.add(mk(new THREE.CylinderGeometry(0.02,0.02,0.18,8),new THREE.MeshStandardMaterial({color:"#E8D8B0",roughness:0.8}),dkXr-0.4,dkYr+0.02,dkZr-0.2));
+      const scrollTrail=new THREE.Mesh(new THREE.PlaneGeometry(0.15,0.18),new THREE.MeshStandardMaterial({color:"#E8D8B0",roughness:0.8,side:THREE.DoubleSide}));
+      scrollTrail.position.set(dkXr-0.32,dkYr+0.01,dkZr-0.12);scrollTrail.rotation.x=-Math.PI/2+0.05;scene.add(scrollTrail);
+      // Wax seal
+      scene.add(mk(new THREE.CylinderGeometry(0.018,0.018,0.008,8),new THREE.MeshStandardMaterial({color:"#8B1A1A",roughness:0.5,emissive:"#3A0808",emissiveIntensity:0.3}),dkXr-0.25,dkYr+0.015,dkZr-0.08));
+
+      // ─── CANDELABRA ON FIREPLACE MANTLE (2 matching) ───
+      for(let cs=-1;cs<=1;cs+=2){
+        const candX=cs*0.9, candZ=-rL/2+0.3, candY=1.35;
+        // central shaft
+        scene.add(mk(new THREE.CylinderGeometry(0.012,0.018,0.35,6),MS.gold,candX,candY+0.175,candZ));
+        // base
+        scene.add(mk(new THREE.CylinderGeometry(0.05,0.05,0.02,8),MS.gold,candX,candY+0.01,candZ));
+        // 4 arms + central candle = 5 branches
+        const armAngles=[0,Math.PI/2,Math.PI,Math.PI*1.5];
+        for(let ai=0;ai<armAngles.length;ai++){
+          const aa=armAngles[ai], armLen=0.08;
+          const ax2=candX+Math.cos(aa)*armLen, az2=candZ+Math.sin(aa)*armLen;
+          // arm
+          scene.add(mk(new THREE.CylinderGeometry(0.006,0.006,armLen,4),MS.gold,(candX+ax2)/2,candY+0.25,(candZ+az2)/2));
+          // candle cup
+          scene.add(mk(new THREE.CylinderGeometry(0.012,0.012,0.02,6),MS.gold,ax2,candY+0.26,az2));
+          // candle
+          scene.add(mk(new THREE.CylinderGeometry(0.008,0.008,0.06,6),new THREE.MeshStandardMaterial({color:"#FFF8E8",roughness:0.9}),ax2,candY+0.30,az2));
+          // emissive tip
+          scene.add(mk(new THREE.SphereGeometry(0.006,4,4),new THREE.MeshBasicMaterial({color:"#FFCC44"}),ax2,candY+0.335,az2));
+        }
+        // central candle (taller)
+        scene.add(mk(new THREE.CylinderGeometry(0.01,0.01,0.08,6),new THREE.MeshStandardMaterial({color:"#FFF8E8",roughness:0.9}),candX,candY+0.39,candZ));
+        scene.add(mk(new THREE.SphereGeometry(0.007,4,4),new THREE.MeshBasicMaterial({color:"#FFCC44"}),candX,candY+0.435,candZ));
+      }
+
+      // ─── HERALDIC SHIELD ABOVE FIREPLACE ───
+      const shX=0, shY=1.8, shZ=-rL/2+0.28;
+      scene.add(mk(new THREE.BoxGeometry(0.5,0.6,0.04),MS.gold,shX,shY,shZ));
+      // colored quarters
+      const qMats=[
+        new THREE.MeshStandardMaterial({color:"#8B1A1A",roughness:0.6}),
+        new THREE.MeshStandardMaterial({color:"#1A2A6B",roughness:0.6}),
+        new THREE.MeshStandardMaterial({color:"#1A2A6B",roughness:0.6}),
+        new THREE.MeshStandardMaterial({color:"#8B1A1A",roughness:0.6})
+      ];
+      for(let qr=0;qr<2;qr++)for(let qc=0;qc<2;qc++){
+        scene.add(mk(new THREE.BoxGeometry(0.2,0.24,0.01),qMats[qr*2+qc],shX+(qc-0.5)*0.2,shY+(qr-0.5)*0.24,shZ+0.025));
+      }
+      // small flanking decorations
+      for(let sd=-1;sd<=1;sd+=2){
+        scene.add(mk(new THREE.SphereGeometry(0.04,6,6),MS.gold,shX+sd*0.4,shY,shZ+0.02));
+      }
+
     } else {
-      // Roman room — mosaic floor accent, fresco panels
-      // Mosaic floor border pattern
-      const mosaicBorderW = 0.15;
-      for (let s = -1; s <= 1; s += 2) {
-        scene.add(mk(new THREE.BoxGeometry(mosaicBorderW, 0.005, rL - 1), new THREE.MeshStandardMaterial({ color: "#C17040", roughness: 0.6 }),
-          s * (rW / 2 - 1.2), 0.003, 0));
-        scene.add(mk(new THREE.BoxGeometry(rW - 1, 0.005, mosaicBorderW), new THREE.MeshStandardMaterial({ color: "#C17040", roughness: 0.6 }),
-          0, 0.003, s * (rL / 2 - 1.2)));
+      // ═══ ROMAN CUBICULUM / TRICLINIUM ═══
+
+      // ─── FULL MOSAIC FLOOR ───
+      // Center medallion: compass rose (8 triangular segments)
+      const medallionR=0.6;
+      const compassColors=[
+        new THREE.MeshStandardMaterial({color:"#1A1A18",roughness:0.5}),
+        new THREE.MeshStandardMaterial({color:"#F5F0E8",roughness:0.5}),
+        new THREE.MeshStandardMaterial({color:"#C17040",roughness:0.5})
+      ];
+      for(let ci=0;ci<8;ci++){
+        const triShape=new THREE.BufferGeometry();
+        const a1=ci*Math.PI/4, a2=(ci+1)*Math.PI/4;
+        const verts=new Float32Array([0,0,0, Math.cos(a1)*medallionR,0,Math.sin(a1)*medallionR, Math.cos(a2)*medallionR,0,Math.sin(a2)*medallionR]);
+        triShape.setAttribute("position",new THREE.BufferAttribute(verts,3));
+        triShape.computeVertexNormals();
+        const triM=new THREE.Mesh(triShape,compassColors[ci%3]);
+        triM.position.set(0,0.006,0);scene.add(triM);
       }
-      // Upper wall fresco panels (colored rectangles)
-      const frescoColors = ["#B85C38", "#8B7D6B", "#C17040", "#9A8060"];
-      for (let fi = 0; fi < 3; fi++) {
-        const fz = -rL / 2 + 1 + fi * (rL - 2) / 2;
-        for (let s = -1; s <= 1; s += 2) {
-          const fPanel = mk(new THREE.BoxGeometry(0.01, 0.8, 1.2),
-            new THREE.MeshStandardMaterial({ color: frescoColors[(fi + (s > 0 ? 2 : 0)) % frescoColors.length], roughness: 0.7 }),
-            s * (rW / 2 - 0.01), rH * 0.7, fz);
-          scene.add(fPanel);
+      // Compass rose border ring
+      const compassRing=new THREE.Mesh(new THREE.TorusGeometry(medallionR,0.02,8,32),MS.gold);
+      compassRing.rotation.x=-Math.PI/2;compassRing.position.y=0.008;scene.add(compassRing);
+
+      // Greek key meander border (repeating L-shaped segments)
+      const mdrMat1=new THREE.MeshStandardMaterial({color:"#C17040",roughness:0.6});
+      const mdrMat2=new THREE.MeshStandardMaterial({color:"#F5F0E8",roughness:0.6});
+      const mdrStep=0.2, mdrW2=0.05;
+      for(let s=-1;s<=1;s+=2){
+        // along X edges
+        for(let mi=0;mi<Math.floor((rW-1)/mdrStep);mi++){
+          const mx=-rW/2+0.5+mi*mdrStep;
+          const mMat=mi%2===0?mdrMat1:mdrMat2;
+          scene.add(mk(new THREE.BoxGeometry(mdrStep*0.4,0.005,mdrW2),mMat,mx,0.004,s*(rL/2-0.8)));
+          scene.add(mk(new THREE.BoxGeometry(mdrW2,0.005,mdrStep*0.3),mMat,mx+mdrStep*0.15,0.004,s*(rL/2-0.8+s*mdrStep*0.15)));
         }
+        // along Z edges
+        for(let mi=0;mi<Math.floor((rL-1)/mdrStep);mi++){
+          const mz=-rL/2+0.5+mi*mdrStep;
+          const mMat=mi%2===0?mdrMat1:mdrMat2;
+          scene.add(mk(new THREE.BoxGeometry(mdrW2,0.005,mdrStep*0.4),mMat,s*(rW/2-0.8),0.004,mz));
+          scene.add(mk(new THREE.BoxGeometry(mdrStep*0.3,0.005,mdrW2),mMat,s*(rW/2-0.8+s*mdrStep*0.15),0.004,mz+mdrStep*0.15));
+        }
+      }
+
+      // Diamond grid of alternating black/white tiles (InstancedMesh)
+      const tileSize=0.3, tileMats=[
+        new THREE.MeshStandardMaterial({color:"#1A1A18",roughness:0.5}),
+        new THREE.MeshStandardMaterial({color:"#F5F0E8",roughness:0.5})
+      ];
+      const tileGeo=new THREE.PlaneGeometry(tileSize*0.65,tileSize*0.65);
+      for(let tmi=0;tmi<2;tmi++){
+        const cols=Math.floor((rW-2.4)/tileSize), rows=Math.floor((rL-2.4)/tileSize);
+        let count=0;
+        // count matching tiles
+        for(let tr=0;tr<rows;tr++)for(let tc=0;tc<cols;tc++){if((tr+tc)%2===tmi)count++;}
+        if(count===0)continue;
+        const inst=new THREE.InstancedMesh(tileGeo,tileMats[tmi],count);
+        const dm=new THREE.Matrix4();let idx=0;
+        for(let tr=0;tr<rows;tr++)for(let tc=0;tc<cols;tc++){
+          if((tr+tc)%2!==tmi)continue;
+          const tx=-rW/2+1.2+tc*tileSize+tileSize/2, tz=-rL/2+1.2+tr*tileSize+tileSize/2;
+          // skip center medallion area
+          if(Math.sqrt(tx*tx+tz*tz)<medallionR+0.15)continue;
+          dm.makeRotationX(-Math.PI/2);
+          dm.setPosition(tx,0.005,tz);
+          // rotate 45° for diamond pattern
+          const rot=new THREE.Matrix4().makeRotationZ(Math.PI/4);
+          dm.multiply(rot);
+          dm.setPosition(tx,0.005,tz);
+          inst.setMatrixAt(idx++,dm);
+        }
+        inst.count=idx;inst.instanceMatrix.needsUpdate=true;
+        scene.add(inst);
+      }
+
+      // Threshold strip at door (front wall)
+      scene.add(mk(new THREE.BoxGeometry(1.2,0.01,0.15),MS.marble,0,0.005,rL/2-0.3));
+
+      // ─── POMPEIAN FRESCO WALLS ───
+      const socleH=0.6, friezeH=0.8, mainH=rH-socleH-friezeH;
+      const pomRed=new THREE.MeshStandardMaterial({color:"#8B2500",roughness:0.7});
+      const pomBlack=new THREE.MeshStandardMaterial({color:"#1A1A18",roughness:0.65});
+      const pomOchre=new THREE.MeshStandardMaterial({color:"#C17040",roughness:0.7});
+      const pomCream=new THREE.MeshStandardMaterial({color:"#E8DCC8",roughness:0.7});
+      const pomFrieze=new THREE.MeshStandardMaterial({color:"#D4C8B0",roughness:0.75});
+      const panelMats=[pomRed,pomBlack,pomOchre];
+      const socle=new THREE.MeshStandardMaterial({color:"#1A1A18",roughness:0.6});
+
+      // Side walls
+      for(let s=-1;s<=1;s+=2){
+        const wx=s*(rW/2-0.01);
+        // socle zone
+        scene.add(mk(new THREE.BoxGeometry(0.01,socleH,rL-0.2),socle,wx,socleH/2,0));
+        // upper frieze
+        scene.add(mk(new THREE.BoxGeometry(0.01,friezeH,rL-0.2),pomFrieze,wx,rH-friezeH/2,0));
+        // frieze geometric border
+        scene.add(mk(new THREE.BoxGeometry(0.015,0.04,rL-0.3),MS.gold,wx,rH-friezeH,0));
+        // 3 main panels
+        const panelW=(rL-0.8)/3;
+        for(let pi=0;pi<3;pi++){
+          const pz=-rL/2+0.4+panelW*(pi+0.5);
+          const pMat=panelMats[(pi+(s>0?1:0))%3];
+          // recessed panel
+          scene.add(mk(new THREE.BoxGeometry(0.015,mainH-0.2,panelW-0.15),pMat,wx-s*0.008,socleH+mainH/2,pz));
+          // subtle border lines (not framed like a painting)
+          scene.add(mk(new THREE.BoxGeometry(0.016,0.015,panelW-0.12),pomCream,wx,socleH+0.1,pz));
+          scene.add(mk(new THREE.BoxGeometry(0.016,0.015,panelW-0.12),pomCream,wx,socleH+mainH-0.1,pz));
+          // pilaster between panels
+          if(pi<2){
+            scene.add(mk(new THREE.BoxGeometry(0.02,mainH+socleH,0.06),pomCream,wx,socleH/2+mainH/2,pz+panelW/2));
+          }
+        }
+      }
+      // Back wall (behind fireplace flanks)
+      for(let bSide=-1;bSide<=1;bSide+=2){
+        const bz=-rL/2+0.01;
+        const bpW=(rW/2-1.5);
+        if(bpW>0.3){
+          const bpX=bSide*(rW/2+1.5)/2;
+          scene.add(mk(new THREE.BoxGeometry(bpW,socleH,0.01),socle,bpX,socleH/2,bz));
+          scene.add(mk(new THREE.BoxGeometry(bpW,mainH-0.2,0.015),panelMats[bSide>0?0:2],bpX,socleH+mainH/2,bz+0.005));
+          scene.add(mk(new THREE.BoxGeometry(bpW,friezeH,0.01),pomFrieze,bpX,rH-friezeH/2,bz));
+        }
+      }
+      // Front wall
+      {
+        const fz=rL/2-0.01;
+        scene.add(mk(new THREE.BoxGeometry(rW-0.3,socleH,0.01),socle,0,socleH/2,fz));
+        scene.add(mk(new THREE.BoxGeometry(rW-0.3,friezeH,0.01),pomFrieze,0,rH-friezeH/2,fz));
+        const fpW=(rW-0.6)/2;
+        for(let fi=0;fi<2;fi++){
+          const fpx=-rW/2+0.3+fpW*(fi+0.5);
+          scene.add(mk(new THREE.BoxGeometry(fpW-0.15,mainH-0.2,0.015),panelMats[fi],fpx,socleH+mainH/2,fz-0.005));
+        }
+      }
+
+      // ─── AMPHORA DECORATIONS (4) ───
+      const ampMat=new THREE.MeshStandardMaterial({color:"#B87040",roughness:0.65});
+      const ampPositions:[number,number,number,number][]=[
+        [-rW/2+0.5,0,rL/2-0.5,0.55],
+        [rW/2-0.5,0,-rL/2+0.8,0.65],
+        [-0.9,0,-rL/2+0.5,0.5],
+        [0.9,0,-rL/2+0.5,0.6]
+      ];
+      for(const [ax,_ay,az,ah] of ampPositions){
+        const neckH=ah*0.2, bodyH=ah*0.7, lipH=ah*0.1;
+        // body (tapered)
+        scene.add(mk(new THREE.CylinderGeometry(ah*0.18,ah*0.22,bodyH,10),ampMat,ax,bodyH/2,az));
+        // neck
+        scene.add(mk(new THREE.CylinderGeometry(ah*0.08,ah*0.15,neckH,8),ampMat,ax,bodyH+neckH/2,az));
+        // lip
+        scene.add(mk(new THREE.CylinderGeometry(ah*0.12,ah*0.08,lipH,8),ampMat,ax,bodyH+neckH+lipH/2,az));
+        // handles (2 torus handles)
+        for(let hs=-1;hs<=1;hs+=2){
+          const handle=new THREE.Mesh(new THREE.TorusGeometry(ah*0.1,0.012,6,12),ampMat);
+          handle.position.set(ax+hs*ah*0.22,bodyH+neckH*0.3,az);
+          handle.rotation.y=hs*Math.PI/4;
+          scene.add(handle);
+        }
+      }
+
+      // ─── OIL LAMP ON TABLE ───
+      const lampX=0, lampZ2=rL/2-3.5-1.7, lampY=0.56;
+      const bronzeLamp=MS.bronze;
+      // dish
+      scene.add(mk(new THREE.CylinderGeometry(0.06,0.05,0.025,10),bronzeLamp,lampX,lampY,lampZ2));
+      // handle (back)
+      scene.add(mk(new THREE.CylinderGeometry(0.01,0.01,0.08,4),bronzeLamp,lampX-0.06,lampY+0.02,lampZ2));
+      // nozzle (front)
+      scene.add(mk(new THREE.CylinderGeometry(0.008,0.015,0.06,4),bronzeLamp,lampX+0.07,lampY,lampZ2));
+      // emissive warm glow
+      scene.add(mk(new THREE.SphereGeometry(0.012,4,4),new THREE.MeshBasicMaterial({color:"#FFAA44"}),lampX+0.09,lampY+0.02,lampZ2));
+      // point light
+      const oilLight=new THREE.PointLight("#FF9930",0.3,3);oilLight.position.set(lampX+0.09,lampY+0.05,lampZ2);scene.add(oilLight);
+
+      // ─── ROMAN CEILING BEAMS ───
+      const beamCount=7;
+      const beamSpacing=rL/(beamCount+1);
+      for(let bi=1;bi<=beamCount;bi++){
+        const bz3=-rL/2+bi*beamSpacing;
+        scene.add(mk(new THREE.BoxGeometry(rW-0.3,0.14,0.1),MS.dkW,0,rH-0.07,bz3));
       }
     }
 

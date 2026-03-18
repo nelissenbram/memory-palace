@@ -5,6 +5,7 @@ import type { EraMatSet, StyleEra } from "./eraMaterials";
 /**
  * Creates a locked wing inlay panel — a decorative stone panel with an arch outline
  * and a circular seal element. Used in the entrance hall between wing doors.
+ * Note: For corridor room doors, see the niche implementation in CorridorScene.
  */
 export function createWingInlay(era: StyleEra, mats: EraMatSet): THREE.Group {
   const group = new THREE.Group();

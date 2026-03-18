@@ -69,7 +69,7 @@ export default function MemoryPalace(){
   const isMobile = useIsMobile();
 
   // ── Stores ──
-  const { profileLoading, onboarded, firstWing, styleEra,
+  const { profileLoading, onboarded, firstWing, styleEra, bustTextureUrl,
     loadProfile, finishOnboarding, setStyleEra } = useUserStore();
   const { view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim, roomLayouts,
     setHovWing, setHovDoor, enterWing, enterEntrance, enterCorridor, enterRoom, setRoomLayout, exitToPalace, exitToCorridor, exitToEntrance } = usePalaceStore();
@@ -296,7 +296,7 @@ export default function MemoryPalace(){
       <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
       <div style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
         {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===0?"__entrance__":null} styleEra={styleEra||"roman"}/>}
-        {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else enterCorridor(wingId);}} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={()=>setShowBustBuilder(true)}/>}
+        {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else enterCorridor(wingId);}} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={()=>setShowBustBuilder(true)} bustTextureUrl={bustTextureUrl}/>}
         {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)}/>}
         {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined} styleEra={styleEra||"roman"}/>}
       </div>
@@ -396,6 +396,7 @@ export default function MemoryPalace(){
               { icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: ()=>setShowGallery(true), hidden: allRoomMems.length===0 },
               { icon: "\u{1F91D}", label: "Share Room", action: ()=>setShowSharing(true) },
               { icon: "\u{1F4E6}", label: "Mass Import", action: ()=>setShowMassImport(true) },
+              { icon: "\u{1F399}\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) },
             ]}
           />;
         }
@@ -550,8 +551,8 @@ export default function MemoryPalace(){
         onClick={()=>setShowUpgradePrompt(false)}>
         <div onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:18,padding:"32px 36px",maxWidth:380,textAlign:"center",boxShadow:"0 8px 40px rgba(0,0,0,.18)"}}>
           <div style={{fontSize:40,marginBottom:12}}>{"🔒"}</div>
-          <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,marginBottom:8}}>Locked Wing</h3>
-          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,lineHeight:1.5,marginBottom:20}}>Upgrade to unlock additional wings and rooms for your palace.</p>
+          <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,marginBottom:8}}>Locked Room</h3>
+          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,lineHeight:1.5,marginBottom:20}}>Upgrade to unlock additional rooms for your palace.</p>
           <button onClick={()=>setShowUpgradePrompt(false)}
             style={{fontFamily:T.font.body,fontSize:15,fontWeight:600,padding:"12px 32px",borderRadius:10,border:"none",
               background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer"}}>
