@@ -41,9 +41,10 @@ export interface PostProcessingConfig {
 
 const SCENE_PRESETS: Record<string, PostProcessingConfig> = {
   exterior: {
-    bloom: { luminanceThreshold: 0.4, luminanceSmoothing: 0.4, intensity: 1.2 },
-    vignette: { darkness: 0.5, offset: 0.25 },
+    bloom: { luminanceThreshold: 0.35, luminanceSmoothing: 0.45, intensity: 1.4 },
+    vignette: { darkness: 0.55, offset: 0.22 },
     ssao: { intensity: 1.5, radius: 0.06, bias: 0.02, samples: 16 },
+    dof: { focusDistance: 0.035, focalLength: 0.06, bokehScale: 2.5 },
   },
   entrance: {
     bloom: { luminanceThreshold: 0.35, luminanceSmoothing: 0.4, intensity: 1.0 },
