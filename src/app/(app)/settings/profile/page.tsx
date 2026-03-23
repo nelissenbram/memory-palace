@@ -392,10 +392,13 @@ export default function ProfilePage() {
               gridTemplateColumns: "1fr 1fr",
               gap: 10,
             }}>
-              {(["roman", "renaissance"] as const).map((era) => (
+              {(["roman", "renaissance"] as const).map((era) => {
+                const isComingSoon = era === "renaissance";
+                return (
                 <button
                   key={era}
                   onClick={async () => {
+                    if (isComingSoon) return;
                     setStyleEra(era);
                     await updateProfile({ styleEra: era });
                     showToast("Palace style updated. Reload to see changes.", "success");
@@ -403,25 +406,28 @@ export default function ProfilePage() {
                   style={{
                     padding: "14px 16px",
                     borderRadius: 12,
-                    border: `2px solid ${styleEra === era ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.cream}`,
-                    background: styleEra === era ? `${era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent}12` : T.color.linen,
-                    cursor: "pointer",
+                    border: `2px solid ${styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.cream}`,
+                    background: styleEra === era && !isComingSoon ? `${era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent}12` : T.color.linen,
+                    cursor: isComingSoon ? "default" : "pointer",
+                    opacity: isComingSoon ? 0.55 : 1,
                     textAlign: "left",
                     transition: "all .2s",
                     fontFamily: T.font.body,
                     fontSize: 14,
-                    fontWeight: styleEra === era ? 600 : 400,
-                    color: styleEra === era ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.charcoal,
+                    fontWeight: styleEra === era && !isComingSoon ? 600 : 400,
+                    color: styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.charcoal,
                   }}
                 >
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>
                     {era === "roman" ? "Republican Rome" : "Renaissance Florence"}
+                    {isComingSoon && <span style={{ fontSize: 11, fontWeight: 600, marginLeft: 8, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>Coming soon</span>}
                   </div>
                   <div style={{ fontSize: 12, fontWeight: 400, color: T.color.muted }}>
                     {era === "roman" ? "Marble atriums, mosaic floors" : "Frescoed galleries, coffered ceilings"}
                   </div>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

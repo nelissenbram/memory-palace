@@ -53,24 +53,32 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
         </h2>
         <div style={{display:"flex",flexDirection:isMobile?"column":"row",gap:16,width:"100%",maxWidth:520}}>
           {eraOptions.map(era=>{
-            const selected = styleEra === era.id;
+            const isComingSoon = era.id === "renaissance";
+            const selected = styleEra === era.id && !isComingSoon;
             const borderColor = selected ? (era.id === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.cream;
             return (
-              <button key={era.id} onClick={()=>setStyleEra(era.id)}
+              <button key={era.id} onClick={()=>{ if (!isComingSoon) setStyleEra(era.id); }}
                 style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:12,padding:16,borderRadius:16,
                   border:`3px solid ${borderColor}`,
-                  background:selected?`${borderColor}12`:T.color.linen,cursor:"pointer",transition:"all .25s",
+                  background:selected?`${borderColor}12`:T.color.linen,
+                  cursor:isComingSoon?"default":"pointer",
+                  opacity:isComingSoon?0.55:1,
+                  transition:"all .25s",
                   boxShadow:selected?"0 4px 20px rgba(0,0,0,.1)":"0 2px 8px rgba(0,0,0,.04)"}}>
                 <div style={{width:"100%",aspectRatio:"4/3",borderRadius:12,overflow:"hidden",
-                  background:era.fallbackColor,position:"relative"}}>
+                  background:era.fallbackColor,position:"relative",filter:isComingSoon?"grayscale(0.5)":"none"}}>
                   <img src={era.img} alt={t(era.id === "roman" ? "styleRoman" : "styleRenaissance")}
                     style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}
                     onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
                   {selected && <div style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:"50%",
                     background:borderColor,display:"flex",alignItems:"center",justifyContent:"center",
                     color:"#FFF",fontSize:16,fontWeight:700}}>{"\u2713"}</div>}
+                  {isComingSoon && <div style={{position:"absolute",bottom:8,left:"50%",transform:"translateX(-50%)",
+                    background:"rgba(0,0,0,.6)",color:"#FFF",fontFamily:T.font.body,fontSize:12,fontWeight:600,
+                    padding:"4px 14px",borderRadius:20,whiteSpace:"nowrap",letterSpacing:".5px",
+                    textTransform:"uppercase"}}>Coming soon</div>}
                 </div>
-                <div style={{fontFamily:T.font.display,fontSize:isMobile?18:20,fontWeight:600,color:T.color.charcoal}}>
+                <div style={{fontFamily:T.font.display,fontSize:isMobile?18:20,fontWeight:600,color:isComingSoon?T.color.muted:T.color.charcoal}}>
                   {t(era.id === "roman" ? "styleRoman" : "styleRenaissance")}
                 </div>
                 <div style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,lineHeight:1.4}}>

@@ -6,26 +6,40 @@ const SEGMENTS = 256;
 
 /**
  * Evaluate terrain height at any world (x, z) using the same formula as the mesh.
- * 4 octaves of sine/cosine + central Gaussian bump for the palace hilltop.
+ * 4 octaves of sine/cosine + central Gaussian plateau for the palace hilltop.
  */
 export function getHeightAt(x: number, z: number): number {
-  // Octave 1 — broad rolling hills
-  let h = Math.sin(x * 0.008) * Math.cos(z * 0.006) * 12;
-  // Octave 2
-  h += Math.sin(x * 0.018 + 1.3) * Math.cos(z * 0.014 + 0.7) * 5;
-  // Octave 3
-  h += Math.sin(x * 0.035 + 2.1) * Math.cos(z * 0.028 + 1.4) * 2.5;
-  // Octave 4 — fine detail
-  h += Math.sin(x * 0.07 + 0.5) * Math.cos(z * 0.06 + 3.0) * 1.0;
+  const r = Math.sqrt(x * x + z * z);
 
-  // Central Gaussian bump — palace hilltop (peaks at HILL_Y)
-  const r2 = (x * x + z * z);
-  const sigma = 60;
-  h += HILL_Y * Math.exp(-r2 / (2 * sigma * sigma));
+  // Rolling hills from layered sine/cosine (suppressed near palace)
+  const noiseMask = Math.min(1, Math.max(0, (r - 55) / 40)); // 0 inside r<55, ramps to 1 by r=95
+  let hills = 0;
+  hills += Math.sin(x * 0.008) * Math.cos(z * 0.006) * 10;
+  hills += Math.sin(x * 0.018 + 1.3) * Math.cos(z * 0.014 + 0.7) * 4;
+  hills += Math.sin(x * 0.035 + 2.1) * Math.cos(z * 0.028 + 1.4) * 2;
+  hills += Math.sin(x * 0.07 + 0.5) * Math.cos(z * 0.06 + 3.0) * 0.8;
+  hills *= noiseMask;
 
-  // Gentle overall bowl — edges slope down slightly
-  const edge = Math.sqrt(r2) / (SIZE * 0.5);
-  h -= edge * edge * 8;
+  // Central plateau — flat at HILL_Y, smooth falloff (wider sigma for larger flat area)
+  const sigma = 70;
+  const plateau = HILL_Y * Math.exp(-(r * r) / (2 * sigma * sigma));
+
+  // Combine: plateau dominates near center, hills dominate far away
+  let h = plateau + hills;
+
+  // Hard clamp: terrain is exactly HILL_Y inside courtyard radius (r < 42)
+  // Smooth blend between hard clamp and natural terrain from r=42 to r=55
+  if (r < 42) {
+    h = HILL_Y;
+  } else if (r < 55) {
+    const blend = (r - 42) / (55 - 42); // 0 at r=42, 1 at r=55
+    const smooth = blend * blend * (3 - 2 * blend); // smoothstep
+    h = HILL_Y * (1 - smooth) + h * smooth;
+  }
+
+  // Gentle bowl — edges slope down
+  const edge = r / (SIZE * 0.5);
+  h -= edge * edge * 6;
 
   return h;
 }
@@ -55,6 +69,7 @@ export function createTuscanTerrain(
   const colPeak = new THREE.Color("#C8A850"); // golden wheat
   const colValley = new THREE.Color("#7A8A48"); // green valley
   const colEdge = new THREE.Color("#D8C890"); // warm haze at edges
+  const colPlateau = new THREE.Color("#A8985A"); // warm golden for hilltop
   const tmpColor = new THREE.Color();
 
   for (let i = 0; i < pos.count; i++) {
@@ -63,12 +78,16 @@ export function createTuscanTerrain(
     const y = getHeightAt(x, z);
     pos.setY(i, y);
 
-    // Color: blend based on height + distance
-    const normalizedH = Math.max(0, Math.min(1, (y + 5) / 20)); // 0=valley, 1=peak
-    tmpColor.copy(colValley).lerp(colPeak, normalizedH);
-
-    // Fade to atmospheric haze at edges
     const dist = Math.sqrt(x * x + z * z);
+
+    // Near palace — warm golden plateau color
+    const plateauBlend = Math.max(0, 1 - dist / 80);
+    // Far — height-based wheat/valley blend
+    const normalizedH = Math.max(0, Math.min(1, (y + 5) / 18));
+    tmpColor.copy(colValley).lerp(colPeak, normalizedH);
+    tmpColor.lerp(colPlateau, plateauBlend * 0.6);
+
+    // Atmospheric haze at edges
     const edgeFade = Math.max(0, Math.min(1, (dist - 200) / 200));
     tmpColor.lerp(colEdge, edgeFade * 0.6);
 
