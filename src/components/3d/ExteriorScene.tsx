@@ -8,12 +8,15 @@ import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
+import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
 
 // ═══ EXTERIOR — Fantasy Castle ═══
 export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman"}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string}){
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
-  const camO=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camOT=useRef({theta:Math.PI*.25,phi:Math.PI*.28}),camD=useRef(90);
+  // Camera starts facing entrance (-Z side) with aqueduct visible behind it
+  // theta=PI*1.5 looks from -Z direction (south), phi controls elevation angle
+  const camO=useRef({theta:Math.PI*1.5,phi:Math.PI*.25}),camOT=useRef({theta:Math.PI*1.5,phi:Math.PI*.25}),camD=useRef(90);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
   const onRoomClickRef=useRef(onRoomClick);
@@ -26,7 +29,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
-    const scene=new THREE.Scene();scene.fog=new THREE.FogExp2("#D8CBB0",.0016);
+    const scene=new THREE.Scene();scene.fog=new THREE.FogExp2("#D8C090",.0018);
     // ── PHOTOREALISTIC TUSCAN GOLDEN HOUR SKY ──
     const skyGeo=new THREE.SphereGeometry(500,64,40);
     const skyC=document.createElement("canvas");skyC.width=4096;skyC.height=2048;
@@ -35,8 +38,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const skyG=skx.createLinearGradient(0,0,0,2048);
     skyG.addColorStop(0,"#0D1B38");skyG.addColorStop(.04,"#152848");skyG.addColorStop(.1,"#1E3A60");
     skyG.addColorStop(.18,"#2A5078");skyG.addColorStop(.26,"#3A6890");skyG.addColorStop(.34,"#5590B0");
-    skyG.addColorStop(.42,"#78B0C8");skyG.addColorStop(.5,"#98C8D8");skyG.addColorStop(.56,"#B8D8E0");
-    skyG.addColorStop(.62,"#D0E0E0");skyG.addColorStop(.68,"#E0DDD0");skyG.addColorStop(.74,"#E8D4B8");
+    skyG.addColorStop(.42,"#88A8B8");skyG.addColorStop(.5,"#A8BCC0");skyG.addColorStop(.56,"#C0C8B8");
+    skyG.addColorStop(.62,"#D8D0B8");skyG.addColorStop(.68,"#E4D0A8");skyG.addColorStop(.74,"#ECCA98");
     skyG.addColorStop(.8,"#F0C898");skyG.addColorStop(.86,"#ECA870");skyG.addColorStop(.91,"#E09058");
     skyG.addColorStop(.95,"#D07840");skyG.addColorStop(.98,"#C06830");skyG.addColorStop(1,"#A05828");
     skx.fillStyle=skyG;skx.fillRect(0,0,4096,2048);
@@ -139,8 +142,6 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const grassTex=loadGrassTextures([12,12]);
     const groundTex=loadGroundTextures([8,8]);
     const cropTex=loadCropTextures([6,6]);
-    const grassDispMap=loadDisplacementMap("/textures/pbr/grass/grass_disp_1k.jpg",[12,12]);
-    const groundDispMap=loadDisplacementMap("/textures/pbr/ground/ground_disp_1k.jpg",[8,8]);
     const whiteGravelTex=loadWhiteGravelTextures([4,4]);
     const roadTex=loadGravelRoadTextures([3,3]);
     const allTexSets: PBRTextureSet[]=[stoneTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex];
@@ -151,8 +152,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     el.appendChild(hovLabel);
 
     // Dramatic golden-hour lighting
-    scene.add(new THREE.HemisphereLight("#FFF0D8","#6A8858",0.5));
-    const sun=new THREE.DirectionalLight("#FFD898",2.8);sun.position.set(40,55,25);sun.castShadow=true;
+    scene.add(new THREE.HemisphereLight("#FFE8C8","#6A8858",0.6));
+    const sun=new THREE.DirectionalLight("#FFD080",3.2);sun.position.set(40,55,25);sun.castShadow=true;
     sun.shadow.mapSize.set(4096,4096);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
     sun.shadow.camera.left=-80;sun.shadow.camera.right=80;sun.shadow.camera.top=80;sun.shadow.camera.bottom=-80;sun.shadow.bias=-0.0003;scene.add(sun);
     const fill=new THREE.DirectionalLight("#B8C8E0",0.4);fill.position.set(-25,20,-15);scene.add(fill);
@@ -162,7 +163,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     const M={
       // Castle stones — warm cream/sandstone with normal maps
-      stone:new THREE.MeshStandardMaterial({color:"#E8DDD0",roughness:.7,metalness:.02,map:stoneTex.map,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:stoneTex.roughnessMap,aoMap:stoneTex.aoMap,aoMapIntensity:.5,envMapIntensity:.5}),
+      stone:new THREE.MeshStandardMaterial({color:"#E8D8C0",roughness:.7,metalness:.02,map:stoneTex.map,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:stoneTex.roughnessMap,aoMap:stoneTex.aoMap,aoMapIntensity:.5,envMapIntensity:.5}),
       stoneL:new THREE.MeshStandardMaterial({color:"#F2EAE0",roughness:.65,map:stoneTex.map,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:stoneTex.roughnessMap,envMapIntensity:.5}),
       stoneW:new THREE.MeshStandardMaterial({color:"#F0E4D4",roughness:.6,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.35,.35),roughnessMap:stoneTex.roughnessMap,envMapIntensity:.5}),
       stoneD:new THREE.MeshStandardMaterial({color:"#C8B8A4",roughness:.72,metalness:.04,map:stoneTex.map,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:stoneTex.roughnessMap,aoMap:stoneTex.aoMap,aoMapIntensity:.4}),
@@ -177,7 +178,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       roof:new THREE.MeshStandardMaterial({color:"#607858",roughness:.4,metalness:.2,envMapIntensity:.4}),
       roofD:new THREE.MeshStandardMaterial({color:"#506848",roughness:.45,metalness:.18}),
       roofSlate:new THREE.MeshStandardMaterial({color:"#708068",roughness:.35,metalness:.22,envMapIntensity:.5}),
-      tile:new THREE.MeshStandardMaterial({color:"#C07048",roughness:.55,metalness:.04}),
+      tile:new THREE.MeshStandardMaterial({color:"#C86848",roughness:.55,metalness:.04}),
       // Architectural — columns with normal maps
       col:new THREE.MeshStandardMaterial({color:"#F0E8DC",roughness:.35,metalness:.08,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2),envMapIntensity:.6}),
       marble:new THREE.MeshPhysicalMaterial({color:"#F4EEE4",roughness:.1,metalness:.05,clearcoat:.3,clearcoatRoughness:.15,envMapIntensity:.8,reflectivity:.6}),
@@ -259,22 +260,11 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       parent.add(wg);
     };
 
-    // ── TERRAIN — Palace sits on a prominent Tuscan hilltop ──
+    // ── TERRAIN — Continuous rolling Tuscan hills (single displaced mesh) ──
     const HILL_Y = 8; // Palace hill elevation
-    const hillMainMat=new THREE.MeshStandardMaterial({
-      map:grassTex.map,normalMap:grassTex.normalMap,normalScale:new THREE.Vector2(.6,.6),
-      roughnessMap:grassTex.roughnessMap,aoMap:grassTex.aoMap,aoMapIntensity:.3,
-      color:"#8AAA60",roughness:.86,envMapIntensity:.4,
+    const terrain = createTuscanTerrain(scene, {
+      cropMap: cropTex.map, cropNormal: cropTex.normalMap, cropRoughness: cropTex.roughnessMap,
     });
-    // Tall prominent hill under the palace
-    const hillMain=new THREE.Mesh(new THREE.CylinderGeometry(70,140,HILL_Y*2+14,64),hillMainMat);hillMain.position.set(0,HILL_Y-7-HILL_Y,0);hillMain.receiveShadow=true;scene.add(hillMain);
-    const plateauMat=new THREE.MeshStandardMaterial({
-      map:grassTex.map,normalMap:grassTex.normalMap,normalScale:new THREE.Vector2(.7,.7),
-      roughnessMap:grassTex.roughnessMap,
-      color:"#9ABC70",roughness:.84,envMapIntensity:.4,
-    });
-    // Flat plateau on top for palace
-    const plateau=new THREE.Mesh(new THREE.CylinderGeometry(65,72,4,64),plateauMat);plateau.position.set(0,HILL_Y-.5,0);plateau.receiveShadow=true;scene.add(plateau);
     // Cobblestone courtyard
     scene.add(mk(new THREE.CylinderGeometry(38,40,.12,48),M.pathD,0,HILL_Y+.03,0));
     scene.add(mk(new THREE.CylinderGeometry(36,37,.08,48),M.path,0,HILL_Y+.05,0));
@@ -496,7 +486,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const arnoMat = new THREE.MeshPhysicalMaterial({ color: "#5A8A7A", roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6, envMapIntensity: 1.0 });
       const arno = new THREE.Mesh(arnoGeo, arnoMat);
       arno.rotation.x = -Math.PI / 2;
-      arno.position.set(0, 0.1, -85);
+      arno.position.set(0, getHeightAt(0,-85)+0.1, -85);
       scene.add(arno);
 
       // Distant dome silhouette (Duomo-like)
@@ -997,35 +987,14 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // PHOTOREALISTIC TUSCAN LANDSCAPE — summery Val d'Orcia
     // ══════════════════════════════════════════════════════════
 
-    // Helper: atmospheric color — objects fade to blue-golden haze with distance
+    // Helper: atmospheric color — objects fade to warm golden haze with distance
     const atmosColor=(baseColor: string,dist: number)=>{
-      const c=new THREE.Color(baseColor);const haze=new THREE.Color("#D8CDB0");
+      const c=new THREE.Color(baseColor);const haze=new THREE.Color("#DDD0A0");
       const f=Math.min(1,Math.max(0,(dist-60)/400));
-      c.lerp(haze,f*.65);return c;
+      c.lerp(haze,f*.6);return c;
     };
 
-    // ── TERRAIN: PBR-textured Tuscan landscape with undulating valleys ──
-    // Inner grass terrain (near palace hilltop)
-    const innerTerrainGeo=new THREE.PlaneGeometry(250,250,128,128);
-    const innerTerrainMat=new THREE.MeshStandardMaterial({
-      map:grassTex.map,normalMap:grassTex.normalMap,normalScale:new THREE.Vector2(.8,.8),
-      roughnessMap:grassTex.roughnessMap,aoMap:grassTex.aoMap,aoMapIntensity:.4,
-      displacementMap:grassDispMap,displacementScale:2.0,
-      color:"#7A9850",roughness:.88,envMapIntensity:.4,
-    });
-    const innerTerrain=new THREE.Mesh(innerTerrainGeo,innerTerrainMat);
-    innerTerrain.rotation.x=-Math.PI/2;innerTerrain.position.set(0,-.8,0);innerTerrain.receiveShadow=true;scene.add(innerTerrain);
-
-    // Outer terrain (Val d'Orcia valley floor extending to horizon)
-    const outerTerrainGeo=new THREE.PlaneGeometry(1200,1200,64,64);
-    const outerTerrainMat=new THREE.MeshStandardMaterial({
-      map:groundTex.map,normalMap:groundTex.normalMap,normalScale:new THREE.Vector2(.5,.5),
-      roughnessMap:groundTex.roughnessMap,aoMap:groundTex.aoMap,aoMapIntensity:.3,
-      displacementMap:groundDispMap,displacementScale:4,
-      color:"#8A9A58",roughness:.92,envMapIntensity:.3,
-    });
-    const outerTerrain=new THREE.Mesh(outerTerrainGeo,outerTerrainMat);
-    outerTerrain.rotation.x=-Math.PI/2;outerTerrain.position.set(0,-3,0);outerTerrain.receiveShadow=true;scene.add(outerTerrain);
+    // (terrain already created above via createTuscanTerrain)
 
     // ── INSTANCED GRASS — dense wind-animated shader grass on the hilltop ──
     const grassSystem = createGrassSystem(scene, {
@@ -1033,72 +1002,69 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       radius: 90,
       innerRadius: 38,
       bladeHeight: 1.4,
-      baseColor: "#2A4018",
-      tipColor1: "#8AC870",
-      tipColor2: "#5A7038",
+      baseColor: "#4A5020",
+      tipColor1: "#B8A860",
+      tipColor2: "#8A8038",
       yOffset: HILL_Y,
     });
 
-    // ── ROLLING TUSCAN HILLS: dramatic undulating Val d'Orcia landscape ──
-    const hillLayers=[
-      {dist:350,count:22,rMin:80,rMax:180,hMin:5,hMax:14},// far — large sweeping hills
-      {dist:240,count:20,rMin:50,rMax:130,hMin:4,hMax:10},// mid-far
-      {dist:160,count:18,rMin:35,rMax:90,hMin:3,hMax:8},// mid
-      {dist:100,count:14,rMin:25,rMax:65,hMin:2,hMax:6},// near
-    ];
-    hillLayers.forEach((layer,li)=>{
-      for(let i=0;i<layer.count;i++){
-        const angle=((i/layer.count)+Math.random()*.1)*Math.PI*2;
-        const dist=layer.dist+Math.random()*60-30;
-        const hx=Math.cos(angle)*dist,hz=Math.sin(angle)*dist-40;
-        const hr=layer.rMin+Math.random()*(layer.rMax-layer.rMin);
-        const hh=layer.hMin+Math.random()*(layer.hMax-layer.hMin);
-        // Tuscan summer: golden-green hills with warm haze at distance
-        const isWheat=Math.random()>.2; // 80% wheat-golden hills
-        const hue=isWheat?44+Math.random()*18:95+Math.random()*25;
-        const sat=isWheat?38+Math.random()*18:32+li*4+Math.random()*10;
-        const light=isWheat?55+Math.random()*14:30+li*3+Math.random()*8;
-        const col=atmosColor(`hsl(${hue},${sat}%,${light}%)`,dist);
-        // Near/mid hills get grass PBR texture
-        const hillMat=li>=2?new THREE.MeshStandardMaterial({
-          map:isWheat?cropTex.map:grassTex.map,
-          normalMap:isWheat?cropTex.normalMap:grassTex.normalMap,
-          normalScale:new THREE.Vector2(.4,.4),
-          roughnessMap:isWheat?cropTex.roughnessMap:grassTex.roughnessMap,
-          color:col,roughness:.84,envMapIntensity:.3,
-        }):new THREE.MeshStandardMaterial({color:col,roughness:.88,envMapIntensity:.2});
-        const hm=new THREE.Mesh(new THREE.SphereGeometry(hr,24,16),hillMat);
-        hm.position.set(hx,-hr+hh+Math.random()*2,hz);hm.scale.y=.07+Math.random()*.05;
-        hm.receiveShadow=true;scene.add(hm);
-      }
-    });
+    // ── PALACE CYPRESS RING — tall cypresses surrounding the villa ──
+    const palaceCypressMat=new THREE.MeshStandardMaterial({color:"#1E3A18",roughness:.85});
+    for(let ci=0;ci<18;ci++){
+      const ca=(ci/18)*Math.PI*2+Math.random()*.15;
+      const cr=38+Math.random()*12;
+      const ccx=Math.cos(ca)*cr,ccz=Math.sin(ca)*cr;
+      const cch=8+Math.random()*3;
+      const ccBaseY=getHeightAt(ccx,ccz);
+      scene.add(mk(new THREE.CylinderGeometry(.18,.25,cch*.2,5),M.barkD,ccx,ccBaseY+cch*.1,ccz));
+      const ccCone=new THREE.Mesh(new THREE.ConeGeometry(.65,cch,6),palaceCypressMat);
+      ccCone.position.set(ccx,ccBaseY+cch*.55,ccz);ccCone.castShadow=true;scene.add(ccCone);
+    }
 
-    // ── PATCHWORK FIELDS: Tuscan summer — golden wheat dominates, some green, some plowed ──
+    // ── NEAR-PALACE VINEYARD — organized rows on south-east slope ──
+    const vineRowMat=new THREE.MeshStandardMaterial({color:"#3A5828",roughness:.84});
+    for(let row=0;row<14;row++){
+      const vx=35+row*2.2;const vz=35+Math.sin(row*.3)*3;
+      const vBaseY=getHeightAt(vx,vz);
+      const vr=mk(new THREE.BoxGeometry(.35,.6,16),vineRowMat,vx,vBaseY+.3,vz);
+      vr.rotation.y=.15;scene.add(vr);
+    }
+
+    // ── COURTYARD BOXWOOD HEDGES ──
+    const boxwoodMat=new THREE.MeshStandardMaterial({color:"#2A4A1E",roughness:.88});
+    for(let hi=0;hi<24;hi++){
+      const ha=(hi/24)*Math.PI*2;
+      const hx2=Math.cos(ha)*34,hz2=Math.sin(ha)*34;
+      const hedge2=mk(new THREE.BoxGeometry(3,.8,.6),boxwoodMat,hx2,HILL_Y+.4,hz2);
+      hedge2.rotation.y=ha+Math.PI/2;courtyardGroup.add(hedge2);
+    }
+
+    // ── PATCHWORK FIELDS: Tuscan summer — golden wheat blankets the landscape ──
     const cropDispMap=loadDisplacementMap("/textures/pbr/crop/crop_disp_1k.jpg",[4,4]);
-    // Authentic Tuscan summer: 80% golden wheat fields, some green, minimal plowed
-    const wheatTints=["#D8B858","#C8A848","#E0C060","#B8A040","#C8B050","#E4C868","#D0B048","#CCB258","#D4B450","#C0A048"];
-    const greenTints=["#6A8848","#5A7838","#708850","#607840"];
-    const earthTints=["#9A8868","#8A7858","#A08870","#7A6850"];
-    // Dense field coverage — 200 patches blanketing the landscape
-    for(let fi=0;fi<200;fi++){
+    // Sunny crop yellow palette — warm golden tints dominate
+    const wheatTints=["#D8B848","#C8A848","#E0C060","#B8A040","#C8B050","#E4C868","#D0B048","#CCB258","#D4B450","#C0A048","#DAC058","#C4A838","#E2C468","#D6B850","#CCAA48"];
+    const greenTints=["#8A9848","#7A8840","#909850"];
+    const earthTints=["#B0A070","#A09060","#B8A878"];
+    // VERY dense field coverage — 500 patches for a sea of golden wheat
+    for(let fi=0;fi<500;fi++){
       const angle=Math.random()*Math.PI*2;
-      const dist=70+Math.random()*400;
+      const dist=65+Math.random()*480;
       const fx=Math.cos(angle)*dist,fz=Math.sin(angle)*dist-40;
-      if(Math.sqrt(fx*fx+(fz+40)*(fz+40))<68)continue;
-      const fw=20+Math.random()*50,fl=14+Math.random()*35;
+      if(Math.sqrt(fx*fx+(fz+40)*(fz+40))<62)continue;
+      const fw=18+Math.random()*55,fl=12+Math.random()*40;
       const d=Math.sqrt(fx*fx+fz*fz);
-      // 80% golden wheat, 12% green crop, 8% plowed earth
+      // 90% golden wheat, 6% green crop, 4% plowed earth
       const fieldType=Math.random();
       let fieldMat: THREE.MeshStandardMaterial;
-      if(fieldType<0.80){
+      if(fieldType<0.90){
         const tint=atmosColor(wheatTints[fi%wheatTints.length],d);
         fieldMat=new THREE.MeshStandardMaterial({
           map:cropTex.map,normalMap:cropTex.normalMap,normalScale:new THREE.Vector2(.6,.6),
           roughnessMap:cropTex.roughnessMap,aoMap:cropTex.aoMap,aoMapIntensity:.3,
           displacementMap:cropDispMap,displacementScale:0.8,
-          color:tint,roughness:.92,envMapIntensity:.1, // matte, not shiny
+          color:tint,roughness:.92,envMapIntensity:.1,
         });
-      }else if(fieldType<0.92){
+      }else if(fieldType<0.96){
         const tint=atmosColor(greenTints[fi%greenTints.length],d);
         fieldMat=new THREE.MeshStandardMaterial({
           map:grassTex.map,normalMap:grassTex.normalMap,normalScale:new THREE.Vector2(.5,.5),
@@ -1115,7 +1081,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       }
       const fieldGeo=new THREE.PlaneGeometry(fw,fl,16,16);
       const fm=new THREE.Mesh(fieldGeo,fieldMat);
-      fm.rotation.x=-Math.PI/2;fm.position.set(fx,.2+Math.random()*.5,fz);fm.rotation.z=Math.random()*.5-.25;
+      fm.rotation.x=-Math.PI/2;fm.position.set(fx,getHeightAt(fx,fz)+.2,fz);fm.rotation.z=Math.random()*.5-.25;
       fm.receiveShadow=true;scene.add(fm);
     }
 
@@ -1132,7 +1098,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         const rx=vx+Math.cos(vRot)*row*1.8,rz=vz+Math.sin(vRot)*row*1.8;
         const rowLen=14+Math.random()*10;
         const vCol=atmosColor(vineM[row%2].color.getStyle(),Math.sqrt(rx*rx+rz*rz));
-        const rm=mk(new THREE.BoxGeometry(.35,.7,rowLen),new THREE.MeshStandardMaterial({color:vCol,roughness:.84}),rx,.35,rz);
+        const rm=mk(new THREE.BoxGeometry(.35,.7,rowLen),new THREE.MeshStandardMaterial({color:vCol,roughness:.84}),rx,getHeightAt(rx,rz)+.35,rz);
         rm.rotation.y=vRot;scene.add(rm);
       }
     }
@@ -1171,9 +1137,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const d=Math.sqrt(cx2*cx2+cz*cz);
       const ch=4+Math.random()*6;
       const cCol=atmosColor(`hsl(${128+Math.random()*12},${40+Math.random()*10}%,${20+Math.random()*8}%)`,d);
-      scene.add(mk(new THREE.CylinderGeometry(.1,.18,ch*.18,5),M.barkD,cx2,ch*.09,cz));
-      const cone=new THREE.Mesh(new THREE.ConeGeometry(.4+Math.random()*.2,ch,6),new THREE.MeshStandardMaterial({color:cCol,roughness:.85}));
-      cone.position.set(cx2,ch*.55,cz);cone.castShadow=d<150;scene.add(cone);
+      const cyBaseY=getHeightAt(cx2,cz);
+      scene.add(mk(new THREE.CylinderGeometry(.15,.25,ch*.18,5),M.barkD,cx2,cyBaseY+ch*.09,cz));
+      const cone=new THREE.Mesh(new THREE.ConeGeometry(.5+Math.random()*.25,ch,6),new THREE.MeshStandardMaterial({color:cCol,roughness:.85}));
+      cone.position.set(cx2,cyBaseY+ch*.55,cz);cone.castShadow=d<150;scene.add(cone);
     });
 
     // ── OLIVE GROVES: silver-green, gnarled ──
@@ -1183,9 +1150,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       if(Math.sqrt(ox*ox+oz*oz)<48)continue;
       const d=Math.sqrt(ox*ox+oz*oz);
       const oCol=atmosColor(`hsl(${102+Math.random()*18},${22+Math.random()*18}%,${36+Math.random()*12}%)`,d);
-      scene.add(mk(new THREE.CylinderGeometry(.12,.2,2,5),M.bark,ox,1,oz));
+      const olBaseY=getHeightAt(ox,oz);
+      scene.add(mk(new THREE.CylinderGeometry(.12,.2,2,5),M.bark,ox,olBaseY+1,oz));
       const cn=new THREE.Mesh(new THREE.SphereGeometry(1.8+Math.random()*.8,8,7),new THREE.MeshStandardMaterial({color:oCol,roughness:.84}));
-      cn.position.set(ox,2.8+Math.random()*.3,oz);cn.scale.set(1,.4,1);cn.castShadow=d<120;scene.add(cn);
+      cn.position.set(ox,olBaseY+2.8+Math.random()*.3,oz);cn.scale.set(1,.4,1);cn.castShadow=d<120;scene.add(cn);
     }
 
     // ── STONE PINES (umbrella pines) ──
@@ -1196,9 +1164,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const d=Math.sqrt(px*px+pz*pz);
       const ph=5+Math.random()*4;
       const pCol=atmosColor("#3A6830",d);
-      scene.add(mk(new THREE.CylinderGeometry(.18,.28,ph,6),M.bark,px,ph/2,pz));
+      const pnBaseY=getHeightAt(px,pz);
+      scene.add(mk(new THREE.CylinderGeometry(.18,.28,ph,6),M.bark,px,pnBaseY+ph/2,pz));
       const canopy=new THREE.Mesh(new THREE.SphereGeometry(2.5+Math.random()*1.2,10,8),new THREE.MeshStandardMaterial({color:pCol,roughness:.82}));
-      canopy.position.set(px,ph+.8,pz);canopy.scale.set(1,.28,1);canopy.castShadow=d<130;scene.add(canopy);
+      canopy.position.set(px,pnBaseY+ph+.8,pz);canopy.scale.set(1,.28,1);canopy.castShadow=d<130;scene.add(canopy);
     }
 
     // ── FARMHOUSES & VILLAS: warm stone, terracotta roofs, shutters ──
@@ -1209,30 +1178,31 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const d=Math.sqrt(fx*fx+fz*fz);
       const fh=2+Math.random()*2.5;const fw=3.5+Math.random()*3;const fd=fw*.65+Math.random();
       const wallCol=atmosColor(`hsl(${28+Math.random()*10},${18+Math.random()*12}%,${78+Math.random()*10}%)`,d);
+      const farmBaseY=getHeightAt(fx,fz);
       // Main building
-      scene.add(mk(new THREE.BoxGeometry(fw,fh,fd),new THREE.MeshStandardMaterial({color:wallCol,roughness:.78}),fx,fh/2+.3,fz));
+      scene.add(mk(new THREE.BoxGeometry(fw,fh,fd),new THREE.MeshStandardMaterial({color:wallCol,roughness:.78}),fx,farmBaseY+fh/2+.3,fz));
       // Terracotta roof — slight overhang
       const roofCol=atmosColor("#C07048",d);
-      const rf=mk(new THREE.BoxGeometry(fw+.8,.25,fd+.6),new THREE.MeshStandardMaterial({color:roofCol,roughness:.6}),fx,fh+.5,fz);
+      const rf=mk(new THREE.BoxGeometry(fw+.8,.25,fd+.6),new THREE.MeshStandardMaterial({color:roofCol,roughness:.6}),fx,farmBaseY+fh+.5,fz);
       rf.rotation.z=.08+Math.random()*.06;scene.add(rf);
       // Chimney
       if(Math.random()>.4){
-        scene.add(mk(new THREE.BoxGeometry(.4,1.2,.4),new THREE.MeshStandardMaterial({color:wallCol,roughness:.75}),fx+fw*.3,fh+1,fz));
+        scene.add(mk(new THREE.BoxGeometry(.4,1.2,.4),new THREE.MeshStandardMaterial({color:wallCol,roughness:.75}),fx+fw*.3,farmBaseY+fh+1,fz));
       }
       // Shutters (tiny boxes on walls)
       const shutterCol=atmosColor(`hsl(${140+Math.random()*40},${25+Math.random()*15}%,${30+Math.random()*15}%)`,d);
       for(let wi=0;wi<2;wi++){
-        scene.add(mk(new THREE.BoxGeometry(fw*.15,.25,.03),new THREE.MeshStandardMaterial({color:shutterCol,roughness:.7}),fx-fw*.25+wi*fw*.5,fh*.6,fz+fd/2+.02));
+        scene.add(mk(new THREE.BoxGeometry(fw*.15,.25,.03),new THREE.MeshStandardMaterial({color:shutterCol,roughness:.7}),fx-fw*.25+wi*fw*.5,farmBaseY+fh*.6,fz+fd/2+.02));
       }
       // Extension wing on larger farms
       if(Math.random()>.55){
         const eh=fh*.7,ew=fw*.6;
-        scene.add(mk(new THREE.BoxGeometry(ew,eh,fd*.8),new THREE.MeshStandardMaterial({color:wallCol,roughness:.78}),fx+fw*.5+ew*.4,eh/2+.3,fz));
-        scene.add(mk(new THREE.BoxGeometry(ew+.5,.2,fd*.8+.4),new THREE.MeshStandardMaterial({color:roofCol,roughness:.6}),fx+fw*.5+ew*.4,eh+.5,fz));
+        scene.add(mk(new THREE.BoxGeometry(ew,eh,fd*.8),new THREE.MeshStandardMaterial({color:wallCol,roughness:.78}),fx+fw*.5+ew*.4,farmBaseY+eh/2+.3,fz));
+        scene.add(mk(new THREE.BoxGeometry(ew+.5,.2,fd*.8+.4),new THREE.MeshStandardMaterial({color:roofCol,roughness:.6}),fx+fw*.5+ew*.4,farmBaseY+eh+.5,fz));
       }
       // Warm window glow
       if(d<250){
-        const wl=new THREE.PointLight("#FFE0A0",.15,8);wl.position.set(fx,fh*.6,fz+fd/2+1);scene.add(wl);
+        const wl=new THREE.PointLight("#FFE0A0",.15,8);wl.position.set(fx,farmBaseY+fh*.6,fz+fd/2+1);scene.add(wl);
       }
     });
 
@@ -1248,7 +1218,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         roughnessMap:whiteGravelTex.roughnessMap,aoMap:whiteGravelTex.aoMap,aoMapIntensity:.35,
         color:col,roughness:.94,envMapIntensity:.12,
       });
-      const y=yPos!==undefined?yPos:.18;
+      const y=yPos!==undefined?yPos:getHeightAt(x,z)+.18;
       const m=new THREE.Mesh(geo,mat);
       m.rotation.x=-Math.PI/2;m.position.set(x,y,z);m.rotation.z=rotY;
       m.receiveShadow=true;scene.add(m);
@@ -1288,8 +1258,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Ground-level section continuing south in a gentle curve
     for(let ri=0;ri<20;ri++){
       const rz=-82-ri*3.5;
-      const rx=Math.sin(ri*.12)*6; // gentle S-curve once on flat ground
-      mkStrada(rx,rz,4,4.5,Math.sin(ri*.12)*.12*.12);
+      const rx=Math.sin(ri*.12)*6;
+      mkStrada(rx,rz,4,4.5,Math.sin(ri*.12)*.12*.12,getHeightAt(rx,rz)+.18);
     }
 
     // Main strada bianca — winding south through wheat fields
@@ -1380,26 +1350,27 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── STONE BRIDGE over winding stream ──
     const bridgeZ=-85;
-    scene.add(mk(new THREE.BoxGeometry(7,.35,3.5),M.stoneD,18,.75,bridgeZ));
+    const bridgeBaseY=getHeightAt(18,bridgeZ);
+    scene.add(mk(new THREE.BoxGeometry(7,.35,3.5),M.stoneD,18,bridgeBaseY+.75,bridgeZ));
     // Arch support
-    scene.add(mk(new THREE.CylinderGeometry(.4,.5,1,8),M.stoneD,15,.5,bridgeZ));
-    scene.add(mk(new THREE.CylinderGeometry(.4,.5,1,8),M.stoneD,21,.5,bridgeZ));
+    scene.add(mk(new THREE.CylinderGeometry(.4,.5,1,8),M.stoneD,15,bridgeBaseY+.5,bridgeZ));
+    scene.add(mk(new THREE.CylinderGeometry(.4,.5,1,8),M.stoneD,21,bridgeBaseY+.5,bridgeZ));
     // Bridge walls
-    scene.add(mk(new THREE.BoxGeometry(.3,.5,3.5),M.stoneD,14.5,1.2,bridgeZ));
-    scene.add(mk(new THREE.BoxGeometry(.3,.5,3.5),M.stoneD,21.5,1.2,bridgeZ));
+    scene.add(mk(new THREE.BoxGeometry(.3,.5,3.5),M.stoneD,14.5,bridgeBaseY+1.2,bridgeZ));
+    scene.add(mk(new THREE.BoxGeometry(.3,.5,3.5),M.stoneD,21.5,bridgeBaseY+1.2,bridgeZ));
     // Winding stream — longer, more natural
     for(let si=0;si<30;si++){
       const sx=8+si*2.5+Math.sin(si*.3)*4;const sz=bridgeZ+Math.sin(si*.35)*6-si*.5;
       const sw=new THREE.Mesh(new THREE.BoxGeometry(2.5+Math.random()*.5,.04,2.2),M.water);
-      sw.position.set(sx,.12+Math.random()*.1,sz);sw.rotation.y=Math.atan2(Math.cos(si*.35)*6*.35,2.5)+Math.random()*.2;
+      sw.position.set(sx,getHeightAt(sx,sz)+.12,sz);sw.rotation.y=Math.atan2(Math.cos(si*.35)*6*.35,2.5)+Math.random()*.2;
       scene.add(sw);
     }
 
     // ── MEDIEVAL HILLTOP VILLAGES removed — Rolling Hills HDRI provides distant scenery ──
 
-    // ── SUNFLOWER/WHEAT FIELDS: textured golden patches ──
-    const sunflowerTones=["#D8B848","#C8A840","#E4C050","#B89838","#D0B048"];
-    for(let sf=0;sf<10;sf++){
+    // ── SUNFLOWER/WHEAT FIELDS: dense textured golden patches ──
+    const sunflowerTones=["#D8B848","#C8A840","#E4C050","#B89838","#D0B048","#DCC058","#C4A040","#E0C460"];
+    for(let sf=0;sf<25;sf++){
       const angle=Math.random()*Math.PI*2,dist=100+Math.random()*180;
       const sx=Math.cos(angle)*dist,sz=Math.sin(angle)*dist-30;
       if(Math.sqrt(sx*sx+(sz+30)*(sz+30))<80)continue;
@@ -1412,28 +1383,34 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         displacementMap:cropDispMap,displacementScale:0.5,
         color:sfCol,roughness:.92,envMapIntensity:.1,
       }));
-      sfm.rotation.x=-Math.PI/2;sfm.position.set(sx,.25,sz);sfm.rotation.z=Math.random()*.4;
+      sfm.rotation.x=-Math.PI/2;sfm.position.set(sx,getHeightAt(sx,sz)+.25,sz);sfm.rotation.z=Math.random()*.4;
       sfm.receiveShadow=true;scene.add(sfm);
     }
 
     // ── 3D WHEAT/GRAIN FIELDS: dense instanced stalks — Tuscan golden harvest ──
     const wheatFields: ReturnType<typeof createWheatField>[] = [];
-    // Many more wheat fields scattered across the landscape
+    // Dense wheat fields blanketing the landscape — Tuscan summer harvest
     const wheatPositions = [
-      // Near fields
+      // Near fields — dense coverage around palace
       [-70, -90, 40, 30], [80, -100, 35, 25], [-50, -140, 45, 35],
       [100, -80, 30, 22], [-110, -120, 40, 30], [60, -160, 35, 28],
       [-30, -110, 35, 25], [130, -130, 30, 22],
-      // Mid-distance fields
+      [50, -75, 32, 24], [-85, -85, 38, 28], [110, -110, 34, 26],
+      [-40, -70, 30, 22], [75, -130, 36, 28],
+      // Mid-distance fields — blanket coverage
       [-90, -200, 50, 35], [110, -190, 45, 30], [-140, -170, 45, 35],
       [70, -240, 40, 30], [-60, -260, 50, 35], [150, -210, 40, 28],
       [-170, -140, 40, 30], [40, -180, 35, 25],
-      // Far fields (fewer stalks for perf)
+      [-30, -220, 42, 32], [120, -240, 38, 28], [-100, -260, 48, 35],
+      [80, -200, 40, 30], [-150, -220, 44, 32], [160, -170, 36, 26],
+      // Far fields
       [-120, -300, 55, 40], [130, -280, 50, 35], [-50, -320, 45, 35],
       [90, -340, 40, 30], [-180, -250, 45, 32],
+      [-200, -300, 50, 38], [170, -310, 45, 32], [-80, -360, 48, 35],
+      [50, -380, 42, 30], [-160, -340, 50, 38],
     ];
-    // Add procedurally generated fields across wider area
-    for(let extra=0;extra<15;extra++){
+    // Add many procedurally generated fields across wider area
+    for(let extra=0;extra<35;extra++){
       const angle=Math.random()*Math.PI*2;
       const dist=120+Math.random()*250;
       const wx2=Math.cos(angle)*dist;
@@ -1449,6 +1426,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         stalkHeight: 1.4 + Math.random() * 0.9,
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
         headColor: `hsl(${40 + Math.random() * 12}, ${50 + Math.random() * 20}%, ${64 + Math.random() * 12}%)`,
+        getHeightAt,
       }));
     });
 
@@ -1460,7 +1438,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const wLen=8+Math.random()*20,wAng=Math.random()*Math.PI;
       const d=Math.sqrt(wx*wx+wz*wz);
       const wCol=atmosColor("#B0A888",d);
-      const wall=mk(new THREE.BoxGeometry(wLen,.5,.3),new THREE.MeshStandardMaterial({color:wCol,roughness:.9}),wx,.3,wz);
+      const wall=mk(new THREE.BoxGeometry(wLen,.5,.3),new THREE.MeshStandardMaterial({color:wCol,roughness:.9}),wx,getHeightAt(wx,wz)+.3,wz);
       wall.rotation.y=wAng;scene.add(wall);
     }
 
@@ -1485,14 +1463,17 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     orbG.setAttribute("position",new THREE.BufferAttribute(orbP,3));
     scene.add(new THREE.Points(orbG,new THREE.PointsMaterial({color:"#FFE8C0",size:.6,transparent:true,opacity:.12,blending:THREE.AdditiveBlending,depthWrite:false})));
 
-    // Subtle ground mist
-    const mistN=40;
+    // Valley mist — warm golden haze in low-lying terrain areas
+    const mistN=60;
     const mistMeshes: THREE.Mesh[]=[];
     for(let i=0;i<mistN;i++){
-      const mx=(Math.random()-.5)*200,mz=(Math.random()-.5)*200-30;
-      const mm=new THREE.Mesh(new THREE.PlaneGeometry(15+Math.random()*15,3+Math.random()*2),
-        new THREE.MeshBasicMaterial({color:"#E8E0D8",transparent:true,opacity:.04+Math.random()*.03,depthWrite:false,side:THREE.DoubleSide}));
-      mm.position.set(mx,.5+Math.random(),mz);mm.rotation.x=-Math.PI/2;mm.rotation.z=Math.random()*Math.PI;
+      const mx=(Math.random()-.5)*300,mz=(Math.random()-.5)*300-30;
+      const mh=getHeightAt(mx,mz);
+      // Only place mist in valleys (low terrain)
+      if(mh>3)continue;
+      const mm=new THREE.Mesh(new THREE.PlaneGeometry(18+Math.random()*18,3+Math.random()*2),
+        new THREE.MeshBasicMaterial({color:"#E8DCC0",transparent:true,opacity:.05+Math.random()*.03,depthWrite:false,side:THREE.DoubleSide}));
+      mm.position.set(mx,mh+.5+Math.random(),mz);mm.rotation.x=-Math.PI/2;mm.rotation.z=Math.random()*Math.PI;
       scene.add(mm);mistMeshes.push(mm);
     }
 
@@ -1736,8 +1717,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       for(let i=0;i<birdN;i++){bp[i*3]+=.02;bp[i*3+1]+=Math.sin(t*3+i)*.01;if(bp[i*3]>60)bp[i*3]=-60;}
       birdG.attributes.position.needsUpdate=true;
 
-      // Update grass wind animation
+      // Update grass and wheat wind animation
       grassSystem.update();
+      wheatFields.forEach(wf => wf.update());
 
       composer.render();
     };animate();
@@ -1800,8 +1782,6 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       allTexSets.forEach(disposePBRSet);
       grassSystem.dispose();
       wheatFields.forEach(wf => wf.dispose());
-      grassDispMap.dispose();
-      groundDispMap.dispose();
       cropDispMap.dispose();
       envMapProc.dispose();
       if(envMapHDRI)envMapHDRI.dispose();
