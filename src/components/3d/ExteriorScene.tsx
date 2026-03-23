@@ -506,7 +506,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralBodyMeshes = [];
 
     const vW = 20, vD = 18, vH = 7;
-    const ochreWall = new THREE.MeshStandardMaterial({ color: "#C4A265", roughness: 0.85 });
+    const ochreWall = new THREE.MeshStandardMaterial({ color: "#C4B49A", roughness: 0.88, metalness: 0, map: stoneTex.map, normalMap: stoneTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: stoneTex.roughnessMap, aoMap: stoneTex.aoMap, aoMapIntensity: 0.5, envMapIntensity: 0.4 });
     const gardenGreen = new THREE.MeshStandardMaterial({ color: "#4A7A3A", roughness: 0.9 });
     const waterMat = new THREE.MeshPhysicalMaterial({ color: "#4A8A8A", roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.55 });
 
@@ -887,33 +887,42 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     scene.add(courtyardGroup);
     // Helper to add to courtyard instead of scene for garden elements
     const cAdd = (m: THREE.Object3D) => { courtyardGroup.add(m); return m; };
+    // Helper: check if a world (x,z) position overlaps with any wing zone
+    // Wings radiate from center — each occupies a corridor of width ~8 from r=8 to r=40
+    const wingAngles: number[] = [];
+    const nWings = WINGS.length;
+    for (let i = 0; i < nWings; i++) {
+      const a = isRenaissance ? (i / nWings) * Math.PI * 2 : (i / nWings) * Math.PI * 2 + Math.PI;
+      wingAngles.push(a);
+    }
+    const isInWingZone = (x: number, z: number): boolean => {
+      const r = Math.sqrt(x * x + z * z);
+      if (r < 8 || r > 48) return false; // inside courtyard or outside wings
+      const ptAngle = Math.atan2(x, z); // angle from center
+      for (const wa of wingAngles) {
+        let diff = ptAngle - wa;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        if (Math.abs(diff) < 0.28) return true; // ~16° half-width corridor
+      }
+      return false;
+    };
 
     // Grand tiered fountain (3 levels) — positioned clear of wings
     const fX=0,fZ=-35;
-    // Bottom basin with decorative rim
+    // Bottom basin
     cAdd(mk(new THREE.CylinderGeometry(5,5.5,1,32),M.marble,fX,.5,fZ));
-    cAdd(mk(new THREE.TorusGeometry(5.2,.1,8,32),M.trim,fX,1.02,fZ)); // decorative rim ring
     cAdd(mk(new THREE.CylinderGeometry(4.5,4.5,.15,32),M.marbleVein,fX,1.05,fZ));
     const fW1=new THREE.Mesh(new THREE.CylinderGeometry(4.2,4.2,.08,32),M.water);fW1.position.set(fX,1.1,fZ);cAdd(fW1);
-    // Middle tier with rim
+    // Middle tier
     cAdd(mk(new THREE.CylinderGeometry(1,1.4,2.5,12),M.marble,fX,2.4,fZ));
-    cAdd(mk(new THREE.TorusGeometry(2.6,.06,6,20),M.trim,fX,3.68,fZ)); // decorative rim
     cAdd(mk(new THREE.CylinderGeometry(2.5,2.5,.15,20),M.marbleVein,fX,3.7,fZ));
     const fW2=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,.06,20),M.water);fW2.position.set(fX,3.75,fZ);cAdd(fW2);
-    // Top tier with rim
+    // Top tier
     cAdd(mk(new THREE.CylinderGeometry(.5,.7,1.8,8),M.marble,fX,4.6,fZ));
-    cAdd(mk(new THREE.TorusGeometry(1.25,.05,6,12),M.trim,fX,5.58,fZ)); // decorative rim
     cAdd(mk(new THREE.CylinderGeometry(1.2,1.2,.12,12),M.marbleVein,fX,5.6,fZ));
     const fW3=new THREE.Mesh(new THREE.CylinderGeometry(1,1,.06,12),M.water);fW3.position.set(fX,5.63,fZ);cAdd(fW3);
-    // Water splash effect (transparent spheres above top tier)
-    const splashMat=new THREE.MeshPhysicalMaterial({color:"#B8D8E8",transparent:true,opacity:.15,roughness:0,metalness:.05,envMapIntensity:.8});
-    for(let si=0;si<6;si++){
-      const sa=(si/6)*Math.PI*2;
-      const sr=.3+Math.random()*.2;
-      const splash=mk(new THREE.SphereGeometry(.08+Math.random()*.06,6,5),splashMat,fX+Math.cos(sa)*sr,5.85+Math.random()*.35,fZ+Math.sin(sa)*sr);
-      cAdd(splash);
-    }
-    // Sculptural finial
+    // Simple finial
     cAdd(mk(new THREE.CylinderGeometry(.2,.3,.8,8),M.bronze,fX,6.1,fZ));
     cAdd(mk(new THREE.SphereGeometry(.3,8,8),M.goldBright,fX,6.7,fZ));
 
@@ -925,7 +934,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const lavenderMat=new THREE.MeshStandardMaterial({color:"#7A6898",roughness:.82});
     const rosedustMat=new THREE.MeshStandardMaterial({color:"#B88A7A",roughness:.8});
     const ivoryFlower=new THREE.MeshStandardMaterial({color:"#E8E0D0",roughness:.78});
-    parterreData.forEach(([hx,hz])=>{
+    parterreData.filter(([hx,hz])=>!isInWingZone(hx,hz)).forEach(([hx,hz])=>{
       // Raised bed base
       cAdd(mk(new THREE.BoxGeometry(7,.7,5),hedgeDark,hx,.35,hz));
       cAdd(mk(new THREE.BoxGeometry(6.6,.1,4.6),hedgeMid,hx,.72,hz));
@@ -962,55 +971,22 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     cAdd(mk(new THREE.BoxGeometry(4,.3,.3),M.marble,fX,.38,fZ+11));
     const pool=new THREE.Mesh(new THREE.BoxGeometry(4.2,.08,21),M.waterDeep);pool.position.set(fX,.42,fZ);cAdd(pool);
 
-    // Topiary — conical, spiral, and ball shapes (multi-sphere clusters for organic look)
-    const topPositions=[[-10,-25,"cone"],[10,-25,"cone"],[-10,-45,"ball"],[10,-45,"ball"],[-26,-25,"spiral"],[26,-25,"spiral"],[-26,-45,"cone"],[26,-45,"cone"]];
-    topPositions.forEach(([tx,tz,shape]: any)=>{
-      // Proper pedestal with base moulding
-      cAdd(mk(new THREE.CylinderGeometry(.65,.7,.12,10),M.stoneD,tx,.06,tz));
-      cAdd(mk(new THREE.CylinderGeometry(.6,.65,.5,10),M.marble,tx,.33,tz));
-      cAdd(mk(new THREE.TorusGeometry(.62,.04,6,10),M.trim,tx,.58,tz)); // rim detail
-      cAdd(mk(new THREE.CylinderGeometry(.08,.12,1.6,6),M.barkD,tx,1.38,tz));
-      if(shape==="cone"){
-        // Cone with subtle ridge detail — overlapping tapered spheres
-        for(let ri=0;ri<5;ri++){
-          const t=ri/4;
-          const ry=2.2+t*2.2;
-          const rr=.55-.1*t;
-          const m=mk(new THREE.SphereGeometry(rr,8,6),ri%2===0?hedgeDark:hedgeMid,tx+(Math.random()-.5)*.06,ry,tz+(Math.random()-.5)*.06);
-          m.scale.set(1,.65,1);cAdd(m);
-        }
-        // Pointed tip
-        cAdd(mk(new THREE.ConeGeometry(.15,.6,6),hedgeDark,tx,4.6,tz));
-      }else if(shape==="ball"){
-        // Multi-sphere cluster (3-5 overlapping spheres)
-        const offsets=[[0,0,0],[.15,.1,.1],[-.12,.08,-.1],[.08,-.1,.12],[-.1,-.05,-.08]];
-        offsets.forEach(([ox,oy,oz])=>{
-          const s=mk(new THREE.SphereGeometry(.5+Math.random()*.15,8,7),Math.random()>.5?hedgeDark:hedgeMid,tx+ox,2.7+oy,tz+oz);
-          s.scale.set(1,.9,1);cAdd(s);
-        });
-      }else{
-        // Spiral: two stacked multi-sphere balls
-        const lower=mk(new THREE.SphereGeometry(.55,8,7),hedgeDark,tx,2.5,tz);
-        lower.scale.set(1,.65,1);cAdd(lower);
-        cAdd(mk(new THREE.SphereGeometry(.45,7,6),hedgeMid,tx+.08,2.5,tz-.06));
-        const upper=mk(new THREE.SphereGeometry(.4,8,7),hedgeMid,tx,3.4,tz);
-        upper.scale.set(1,.65,1);cAdd(upper);
-        cAdd(mk(new THREE.SphereGeometry(.3,7,6),hedgeDark,tx-.06,3.45,tz+.05));
-      }
+    // Simple potted plants — rustic terracotta pots with low greenery
+    const potPositions2=[[-10,-35],[10,-35],[-10,-45],[10,-45]];
+    potPositions2.filter(([tx,tz]: any)=>!isInWingZone(tx,tz)).forEach(([tx,tz]: any)=>{
+      cAdd(mk(new THREE.CylinderGeometry(.4,.3,.6,8),M.tile,tx,.3,tz));
+      const bush=mk(new THREE.SphereGeometry(.5,7,6),hedgeDark,tx,.8,tz);
+      bush.scale.set(1,.6,1);cAdd(bush);
     });
 
-    // Stone urns on pedestals
-    for(const[ux,uz]of[[-8,-25],[8,-25],[-8,-45],[8,-45],[-20,-25],[20,-25],[-20,-45],[20,-45]]){
-      cAdd(mk(new THREE.BoxGeometry(.5,.5,.5),M.marble,ux,.25,uz));
-      cAdd(mk(new THREE.BoxGeometry(.6,.1,.6),M.trim,ux,.52,uz));
-      cAdd(mk(new THREE.CylinderGeometry(.18,.25,.7,8),M.marble,ux,.9,uz));
-      cAdd(mk(new THREE.CylinderGeometry(.12,.18,.4,8),M.bronze,ux,1.35,uz));
-      cAdd(mk(new THREE.SphereGeometry(.2,6,6),M.flowerLav,ux+.1,1.6,uz));
-      cAdd(mk(new THREE.SphereGeometry(.15,6,6),M.flower,ux-.1,1.55,uz+.1));
+    // A few simple terracotta pots near paths
+    for(const[ux,uz]of[[-8,-35],[8,-35]].filter(([x,z])=>!isInWingZone(x,z))){
+      cAdd(mk(new THREE.CylinderGeometry(.2,.28,.5,8),M.tile,ux,.25,uz));
+      cAdd(mk(new THREE.SphereGeometry(.18,6,5),hedgeDark,ux,.55,uz));
     }
 
     // Stone benches
-    for(const[bx,bz]of[[-13,-35],[13,-35]]){
+    for(const[bx,bz]of[[-13,-35],[13,-35]].filter(([x,z])=>!isInWingZone(x,z))){
       cAdd(mk(new THREE.BoxGeometry(2.5,.06,1),M.marble,bx,.54,bz));
       cAdd(mk(new THREE.BoxGeometry(2.5,.35,.7),M.marbleVein,bx,.18+.17,bz));
       for(const s of[-.9,.9])cAdd(mk(new THREE.BoxGeometry(.4,.35,.7),M.stoneD,bx+s,.18+.17,bz));
@@ -1032,7 +1008,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     cAdd(mk(new THREE.CylinderGeometry(48,52,.06,48),gravelApron,0,.02,0));
     const herbGreen=new THREE.MeshStandardMaterial({color:"#5A6A3A",roughness:.88});
     const herbSilver=new THREE.MeshStandardMaterial({color:"#8A9878",roughness:.85});
-    for(const[hx,hz]of[[20,12],[-20,12],[20,-12],[-20,-12]]){
+    for(const[hx,hz]of[[20,12],[-20,12],[20,-12],[-20,-12]].filter(([x,z])=>!isInWingZone(x,z))){
       cAdd(mk(new THREE.BoxGeometry(4,.2,2),M.stoneD,hx,.1,hz));
       cAdd(mk(new THREE.BoxGeometry(3.6,.15,1.6),herbGreen,hx,.2,hz));
       for(let hi=0;hi<3;hi++){
@@ -1040,12 +1016,13 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         hm.scale.set(1,.4,1);cAdd(hm);
       }
     }
-    // Aged stone path segments radiating from courtyard
+    // Aged stone path segments radiating from courtyard (skip wing zones)
     for(let r=0;r<6;r++){
       const pa=(r/6)*Math.PI*2;
       for(let s=0;s<8;s++){
         const pd=42+s*3;
         const px=Math.cos(pa)*pd,pz=Math.sin(pa)*pd;
+        if(isInWingZone(px,pz))continue;
         cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,px,.03,pz));
       }
     }
@@ -1076,44 +1053,50 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       yOffset: HILL_Y,
     });
 
-    // ── PALACE CYPRESS RING — tall organic cypresses surrounding the villa ──
-    // Helper: build a natural cypress from irregular foliage clusters (not smooth cones)
+    // ── PALACE CYPRESS RING — tall columnar cypresses (vertex-displaced cylinder) ──
     const buildCypress=(px: number,pz: number,h: number,baseY: number)=>{
-      // Thicker trunk with slight taper
-      scene.add(mk(new THREE.CylinderGeometry(.06,.16,h*.3,6),M.barkD,px,baseY+h*.15,pz));
-      // Small root flare at base
-      scene.add(mk(new THREE.CylinderGeometry(.14,.2,.3,6),M.barkD,px,baseY+.15,pz));
-      // 6-8 randomly-offset foliage clusters stacked vertically — pencil-shaped but bumpy
-      const clusters=6+Math.floor(Math.random()*3);
-      const lean=(Math.random()-.5)*.06; // slight random lean
-      for(let ci=0;ci<clusters;ci++){
-        const t=ci/(clusters-1); // 0=bottom, 1=top
-        const cy=baseY+h*.18+t*(h*.78);
-        // Width tapers from base to tip
-        const baseR=(.55-.3*t)*(0.85+Math.random()*.3);
-        // Random offset from center for organic irregularity
-        const ox=px+(Math.random()-.5)*.15+lean*ci;
-        const oz=pz+(Math.random()-.5)*.15;
-        // Darker at base, lighter at top — deep greens
-        const lightness=10+t*5+Math.random()*3;
-        const saturation=40+Math.random()*12;
-        const foliageMat=new THREE.MeshStandardMaterial({
-          color:new THREE.Color(`hsl(${128+Math.random()*14},${saturation}%,${lightness}%)`),
-          roughness:.9,
-        });
-        // Squashed sphere for organic blob shape
-        const clusterGeo=new THREE.SphereGeometry(baseR,7,6);
-        const cluster=new THREE.Mesh(clusterGeo,foliageMat);
-        cluster.position.set(ox,cy,oz);
-        cluster.scale.set(1+Math.random()*.2,.7+Math.random()*.5,1+Math.random()*.2);
-        cluster.castShadow=true;
-        scene.add(cluster);
+      // Trunk — thin tapered cylinder
+      scene.add(mk(new THREE.CylinderGeometry(.04,.12,h*.35,5),M.barkD,px,baseY+h*.175,pz));
+      // Foliage — single tapered cylinder with vertex noise for bumpy columnar silhouette
+      const radSegs=8,hSegs=12;
+      const cypGeo=new THREE.CylinderGeometry(0,1,1,radSegs,hSegs);
+      const pos=cypGeo.attributes.position;
+      const seed=px*137.3+pz*241.7; // deterministic seed per tree
+      for(let i=0;i<pos.count;i++){
+        const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
+        const t=(y+0.5); // 0=bottom, 1=top
+        // Columnar profile: wide middle, tapered top and bottom
+        const profile=Math.sin(t*Math.PI)*.85+.15;
+        const baseRadius=(.4+Math.random()*.08)*profile;
+        // Add noise for bumpy edges
+        const angle=Math.atan2(z,x);
+        const noise=Math.sin(angle*3+seed)*0.06+Math.sin(angle*7+seed*2)*0.03+Math.sin(t*12+seed)*0.04;
+        const r=Math.sqrt(x*x+z*z);
+        if(r>0.01){ // skip center vertices
+          const newR=baseRadius+noise;
+          pos.setX(i,x/r*newR);
+          pos.setZ(i,z/r*newR);
+        }
       }
+      cypGeo.computeVertexNormals();
+      // Dark green material — varies per tree
+      const lightness=10+Math.random()*4;
+      const foliageMat=new THREE.MeshStandardMaterial({
+        color:new THREE.Color(`hsl(${126+Math.random()*12},${35+Math.random()*10}%,${lightness}%)`),
+        roughness:.92,
+      });
+      const foliage=new THREE.Mesh(cypGeo,foliageMat);
+      const lean=(Math.random()-.5)*.04;
+      foliage.position.set(px+lean,baseY+h*.15+h*.42,pz);
+      foliage.scale.set(1,h*.82,1);
+      foliage.castShadow=true;
+      scene.add(foliage);
     };
     for(let ci=0;ci<18;ci++){
       const ca=(ci/18)*Math.PI*2+Math.random()*.15;
       const cr=38+Math.random()*12;
       const ccx=Math.cos(ca)*cr,ccz=Math.sin(ca)*cr;
+      if(isInWingZone(ccx,ccz))continue; // don't plant trees where wings are
       const cch=9+Math.random()*3;
       buildCypress(ccx,ccz,cch,getHeightAt(ccx,ccz));
     }
@@ -1132,61 +1115,19 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     for(let hi=0;hi<24;hi++){
       const ha=(hi/24)*Math.PI*2;
       const hx2=Math.cos(ha)*34,hz2=Math.sin(ha)*34;
+      if(isInWingZone(hx2,hz2))continue;
       const hedge2=mk(new THREE.BoxGeometry(3,.8,.6),boxwoodMat,hx2,.4,hz2);
       hedge2.rotation.y=ha+Math.PI/2;courtyardGroup.add(hedge2);
     }
 
-    // ── STONE BALUSTRADE around courtyard edge ──
-    const balustradeMat=new THREE.MeshStandardMaterial({color:"#D8CCBC",roughness:.72,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.25,.25)});
-    const balR=42; // just outside courtyard
-    const balPosts=36;
-    for(let bi=0;bi<balPosts;bi++){
-      const ba=(bi/balPosts)*Math.PI*2;
-      const bx=Math.cos(ba)*balR,bz=Math.sin(ba)*balR;
-      // Small column
-      cAdd(mk(new THREE.CylinderGeometry(.12,.15,1.1,6),balustradeMat,bx,.55,bz));
-      // Column cap
-      cAdd(mk(new THREE.BoxGeometry(.35,.08,.35),M.trim,bx,1.12,bz));
-    }
-    // Top rail (single torus)
-    const topRail=new THREE.Mesh(new THREE.TorusGeometry(balR,.06,4,48),balustradeMat);
-    topRail.rotation.x=-Math.PI/2;topRail.position.y=1.15;
-    cAdd(topRail);
-    // Bottom rail
-    const botRail=new THREE.Mesh(new THREE.TorusGeometry(balR,.05,4,48),balustradeMat);
-    botRail.rotation.x=-Math.PI/2;botRail.position.y=.08;
-    cAdd(botRail);
-
-    // ── IRON GATE at start of road to palace ──
-    const gateMat=new THREE.MeshStandardMaterial({color:"#3A3228",roughness:.35,metalness:.7});
-    const gateZ=-46;
-    // Gate pillars (stone)
-    for(const gx of[-2.8,2.8]){
-      cAdd(mk(new THREE.BoxGeometry(.8,3,.8),M.stoneD,gx,1.5,gateZ));
-      cAdd(mk(new THREE.BoxGeometry(1,.15,1),M.trim,gx,3.05,gateZ));
-      // Pillar finial (stone ball)
-      cAdd(mk(new THREE.SphereGeometry(.25,8,6),M.marble,gx,3.35,gateZ));
-    }
-    // Iron gate bars
-    for(let gi=-3;gi<=3;gi++){
-      const gx=gi*.7;
-      if(Math.abs(gx)>2.3)continue;
-      cAdd(mk(new THREE.CylinderGeometry(.03,.03,2.6,5),gateMat,gx,1.3,gateZ));
-    }
-    // Top rail
-    cAdd(mk(new THREE.BoxGeometry(4.8,.08,.08),gateMat,0,2.65,gateZ));
-    // Decorative arch
-    const gateArch=new THREE.Mesh(new THREE.TorusGeometry(1.2,.04,6,12,Math.PI),gateMat);
-    gateArch.position.set(0,2.7,gateZ);cAdd(gateArch);
-
-    // ── STONE WALL SEGMENTS along road near palace ──
-    const wallStoneMat=new THREE.MeshStandardMaterial({color:"#B8A888",roughness:.88,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3)});
-    for(let wi=0;wi<8;wi++){
-      const wz=-48-wi*3;
-      for(const wx of[-5.5,5.5]){
-        const wSeg=mk(new THREE.BoxGeometry(1.8,.65,.4),wallStoneMat,wx,.33,wz);
-        cAdd(wSeg);
-      }
+    // ── LOW DRY STONE WALL around courtyard edge (rustic, not fancy) ──
+    const dryWallMat=new THREE.MeshStandardMaterial({color:"#A09078",roughness:.92,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.4,.4)});
+    for(let wi=0;wi<20;wi++){
+      const wa=(wi/20)*Math.PI*2;
+      const wx=Math.cos(wa)*42,wz=Math.sin(wa)*42;
+      if(isInWingZone(wx,wz))continue;
+      const seg=mk(new THREE.BoxGeometry(4,.45,.35),dryWallMat,wx,.22,wz);
+      seg.rotation.y=wa+Math.PI/2;cAdd(seg);
     }
 
     // ── PATCHWORK FIELDS: Tuscan summer — golden wheat blankets the landscape ──
@@ -1291,14 +1232,12 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       if(d<180){
         buildCypress(cx2,cz,ch,cyBaseY);
       }else{
-        const cCol=atmosColor(`hsl(${128+Math.random()*12},${36+Math.random()*10}%,${12+Math.random()*6}%)`,d);
-        scene.add(mk(new THREE.CylinderGeometry(.08,.15,ch*.2,5),M.barkD,cx2,cyBaseY+ch*.1,cz));
-        // Two stacked cones instead of one for slightly better silhouette
-        const mat=new THREE.MeshStandardMaterial({color:cCol,roughness:.86});
-        const lower=new THREE.Mesh(new THREE.CylinderGeometry(.2,.45,ch*.6,6),mat);
-        lower.position.set(cx2,cyBaseY+ch*.35,cz);scene.add(lower);
-        const upper=new THREE.Mesh(new THREE.ConeGeometry(.28,ch*.45,6),mat);
-        upper.position.set(cx2,cyBaseY+ch*.72,cz);upper.castShadow=d<250;scene.add(upper);
+        const cCol=atmosColor(`hsl(${126+Math.random()*12},${32+Math.random()*10}%,${10+Math.random()*5}%)`,d);
+        scene.add(mk(new THREE.CylinderGeometry(.06,.12,ch*.2,5),M.barkD,cx2,cyBaseY+ch*.1,cz));
+        // Columnar silhouette — tapered cylinder (narrow, not cone-shaped)
+        const mat=new THREE.MeshStandardMaterial({color:cCol,roughness:.9});
+        const col=new THREE.Mesh(new THREE.CylinderGeometry(.12,.3,ch*.8,6),mat);
+        col.position.set(cx2,cyBaseY+ch*.5,cz);col.castShadow=d<250;scene.add(col);
       }
     });
 
@@ -1445,7 +1384,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── ROMAN AQUEDUCT — Pont du Gard-style two-tier structure ──
     if(!isRenaissance){
-    const aqZ=130; // behind palace (visible in background)
+    const aqZ=220; // behind palace, far in background
     const aqSpans=12;
     const aqSpacing=10;
     const aqPierW=2.2;
@@ -1504,6 +1443,19 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     scene.add(mk(new THREE.BoxGeometry(aqSpans*aqSpacing+aqPierW,.15,1.2),new THREE.MeshStandardMaterial({color:atmosColor("#B0A898",Math.abs(aqZ)),roughness:.75}),aqStartX+aqSpans*aqSpacing/2,aqTopY+.28,aqZ));
     for(const s of[-1,1]){
       scene.add(mk(new THREE.BoxGeometry(aqSpans*aqSpacing+aqPierW,.5,.15),new THREE.MeshStandardMaterial({color:atmosColor("#C4B8A8",Math.abs(aqZ)),roughness:.8}),aqStartX+aqSpans*aqSpacing/2,aqTopY+.5,aqZ+s*.65));
+    }
+    // Hills on each end that the aqueduct connects between
+    const hillMat=new THREE.MeshStandardMaterial({color:atmosColor("#8A9A58",Math.abs(aqZ)),roughness:.9});
+    const hillLeft=mk(new THREE.SphereGeometry(18,12,10),hillMat,aqStartX-12,0,aqZ);
+    hillLeft.scale.set(1,.5,1);scene.add(hillLeft);
+    const hillRight=mk(new THREE.SphereGeometry(20,12,10),hillMat,aqStartX+aqSpans*aqSpacing+15,0,aqZ);
+    hillRight.scale.set(1,.55,1);scene.add(hillRight);
+    // Some trees on the hills
+    for(const[hx,hs]of[[aqStartX-18,8],[aqStartX-8,7],[aqStartX+aqSpans*aqSpacing+10,9],[aqStartX+aqSpans*aqSpacing+22,7]]){
+      const tCol=atmosColor("#2A4A20",Math.sqrt(hx*hx+aqZ*aqZ));
+      scene.add(mk(new THREE.CylinderGeometry(.06,.1,hs*.2,5),M.barkD,hx,hs*.1+2,aqZ));
+      const tc=new THREE.Mesh(new THREE.CylinderGeometry(.15,.35,hs*.7,6),new THREE.MeshStandardMaterial({color:tCol,roughness:.88}));
+      tc.position.set(hx,hs*.45+2,aqZ);scene.add(tc);
     }
     }
 
