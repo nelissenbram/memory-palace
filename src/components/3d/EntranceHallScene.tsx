@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
@@ -8,22 +9,101 @@ import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadBustModel, type BustStyle, type BustGender } from "@/lib/3d/bustBuilder";
 
 // ═══ ENTRANCE HALL — Grand Roman Senate / Pantheon Chamber ═══
-const HALL_WINGS = ["family","travel","childhood","career","creativity"];
-const WING_LABELS: Record<string,string> = {
-  family: "FAMILY",
-  travel: "TRAVEL",
-  childhood: "CHILDHOOD",
-  career: "CAREER",
-  creativity: "CREATIVITY",
-};
+const HALL_DOORS = [
+  { id: "family",     label: "FAMILY",      locked: false },
+  { id: "locked1",    label: "", locked: true  },
+  { id: "travel",     label: "TRAVEL",      locked: false },
+  { id: "childhood",  label: "CHILDHOOD",   locked: false },
+  { id: "locked2",    label: "", locked: true  },
+  { id: "career",     label: "CAREER",      locked: false },
+  { id: "creativity", label: "CREATIVITY",  locked: false },
+];
+const NUM_HALL_DOORS = HALL_DOORS.length; // 7
 // Door angles pre-computed for column skip logic
-const DOOR_ANGLES = HALL_WINGS.map((_, i) => {
-  let a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+const DOOR_ANGLES = HALL_DOORS.map((_, i) => {
+  let a = (i / NUM_HALL_DOORS) * Math.PI * 2 - Math.PI / 2;
   while (a < 0) a += Math.PI * 2;
   return a;
 });
+
+/** Add 3D bust to scene — loads GLB torso + cameo head for user, full bust for others */
+function addBustToScene(
+  scene: THREE.Scene, bx: number, bz: number, bustAngle: number,
+  style: BustStyle,
+  pedestalTopY: number,
+  faceImageUrl?: string | null,
+  marblePBR?: { map?: THREE.Texture; normalMap?: THREE.Texture; roughnessMap?: THREE.Texture; aoMap?: THREE.Texture } | null,
+  gender?: BustGender | null,
+  renderer?: THREE.WebGLRenderer | null,
+) {
+  loadBustModel(style, gender || "male", faceImageUrl, marblePBR).then((bustGroup) => {
+    // Enable clipping on the renderer for torso clipping planes
+    if (renderer) renderer.localClippingEnabled = true;
+
+    // Measure raw model bounds
+    const box = new THREE.Box3().setFromObject(bustGroup);
+    const modelHeight = box.max.y - box.min.y;
+    const targetHeight = 1.1;
+    const scale = targetHeight / Math.max(modelHeight, 0.01);
+
+    // Center the model at origin first, then scale and position
+    const center = box.getCenter(new THREE.Vector3());
+    bustGroup.position.set(-center.x, -box.min.y, -center.z);
+
+    // Wrap in a container for clean positioning
+    const container = new THREE.Group();
+    container.add(bustGroup);
+    container.scale.set(scale, scale, scale);
+    container.position.set(bx, pedestalTopY, bz);
+    // Face toward hall center — lookAt points -Z toward center,
+    // but this model faces +Z natively, so rotate 180° after
+    container.lookAt(0, pedestalTopY, 0);
+    container.rotateY(Math.PI);
+    scene.add(container);
+  }).catch((err) => {
+    console.error("[Bust] FAILED to load:", err);
+  });
+}
+
+/** Create a name plaque texture for the pedestal */
+function createNamePlaqueTexture(name: string): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d")!;
+
+  // Subtle marble-like plaque background
+  ctx.fillStyle = "#E8E0D4";
+  ctx.fillRect(0, 0, 512, 128);
+
+  // Thin border
+  ctx.strokeStyle = "#B8A890";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(8, 8, 496, 112);
+
+  // Roman-style uppercase text with letter spacing
+  const displayName = name.toUpperCase();
+  // Add manual letter spacing for Roman feel
+  const spaced = displayName.split("").join("\u2009"); // thin space between letters
+  ctx.fillStyle = "#2a1a0a";
+  ctx.font = 'bold 38px "Times New Roman", "Palatino Linotype", Georgia, serif';
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const measured = ctx.measureText(spaced);
+  if (measured.width > 470) {
+    ctx.font = 'bold 26px "Times New Roman", "Palatino Linotype", Georgia, serif';
+  }
+  ctx.fillText(spaced, 256, 68);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 
 export default function EntranceHallScene({
   onDoorClick,
@@ -33,6 +113,10 @@ export default function EntranceHallScene({
   onInlayClick,
   onBustClick,
   bustTextureUrl,
+  bustModelUrl,
+  bustProportions,
+  bustName,
+  bustGender,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
@@ -41,6 +125,10 @@ export default function EntranceHallScene({
   onInlayClick?: () => void;
   onBustClick?: (pedestalIndex: number) => void;
   bustTextureUrl?: string | null;
+  bustModelUrl?: string | null;
+  bustProportions?: Record<string, number> | null;
+  bustName?: string | null;
+  bustGender?: string | null;
 }) {
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef = useRef<HTMLDivElement | null>(null);
@@ -95,8 +183,9 @@ export default function EntranceHallScene({
 
     // ── POST-PROCESSING (with SSAO) ──
     const composer = createPostProcessing(ren, scene, camera, "entrance", {
-      bloom: { luminanceThreshold: 0.45, luminanceSmoothing: 0.5, intensity: 0.8 },
-      vignette: { darkness: 0.4, offset: 0.3 },
+      ssao: false, // disabled for performance
+      bloom: { luminanceThreshold: 0.5, luminanceSmoothing: 0.6, intensity: 0.3 },
+      vignette: { darkness: 0.3, offset: 0.3 },
     });
 
     // ── REAL PBR TEXTURES (from Poly Haven) ──
@@ -137,7 +226,7 @@ export default function EntranceHallScene({
     const TOTAL_H = WALL_H + DOME_H;
     const OCULUS_R = 3.0;
     const NUM_COLS = 24;
-    const NUM_DOORS = 5;
+    const NUM_DOORS = NUM_HALL_DOORS;
 
     // ── DOOR DIMENSIONS (MASSIVE) ──
     const DOOR_H = 7.0;
@@ -151,7 +240,7 @@ export default function EntranceHallScene({
     const sunLight = new THREE.DirectionalLight("#FFF8E0", 3.5);
     sunLight.position.set(0, TOTAL_H + 10, 0);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.mapSize.set(1024, 1024);
     sunLight.shadow.camera.near = 1;
     sunLight.shadow.camera.far = 60;
     sunLight.shadow.camera.left = -12;
@@ -218,25 +307,32 @@ export default function EntranceHallScene({
     starMesh.rotation.x = -Math.PI / 2;
     starMesh.position.y = 0.009;
     scene.add(starMesh);
-    // Alternating floor tiles in rings
-    for (let r = 4; r < RADIUS - 1; r += 3) {
-      const segments = Math.floor(r * 2);
-      for (let s = 0; s < segments; s++) {
-        if (s % 2 === 0) continue;
-        const a1 = (s / segments) * Math.PI * 2;
-        const a2 = ((s + 1) / segments) * Math.PI * 2;
-        const shape = new THREE.Shape();
-        shape.moveTo(Math.cos(a1) * r, Math.sin(a1) * r);
-        shape.lineTo(Math.cos(a1) * (r + 2.5), Math.sin(a1) * (r + 2.5));
-        shape.lineTo(Math.cos(a2) * (r + 2.5), Math.sin(a2) * (r + 2.5));
-        shape.lineTo(Math.cos(a2) * r, Math.sin(a2) * r);
-        shape.closePath();
-        const tileGeo = new THREE.ShapeGeometry(shape);
-        const tile = new THREE.Mesh(tileGeo, MS.floorDark);
-        tile.rotation.x = -Math.PI / 2;
-        tile.position.y = 0.002;
-        tile.receiveShadow = true;
-        scene.add(tile);
+    // Alternating floor tiles in rings — merged into single geometry
+    {
+      const tileShapes: THREE.Shape[] = [];
+      for (let r = 4; r < RADIUS - 1; r += 3) {
+        const segments = Math.floor(r * 2);
+        for (let s = 0; s < segments; s++) {
+          if (s % 2 === 0) continue;
+          const a1 = (s / segments) * Math.PI * 2;
+          const a2 = ((s + 1) / segments) * Math.PI * 2;
+          const shape = new THREE.Shape();
+          shape.moveTo(Math.cos(a1) * r, Math.sin(a1) * r);
+          shape.lineTo(Math.cos(a1) * (r + 2.5), Math.sin(a1) * (r + 2.5));
+          shape.lineTo(Math.cos(a2) * (r + 2.5), Math.sin(a2) * (r + 2.5));
+          shape.lineTo(Math.cos(a2) * r, Math.sin(a2) * r);
+          shape.closePath();
+          tileShapes.push(shape);
+        }
+      }
+      const mergedTileGeos = tileShapes.map(s => new THREE.ShapeGeometry(s));
+      const mergedTile = mergeGeometries(mergedTileGeos);
+      if (mergedTile) {
+        const tileMesh = new THREE.Mesh(mergedTile, MS.floorDark);
+        tileMesh.rotation.x = -Math.PI / 2;
+        tileMesh.position.y = 0.002;
+        tileMesh.receiveShadow = true;
+        scene.add(tileMesh);
       }
     }
 
@@ -288,9 +384,9 @@ export default function EntranceHallScene({
     domeRim.position.y = WALL_H + 0.1;
     scene.add(domeRim);
 
-    // Dome coffered ribs (more of them for richer detail)
-    for (let i = 0; i < 24; i++) {
-      const angle = (i / 24) * Math.PI * 2;
+    // Dome coffered ribs
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
       const points: THREE.Vector3[] = [];
       for (let t = 0.06; t < 0.48; t += 0.015) {
         const phi = t * Math.PI;
@@ -303,7 +399,7 @@ export default function EntranceHallScene({
       scene.add(rib);
     }
     // Concentric dome rings (more rings)
-    for (let ring = 1; ring <= 6; ring++) {
+    for (let ring = 1; ring <= 4; ring++) {
       const phi = (ring / 8) * Math.PI / 2;
       const ringR = RADIUS * Math.sin(phi);
       const ringY = WALL_H + RADIUS * Math.cos(phi);
@@ -316,12 +412,12 @@ export default function EntranceHallScene({
       scene.add(domeRing);
     }
     // Coffer recesses (rosettes at intersections)
-    for (let ri = 1; ri <= 5; ri++) {
-      const phi = (ri / 8) * Math.PI / 2;
+    for (let ri = 1; ri <= 3; ri++) {
+      const phi = (ri / 6) * Math.PI / 2;
       const ringR = RADIUS * Math.sin(phi);
       const ringY = WALL_H + RADIUS * Math.cos(phi);
-      for (let i = 0; i < 24; i++) {
-        const angle = ((i + 0.5) / 24) * Math.PI * 2;
+      for (let i = 0; i < 12; i++) {
+        const angle = ((i + 0.5) / 12) * Math.PI * 2;
         const rosette = new THREE.Mesh(
           new THREE.CircleGeometry(0.25, 8),
           MS.goldDark
@@ -357,39 +453,23 @@ export default function EntranceHallScene({
     oculusRing.position.y = TOTAL_H - 0.3;
     scene.add(oculusRing);
 
-    // ── VOLUMETRIC LIGHT CONES from oculus (realistic overlapping cones) ──
-    const beamGeo = new THREE.ConeGeometry(8, 20, 32, 1, true);
+    // ── VOLUMETRIC LIGHT CONE from oculus ──
+    const beamGeo = new THREE.ConeGeometry(6, 22, 16, 1, true);
     const beamMesh = new THREE.Mesh(beamGeo, MS.lightBeam);
-    beamMesh.position.y = TOTAL_H - 10;
+    beamMesh.position.y = TOTAL_H - 11;
     scene.add(beamMesh);
-    // Medium cone
-    const beamGeo2 = new THREE.ConeGeometry(5.5, 22, 32, 1, true);
-    const beamMat2 = new THREE.MeshBasicMaterial({
-      color: "#FFF5E0", transparent: true, opacity: 0.04,
-      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
-    });
-    const beamMesh2 = new THREE.Mesh(beamGeo2, beamMat2);
-    beamMesh2.position.y = TOTAL_H - 11;
-    scene.add(beamMesh2);
-    // Tight core cone for bright center
-    const beamGeo3 = new THREE.ConeGeometry(3, 24, 32, 1, true);
-    const beamMat3 = new THREE.MeshBasicMaterial({
-      color: "#FFF8E8", transparent: true, opacity: 0.05,
-      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending,
-    });
-    const beamMesh3 = new THREE.Mesh(beamGeo3, beamMat3);
-    beamMesh3.position.y = TOTAL_H - 12;
-    scene.add(beamMesh3);
 
-    // ── COLUMNS (skip columns that would block doors) ──
+    // ── COLUMNS (skip columns that would block doors or exit portal) ──
     const colR = 0.4;
     const colH = WALL_H - 0.5;
     const COL_SKIP_THRESHOLD = 0.22; // skip columns within ~12.5° of a door center
+    const EXIT_PORTAL_ANGLE = Math.PI / 2;
+    const SKIP_ANGLES = [...DOOR_ANGLES, EXIT_PORTAL_ANGLE]; // skip near doors AND exit
     const validColAngles: number[] = [];
     for (let i = 0; i < NUM_COLS; i++) {
       let colAngle = (i / NUM_COLS) * Math.PI * 2;
       let skip = false;
-      for (const dA of DOOR_ANGLES) {
+      for (const dA of SKIP_ANGLES) {
         let diff = Math.abs(colAngle - dA);
         if (diff > Math.PI) diff = Math.PI * 2 - diff;
         if (diff < COL_SKIP_THRESHOLD) { skip = true; break; }
@@ -449,37 +529,33 @@ export default function EntranceHallScene({
     baseMeshI.instanceMatrix.needsUpdate = true;
     scene.add(baseMeshI);
 
-    // Column fluting
-    for (const angle of validColAngles) {
+    // Column fluting — simplified: just 2 rings per column (instanced)
+    const fluteRingGeo = new THREE.TorusGeometry(colR + 0.02, 0.03, 6, 16);
+    const fluteRingCount = NUM_VALID_COLS * 2;
+    const fluteRingInst = new THREE.InstancedMesh(fluteRingGeo, MS.marbleWarm, fluteRingCount);
+    const fMatrix = new THREE.Matrix4();
+    const fQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
+    validColAngles.forEach((angle, idx) => {
       const cx = Math.cos(angle) * (RADIUS - 0.8);
       const cz = Math.sin(angle) * (RADIUS - 0.8);
-      for (const ry of [0.7, colH * 0.33, colH * 0.66, colH - 0.5]) {
-        const ring2 = new THREE.Mesh(new THREE.TorusGeometry(colR + 0.02, 0.03, 6, 16), MS.marbleWarm);
-        ring2.rotation.x = Math.PI / 2;
-        ring2.position.set(cx, ry, cz);
-        scene.add(ring2);
+      for (let ri = 0; ri < 2; ri++) {
+        const ry = ri === 0 ? 0.7 : colH - 0.5;
+        fMatrix.compose(new THREE.Vector3(cx, ry, cz), fQuat, new THREE.Vector3(1, 1, 1));
+        fluteRingInst.setMatrixAt(idx * 2 + ri, fMatrix);
       }
-      for (let f = 0; f < 8; f++) {
-        const fa = (f / 8) * Math.PI * 2;
-        const fx = cx + Math.cos(fa) * (colR + 0.01);
-        const fz = cz + Math.sin(fa) * (colR + 0.01);
-        const fluteLine = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.015, 0.015, colH - 1.2, 4),
-          MS.marbleWarm
-        );
-        fluteLine.position.set(fx, colH / 2, fz);
-        scene.add(fluteLine);
-      }
-    }
+    });
+    fluteRingInst.instanceMatrix.needsUpdate = true;
+    scene.add(fluteRingInst);
 
-    // ── 5 GRAND DOORS (MASSIVE) ──
+    // ── 7 GRAND DOORS ──
     const doorMeshes: { mesh: THREE.Mesh; mat: THREE.MeshStandardMaterial; wingId: string; angle: number }[] = [];
 
-    HALL_WINGS.forEach((wingId, i) => {
+    HALL_DOORS.forEach((doorDef, i) => {
+      const wingId = doorDef.id;
       const wing = WINGS.find(ww => ww.id === wingId);
-      if (!wing) return;
-      const isUnlocked = wing.unlocked !== false; // default true
-      const accent = wing.accent;
+      const isPlaceholderLocked = doorDef.locked;
+      const isUnlocked = !isPlaceholderLocked && wing && wing.unlocked !== false;
+      const accent = wing?.accent;
       const angle = (i / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
       const dx = Math.cos(angle) * (RADIUS - 0.4);
       const dz = Math.sin(angle) * (RADIUS - 0.4);
@@ -489,13 +565,13 @@ export default function EntranceHallScene({
       // Lateral (perpendicular to door)
       const latN = new THREE.Vector3(Math.cos(angle + Math.PI / 2), 0, Math.sin(angle + Math.PI / 2));
 
-      // Door recess / alcove — recessed INTO the wall
-      const recessGeo = new THREE.BoxGeometry(DOOR_W + 0.8, DOOR_H + 0.6, 0.9);
+      // Door recess / alcove — flat plane only (no side walls that protrude)
+      const recessGeo = new THREE.PlaneGeometry(DOOR_W + 0.8, DOOR_H + 0.6);
       const recessMat = isUnlocked
-        ? new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 })
-        : new THREE.MeshStandardMaterial({ color: "#D8D0C4", roughness: 0.35, metalness: 0.0, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.15, .15) });
+        ? new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide })
+        : new THREE.MeshStandardMaterial({ color: "#D8D0C4", roughness: 0.35, metalness: 0.0, side: THREE.DoubleSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.15, .15) });
       const recessMesh = mk(recessGeo, recessMat,
-        dx - inN.x * 0.5, (DOOR_H + 0.6) / 2, dz - inN.z * 0.5);
+        dx - inN.x * 0.15, (DOOR_H + 0.6) / 2, dz - inN.z * 0.15);
       recessMesh.lookAt(0, (DOOR_H + 0.6) / 2, 0);
       scene.add(recessMesh);
 
@@ -528,10 +604,10 @@ export default function EntranceHallScene({
       lintel.position.set(dx + inN.x * 0.05, DOOR_H + 0.3, dz + inN.z * 0.05);
       lintel.lookAt(new THREE.Vector3(0, DOOR_H + 0.3, 0));
       scene.add(lintel);
-      // Bottom threshold
-      const threshGeo = new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.2, 0.12, frameDepth);
+      // Bottom threshold (raised above floor to avoid z-fighting)
+      const threshGeo = new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.2, 0.10, frameDepth);
       const thresh = new THREE.Mesh(threshGeo, MS.marbleDark);
-      thresh.position.set(dx + inN.x * 0.05, 0.06, dz + inN.z * 0.05);
+      thresh.position.set(dx + inN.x * 0.05, 0.08, dz + inN.z * 0.05);
       thresh.lookAt(new THREE.Vector3(0, 0.06, 0));
       scene.add(thresh);
 
@@ -763,7 +839,7 @@ export default function EntranceHallScene({
       scene.add(doorFaceSpot.target);
 
       // ── ELEGANT WING NAME LABEL (upper portion of door/niche) ──
-      {
+      if (doorDef.label) {
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 1024;
         labelCanvas.height = 192;
@@ -777,7 +853,7 @@ export default function EntranceHallScene({
           lctx.lineWidth = 3;
           lctx.strokeRect(12, 12, 1000, 168);
           // Wing name in refined serif
-          const eyeLabel = WING_LABELS[wingId] || wingId.toUpperCase();
+          const eyeLabel = doorDef.label;
           lctx.fillStyle = "#D4B878";
           lctx.font = "bold 100px Georgia, 'Times New Roman', serif";
           lctx.textAlign = "center";
@@ -799,7 +875,7 @@ export default function EntranceHallScene({
           lctx.lineWidth = 2;
           lctx.strokeRect(12, 12, 1000, 168);
           // Wing name — dimmer, with lock symbol
-          const eyeLabel = WING_LABELS[wingId] || wingId.toUpperCase();
+          const eyeLabel = doorDef.label;
           lctx.fillStyle = "#8A7E68";
           lctx.font = "bold 90px Georgia, 'Times New Roman', serif";
           lctx.textAlign = "center";
@@ -824,115 +900,95 @@ export default function EntranceHallScene({
       }
     });
 
-    // ── LOCKED INLAY PANELS — between wing doors ──
-    const inlayMeshes: THREE.Mesh[] = [];
-    for (let i = 0; i < NUM_DOORS; i++) {
-      const a1 = DOOR_ANGLES[i];
-      const a2 = DOOR_ANGLES[(i + 1) % NUM_DOORS];
-      // Midpoint angle between two consecutive doors
-      let midA = (a1 + a2) / 2;
-      if (a2 < a1) midA = ((a1 + a2 + Math.PI * 2) / 2) % (Math.PI * 2);
-      const inlR = RADIUS - 0.3;
-      const ix = Math.cos(midA) * inlR, iz = Math.sin(midA) * inlR;
-      const inlN = new THREE.Vector3(ix, 0, iz).normalize();
+    // (Inlay panels removed — locked doors are now part of the 7-door ring above)
+    const inlayMeshes: THREE.Mesh[] = []; // kept for click handler compatibility
 
-      // Stone panel (recessed)
-      const panelW = 2.0, panelH = 3.5, panelD = 0.12;
-      const panelMat = styleEra === "renaissance"
-        ? new THREE.MeshStandardMaterial({ color: "#9A9A8A", roughness: 0.5 })
-        : new THREE.MeshStandardMaterial({ color: "#D4C5A9", roughness: 0.65 });
-      const panel = mk(new THREE.BoxGeometry(panelD, panelH, panelW), panelMat,
-        ix - inlN.x * 0.1, panelH / 2, iz - inlN.z * 0.1);
-      panel.lookAt(0, panelH / 2, 0);
-      scene.add(panel);
-
-      // Arch outline at top
-      const archGeo = new THREE.TorusGeometry(0.7, 0.05, 8, 14, Math.PI);
-      const archMat = MS.gold;
-      const archMesh = new THREE.Mesh(archGeo, archMat);
-      archMesh.position.set(ix, panelH - 0.2, iz);
-      archMesh.lookAt(0, panelH - 0.2, 0);
-      scene.add(archMesh);
-
-      // Seal/lock circle
-      const sealMat = styleEra === "renaissance" ? MS.gold : MS.bronze;
-      const seal = new THREE.Mesh(new THREE.CircleGeometry(0.3, 20), sealMat);
-      seal.position.set(ix + inlN.x * 0.08, panelH * 0.45, iz + inlN.z * 0.08);
-      seal.lookAt(new THREE.Vector3(ix + inlN.x * 2, panelH * 0.45, iz + inlN.z * 2));
-      scene.add(seal);
-
-      // Invisible click target for inlay
-      const inlayClick = new THREE.Mesh(
-        new THREE.BoxGeometry(0.3, panelH, panelW),
-        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-      );
-      inlayClick.position.set(ix, panelH / 2, iz);
-      inlayClick.lookAt(0, panelH / 2, 0);
-      inlayClick.userData = { isInlay: true };
-      scene.add(inlayClick);
-      inlayMeshes.push(inlayClick);
+    // ── BUST PEDESTALS — 10 positions evenly spaced, avoiding doors ──
+    const bustMeshes: THREE.Mesh[] = [];
+    // Pre-compute 10 valid pedestal angles that don't overlap doors
+    const PEDESTAL_COUNT = 10;
+    const candidateAngles: number[] = [];
+    const totalSlots = PEDESTAL_COUNT + DOOR_ANGLES.length;
+    for (let i = 0; i < totalSlots * 2; i++) {
+      const a = (i / (totalSlots * 2)) * Math.PI * 2;
+      const tooClose = DOOR_ANGLES.some(da => {
+        let diff = Math.abs(a - da);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        return diff < Math.PI / 9;
+      });
+      if (!tooClose) candidateAngles.push(a);
+    }
+    // Pick PEDESTAL_COUNT evenly spaced from candidates
+    const pedestalAngles: number[] = [];
+    const step = Math.max(1, Math.floor(candidateAngles.length / PEDESTAL_COUNT));
+    for (let i = 0; i < candidateAngles.length && pedestalAngles.length < PEDESTAL_COUNT; i += step) {
+      pedestalAngles.push(candidateAngles[i]);
     }
 
-    // ── BUST PEDESTALS — between every 3rd column ──
-    const bustMeshes: THREE.Mesh[] = [];
-    const bustCount = 8;
-    let firstBustPlaced = false;
-    for (let bi = 0; bi < bustCount; bi++) {
-      const bustAngle = (bi / bustCount) * Math.PI * 2 + Math.PI / bustCount;
-      // Check we're not overlapping a door
-      const tooCloseToAny = DOOR_ANGLES.some(da => {
-        let diff = Math.abs(bustAngle - da);
-        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        return diff < Math.PI / 8;
-      });
-      if (tooCloseToAny) continue;
+    const bR = RADIUS - 1.8;
+    const bustStyle: BustStyle = styleEra === "renaissance" ? "renaissance" : "roman";
 
-      const bR = RADIUS - 2.5;
+    for (let bi = 0; bi < pedestalAngles.length; bi++) {
+      const bustAngle = pedestalAngles[bi];
       const bx = Math.cos(bustAngle) * bR, bz = Math.sin(bustAngle) * bR;
 
       // Pedestal base
-      scene.add(mk(new THREE.BoxGeometry(0.6, 0.2, 0.6), MS.marble, bx, 0.1, bz));
+      const pedBaseH = 0.15;
+      scene.add(mk(new THREE.BoxGeometry(0.6, pedBaseH, 0.6), MS.marble, bx, pedBaseH / 2, bz));
       // Pedestal column
-      scene.add(mk(new THREE.CylinderGeometry(0.2, 0.25, 1.4, 8), MS.marble, bx, 0.9, bz));
+      const pedColH = 0.7;
+      const pedColY = pedBaseH + pedColH / 2;
+      scene.add(mk(new THREE.CylinderGeometry(0.18, 0.22, pedColH, 8), MS.marble, bx, pedColY, bz));
       // Pedestal top
-      scene.add(mk(new THREE.BoxGeometry(0.5, 0.12, 0.5), MS.marble, bx, 1.66, bz));
+      const pedTopH = 0.1;
+      const pedTopY = pedBaseH + pedColH + pedTopH / 2;
+      scene.add(mk(new THREE.BoxGeometry(0.48, pedTopH, 0.48), MS.marble, bx, pedTopY, bz));
 
-      // Bust — simple head + shoulders
-      const bustMat = styleEra === "renaissance"
-        ? new THREE.MeshStandardMaterial({ color: "#7A6850", roughness: 0.3, metalness: 0.6, envMapIntensity: 0.8 })
-        : MS.bust;
-      // Shoulders
-      scene.add(mk(new THREE.CylinderGeometry(0.22, 0.28, 0.4, 8), bustMat, bx, 1.92, bz));
+      const pedestalTopY = pedBaseH + pedColH + pedTopH;
+      const isFirstBust = (bi === 0);
 
-      // Head — first bust gets custom texture if provided
-      const isFirstBust = !firstBustPlaced;
-      let headMat: THREE.Material = bustMat;
-      if (isFirstBust && bustTextureUrl) {
-        const bustTex = new THREE.TextureLoader().load(bustTextureUrl);
-        bustTex.colorSpace = THREE.SRGBColorSpace;
-        headMat = new THREE.MeshStandardMaterial({
-          map: bustTex,
-          color: "#D8D0C4",
-          roughness: 0.35,
-          metalness: 0.0,
-          envMapIntensity: 0.7,
+      // Name plaque on pedestal BASE, facing inward — like a museum label
+      if (isFirstBust && bustName) {
+        const plaqueTex = createNamePlaqueTexture(bustName);
+        const plaqueGeo = new THREE.PlaneGeometry(0.40, 0.12);
+        const plaqueMat = new THREE.MeshStandardMaterial({
+          map: plaqueTex,
+          roughness: 0.3,
+          metalness: 0.1,
+          side: THREE.DoubleSide,
         });
+        const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);
+        // Place on the pedestal base face, facing toward center
+        const toCenterLen = Math.sqrt(bx * bx + bz * bz);
+        const nDx = -bx / toCenterLen, nDz = -bz / toCenterLen;
+        plaque.position.set(
+          bx + nDx * 0.31,     // just on the face of the pedestal base
+          pedBaseH * 0.55,     // centered on the base height
+          bz + nDz * 0.31,
+        );
+        plaque.rotation.y = Math.atan2(nDx, nDz);
+        scene.add(plaque);
       }
-      const head = mk(new THREE.SphereGeometry(0.16, 10, 8), headMat, bx, 2.28, bz);
-      if (isFirstBust && bustTextureUrl) {
-        head.scale.set(1, 1.2, 0.9);
-      } else {
-        head.scale.set(1, 1.15, 0.95);
-      }
-      scene.add(head);
-      if (!firstBustPlaced) firstBustPlaced = true;
 
-      // Click target
+      // Bust — first pedestal gets user's photo, rest alternate male/female generic busts
+      const thisGender: BustGender = isFirstBust
+        ? ((bustGender as BustGender) || "male")
+        : (bi % 2 === 0 ? "male" : "female");
+
+      addBustToScene(
+        scene, bx, bz, bustAngle, bustStyle, pedestalTopY,
+        isFirstBust ? bustTextureUrl : null,
+        marbleTex,
+        thisGender,
+        ren,
+      );
+
+      // Click target — all busts are interactive
       const bustClick = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.35, 0.35, 1.8, 8),
+        new THREE.CylinderGeometry(0.35, 0.35, 1.5, 8),
         new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
       );
-      bustClick.position.set(bx, 1.6, bz);
+      bustClick.position.set(bx, pedestalTopY + 0.55, bz);
       bustClick.userData = { isBust: true, pedestalIndex: bi };
       scene.add(bustClick);
       bustMeshes.push(bustClick);
@@ -1319,11 +1375,12 @@ export default function EntranceHallScene({
 
       // ── Pompeian Wall Paintings (12 panels between columns) ──
       {
-        const dadoMat = new THREE.MeshStandardMaterial({ color: "#1A1A18", roughness: 0.5, metalness: 0.0 });
-        const pomRedMat = new THREE.MeshStandardMaterial({ color: "#8B2500", roughness: 0.45, metalness: 0.0 });
-        const ochreMat = new THREE.MeshStandardMaterial({ color: "#C17040", roughness: 0.45, metalness: 0.0 });
-        const blackPanelMat = new THREE.MeshStandardMaterial({ color: "#1A1A18", roughness: 0.4, metalness: 0.0 });
-        const friezeMat = new THREE.MeshStandardMaterial({ color: "#D8C8B0", roughness: 0.35, metalness: 0.0 });
+        // Authentic Pompeian palette
+        const dadoMat = new THREE.MeshStandardMaterial({ color: "#D0C8B8", roughness: 0.4, metalness: 0.0 }); // faux marble dado
+        const pomRedMat = new THREE.MeshStandardMaterial({ color: "#A42A2E", roughness: 0.45, metalness: 0.0 }); // Pompeian red
+        const ochreMat = new THREE.MeshStandardMaterial({ color: "#C9A961", roughness: 0.45, metalness: 0.0 }); // yellow ochre
+        const blackPanelMat = new THREE.MeshStandardMaterial({ color: "#2B2B2B", roughness: 0.4, metalness: 0.0 }); // Roman black
+        const friezeMat = new THREE.MeshStandardMaterial({ color: "#F0ECD8", roughness: 0.35, metalness: 0.0 }); // cream frieze
         const panelColors = [pomRedMat, ochreMat, blackPanelMat];
         const wallPanelR = RADIUS - 0.12;
 
@@ -1331,45 +1388,93 @@ export default function EntranceHallScene({
           const a1 = validColAngles[ci];
           const a2 = validColAngles[(ci + 1) % validColAngles.length];
           const aMid = (a1 + a2) / 2;
+          // Skip panels that overlap with doors or exit portal
+          const tooCloseToDoor = DOOR_ANGLES.some(da => {
+            let diff = Math.abs(aMid - da); if (diff > Math.PI) diff = Math.PI * 2 - diff;
+            return diff < 0.28; // ~16° clearance
+          });
+          const EXIT_A = Math.PI / 2;
+          let diffExit = Math.abs(aMid - EXIT_A); if (diffExit > Math.PI) diffExit = Math.PI * 2 - diffExit;
+          if (tooCloseToDoor || diffExit < 0.28) continue;
           const px = Math.cos(aMid) * wallPanelR;
           const pz = Math.sin(aMid) * wallPanelR;
 
           // Dado zone (bottom 0.8m)
-          const dado = mk(new THREE.BoxGeometry(0.04, 0.8, 2.0), dadoMat, px, 0.4, pz);
+          const dado = mk(new THREE.BoxGeometry(2.0, 0.8, 0.04), dadoMat, px, 0.4, pz);
           dado.lookAt(0, 0.4, 0);
           scene.add(dado);
 
           // Main panel (middle ~4m)
           const mainPanelMat = panelColors[ci % 3];
-          const mainPanel = mk(new THREE.BoxGeometry(0.04, 4.0, 2.0), mainPanelMat, px, 2.8, pz);
+          const mainPanel = mk(new THREE.BoxGeometry(2.0, 4.0, 0.04), mainPanelMat, px, 2.8, pz);
           mainPanel.lookAt(0, 2.8, 0);
           scene.add(mainPanel);
 
           // Gold frame border (thin strips around main panel)
           const frameThick = 0.05;
           // Top frame
-          const ft = mk(new THREE.BoxGeometry(0.05, frameThick, 2.1), MS.gold, px, 4.8, pz);
+          const ft = mk(new THREE.BoxGeometry(2.1, frameThick, 0.05), MS.gold, px, 4.8, pz);
           ft.lookAt(0, 4.8, 0);
           scene.add(ft);
           // Bottom frame
-          const fb = mk(new THREE.BoxGeometry(0.05, frameThick, 2.1), MS.gold, px, 0.8, pz);
+          const fb = mk(new THREE.BoxGeometry(2.1, frameThick, 0.05), MS.gold, px, 0.8, pz);
           fb.lookAt(0, 0.8, 0);
           scene.add(fb);
           // Left frame
-          const fl = mk(new THREE.BoxGeometry(0.05, 4.1, frameThick), MS.gold, px, 2.8, pz);
+          const fl = mk(new THREE.BoxGeometry(frameThick, 4.1, 0.05), MS.gold, px, 2.8, pz);
           fl.lookAt(0, 2.8, 0);
           fl.rotateY(Math.PI / 2);
           scene.add(fl);
           // Right frame
-          const fr = mk(new THREE.BoxGeometry(0.05, 4.1, frameThick), MS.gold, px, 2.8, pz);
+          const fr = mk(new THREE.BoxGeometry(frameThick, 4.1, 0.05), MS.gold, px, 2.8, pz);
           fr.lookAt(0, 2.8, 0);
           fr.rotateY(-Math.PI / 2);
           scene.add(fr);
 
           // Upper frieze (top 1m)
-          const frieze = mk(new THREE.BoxGeometry(0.04, 1.0, 2.0), friezeMat, px, 5.3, pz);
+          const frieze = mk(new THREE.BoxGeometry(2.0, 1.0, 0.04), friezeMat, px, 5.3, pz);
           frieze.lookAt(0, 5.3, 0);
           scene.add(frieze);
+        }
+      }
+
+      // ── Garland festoons between columns (authentic peristylium decoration) ──
+      {
+        const garlandMat = new THREE.MeshStandardMaterial({ color: "#4A6B3A", roughness: 0.6, metalness: 0.0 });
+        const garlandGoldMat = new THREE.MeshStandardMaterial({ color: "#C8A050", roughness: 0.3, metalness: 0.5 });
+        const garlandY = colH - 0.3; // hang from just below capitals
+        for (let ci = 0; ci < validColAngles.length; ci++) {
+          const a1 = validColAngles[ci];
+          const a2 = validColAngles[(ci + 1) % validColAngles.length];
+          // Skip garlands that cross door openings
+          const gMid = (a1 + a2) / 2;
+          const crossesDoor = DOOR_ANGLES.some(da => {
+            let diff = Math.abs(gMid - da); if (diff > Math.PI) diff = Math.PI * 2 - diff;
+            return diff < 0.25;
+          });
+          if (crossesDoor) continue;
+
+          const colRPos = RADIUS - 0.8;
+          const x1 = Math.cos(a1) * colRPos, z1 = Math.sin(a1) * colRPos;
+          const x2 = Math.cos(a2) * colRPos, z2 = Math.sin(a2) * colRPos;
+          // Catenary curve between columns
+          const pts: THREE.Vector3[] = [];
+          const segments = 12;
+          for (let s = 0; s <= segments; s++) {
+            const t = s / segments;
+            const x = x1 + (x2 - x1) * t;
+            const z = z1 + (z2 - z1) * t;
+            const sag = Math.sin(t * Math.PI) * 0.6; // droop amount
+            pts.push(new THREE.Vector3(x, garlandY - sag, z));
+          }
+          const garlandGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.06, 6, false);
+          scene.add(new THREE.Mesh(garlandGeo, garlandMat));
+          // Gold rosette knots at attachment points
+          for (const [px, pz] of [[x1, z1], [x2, z2]]) {
+            const rosette = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), garlandGoldMat);
+            rosette.position.set(px, garlandY, pz);
+            scene.add(rosette);
+          }
         }
       }
 
@@ -1384,6 +1489,12 @@ export default function EntranceHallScene({
           const a = validColAngles[ci];
           const aNext = validColAngles[(ci + 1) % validColAngles.length];
           const lAngle = (a + aNext) / 2;
+          // Skip if lamp would land on a door or exit portal
+          const tooCloseToOpening = SKIP_ANGLES.some(sa => {
+            let diff = Math.abs(lAngle - sa); if (diff > Math.PI) diff = Math.PI * 2 - diff;
+            return diff < 0.25;
+          });
+          if (tooCloseToOpening) continue;
           const lR = RADIUS - 0.35;
           const lx = Math.cos(lAngle) * lR, lz = Math.sin(lAngle) * lR;
           const lY = 3.2;
@@ -1475,8 +1586,8 @@ export default function EntranceHallScene({
         const OCULUS_R_LOCAL = OCULUS_R || 3.0;
         const cofferRingR = OCULUS_R_LOCAL + 2.5;
         const numCoffers = 12;
-        const cofferGeo = new THREE.BoxGeometry(1.2, 0.15, 1.8);
-        const cofferFrameGeo = new THREE.BoxGeometry(1.3, 0.06, 1.9);
+        const cofferGeo = new THREE.BoxGeometry(1.8, 0.15, 1.2);
+        const cofferFrameGeo = new THREE.BoxGeometry(1.9, 0.06, 1.3);
 
         for (let c = 0; c < numCoffers; c++) {
           const cAngle = (c / numCoffers) * Math.PI * 2;
@@ -1508,47 +1619,10 @@ export default function EntranceHallScene({
       }
     }
 
-    // ── STORAGE ROOM — small door in the wall ──
-    {
-      const srAngle = Math.PI / 2 + Math.PI / 5; // same position as old staircase
-      const srR = RADIUS - 0.1;
-      const srX = Math.cos(srAngle) * srR;
-      const srZ = Math.sin(srAngle) * srR;
-      const srDW = 1.0, srDH = 2.2; // smaller than wing doors
-
-      // Door recess
-      const srRecess = mk(new THREE.BoxGeometry(0.15, srDH, srDW + 0.1), MS.wall, srX, srDH / 2, srZ);
-      srRecess.lookAt(0, srDH / 2, 0);
-      scene.add(srRecess);
-
-      // Simple wooden door
-      const srDoorMat = MS.atticDoor.clone();
-      const srDoor = mk(new THREE.BoxGeometry(0.08, srDH - 0.1, srDW - 0.08), srDoorMat, srX, (srDH - 0.1) / 2, srZ);
-      srDoor.lookAt(0, (srDH - 0.1) / 2, 0);
-      scene.add(srDoor);
-      // Register as clickable door
-      doorMeshes.push({ mesh: srDoor, mat: srDoorMat, wingId: "attic", angle: srAngle });
-
-      // Small nameplate
-      const srPlq = document.createElement("canvas"); srPlq.width = 200; srPlq.height = 36;
-      const srPc = srPlq.getContext("2d")!;
-      srPc.fillStyle = "#5A4A38"; srPc.fillRect(0, 0, 200, 36);
-      srPc.fillStyle = "#C8A868"; srPc.fillRect(2, 2, 196, 32);
-      srPc.fillStyle = "#5A4A38"; srPc.fillRect(4, 4, 192, 28);
-      srPc.fillStyle = "#F0EAE0"; srPc.font = "bold 14px Georgia,serif"; srPc.textAlign = "center"; srPc.textBaseline = "middle";
-      srPc.fillText("Storage Room", 100, 18);
-      const srPtex = new THREE.CanvasTexture(srPlq); srPtex.colorSpace = THREE.SRGBColorSpace;
-      const srPlm = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.16), new THREE.MeshStandardMaterial({ map: srPtex, roughness: 0.4 }));
-      srPlm.position.set(srX, srDH + 0.2, srZ);
-      srPlm.lookAt(0, srDH + 0.2, 0);
-      scene.add(srPlm);
-
-      // Simple handle
-      scene.add(mk(new THREE.SphereGeometry(0.025, 6, 6), MS.bronze, srX - Math.sin(srAngle) * 0.06, 1.1, srZ + Math.cos(srAngle) * 0.06));
-    }
+    // Storage room removed — kept virtual (accessible via menu only)
 
     // ── DUST PARTICLES (upgraded: varied sizes, concentrated in beam, additive glow) ──
-    const dustN = 700;
+    const dustN = 300;
     const dustGeo = new THREE.BufferGeometry();
     const dustPos = new Float32Array(dustN * 3);
     const dustSizes = new Float32Array(dustN);
@@ -1571,50 +1645,115 @@ export default function EntranceHallScene({
     });
     scene.add(new THREE.Points(dustGeo, dustMat));
 
-    // ── EXIT PORTAL (back to exterior) ──
+    // ── GRAND EXIT PORTAL (back to exterior) — larger and more imposing than wing doors ──
     const exitAngle = Math.PI / 2;
-    const exitX = Math.cos(exitAngle) * (RADIUS - 0.5);
-    const exitZ = Math.sin(exitAngle) * (RADIUS - 0.5);
+    const exitX = Math.cos(exitAngle) * (RADIUS - 0.3);
+    const exitZ = Math.sin(exitAngle) * (RADIUS - 0.3);
+    const exitInN = new THREE.Vector3(-Math.cos(exitAngle), 0, -Math.sin(exitAngle));
+    const exitLatN = new THREE.Vector3(Math.cos(exitAngle + Math.PI / 2), 0, Math.sin(exitAngle + Math.PI / 2));
+    const EXIT_W = 4.0, EXIT_H = 8.5;
+
+    // Bright outdoor light plane (sky visible through opening)
     const portalGlow = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.2, 3.5),
-      new THREE.MeshBasicMaterial({ color: "#FFF8E0", transparent: true, opacity: 0.04, side: THREE.DoubleSide })
+      new THREE.PlaneGeometry(EXIT_W - 0.4, EXIT_H - 0.5),
+      new THREE.MeshBasicMaterial({ color: "#F0E8D0", transparent: true, opacity: 0.08, side: THREE.DoubleSide })
     );
-    portalGlow.position.set(exitX, 1.8, exitZ);
-    portalGlow.lookAt(0, 1.8, 0);
+    portalGlow.position.set(exitX, EXIT_H / 2, exitZ);
+    portalGlow.lookAt(0, EXIT_H / 2, 0);
     scene.add(portalGlow);
-    scene.add(mk(new THREE.BoxGeometry(0.15, 3.5, 0.15), MS.gold,
-      exitX + Math.cos(exitAngle + Math.PI / 2) * 1.1, 1.75, exitZ + Math.sin(exitAngle + Math.PI / 2) * 1.1));
-    scene.add(mk(new THREE.BoxGeometry(0.15, 3.5, 0.15), MS.gold,
-      exitX + Math.cos(exitAngle - Math.PI / 2) * 1.1, 1.75, exitZ + Math.sin(exitAngle - Math.PI / 2) * 1.1));
-    scene.add(mk(new THREE.BoxGeometry(2.4, 0.15, 0.15), MS.gold, exitX, 3.55, exitZ));
-    const plC = document.createElement("canvas");
-    plC.width = 240;
-    plC.height = 36;
-    const plx = plC.getContext("2d")!;
-    plx.fillStyle = "#C8A868";
-    plx.font = "bold 14px Georgia, serif";
-    plx.textAlign = "center";
-    plx.fillText("\u2190 Return to Exterior", 120, 24);
-    const plT = new THREE.CanvasTexture(plC);
-    plT.colorSpace = THREE.SRGBColorSpace;
-    const plLabel = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.4, 0.25),
-      new THREE.MeshBasicMaterial({ map: plT, transparent: true })
+
+    // Massive marble columns flanking the entrance (thicker than wing door frames)
+    const exitColR = 0.55;
+    for (const side of [-1, 1]) {
+      const cx = exitX + exitLatN.x * side * (EXIT_W / 2 + exitColR / 2);
+      const cz = exitZ + exitLatN.z * side * (EXIT_W / 2 + exitColR / 2);
+      // Column shaft
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(exitColR, exitColR * 1.08, EXIT_H - 1, 16), MS.marble);
+      shaft.position.set(cx, (EXIT_H - 1) / 2, cz);
+      shaft.castShadow = true;
+      scene.add(shaft);
+      // Corinthian capital
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(exitColR * 1.9, exitColR * 1.1, 0.7, 16), MS.gold);
+      cap.position.set(cx, EXIT_H - 0.65, cz);
+      scene.add(cap);
+      // Abacus
+      const ab = mk(new THREE.BoxGeometry(exitColR * 3.5, 0.15, exitColR * 3.5), MS.marbleWarm, cx, EXIT_H - 0.2, cz);
+      scene.add(ab);
+      // Base
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(exitColR * 1.4, exitColR * 1.6, 0.4, 16), MS.marbleDark);
+      base.position.set(cx, 0.2, cz);
+      scene.add(base);
+    }
+
+    // Grand arch above entrance (semicircular, larger than wing arches)
+    const exitArchW = EXIT_W / 2 + 0.5;
+    const exitArchH = 1.8;
+    const exitArchCurve = new THREE.EllipseCurve(0, 0, exitArchW, exitArchH, 0, Math.PI, false, 0);
+    const exitArchPoints = exitArchCurve.getPoints(36).map(p => new THREE.Vector3(p.x, p.y, 0));
+    const exitArchGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(exitArchPoints), 36, 0.14, 8, false);
+    const exitArch = new THREE.Mesh(exitArchGeo, MS.gold);
+    exitArch.position.set(exitX + exitInN.x * 0.1, EXIT_H, exitZ + exitInN.z * 0.1);
+    exitArch.lookAt(new THREE.Vector3(0, EXIT_H, 0));
+    exitArch.rotateY(Math.PI);
+    scene.add(exitArch);
+
+    // Keystone at arch apex
+    const exitKeystone = mk(new THREE.BoxGeometry(0.4, 0.5, 0.2), MS.goldDark,
+      exitX + exitInN.x * 0.3, EXIT_H + exitArchH, exitZ + exitInN.z * 0.3);
+    exitKeystone.lookAt(new THREE.Vector3(0, EXIT_H + exitArchH, 0));
+    scene.add(exitKeystone);
+
+    // Heavy marble lintel/entablature
+    const exitLintel = mk(new THREE.BoxGeometry(EXIT_W + 1.8, 0.5, 0.4), MS.marble,
+      exitX + exitInN.x * 0.05, EXIT_H + 0.05, exitZ + exitInN.z * 0.05);
+    exitLintel.lookAt(new THREE.Vector3(0, EXIT_H + 0.05, 0));
+    scene.add(exitLintel);
+
+    // Threshold step (marble)
+    const exitThresh = mk(new THREE.BoxGeometry(EXIT_W + 1.0, 0.2, 0.6), MS.marbleDark,
+      exitX + exitInN.x * 0.1, 0.1, exitZ + exitInN.z * 0.1);
+    exitThresh.lookAt(new THREE.Vector3(0, 0.1, 0));
+    scene.add(exitThresh);
+
+    // Sky-blue gradient visible through doorway (suggests outdoors)
+    const skyCanvas = document.createElement("canvas");
+    skyCanvas.width = 256; skyCanvas.height = 512;
+    const skyCtx = skyCanvas.getContext("2d")!;
+    const skyGrad = skyCtx.createLinearGradient(0, 0, 0, 512);
+    skyGrad.addColorStop(0, "#87CEEB");   // sky blue top
+    skyGrad.addColorStop(0.5, "#B8DCF0"); // lighter middle
+    skyGrad.addColorStop(0.85, "#E8DCC8"); // warm horizon
+    skyGrad.addColorStop(1, "#C8B89A");   // ground hint
+    skyCtx.fillStyle = skyGrad;
+    skyCtx.fillRect(0, 0, 256, 512);
+    const skyTex = new THREE.CanvasTexture(skyCanvas);
+    skyTex.colorSpace = THREE.SRGBColorSpace;
+    const skyPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(EXIT_W - 0.6, EXIT_H - 0.5),
+      new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.DoubleSide, transparent: true, opacity: 0.6 })
     );
-    plLabel.position.set(exitX, 3.85, exitZ);
-    plLabel.lookAt(0, 3.85, 0);
-    plLabel.rotateY(Math.PI);
-    scene.add(plLabel);
+    skyPlane.position.set(exitX + exitInN.x * 0.05, EXIT_H / 2, exitZ + exitInN.z * 0.05);
+    skyPlane.lookAt(0, EXIT_H / 2, 0);
+    scene.add(skyPlane);
+
+    // Click target
     const portalHit = new THREE.Mesh(
-      new THREE.BoxGeometry(2.2, 3.5, 0.4),
-      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 })
+      new THREE.BoxGeometry(EXIT_W, EXIT_H, 0.5),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
     );
-    portalHit.position.set(exitX, 1.8, exitZ);
-    portalHit.lookAt(0, 1.8, 0);
+    portalHit.position.set(exitX, EXIT_H / 2, exitZ);
+    portalHit.lookAt(0, EXIT_H / 2, 0);
     scene.add(portalHit);
-    const portalLight = new THREE.PointLight("#FFE8C0", 0.4, 6);
-    portalLight.position.set(exitX - Math.cos(exitAngle) * 0.5, 2.5, exitZ - Math.sin(exitAngle) * 0.5);
+
+    // Strong outdoor light streaming in
+    const portalLight = new THREE.PointLight("#FFF8E0", 1.2, 12);
+    portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
     scene.add(portalLight);
+    const portalSpot = new THREE.SpotLight("#FFF5E0", 1.5, 18, Math.PI / 5, 0.5, 0.7);
+    portalSpot.position.set(exitX + exitInN.x * 3, EXIT_H * 0.5, exitZ + exitInN.z * 3);
+    portalSpot.target.position.set(exitX - exitInN.x * 4, 0, exitZ - exitInN.z * 4);
+    scene.add(portalSpot);
+    scene.add(portalSpot.target);
 
     // ── ENVIRONMENT MAP (critical for PBR reflections) ──
     const pmrem = new THREE.PMREMGenerator(ren);
@@ -1780,10 +1919,8 @@ export default function EntranceHallScene({
       }
       dustGeo.attributes.position.needsUpdate = true;
 
-      // Light beam breathing (cone opacities)
+      // Light beam breathing
       (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.05 + Math.sin(t * 0.5) * 0.02;
-      beamMat2.opacity = 0.03 + Math.sin(t * 0.7) * 0.015;
-      beamMat3.opacity = 0.04 + Math.sin(t * 0.9) * 0.018;
 
       dust.update(t, dt);
       oculusBeam.update(t);
@@ -2067,11 +2204,11 @@ export default function EntranceHallScene({
         onClick={() => setMuted(m => !m)}
         style={{
           position: "absolute",
-          top: 16,
+          top: 56,
           right: 16,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
+          width: 36,
+          height: 36,
+          borderRadius: 18,
           border: "1px solid rgba(200, 168, 104, 0.3)",
           background: "rgba(250, 245, 235, 0.7)",
           backdropFilter: "blur(8px)",
@@ -2079,9 +2216,9 @@ export default function EntranceHallScene({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 18,
+          fontSize: 16,
           color: "#6A5A48",
-          zIndex: 40,
+          zIndex: 30,
           transition: "opacity 0.3s",
           opacity: 0.7,
         }}

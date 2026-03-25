@@ -40,7 +40,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     loadHDRI(ren,HDRI_INTERIOR).then((hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.9;}).catch(()=>{});
 
     // ── POST-PROCESSING (with SSAO) ──
-    const composer=createPostProcessing(ren,scene,camera,"corridor");
+    const composer=createPostProcessing(ren,scene,camera,"corridor",{ssao:false});
 
     scene.add(new THREE.HemisphereLight("#FFF2E0","#C4B8A0",.55));
     const sun=new THREE.DirectionalLight("#FFE8C0",1.5);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);

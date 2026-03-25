@@ -75,17 +75,35 @@ export function createTuscanTerrain(
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const z = pos.getZ(i);
-    const y = getHeightAt(x, z);
-    pos.setY(i, y);
+    let y = getHeightAt(x, z);
 
     const dist = Math.sqrt(x * x + z * z);
 
-    // Near palace — warm golden plateau color
+    // Add micro-displacement noise to the plateau area to break up uniform lighting
+    // This prevents the flat hilltop from catching all directional light uniformly
+    if (dist < 55) {
+      const noiseAmt = dist < 42 ? 0.15 : 0.15 * ((55 - dist) / 13);
+      const micro = Math.sin(x * 0.8 + z * 1.1) * 0.06
+        + Math.sin(x * 1.7 - z * 0.9) * 0.04
+        + Math.sin(x * 3.2 + z * 2.8) * 0.03;
+      y += micro * noiseAmt / 0.15;
+    }
+    pos.setY(i, y);
+
+    // Near palace — darker earth tone (NOT bright golden)
     const plateauBlend = Math.max(0, 1 - dist / 80);
     // Far — height-based wheat/valley blend
     const normalizedH = Math.max(0, Math.min(1, (y + 5) / 18));
     tmpColor.copy(colValley).lerp(colPeak, normalizedH);
     tmpColor.lerp(colPlateau, plateauBlend * 0.6);
+
+    // Darken the plateau center so it doesn't glow
+    if (dist < 50) {
+      const darken = Math.max(0, 1 - dist / 50) * 0.3;
+      tmpColor.r *= (1 - darken);
+      tmpColor.g *= (1 - darken);
+      tmpColor.b *= (1 - darken);
+    }
 
     // Atmospheric haze at edges
     const edgeFade = Math.max(0, Math.min(1, (dist - 200) / 200));
@@ -101,9 +119,9 @@ export function createTuscanTerrain(
 
   const mat = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    roughness: 0.88,
-    metalness: 0.02,
-    envMapIntensity: 0.3,
+    roughness: 1,
+    metalness: 0,
+    envMapIntensity: 0,
     map: textures.cropMap || null,
     normalMap: textures.cropNormal || null,
     normalScale: new THREE.Vector2(0.5, 0.5),

@@ -1,11 +1,18 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath("/draco/");
 
 const loader = new GLTFLoader();
+loader.setDRACOLoader(dracoLoader);
+
 const modelCache = new Map<string, THREE.Group>();
 
 /**
  * Load a GLTF model with caching. Returns a clone of the cached model.
+ * Supports DRACO-compressed meshes.
  */
 export async function loadModel(path: string): Promise<THREE.Group> {
   // Return cached clone

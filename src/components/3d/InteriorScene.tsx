@@ -52,7 +52,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     loadHDRI(ren,HDRI_INTERIOR).then((hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.8;}).catch(()=>{});
 
     // ── POST-PROCESSING (with SSAO) ──
-    const composer=createPostProcessing(ren,scene,camera,"interior");
+    const composer=createPostProcessing(ren,scene,camera,"interior",{ssao:false});
 
     // ── ATMOSPHERIC FOG ──
     scene.fog=new THREE.Fog("#D8CFC0",3,22);

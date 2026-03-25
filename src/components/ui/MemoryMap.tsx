@@ -71,6 +71,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredPin, setHoveredPin] = useState<ClusteredPin | null>(null);
+  const [selectedPin, setSelectedPin] = useState<ClusteredPin | null>(null);
   const [filterWing, setFilterWing] = useState<string | null>(null);
   const [mapSize, setMapSize] = useState({ w: 900, h: 500 });
 
@@ -286,7 +287,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
               <div key={i}
                 onMouseEnter={() => handlePinHover(pin)}
                 onMouseLeave={() => handlePinHover(null)}
-                onClick={() => { if (onNavigate && pin.mems[0]) onNavigate(pin.mems[0].roomId); }}
+                onClick={() => setSelectedPin(selectedPin === pin ? null : pin)}
                 style={{
                   position: "absolute",
                   left: `${pctX}%`, top: `${pctY}%`,
@@ -356,6 +357,90 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                 <p style={{ fontFamily: T.font.body, fontSize: 12, color: "rgba(255,255,255,0.6)", margin: 0 }}>
                   Add GPS coordinates to your memories to see them on the map
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* Selected pin detail panel */}
+          {selectedPin && (
+            <div style={{
+              position: "absolute", bottom: 0, left: 0, right: 0,
+              background: `${T.color.linen}f5`, backdropFilter: "blur(16px)",
+              borderTop: `1px solid ${T.color.cream}`,
+              boxShadow: "0 -8px 32px rgba(0,0,0,0.2)",
+              animation: "fadeUp .25s ease",
+              maxHeight: "45%", overflowY: "auto",
+              padding: isMobile ? "14px 16px" : "16px 24px",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <div>
+                  <h3 style={{ fontFamily: T.font.display, fontSize: 18, fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+                    {"\uD83D\uDCCD"} {selectedPin.locationName}
+                  </h3>
+                  <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "2px 0 0" }}>
+                    {selectedPin.mems.length} {selectedPin.mems.length === 1 ? "memory" : "memories"}
+                  </p>
+                </div>
+                <button onClick={() => setSelectedPin(null)} style={{
+                  width: 28, height: 28, borderRadius: 14, border: `1px solid ${T.color.cream}`,
+                  background: T.color.warmStone, color: T.color.muted, fontSize: 12,
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                }}>{"\u2715"}</button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {selectedPin.mems.map((m, j) => {
+                  const wing = WINGS.find(w => w.id === m.wingId);
+                  return (
+                    <button key={j}
+                      onClick={() => { if (onNavigate) onNavigate(m.roomId); }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12,
+                        padding: "10px 14px", borderRadius: 12,
+                        border: `1px solid ${T.color.cream}`, background: `${T.color.white}dd`,
+                        cursor: "pointer", textAlign: "left", width: "100%",
+                        transition: "background .15s",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = `${selectedPin.accent}12`; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = `${T.color.white}dd`; }}
+                    >
+                      {m.mem.dataUrl ? (
+                        <div style={{
+                          width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0,
+                          background: `${selectedPin.accent}20`,
+                        }}>
+                          <img src={m.mem.dataUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        </div>
+                      ) : (
+                        <div style={{
+                          width: 48, height: 48, borderRadius: 8, flexShrink: 0,
+                          background: `linear-gradient(135deg, ${selectedPin.accent}30, ${selectedPin.accent}10)`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 20,
+                        }}>{m.mem.type === "photo" ? "\uD83D\uDCF7" : m.mem.type === "voice" ? "\uD83C\uDF99\uFE0F" : "\uD83D\uDCDD"}</div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontFamily: T.font.display, fontSize: 14, fontWeight: 500, color: T.color.charcoal,
+                          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                        }}>{m.mem.title}</div>
+                        {m.mem.desc && (
+                          <div style={{
+                            fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
+                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2,
+                          }}>{m.mem.desc}</div>
+                        )}
+                        <div style={{
+                          fontFamily: T.font.body, fontSize: 10, color: wing?.accent || T.color.muted,
+                          marginTop: 3, display: "flex", alignItems: "center", gap: 4,
+                        }}>
+                          <span>{wing?.icon}</span> {wing?.name}
+                          {m.mem.createdAt && <span style={{ color: T.color.muted }}> &middot; {new Date(m.mem.createdAt).toLocaleDateString()}</span>}
+                        </div>
+                      </div>
+                      <span style={{ color: T.color.muted, fontSize: 12, flexShrink: 0 }}>{"\u2192"}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

@@ -10,9 +10,16 @@
 html,
 body {
   width: 100%;
-  height: 100%;
+  height: 100dvh;
+  height: 100%; /* fallback for older browsers */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@supports (height: 100dvh) {
+  html, body {
+    height: 100dvh;
+  }
 }
 
 /* Android/iOS safe area: prevent system bars from covering app content */

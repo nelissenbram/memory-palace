@@ -43,6 +43,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   const [aiFollowUp, setAiFollowUp] = useState("");
   const [suggestedTitle, setSuggestedTitle] = useState("");
   const [narrative, setNarrative] = useState("");
+  const [writingStyle, setWritingStyle] = useState<"literary" | "balanced" | "factual">("balanced");
   const [editingNarrative, setEditingNarrative] = useState(false);
   const [apiError, setApiError] = useState("");
   const [fadeIn, setFadeIn] = useState(false);
@@ -204,6 +205,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
           interviewTitle: currentTemplate.title,
           responses,
           userName,
+          writingStyle,
         }),
       });
 
@@ -379,6 +381,31 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   {mode === "voice" ? "\uD83C\uDF99\uFE0F Speak answers" : "\u2328\uFE0F Type answers"}
                 </button>
               ))}
+            </div>
+
+            {/* Writing style selector */}
+            <div style={{ marginTop: 20 }}>
+              <p style={{ fontFamily: T.font.body, fontSize: 12, color: "#7A7368", marginBottom: 8 }}>
+                Writing style for your story
+              </p>
+              <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+                {([
+                  { id: "literary" as const, label: "\u270D\uFE0F Literary", desc: "Vivid, evocative, memoir-like prose" },
+                  { id: "balanced" as const, label: "\u2696\uFE0F Balanced", desc: "Warm storytelling with personal details" },
+                  { id: "factual" as const, label: "\uD83D\uDCCB Factual", desc: "Clear, straightforward, close to your words" },
+                ]).map((s) => (
+                  <button key={s.id} onClick={() => setWritingStyle(s.id)} title={s.desc} style={{
+                    padding: "8px 16px", borderRadius: 16,
+                    border: writingStyle === s.id ? `1px solid ${aiColor}60` : "1px solid #4A453D",
+                    background: writingStyle === s.id ? `${aiColor}18` : "transparent",
+                    color: writingStyle === s.id ? aiColor : "#7A7368",
+                    fontFamily: T.font.body, fontSize: 12, cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

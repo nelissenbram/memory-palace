@@ -12,7 +12,6 @@ import { useNavigation } from "@/lib/hooks/useNavigation";
 import { useRoomMemories } from "@/lib/hooks/useRoomMemories";
 import OnboardingWizard from "@/components/ui/OnboardingWizard";
 import TopBar from "@/components/ui/TopBar";
-import Minimap from "@/components/ui/Minimap";
 import { WingTooltip, DoorTooltip } from "@/components/ui/HoverTooltip";
 import SearchBar from "@/components/ui/SearchBar";
 import UploadPanel from "@/components/ui/UploadPanel";
@@ -69,7 +68,7 @@ export default function MemoryPalace(){
   const isMobile = useIsMobile();
 
   // ── Stores ──
-  const { profileLoading, onboarded, firstWing, styleEra, bustTextureUrl,
+  const { profileLoading, onboarded, firstWing, styleEra, bustTextureUrl, bustModelUrl, bustProportions, userName, bustName, bustGender,
     loadProfile, finishOnboarding, setStyleEra } = useUserStore();
   const { view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim, roomLayouts,
     setHovWing, setHovDoor, enterWing, enterEntrance, enterCorridor, enterRoom, setRoomLayout, exitToPalace, exitToCorridor, exitToEntrance } = usePalaceStore();
@@ -273,7 +272,7 @@ export default function MemoryPalace(){
   };
 
   if(profileLoading){
-    return(<div style={{width:"100vw",height:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone} 100%)`,fontFamily:T.font.display}}>
+    return(<div style={{width:"100vw",height:"100dvh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone} 100%)`,fontFamily:T.font.display}}>
       <div style={{fontSize:48,marginBottom:20}}>🏛️</div>
       <div style={{fontSize:isMobile?22:28,fontWeight:300,color:T.color.charcoal}}>The Memory Palace</div>
       <div style={{fontSize:14,color:T.color.muted,marginTop:12,fontFamily:T.font.body}}>Loading your palace...</div>
@@ -292,11 +291,11 @@ export default function MemoryPalace(){
   const safeBottom = isMobile ? bottomBarHeight + 8 : 70;
 
   return(
-    <div style={{width:"100vw",height:"100vh",background:T.color.sandstone,position:"relative",overflow:"hidden"}}>
+    <div style={{width:"100vw",height:"100dvh",background:T.color.sandstone,position:"relative",overflow:"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
       <div style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
         {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===0?"__entrance__":null} styleEra={styleEra||"roman"}/>}
-        {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else enterCorridor(wingId);}} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={()=>setShowBustBuilder(true)} bustTextureUrl={bustTextureUrl}/>}
+        {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else enterCorridor(wingId);}} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={()=>setShowBustBuilder(true)} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null}/>}
         {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)}/>}
         {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined} styleEra={styleEra||"roman"}/>}
       </div>
@@ -309,7 +308,7 @@ export default function MemoryPalace(){
       {/* Portal transition overlay */}
       {portalAnim&&<div style={{position:"absolute",inset:0,zIndex:45,pointerEvents:"none",animation:"portalFlash .5s ease both",background:"radial-gradient(ellipse at center,rgba(200,168,104,.6) 0%,rgba(200,168,104,.15) 40%,transparent 70%)"}}/>}
 
-      {!isMobile && !walkthroughActive && <Minimap/>}
+
 
       {/* Hover tooltips — desktop only */}
       {!isMobile && hovWingData&&view==="exterior"&&<WingTooltip wing={hovWingData}/>}
@@ -368,12 +367,12 @@ export default function MemoryPalace(){
         if (view==="exterior"||view==="entrance") {
           return <ActionMenu
             accent={T.color.terracotta}
-            primary={{ icon: "\u{1F3DB}\uFE0F", label: "Customize Wings", action: ()=>setShowWingManager(true) }}
+            primary={{ icon: "\uD83D\uDCC5", label: "Timeline", action: ()=>setShowTimeline(true) }}
             secondary={[
-              { icon: "\uD83D\uDCC5", label: "Timeline", action: ()=>setShowTimeline(true), hidden: showTimeline },
               { icon: "\uD83C\uDF0D", label: "Memory Map", action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
               { icon: "\uD83C\uDF99\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) },
               { icon: "\u{1F4E6}", label: "Mass Import", action: ()=>setShowMassImport(true) },
+              { icon: "\u2699\uFE0F", label: "Customize Wings", action: ()=>setShowWingManager(true) },
             ]}
           />;
         }
@@ -464,7 +463,7 @@ export default function MemoryPalace(){
       {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory}/>}
       {showRoomShare&&activeRoomData&&wingData&&<ShareCard roomName={activeRoomData.name} roomIcon={activeRoomData.icon} wingName={wingData.name} wingIcon={wingData.icon} memCount={allRoomMems.length} accent={wingData.accent} onClose={()=>setShowRoomShare(false)}/>}
       {showTimeline&&<MemoryTimeline onClose={()=>setShowTimeline(false)}/>}
-      {showMemoryMap&&<MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigate={(roomId)=>{setShowMemoryMap(false);}}/>}
+      {showMemoryMap&&<MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";enterWing(wingId);setTimeout(()=>enterRoom(roomId),300);}}/>}
       {showMassImport&&<MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/>}
       {showGallery&&activeRoomId&&<RoomGallery mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>setShowGallery(false)} onUpdate={handleUpdateMemory} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}}/>}
       {showCorridorGallery&&activeWing&&wingData&&<CorridorGalleryPanel wing={wingData} rooms={getWingRooms(activeWing)} onClose={()=>setShowCorridorGallery(false)} onPaintingsChange={setCorridorPaintings} currentPaintings={corridorPaintings}/>}
@@ -551,8 +550,8 @@ export default function MemoryPalace(){
         onClick={()=>setShowUpgradePrompt(false)}>
         <div onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:18,padding:"32px 36px",maxWidth:380,textAlign:"center",boxShadow:"0 8px 40px rgba(0,0,0,.18)"}}>
           <div style={{fontSize:40,marginBottom:12}}>{"🔒"}</div>
-          <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,marginBottom:8}}>Locked Room</h3>
-          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,lineHeight:1.5,marginBottom:20}}>Upgrade to unlock additional rooms for your palace.</p>
+          <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,marginBottom:8}}>Locked Wing</h3>
+          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,lineHeight:1.5,marginBottom:20}}>Upgrade to unlock additional wings for your palace.</p>
           <button onClick={()=>setShowUpgradePrompt(false)}
             style={{fontFamily:T.font.body,fontSize:15,fontWeight:600,padding:"12px 32px",borderRadius:10,border:"none",
               background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer"}}>
@@ -677,13 +676,13 @@ function MobileBottomBar(props: MobileBottomBarProps) {
     primaryActions.push({ icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: props.onCorridorGallery });
     primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
   } else if (view === "entrance") {
-    primaryActions.push({ icon: "\u{1F3DB}\uFE0F", label: "Wings", action: props.onWingManager, accent: true });
-    primaryActions.push({ icon: "\uD83D\uDCC5", label: "Timeline", action: props.onTimeline });
+    primaryActions.push({ icon: "\uD83D\uDCC5", label: "Timeline", action: props.onTimeline, accent: true });
     primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
+    primaryActions.push({ icon: "\uD83C\uDF99\uFE0F", label: "Interviews", action: props.onInterviews });
   } else if (view === "exterior") {
-    primaryActions.push({ icon: "\u{1F3DB}\uFE0F", label: "Wings", action: props.onWingManager, accent: true });
-    primaryActions.push({ icon: "\uD83D\uDCC5", label: "Timeline", action: props.onTimeline });
+    primaryActions.push({ icon: "\uD83D\uDCC5", label: "Timeline", action: props.onTimeline, accent: true });
     primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
+    primaryActions.push({ icon: "\uD83C\uDF99\uFE0F", label: "Interviews", action: props.onInterviews });
   }
 
   // Directory moved to "More" menu for cleaner bottom bar
@@ -708,6 +707,7 @@ function MobileBottomBar(props: MobileBottomBarProps) {
         }}>
           {[
             { icon: "\u{1F4C2}", label: "Directory", action: props.onDirectory },
+            { icon: "\u2699\uFE0F", label: "Palace Map", action: props.onWingManager },
             { icon: "\uD83C\uDF99\uFE0F", label: "Interviews", action: props.onInterviews },
             { icon: "\u{1F4E6}", label: "Import", action: props.onMassImport },
             { icon: "\u{1F3C6}", label: `Awards ${p.earned}/${p.total}`, action: props.onAchievements },

@@ -5,6 +5,7 @@ interface SummarizeRequest {
   interviewTitle: string;
   responses: Array<{ questionText: string; answer: string }>;
   userName: string;
+  writingStyle?: "literary" | "balanced" | "factual";
 }
 
 export async function POST(req: NextRequest) {
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body: SummarizeRequest = await req.json();
-    const { interviewTitle, responses, userName } = body;
+    const { interviewTitle, responses, userName, writingStyle = "balanced" } = body;
 
     if (!responses.length) {
       return NextResponse.json({ error: "No responses to summarize" }, { status: 400 });
@@ -31,7 +32,32 @@ export async function POST(req: NextRequest) {
       .map((r, i) => `Question ${i + 1}: "${r.questionText}"\n${userName || "They"} said: "${r.answer}"`)
       .join("\n\n---\n\n");
 
-    const systemPrompt = `You are a gifted writer creating a beautiful, intimate narrative from someone's life interview. Your writing should feel like the opening pages of a beloved memoir — warm, vivid, and deeply personal.
+    const styleInstructions = writingStyle === "literary"
+      ? `Your writing should feel like the opening pages of a beloved memoir — vivid, evocative, and deeply literary.
+
+Style:
+- Write in third person ("${userName}" or "they")
+- 4-6 paragraphs, roughly 300-500 words
+- Use rich, sensory language — paint scenes with color, sound, and feeling
+- Weave the answers into a flowing narrative with literary transitions
+- Start with an evocative scene-setting moment
+- Use metaphor and imagery where it feels natural
+- End with something poetic — a reflection that lingers
+- The tone should be warm and reverent — like a beautifully crafted memoir
+- Feel free to expand on emotional moments with descriptive prose`
+      : writingStyle === "factual"
+      ? `Your writing should be clear, warm, and grounded — staying close to their actual words and experiences.
+
+Style:
+- Write in third person ("${userName}" or "they")
+- 2-4 paragraphs, roughly 150-300 words
+- Stay close to what they actually said — use their own words and phrases where possible
+- Present events and details in a clear, chronological way
+- Keep descriptions simple and direct — no embellishment
+- Include specific names, dates, and places they mentioned
+- The tone should be warm but understated — like a well-written family chronicle
+- Do not add imagery or scenes they didn't describe themselves`
+      : `Your writing should feel like the opening pages of a beloved memoir — warm, vivid, and deeply personal.
 
 Style:
 - Write in third person ("${userName}" or "they")
@@ -41,7 +67,11 @@ Style:
 - Start with something evocative — a scene, a feeling, a moment
 - End with something meaningful — a reflection, a hope, a connection to the future
 - The tone should be reverent but not stiff — like a beautifully written family history
-- If they shared emotions, honor them in the writing
+- If they shared emotions, honor them in the writing`;
+
+    const systemPrompt = `You are a gifted writer creating a narrative from someone's life interview.
+
+${styleInstructions}
 
 You must return ONLY the narrative text. No JSON, no headers, no formatting instructions.`;
 
@@ -64,6 +94,7 @@ Please write a beautiful narrative summary that weaves these stories together.`;
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 2048,
+        temperature: writingStyle === "literary" ? 1.0 : writingStyle === "factual" ? 0.3 : 0.7,
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }],
       }),

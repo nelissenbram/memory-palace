@@ -21,7 +21,7 @@ export default function TopBar({crumbs}: TopBarProps){
   const isMobile = useIsMobile();
   const { t, locale, setLocale } = useTranslation("common");
   const { userName } = useUserStore();
-  const { activeWing, switchWing } = usePalaceStore();
+  const { view, activeWing, switchWing, exitToPalace } = usePalaceStore();
   const { showDirectory, setShowDirectory } = useMemoryStore();
   const { getWings } = useRoomStore();
   const WINGS = getWings();
@@ -57,12 +57,12 @@ export default function TopBar({crumbs}: TopBarProps){
           background: "linear-gradient(180deg,rgba(221,213,200,.95),rgba(221,213,200,0))",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
-            <div style={{
+            <button onClick={()=>{if(view!=="exterior")exitToPalace();}} style={{
               width: 28, height: 28, borderRadius: 6, flexShrink: 0,
               background: `linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12,
-              border: `1px solid ${T.color.sandstone}`,
-            }}>{"\u{1F3DB}\uFE0F"}</div>
+              border: `1px solid ${T.color.sandstone}`, cursor: view!=="exterior"?"pointer":"default", padding: 0,
+            }}>{"\u{1F3DB}\uFE0F"}</button>
             {/* Current location breadcrumb */}
             <div style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden", minWidth: 0 }}>
               {crumbs.map((c, i) => (
@@ -201,19 +201,19 @@ export default function TopBar({crumbs}: TopBarProps){
     <div style={{position:"absolute",top:0,left:0,right:0,height:54,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 22px",zIndex:40,background:"linear-gradient(180deg,rgba(221,213,200,.92),rgba(221,213,200,0))"}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{width:30,height:30,borderRadius:7,background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,border:`1px solid ${T.color.sandstone}`}}>{"\u{1F3DB}\uFE0F"}</div>
+          <button onClick={()=>{if(view!=="exterior")exitToPalace();}} title="Back to Palace" style={{width:30,height:30,borderRadius:7,background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,border:`1px solid ${T.color.sandstone}`,cursor:view!=="exterior"?"pointer":"default",padding:0}}>{"\u{1F3DB}\uFE0F"}</button>
           <button onClick={()=>setShowDirectory(!showDirectory)} title="Directory" style={{width:30,height:30,borderRadius:7,border:`1px solid ${showDirectory?T.color.sandstone:T.color.cream}`,background:showDirectory?`${T.color.sandstone}30`:`${T.color.white}bb`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,cursor:"pointer",color:T.color.muted}}>{"\u{1F4C2}"}</button>
-          {userName&&<span style={{fontFamily:T.font.display,fontSize:13,fontStyle:"italic",color:T.color.walnut}}>{t("palace", { name: userName })}</span>}
-          <div style={{display:"flex",alignItems:"center",gap:4}}>
+          {userName&&<span style={{fontFamily:T.font.display,fontSize:14,fontWeight:600,fontStyle:"italic",color:T.color.charcoal,background:`${T.color.linen}cc`,padding:"2px 8px",borderRadius:6,textShadow:"0 1px 2px rgba(255,255,255,.9)"}}>{t("palace", { name: userName })}</span>}
+          <div style={{display:"flex",alignItems:"center",gap:4,background:`${T.color.linen}cc`,padding:"2px 8px",borderRadius:6}}>
             {crumbs.map((c,i)=><span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
               {i>0&&<span style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>/</span>}
-              {c.action?<button onClick={c.action} style={{fontFamily:T.font.display,fontSize:i===0?15:13,fontWeight:500,color:i===crumbs.length-1?T.color.charcoal:T.color.muted,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textDecorationColor:`${T.color.sandstone}88`,textUnderlineOffset:3,padding:0}}>{c.label}</button>
-              :<span style={{fontFamily:T.font.display,fontSize:i===0?15:13,fontWeight:500,color:T.color.charcoal}}>{c.label}</span>}
+              {c.action?<button onClick={c.action} style={{fontFamily:T.font.display,fontSize:i===0?15:13,fontWeight:600,color:i===crumbs.length-1?T.color.charcoal:T.color.walnut,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textDecorationColor:`${T.color.sandstone}88`,textUnderlineOffset:3,padding:0}}>{c.label}</button>
+              :<span style={{fontFamily:T.font.display,fontSize:i===0?15:13,fontWeight:600,color:T.color.charcoal}}>{c.label}</span>}
             </span>)}
           </div>
         </div>
       </div>
-      <div style={{display:"flex",gap:4,alignItems:"center"}}>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
         <NotificationBell />
         <WingsDropdown wings={WINGS} activeWing={activeWing} switchWing={switchWing} />
 
@@ -467,20 +467,24 @@ function DesktopUserMenu({ userName, locale, setLocale, t, onClose }: {
   );
 }
 
-/** Wings dropdown — collapses individual wing pill-buttons into a single dropdown */
+/** Wings dropdown — shows wings with expandable room lists for direct navigation */
 function WingsDropdown({ wings, activeWing, switchWing }: {
   wings: { id: string; name: string; icon: string; accent: string }[];
   activeWing: string | null;
   switchWing: (id: string) => void;
 }) {
   const [wingsOpen, setWingsOpen] = useState(false);
+  const [expandedWing, setExpandedWing] = useState<string | null>(null);
   const wingsRef = useRef<HTMLDivElement>(null);
+  const { getWingRooms } = useRoomStore();
+  const { enterCorridor, enterRoom, enterWing } = usePalaceStore();
 
   useEffect(() => {
     if (!wingsOpen) return;
     const handleClick = (e: MouseEvent) => {
       if (wingsRef.current && !wingsRef.current.contains(e.target as Node)) {
         setWingsOpen(false);
+        setExpandedWing(null);
       }
     };
     document.addEventListener("mousedown", handleClick);
@@ -492,7 +496,7 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
   return (
     <div ref={wingsRef} style={{ position: "relative" }}>
       <button
-        onClick={() => setWingsOpen(!wingsOpen)}
+        onClick={() => { setWingsOpen(!wingsOpen); setExpandedWing(null); }}
         style={{
           padding: "6px 14px", borderRadius: 16,
           fontFamily: T.font.body, fontSize: 12, fontWeight: 500,
@@ -503,41 +507,95 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
         }}
       >
         <span style={{ fontSize: 12 }}>{activeWingData ? activeWingData.icon : "\u{1F3DB}\uFE0F"}</span>
-        {activeWingData ? activeWingData.name : "Wings"}
+        {activeWingData ? activeWingData.name : "Palace Map"}
         <span style={{ fontSize: 10, marginLeft: 2, transition: "transform .2s", transform: wingsOpen ? "rotate(180deg)" : "none" }}>{"\u25BE"}</span>
       </button>
 
       {wingsOpen && (
         <div style={{
           position: "absolute", top: "calc(100% + 6px)", right: 0,
-          minWidth: 200, background: `${T.color.linen}f8`,
+          minWidth: 240, maxHeight: 420, overflowY: "auto",
+          background: `${T.color.linen}f8`,
           backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
           borderRadius: 14, border: `1px solid ${T.color.cream}`,
           boxShadow: "0 8px 32px rgba(44,44,42,.14)",
           padding: 6, zIndex: 100,
           display: "flex", flexDirection: "column", gap: 2,
         }}>
-          {wings.map(w => (
-            <button
-              key={w.id}
-              onClick={() => { switchWing(w.id); setWingsOpen(false); }}
-              style={{
-                padding: "9px 12px", borderRadius: 10,
-                fontFamily: T.font.body, fontSize: 13,
-                fontWeight: activeWing === w.id ? 600 : 400,
-                border: activeWing === w.id ? `1.5px solid ${w.accent}` : `1px solid transparent`,
-                background: activeWing === w.id ? `${w.accent}15` : "transparent",
-                color: activeWing === w.id ? w.accent : T.color.charcoal,
-                cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-                textAlign: "left", width: "100%",
-              }}
-              onMouseEnter={e => { if (activeWing !== w.id) (e.currentTarget.style.background = `${T.color.sandstone}20`); }}
-              onMouseLeave={e => { if (activeWing !== w.id) (e.currentTarget.style.background = "transparent"); }}
-            >
-              <span style={{ fontSize: 15 }}>{w.icon}</span>
-              {w.name}
-            </button>
-          ))}
+          {wings.map(w => {
+            const rooms = getWingRooms(w.id);
+            const isExpanded = expandedWing === w.id;
+            return (
+              <div key={w.id}>
+                <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+                  <button
+                    onClick={() => { enterCorridor(w.id); setWingsOpen(false); setExpandedWing(null); }}
+                    style={{
+                      flex: 1, padding: "9px 12px", borderRadius: isExpanded ? "10px 0 0 0" : "10px 0 0 10px",
+                      fontFamily: T.font.body, fontSize: 13,
+                      fontWeight: activeWing === w.id ? 600 : 400,
+                      border: activeWing === w.id ? `1.5px solid ${w.accent}` : `1px solid transparent`,
+                      borderRight: "none",
+                      background: activeWing === w.id ? `${w.accent}15` : "transparent",
+                      color: activeWing === w.id ? w.accent : T.color.charcoal,
+                      cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                      textAlign: "left",
+                    }}
+                    onMouseEnter={e => { if (activeWing !== w.id) e.currentTarget.style.background = `${T.color.sandstone}20`; }}
+                    onMouseLeave={e => { if (activeWing !== w.id) e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <span style={{ fontSize: 15 }}>{w.icon}</span>
+                    {w.name}
+                  </button>
+                  {rooms.length > 0 && (
+                    <button
+                      onClick={() => setExpandedWing(isExpanded ? null : w.id)}
+                      style={{
+                        padding: "9px 10px", borderRadius: isExpanded ? "0 10px 0 0" : "0 10px 10px 0",
+                        border: activeWing === w.id ? `1.5px solid ${w.accent}` : `1px solid transparent`,
+                        borderLeft: "none",
+                        background: isExpanded ? `${w.accent}15` : "transparent",
+                        cursor: "pointer", fontSize: 10, color: T.color.muted,
+                        display: "flex", alignItems: "center",
+                        transition: "transform .2s",
+                      }}
+                      title="Show rooms"
+                    >
+                      <span style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .2s" }}>{"\u25BE"}</span>
+                    </button>
+                  )}
+                </div>
+                {isExpanded && rooms.length > 0 && (
+                  <div style={{
+                    padding: "2px 0 4px 28px",
+                    borderLeft: `2px solid ${w.accent}30`,
+                    marginLeft: 18, marginBottom: 4,
+                    display: "flex", flexDirection: "column", gap: 1,
+                  }}>
+                    {rooms.map(r => (
+                      <button
+                        key={r.id}
+                        onClick={() => { enterWing(w.id); setTimeout(() => enterRoom(r.id), 100); setWingsOpen(false); setExpandedWing(null); }}
+                        style={{
+                          padding: "6px 10px", borderRadius: 8,
+                          fontFamily: T.font.body, fontSize: 12, fontWeight: 400,
+                          border: "none", background: "transparent",
+                          color: T.color.charcoal, cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 6,
+                          textAlign: "left", width: "100%",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = `${w.accent}12`; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        <span style={{ fontSize: 13 }}>{r.icon}</span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

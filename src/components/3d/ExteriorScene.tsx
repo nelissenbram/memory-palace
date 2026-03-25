@@ -4,15 +4,17 @@ import * as THREE from "three";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
+import { useUserStore } from "@/lib/stores/userStore";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
-import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
 
 // ═══ EXTERIOR — Fantasy Castle ═══
 export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman"}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string}){
   const WINGS = wingsProp || DEFAULT_WINGS;
+  const ownerName = useUserStore((s) => s.userName);
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   // Camera starts facing entrance (-Z side) with aqueduct visible behind it
   // theta=PI*1.5 looks from -Z direction (south), phi controls elevation angle
@@ -138,13 +140,15 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── REAL PBR TEXTURES ──
     const stoneTex=loadPlasterWallTextures([4,4]);
+    const wornPlasterTex=loadWornPlasterTextures([3,3]);
+    const roofTileTex=loadTerracottaTileTextures([3,3]);
     const woodDoorTex=loadDarkWoodTextures([2,3]);
     const grassTex=loadGrassTextures([12,12]);
     const groundTex=loadGroundTextures([8,8]);
     const cropTex=loadCropTextures([6,6]);
     const whiteGravelTex=loadWhiteGravelTextures([4,4]);
     const roadTex=loadGravelRoadTextures([3,3]);
-    const allTexSets: PBRTextureSet[]=[stoneTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex];
+    const allTexSets: PBRTextureSet[]=[stoneTex,wornPlasterTex,roofTileTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex];
 
     // Hover label overlay
     const hovLabel=document.createElement("div");
@@ -162,27 +166,27 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const uplight=new THREE.PointLight("#FFC880",.4,80);uplight.position.set(0,2,0);scene.add(uplight);
 
     const M={
-      // ── WALLS — aged Tuscan intonaco plaster & stone (metalness=0 for all dielectrics)
-      stone:new THREE.MeshStandardMaterial({color:"#C4B49A",roughness:.88,metalness:0,map:stoneTex.map,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:stoneTex.roughnessMap,aoMap:stoneTex.aoMap,aoMapIntensity:.6,envMapIntensity:.4}),
-      stoneL:new THREE.MeshStandardMaterial({color:"#D9CEBC",roughness:.82,metalness:0,map:stoneTex.map,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:stoneTex.roughnessMap,envMapIntensity:.4}),
-      stoneW:new THREE.MeshStandardMaterial({color:"#D4A96A",roughness:.85,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:stoneTex.roughnessMap,envMapIntensity:.5}),
-      stoneD:new THREE.MeshStandardMaterial({color:"#8A7E6B",roughness:.92,metalness:0,map:stoneTex.map,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.6,.6),roughnessMap:stoneTex.roughnessMap,aoMap:stoneTex.aoMap,aoMapIntensity:.5}),
-      stoneDk:new THREE.MeshStandardMaterial({color:"#7A7060",roughness:.9,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:stoneTex.roughnessMap}),
+      // ── WALLS — aged Tuscan intonaco plaster & stone (worn plaster PBR textures)
+      stone:new THREE.MeshStandardMaterial({color:"#C4B49A",roughness:.88,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:wornPlasterTex.roughnessMap,aoMap:wornPlasterTex.aoMap,aoMapIntensity:.6,envMapIntensity:.4}),
+      stoneL:new THREE.MeshStandardMaterial({color:"#D9CEBC",roughness:.82,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.35,.35),roughnessMap:wornPlasterTex.roughnessMap,envMapIntensity:.4}),
+      stoneW:new THREE.MeshStandardMaterial({color:"#D4A96A",roughness:.85,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:wornPlasterTex.roughnessMap,envMapIntensity:.5}),
+      stoneD:new THREE.MeshStandardMaterial({color:"#8A7E6B",roughness:.92,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.6,.6),roughnessMap:wornPlasterTex.roughnessMap,aoMap:wornPlasterTex.aoMap,aoMapIntensity:.5}),
+      stoneDk:new THREE.MeshStandardMaterial({color:"#7A7060",roughness:.9,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:wornPlasterTex.roughnessMap}),
       // ── TRIM — pietra serena (cool blue-grey sandstone) & aged gold
       trim:new THREE.MeshStandardMaterial({color:"#8A8D8E",roughness:.7,metalness:0,envMapIntensity:.4,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
       gold:new THREE.MeshPhysicalMaterial({color:"#B8973A",roughness:.35,metalness:.92,emissive:"#3D3010",emissiveIntensity:.08,clearcoat:.15,clearcoatRoughness:.4,envMapIntensity:1.0}),
       goldBright:new THREE.MeshPhysicalMaterial({color:"#CFB53B",roughness:.18,metalness:.95,emissive:"#4A3A10",emissiveIntensity:.12,clearcoat:.35,clearcoatRoughness:.08,envMapIntensity:1.5}),
       bronze:new THREE.MeshPhysicalMaterial({color:"#6B5238",roughness:.3,metalness:.82,emissive:"#2A1E10",emissiveIntensity:.06,clearcoat:.2,clearcoatRoughness:.3,envMapIntensity:1.0}),
       copper:new THREE.MeshPhysicalMaterial({color:"#4A8B7A",roughness:.55,metalness:.25,emissive:"#1A3028",emissiveIntensity:.05,clearcoat:0,envMapIntensity:.6}),
-      // ── ROOFS — aged terracotta coppo tiles (muted brown, NOT orange)
-      roof:new THREE.MeshStandardMaterial({color:"#9B7B68",roughness:.82,metalness:0,envMapIntensity:.3}),
-      roofD:new THREE.MeshStandardMaterial({color:"#7A6458",roughness:.88,metalness:0,envMapIntensity:.2}),
+      // ── ROOFS — aged terracotta coppo tiles with PBR textures (muted brown)
+      roof:new THREE.MeshStandardMaterial({color:"#9B7B68",roughness:.82,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:roofTileTex.roughnessMap,aoMap:roofTileTex.aoMap,aoMapIntensity:.4,envMapIntensity:.3}),
+      roofD:new THREE.MeshStandardMaterial({color:"#7A6458",roughness:.88,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:roofTileTex.roughnessMap,envMapIntensity:.2}),
       roofSlate:new THREE.MeshStandardMaterial({color:"#6B7D6E",roughness:.45,metalness:.25,envMapIntensity:.5}),
-      tile:new THREE.MeshStandardMaterial({color:"#A0705C",roughness:.78,metalness:0}),
+      tile:new THREE.MeshStandardMaterial({color:"#A0705C",roughness:.78,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.6,.6),roughnessMap:roofTileTex.roughnessMap,aoMap:roofTileTex.aoMap,aoMapIntensity:.3}),
       // ── COLUMNS — travertine / worked stone (lower roughness = polished)
       col:new THREE.MeshStandardMaterial({color:"#C8BDA8",roughness:.55,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2),envMapIntensity:.7}),
-      marble:new THREE.MeshPhysicalMaterial({color:"#F4EEE4",roughness:.1,metalness:0,clearcoat:.3,clearcoatRoughness:.15,envMapIntensity:.8,reflectivity:.6}),
-      marbleVein:new THREE.MeshPhysicalMaterial({color:"#E8DED0",roughness:.15,metalness:0,clearcoat:.2,clearcoatRoughness:.2,envMapIntensity:.7}),
+      marble:new THREE.MeshStandardMaterial({color:"#F4EEE4",roughness:.55,metalness:0,envMapIntensity:.15}),
+      marbleVein:new THREE.MeshStandardMaterial({color:"#E8DED0",roughness:.6,metalness:0,envMapIntensity:.15}),
       // ── WINDOWS — old glass with warm interior glow (IOR 1.52 = soda-lime glass)
       win:new THREE.MeshPhysicalMaterial({color:"#FFF8E7",emissive:"#FFAA44",emissiveIntensity:.25,roughness:.08,transparent:true,opacity:.7,transmission:.6,ior:1.52}),
       winBlue:new THREE.MeshPhysicalMaterial({color:"#D8E8F0",emissive:"#88AACC",emissiveIntensity:.12,roughness:.1,transparent:true,opacity:.65,transmission:.5,ior:1.52}),
@@ -194,8 +198,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       grassL:new THREE.MeshStandardMaterial({color:"#7A8C58",roughness:.88}),
       grassD:new THREE.MeshStandardMaterial({color:"#5A7040",roughness:.85}),
       grassRich:new THREE.MeshStandardMaterial({color:"#5A6E3A",roughness:.86}),
-      water:new THREE.MeshPhysicalMaterial({color:"#6898B8",roughness:.0,metalness:.1,transparent:true,opacity:.5,transmission:.4,ior:1.33,thickness:2,envMapIntensity:1.2}),
-      waterDeep:new THREE.MeshPhysicalMaterial({color:"#506880",roughness:.02,metalness:.1,transparent:true,opacity:.6,transmission:.3,ior:1.33,thickness:3,envMapIntensity:1.0}),
+      water:new THREE.MeshStandardMaterial({color:"#5A7A80",roughness:.7,metalness:0,transparent:true,opacity:.4,envMapIntensity:.1}),
+      waterDeep:new THREE.MeshStandardMaterial({color:"#4A6068",roughness:.8,metalness:0,transparent:true,opacity:.5,envMapIntensity:.1}),
       path:new THREE.MeshStandardMaterial({color:"#D8C8A8",roughness:.82,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       pathD:new THREE.MeshStandardMaterial({color:"#C0B090",roughness:.78,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
       hedge:new THREE.MeshStandardMaterial({color:"#2E4A22",roughness:.88}),
@@ -265,9 +269,14 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const terrain = createTuscanTerrain(scene, {
       cropMap: cropTex.map, cropNormal: cropTex.normalMap, cropRoughness: cropTex.roughnessMap,
     });
-    // Cobblestone courtyard (raised +0.3 to sit above terrain)
-    scene.add(mk(new THREE.CylinderGeometry(38,40,.12,48),M.pathD,0,HILL_Y+.33,0));
-    scene.add(mk(new THREE.CylinderGeometry(36,37,.08,48),M.path,0,HILL_Y+.35,0));
+    // Cobblestone courtyard — completely matte to avoid specular glare
+    const courtyardMat = new THREE.MeshLambertMaterial({ color: "#B8A888" });
+    const cyGeo = new THREE.CircleGeometry(39, 64);
+    cyGeo.rotateX(-Math.PI / 2);
+    const cyMesh = new THREE.Mesh(cyGeo, courtyardMat);
+    cyMesh.position.y = HILL_Y + 0.35;
+    cyMesh.receiveShadow = true;
+    scene.add(cyMesh);
     // Decorative courtyard ring
     scene.add(mk(new THREE.TorusGeometry(28,.12,8,48),M.stoneD,0,HILL_Y+.42,0));
 
@@ -506,9 +515,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralBodyMeshes = [];
 
     const vW = 20, vD = 18, vH = 7;
-    const ochreWall = new THREE.MeshStandardMaterial({ color: "#C4B49A", roughness: 0.88, metalness: 0, map: stoneTex.map, normalMap: stoneTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: stoneTex.roughnessMap, aoMap: stoneTex.aoMap, aoMapIntensity: 0.5, envMapIntensity: 0.4 });
+    const ochreWall = new THREE.MeshStandardMaterial({ color: "#C4B49A", roughness: 0.88, metalness: 0, map: wornPlasterTex.map, normalMap: wornPlasterTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: wornPlasterTex.roughnessMap, aoMap: wornPlasterTex.aoMap, aoMapIntensity: 0.5, envMapIntensity: 0.4 });
     const gardenGreen = new THREE.MeshStandardMaterial({ color: "#4A7A3A", roughness: 0.9 });
-    const waterMat = new THREE.MeshPhysicalMaterial({ color: "#4A8A8A", roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.55 });
+    const waterMat = new THREE.MeshStandardMaterial({ color: "#4A7A7A", roughness: 0.7, metalness: 0, transparent: true, opacity: 0.45, envMapIntensity: 0.1 });
 
     // ══════════════════════════════════════════
     // CENTRAL DOMUS — single story + raised atrium
@@ -560,6 +569,58 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralGroup.add(mk(new THREE.ConeGeometry(0.35, 1.2, 8), M.bronze, 0, 9.8, vestZ));
     centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, -6, 8.2, vestZ));
     centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, 6, 8.2, vestZ));
+
+    // ── Solid triangular tympanum (filled pediment face) with owner's name ──
+    {
+      // Triangular fill — solid stone panel filling the pediment triangle
+      const tymShape = new THREE.Shape();
+      tymShape.moveTo(-5.8, 0);    // bottom-left
+      tymShape.lineTo(5.8, 0);     // bottom-right
+      tymShape.lineTo(0, 1.6);     // apex
+      tymShape.closePath();
+      const tymGeo = new THREE.ShapeGeometry(tymShape);
+      const tymMat = new THREE.MeshStandardMaterial({
+        color: "#C8BAA4", roughness: 0.82, metalness: 0,
+        map: wornPlasterTex.map, normalMap: wornPlasterTex.normalMap,
+        normalScale: new THREE.Vector2(0.3, 0.3), side: THREE.DoubleSide,
+      });
+      const tymMesh = new THREE.Mesh(tymGeo, tymMat);
+      tymMesh.position.set(0, 7.95, vestZ - 1.11);
+      tymMesh.rotation.y = Math.PI; // face outward (-Z, toward entrance)
+      centralGroup.add(tymMesh);
+
+      // Owner's name inscription carved into tympanum
+      if (ownerName && ownerName.trim()) {
+        const inscText = ownerName.trim().toUpperCase();
+        // Add centered dots between letters for Roman style: B·R·A·M
+        const romanText = inscText.split("").join(" · ");
+        const inscCanvas = document.createElement("canvas");
+        inscCanvas.width = 1024; inscCanvas.height = 256;
+        const ictx = inscCanvas.getContext("2d")!;
+        ictx.clearRect(0, 0, 1024, 256);
+        // Roman square capitals — wide-spaced serif letters
+        ictx.font = "700 80px 'Times New Roman', 'Georgia', serif";
+        ictx.textAlign = "center"; ictx.textBaseline = "middle";
+        // Incised carved shadow
+        ictx.shadowColor = "rgba(0,0,0,0.6)"; ictx.shadowOffsetY = 3; ictx.shadowBlur = 3;
+        ictx.fillStyle = "#5A5248";
+        ictx.fillText(romanText, 512, 128);
+        // Chisel highlight on top edge
+        ictx.shadowColor = "rgba(255,250,235,0.3)"; ictx.shadowOffsetY = -1; ictx.shadowBlur = 1;
+        ictx.fillStyle = "#6A6258";
+        ictx.fillText(romanText, 512, 126);
+        const inscTex = new THREE.CanvasTexture(inscCanvas);
+        inscTex.needsUpdate = true;
+        const inscMat = new THREE.MeshStandardMaterial({
+          map: inscTex, transparent: true, alphaTest: 0.01,
+          roughness: 0.9, metalness: 0, depthWrite: false, side: THREE.DoubleSide,
+        });
+        const inscPlane = new THREE.Mesh(new THREE.PlaneGeometry(8, 1.2), inscMat);
+        inscPlane.position.set(0, 8.35, vestZ - 1.13); // just in front of tympanum
+        inscPlane.rotation.y = Math.PI; // face -Z (toward camera/entrance)
+        centralGroup.add(inscPlane);
+      }
+    }
 
     // Grand double doors
     centralGroup.add(mk(new THREE.BoxGeometry(4.5, 5.5, 0.25), M.doorRich, 0, 4.3, -(vD / 2 + 0.1)));
@@ -895,36 +956,54 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const a = isRenaissance ? (i / nWings) * Math.PI * 2 : (i / nWings) * Math.PI * 2 + Math.PI;
       wingAngles.push(a);
     }
-    const isInWingZone = (x: number, z: number): boolean => {
-      const r = Math.sqrt(x * x + z * z);
-      if (r < 8 || r > 48) return false; // inside courtyard or outside wings
-      const ptAngle = Math.atan2(x, z); // angle from center
-      for (const wa of wingAngles) {
-        let diff = ptAngle - wa;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        if (Math.abs(diff) < 0.28) return true; // ~16° half-width corridor
+    // Check if ANY part of a bounding box overlaps a wing corridor
+    // padding = extra margin around the element (half-width of the object)
+    const isInWingZone = (x: number, z: number, padding: number = 5): boolean => {
+      // Check center + 4 corners offset by padding
+      const testPoints = [
+        [x, z], [x - padding, z - padding], [x + padding, z - padding],
+        [x - padding, z + padding], [x + padding, z + padding],
+        [x - padding, z], [x + padding, z], [x, z - padding], [x, z + padding],
+      ];
+      for (const [tx, tz] of testPoints) {
+        const r = Math.sqrt(tx * tx + tz * tz);
+        if (r < 6 || r > 55) continue;
+        const ptAngle = Math.atan2(tx, tz);
+        for (const wa of wingAngles) {
+          let diff = ptAngle - wa;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          if (Math.abs(diff) < 0.52) return true; // ~30° half-width — generous corridor
+        }
       }
       return false;
     };
 
-    // Grand tiered fountain (3 levels) — positioned clear of wings
-    const fX=0,fZ=-35;
+    // Grand tiered fountain — find a safe position between wings
+    let fX=0,fZ=-28;
+    for (const [cx,cz] of [[0,-28],[18,-18],[-18,-18],[0,20],[20,15],[-20,15]]) {
+      if (!isInWingZone(cx, cz, 7)) { fX = cx; fZ = cz; break; }
+    }
+    const fountainSafe = !isInWingZone(fX, fZ, 7);
+    let fW1: THREE.Mesh | null = null, fW2: THREE.Mesh | null = null, fW3: THREE.Mesh | null = null;
+    let pool: THREE.Mesh | null = null;
+    if (fountainSafe) {
     // Bottom basin
     cAdd(mk(new THREE.CylinderGeometry(5,5.5,1,32),M.marble,fX,.5,fZ));
     cAdd(mk(new THREE.CylinderGeometry(4.5,4.5,.15,32),M.marbleVein,fX,1.05,fZ));
-    const fW1=new THREE.Mesh(new THREE.CylinderGeometry(4.2,4.2,.08,32),M.water);fW1.position.set(fX,1.1,fZ);cAdd(fW1);
+    fW1=new THREE.Mesh(new THREE.CylinderGeometry(4.2,4.2,.08,32),M.water);fW1.position.set(fX,1.1,fZ);cAdd(fW1);
     // Middle tier
     cAdd(mk(new THREE.CylinderGeometry(1,1.4,2.5,12),M.marble,fX,2.4,fZ));
     cAdd(mk(new THREE.CylinderGeometry(2.5,2.5,.15,20),M.marbleVein,fX,3.7,fZ));
-    const fW2=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,.06,20),M.water);fW2.position.set(fX,3.75,fZ);cAdd(fW2);
+    fW2=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,.06,20),M.water);fW2.position.set(fX,3.75,fZ);cAdd(fW2);
     // Top tier
     cAdd(mk(new THREE.CylinderGeometry(.5,.7,1.8,8),M.marble,fX,4.6,fZ));
     cAdd(mk(new THREE.CylinderGeometry(1.2,1.2,.12,12),M.marbleVein,fX,5.6,fZ));
-    const fW3=new THREE.Mesh(new THREE.CylinderGeometry(1,1,.06,12),M.water);fW3.position.set(fX,5.63,fZ);cAdd(fW3);
+    fW3=new THREE.Mesh(new THREE.CylinderGeometry(1,1,.06,12),M.water);fW3.position.set(fX,5.63,fZ);cAdd(fW3);
     // Simple finial
     cAdd(mk(new THREE.CylinderGeometry(.2,.3,.8,8),M.bronze,fX,6.1,fZ));
     cAdd(mk(new THREE.SphereGeometry(.3,8,8),M.goldBright,fX,6.7,fZ));
+    }
 
     // Symmetrical parterre gardens with flower beds
     const parterreData=[[-16,-25],[16,-25],[-16,-45],[16,-45],[-24,-35],[24,-35]];
@@ -934,7 +1013,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const lavenderMat=new THREE.MeshStandardMaterial({color:"#7A6898",roughness:.82});
     const rosedustMat=new THREE.MeshStandardMaterial({color:"#B88A7A",roughness:.8});
     const ivoryFlower=new THREE.MeshStandardMaterial({color:"#E8E0D0",roughness:.78});
-    parterreData.filter(([hx,hz])=>!isInWingZone(hx,hz)).forEach(([hx,hz])=>{
+    parterreData.filter(([hx,hz])=>!isInWingZone(hx,hz,5)).forEach(([hx,hz])=>{
       // Raised bed base
       cAdd(mk(new THREE.BoxGeometry(7,.7,5),hedgeDark,hx,.35,hz));
       cAdd(mk(new THREE.BoxGeometry(6.6,.1,4.6),hedgeMid,hx,.72,hz));
@@ -965,50 +1044,53 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       }
     });
 
-    // Grand reflecting pool
-    cAdd(mk(new THREE.BoxGeometry(5,.4,22),M.stoneD,fX,.2,fZ));
-    cAdd(mk(new THREE.BoxGeometry(4,.3,.3),M.marble,fX,.38,fZ-11));
-    cAdd(mk(new THREE.BoxGeometry(4,.3,.3),M.marble,fX,.38,fZ+11));
-    const pool=new THREE.Mesh(new THREE.BoxGeometry(4.2,.08,21),M.waterDeep);pool.position.set(fX,.42,fZ);cAdd(pool);
+    // Small reflecting basin around fountain base
+    if (fountainSafe) {
+    cAdd(mk(new THREE.BoxGeometry(8,.15,8),M.stoneD,fX,.08,fZ));
+    pool=new THREE.Mesh(new THREE.BoxGeometry(7,.06,7),M.waterDeep);pool.position.set(fX,.18,fZ);cAdd(pool);
+    }
 
     // Simple potted plants — rustic terracotta pots with low greenery
     const potPositions2=[[-10,-35],[10,-35],[-10,-45],[10,-45]];
-    potPositions2.filter(([tx,tz]: any)=>!isInWingZone(tx,tz)).forEach(([tx,tz]: any)=>{
+    potPositions2.filter(([tx,tz]: any)=>!isInWingZone(tx,tz,2)).forEach(([tx,tz]: any)=>{
       cAdd(mk(new THREE.CylinderGeometry(.4,.3,.6,8),M.tile,tx,.3,tz));
       const bush=mk(new THREE.SphereGeometry(.5,7,6),hedgeDark,tx,.8,tz);
       bush.scale.set(1,.6,1);cAdd(bush);
     });
 
     // A few simple terracotta pots near paths
-    for(const[ux,uz]of[[-8,-35],[8,-35]].filter(([x,z])=>!isInWingZone(x,z))){
+    for(const[ux,uz]of[[-8,-35],[8,-35]].filter(([x,z])=>!isInWingZone(x,z,2))){
       cAdd(mk(new THREE.CylinderGeometry(.2,.28,.5,8),M.tile,ux,.25,uz));
       cAdd(mk(new THREE.SphereGeometry(.18,6,5),hedgeDark,ux,.55,uz));
     }
 
     // Stone benches
-    for(const[bx,bz]of[[-13,-35],[13,-35]].filter(([x,z])=>!isInWingZone(x,z))){
+    for(const[bx,bz]of[[-13,-35],[13,-35]].filter(([x,z])=>!isInWingZone(x,z,3))){
       cAdd(mk(new THREE.BoxGeometry(2.5,.06,1),M.marble,bx,.54,bz));
       cAdd(mk(new THREE.BoxGeometry(2.5,.35,.7),M.marbleVein,bx,.18+.17,bz));
       for(const s of[-.9,.9])cAdd(mk(new THREE.BoxGeometry(.4,.35,.7),M.stoneD,bx+s,.18+.17,bz));
     }
 
-    // Main gravel path — wide avenue from entrance gate south to hilltop edge
-    for(let pi=0;pi<18;pi++)cAdd(mk(new THREE.BoxGeometry(4.5,.05,2.2),M.pathD,0,.04,-14-pi*1.6));
-    // Radiating side paths
+    // Main gravel path — wide avenue from entrance gate south to hilltop edge (skip wing zones)
+    for(let pi=0;pi<18;pi++){
+      const pz=-14-pi*1.6;
+      if(!isInWingZone(0,pz,4))cAdd(mk(new THREE.BoxGeometry(4.5,.05,2.2),M.pathD,0,.04,pz));
+    }
+    // Radiating side paths (skip wing zones)
     for(let ri=0;ri<6;ri++){
-      const pa=(ri/6)*Math.PI*2;if(Math.abs(Math.sin(pa))<.3&&Math.cos(pa)<0)continue; // skip south (main path covers it)
+      const pa=(ri/6)*Math.PI*2;if(Math.abs(Math.sin(pa))<.3&&Math.cos(pa)<0)continue;
       for(let s=0;s<6;s++){
         const pd=22+s*3;
-        cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,Math.cos(pa)*pd,.03,Math.sin(pa)*pd));
+        const px=Math.cos(pa)*pd,pz=Math.sin(pa)*pd;
+        if(!isInWingZone(px,pz,2))cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,px,.03,pz));
       }
     }
 
     // ── GARDEN GROUNDS — gravel apron & herb beds near palace ──
-    const gravelApron=new THREE.MeshStandardMaterial({color:"#C8B890",roughness:.92,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)});
-    cAdd(mk(new THREE.CylinderGeometry(48,52,.06,48),gravelApron,0,.02,0));
+    // No courtyard disc — terrain itself serves as the ground
     const herbGreen=new THREE.MeshStandardMaterial({color:"#5A6A3A",roughness:.88});
     const herbSilver=new THREE.MeshStandardMaterial({color:"#8A9878",roughness:.85});
-    for(const[hx,hz]of[[20,12],[-20,12],[20,-12],[-20,-12]].filter(([x,z])=>!isInWingZone(x,z))){
+    for(const[hx,hz]of[[20,12],[-20,12],[20,-12],[-20,-12]].filter(([x,z])=>!isInWingZone(x,z,4))){
       cAdd(mk(new THREE.BoxGeometry(4,.2,2),M.stoneD,hx,.1,hz));
       cAdd(mk(new THREE.BoxGeometry(3.6,.15,1.6),herbGreen,hx,.2,hz));
       for(let hi=0;hi<3;hi++){
@@ -1022,7 +1104,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       for(let s=0;s<8;s++){
         const pd=42+s*3;
         const px=Math.cos(pa)*pd,pz=Math.sin(pa)*pd;
-        if(isInWingZone(px,pz))continue;
+        if(isInWingZone(px,pz,2))continue;
         cAdd(mk(new THREE.BoxGeometry(2.2,.04,1.2),M.pathD,px,.03,pz));
       }
     }
@@ -1053,50 +1135,65 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       yOffset: HILL_Y,
     });
 
-    // ── PALACE CYPRESS RING — tall columnar cypresses (vertex-displaced cylinder) ──
+    // ── PALACE CYPRESS RING — LatheGeometry with vertex noise for natural columnar shape ──
     const buildCypress=(px: number,pz: number,h: number,baseY: number)=>{
-      // Trunk — thin tapered cylinder
-      scene.add(mk(new THREE.CylinderGeometry(.04,.12,h*.35,5),M.barkD,px,baseY+h*.175,pz));
-      // Foliage — single tapered cylinder with vertex noise for bumpy columnar silhouette
-      const radSegs=8,hSegs=12;
-      const cypGeo=new THREE.CylinderGeometry(0,1,1,radSegs,hSegs);
+      // Trunk
+      scene.add(mk(new THREE.CylinderGeometry(.04,.14,h*.3,5),M.barkD,px,baseY+h*.15,pz));
+      scene.add(mk(new THREE.CylinderGeometry(.12,.18,.25,5),M.barkD,px,baseY+.12,pz));
+      // Foliage — LatheGeometry with noisy columnar profile
+      const foliageH=h*.82;
+      const maxR=0.5;
+      const segs=18,radSegs=8;
+      const seed=px*137.5+pz*281.3;
+      const profile: THREE.Vector2[]=[];
+      for(let i=0;i<=segs;i++){
+        const t=i/segs;
+        let r: number;
+        if(t<0.05){r=maxR*.35*(t/.05);}
+        else if(t<0.2){r=maxR*(.35+.65*((t-.05)/.15));}
+        else if(t<0.9){const tp=(t-.2)/.7;r=maxR*(1-.4*tp);}
+        else{const tp=(t-.9)/.1;r=maxR*.6*(1-tp);}
+        // Profile noise for bumpy silhouette
+        const n=Math.sin(seed+t*47.3)*Math.cos(seed*.7+t*31.1);
+        r*=1+n*.12;
+        profile.push(new THREE.Vector2(Math.max(r,.02),t*foliageH));
+      }
+      const cypGeo=new THREE.LatheGeometry(profile,radSegs);
+      // Per-vertex radial noise for organic bumps
       const pos=cypGeo.attributes.position;
-      const seed=px*137.3+pz*241.7; // deterministic seed per tree
-      for(let i=0;i<pos.count;i++){
-        const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
-        const t=(y+0.5); // 0=bottom, 1=top
-        // Columnar profile: wide middle, tapered top and bottom
-        const profile=Math.sin(t*Math.PI)*.85+.15;
-        const baseRadius=(.4+Math.random()*.08)*profile;
-        // Add noise for bumpy edges
-        const angle=Math.atan2(z,x);
-        const noise=Math.sin(angle*3+seed)*0.06+Math.sin(angle*7+seed*2)*0.03+Math.sin(t*12+seed)*0.04;
-        const r=Math.sqrt(x*x+z*z);
-        if(r>0.01){ // skip center vertices
-          const newR=baseRadius+noise;
-          pos.setX(i,x/r*newR);
-          pos.setZ(i,z/r*newR);
-        }
+      for(let v=0;v<pos.count;v++){
+        const vx=pos.getX(v),vy=pos.getY(v),vz=pos.getZ(v);
+        const dist=Math.sqrt(vx*vx+vz*vz);
+        if(dist<.01)continue;
+        const angle=Math.atan2(vz,vx);
+        const ht=vy/foliageH;
+        const n1=Math.sin(angle*5+seed)*Math.cos(ht*19+seed*.3)*.07;
+        const n2=Math.sin(angle*11+seed*2.1)*Math.sin(ht*37+seed*.7)*.03;
+        const n3=Math.cos(angle*17+seed*3.3)*Math.sin(ht*53+seed*1.1)*.02;
+        const radN=1+n1+n2+n3;
+        pos.setX(v,vx/dist*dist*radN);
+        pos.setZ(v,vz/dist*dist*radN);
+        pos.setY(v,vy+Math.sin(angle*7+ht*23+seed)*.02*foliageH);
       }
       cypGeo.computeVertexNormals();
-      // Dark green material — varies per tree
-      const lightness=10+Math.random()*4;
+      const hue=126+Math.sin(seed)*14;
+      const sat=38+Math.abs(Math.cos(seed*.5))*10;
+      const lt=9+Math.abs(Math.sin(seed*.3))*4;
       const foliageMat=new THREE.MeshStandardMaterial({
-        color:new THREE.Color(`hsl(${126+Math.random()*12},${35+Math.random()*10}%,${lightness}%)`),
-        roughness:.92,
+        color:new THREE.Color(`hsl(${hue},${sat}%,${lt}%)`),roughness:.92,flatShading:true,
       });
-      const foliage=new THREE.Mesh(cypGeo,foliageMat);
-      const lean=(Math.random()-.5)*.04;
-      foliage.position.set(px+lean,baseY+h*.15+h*.42,pz);
-      foliage.scale.set(1,h*.82,1);
-      foliage.castShadow=true;
-      scene.add(foliage);
+      const lean=(Math.sin(seed*1.7)-.5)*.03;
+      const mesh=new THREE.Mesh(cypGeo,foliageMat);
+      mesh.position.set(px+lean,baseY+h*.18,pz);
+      mesh.rotation.y=seed;
+      mesh.castShadow=true;
+      scene.add(mesh);
     };
     for(let ci=0;ci<18;ci++){
       const ca=(ci/18)*Math.PI*2+Math.random()*.15;
       const cr=38+Math.random()*12;
       const ccx=Math.cos(ca)*cr,ccz=Math.sin(ca)*cr;
-      if(isInWingZone(ccx,ccz))continue; // don't plant trees where wings are
+      if(isInWingZone(ccx,ccz,3))continue; // don't plant trees where wings are
       const cch=9+Math.random()*3;
       buildCypress(ccx,ccz,cch,getHeightAt(ccx,ccz));
     }
@@ -1115,7 +1212,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     for(let hi=0;hi<24;hi++){
       const ha=(hi/24)*Math.PI*2;
       const hx2=Math.cos(ha)*34,hz2=Math.sin(ha)*34;
-      if(isInWingZone(hx2,hz2))continue;
+      if(isInWingZone(hx2,hz2,3))continue;
       const hedge2=mk(new THREE.BoxGeometry(3,.8,.6),boxwoodMat,hx2,.4,hz2);
       hedge2.rotation.y=ha+Math.PI/2;courtyardGroup.add(hedge2);
     }
@@ -1125,7 +1222,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     for(let wi=0;wi<20;wi++){
       const wa=(wi/20)*Math.PI*2;
       const wx=Math.cos(wa)*42,wz=Math.sin(wa)*42;
-      if(isInWingZone(wx,wz))continue;
+      if(isInWingZone(wx,wz,3))continue;
       const seg=mk(new THREE.BoxGeometry(4,.45,.35),dryWallMat,wx,.22,wz);
       seg.rotation.y=wa+Math.PI/2;cAdd(seg);
     }
@@ -1444,19 +1541,155 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     for(const s of[-1,1]){
       scene.add(mk(new THREE.BoxGeometry(aqSpans*aqSpacing+aqPierW,.5,.15),new THREE.MeshStandardMaterial({color:atmosColor("#C4B8A8",Math.abs(aqZ)),roughness:.8}),aqStartX+aqSpans*aqSpacing/2,aqTopY+.5,aqZ+s*.65));
     }
-    // Hills on each end that the aqueduct connects between
-    const hillMat=new THREE.MeshStandardMaterial({color:atmosColor("#8A9A58",Math.abs(aqZ)),roughness:.9});
-    const hillLeft=mk(new THREE.SphereGeometry(18,12,10),hillMat,aqStartX-12,0,aqZ);
-    hillLeft.scale.set(1,.5,1);scene.add(hillLeft);
-    const hillRight=mk(new THREE.SphereGeometry(20,12,10),hillMat,aqStartX+aqSpans*aqSpacing+15,0,aqZ);
-    hillRight.scale.set(1,.55,1);scene.add(hillRight);
-    // Some trees on the hills
-    for(const[hx,hs]of[[aqStartX-18,8],[aqStartX-8,7],[aqStartX+aqSpans*aqSpacing+10,9],[aqStartX+aqSpans*aqSpacing+22,7]]){
-      const tCol=atmosColor("#2A4A20",Math.sqrt(hx*hx+aqZ*aqZ));
-      scene.add(mk(new THREE.CylinderGeometry(.06,.1,hs*.2,5),M.barkD,hx,hs*.1+2,aqZ));
-      const tc=new THREE.Mesh(new THREE.CylinderGeometry(.15,.35,hs*.7,6),new THREE.MeshStandardMaterial({color:tCol,roughness:.88}));
-      tc.position.set(hx,hs*.45+2,aqZ);scene.add(tc);
-    }
+    // Rocky hills on each end — aqueduct emerges from natural terrain
+    const aqEndLeft=aqStartX;
+    const aqEndRight=aqStartX+aqSpans*aqSpacing;
+    const hillPeakY=aqTopY+3; // hills slightly above aqueduct top
+
+    // Build a natural hill from multiple overlapping mounds + vegetation
+    const buildNaturalHill=(baseCx: number,baseCz: number,spread: number,peakY: number,seed: number)=>{
+      // Multiple overlapping mounds at random offsets for organic hillside
+      const mounds: {mx:number,mz:number,rx:number,rz:number,h:number}[] = [];
+      const nMounds = 5 + Math.floor(seed % 3);
+      for (let mi = 0; mi < nMounds; mi++) {
+        const angle = (mi / nMounds) * Math.PI * 2 + Math.sin(seed + mi) * .8;
+        const dist = mi === 0 ? 0 : spread * (.15 + Math.random() * .35);
+        const mx = baseCx + Math.cos(angle) * dist;
+        const mz = baseCz + Math.sin(angle) * dist;
+        const rx = spread * (.4 + Math.random() * .3) * (mi === 0 ? 1.2 : .7 + Math.random() * .4);
+        const rz = rx * (.6 + Math.random() * .5);
+        const h = mi === 0 ? peakY : peakY * (.4 + Math.random() * .45);
+        mounds.push({ mx, mz, rx, rz, h });
+
+        // Create mound mesh
+        const mGeo = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+        const mPos = mGeo.attributes.position;
+        const mColors = new Float32Array(mPos.count * 3);
+        for (let i = 0; i < mPos.count; i++) {
+          let px2 = mPos.getX(i), py = mPos.getY(i), pz2 = mPos.getZ(i);
+          px2 *= rx; pz2 *= rz; py *= h;
+          // Terrain-like displacement
+          const n1 = Math.sin(px2 * .12 + seed + mi) * Math.cos(pz2 * .15 + seed * .7) * 2;
+          const n2 = Math.sin(px2 * .35 + seed * 1.3 + mi * 2) * Math.cos(pz2 * .3 + seed * 2.1) * 1;
+          const hf = py / h;
+          py += (n1 + n2) * hf;
+          mPos.setXYZ(i, px2, py, pz2);
+          // Vertex colors — Tuscan green hillside
+          const greenVar = Math.sin(px2 * .2 + pz2 * .3 + seed + mi) * .08;
+          const dryPatch = Math.sin(px2 * .6 + pz2 * .4 + seed * 3) * .5 + .5; // 0-1
+          if (hf > .7 && dryPatch > .6) {
+            // Rocky stone patches near summit
+            mColors[i * 3] = .55 + Math.random() * .06;
+            mColors[i * 3 + 1] = .48 + Math.random() * .05;
+            mColors[i * 3 + 2] = .35 + Math.random() * .04;
+          } else {
+            // Tuscan brown/golden — dry grass, olive, wheat tones
+            mColors[i * 3] = .52 + greenVar + dryPatch * .1 + Math.random() * .04;
+            mColors[i * 3 + 1] = .44 + greenVar + hf * .04 + Math.random() * .04;
+            mColors[i * 3 + 2] = .25 + Math.random() * .04;
+          }
+        }
+        mGeo.setAttribute("color", new THREE.BufferAttribute(mColors, 3));
+        mGeo.computeVertexNormals();
+        const mMesh = new THREE.Mesh(mGeo, new THREE.MeshStandardMaterial({
+          vertexColors: true, roughness: .92, metalness: 0, flatShading: true, envMap: null, envMapIntensity: 0
+        }));
+        mMesh.position.set(mx, 0, mz);
+        mMesh.rotation.y = Math.random() * .5; // slight rotation for variety
+        mMesh.receiveShadow = true;
+        scene.add(mMesh);
+      }
+
+      // Height at world pos — max of all mound surfaces
+      const hillSurfaceY = (wx: number, wz: number) => {
+        let maxH = 0;
+        for (const m of mounds) {
+          const dx = (wx - m.mx) / m.rx;
+          const dz = (wz - m.mz) / m.rz;
+          const d2 = dx * dx + dz * dz;
+          if (d2 >= 1) continue;
+          const h2 = m.h * Math.sqrt(1 - d2);
+          const n1 = Math.sin(wx * .12 + seed) * Math.cos(wz * .15 + seed * .7) * 2;
+          const hf = h2 / m.h;
+          const total = h2 + n1 * hf;
+          if (total > maxH) maxH = total;
+        }
+        return maxH;
+      };
+
+      // Rocky outcrops at summit
+      for (let ri = 0; ri < 6; ri++) {
+        const ra = (ri / 6) * Math.PI * 2 + seed * .3;
+        const rd = spread * (.05 + Math.random() * .15);
+        const rx2 = baseCx + Math.cos(ra) * rd;
+        const rz2 = baseCz + Math.sin(ra) * rd;
+        const ry2 = hillSurfaceY(rx2, rz2) + .5;
+        const rockGeo = new THREE.DodecahedronGeometry(.8 + Math.random() * 1.5, 0);
+        const rPos2 = rockGeo.attributes.position;
+        for (let vi = 0; vi < rPos2.count; vi++) {
+          rPos2.setXYZ(vi,
+            rPos2.getX(vi) * (.6 + Math.random() * .6),
+            rPos2.getY(vi) * (.4 + Math.random() * .5),
+            rPos2.getZ(vi) * (.6 + Math.random() * .6)
+          );
+        }
+        rockGeo.computeVertexNormals();
+        const rock = new THREE.Mesh(rockGeo, new THREE.MeshStandardMaterial({
+          color: atmosColor(["#8A8470", "#9A9080", "#7A7868"][ri % 3], Math.sqrt(rx2 * rx2 + rz2 * rz2)),
+          roughness: .95, flatShading: true
+        }));
+        rock.position.set(rx2, ry2, rz2);
+        rock.rotation.set(Math.random(), Math.random(), Math.random());
+        scene.add(rock);
+      }
+
+      // Cypress trees on hillside
+      for (let ti = 0; ti < 14; ti++) {
+        const ta = Math.PI * 2 * (ti / 14) + seed * .11 + Math.sin(seed + ti) * .4;
+        const td = spread * (.1 + Math.random() * .55);
+        const tx = baseCx + Math.cos(ta) * td;
+        const tz = baseCz + Math.sin(ta) * td;
+        const ty = hillSurfaceY(tx, tz);
+        if (ty < 1.5) continue;
+        buildCypress(tx, tz, 5 + Math.random() * 7, ty);
+      }
+
+      // Dense macchia bushes — olive/brown Mediterranean tones
+      const bushColors = ["#5A5A30", "#4A4A28", "#585838", "#504828", "#5A5030"];
+      for (let bi = 0; bi < 30; bi++) {
+        const ba = Math.random() * Math.PI * 2;
+        const bd = spread * (.05 + Math.random() * .6);
+        const bx = baseCx + Math.cos(ba) * bd;
+        const bz = baseCz + Math.sin(ba) * bd;
+        const by = hillSurfaceY(bx, bz);
+        if (by < .8) continue;
+        const bCol = atmosColor(bushColors[bi % bushColors.length], Math.sqrt(bx * bx + bz * bz));
+        const bush = mk(new THREE.DodecahedronGeometry(.4 + Math.random() * .7, 1),
+          new THREE.MeshStandardMaterial({ color: bCol, roughness: .92, flatShading: true }),
+          bx, by + .2, bz);
+        bush.scale.set(1 + Math.random() * .5, .3 + Math.random() * .4, 1 + Math.random() * .4);
+        scene.add(bush);
+      }
+
+      // Dry grass tufts at lower slopes
+      const grassCol = atmosColor("#8A7A48", Math.sqrt(baseCx * baseCx + baseCz * baseCz));
+      const grassMat = new THREE.MeshStandardMaterial({ color: grassCol, roughness: .95 });
+      for (let gi = 0; gi < 20; gi++) {
+        const ga = Math.random() * Math.PI * 2;
+        const gd = spread * (.3 + Math.random() * .45);
+        const gx = baseCx + Math.cos(ga) * gd;
+        const gz = baseCz + Math.sin(ga) * gd;
+        const gy = hillSurfaceY(gx, gz);
+        if (gy < .3) continue;
+        const tuft = mk(new THREE.ConeGeometry(.25 + Math.random() * .3, .4 + Math.random() * .3, 5), grassMat, gx, gy + .1, gz);
+        tuft.scale.set(1.5, .7, 1.5); scene.add(tuft);
+      }
+    };
+
+    // Left hill — centered on aqueduct left end so it connects
+    buildNaturalHill(aqEndLeft - 10, aqZ, 45, hillPeakY, 42.7);
+    // Right hill — centered on aqueduct right end
+    buildNaturalHill(aqEndRight + 12, aqZ, 50, hillPeakY + 2, 91.3);
     }
 
     // ── STONE BRIDGE over winding stream ──
@@ -1678,11 +1911,11 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
       camera.lookAt(0,HILL_Y+8,0);
 
-      // Animate water shimmer
-      pool.material.opacity=.6+Math.sin(t*1.2)*.06;
-      fW1.material.opacity=.55+Math.sin(t*1.5)*.08;
-      fW2.material.opacity=.55+Math.sin(t*1.8)*.08;
-      fW3.material.opacity=.55+Math.sin(t*2.1)*.06;
+      // Subtle water opacity animation
+      if (pool) (pool.material as THREE.MeshStandardMaterial).opacity=.5+Math.sin(t*.8)*.03;
+      if (fW1) (fW1.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*.9)*.03;
+      if (fW2) (fW2.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*1.0)*.03;
+      if (fW3) (fW3.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*1.1)*.02;
 
       // ── SECTION SPLIT / LIFT ANIMATION ──
       const anyHovered=hoveredRoomRef.current!==null;

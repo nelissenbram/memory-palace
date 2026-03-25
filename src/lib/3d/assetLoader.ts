@@ -12,17 +12,28 @@ import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 const textureLoader = new THREE.TextureLoader();
 const rgbeLoader = new RGBELoader();
 
+// ── Caches (persist across scene transitions) ──
+const pbrCache = new Map<string, PBRTextureSet>();
+const hdriCache = new Map<string, Promise<THREE.Texture>>();
+
 // ════════════════════════════════════════════
 // HDRI ENVIRONMENT MAPS
 // ════════════════════════════════════════════
 
-/** Load an HDR environment map and generate a prefiltered env map for PBR IBL */
+/** Load an HDR environment map and generate a prefiltered env map for PBR IBL.
+ *  Results are cached — subsequent calls for the same path return instantly. */
 export function loadHDRI(
   renderer: THREE.WebGLRenderer,
   path: string,
   onLoad?: (envMap: THREE.Texture) => void
 ): Promise<THREE.Texture> {
-  return new Promise((resolve, reject) => {
+  const cached = hdriCache.get(path);
+  if (cached) {
+    cached.then(t => onLoad?.(t));
+    return cached;
+  }
+
+  const promise = new Promise<THREE.Texture>((resolve, reject) => {
     const pmrem = new THREE.PMREMGenerator(renderer);
     pmrem.compileEquirectangularShader();
 
@@ -39,10 +50,14 @@ export function loadHDRI(
       (err) => {
         console.warn(`[AssetLoader] Failed to load HDRI: ${path}`, err);
         pmrem.dispose();
+        hdriCache.delete(path); // allow retry
         reject(err);
       }
     );
   });
+
+  hdriCache.set(path, promise);
+  return promise;
 }
 
 /** Interior HDRI — warm ballroom with chandeliers */
@@ -63,7 +78,8 @@ export interface PBRTextureSet {
   aoMap: THREE.Texture;
 }
 
-/** Load a PBR texture set (diffuse, normal, roughness, AO) */
+/** Load a PBR texture set (diffuse, normal, roughness, AO).
+ *  Results are cached by basePath+prefix+repeat — repeat visits reuse GPU textures. */
 function loadPBRSet(
   basePath: string,
   prefix: string,
@@ -73,6 +89,9 @@ function loadPBRSet(
   }
 ): PBRTextureSet {
   const repeat = options?.repeat || [1, 1];
+  const cacheKey = `${basePath}|${prefix}|${repeat[0]},${repeat[1]}`;
+  const cached = pbrCache.get(cacheKey);
+  if (cached) return cached;
 
   const configTex = (tex: THREE.Texture) => {
     tex.wrapS = THREE.RepeatWrapping;
@@ -91,7 +110,9 @@ function loadPBRSet(
   // Three.js aoMap defaults to channel 1 (uv2), so override to channel 0.
   aoMap.channel = 0;
 
-  return { map, normalMap, roughnessMap, aoMap };
+  const set = { map, normalMap, roughnessMap, aoMap };
+  pbrCache.set(cacheKey, set);
+  return set;
 }
 
 // ── Pre-configured texture loaders for each surface type ──
@@ -114,6 +135,11 @@ export function loadDarkWoodTextures(repeat: [number, number] = [2, 3]): PBRText
 /** Plaster wall — for wall surfaces */
 export function loadPlasterWallTextures(repeat: [number, number] = [3, 3]): PBRTextureSet {
   return loadPBRSet("/textures/pbr/plaster_wall", "painted_plaster_wall", { repeat });
+}
+
+/** Worn plaster wall — aged Italian villa exterior walls */
+export function loadWornPlasterTextures(repeat: [number, number] = [3, 3]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/worn_plaster_wall", "worn_plaster_wall", { repeat });
 }
 
 /** Stone floor tiles — for corridor and entrance floors */
@@ -171,11 +197,53 @@ export function loadWalnutWoodTextures(repeat: [number, number] = [2, 3]): PBRTe
   return loadPBRSet("/textures/pbr/walnut_wood", "walnut_wood", { repeat });
 }
 
+// ── Exterior landscape texture loaders ──
+// These reuse existing PBR sets as stand-ins until dedicated landscape textures are added
+
+/** Grass — uses plaster wall textures tinted green via material color */
+export function loadGrassTextures(repeat: [number, number] = [12, 12]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/plaster_wall", "painted_plaster_wall", { repeat });
+}
+
+/** Ground / earth — uses plaster wall textures tinted brown via material color */
+export function loadGroundTextures(repeat: [number, number] = [8, 8]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/plaster_wall", "painted_plaster_wall", { repeat });
+}
+
+/** Crop / wheat fields — uses plaster wall textures tinted golden via material color */
+export function loadCropTextures(repeat: [number, number] = [6, 6]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/plaster_wall", "painted_plaster_wall", { repeat });
+}
+
+/** White gravel roads (strade bianche) — uses travertine textures */
+export function loadWhiteGravelTextures(repeat: [number, number] = [4, 4]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/travertine", "travertine", { repeat });
+}
+
+/** Gravel road — uses travertine textures */
+export function loadGravelRoadTextures(repeat: [number, number] = [3, 3]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/travertine", "travertine", { repeat });
+}
+
+/** Load a single displacement map texture */
+export function loadDisplacementMap(path: string, repeat: [number, number] = [1, 1]): THREE.Texture {
+  const tex = textureLoader.load(path);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeat[0], repeat[1]);
+  return tex;
+}
+
 // ════════════════════════════════════════════
 // DISPOSAL
 // ════════════════════════════════════════════
 
+/** Dispose textures. Cached sets are kept alive for reuse across scenes. */
 export function disposePBRSet(set: PBRTextureSet) {
+  // If this set is in cache, keep it alive for next scene
+  for (const cached of pbrCache.values()) {
+    if (cached === set) return;
+  }
   set.map.dispose();
   set.normalMap.dispose();
   set.roughnessMap.dispose();
