@@ -27,7 +27,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const dlPreset=getLightingPreset();
     const scene=new THREE.Scene();scene.background=new THREE.Color(wing.wall);
     // Add atmospheric fog for depth
-    scene.fog=new THREE.FogExp2(wing.wall,.012*dlPreset.fogDensity);
+    scene.fog=new THREE.FogExp2(wing.wall,.008*dlPreset.fogDensity);
     const camera=new THREE.PerspectiveCamera(55,w/h,0.1,80);
     const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
     ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.8*dlPreset.exposure;
@@ -65,7 +65,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         floorPat:"mosaic",ceilStyle:"exposed_beams",wallStyle:"gallery"},
     };
     const C=(cfg as any)[wingId]||cfg.family;
-    const cW=C.cW,cH=C.cH,cL=rooms.length*C.sp+14;
+    const cW=C.cW,cH=C.cH,cL=Math.max(rooms.length,8)*C.sp+14;
 
     // ── REAL PBR TEXTURES (Poly Haven) ──
     const marbleTex=loadMarbleTextures([4,4]);
