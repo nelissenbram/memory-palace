@@ -15,6 +15,17 @@ const rgbeLoader = new RGBELoader();
 // ── Caches (persist across scene transitions) ──
 const pbrCache = new Map<string, PBRTextureSet>();
 const hdriCache = new Map<string, Promise<THREE.Texture>>();
+const resolvedHDRITextures = new Set<THREE.Texture>();
+
+/** Check if a texture is managed by the asset cache (HDRI or PBR). Cached textures
+ *  must NOT be disposed by individual scenes — they are shared across scene transitions. */
+export function isCachedTexture(tex: THREE.Texture): boolean {
+  if (resolvedHDRITextures.has(tex)) return true;
+  for (const set of pbrCache.values()) {
+    if (tex === set.map || tex === set.normalMap || tex === set.roughnessMap || tex === set.aoMap) return true;
+  }
+  return false;
+}
 
 // ════════════════════════════════════════════
 // HDRI ENVIRONMENT MAPS
@@ -43,6 +54,7 @@ export function loadHDRI(
         const envMap = pmrem.fromEquirectangular(hdrTexture).texture;
         hdrTexture.dispose();
         pmrem.dispose();
+        resolvedHDRITextures.add(envMap);
         onLoad?.(envMap);
         resolve(envMap);
       },

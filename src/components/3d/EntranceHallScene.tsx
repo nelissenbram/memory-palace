@@ -8,8 +8,9 @@ import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
-import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { loadBustModel, type BustStyle, type BustGender } from "@/lib/3d/bustBuilder";
+import type { BustPedestalData } from "@/lib/stores/userStore";
 
 // ═══ ENTRANCE HALL — Grand Roman Senate / Pantheon Chamber ═══
 const HALL_DOORS = [
@@ -112,6 +113,7 @@ export default function EntranceHallScene({
   styleEra = "roman",
   onInlayClick,
   onBustClick,
+  bustPedestals,
   bustTextureUrl,
   bustModelUrl,
   bustProportions,
@@ -124,6 +126,7 @@ export default function EntranceHallScene({
   styleEra?: string;
   onInlayClick?: () => void;
   onBustClick?: (pedestalIndex: number) => void;
+  bustPedestals?: Record<number, BustPedestalData>;
   bustTextureUrl?: string | null;
   bustModelUrl?: string | null;
   bustProportions?: Record<string, number> | null;
@@ -932,24 +935,27 @@ export default function EntranceHallScene({
       const bustAngle = pedestalAngles[bi];
       const bx = Math.cos(bustAngle) * bR, bz = Math.sin(bustAngle) * bR;
 
-      // Pedestal base
+      // Pedestal — square base, column, matching top (all aligned at 0.55)
       const pedBaseH = 0.15;
-      scene.add(mk(new THREE.BoxGeometry(0.6, pedBaseH, 0.6), MS.marble, bx, pedBaseH / 2, bz));
-      // Pedestal column
+      scene.add(mk(new THREE.BoxGeometry(0.55, pedBaseH, 0.55), MS.marble, bx, pedBaseH / 2, bz));
       const pedColH = 0.7;
       const pedColY = pedBaseH + pedColH / 2;
-      scene.add(mk(new THREE.CylinderGeometry(0.18, 0.22, pedColH, 8), MS.marble, bx, pedColY, bz));
-      // Pedestal top
+      scene.add(mk(new THREE.BoxGeometry(0.30, pedColH, 0.30), MS.marble, bx, pedColY, bz));
       const pedTopH = 0.1;
       const pedTopY = pedBaseH + pedColH + pedTopH / 2;
-      scene.add(mk(new THREE.BoxGeometry(0.48, pedTopH, 0.48), MS.marble, bx, pedTopY, bz));
+      scene.add(mk(new THREE.BoxGeometry(0.55, pedTopH, 0.55), MS.marble, bx, pedTopY, bz));
 
       const pedestalTopY = pedBaseH + pedColH + pedTopH;
-      const isFirstBust = (bi === 0);
 
-      // Name plaque on pedestal BASE, facing inward — like a museum label
-      if (isFirstBust && bustName) {
-        const plaqueTex = createNamePlaqueTexture(bustName);
+      // Per-pedestal data — each pedestal can have its own face/name/gender
+      const pedData = bustPedestals?.[bi];
+      const thisFaceUrl = pedData?.faceUrl || null;
+      const thisName = pedData?.name || null;
+      const thisGender: BustGender = pedData?.gender || (bi % 2 === 0 ? "male" : "female");
+
+      // Name plaque on pedestal base, facing inward
+      if (thisName) {
+        const plaqueTex = createNamePlaqueTexture(thisName);
         const plaqueGeo = new THREE.PlaneGeometry(0.40, 0.12);
         const plaqueMat = new THREE.MeshStandardMaterial({
           map: plaqueTex,
@@ -958,26 +964,21 @@ export default function EntranceHallScene({
           side: THREE.DoubleSide,
         });
         const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);
-        // Place on the pedestal base face, facing toward center
         const toCenterLen = Math.sqrt(bx * bx + bz * bz);
         const nDx = -bx / toCenterLen, nDz = -bz / toCenterLen;
         plaque.position.set(
-          bx + nDx * 0.31,     // just on the face of the pedestal base
-          pedBaseH * 0.55,     // centered on the base height
-          bz + nDz * 0.31,
+          bx + nDx * 0.285,
+          pedBaseH * 0.55,
+          bz + nDz * 0.285,
         );
         plaque.rotation.y = Math.atan2(nDx, nDz);
         scene.add(plaque);
       }
 
-      // Bust — first pedestal gets user's photo, rest alternate male/female generic busts
-      const thisGender: BustGender = isFirstBust
-        ? ((bustGender as BustGender) || "male")
-        : (bi % 2 === 0 ? "male" : "female");
-
+      // Bust — uses per-pedestal face if available, otherwise generic with alternating gender
       addBustToScene(
         scene, bx, bz, bustAngle, bustStyle, pedestalTopY,
-        isFirstBust ? bustTextureUrl : null,
+        thisFaceUrl,
         marbleTex,
         thisGender,
         ren,
@@ -2170,10 +2171,10 @@ export default function EntranceHallScene({
         if (obj.material) {
           const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
           materials.forEach((m: any) => {
-            if (m.map) m.map.dispose();
-            if (m.normalMap) m.normalMap.dispose();
-            if (m.roughnessMap) m.roughnessMap.dispose();
-            if (m.emissiveMap) m.emissiveMap.dispose();
+            if (m.map && !isCachedTexture(m.map)) m.map.dispose();
+            if (m.normalMap && !isCachedTexture(m.normalMap)) m.normalMap.dispose();
+            if (m.roughnessMap && !isCachedTexture(m.roughnessMap)) m.roughnessMap.dispose();
+            if (m.emissiveMap && !isCachedTexture(m.emissiveMap)) m.emissiveMap.dispose();
             m.dispose();
           });
         }
@@ -2182,7 +2183,6 @@ export default function EntranceHallScene({
       oculusBeam.dispose();
       allTexSets.forEach(disposePBRSet);
       envMapProc.dispose();
-      if (envMapHDRI) envMapHDRI.dispose();
       composer.dispose();
       if (el.contains(ren.domElement)) el.removeChild(ren.domElement);
       ren.dispose();

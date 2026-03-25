@@ -99,6 +99,7 @@ export async function updateProfile(data: {
   bustModelUrl?: string;
   bustName?: string;
   bustGender?: string;
+  bustPedestals?: Record<number, { faceUrl: string; name: string; gender: string }>;
 }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { success: true };
@@ -123,6 +124,7 @@ export async function updateProfile(data: {
   if (data.bustModelUrl !== undefined) updates.bust_model_url = data.bustModelUrl;
   if (data.bustName !== undefined) updates.bust_name = data.bustName;
   if (data.bustGender !== undefined) updates.bust_gender = data.bustGender;
+  if (data.bustPedestals !== undefined) updates.bust_pedestals = JSON.stringify(data.bustPedestals);
 
   if (Object.keys(updates).length === 0) {
     return { error: "No fields to update" };

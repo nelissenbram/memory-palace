@@ -1311,7 +1311,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       dust.dispose();
       allTexSets.forEach(disposePBRSet);
       envMapProc.dispose();
-      if(envMapHDRI)envMapHDRI.dispose();
+      // HDRI textures managed by cache — do not dispose
       composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[roomId,actualRoomId,layoutOverride]);

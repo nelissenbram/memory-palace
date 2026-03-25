@@ -15,23 +15,25 @@ import {
 
 interface BustBuilderPanelProps {
   onClose: () => void;
+  pedestalIndex?: number;
 }
 
 type Stage = "manage" | "upload" | "creating" | "done" | "error";
 
-export default function BustBuilderPanel({ onClose }: BustBuilderPanelProps) {
+export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBuilderPanelProps) {
   const isMobile = useIsMobile();
-  const { styleEra, bustTextureUrl, bustModelUrl, bustName: savedBustName, bustGender: savedBustGender, userName } = useUserStore();
-  const hasBust = !!(bustTextureUrl || bustModelUrl);
+  const { styleEra, bustPedestals, userName } = useUserStore();
+  const pedestalData = bustPedestals[pedestalIndex];
+  const hasBust = !!pedestalData?.faceUrl;
 
   const [preview, setPreview] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>(hasBust ? "manage" : "upload");
   const [error, setError] = useState<string | null>(null);
   const [photoFeedback, setPhotoFeedback] = useState<string | null>(null);
   const [doneBustGroup, setDoneBustGroup] = useState<THREE.Group | null>(null);
-  const [bustNameInput, setBustNameInput] = useState(savedBustName || userName || "");
+  const [bustNameInput, setBustNameInput] = useState(pedestalData?.name || (pedestalIndex === 0 ? userName : "") || "");
   const [bustGender, setBustGender] = useState<BustGender>(
-    (savedBustGender as BustGender) || "male"
+    pedestalData?.gender || "male"
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const previewCanvasRef = useRef<HTMLDivElement>(null);
@@ -65,12 +67,13 @@ export default function BustBuilderPanel({ onClose }: BustBuilderPanelProps) {
 
   // ── Remove existing bust ──
   const handleRemove = async () => {
-    await updateProfile({ bustTextureUrl: "" });
-    await updateProfile({ bustModelUrl: "" }).catch(() => {});
     const store = useUserStore.getState();
-    store.bustTextureUrl = null;
-    store.setBustModelUrl(null);
-    store.setBustName(null);
+    store.removeBustPedestal(pedestalIndex);
+    // Persist to DB
+    await updateProfile({ bustPedestals: useUserStore.getState().bustPedestals }).catch(() => {});
+    if (pedestalIndex === 0) {
+      await updateProfile({ bustTextureUrl: "" }).catch(() => {});
+    }
     onClose();
   };
 
@@ -92,17 +95,20 @@ export default function BustBuilderPanel({ onClose }: BustBuilderPanelProps) {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       const textureDataUrl = canvas.toDataURL("image/jpeg", 0.85);
 
-      await updateProfile({ bustTextureUrl: textureDataUrl });
-      useUserStore.getState().bustTextureUrl = textureDataUrl;
-
-      // Save name and gender
+      // Save per-pedestal data
       const store = useUserStore.getState();
-      if (bustNameInput) {
-        await updateProfile({ bustName: bustNameInput }).catch(() => {});
-        store.setBustName(bustNameInput);
+      store.setBustPedestal(pedestalIndex, {
+        faceUrl: textureDataUrl,
+        name: bustNameInput || "",
+        gender: bustGender,
+      });
+
+      // Persist to DB
+      await updateProfile({ bustPedestals: useUserStore.getState().bustPedestals }).catch(() => {});
+      // Also keep legacy fields for pedestal 0
+      if (pedestalIndex === 0) {
+        await updateProfile({ bustTextureUrl: textureDataUrl, bustName: bustNameInput, bustGender }).catch(() => {});
       }
-      await updateProfile({ bustGender: bustGender }).catch(() => {});
-      store.setBustGender(bustGender);
 
       // Load the composite bust for preview
       const bustGroup = await loadBustModel(bustStyle, bustGender, textureDataUrl);
@@ -210,10 +216,10 @@ export default function BustBuilderPanel({ onClose }: BustBuilderPanelProps) {
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, textAlign: "center", marginBottom: 16,
             }}>
-              Your Bust
+              Pedestal {pedestalIndex + 1}{pedestalData?.name ? ` — ${pedestalData.name}` : ""}
             </h2>
-            {bustTextureUrl && (
-              <img src={bustTextureUrl} alt="Current bust" style={{
+            {pedestalData?.faceUrl && (
+              <img src={pedestalData.faceUrl} alt="Current bust" style={{
                 width: 160, height: 160, objectFit: "cover",
                 borderRadius: 16, margin: "0 auto 16px",
                 border: `3px solid ${T.color.sandstone}`, display: "block",
@@ -223,7 +229,7 @@ export default function BustBuilderPanel({ onClose }: BustBuilderPanelProps) {
               fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
               textAlign: "center", marginBottom: 20, lineHeight: 1.5,
             }}>
-              Your {bustStyleLabel} bust is displayed on a pedestal in the entrance hall.
+              Your {bustStyleLabel} bust is displayed on pedestal {pedestalIndex + 1} in the entrance hall.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               <button onClick={() => { setStage("upload"); setPreview(null); }} style={{
@@ -259,7 +265,7 @@ export default function BustBuilderPanel({ onClose }: BustBuilderPanelProps) {
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, textAlign: "center", marginBottom: 8,
             }}>
-              {hasBust ? "Change Your Bust" : "Create Your Bust"}
+              {hasBust ? "Change Bust" : "Create a Bust"} — Pedestal {pedestalIndex + 1}
             </h2>
             <p style={{
               fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
@@ -478,7 +484,7 @@ export default function BustBuilderPanel({ onClose }: BustBuilderPanelProps) {
               fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
               marginBottom: 16,
             }}>
-              Your {bustStyleLabel} bust has been placed on a pedestal in the entrance hall.
+              Your {bustStyleLabel} bust has been placed on pedestal {pedestalIndex + 1} in the entrance hall.
               Re-enter the hall to see it.
             </p>
             <button onClick={onClose} style={{

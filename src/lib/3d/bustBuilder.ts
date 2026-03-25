@@ -7,14 +7,13 @@ export type BustGender = "male" | "female";
 const BUST_MODEL_PATH = "/models/bust_base.glb";
 
 // ════════════════════════════════════════════
-// PRIMARY: COMPOSITE BUST (TORSO + CAMEO HEAD)
+// PRIMARY: COMPOSITE BUST (TORSO + PHOTO HEAD)
 // ════════════════════════════════════════════
 
 /**
- * Load a classical bust with the head replaced by a cameo portrait.
- * - Torso: GLB model clipped at neck with a marble cap
- * - Head: oval cameo with the user's photo, desaturated + tinted
- * If no photo, returns the full GLB model as-is (generic bust).
+ * Load a classical bust.
+ * - No photo: full GLB model with gender-specific adjustments (+ hair bun for female)
+ * - With photo: GLB torso clipped at neck, face photo as flat portrait disc on top
  */
 export async function loadBustModel(
   style: BustStyle = "roman",
@@ -29,20 +28,15 @@ export async function loadBustModel(
       : createMarblePhysicalMaterial(marblePBR);
 
     if (!faceImageUrl) {
-      // Generic bust — full model, no cameo
+      // Generic bust — full model with gender adjustments
       model.traverse((child) => {
         if (child instanceof THREE.Mesh) child.material = mat;
       });
-      // Gender adjustment on full bust — narrower shoulders, slightly smaller, slimmer proportions
-      if (gender === "female") {
-        model.scale.x *= 0.78;
-        model.scale.z *= 0.85;
-        model.scale.y *= 0.93;
-      }
+      applyGenderAdjustments(model, gender, mat, style);
       return model;
     }
 
-    // User bust — torso + cameo head
+    // User bust — torso + portrait disc head
     const group = new THREE.Group();
     group.name = "CompositeBust";
 
@@ -62,7 +56,7 @@ export async function loadBustModel(
       child.material = clonedMat;
     });
 
-    // Gender adjustment on torso — narrower shoulders, slimmer
+    // Gender adjustment on torso
     if (gender === "female") {
       model.scale.x *= 0.78;
       model.scale.z *= 0.85;
@@ -82,91 +76,134 @@ export async function loadBustModel(
     capMesh.position.set(modelCenterX, neckCutY, modelCenterZ);
     group.add(capMesh);
 
-    // Cameo head with user's photo
-    const cameo = await createCameoHead(faceImageUrl, style, modelWidth);
-    cameo.position.set(modelCenterX, neckCutY, modelCenterZ);
-    group.add(cameo);
+    // Portrait disc head with user's photo
+    const portrait = await createPortraitDisc(faceImageUrl, style, modelWidth);
+    portrait.position.set(modelCenterX, neckCutY, modelCenterZ);
+    group.add(portrait);
 
     return group;
   } catch {
     // Fallback: simple procedural bust
-    return generateFallbackBust(style);
+    return generateFallbackBust(style, gender);
   }
 }
 
 // ════════════════════════════════════════════
-// CAMEO HEAD — PORTRAIT MEDALLION
+// GENDER ADJUSTMENTS
+// ════════════════════════════════════════════
+
+/** Apply gender-specific visual adjustments to a bust model */
+function applyGenderAdjustments(
+  model: THREE.Group,
+  gender: BustGender,
+  mat: THREE.MeshPhysicalMaterial,
+  style: BustStyle,
+) {
+  if (gender === "female") {
+    // Narrower shoulders, slimmer proportions
+    model.scale.x *= 0.78;
+    model.scale.z *= 0.85;
+    model.scale.y *= 0.93;
+
+    // Add a hair bun — small sphere at top-back of head
+    const box = new THREE.Box3().setFromObject(model);
+    const headTopY = box.max.y;
+    const centerX = (box.min.x + box.max.x) / 2;
+    const centerZ = (box.min.z + box.max.z) / 2;
+
+    const bunMat = mat.clone();
+    if (style === "roman") bunMat.color.set("#E8E0D4");
+    const bunGeo = new THREE.SphereGeometry(0.06, 16, 12);
+    const bun = new THREE.Mesh(bunGeo, bunMat);
+    bun.position.set(centerX, headTopY - 0.02, centerZ - 0.05);
+    bun.scale.set(1.2, 0.8, 1.0);
+    bun.castShadow = true;
+    model.add(bun);
+
+    // Small decorative band around the bun
+    const bandGeo = new THREE.TorusGeometry(0.055, 0.008, 6, 16);
+    const bandMat = mat.clone();
+    bandMat.color.multiplyScalar(0.85);
+    const band = new THREE.Mesh(bandGeo, bandMat);
+    band.position.set(centerX, headTopY - 0.02, centerZ - 0.05);
+    band.rotation.x = Math.PI * 0.35;
+    model.add(band);
+  }
+}
+
+// ════════════════════════════════════════════
+// PORTRAIT DISC — FLAT COIN-LIKE MEDALLION
 // ════════════════════════════════════════════
 
 /**
- * Create an oval cameo portrait head — like a classical relief portrait.
- * The photo is desaturated, tinted to match marble/bronze, and mapped
- * onto a gently domed oval shape.
+ * Create a flat circular portrait disc that sits on top of the clipped torso.
+ * Like a Roman portrait medallion / coin — face photo on front, marble/bronze on back.
  */
-async function createCameoHead(
+async function createPortraitDisc(
   imageUrl: string,
   style: BustStyle,
   modelWidth: number,
 ): Promise<THREE.Group> {
   const group = new THREE.Group();
-  const headScale = modelWidth * 0.12; // proportional to torso
+  const discRadius = modelWidth * 0.11;
+  const discThickness = discRadius * 0.06;
 
-  // Create the oval cameo geometry: a domed front, flat back
-  // Using a hemisphere scaled to oval proportions
-  const geo = new THREE.SphereGeometry(1, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.55);
-  // Scale: wider (X), taller (Y), shallow depth (Z)
-  geo.scale(headScale * 0.85, headScale * 1.1, headScale * 0.55);
-
-  // Create the face texture
+  // Load and process the face image
   const img = await loadImage(imageUrl);
   const faceTexture = createCameoTexture(img, style);
-
-  // Generate a subtle normal map from the face for carved/relief look
-  const faceCanvas = faceTexture.image as HTMLCanvasElement;
-  const normalMap = generateNormalMapFromCanvas(faceCanvas, 1.5);
 
   const baseMat = style === "renaissance"
     ? createBronzePhysicalMaterial()
     : createMarblePhysicalMaterial();
 
-  const cameoMat = new THREE.MeshPhysicalMaterial({
+  // Front face — circular disc with photo
+  const frontGeo = new THREE.CircleGeometry(discRadius, 32);
+  const frontMat = new THREE.MeshPhysicalMaterial({
     map: faceTexture,
-    normalMap: normalMap,
-    normalScale: new THREE.Vector2(0.4, 0.4),
-    roughness: baseMat.roughness,
+    roughness: baseMat.roughness * 1.2,
     metalness: baseMat.metalness,
-    clearcoat: 0.15,
-    clearcoatRoughness: 0.2,
-    envMapIntensity: 0.7,
+    clearcoat: 0.1,
+    clearcoatRoughness: 0.25,
+    envMapIntensity: 0.5,
   });
+  const frontMesh = new THREE.Mesh(frontGeo, frontMat);
+  frontMesh.position.z = discThickness / 2;
+  frontMesh.castShadow = true;
+  group.add(frontMesh);
 
-  const cameoMesh = new THREE.Mesh(geo, cameoMat);
-  cameoMesh.castShadow = true;
-  group.add(cameoMesh);
-
-  // Back of head — a matching half-sphere, solid marble/bronze
-  const backGeo = new THREE.SphereGeometry(1, 32, 16, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55);
-  backGeo.scale(headScale * 0.82, headScale * 1.05, headScale * 0.45);
+  // Back face — solid material
+  const backGeo = new THREE.CircleGeometry(discRadius, 32);
+  backGeo.rotateY(Math.PI);
   const backMesh = new THREE.Mesh(backGeo, baseMat.clone());
+  backMesh.position.z = -discThickness / 2;
   backMesh.castShadow = true;
   group.add(backMesh);
 
-  // Thin rim/border around the portrait
-  const rimGeo = new THREE.TorusGeometry(headScale * 0.88, headScale * 0.03, 8, 32);
-  rimGeo.rotateX(Math.PI / 2);
-  rimGeo.scale(0.97, 1.25, 0.3);
+  // Edge — thin cylinder connecting front and back (like a coin edge)
+  const edgeGeo = new THREE.CylinderGeometry(discRadius, discRadius, discThickness, 32, 1, true);
+  edgeGeo.rotateX(Math.PI / 2);
+  const edgeMat = baseMat.clone();
+  edgeMat.color.multiplyScalar(0.92);
+  const edgeMesh = new THREE.Mesh(edgeGeo, edgeMat);
+  group.add(edgeMesh);
+
+  // Decorative rim — thin torus around the disc
+  const rimGeo = new THREE.TorusGeometry(discRadius * 1.02, discRadius * 0.025, 8, 32);
   const rimMat = baseMat.clone();
-  rimMat.color.multiplyScalar(0.9);
+  rimMat.color.multiplyScalar(0.88);
   const rimMesh = new THREE.Mesh(rimGeo, rimMat);
-  rimMesh.position.z = headScale * 0.05;
+  rimMesh.position.z = discThickness * 0.3;
   group.add(rimMesh);
+
+  // Tilt very slightly forward for a natural look
+  group.rotation.x = -0.05;
 
   return group;
 }
 
 /**
- * Create the cameo face texture: desaturated, marble/bronze tinted,
- * with a smooth oval vignette and relief-like quality.
+ * Create the portrait face texture: desaturated, marble/bronze tinted,
+ * with a smooth circular vignette.
  */
 function createCameoTexture(
   faceImage: HTMLImageElement,
@@ -183,13 +220,13 @@ function createCameoTexture(
   ctx.fillStyle = baseColor;
   ctx.fillRect(0, 0, size, size);
 
-  // Draw the photo within an oval clip
+  // Draw the photo within a circular clip
   ctx.save();
   ctx.beginPath();
-  ctx.ellipse(size / 2, size / 2, size * 0.44, size * 0.48, 0, 0, Math.PI * 2);
+  ctx.arc(size / 2, size / 2, size * 0.46, 0, Math.PI * 2);
   ctx.clip();
 
-  // Fill the photo, covering the oval
+  // Fill the photo, covering the circle
   const imgAspect = faceImage.width / faceImage.height;
   let drawW = size * 0.96;
   let drawH = drawW / imgAspect;
@@ -218,7 +255,7 @@ function createCameoTexture(
   ctx.fillRect(0, 0, size, size);
   ctx.globalCompositeOperation = "source-over";
 
-  // Soft oval vignette — fade edges to base color
+  // Soft circular vignette — fade edges to base color
   const gradient = ctx.createRadialGradient(
     size / 2, size / 2, size * 0.28,
     size / 2, size / 2, size * 0.48
@@ -394,7 +431,7 @@ function generateNormalMapFromCanvas(source: HTMLCanvasElement, strength: number
 // FALLBACK: SIMPLE PROCEDURAL BUST
 // ════════════════════════════════════════════
 
-function generateFallbackBust(style: BustStyle): THREE.Group {
+function generateFallbackBust(style: BustStyle, gender: BustGender = "male"): THREE.Group {
   const group = new THREE.Group();
   group.name = "FallbackBust";
 
@@ -402,12 +439,18 @@ function generateFallbackBust(style: BustStyle): THREE.Group {
     ? createBronzePhysicalMaterial()
     : createMarblePhysicalMaterial();
 
-  // Simple torso shape
-  const raw: [number, number][] = [
-    [0.00, 0.00], [0.28, 0.00], [0.30, 0.02], [0.28, 0.10],
-    [0.26, 0.14], [0.22, 0.18], [0.12, 0.22], [0.10, 0.30],
-    [0.09, 0.36], [0.00, 0.38],
-  ];
+  // Gender-specific torso profile
+  const raw: [number, number][] = gender === "female"
+    ? [
+        [0.00, 0.00], [0.22, 0.00], [0.24, 0.03], [0.23, 0.10],
+        [0.21, 0.15], [0.18, 0.19], [0.11, 0.23], [0.09, 0.30],
+        [0.08, 0.36], [0.00, 0.38],
+      ]
+    : [
+        [0.00, 0.00], [0.28, 0.00], [0.30, 0.02], [0.28, 0.10],
+        [0.26, 0.14], [0.22, 0.18], [0.12, 0.22], [0.10, 0.30],
+        [0.09, 0.36], [0.00, 0.38],
+      ];
   const curvePoints = raw.map(([r, h]) => new THREE.Vector2(r, h));
   const curve = new THREE.SplineCurve(curvePoints);
   const pts = curve.getPoints(30);
@@ -418,12 +461,24 @@ function generateFallbackBust(style: BustStyle): THREE.Group {
   bustMesh.receiveShadow = true;
   group.add(bustMesh);
 
-  // Simple head sphere
-  const headGeo = new THREE.SphereGeometry(0.09, 24, 18);
+  // Head sphere — slightly smaller for female
+  const headRadius = gender === "female" ? 0.082 : 0.09;
+  const headGeo = new THREE.SphereGeometry(headRadius, 24, 18);
   headGeo.translate(0, 0.46, 0);
   const headMesh = new THREE.Mesh(headGeo, mat.clone());
   headMesh.castShadow = true;
   group.add(headMesh);
+
+  // Female: add hair bun
+  if (gender === "female") {
+    const bunMat = mat.clone();
+    const bunGeo = new THREE.SphereGeometry(0.05, 14, 10);
+    const bun = new THREE.Mesh(bunGeo, bunMat);
+    bun.position.set(0, 0.52, -0.04);
+    bun.scale.set(1.1, 0.7, 0.9);
+    bun.castShadow = true;
+    group.add(bun);
+  }
 
   return group;
 }

@@ -2036,7 +2036,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       dust.dispose();
       allTexSets.forEach(disposePBRSet);
       envMapProc.dispose();
-      if(envMapHDRI)envMapHDRI.dispose();
+      // HDRI textures managed by cache — do not dispose
       composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[wingId]);
