@@ -297,7 +297,7 @@ export default function MemoryPalace(){
       <div style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
         {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===0?"__entrance__":null} styleEra={styleEra||"roman"}/>}
         {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else enterCorridor(wingId);}} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={(idx: number)=>{setBustBuilderIndex(idx);setShowBustBuilder(true);}} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null}/>}
-        {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)}/>}
+        {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>}
         {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined} styleEra={styleEra||"roman"}/>}
       </div>
 
@@ -380,7 +380,7 @@ export default function MemoryPalace(){
         if (view==="corridor"&&activeWing) {
           return <ActionMenu
             accent={wingData?.accent||T.color.terracotta}
-            primary={{ icon: "\u{1F6AA}", label: "Manage Rooms", action: ()=>setShowRoomManager(true) }}
+            primary={{ icon: "\u{1F527}", label: "Manage Rooms", action: ()=>setShowRoomManager(true) }}
             secondary={[
               { icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: ()=>setShowCorridorGallery(true) },
               { icon: "\uD83C\uDF0D", label: "Memory Map", action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
@@ -551,8 +551,8 @@ export default function MemoryPalace(){
         onClick={()=>setShowUpgradePrompt(false)}>
         <div onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:18,padding:"32px 36px",maxWidth:380,textAlign:"center",boxShadow:"0 8px 40px rgba(0,0,0,.18)"}}>
           <div style={{fontSize:40,marginBottom:12}}>{"🔒"}</div>
-          <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,marginBottom:8}}>Locked Wing</h3>
-          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,lineHeight:1.5,marginBottom:20}}>Upgrade to unlock additional wings for your palace.</p>
+          <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,marginBottom:8}}>Locked Room</h3>
+          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,lineHeight:1.5,marginBottom:20}}>Upgrade to unlock additional rooms in this wing.</p>
           <button onClick={()=>setShowUpgradePrompt(false)}
             style={{fontFamily:T.font.body,fontSize:15,fontWeight:600,padding:"12px 32px",borderRadius:10,border:"none",
               background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer"}}>
@@ -673,7 +673,7 @@ function MobileBottomBar(props: MobileBottomBarProps) {
     }
     primaryActions.push({ icon: "\u{1F91D}", label: "Share", action: props.onShare });
   } else if (view === "corridor" && activeWing) {
-    primaryActions.push({ icon: "\u{1F6AA}", label: "Rooms", action: props.onRoomManager, accent: true });
+    primaryActions.push({ icon: "\u{1F527}", label: "Rooms", action: props.onRoomManager, accent: true });
     primaryActions.push({ icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: props.onCorridorGallery });
     primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
   } else if (view === "entrance") {
