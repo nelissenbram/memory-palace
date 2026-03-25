@@ -519,7 +519,8 @@ export default function FamilyTreePage() {
 
   const handleAdd = async () => {
     if (!newFirst.trim()) return;
-    await addPerson({ first_name: newFirst, last_name: newLast || undefined });
+    const result = await addPerson({ first_name: newFirst, last_name: newLast || undefined });
+    if (result?.error) { alert(result.error); return; }
     setNewFirst("");
     setNewLast("");
     setShowAddForm(false);
