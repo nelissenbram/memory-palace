@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { getAuthenticatedUser, getBaseUrl, upsertConnectedAccount } from "@/lib/integrations/helpers";
 import { getUserInfo } from "@/lib/integrations/onedrive";
 
@@ -9,12 +10,22 @@ export async function GET(request: NextRequest) {
 
     const code = request.nextUrl.searchParams.get("code");
     const error = request.nextUrl.searchParams.get("error");
+    const state = request.nextUrl.searchParams.get("state");
 
     if (error) {
       return NextResponse.redirect(`${baseUrl}/settings/connections?error=${encodeURIComponent(error)}`);
     }
     if (!code) {
       return NextResponse.redirect(`${baseUrl}/settings/connections?error=no_code`);
+    }
+
+    // Verify CSRF state parameter
+    const cookieStore = await cookies();
+    const storedState = cookieStore.get("oauth_state_onedrive")?.value;
+    if (!state || !storedState || state !== storedState) {
+      const resp = NextResponse.redirect(`${baseUrl}/settings/connections?error=invalid_state`);
+      resp.cookies.delete("oauth_state_onedrive");
+      return resp;
     }
 
     const redirectUri = `${baseUrl}/api/integrations/onedrive/callback`;
@@ -58,7 +69,9 @@ export async function GET(request: NextRequest) {
       providerEmail,
     });
 
-    return NextResponse.redirect(`${baseUrl}/settings/connections?connected=onedrive`);
+    const resp = NextResponse.redirect(`${baseUrl}/settings/connections?connected=onedrive`);
+    resp.cookies.delete("oauth_state_onedrive");
+    return resp;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     console.error("OneDrive OAuth callback error:", message);

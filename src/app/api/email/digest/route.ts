@@ -6,6 +6,8 @@ import {
   type UpcomingCapsule,
   type SharedRoomActivity,
   type TrackProgress,
+  type MemoryOfTheWeek,
+  type WeeklyStats,
 } from "@/lib/email/send-digest";
 import { TRACKS } from "@/lib/constants/tracks";
 
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
   // ── 2. Pre-fetch all memories for "On This Day" ──
   const { data: allMemories } = await supabase
     .from("memories")
-    .select("id, title, user_id, created_at");
+    .select("id, title, user_id, room_id, thumbnail_url, created_at");
 
   // Group On This Day memories by user (memories from this week in prior years)
   const otdByUser: Record<string, OnThisDayMemory[]> = {};
@@ -152,7 +154,7 @@ export async function POST(request: Request) {
         .select("id, name")
         .in("id", roomIds);
 
-      const roomNameMap = new Map(
+      const sharedRoomNameMap = new Map(
         (rooms || []).map((r: { id: string; name: string }) => [r.id, r.name])
       );
 
@@ -162,7 +164,7 @@ export async function POST(request: Request) {
         const key = `${mem.user_id}:${mem.room_id}`;
         if (!activityMap[key]) {
           activityMap[key] = {
-            roomName: roomNameMap.get(mem.room_id) || "Shared Room",
+            roomName: sharedRoomNameMap.get(mem.room_id) || "Shared Room",
             contributorId: mem.user_id,
             count: 0,
           };
@@ -197,11 +199,43 @@ export async function POST(request: Request) {
     }
   }
 
-  // ── 5. Pre-fetch track progress per user ──
+  // ── 5. Pre-fetch track progress & weekly stats per user ──
   const memoryCountByUser: Record<string, number> = {};
+  const memoriesThisWeekByUser: Record<string, number> = {};
+  const roomIdsByUser: Record<string, Set<string>> = {};
+  // Candidates for "memory of the week": recent memories with thumbnails
+  const recentMemoriesByUser: Record<string, { title: string; thumbnailUrl: string | null; roomId: string }[]> = {};
+
   if (allMemories) {
     for (const mem of allMemories) {
       memoryCountByUser[mem.user_id] = (memoryCountByUser[mem.user_id] || 0) + 1;
+
+      // Count memories created this week
+      if (mem.created_at >= weekAgoISO) {
+        memoriesThisWeekByUser[mem.user_id] = (memoriesThisWeekByUser[mem.user_id] || 0) + 1;
+
+        // Collect recent memories as memory-of-the-week candidates
+        if (!recentMemoriesByUser[mem.user_id]) recentMemoriesByUser[mem.user_id] = [];
+        recentMemoriesByUser[mem.user_id].push({
+          title: mem.title,
+          thumbnailUrl: mem.thumbnail_url || null,
+          roomId: mem.room_id || "",
+        });
+      }
+    }
+  }
+
+  // Count distinct rooms per user
+  const { data: allRooms } = await supabase
+    .from("rooms")
+    .select("id, user_id, name");
+
+  const roomNameMap = new Map<string, string>();
+  if (allRooms) {
+    for (const room of allRooms) {
+      if (!roomIdsByUser[room.user_id]) roomIdsByUser[room.user_id] = new Set();
+      roomIdsByUser[room.user_id].add(room.id);
+      roomNameMap.set(room.id, room.name);
     }
   }
 
@@ -256,6 +290,28 @@ export async function POST(request: Request) {
       }
     }
 
+    // Build weekly stats
+    const weeklyStats: WeeklyStats = {
+      totalMemories: memoryCountByUser[userId] || 0,
+      memoriesThisWeek: memoriesThisWeekByUser[userId] || 0,
+      totalRooms: roomIdsByUser[userId]?.size || 0,
+    };
+
+    // Pick a random "memory of the week" from this week's memories
+    let memoryOfTheWeek: MemoryOfTheWeek | null = null;
+    const candidates = recentMemoriesByUser[userId];
+    if (candidates && candidates.length > 0) {
+      // Prefer memories with thumbnails, fall back to any recent memory
+      const withThumbs = candidates.filter((c) => c.thumbnailUrl);
+      const pool = withThumbs.length > 0 ? withThumbs : candidates;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      memoryOfTheWeek = {
+        title: pick.title,
+        thumbnailUrl: pick.thumbnailUrl,
+        roomName: roomNameMap.get(pick.roomId) || "Your Palace",
+      };
+    }
+
     const result = await sendDigestEmail({
       recipientEmail: email,
       displayName,
@@ -263,6 +319,8 @@ export async function POST(request: Request) {
       upcomingCapsules: capsulesByUser[userId] || [],
       sharedRoomActivity: activityByUser[userId] || [],
       trackProgress,
+      weeklyStats,
+      memoryOfTheWeek,
     });
 
     if (result.success) {

@@ -3,6 +3,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { randomBytes } from "crypto";
 
 /**
  * Get the authenticated user or throw.
@@ -78,6 +79,14 @@ export async function getConnectedAccount(userId: string, provider: string) {
     .eq("provider", provider)
     .single();
   return data;
+}
+
+/**
+ * Generate a random OAuth state parameter for CSRF protection.
+ * The state is stored in an HttpOnly cookie and verified in the callback.
+ */
+export function generateOAuthState(): string {
+  return randomBytes(32).toString("hex");
 }
 
 /**

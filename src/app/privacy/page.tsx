@@ -87,205 +87,279 @@ export default function PrivacyPolicyPage() {
           Privacy Policy
         </h1>
         <p style={{ fontSize: 14, color: C.muted, marginBottom: 48 }}>
-          Last updated: March 15, 2026
+          Last updated: March 25, 2026
         </p>
 
         <Section title="1. Who We Are">
           <P>
-            Memory Palace is operated by Memory Palace, a company based in Belgium.
-            We are committed to protecting the privacy and security of your personal
-            data in compliance with the General Data Protection Regulation (GDPR) and
-            applicable Belgian law.
+            The Memory Palace is operated from Belgium. We built this app to help
+            you preserve and share your most precious memories — safely and
+            privately. We are committed to protecting your personal data in full
+            compliance with the General Data Protection Regulation (GDPR) and
+            applicable Belgian and EU law.
           </P>
           <P>
-            For any privacy-related inquiries, you can contact us at:{" "}
-            <a href="mailto:privacy@memorypalace.app" style={linkStyle}>
-              privacy@memorypalace.app
+            For any privacy-related questions, you can always reach us at:{" "}
+            <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+              privacy@thememorypalace.ai
             </a>
           </P>
         </Section>
 
-        <Section title="2. Data We Collect">
-          <P>We collect the following categories of personal data:</P>
+        <Section title="2. What We Collect">
+          <P>
+            We only collect what we need to provide you with a great experience.
+            Here is what we gather:
+          </P>
           <Ul>
             <Li>
-              <strong>Account information:</strong> name, email address, and password
-              (hashed) when you create an account.
+              <strong>Profile information:</strong> your name, email address, and
+              profile photo when you create an account.
             </Li>
             <Li>
-              <strong>Content:</strong> photos, videos, stories, and other media you
-              upload to your Memory Palace.
+              <strong>Your memories:</strong> the photos, videos, stories, and
+              other content you upload to your Memory Palace. This is the heart
+              of the service.
             </Li>
             <Li>
-              <strong>Usage data:</strong> anonymized analytics about how you use the
-              application, collected via PostHog (see Cookies section below).
+              <strong>Minimal usage analytics:</strong> we collect anonymized
+              data about how you use the app (such as which features are popular)
+              to help us improve it. This data cannot be traced back to you
+              personally.
             </Li>
             <Li>
-              <strong>Device information:</strong> browser type, operating system, and
-              screen resolution for optimizing your experience.
+              <strong>Device information:</strong> basic details like your
+              browser type and screen size, so we can make the app look and work
+              its best on your device.
             </Li>
           </Ul>
         </Section>
 
-        <Section title="3. How We Store Your Data">
+        <Section title="3. How We Use Your Data">
           <P>
-            Your data is stored securely on Supabase infrastructure hosted in{" "}
-            <strong>Frankfurt, Germany (EU)</strong>. This means your data remains
-            within the European Union and is subject to EU data protection laws.
+            We use your data solely to provide and improve The Memory Palace.
+            Specifically:
           </P>
+          <Ul>
+            <Li>
+              To store, organize, and display your memories in your palace.
+            </Li>
+            <Li>
+              To authenticate your account and keep it secure.
+            </Li>
+            <Li>
+              To send you important service-related messages (such as email
+              confirmations, security alerts, or legacy notifications).
+            </Li>
+            <Li>
+              To improve the app based on anonymized usage patterns.
+            </Li>
+          </Ul>
           <P>
-            We use bank-grade encryption to protect your data: all data in transit
-            is encrypted via TLS 1.2+, and all data at rest is encrypted using
-            AES-256 encryption on our database servers.
+            We will <strong>never</strong> use your data for advertising, and we
+            will <strong>never</strong> sell it to anyone.
           </P>
         </Section>
 
-        <Section title="4. How We Use Your Data">
-          <P>We use your personal data to:</P>
+        <Section title="4. Where We Store Your Data">
+          <P>
+            All your data is stored within the European Union:
+          </P>
           <Ul>
-            <Li>Provide and maintain the Memory Palace service.</Li>
-            <Li>Authenticate your account and enable secure access.</Li>
             <Li>
-              Process and organize your uploaded content (photos, videos, stories).
+              <strong>Database:</strong> Supabase PostgreSQL, hosted in{" "}
+              <strong>Frankfurt, Germany (EU)</strong>. Your memories, profile
+              data, and account information all live here, encrypted at rest with
+              AES-256.
             </Li>
             <Li>
-              Send service-related communications (e.g., email confirmations,
-              security alerts).
+              <strong>Application hosting:</strong> Vercel, with servers in the
+              EU. All connections are encrypted with TLS 1.3.
             </Li>
             <Li>
-              Improve the application based on anonymized usage analytics.
+              <strong>File storage:</strong> Supabase Storage (EU region),
+              encrypted at rest. Your photos and media are only accessible
+              through authenticated, time-limited links.
+            </Li>
+          </Ul>
+          <P>
+            Because everything is hosted in the EU, your data is fully protected
+            by European data protection laws.
+          </P>
+        </Section>
+
+        <Section title="5. Who We Share Your Data With">
+          <P>
+            We do <strong>not</strong> sell, rent, or trade your personal data.
+            Period. We only share data with a small number of trusted service
+            providers who help us run The Memory Palace:
+          </P>
+          <Ul>
+            <Li>
+              <strong>Supabase</strong> — database hosting, file storage, and
+              authentication.
+            </Li>
+            <Li>
+              <strong>Vercel</strong> — application hosting and content delivery.
+            </Li>
+            <Li>
+              <strong>Resend</strong> — sending transactional emails (such as
+              password resets and notifications).
+            </Li>
+            <Li>
+              <strong>Stripe</strong> — processing payments securely. We never
+              see or store your credit card details.
+            </Li>
+          </Ul>
+          <P>
+            All these providers are bound by data processing agreements and
+            comply with GDPR. Beyond these providers, your data is only shared
+            when:
+          </P>
+          <Ul>
+            <Li>
+              <strong>You choose to share:</strong> when you invite family
+              members to view rooms or memories, the shared content becomes
+              accessible to those people.
+            </Li>
+            <Li>
+              <strong>The law requires it:</strong> we may disclose data if
+              required by law or valid legal process.
             </Li>
           </Ul>
         </Section>
 
-        <Section title="5. Data Sharing">
+        <Section title="6. Your Rights">
           <P>
-            We do not sell, rent, or trade your personal data to third parties.
-            Your data may be shared only in the following limited circumstances:
+            Under the GDPR (Articles 15-20 and beyond), you have strong rights
+            over your personal data. Here is what you can do:
           </P>
           <Ul>
             <Li>
-              <strong>Service providers:</strong> we use Supabase (hosting and
-              database), Vercel (application hosting), and PostHog (analytics) as
-              sub-processors, all bound by data processing agreements.
+              <strong>Access your data:</strong> request a complete copy of
+              everything we hold about you.
             </Li>
             <Li>
-              <strong>Sharing features:</strong> when you explicitly share rooms or
-              memories with other users or generate public links, the shared content
-              becomes accessible to the invited parties.
+              <strong>Export your data:</strong> download all your memories,
+              stories, and photos as a JSON file with a ZIP of your media —
+              directly from your account settings.
             </Li>
             <Li>
-              <strong>Legal obligations:</strong> we may disclose data if required by
-              law or valid legal process.
-            </Li>
-          </Ul>
-        </Section>
-
-        <Section title="6. Cookies & Analytics">
-          <P>
-            We use cookies and similar technologies for the following purposes:
-          </P>
-          <Ul>
-            <Li>
-              <strong>Essential cookies:</strong> required for authentication and
-              core functionality. These cannot be disabled.
+              <strong>Correct your data:</strong> update or fix any information
+              that is inaccurate or incomplete.
             </Li>
             <Li>
-              <strong>Analytics cookies (PostHog):</strong> used to understand how
-              visitors interact with our application. These are only set with your
-              explicit consent. PostHog data is anonymized and does not track you
-              across other websites.
-            </Li>
-          </Ul>
-          <P>
-            You can manage your cookie preferences at any time through the cookie
-            consent banner or by contacting us.
-          </P>
-        </Section>
-
-        <Section title="7. Your Rights">
-          <P>
-            Under the GDPR, you have the following rights regarding your personal
-            data:
-          </P>
-          <Ul>
-            <Li>
-              <strong>Right of access:</strong> request a copy of all personal data
-              we hold about you.
+              <strong>Delete your data:</strong> request complete deletion of
+              your account and all associated data. When you delete your account,
+              everything is permanently removed.
             </Li>
             <Li>
-              <strong>Right to rectification:</strong> request correction of
-              inaccurate or incomplete data.
+              <strong>Data portability:</strong> receive your data in a
+              structured, machine-readable format that you can take to another
+              service.
             </Li>
             <Li>
-              <strong>Right to erasure:</strong> request deletion of your personal
-              data and account.
+              <strong>Object to processing:</strong> opt out of analytics at any
+              time through your cookie preferences.
             </Li>
             <Li>
-              <strong>Right to data portability:</strong> receive your data in a
-              structured, machine-readable format.
-            </Li>
-            <Li>
-              <strong>Right to object:</strong> object to processing of your data
-              for analytics purposes.
-            </Li>
-            <Li>
-              <strong>Right to withdraw consent:</strong> withdraw your consent for
-              analytics cookies at any time.
+              <strong>Withdraw consent:</strong> change your mind about analytics
+              cookies or other optional processing at any time.
             </Li>
           </Ul>
           <P>
-            To exercise any of these rights, contact us at{" "}
-            <a href="mailto:privacy@memorypalace.app" style={linkStyle}>
-              privacy@memorypalace.app
+            To exercise any of these rights, email us at{" "}
+            <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+              privacy@thememorypalace.ai
             </a>
-            . We will respond within 30 days.
+            . We will respond within 30 days, as required by law.
           </P>
         </Section>
 
-        <Section title="8. Data Retention">
+        <Section title="7. Data Retention">
           <P>
-            We retain your personal data for as long as your account is active. If
-            you delete your account, we will permanently delete all your data,
-            including uploaded content, within 30 days. Anonymized analytics data
-            may be retained for up to 12 months after deletion.
+            Your data is kept for as long as your account is active. You are in
+            control:
           </P>
+          <Ul>
+            <Li>
+              <strong>Active account:</strong> your memories and data stay safely
+              stored for as long as you use The Memory Palace.
+            </Li>
+            <Li>
+              <strong>Account deletion:</strong> when you delete your account,
+              all personal data and uploaded content is permanently removed
+              within 30 days. Backup copies are purged within 90 days.
+            </Li>
+            <Li>
+              <strong>Legacy delivery:</strong> if you have set up legacy
+              contacts, your memories will be delivered to your chosen family
+              members according to your settings. This is entirely optional and
+              under your control.
+            </Li>
+            <Li>
+              <strong>Anonymized analytics:</strong> aggregated, non-personal
+              analytics data may be retained for up to 12 months after account
+              deletion to help us improve the service.
+            </Li>
+          </Ul>
+        </Section>
+
+        <Section title="8. Cookies">
           <P>
-            Backup copies are automatically purged within 90 days of account
-            deletion.
+            We keep cookies to a minimum:
+          </P>
+          <Ul>
+            <Li>
+              <strong>Essential cookies:</strong> required for logging in and
+              core functionality. These cannot be disabled, as the app would not
+              work without them.
+            </Li>
+            <Li>
+              <strong>Optional analytics cookies:</strong> help us understand how
+              people use the app so we can improve it. These are only set with
+              your explicit consent, and you can change your preference at any
+              time through the cookie consent banner.
+            </Li>
+          </Ul>
+          <P>
+            We do <strong>not</strong> use advertising cookies or trackers of any
+            kind.
           </P>
         </Section>
 
         <Section title="9. Children's Privacy">
           <P>
-            Memory Palace is not directed at children under 16. We do not knowingly
-            collect personal data from children. If you believe a child has provided
-            us with personal data, please contact us to have it removed.
+            The Memory Palace is designed for adults and is not intended for
+            children under the age of 16. We do not knowingly collect personal
+            data from anyone under 16. If you believe a child has provided us
+            with personal data, please contact us and we will promptly remove it.
           </P>
         </Section>
 
         <Section title="10. Changes to This Policy">
           <P>
-            We may update this privacy policy from time to time. We will notify you
-            of material changes via email or a prominent notice within the
-            application. Continued use of the service after changes constitutes
-            acceptance of the updated policy.
+            We may update this privacy policy from time to time. When we make
+            significant changes, we will notify you by email or with a clear
+            notice inside the app. Your continued use of The Memory Palace after
+            any changes means you accept the updated policy.
           </P>
         </Section>
 
-        <Section title="11. Contact">
+        <Section title="11. Contact Us">
           <P>
-            If you have questions about this privacy policy or wish to exercise your
-            rights, contact us:
+            If you have questions about this privacy policy, want to exercise
+            your rights, or simply want to know more about how we protect your
+            data, we would love to hear from you:
           </P>
           <Ul>
             <Li>
               Email:{" "}
-              <a href="mailto:privacy@memorypalace.app" style={linkStyle}>
-                privacy@memorypalace.app
+              <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
+                privacy@thememorypalace.ai
               </a>
             </Li>
-            <Li>Company: Memory Palace, Belgium</Li>
+            <Li>Company: The Memory Palace, Belgium</Li>
           </Ul>
           <P>
             You also have the right to lodge a complaint with the Belgian Data
@@ -295,6 +369,12 @@ export default function PrivacyPolicyPage() {
         </Section>
 
         <div style={{ marginTop: 48, paddingTop: 24, borderTop: `1px solid ${C.sandstone}40` }}>
+          <Link
+            href="/security"
+            style={{ ...linkStyle, fontSize: 14, marginRight: 24 }}
+          >
+            Security
+          </Link>
           <Link
             href="/terms"
             style={{ ...linkStyle, fontSize: 14, marginRight: 24 }}

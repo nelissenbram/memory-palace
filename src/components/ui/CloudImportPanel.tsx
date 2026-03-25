@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ── Types ──
 interface ConnectedAccount {
@@ -72,6 +73,8 @@ function formatBytes(b: number): string {
 
 // ═══ Main CloudImportPanel ═══
 export default function CloudImportPanel({ onClose, embedded }: Props) {
+  const { t } = useTranslation("import");
+  const { t: tc } = useTranslation("common");
   const { getWings, getWingRooms } = useRoomStore();
   const wings = getWings();
 
@@ -281,15 +284,15 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 <h3 style={{
                   fontFamily: T.font.display, fontSize: 22, fontWeight: 600,
                   color: T.color.charcoal, margin: 0,
-                }}>Import from Cloud</h3>
+                }}>{t("title")}</h3>
                 <p style={{
                   fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "2px 0 0",
                 }}>
                   {importing
-                    ? "Importing your memories..."
+                    ? t("importing")
                     : importProgress
-                    ? `Import complete: ${importProgress.succeeded} succeeded, ${importProgress.failed} failed`
-                    : "Browse and select files from your connected accounts"}
+                    ? t("successCount", { succeeded: String(importProgress.succeeded), total: String(importProgress.total) })
+                    : t("browseDescription")}
                 </p>
               </div>
             </div>
@@ -342,12 +345,12 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               <h3 style={{
                 fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
                 color: T.color.charcoal, margin: "0 0 8px",
-              }}>No Accounts Connected</h3>
+              }}>{t("noAccountsTitle")}</h3>
               <p style={{
                 fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
                 margin: "0 0 20px", lineHeight: 1.5,
               }}>
-                Connect your cloud storage or photo services to import memories.
+                {t("noAccountsDesc")}
               </p>
               <a href="/settings/connections" style={{
                 display: "inline-block", padding: "12px 24px", borderRadius: 12,
@@ -355,7 +358,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 color: "#FFF", fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
                 textDecoration: "none",
               }}>
-                Go to Settings
+                {t("goToSettings")}
               </a>
             </div>
           )}
@@ -366,7 +369,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               textAlign: "center", padding: 48,
               fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
             }}>
-              Loading your accounts...
+              {t("loadingAccounts")}
             </div>
           )}
 
@@ -380,12 +383,12 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 fontFamily: T.font.display, fontSize: 24, fontWeight: 600,
                 color: T.color.charcoal, margin: "0 0 8px",
               }}>
-                {importProgress.failed === 0 ? "Import Complete!" : "Import Finished with Errors"}
+                {importProgress.failed === 0 ? t("completeSuccess") : t("completeWithErrors")}
               </h3>
               <p style={{
                 fontFamily: T.font.body, fontSize: 14, color: T.color.muted, margin: "0 0 4px",
               }}>
-                {importProgress.succeeded} of {importProgress.total} files imported successfully
+                {t("successCount", { succeeded: String(importProgress.succeeded), total: String(importProgress.total) })}
               </p>
               {importProgress.failed > 0 && (
                 <div style={{ marginTop: 12, maxHeight: 150, overflowY: "auto" }}>
@@ -407,13 +410,13 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                   border: `1px solid ${T.color.cream}`, background: T.color.white,
                   fontFamily: T.font.body, fontSize: 13, fontWeight: 500,
                   color: T.color.charcoal, cursor: "pointer",
-                }}>Import More</button>
+                }}>{t("importMore")}</button>
                 <button onClick={onClose} style={{
                   padding: "12px 24px", borderRadius: 12, border: "none",
                   background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                   fontFamily: T.font.body, fontSize: 13, fontWeight: 600,
                   color: "#FFF", cursor: "pointer",
-                }}>Close</button>
+                }}>{tc("close")}</button>
               </div>
             </div>
           )}
@@ -425,7 +428,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 display: "flex", justifyContent: "space-between",
                 fontFamily: T.font.body, fontSize: 12, color: T.color.muted, marginBottom: 8,
               }}>
-                <span>Importing files from {PROVIDER_META[activeProvider!]?.name}...</span>
+                <span>{t("importingFrom", { provider: PROVIDER_META[activeProvider!]?.name })}</span>
                 <span>{importProgress.succeeded + importProgress.failed} / {importProgress.total}</span>
               </div>
               <div style={{
@@ -445,8 +448,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
                 textAlign: "center", marginTop: 16,
               }}>
-                Please wait while we download and import your selected files.
-                This may take a moment depending on the file sizes.
+                {t("importWaitMessage")}
               </p>
             </div>
           )}
@@ -466,7 +468,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                     fontFamily: T.font.body, fontSize: 12, cursor: "pointer",
                     padding: "2px 4px",
                   }}>
-                    Root
+                    {t("root")}
                   </button>
                   {folderPath.map((folder, i) => (
                     <span key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -497,18 +499,18 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                       border: `1px solid ${T.color.cream}`, background: T.color.white,
                       fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal,
                       cursor: "pointer",
-                    }}>Select All</button>
+                    }}>{t("selectAll")}</button>
                     <button onClick={selectNone} style={{
                       padding: "6px 12px", borderRadius: 8,
                       border: `1px solid ${T.color.cream}`, background: T.color.white,
                       fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal,
                       cursor: "pointer",
-                    }}>Select None</button>
+                    }}>{t("selectNone")}</button>
                   </div>
                   <span style={{
                     fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
                   }}>
-                    {selected.size} selected
+                    {t("selected", { count: String(selected.size) })}
                     {selectedSize > 0 && ` (${formatBytes(selectedSize)})`}
                   </span>
                 </div>
@@ -520,14 +522,14 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                   textAlign: "center", padding: 48,
                   fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
                 }}>
-                  Loading files...
+                  {t("loadingFiles")}
                 </div>
               ) : items.length === 0 ? (
                 <div style={{
                   textAlign: "center", padding: 48,
                   fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
                 }}>
-                  No files found in this location.
+                  {t("noFiles")}
                 </div>
               ) : (
                 <>
@@ -561,7 +563,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                         cursor: "pointer",
                       }}
                     >
-                      {loadingItems ? "Loading..." : "Load More"}
+                      {loadingItems ? tc("loading") : t("loadMore")}
                     </button>
                   )}
                 </>
@@ -581,7 +583,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                         fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
                         textTransform: "uppercase", letterSpacing: ".5px",
                         display: "block", marginBottom: 6,
-                      }}>Target Wing</label>
+                      }}>{t("targetWing")}</label>
                       <select
                         value={targetWingId}
                         onChange={(e) => { setTargetWingId(e.target.value); setTargetRoomId(""); }}
@@ -592,7 +594,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                           cursor: "pointer", outline: "none",
                         }}
                       >
-                        <option value="">-- Select wing --</option>
+                        <option value="">{t("selectWing")}</option>
                         {wings.map((w) => (
                           <option key={w.id} value={w.id}>{w.icon} {w.name}</option>
                         ))}
@@ -603,7 +605,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                         fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
                         textTransform: "uppercase", letterSpacing: ".5px",
                         display: "block", marginBottom: 6,
-                      }}>Target Room</label>
+                      }}>{t("targetRoom")}</label>
                       <select
                         value={targetRoomId}
                         onChange={(e) => setTargetRoomId(e.target.value)}
@@ -616,7 +618,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                           cursor: targetWingId ? "pointer" : "default", outline: "none",
                         }}
                       >
-                        <option value="">-- Select room --</option>
+                        <option value="">{t("selectRoom")}</option>
                         {targetWingId && getWingRooms(targetWingId).map((r) => (
                           <option key={r.id} value={r.id}>{r.icon} {r.name}</option>
                         ))}
@@ -637,7 +639,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                       cursor: !targetRoomId ? "default" : "pointer",
                     }}
                   >
-                    Import {selected.size} file{selected.size !== 1 ? "s" : ""} to Memory Palace
+                    {selected.size !== 1 ? t("importFiles", { count: String(selected.size) }) : t("importFile")}
                   </button>
                 </div>
               )}

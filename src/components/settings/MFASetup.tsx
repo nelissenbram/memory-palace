@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import {
   enrollMFA,
   verifyMFA,
@@ -20,6 +21,8 @@ type MFAFactor = {
 type SetupStep = "idle" | "qr" | "verify" | "complete";
 
 export default function MFASetup() {
+  const { t } = useTranslation("mfa");
+  const { t: tc } = useTranslation("common");
   const [factors, setFactors] = useState<MFAFactor[]>([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<SetupStep>("idle");
@@ -121,7 +124,7 @@ export default function MFASetup() {
   const handleVerifyCode = async (fullCode?: string) => {
     const codeStr = fullCode || code.join("");
     if (codeStr.length !== 6) {
-      setError("Please enter all 6 digits.");
+      setError(t("enterAllDigits"));
       return;
     }
 
@@ -130,7 +133,7 @@ export default function MFASetup() {
 
     const result = await verifyMFA(factorId, codeStr);
     if (result.error) {
-      setError("Invalid code. Please check your authenticator app and try again.");
+      setError(t("invalidCode"));
       setCode(["", "", "", "", "", ""]);
       codeRefs.current[0]?.focus();
       setVerifying(false);
@@ -177,7 +180,7 @@ export default function MFASetup() {
         fontSize: 15,
         color: T.color.muted,
       }}>
-        Loading security settings...
+        {t("loading")}
       </div>
     );
   }
@@ -199,7 +202,7 @@ export default function MFASetup() {
           fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
           color: T.color.charcoal, margin: 0,
         }}>
-          Two-Factor Authentication
+          {t("title")}
         </h3>
         {isEnabled && (
           <span style={{
@@ -211,7 +214,7 @@ export default function MFASetup() {
             fontSize: 12,
             fontWeight: 600,
           }}>
-            Enabled
+            {t("enabled")}
           </span>
         )}
       </div>
@@ -219,8 +222,7 @@ export default function MFASetup() {
         fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
         margin: "0 0 22px", lineHeight: 1.6,
       }}>
-        Add an extra layer of security to your account. When enabled, you will need
-        to enter a code from your authenticator app each time you sign in.
+        {t("description")}
       </p>
 
       {error && (
@@ -255,7 +257,7 @@ export default function MFASetup() {
             transition: "all 0.2s",
           }}
         >
-          Enable Two-Factor Authentication
+          {t("enableButton")}
         </button>
       )}
 
@@ -272,13 +274,13 @@ export default function MFASetup() {
                 fontFamily: T.font.body, fontSize: 16, fontWeight: 500,
                 color: T.color.charcoal,
               }}>
-                Authenticator App
+                {t("authenticatorApp")}
               </div>
               <div style={{
                 fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
                 marginTop: 4,
               }}>
-                Your account is protected with two-factor authentication.
+                {t("accountProtected")}
               </div>
             </div>
             <div style={{
@@ -310,7 +312,7 @@ export default function MFASetup() {
                 transition: "all 0.15s",
               }}
             >
-              Disable Two-Factor Authentication
+              {t("disableButton")}
             </button>
           ) : (
             <div style={{
@@ -324,14 +326,13 @@ export default function MFASetup() {
                 fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
                 color: "#B91C1C", margin: "0 0 8px",
               }}>
-                Are you sure?
+                {t("disableConfirmTitle")}
               </p>
               <p style={{
                 fontFamily: T.font.body, fontSize: 14, color: "#7F1D1D",
                 margin: "0 0 16px", lineHeight: 1.5,
               }}>
-                Disabling two-factor authentication will make your account less secure.
-                You can always re-enable it later.
+                {t("disableConfirmDesc")}
               </p>
               <div style={{ display: "flex", gap: 10 }}>
                 <button
@@ -350,7 +351,7 @@ export default function MFASetup() {
                     transition: "all 0.15s",
                   }}
                 >
-                  {disabling ? "Disabling..." : "Yes, Disable 2FA"}
+                  {disabling ? t("disabling") : t("yesDisable")}
                 </button>
                 <button
                   onClick={() => setDisableConfirm(false)}
@@ -367,7 +368,7 @@ export default function MFASetup() {
                     transition: "all 0.15s",
                   }}
                 >
-                  Cancel
+                  {tc("cancel")}
                 </button>
               </div>
             </div>
@@ -389,14 +390,13 @@ export default function MFASetup() {
               fontFamily: T.font.display, fontSize: 18, fontWeight: 500,
               color: T.color.charcoal, margin: "0 0 8px",
             }}>
-              Step 1: Scan the QR Code
+              {t("step1Title")}
             </h4>
             <p style={{
               fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
               margin: "0 0 20px", lineHeight: 1.6,
             }}>
-              Open your authenticator app (such as Google Authenticator, Authy, or 1Password)
-              and scan this QR code.
+              {t("step1Desc")}
             </p>
 
             {qrDataUrl ? (
@@ -423,7 +423,7 @@ export default function MFASetup() {
                 textAlign: "center", padding: 40,
                 fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
               }}>
-                Generating QR code...
+                {t("generatingQR")}
               </div>
             )}
 
@@ -441,7 +441,7 @@ export default function MFASetup() {
                   textDecoration: "underline",
                 }}
               >
-                {showSecret ? "Hide secret key" : "Can't scan? Enter the key manually"}
+                {showSecret ? t("hideSecret") : t("cantScan")}
               </button>
               {showSecret && (
                 <div style={{
@@ -474,14 +474,13 @@ export default function MFASetup() {
               fontFamily: T.font.display, fontSize: 18, fontWeight: 500,
               color: T.color.charcoal, margin: "0 0 8px",
             }}>
-              Step 2: Enter the Verification Code
+              {t("step2Title")}
             </h4>
             <p style={{
               fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
               margin: "0 0 20px", lineHeight: 1.6,
             }}>
-              After scanning, your authenticator app will show a 6-digit code.
-              Enter it below to complete setup.
+              {t("step2Desc")}
             </p>
 
             <div
@@ -542,7 +541,7 @@ export default function MFASetup() {
                   transition: "all 0.2s",
                 }}
               >
-                {verifying ? "Verifying..." : "Verify and Enable"}
+                {verifying ? t("verifying") : t("verifyAndEnable")}
               </button>
               <button
                 onClick={resetSetup}
@@ -559,7 +558,7 @@ export default function MFASetup() {
                   transition: "all 0.2s",
                 }}
               >
-                Cancel
+                {tc("cancel")}
               </button>
             </div>
           </div>
@@ -589,21 +588,19 @@ export default function MFASetup() {
             fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
             color: T.color.charcoal, margin: "0 0 8px",
           }}>
-            Two-Factor Authentication is Now Active
+            {t("completeTitle")}
           </h4>
           <p style={{
             fontFamily: T.font.body, fontSize: 16, color: T.color.muted,
             margin: "0 0 8px", lineHeight: 1.6,
           }}>
-            Your account is now protected with an additional layer of security.
-            You will need your authenticator app each time you sign in.
+            {t("completeDesc")}
           </p>
           <p style={{
             fontFamily: T.font.body, fontSize: 14, color: T.color.walnut,
             margin: "0 0 24px", lineHeight: 1.5, fontWeight: 500,
           }}>
-            Important: Make sure you have a backup of your authenticator app data.
-            If you lose access to your authenticator, you may be locked out of your account.
+            {t("backupWarning")}
           </p>
           <button
             onClick={resetSetup}
@@ -620,7 +617,7 @@ export default function MFASetup() {
               transition: "all 0.15s",
             }}
           >
-            Done
+            {tc("done")}
           </button>
         </div>
       )}

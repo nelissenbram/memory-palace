@@ -6,6 +6,7 @@ import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
+import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 
@@ -23,17 +24,18 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
+    const dlPreset=getLightingPreset();
     const scene=new THREE.Scene();scene.background=new THREE.Color(wing.wall);
     // Add atmospheric fog for depth
-    scene.fog=new THREE.FogExp2(wing.wall,.012);
+    scene.fog=new THREE.FogExp2(wing.wall,.012*dlPreset.fogDensity);
     const camera=new THREE.PerspectiveCamera(55,w/h,0.1,80);
     const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.8;
+    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.8*dlPreset.exposure;
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
-    const envMapProc=createInteriorEnvMap(ren,{warmth:0.7,brightness:0.45});
+    const envMapProc=createInteriorEnvMap(ren,{warmth:dlPreset.envWarmth,brightness:dlPreset.envBrightness});
     scene.environment=envMapProc;
     scene.environmentIntensity=0.9;
     let envMapHDRI: THREE.Texture|null=null;
@@ -42,11 +44,11 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     // ── POST-PROCESSING (with SSAO) ──
     const composer=createPostProcessing(ren,scene,camera,"corridor",{ssao:false});
 
-    scene.add(new THREE.HemisphereLight("#FFF2E0","#C4B8A0",.55));
-    const sun=new THREE.DirectionalLight("#FFE8C0",1.5);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#C4B8A0",.55*dlPreset.ambientIntensity/0.5));
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.5*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=60;sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;
     scene.add(sun);
-    const fill=new THREE.DirectionalLight("#FFD8A8",.35);fill.position.set(-6,10,4);scene.add(fill);
+    const fill=new THREE.DirectionalLight(dlPreset.fillColor,.35*dlPreset.fillIntensity/0.35);fill.position.set(-6,10,4);scene.add(fill);
 
     // ── WING LAYOUTS: each wing is a different museum section ──
     // DRAMATICALLY HIGHER CEILINGS (+2m each)
@@ -820,16 +822,16 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
           occupiedZones.push({ center: inlayZ, halfW: 1.5 });
         }
       }
-      // Room doors near entrance (indices inlayCount..inlayCount+rooms.length-1)
+      // Room doors near entrance (high z, counting from entrance portal)
       rooms.forEach((_room2: any, ri: number) => {
-        const doorSide = (inlayCount + ri) % 2 === 0 ? -1 : 1;
-        const doorZ = -cL/2 + 5.5 + (inlayCount + ri) * C.sp;
+        const doorSide = ri % 2 === 0 ? -1 : 1;
+        const doorZ = cL/2 - 5.5 - ri * C.sp;
         if (doorSide === s) {
           doorZonesForSide.push({ center: doorZ, halfW: 1.3 });
           occupiedZones.push({ center: doorZ, halfW: 1.5 });
         }
         if (doorSide === s && ri < rooms.length - 1) {
-          occupiedZones.push({ center: doorZ + C.sp / 2, halfW: 1.4 });
+          occupiedZones.push({ center: doorZ - C.sp / 2, halfW: 1.4 });
         }
         if (-doorSide === s) occupiedZones.push({ center: doorZ, halfW: 1.2 });
       });
@@ -886,9 +888,9 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const archSegsW=10; // segments for arch curve
     const rectH=winH-archR; // rectangular portion height (below the arch)
     rooms.forEach((_room: any,i: number)=>{
-      const doorSide=(inlayCount+i)%2===0?-1:1;
+      const doorSide=i%2===0?-1:1;
       const winSide=-doorSide;
-      const wz=-cL/2+5.5+(inlayCount+i)*C.sp;
+      const wz=cL/2-5.5-i*C.sp;
       const wx=winSide*(cW/2);
       // Wall-relative positions: outer face of wall is at wx, interior is wx - winSide*recessD
       const outerX=wx;
@@ -963,9 +965,9 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
 
     // ── BENCHES — on window side (sideB), between windows at z_i + sp/2 ──
     for(let i=0;i<rooms.length-1;i++){
-      const doorSide=(inlayCount+i)%2===0?-1:1;
+      const doorSide=i%2===0?-1:1;
       const benchSide=-doorSide; // window/bench side
-      const bz=-cL/2+5.5+(inlayCount+i)*C.sp+C.sp/2;
+      const bz=cL/2-5.5-i*C.sp-C.sp/2;
       if(bz>cL/2-4||bz<-cL/2+3)continue;
       const bx=benchSide*(cW/2-.6);
       // Bench legs
@@ -986,15 +988,15 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     // ── CANDLE SCONCES — at z_i + sp*0.25 on both walls, skip near paintings/doors/niches ──
     const paintingZBySide: Record<number, number[]> = {[-1]: [], [1]: []};
     for(let i=0;i<rooms.length-1;i++){
-      const doorSide=(inlayCount+i)%2===0?-1:1;
-      paintingZBySide[doorSide].push(-cL/2+5.5+(inlayCount+i)*C.sp+C.sp/2);
+      const doorSide=i%2===0?-1:1;
+      paintingZBySide[doorSide].push(cL/2-5.5-i*C.sp-C.sp/2);
     }
     // Collect all door/niche z-positions for sconce overlap
     const allDoorZones: number[] = [];
     for(let ii=0;ii<inlayCount;ii++) allDoorZones.push(-cL/2+5.5+ii*C.sp);
-    for(let i=0;i<rooms.length;i++) allDoorZones.push(-cL/2+5.5+(inlayCount+i)*C.sp);
+    for(let i=0;i<rooms.length;i++) allDoorZones.push(cL/2-5.5-i*C.sp);
     for(let i=0;i<rooms.length;i++){
-      const sz=-cL/2+5.5+(inlayCount+i)*C.sp+C.sp*0.25;
+      const sz=cL/2-5.5-i*C.sp-C.sp*0.25;
       if(sz>cL/2-3||sz<-cL/2+3)continue;
       for(const s of[-1,1]){
         // Skip if sconce would overlap with a painting or any door/niche on this wall
@@ -1057,9 +1059,10 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
 
     // ── SCONCES between door zones — at z_i + sp*0.75, skip near paintings ──
     for(const s of[-1,1])for(let i=0;i<rooms.length;i++){
-      const sz=-cL/2+5.5+i*C.sp+C.sp*0.75;if(sz>cL/2-2||sz<-cL/2+2)continue;
+      const sz=cL/2-5.5-i*C.sp-C.sp*0.75;if(sz>cL/2-2||sz<-cL/2+2)continue;
       const tooClose=paintingZBySide[s].some(pz=>Math.abs(sz-pz)<1.5);
-      if(tooClose)continue;
+      const tooCloseDoor2=allDoorZones.some(dz=>Math.abs(sz-dz)<1.8);
+      if(tooClose||tooCloseDoor2)continue;
       scene.add(mk(new THREE.BoxGeometry(.06,.14,.06),MS.sconce,s*(cW/2-.03),3.5,sz));
       scene.add(mk(new THREE.CylinderGeometry(.04,.03,.06,6),MS.sconce,s*(cW/2-.06),3.62,sz));
       const bl=new THREE.Mesh(new THREE.SphereGeometry(.025,6,6),MS.glassG);bl.position.set(s*(cW/2-.06),3.72,sz);scene.add(bl);
@@ -1081,9 +1084,9 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     // ═══ INTERACTIVE PAINTING/MEDIA SLOTS — between doors on same wall ═══
     const paintingClickMeshes: {mesh: THREE.Mesh, slotKey: string}[] = [];
     for(let i=0;i<rooms.length-1;i++){
-      const pz=-cL/2+5.5+(inlayCount+i)*C.sp+C.sp/2;
+      const pz=cL/2-5.5-i*C.sp-C.sp/2;
       if(pz>cL/2-3||pz<-cL/2+3)continue;
-      const s=(inlayCount+i)%2===0?-1:1;
+      const s=i%2===0?-1:1;
       const fx=s*(cW/2-.005);
       const slotKey=`corridor-${wingId}-painting-${i}`;
       const paintingData=corridorPaintings?.[slotKey];
@@ -1135,10 +1138,9 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
 
     // ══ DOORS — placed near the entrance (high z), locked niches at far end (low z) ══
     const dMeshes: any[]=[];
-    const doorOffset = inlayCount; // shift room doors past locked slots
     rooms.forEach((room: any,i: any)=>{
-      const side=(doorOffset+i)%2===0?-1:1;
-      const z=-cL/2+5.5+(doorOffset+i)*C.sp;
+      const side=i%2===0?-1:1;
+      const z=cL/2-5.5-i*C.sp;
       const wx=side*(cW/2);
       const dW=1.7,dH=3.6;
       // Minimal door surround — thin trim only at top

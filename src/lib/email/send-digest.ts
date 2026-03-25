@@ -32,6 +32,18 @@ export interface TrackProgress {
   icon: string;
 }
 
+export interface MemoryOfTheWeek {
+  title: string;
+  thumbnailUrl: string | null;
+  roomName: string;
+}
+
+export interface WeeklyStats {
+  totalMemories: number;
+  memoriesThisWeek: number;
+  totalRooms: number;
+}
+
 export interface DigestEmailParams {
   recipientEmail: string;
   displayName: string;
@@ -39,6 +51,8 @@ export interface DigestEmailParams {
   upcomingCapsules: UpcomingCapsule[];
   sharedRoomActivity: SharedRoomActivity[];
   trackProgress: TrackProgress | null;
+  weeklyStats: WeeklyStats;
+  memoryOfTheWeek: MemoryOfTheWeek | null;
 }
 
 function renderOnThisDaySection(memories: OnThisDayMemory[]): string {
@@ -178,12 +192,72 @@ function renderTrackProgressSection(track: TrackProgress | null): string {
     </td></tr>`;
 }
 
+function renderWeeklyStatsSection(stats: WeeklyStats): string {
+  const statCell = (value: number, label: string) => `
+    <td width="33%" style="text-align:center;padding:16px 8px;">
+      <p style="margin:0;font-family:'Georgia',serif;font-size:28px;font-weight:600;color:#C17F59;line-height:1.2;">
+        ${value}
+      </p>
+      <p style="margin:4px 0 0;font-family:'Georgia',serif;font-size:12px;color:#8B7355;text-transform:uppercase;letter-spacing:0.5px;">
+        ${label}
+      </p>
+    </td>`;
+
+  return `
+    <!-- Weekly Stats -->
+    <tr><td style="padding:24px 32px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;border-radius:12px;border:1px solid #EEEAE3;">
+        <tr>
+          ${statCell(stats.totalMemories, "Total Memories")}
+          ${statCell(stats.memoriesThisWeek, "Added This Week")}
+          ${statCell(stats.totalRooms, "Rooms")}
+        </tr>
+      </table>
+    </td></tr>`;
+}
+
+function renderMemoryOfTheWeekSection(memory: MemoryOfTheWeek | null): string {
+  if (!memory) return "";
+
+  const thumbnailHtml = memory.thumbnailUrl
+    ? `<img src="${escapeHtml(memory.thumbnailUrl)}" alt="" width="80" height="80" style="display:block;width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid #EEEAE3;" />`
+    : `<div style="display:block;width:80px;height:80px;border-radius:10px;background:linear-gradient(135deg,#C17F59 0%,#8B7355 100%);text-align:center;line-height:80px;font-size:32px;">&#x1F4AD;</div>`;
+
+  return `
+    <!-- Memory of the Week -->
+    <tr><td style="padding:24px 32px 0;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
+      <tr><td>
+        <h2 style="margin:0 0 12px;font-family:'Georgia',serif;font-size:18px;font-weight:600;color:#2C2C2A;">
+          &#x2728; Memory of the Week
+        </h2>
+      </td></tr>
+      </table>
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;border-radius:12px;border:1px solid #EEEAE3;overflow:hidden;">
+        <tr>
+          <td style="padding:16px;width:80px;" valign="top">
+            ${thumbnailHtml}
+          </td>
+          <td style="padding:16px 16px 16px 0;" valign="middle">
+            <p style="margin:0 0 4px;font-family:'Georgia',serif;font-size:16px;font-weight:600;color:#2C2C2A;line-height:1.4;">
+              &ldquo;${escapeHtml(memory.title)}&rdquo;
+            </p>
+            <p style="margin:0;font-family:'Georgia',serif;font-size:13px;color:#8B7355;">
+              in ${escapeHtml(memory.roomName)}
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>`;
+}
+
 export function generateDigestEmailHtml(params: DigestEmailParams): string {
   const displayName = escapeHtml(params.displayName);
   const palaceUrl = `${SITE_URL}/palace`;
   const unsubscribeUrl = `${SITE_URL}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}`;
 
   const hasContent =
+    params.weeklyStats.totalMemories > 0 ||
     params.onThisDayMemories.length > 0 ||
     params.upcomingCapsules.length > 0 ||
     params.sharedRoomActivity.length > 0 ||
@@ -218,6 +292,8 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
     </p>
   </td></tr>
 
+  ${renderWeeklyStatsSection(params.weeklyStats)}
+  ${renderMemoryOfTheWeekSection(params.memoryOfTheWeek)}
   ${renderOnThisDaySection(params.onThisDayMemories)}
   ${renderUpcomingCapsulesSection(params.upcomingCapsules)}
   ${renderSharedRoomSection(params.sharedRoomActivity)}
@@ -273,6 +349,9 @@ export async function sendDigestEmail(params: DigestEmailParams): Promise<{ succ
           to: [params.recipientEmail],
           subject,
           html,
+          headers: {
+            "List-Unsubscribe": `<${SITE_URL}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}>`,
+          },
         }),
       });
 

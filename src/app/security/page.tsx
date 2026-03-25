@@ -10,73 +10,133 @@ const C = T.color;
 const SECTIONS = [
   {
     icon: "🏛️",
-    title: "Where your data lives",
+    title: "Hosting & Infrastructure",
     items: [
       {
-        icon: "🇪🇺",
-        label: "EU-hosted infrastructure",
+        icon: "🌍",
+        label: "Hosted on Vercel",
         detail:
-          "Your data is stored in Frankfurt, Germany — within the European Union. We use Supabase PostgreSQL, a trusted open-source database, with full encryption at rest.",
+          "Your Memory Palace runs on Vercel, a world-class hosting platform with a global content delivery network (CDN). Every page loads fast, and every connection is automatically secured with HTTPS.",
+      },
+      {
+        icon: "🇪🇺",
+        label: "Database in the EU",
+        detail:
+          "All your data is stored on Supabase PostgreSQL in Frankfurt, Germany — safely within the European Union. This means your memories are protected by strict EU data protection laws (GDPR).",
       },
       {
         icon: "📋",
-        label: "GDPR compliant",
+        label: "Fully GDPR compliant",
         detail:
-          "We comply with the General Data Protection Regulation (GDPR). Your personal data is processed lawfully, transparently, and only for the purposes you have consented to.",
+          "We follow the General Data Protection Regulation to the letter. Your personal data is processed lawfully and transparently, and only for the purposes you have agreed to.",
       },
     ],
   },
   {
-    icon: "🛡️",
-    title: "How we protect it",
+    icon: "🔐",
+    title: "Encryption",
     items: [
       {
         icon: "🔒",
-        label: "TLS encryption in transit",
+        label: "Encrypted in transit (TLS 1.3)",
         detail:
-          "Every connection between your device and our servers is encrypted with TLS (Transport Layer Security). Your data cannot be intercepted while traveling over the internet.",
+          "Every connection between your device and our servers uses TLS 1.3, the latest and strongest transport encryption. Nobody can read your data as it travels over the internet.",
       },
       {
-        icon: "👤",
-        label: "Row Level Security",
+        icon: "💾",
+        label: "Encrypted at rest (AES-256)",
         detail:
-          "Each user can only access their own data. This is enforced at the database level using Supabase Row Level Security — not just in the application code.",
+          "Your database is encrypted with AES-256, the same standard used by banks and governments. Even if someone accessed the physical servers, your data would be unreadable.",
       },
       {
         icon: "📁",
         label: "Encrypted file storage",
         detail:
-          "Your photos, videos, and documents are stored in encrypted cloud storage. Files are only accessible through authenticated, time-limited URLs.",
+          "Your photos, videos, and documents are stored in Supabase Storage, which is also encrypted at rest. Files are only accessible through authenticated, time-limited links.",
+      },
+      {
+        icon: "🔑",
+        label: "Secure password hashing",
+        detail:
+          "Your password is never stored in plain text. It is hashed using bcrypt through Supabase Auth, making it practically impossible to reverse-engineer.",
+      },
+    ],
+  },
+  {
+    icon: "🛡️",
+    title: "Authentication & Access",
+    items: [
+      {
+        icon: "✉️",
+        label: "Email & password login",
+        detail:
+          "Sign in securely with your email address and password. Your credentials are handled by Supabase Auth, a battle-tested authentication system.",
+      },
+      {
+        icon: "🔗",
+        label: "Social login (Google, Apple)",
+        detail:
+          "Prefer to sign in with Google or Apple? We support OAuth 2.0 social login — your password is never shared with us when you use these options.",
+      },
+      {
+        icon: "📱",
+        label: "Two-factor authentication",
+        detail:
+          "For extra peace of mind, you can enable two-factor authentication (2FA) using a TOTP app like Google Authenticator. This adds a second layer of protection to your account.",
+      },
+      {
+        icon: "👤",
+        label: "Row Level Security",
+        detail:
+          "Every database table is protected by Row Level Security (RLS). This means you can only ever access your own data — this is enforced at the database level, not just in our code.",
+      },
+      {
+        icon: "🎫",
+        label: "JWT session management",
+        detail:
+          "Your login sessions use JSON Web Tokens (JWT), which are short-lived and cryptographically signed. Sessions expire automatically, keeping your account safe even if you forget to log out.",
       },
     ],
   },
   {
     icon: "🎛️",
-    title: "Your data, your control",
+    title: "Privacy Controls",
     items: [
       {
         icon: "📥",
-        label: "Download anytime",
+        label: "Full data export",
         detail:
-          "You can export all your memories — photos, videos, stories, and metadata — at any time from your account settings. Your data always belongs to you.",
+          "You can download everything — all your memories, stories, and photos — as a JSON file with a ZIP of your media. Your data always belongs to you.",
       },
       {
         icon: "🗑️",
-        label: "Delete anytime",
+        label: "Complete account deletion",
         detail:
           "If you choose to delete your account, all your data is permanently removed. Deletion cascades through every table — nothing is left behind.",
       },
       {
-        icon: "👥",
-        label: "Choose who sees what",
+        icon: "🍪",
+        label: "Cookie consent",
         detail:
-          "You control sharing permissions for every room and every memory. Share with specific family members, or keep things private. You decide.",
+          "We ask for your permission before setting any non-essential cookies. You can change your preferences at any time through our cookie consent controls.",
+      },
+      {
+        icon: "🚫",
+        label: "No tracking, no ads, no data selling",
+        detail:
+          "We will never sell your data, show you advertisements, or track you across the web. Your memories are private, and that is a promise.",
+      },
+      {
+        icon: "🕊️",
+        label: "Legacy contacts",
+        detail:
+          "You can designate trusted family members as legacy contacts for digital inheritance. When the time comes, your memories can be passed on to the people you choose.",
       },
     ],
   },
   {
     icon: "🔄",
-    title: "Backup & redundancy",
+    title: "Backup & Redundancy",
     items: [
       {
         icon: "💾",
@@ -335,8 +395,14 @@ export default function SecurityPage() {
             }}
           >
             If you have questions about how we handle your data, or if you want
-            to exercise any of your rights under GDPR, please contact us. We are
-            here to help.
+            to exercise any of your rights under GDPR, please contact us at{" "}
+            <a
+              href="mailto:privacy@thememorypalace.ai"
+              style={{ color: C.terracotta, textDecoration: "none" }}
+            >
+              privacy@thememorypalace.ai
+            </a>
+            . We are here to help.
           </p>
         </div>
       </div>

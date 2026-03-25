@@ -3,6 +3,10 @@ import { getAuthenticatedUser, getConnectedAccount } from "@/lib/integrations/he
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { listPhotos } from "@/lib/integrations/onedrive";
 
+/**
+ * GET — Browse OneDrive files and folders (paginated).
+ * Query params: folderId (default "root"), cursor (nextLink URL)
+ */
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser();
@@ -23,25 +27,31 @@ export async function GET(request: NextRequest) {
 
     const result = await listPhotos(token, cursor, folderId);
 
-    return NextResponse.json({
-      items: result.items.map((item) => ({
+    // Map to the CloudItem shape expected by CloudImportPanel
+    const items = result.items.map((item) => {
+      const isFolder = !!item.folder;
+      const mimeType = item.file?.mimeType || "";
+      const isImage = mimeType.startsWith("image/");
+      const isVideo = mimeType.startsWith("video/");
+
+      return {
         id: item.id,
         name: item.name,
-        isFolder: !!item.folder,
+        filename: item.name,
+        isFolder,
         childCount: item.folder?.childCount,
         size: item.size,
-        mimeType: item.file?.mimeType,
+        mimeType: isFolder ? undefined : mimeType,
         modified: item.lastModifiedDateTime,
-        isImage: !!item.image,
-        isVideo: !!item.video,
-        width: item.image?.width || item.video?.width,
-        height: item.image?.height || item.video?.height,
-        thumbnailUrl: item.thumbnails?.[0]?.medium?.url,
-        camera: item.photo
-          ? `${item.photo.cameraMake || ""} ${item.photo.cameraModel || ""}`.trim()
-          : undefined,
-        takenAt: item.photo?.takenDateTime,
-      })),
+        isImage: !isFolder && isImage,
+        isVideo: !isFolder && isVideo,
+        isMedia: !isFolder && (isImage || isVideo),
+        thumbnailUrl: item.thumbnails?.[0]?.medium?.url || item.thumbnails?.[0]?.small?.url,
+      };
+    });
+
+    return NextResponse.json({
+      items,
       nextCursor: result.nextPageToken,
     });
   } catch (err: unknown) {

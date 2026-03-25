@@ -6,6 +6,7 @@ import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { PLANS, type PlanId } from "@/lib/constants/plans";
 import { isNative } from "@/lib/native/platform";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const F = T.font;
 const C = T.color;
@@ -24,6 +25,7 @@ interface UsageData {
 }
 
 export default function SubscriptionPage() {
+  const { t } = useTranslation("subscription");
   const nativeApp = isNative();
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
@@ -46,7 +48,7 @@ export default function SubscriptionPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "true") {
-      showToast("Subscription activated! Welcome aboard.", "success");
+      showToast(t("activated"), "success");
       // Clean URL
       window.history.replaceState({}, "", "/settings/subscription");
     }
@@ -102,10 +104,10 @@ export default function SubscriptionPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        showToast(data.error || "Could not open billing portal.", "error");
+        showToast(data.error || t("billingError"), "error");
       }
     } catch {
-      showToast("Could not connect to billing service.", "error");
+      showToast(t("billingConnectError"), "error");
     }
     setPortalLoading(false);
   };
@@ -121,17 +123,17 @@ export default function SubscriptionPage() {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        showToast(data.error || "Could not start checkout.", "error");
+        showToast(data.error || t("checkoutError"), "error");
       }
     } catch {
-      showToast("Could not connect to payment service.", "error");
+      showToast(t("paymentConnectError"), "error");
     }
   };
 
   if (loading) {
     return (
       <div style={{ padding: 48, textAlign: "center", fontFamily: F.body, fontSize: 16, color: C.muted }}>
-        Loading subscription...
+        {t("loading")}
       </div>
     );
   }
@@ -142,10 +144,10 @@ export default function SubscriptionPage() {
   const isPaid = sub?.plan === "keeper" || sub?.plan === "guardian";
 
   const statusLabel: Record<string, { text: string; color: string }> = {
-    active: { text: "Active", color: C.sage },
-    trialing: { text: "Trial", color: C.terracotta },
-    past_due: { text: "Past Due", color: C.error },
-    canceled: { text: "Canceled", color: C.muted },
+    active: { text: t("statusActive"), color: C.sage },
+    trialing: { text: t("statusTrialing"), color: C.terracotta },
+    past_due: { text: t("statusPastDue"), color: C.error },
+    canceled: { text: t("statusCanceled"), color: C.muted },
   };
 
   const currentStatus = statusLabel[sub?.status || "active"] || statusLabel.active;
@@ -179,13 +181,13 @@ export default function SubscriptionPage() {
           fontFamily: F.display, fontSize: 28, fontWeight: 500,
           color: C.charcoal, margin: "0 0 8px",
         }}>
-          Subscription
+          {t("title")}
         </h2>
         <p style={{
           fontFamily: F.body, fontSize: 15, color: C.muted,
           margin: 0, lineHeight: 1.5,
         }}>
-          Manage your plan and view your usage.
+          {t("description")}
         </p>
       </div>
 
@@ -205,7 +207,7 @@ export default function SubscriptionPage() {
                 fontFamily: F.display, fontSize: 24, fontWeight: 500,
                 color: C.charcoal, margin: 0,
               }}>
-                {currentPlan.name} Plan
+                {t("plan", { name: currentPlan.name })}
               </h3>
               <span style={{
                 padding: "4px 12px",
@@ -230,11 +232,11 @@ export default function SubscriptionPage() {
                 <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 400, color: C.charcoal }}>
                   {"\u20AC"}{currentPlan.price.toFixed(2).replace(".", ",")}
                 </div>
-                <div style={{ fontSize: 13, color: C.muted }}>per month</div>
+                <div style={{ fontSize: 13, color: C.muted }}>{t("perMonth")}</div>
               </>
             ) : (
               <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 400, color: C.charcoal }}>
-                Free
+                {t("free")}
               </div>
             )}
           </div>
@@ -243,7 +245,7 @@ export default function SubscriptionPage() {
         {/* Period end */}
         {sub?.current_period_end && (
           <p style={{ fontFamily: F.body, fontSize: 13, color: C.muted, marginBottom: 16 }}>
-            {sub.status === "trialing" ? "Trial ends" : "Next billing date"}:{" "}
+            {sub.status === "trialing" ? t("trialEnds") : t("nextBilling")}:{" "}
             <strong style={{ color: C.charcoal }}>
               {new Date(sub.current_period_end).toLocaleDateString("en-GB", {
                 day: "numeric",
@@ -272,7 +274,7 @@ export default function SubscriptionPage() {
                   transition: "all .15s",
                 }}
               >
-                {portalLoading ? "Opening..." : "Manage Billing"}
+                {portalLoading ? t("opening") : t("manageBilling")}
               </button>
             )}
             {isFree && (
@@ -289,7 +291,7 @@ export default function SubscriptionPage() {
                   transition: "all .15s",
                 }}
               >
-                Upgrade Plan
+                {t("upgradePlan")}
               </Link>
             )}
             {sub?.plan === "keeper" && (
@@ -306,7 +308,7 @@ export default function SubscriptionPage() {
                   transition: "all .15s",
                 }}
               >
-                Upgrade to Guardian
+                {t("upgradeToGuardian")}
               </button>
             )}
           </div>
@@ -326,14 +328,14 @@ export default function SubscriptionPage() {
           fontFamily: F.display, fontSize: 20, fontWeight: 500,
           color: C.charcoal, margin: "0 0 20px",
         }}>
-          Your Usage
+          {t("yourUsage")}
         </h3>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {([
-            { label: "Wings", current: usage?.wings || 0, limit: limits.wings },
-            { label: "Rooms", current: usage?.rooms || 0, limit: limits.rooms },
-            { label: "Memories", current: usage?.memories || 0, limit: limits.memories },
+            { label: t("wings"), current: usage?.wings || 0, limit: limits.wings },
+            { label: t("rooms"), current: usage?.rooms || 0, limit: limits.rooms },
+            { label: t("memories"), current: usage?.memories || 0, limit: limits.memories },
           ] as const).map((item) => {
             const isUnlimited = item.limit === -1;
             const percentage = isUnlimited ? 0 : Math.min((item.current / item.limit) * 100, 100);
@@ -390,13 +392,13 @@ export default function SubscriptionPage() {
               fontFamily: F.body, fontSize: 14, color: C.charcoal,
               margin: 0, lineHeight: 1.5,
             }}>
-              You are approaching your free plan limits. {" "}
+              {t("nearLimitWarning")}{" "}
               <Link href="/pricing" style={{
                 color: C.terracotta, fontWeight: 600, textDecoration: "underline",
               }}>
-                Upgrade to Keeper
+                {t("upgradeToKeeper")}
               </Link>{" "}
-              for more space and AI features.
+              {t("forMoreSpace")}
             </p>
           </div>
         )}
@@ -414,13 +416,13 @@ export default function SubscriptionPage() {
           fontFamily: F.display, fontSize: 20, fontWeight: 500,
           color: C.charcoal, margin: "0 0 6px",
         }}>
-          All Plans
+          {t("allPlans")}
         </h3>
         <p style={{
           fontFamily: F.body, fontSize: 14, color: C.muted,
           margin: "0 0 20px", lineHeight: 1.5,
         }}>
-          Compare features across plans.
+          {t("comparePlans")}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -452,7 +454,7 @@ export default function SubscriptionPage() {
                         padding: "2px 8px", borderRadius: 6,
                         background: `${C.terracotta}18`, color: C.terracotta,
                       }}>
-                        Current
+                        {t("current")}
                       </span>
                     )}
                   </div>
@@ -462,7 +464,7 @@ export default function SubscriptionPage() {
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 16 }}>
                   <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 500, color: C.charcoal }}>
-                    {plan.price === 0 ? "Free" : `\u20AC${plan.price.toFixed(2).replace(".", ",")}/mo`}
+                    {plan.price === 0 ? t("free") : `\u20AC${plan.price.toFixed(2).replace(".", ",")}/${t("perMonthShort")}`}
                   </div>
                 </div>
               </div>
@@ -479,7 +481,7 @@ export default function SubscriptionPage() {
                 color: C.terracotta, textDecoration: "none",
               }}
             >
-              View full plan comparison {"\u2192"}
+              {t("viewFullComparison")} {"\u2192"}
             </Link>
           </div>
         )}

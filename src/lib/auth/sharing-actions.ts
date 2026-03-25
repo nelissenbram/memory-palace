@@ -163,6 +163,165 @@ export async function removeRoomShare(shareId: string) {
   return { success: true };
 }
 
+// ═══ WING-LEVEL FAMILY SHARING ═══
+
+const VALID_WINGS = ["family", "travel", "childhood", "career", "creativity"];
+
+export async function shareWing(
+  wingId: string,
+  sharedWithEmail: string,
+  permission: "view" | "contribute" = "view"
+) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { error: "Supabase not configured" };
+  }
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  if (!VALID_WINGS.includes(wingId)) return { error: "Invalid wing" };
+  if (!sharedWithEmail.trim() || !sharedWithEmail.includes("@")) {
+    return { error: "Valid email is required" };
+  }
+
+  const normalizedEmail = sharedWithEmail.trim().toLowerCase();
+
+  if (normalizedEmail === user.email?.toLowerCase()) {
+    return { error: "You cannot share a wing with yourself" };
+  }
+
+  // Verify the target user is a family member in the same group
+  const { data: myMembership } = await supabase
+    .from("family_members")
+    .select("group_id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .single();
+
+  if (!myMembership) return { error: "You must be in a family group to share wings" };
+
+  const { data: targetMember } = await supabase
+    .from("family_members")
+    .select("user_id")
+    .eq("group_id", myMembership.group_id)
+    .eq("email", normalizedEmail)
+    .eq("status", "active")
+    .single();
+
+  if (!targetMember || !targetMember.user_id) {
+    return { error: "This person is not an active member of your family group" };
+  }
+
+  const validPermission = ["view", "contribute"].includes(permission) ? permission : "view";
+
+  const { data: share, error } = await supabase
+    .from("wing_shares")
+    .upsert(
+      {
+        owner_id: user.id,
+        shared_with_id: targetMember.user_id,
+        wing_id: wingId,
+        permission: validPermission,
+      },
+      { onConflict: "owner_id,shared_with_id,wing_id" }
+    )
+    .select()
+    .single();
+
+  if (error) return { error: error.message };
+  return { share };
+}
+
+export async function unshareWing(shareId: string) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { error: "Supabase not configured" };
+  }
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("wing_shares")
+    .delete()
+    .eq("id", shareId)
+    .eq("owner_id", user.id);
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function getMyWingShares() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { shares: [] };
+  }
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { shares: [] };
+
+  const { data: shares } = await supabase
+    .from("wing_shares")
+    .select("id, wing_id, permission, shared_with_id, created_at")
+    .eq("owner_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (!shares || shares.length === 0) return { shares: [] };
+
+  // Resolve shared_with emails from profiles
+  const userIds = [...new Set(shares.map((s) => s.shared_with_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, email")
+    .in("id", userIds);
+
+  const emailMap: Record<string, string> = {};
+  (profiles || []).forEach((p: { id: string; email: string }) => {
+    emailMap[p.id] = p.email || "Unknown";
+  });
+
+  const enrichedShares = shares.map((s) => ({
+    ...s,
+    shared_with_email: emailMap[s.shared_with_id] || "Unknown",
+  }));
+
+  return { shares: enrichedShares };
+}
+
+export async function getWingsSharedWithMe() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { shares: [] };
+  }
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { shares: [] };
+
+  const { data: shares } = await supabase
+    .from("wing_shares")
+    .select("id, wing_id, permission, owner_id, created_at")
+    .eq("shared_with_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (!shares || shares.length === 0) return { shares: [] };
+
+  // Resolve owner emails from profiles
+  const ownerIds = [...new Set(shares.map((s) => s.owner_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, email")
+    .in("id", ownerIds);
+
+  const emailMap: Record<string, string> = {};
+  (profiles || []).forEach((p: { id: string; email: string }) => {
+    emailMap[p.id] = p.email || "Unknown";
+  });
+
+  const enrichedShares = shares.map((s) => ({
+    ...s,
+    owner_email: emailMap[s.owner_id] || "Unknown",
+  }));
+
+  return { shares: enrichedShares };
+}
+
 export async function toggleRoomSharing(localRoomId: string, enabled: boolean) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { error: "Supabase not configured" };

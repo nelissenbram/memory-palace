@@ -7,6 +7,7 @@ import type { Wing } from "@/lib/constants/wings";
 import { mk } from "@/lib/3d/meshHelpers";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
+import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { loadBustModel, type BustStyle, type BustGender } from "@/lib/3d/bustBuilder";
@@ -164,9 +165,10 @@ export default function EntranceHallScene({
     if (!el) return;
     let w = el.clientWidth, h = el.clientHeight;
 
+    const dlPreset = getLightingPreset();
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#E8E2D8");
-    scene.fog = new THREE.FogExp2("#E8E2D8", 0.006);
+    scene.background = new THREE.Color(dlPreset.fogColor);
+    scene.fog = new THREE.FogExp2(dlPreset.fogColor, 0.006 * dlPreset.fogDensity);
 
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
     const ren = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
@@ -175,13 +177,13 @@ export default function EntranceHallScene({
     ren.shadowMap.enabled = true;
     ren.shadowMap.type = THREE.PCFSoftShadowMap;
     ren.toneMapping = THREE.ACESFilmicToneMapping;
-    ren.toneMappingExposure = 1.1;
+    ren.toneMappingExposure = 1.1 * dlPreset.exposure;
     ren.outputColorSpace = THREE.SRGBColorSpace;
     ren.localClippingEnabled = true;
     el.appendChild(ren.domElement);
 
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
-    const envMapProc = createInteriorEnvMap(ren, { warmth: 0.8, brightness: 0.35 });
+    const envMapProc = createInteriorEnvMap(ren, { warmth: dlPreset.envWarmth, brightness: dlPreset.envBrightness });
     scene.environment = envMapProc;
     scene.environmentIntensity = 0.6;
     let envMapHDRI: THREE.Texture | null = null;
@@ -245,9 +247,9 @@ export default function EntranceHallScene({
 
     // ── LIGHTING (dramatic PBR upgrade) ──
     // Hemisphere: warm sky / cool dark ground for contrast
-    scene.add(new THREE.HemisphereLight("#FFF5E6", "#2A1A0A", 0.3));
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor, "#2A1A0A", 0.3 * dlPreset.ambientIntensity / 0.5));
     // Main oculus directional light — dramatic and intense
-    const sunLight = new THREE.DirectionalLight("#FFF8E0", 3.5);
+    const sunLight = new THREE.DirectionalLight(dlPreset.sunColor, 3.5 * dlPreset.sunIntensity);
     sunLight.position.set(0, TOTAL_H + 10, 0);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(1024, 1024);
@@ -260,11 +262,11 @@ export default function EntranceHallScene({
     sunLight.shadow.bias = -0.001;
     scene.add(sunLight);
     // Warm fill light (subtle, for depth)
-    const fillLight = new THREE.DirectionalLight("#FFE0C0", 0.2);
+    const fillLight = new THREE.DirectionalLight(dlPreset.fillColor, 0.2 * dlPreset.fillIntensity / 0.35);
     fillLight.position.set(-10, 8, 5);
     scene.add(fillLight);
     // Main oculus spotlight — very dramatic beam
-    const oculusSpot = new THREE.SpotLight("#FFF8E0", 3.5, 50, Math.PI / 4, 0.5, 0.8);
+    const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, 3.5 * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
     oculusSpot.position.set(0, TOTAL_H - 1, 0);
     oculusSpot.target.position.set(0, 0, 0);
     oculusSpot.castShadow = true;
@@ -272,7 +274,7 @@ export default function EntranceHallScene({
     scene.add(oculusSpot);
     scene.add(oculusSpot.target);
     // Secondary warm fill from oculus
-    const oculusFill = new THREE.PointLight("#FFF0D0", 1.2, 40);
+    const oculusFill = new THREE.PointLight(dlPreset.fillColor, 1.2 * dlPreset.sunIntensity, 40);
     oculusFill.position.set(0, TOTAL_H - 2, 0);
     scene.add(oculusFill);
 

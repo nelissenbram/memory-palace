@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { usePushNotificationStore } from "@/lib/stores/pushNotificationStore";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 export default function NotificationsPage() {
+  const { t } = useTranslation("notifications");
   const { prefs, init, setPrefs } = usePushNotificationStore();
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const [subscribing, setSubscribing] = useState(false);
@@ -64,10 +66,10 @@ export default function NotificationsPage() {
           await subscription.unsubscribe();
         }
         setPrefs({ pushEnabled: false });
-        setToast({ message: "Push notifications disabled", type: "success" });
+        setToast({ message: t("pushDisabled"), type: "success" });
       } catch (err) {
         console.error("Failed to unsubscribe:", err);
-        setToast({ message: "Failed to disable notifications", type: "error" });
+        setToast({ message: t("pushDisableFailed"), type: "error" });
       }
       setSubscribing(false);
       return;
@@ -80,7 +82,7 @@ export default function NotificationsPage() {
       setPermission(perm);
 
       if (perm !== "granted") {
-        setToast({ message: "Permission denied by browser", type: "error" });
+        setToast({ message: t("pushPermissionDenied"), type: "error" });
         setSubscribing(false);
         return;
       }
@@ -88,7 +90,7 @@ export default function NotificationsPage() {
       const reg = await navigator.serviceWorker.ready;
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!vapidKey) {
-        setToast({ message: "Push not configured (missing VAPID key)", type: "error" });
+        setToast({ message: t("pushNotConfigured"), type: "error" });
         setSubscribing(false);
         return;
       }
@@ -107,13 +109,13 @@ export default function NotificationsPage() {
       if (!res.ok) throw new Error("Server rejected subscription");
 
       setPrefs({ pushEnabled: true });
-      setToast({ message: "Push notifications enabled!", type: "success" });
+      setToast({ message: t("pushEnabled"), type: "success" });
     } catch (err) {
       console.error("Failed to subscribe:", err);
-      setToast({ message: "Failed to enable notifications", type: "error" });
+      setToast({ message: t("pushEnableFailed"), type: "error" });
     }
     setSubscribing(false);
-  }, [prefs.pushEnabled, setPrefs]);
+  }, [prefs.pushEnabled, setPrefs, t]);
 
   const [savingEmail, setSavingEmail] = useState(false);
 
@@ -129,15 +131,15 @@ export default function NotificationsPage() {
         body: JSON.stringify({ emailDigest: newVal }),
       });
       setToast({
-        message: newVal ? "Weekly digest enabled" : "Weekly digest disabled",
+        message: newVal ? t("weeklyDigestEnabled") : t("weeklyDigestDisabled"),
         type: "success",
       });
     } catch {
       setPrefs({ emailDigest: !newVal });
-      setToast({ message: "Failed to save preference", type: "error" });
+      setToast({ message: t("saveFailed"), type: "error" });
     }
     setSavingEmail(false);
-  }, [prefs.emailDigest, setPrefs]);
+  }, [prefs.emailDigest, setPrefs, t]);
 
   const handleToggleType = useCallback(async (key: "onThisDay" | "timeCapsule") => {
     const newVal = !prefs[key];
@@ -154,10 +156,10 @@ export default function NotificationsPage() {
     } catch {
       // Revert on failure
       setPrefs({ [key]: !newVal });
-      setToast({ message: "Failed to save preference", type: "error" });
+      setToast({ message: t("saveFailed"), type: "error" });
     }
     setSaving(false);
-  }, [prefs, setPrefs]);
+  }, [prefs, setPrefs, t]);
 
   const isUnsupported = permission === "unsupported";
   const isDenied = permission === "denied";
@@ -191,13 +193,13 @@ export default function NotificationsPage() {
           fontFamily: T.font.display, fontSize: 28, fontWeight: 500,
           color: T.color.charcoal, margin: "0 0 8px",
         }}>
-          Notifications
+          {t("title")}
         </h2>
         <p style={{
           fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
           margin: 0, lineHeight: 1.5,
         }}>
-          Choose how and when Memory Palace reminds you about your memories.
+          {t("description")}
         </p>
       </div>
 
@@ -212,8 +214,7 @@ export default function NotificationsPage() {
             fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
             margin: 0, lineHeight: 1.5,
           }}>
-            Your browser does not support push notifications. Try using Chrome, Edge, or Firefox
-            for the full experience.
+            {t("browserUnsupported")}
           </p>
         </div>
       )}
@@ -229,8 +230,7 @@ export default function NotificationsPage() {
             fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
             margin: 0, lineHeight: 1.5,
           }}>
-            Notifications are blocked by your browser. To enable them, click the lock icon in
-            your address bar and allow notifications for this site, then refresh the page.
+            {t("permissionDenied")}
           </p>
         </div>
       )}
@@ -262,13 +262,13 @@ export default function NotificationsPage() {
               fontFamily: T.font.display, fontSize: 18, fontWeight: 600,
               color: T.color.charcoal, margin: "0 0 2px",
             }}>
-              Push Notifications
+              {t("pushNotifications")}
             </h3>
             <p style={{
               fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
               margin: 0,
             }}>
-              Receive notifications even when the app is closed
+              {t("pushDescription")}
             </p>
           </div>
 
@@ -295,13 +295,13 @@ export default function NotificationsPage() {
                   fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
                   color: T.color.charcoal, margin: "0 0 2px",
                 }}>
-                  &ldquo;On This Day&rdquo; reminders
+                  {t("onThisDayTitle")}
                 </h4>
                 <p style={{
                   fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
                   margin: 0,
                 }}>
-                  Daily reminder when you have memory anniversaries
+                  {t("onThisDayDesc")}
                 </p>
               </div>
               <ToggleSwitch
@@ -323,13 +323,13 @@ export default function NotificationsPage() {
                   fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
                   color: T.color.charcoal, margin: "0 0 2px",
                 }}>
-                  Time Capsule reveals
+                  {t("timeCapsuleTitle")}
                 </h4>
                 <p style={{
                   fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
                   margin: 0,
                 }}>
-                  Get notified when a time capsule is ready to open
+                  {t("timeCapsuleDesc")}
                 </p>
               </div>
               <ToggleSwitch
@@ -363,7 +363,7 @@ export default function NotificationsPage() {
             textTransform: "uppercase" as const,
             letterSpacing: 0.5,
           }}>
-            Email
+            {t("emailSection")}
           </h3>
         </div>
 
@@ -386,13 +386,13 @@ export default function NotificationsPage() {
               fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
               color: T.color.charcoal, margin: "0 0 2px",
             }}>
-              Weekly Memory Digest
+              {t("weeklyDigestTitle")}
             </h4>
             <p style={{
               fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
               margin: 0,
             }}>
-              Receive a weekly email with memory anniversaries, upcoming time capsules, and shared room activity
+              {t("weeklyDigestDesc")}
             </p>
           </div>
 
@@ -415,9 +415,7 @@ export default function NotificationsPage() {
           fontFamily: T.font.body, fontSize: 12, color: T.color.walnut,
           margin: 0, lineHeight: 1.5,
         }}>
-          Push notifications are sent once daily around 9:00 AM. The weekly email digest
-          is sent every Monday morning. Your data is stored securely and only used to
-          deliver the notifications you opt into. You can disable any notification at any time.
+          {t("infoNote")}
         </p>
       </div>
 

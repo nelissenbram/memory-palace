@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser, getBaseUrl } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getBaseUrl, generateOAuthState } from "@/lib/integrations/helpers";
 
 export async function GET() {
   try {
@@ -10,6 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: "Google OAuth not configured" }, { status: 500 });
     }
 
+    const state = generateOAuthState();
     const redirectUri = `${getBaseUrl()}/api/integrations/google/callback`;
     const scopes = [
       "https://www.googleapis.com/auth/photoslibrary.readonly",
@@ -24,10 +25,22 @@ export async function GET() {
       scope: scopes.join(" "),
       access_type: "offline",
       prompt: "consent",
+      state,
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
-    return NextResponse.redirect(authUrl);
+    const response = NextResponse.redirect(authUrl);
+
+    // Store state in an HttpOnly cookie for CSRF verification in the callback
+    response.cookies.set("oauth_state_google", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600, // 10 minutes
+      path: "/",
+    });
+
+    return response;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     if (message === "Not authenticated") {

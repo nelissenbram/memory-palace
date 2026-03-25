@@ -7,6 +7,7 @@ import OfflineBanner from "@/components/OfflineBanner";
 import NotificationPrompt from "@/components/NotificationPrompt";
 import CookieConsent from "@/components/CookieConsent";
 import NativeInit from "@/components/NativeInit";
+import { AccessibilityProvider } from "@/components/providers/AccessibilityProvider";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -139,7 +140,9 @@ export default function RootLayout({
         <OfflineBanner />
         <NotificationPrompt />
         <NativeInit />
-        {children}
+        <AccessibilityProvider>
+          {children}
+        </AccessibilityProvider>
         <CookieConsent />
       </body>
     </html>

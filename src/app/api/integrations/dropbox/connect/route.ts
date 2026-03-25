@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser, getBaseUrl } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getBaseUrl, generateOAuthState } from "@/lib/integrations/helpers";
 
 export async function GET() {
   try {
@@ -10,16 +10,28 @@ export async function GET() {
       return NextResponse.json({ error: "Dropbox OAuth not configured" }, { status: 500 });
     }
 
+    const state = generateOAuthState();
     const redirectUri = `${getBaseUrl()}/api/integrations/dropbox/callback`;
     const params = new URLSearchParams({
       client_id: appKey,
       redirect_uri: redirectUri,
       response_type: "code",
       token_access_type: "offline",
+      state,
     });
 
     const authUrl = `https://www.dropbox.com/oauth2/authorize?${params}`;
-    return NextResponse.redirect(authUrl);
+    const response = NextResponse.redirect(authUrl);
+
+    response.cookies.set("oauth_state_dropbox", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
+
+    return response;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     if (message === "Not authenticated") {

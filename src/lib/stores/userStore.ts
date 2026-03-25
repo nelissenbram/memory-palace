@@ -21,7 +21,9 @@ interface UserState {
   bustProportions: Record<string, number> | null;
   bustName: string | null;
   bustGender: string | null;
+  accessibilityMode: boolean;
   bustPedestals: Record<number, BustPedestalData>;
+  setAccessibilityMode: (v: boolean) => void;
   setOnboardStep: (step: number | ((s: number) => number)) => void;
   setUserName: (name: string) => void;
   setUserGoal: (goal: string) => void;
@@ -51,8 +53,10 @@ export const useUserStore = create<UserState>((set, get) => ({
   bustProportions: null,
   bustName: null,
   bustGender: null,
+  accessibilityMode: false,
   bustPedestals: {},
 
+  setAccessibilityMode: (v) => set({ accessibilityMode: v }),
   setOnboardStep: (step) =>
     set((s) => ({ onboardStep: typeof step === "function" ? step(s.onboardStep) : step })),
   setUserName: (name) => set({ userName: name }),
@@ -96,7 +100,7 @@ export const useUserStore = create<UserState>((set, get) => ({
         } else if (profile.bust_texture_url) {
           pedestals = { 0: { faceUrl: profile.bust_texture_url, name: profile.bust_name || profile.display_name || "", gender: (profile.bust_gender as "male" | "female") || "male" } };
         }
-        set({ onboarded: true, userName: profile.display_name || "", styleEra: profile.style_era || null, bustTextureUrl: profile.bust_texture_url || null, bustModelUrl: profile.bust_model_url || null, bustName: profile.bust_name || null, bustGender: profile.bust_gender || null, bustPedestals: pedestals });
+        set({ onboarded: true, userName: profile.display_name || "", styleEra: profile.style_era || null, bustTextureUrl: profile.bust_texture_url || null, bustModelUrl: profile.bust_model_url || null, bustName: profile.bust_name || null, bustGender: profile.bust_gender || null, bustPedestals: pedestals, accessibilityMode: !!profile.accessibility_mode });
       }
       else set({ onboarded: false });
     }

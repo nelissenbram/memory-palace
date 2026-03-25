@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { updateProfile, requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
 import MFASetup from "@/components/settings/MFASetup";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 
 interface ProfileData {
   display_name: string;
@@ -27,6 +28,8 @@ export default function ProfilePage() {
   const { t, locale, setLocale } = useTranslation("settings");
   const { t: tOnboard } = useTranslation("onboarding");
   const { t: tc } = useTranslation("common");
+  const { t: tA11y } = useTranslation("accessibility");
+  const { accessibilityMode, toggleAccessibility } = useAccessibility();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -142,10 +145,10 @@ export default function ProfilePage() {
   const handleExportData = async () => {
     setExporting(true);
     try {
-      const response = await fetch("/api/export");
+      const response = await fetch("/api/export/zip");
       if (!response.ok) {
         const err = await response.json().catch(() => ({ error: "Export failed" }));
-        showToast(err.error || "Failed to export data.", "error");
+        showToast(err.error || t("exportZipError"), "error");
         setExporting(false);
         return;
       }
@@ -155,14 +158,14 @@ export default function ProfilePage() {
       a.href = url;
       const disposition = response.headers.get("Content-Disposition");
       const filenameMatch = disposition?.match(/filename="(.+)"/);
-      a.download = filenameMatch?.[1] || "memory-palace-export.json";
+      a.download = filenameMatch?.[1] || "memory-palace-export.zip";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      showToast("Your data has been downloaded.", "success");
+      showToast(t("exportZipSuccess"), "success");
     } catch {
-      showToast("Failed to export data. Please try again.", "error");
+      showToast(t("exportZipError"), "error");
     }
     setExporting(false);
   };
@@ -380,12 +383,12 @@ export default function ProfilePage() {
 
           {/* Palace Style */}
           <div>
-            <label style={labelStyle}>Palace Style</label>
+            <label style={labelStyle}>{t("palaceStyle")}</label>
             <p style={{
               fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
               margin: "0 0 10px", lineHeight: 1.4,
             }}>
-              Change the historic period of your palace architecture.
+              {t("palaceStyleDesc")}
             </p>
             <div style={{
               display: "grid",
@@ -401,7 +404,7 @@ export default function ProfilePage() {
                     if (isComingSoon) return;
                     setStyleEra(era);
                     await updateProfile({ styleEra: era });
-                    showToast("Palace style updated. Reload to see changes.", "success");
+                    showToast(t("palaceStyleUpdated"), "success");
                   }}
                   style={{
                     padding: "14px 16px",
@@ -419,11 +422,11 @@ export default function ProfilePage() {
                   }}
                 >
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>
-                    {era === "roman" ? "Republican Rome" : "Renaissance Florence"}
-                    {isComingSoon && <span style={{ fontSize: 11, fontWeight: 600, marginLeft: 8, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>Coming soon</span>}
+                    {era === "roman" ? t("romanName") : t("renaissanceName")}
+                    {isComingSoon && <span style={{ fontSize: 11, fontWeight: 600, marginLeft: 8, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("comingSoon")}</span>}
                   </div>
                   <div style={{ fontSize: 12, fontWeight: 400, color: T.color.muted }}>
-                    {era === "roman" ? "Marble atriums, mosaic floors" : "Frescoed galleries, coffered ceilings"}
+                    {era === "roman" ? t("romanDesc") : t("renaissanceDesc")}
                   </div>
                 </button>
                 );
@@ -557,14 +560,13 @@ export default function ProfilePage() {
                 fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
                 color: T.color.charcoal,
               }}>
-                Download My Data
+                {t("exportZip")}
               </div>
               <div style={{
                 fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
                 marginTop: 4, maxWidth: 380, lineHeight: 1.4,
               }}>
-                Download a copy of all your data including profile, memories, and settings.
-                Files (photos, videos) can be downloaded separately from your rooms.
+                {t("exportZipDesc")}
               </div>
             </div>
             <button
@@ -584,7 +586,7 @@ export default function ProfilePage() {
                 flexShrink: 0,
               }}
             >
-              {exporting ? "Preparing..." : "Download Data"}
+              {exporting ? t("exportingZip") : t("exportZip")}
             </button>
           </div>
         </div>
@@ -642,6 +644,75 @@ export default function ProfilePage() {
             }}
           >
             {tc("dutch")} (NL)
+          </button>
+        </div>
+      </div>
+
+      {/* ── Accessibility ── */}
+      <div style={{
+        background: T.color.white,
+        borderRadius: 16,
+        border: `1px solid ${T.color.cream}`,
+        padding: "28px 32px",
+        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        marginBottom: 24,
+      }}>
+        <h3 style={{
+          fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 16px",
+        }}>
+          {tA11y("title")}
+        </h3>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "18px 20px", borderRadius: 12,
+          background: T.color.linen,
+          border: `1px solid ${T.color.cream}`,
+        }}>
+          <div>
+            <div style={{
+              fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
+              color: T.color.charcoal,
+            }}>
+              {tA11y("mode")}
+            </div>
+            <div style={{
+              fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
+              marginTop: 4, lineHeight: 1.4,
+            }}>
+              {tA11y("modeDescription")}
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              toggleAccessibility();
+              showToast(accessibilityMode ? tA11y("disabled") : tA11y("enabled"), "success");
+            }}
+            style={{
+              width: 52,
+              height: 28,
+              borderRadius: 14,
+              border: "none",
+              background: accessibilityMode
+                ? T.color.sage
+                : T.color.sandstone,
+              cursor: "pointer",
+              position: "relative",
+              transition: "background .2s",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{
+              position: "absolute",
+              top: 3,
+              left: accessibilityMode ? 27 : 3,
+              width: 22,
+              height: 22,
+              borderRadius: 11,
+              background: T.color.white,
+              boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+              transition: "left .2s",
+            }} />
           </button>
         </div>
       </div>

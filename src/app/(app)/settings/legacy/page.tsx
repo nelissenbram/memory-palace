@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import {
   fetchAllLegacyData,
   createLegacyContact,
@@ -19,24 +20,24 @@ import {
 // ── Constants ──
 
 const RELATIONSHIPS = [
-  { value: "partner", label: "Partner / Spouse" },
-  { value: "child", label: "Child" },
-  { value: "grandchild", label: "Grandchild" },
-  { value: "sibling", label: "Sibling" },
-  { value: "friend", label: "Friend" },
-  { value: "other", label: "Other" },
+  { value: "partner", labelKey: "relPartner" },
+  { value: "child", labelKey: "relChild" },
+  { value: "grandchild", labelKey: "relGrandchild" },
+  { value: "sibling", labelKey: "relSibling" },
+  { value: "friend", labelKey: "relFriend" },
+  { value: "other", labelKey: "relOther" },
 ];
 
 const ACCESS_LEVELS = [
-  { value: "full", label: "Full Palace", description: "Access to every wing and room" },
-  { value: "wings_only", label: "Specific Wings", description: "Only the wings you choose" },
-  { value: "specific_rooms", label: "Specific Rooms", description: "Only the rooms you choose" },
+  { value: "full", labelKey: "accessFull", descKey: "accessFullDesc" },
+  { value: "wings_only", labelKey: "accessWings", descKey: "accessWingsDesc" },
+  { value: "specific_rooms", labelKey: "accessRooms", descKey: "accessRoomsDesc" },
 ];
 
 const DELIVERY_OPTIONS = [
-  { value: "death", label: "When the time comes" },
-  { value: "specific_date", label: "On a specific date" },
-  { value: "immediately", label: "Deliver immediately" },
+  { value: "death", labelKey: "deliverDeath" },
+  { value: "specific_date", labelKey: "deliverDate" },
+  { value: "immediately", labelKey: "deliverImmediately" },
 ];
 
 const DEFAULT_WINGS = [
@@ -50,6 +51,7 @@ const DEFAULT_WINGS = [
 // ── Main Page ──
 
 export default function LegacyPage() {
+  const { t } = useTranslation("legacySettings");
   const [contacts, setContacts] = useState<LegacyContact[]>([]);
   const [messages, setMessages] = useState<LegacyMessage[]>([]);
   const [settings, setSettings] = useState<LegacySettings | null>(null);
@@ -91,7 +93,7 @@ export default function LegacyPage() {
         padding: 48, textAlign: "center",
         fontFamily: T.font.body, fontSize: 16, color: T.color.muted,
       }}>
-        Loading your legacy settings...
+        {t("loading")}
       </div>
     );
   }
@@ -125,14 +127,13 @@ export default function LegacyPage() {
           fontFamily: T.font.display, fontSize: 28, fontWeight: 500,
           color: T.color.charcoal, margin: "0 0 8px",
         }}>
-          Your Legacy
+          {t("title")}
         </h2>
         <p style={{
           fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
           margin: 0, lineHeight: 1.6,
         }}>
-          Your memories are precious. Here you can decide who will receive access to your
-          palace and what messages your loved ones will find when the time comes.
+          {t("description")}
         </p>
       </div>
 
@@ -146,9 +147,7 @@ export default function LegacyPage() {
           fontFamily: T.font.body, fontSize: 15, color: T.color.walnut,
           margin: 0, lineHeight: 1.7,
         }}>
-          There is no rush. You can return to these settings any time and update them as
-          your wishes evolve. Everything here is private and encrypted until you choose
-          otherwise.
+          {t("introCallout")}
         </p>
       </div>
 
@@ -157,9 +156,9 @@ export default function LegacyPage() {
         display: "flex", gap: 8, marginBottom: 24,
       }}>
         {([
-          { key: "contacts" as const, label: "Legacy Contacts", count: contacts.length },
-          { key: "messages" as const, label: "Final Messages", count: messages.length },
-          { key: "settings" as const, label: "Legacy Settings", count: null },
+          { key: "contacts" as const, label: t("contactsTab"), count: contacts.length },
+          { key: "messages" as const, label: t("messagesTab"), count: messages.length },
+          { key: "settings" as const, label: t("settingsTab"), count: null },
         ]).map((tab) => (
           <button
             key={tab.key}
@@ -234,6 +233,8 @@ function ContactsSection({
   setContacts: React.Dispatch<React.SetStateAction<LegacyContact[]>>;
   showToast: (msg: string, type: "success" | "error") => void;
 }) {
+  const { t } = useTranslation("legacySettings");
+  const { t: tc } = useTranslation("common");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -267,7 +268,7 @@ function ContactsSection({
 
   const handleSave = async () => {
     if (!name.trim() || !email.trim()) {
-      showToast("Please fill in both name and email.", "error");
+      showToast(t("fillNameEmail"), "error");
       return;
     }
     setSaving(true);
@@ -284,7 +285,7 @@ function ContactsSection({
         showToast(result.error, "error");
       } else if (result.contact) {
         setContacts((prev) => prev.map((c) => (c.id === editingId ? result.contact! : c)));
-        showToast("Contact updated.", "success");
+        showToast(t("contactUpdated"), "success");
         resetForm();
       }
     } else {
@@ -299,7 +300,7 @@ function ContactsSection({
         showToast(result.error, "error");
       } else if (result.contact) {
         setContacts((prev) => [...prev, result.contact!]);
-        showToast("Legacy contact added. Your loved one will be in safe hands.", "success");
+        showToast(t("contactAdded"), "success");
         resetForm();
       }
     }
@@ -312,7 +313,7 @@ function ContactsSection({
       showToast(result.error, "error");
     } else {
       setContacts((prev) => prev.filter((c) => c.id !== id));
-      showToast("Contact removed.", "success");
+      showToast(t("contactRemoved"), "success");
     }
   };
 
@@ -329,14 +330,14 @@ function ContactsSection({
           fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
           color: T.color.charcoal, margin: 0,
         }}>
-          Legacy Contacts
+          {t("contactsTitle")}
         </h3>
         {!showForm && (
           <button
             onClick={() => { resetForm(); setShowForm(true); }}
             style={primaryBtnStyle}
           >
-            + Add Contact
+            {t("addContact")}
           </button>
         )}
       </div>
@@ -344,8 +345,7 @@ function ContactsSection({
         fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
         margin: "0 0 24px", lineHeight: 1.6,
       }}>
-        These are the people who will receive access to your memory palace. You decide
-        exactly how much they can see.
+        {t("contactsDesc")}
       </p>
 
       {/* Existing contacts */}
@@ -383,7 +383,7 @@ function ContactsSection({
                   {c.contact_email}
                   {c.relationship && (
                     <span style={{ marginLeft: 10, color: T.color.walnut }}>
-                      {RELATIONSHIPS.find((r) => r.value === c.relationship)?.label || c.relationship}
+                      {(() => { const rel = RELATIONSHIPS.find((r) => r.value === c.relationship); return rel ? t(rel.labelKey) : c.relationship; })()}
                     </span>
                   )}
                 </div>
@@ -391,7 +391,7 @@ function ContactsSection({
                   fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
                   marginTop: 4,
                 }}>
-                  Access: {ACCESS_LEVELS.find((a) => a.value === c.access_level)?.label || c.access_level}
+                  {t("access")}: {(() => { const al = ACCESS_LEVELS.find((a) => a.value === c.access_level); return al ? t(al.labelKey) : c.access_level; })()}
                   {c.access_level === "wings_only" && c.wing_access.length > 0 && (
                     <span style={{ marginLeft: 6, color: T.color.muted }}>
                       ({c.wing_access.map((w) => DEFAULT_WINGS.find((dw) => dw.slug === w)?.label || w).join(", ")})
@@ -405,13 +405,13 @@ function ContactsSection({
                   onClick={() => startEdit(c)}
                   style={smallBtnStyle}
                 >
-                  Edit
+                  {tc("edit")}
                 </button>
                 <button
                   onClick={() => handleDelete(c.id)}
                   style={{ ...smallBtnStyle, color: T.color.error, borderColor: `${T.color.error}30` }}
                 >
-                  Remove
+                  {tc("remove")}
                 </button>
               </div>
             </div>
@@ -429,14 +429,13 @@ function ContactsSection({
             fontFamily: T.font.display, fontSize: 18, color: T.color.walnut,
             margin: "0 0 8px",
           }}>
-            No legacy contacts yet
+            {t("noContactsTitle")}
           </p>
           <p style={{
             fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
             margin: 0, lineHeight: 1.6,
           }}>
-            When you are ready, add the people you trust most. They will receive access to
-            your memories when the time comes.
+            {t("noContactsDesc")}
           </p>
         </div>
       )}
@@ -453,35 +452,35 @@ function ContactsSection({
             fontFamily: T.font.display, fontSize: 18, fontWeight: 500,
             color: T.color.charcoal, margin: "0 0 20px",
           }}>
-            {editingId ? "Edit Contact" : "Add a Legacy Contact"}
+            {editingId ? t("editContact") : t("addContactTitle")}
           </h4>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {/* Name */}
             <div>
-              <label style={labelStyle}>Name</label>
+              <label style={labelStyle}>{t("contactName")}</label>
               <input
                 type="text" value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Their full name"
+                placeholder={t("contactNamePlaceholder")}
                 style={inputStyle}
               />
             </div>
 
             {/* Email */}
             <div>
-              <label style={labelStyle}>Email Address</label>
+              <label style={labelStyle}>{t("contactEmail")}</label>
               <input
                 type="email" value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="their.email@example.com"
+                placeholder={t("contactEmailPlaceholder")}
                 style={inputStyle}
               />
             </div>
 
             {/* Relationship */}
             <div>
-              <label style={labelStyle}>Relationship</label>
+              <label style={labelStyle}>{t("relationship")}</label>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {RELATIONSHIPS.map((r) => (
                   <button
@@ -497,7 +496,7 @@ function ContactsSection({
                       cursor: "pointer", transition: "all .15s",
                     }}
                   >
-                    {r.label}
+                    {t(r.labelKey)}
                   </button>
                 ))}
               </div>
@@ -505,12 +504,12 @@ function ContactsSection({
 
             {/* Access level */}
             <div>
-              <label style={labelStyle}>Access Level</label>
+              <label style={labelStyle}>{t("accessLevel")}</label>
               <p style={{
                 fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
                 margin: "0 0 10px", lineHeight: 1.5,
               }}>
-                How much of your palace will they be able to see?
+                {t("accessLevelDesc")}
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {ACCESS_LEVELS.map((a) => (
@@ -528,13 +527,13 @@ function ContactsSection({
                       fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
                       color: accessLevel === a.value ? T.color.terracotta : T.color.charcoal,
                     }}>
-                      {a.label}
+                      {t(a.labelKey)}
                     </div>
                     <div style={{
                       fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
                       marginTop: 2,
                     }}>
-                      {a.description}
+                      {t(a.descKey)}
                     </div>
                   </button>
                 ))}
@@ -544,7 +543,7 @@ function ContactsSection({
             {/* Wing selector (shown if wings_only) */}
             {accessLevel === "wings_only" && (
               <div>
-                <label style={labelStyle}>Select Wings</label>
+                <label style={labelStyle}>{t("selectWings")}</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {DEFAULT_WINGS.map((w) => {
                     const selected = wingAccess.includes(w.slug);
@@ -579,10 +578,10 @@ function ContactsSection({
             {/* Actions */}
             <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
               <button onClick={handleSave} disabled={saving} style={primaryBtnStyle}>
-                {saving ? "Saving..." : editingId ? "Save Changes" : "Add Contact"}
+                {saving ? tc("saving") : editingId ? tc("save") : t("addContact")}
               </button>
               <button onClick={resetForm} style={secondaryBtnStyle}>
-                Cancel
+                {tc("cancel")}
               </button>
             </div>
           </div>
@@ -607,6 +606,8 @@ function MessagesSection({
   contacts: LegacyContact[];
   showToast: (msg: string, type: "success" | "error") => void;
 }) {
+  const { t } = useTranslation("legacySettings");
+  const { t: tc } = useTranslation("common");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -639,7 +640,7 @@ function MessagesSection({
 
   const handleSave = async () => {
     if (!recipientEmail.trim() || !subject.trim()) {
-      showToast("Please fill in both recipient and subject.", "error");
+      showToast(t("fillRecipientSubject"), "error");
       return;
     }
     setSaving(true);
@@ -656,7 +657,7 @@ function MessagesSection({
         showToast(result.error, "error");
       } else if (result.message) {
         setMessages((prev) => prev.map((m) => (m.id === editingId ? result.message! : m)));
-        showToast("Message updated.", "success");
+        showToast(t("messageUpdated"), "success");
         resetForm();
       }
     } else {
@@ -671,7 +672,7 @@ function MessagesSection({
         showToast(result.error, "error");
       } else if (result.message) {
         setMessages((prev) => [...prev, result.message!]);
-        showToast("Your message has been saved. It will be kept safe.", "success");
+        showToast(t("messageSaved"), "success");
         resetForm();
       }
     }
@@ -684,7 +685,7 @@ function MessagesSection({
       showToast(result.error, "error");
     } else {
       setMessages((prev) => prev.filter((m) => m.id !== id));
-      showToast("Message removed.", "success");
+      showToast(t("messageRemoved"), "success");
     }
   };
 
@@ -701,11 +702,11 @@ function MessagesSection({
           fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
           color: T.color.charcoal, margin: 0,
         }}>
-          Final Messages
+          {t("messagesTitle")}
         </h3>
         {!showForm && (
           <button onClick={() => { resetForm(); setShowForm(true); }} style={primaryBtnStyle}>
-            + Write a Message
+            {t("writeMessage")}
           </button>
         )}
       </div>
@@ -713,8 +714,7 @@ function MessagesSection({
         fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
         margin: "0 0 24px", lineHeight: 1.6,
       }}>
-        Write letters to the people who matter most. Your words will be delivered to them
-        with care, exactly when you choose.
+        {t("messagesDesc")}
       </p>
 
       {/* Existing messages */}
@@ -732,18 +732,18 @@ function MessagesSection({
                     fontFamily: T.font.display, fontSize: 17, fontWeight: 500,
                     color: T.color.charcoal, marginBottom: 4,
                   }}>
-                    {m.subject || "(No subject)"}
+                    {m.subject || t("noSubject")}
                   </div>
                   <div style={{
                     fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
                   }}>
-                    To: {m.recipient_email}
+                    {t("to")}: {m.recipient_email}
                   </div>
                   <div style={{
                     fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
                     marginTop: 4,
                   }}>
-                    Delivery: {DELIVERY_OPTIONS.find((d) => d.value === m.deliver_on)?.label || m.deliver_on}
+                    {t("delivery")}: {(() => { const d = DELIVERY_OPTIONS.find((d) => d.value === m.deliver_on); return d ? t(d.labelKey) : m.deliver_on; })()}
                     {m.deliver_on === "specific_date" && m.deliver_date && (
                       <span> ({m.deliver_date})</span>
                     )}
@@ -760,12 +760,12 @@ function MessagesSection({
                   )}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                  <button onClick={() => startEdit(m)} style={smallBtnStyle}>Edit</button>
+                  <button onClick={() => startEdit(m)} style={smallBtnStyle}>{tc("edit")}</button>
                   <button
                     onClick={() => handleDelete(m.id)}
                     style={{ ...smallBtnStyle, color: T.color.error, borderColor: `${T.color.error}30` }}
                   >
-                    Remove
+                    {tc("remove")}
                   </button>
                 </div>
               </div>
@@ -784,14 +784,13 @@ function MessagesSection({
             fontFamily: T.font.display, fontSize: 18, color: T.color.walnut,
             margin: "0 0 8px",
           }}>
-            No messages yet
+            {t("noMessagesTitle")}
           </p>
           <p style={{
             fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
             margin: 0, lineHeight: 1.6,
           }}>
-            Take your time. When you are ready, you can write a personal letter
-            that your loved ones will treasure.
+            {t("noMessagesDesc")}
           </p>
         </div>
       )}
@@ -808,13 +807,13 @@ function MessagesSection({
             fontFamily: T.font.display, fontSize: 18, fontWeight: 500,
             color: T.color.charcoal, margin: "0 0 20px",
           }}>
-            {editingId ? "Edit Message" : "Write a Message"}
+            {editingId ? t("editMessage") : t("writeMessageTitle")}
           </h4>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {/* Recipient */}
             <div>
-              <label style={labelStyle}>Recipient Email</label>
+              <label style={labelStyle}>{t("recipientEmail")}</label>
               {contacts.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
                   {contacts.map((c) => (
@@ -845,28 +844,28 @@ function MessagesSection({
 
             {/* Subject */}
             <div>
-              <label style={labelStyle}>Subject</label>
+              <label style={labelStyle}>{t("subject")}</label>
               <input
                 type="text" value={subject}
                 onChange={(e) => setSubject(e.target.value)}
-                placeholder="A title for your message..."
+                placeholder={t("subjectPlaceholder")}
                 style={inputStyle}
               />
             </div>
 
             {/* Body */}
             <div>
-              <label style={labelStyle}>Your Message</label>
+              <label style={labelStyle}>{t("yourMessage")}</label>
               <p style={{
                 fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
                 margin: "0 0 8px", lineHeight: 1.5,
               }}>
-                Write from the heart. There are no rules here, just your words for someone you love.
+                {t("messagePrompt")}
               </p>
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="Dear..."
+                placeholder={t("messagePlaceholder")}
                 rows={10}
                 style={{
                   ...inputStyle,
@@ -880,7 +879,7 @@ function MessagesSection({
 
             {/* Delivery timing */}
             <div>
-              <label style={labelStyle}>When should this be delivered?</label>
+              <label style={labelStyle}>{t("deliveryTiming")}</label>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {DELIVERY_OPTIONS.map((d) => (
                   <button
@@ -896,7 +895,7 @@ function MessagesSection({
                       cursor: "pointer", transition: "all .15s",
                     }}
                   >
-                    {d.label}
+                    {t(d.labelKey)}
                   </button>
                 ))}
               </div>
@@ -914,10 +913,10 @@ function MessagesSection({
             {/* Actions */}
             <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
               <button onClick={handleSave} disabled={saving} style={primaryBtnStyle}>
-                {saving ? "Saving..." : editingId ? "Save Changes" : "Save Message"}
+                {saving ? tc("saving") : editingId ? tc("save") : t("saveMessage")}
               </button>
               <button onClick={resetForm} style={secondaryBtnStyle}>
-                Cancel
+                {tc("cancel")}
               </button>
             </div>
           </div>
@@ -940,6 +939,8 @@ function SettingsSection({
   setSettings: React.Dispatch<React.SetStateAction<LegacySettings | null>>;
   showToast: (msg: string, type: "success" | "error") => void;
 }) {
+  const { t } = useTranslation("legacySettings");
+  const { t: tc } = useTranslation("common");
   const [months, setMonths] = useState(settings?.inactivity_trigger_months ?? 12);
   const [verifierName, setVerifierName] = useState(settings?.trusted_verifier_name ?? "");
   const [verifierEmail, setVerifierEmail] = useState(settings?.trusted_verifier_email ?? "");
@@ -962,7 +963,7 @@ function SettingsSection({
       showToast(result.error, "error");
     } else if (result.settings) {
       setSettings(result.settings);
-      showToast("Legacy settings saved.", "success");
+      showToast(t("settingsSaved"), "success");
     }
     setSaving(false);
   };
@@ -979,14 +980,13 @@ function SettingsSection({
         fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
         color: T.color.charcoal, margin: "0 0 8px",
       }}>
-        Legacy Settings
+        {t("settingsTitle")}
       </h3>
       <p style={{
         fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
         margin: "0 0 28px", lineHeight: 1.6,
       }}>
-        These settings determine when and how your legacy plan is activated.
-        Everything stays private until the conditions you set are met.
+        {t("settingsDesc")}
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -996,14 +996,12 @@ function SettingsSection({
           background: T.color.linen,
           border: `1px solid ${T.color.cream}`,
         }}>
-          <label style={labelStyle}>Inactivity Trigger</label>
+          <label style={labelStyle}>{t("inactivityTrigger")}</label>
           <p style={{
             fontFamily: T.font.body, fontSize: 15, color: T.color.charcoal,
             margin: "0 0 14px", lineHeight: 1.6,
           }}>
-            If you have not logged in for this many months, your account will be
-            flagged for legacy transfer. Your trusted verifier will then be contacted
-            to confirm.
+            {t("inactivityDesc")}
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <input
@@ -1019,14 +1017,14 @@ function SettingsSection({
               fontFamily: T.font.display, fontSize: 20, fontWeight: 600,
               color: T.color.terracotta, minWidth: 90, textAlign: "center",
             }}>
-              {months} month{months !== 1 ? "s" : ""}
+              {months !== 1 ? t("monthsLabel", { count: String(months) }) : t("monthLabel", { count: String(months) })}
             </div>
           </div>
           <p style={{
             fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
             margin: "10px 0 0", lineHeight: 1.4,
           }}>
-            We recommend at least 12 months. You can change this at any time.
+            {t("inactivityRecommendation")}
           </p>
         </div>
 
@@ -1036,31 +1034,29 @@ function SettingsSection({
           background: T.color.linen,
           border: `1px solid ${T.color.cream}`,
         }}>
-          <label style={labelStyle}>Trusted Verifier</label>
+          <label style={labelStyle}>{t("trustedVerifier")}</label>
           <p style={{
             fontFamily: T.font.body, fontSize: 15, color: T.color.charcoal,
             margin: "0 0 14px", lineHeight: 1.6,
           }}>
-            This person will be contacted to confirm that the legacy transfer should
-            proceed. Choose someone you trust deeply -- a partner, a close family
-            member, or a legal representative.
+            {t("trustedVerifierDesc")}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div>
-              <label style={{ ...labelStyle, fontSize: 12 }}>Verifier Name</label>
+              <label style={{ ...labelStyle, fontSize: 12 }}>{t("verifierName")}</label>
               <input
                 type="text" value={verifierName}
                 onChange={(e) => setVerifierName(e.target.value)}
-                placeholder="Their full name"
+                placeholder={t("verifierNamePlaceholder")}
                 style={inputStyle}
               />
             </div>
             <div>
-              <label style={{ ...labelStyle, fontSize: 12 }}>Verifier Email</label>
+              <label style={{ ...labelStyle, fontSize: 12 }}>{t("verifierEmail")}</label>
               <input
                 type="email" value={verifierEmail}
                 onChange={(e) => setVerifierEmail(e.target.value)}
-                placeholder="their.email@example.com"
+                placeholder={t("verifierEmailPlaceholder")}
                 style={inputStyle}
               />
             </div>
@@ -1082,10 +1078,10 @@ function SettingsSection({
             fontFamily: T.font.body, fontSize: 14, color: T.color.walnut,
             margin: 0, lineHeight: 1.5,
           }}>
-            Status: <strong>{settings?.status === "triggered" ? "Legacy triggered" : settings?.status === "transferred" ? "Legacy transferred" : "Active"}</strong>
+            {t("statusLabel")}: <strong>{settings?.status === "triggered" ? t("statusTriggered") : settings?.status === "transferred" ? t("statusTransferred") : t("statusActive")}</strong>
             {(!settings || settings.status === "active") && (
               <span style={{ color: T.color.muted }}>
-                {" "} -- your palace is yours, safe and sound.
+                {t("statusSafe")}
               </span>
             )}
           </p>
@@ -1102,7 +1098,7 @@ function SettingsSection({
               cursor: !hasChanges || saving ? "default" : "pointer",
             }}
           >
-            {saving ? "Saving..." : "Save Settings"}
+            {saving ? tc("saving") : t("saveSettings")}
           </button>
           {hasChanges && (
             <button
@@ -1113,7 +1109,7 @@ function SettingsSection({
               }}
               style={secondaryBtnStyle}
             >
-              Discard
+              {tc("discard")}
             </button>
           )}
         </div>

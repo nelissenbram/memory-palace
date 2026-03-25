@@ -3,6 +3,7 @@ import { useState } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRoomStore, MAX_ROOMS_PER_WING } from "@/lib/stores/roomStore";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Wing } from "@/lib/constants/wings";
 
 const EMOJI_PRESETS = [
@@ -31,6 +32,8 @@ interface RoomManagerPanelProps {
 }
 
 export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomManagerPanelProps) {
+  const { t } = useTranslation("room");
+  const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
   const { getWingRooms, renameRoom, changeRoomIcon, addRoom, deleteRoom, reorderRoom } = useRoomStore();
   const rooms = getWingRooms(wing.id);
@@ -92,15 +95,15 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>Manage Rooms</h3>
-            <p style={{ fontFamily: T.font.body, fontSize: 12, color: accent, margin: "4px 0 0" }}>{wing.icon} {wing.name} Wing</p>
+            <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("manageRooms")}</h3>
+            <p style={{ fontFamily: T.font.body, fontSize: 12, color: accent, margin: "4px 0 0" }}>{t("wingLabel", { icon: wing.icon, name: wing.name })}</p>
           </div>
           <button onClick={onClose} style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 16 : 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}>{"\u2715"}</button>
         </div>
 
         {/* Room count */}
         <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginBottom: 16 }}>
-          {rooms.length} of {MAX_ROOMS_PER_WING} rooms
+          {t("roomCount", { current: String(rooms.length), max: String(MAX_ROOMS_PER_WING) })}
           <div style={{ height: 3, background: T.color.cream, borderRadius: 2, marginTop: 6 }}>
             <div style={{ height: "100%", background: accent, borderRadius: 2, width: `${(rooms.length / MAX_ROOMS_PER_WING) * 100}%`, transition: "width .3s" }} />
           </div>
@@ -134,7 +137,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                     </div>
                   )}
                   <div style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, marginTop: 1 }}>
-                    {room.shared ? `Shared with ${room.sharedWith.length}` : "Private"}
+                    {room.shared ? t("shared", { count: String(room.sharedWith.length) }) : t("private")}
                     {" \u00B7 "}{room.id}
                   </div>
                 </div>
@@ -171,11 +174,11 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
               {/* Delete confirmation */}
               {confirmDelete === room.id && (
                 <div style={{ marginTop: 8, padding: "8px 10px", background: "#FDF0F0", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontFamily: T.font.body, fontSize: 11, color: "#C05050", flex: 1 }}>Delete "{room.name}"? Memories inside will be lost.</span>
+                  <span style={{ fontFamily: T.font.body, fontSize: 11, color: "#C05050", flex: 1 }}>{t("deleteConfirm", { name: room.name })}</span>
                   <button onClick={() => handleDelete(room.id)}
-                    style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#C05050", color: "#FFF", fontFamily: T.font.body, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>Delete</button>
+                    style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#C05050", color: "#FFF", fontFamily: T.font.body, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>{tc("delete")}</button>
                   <button onClick={() => setConfirmDelete(null)}
-                    style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${T.color.cream}`, background: T.color.white, color: T.color.muted, fontFamily: T.font.body, fontSize: 11, cursor: "pointer" }}>Cancel</button>
+                    style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${T.color.cream}`, background: T.color.white, color: T.color.muted, fontFamily: T.font.body, fontSize: 11, cursor: "pointer" }}>{tc("cancel")}</button>
                 </div>
               )}
             </div>
@@ -185,7 +188,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
         {/* Add room section */}
         {adding ? (
           <div style={{ background: T.color.white, borderRadius: 12, border: `1.5px solid ${accent}40`, padding: 16 }}>
-            <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 10 }}>New Room</div>
+            <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 10 }}>{t("newRoom")}</div>
 
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
               <button onClick={() => setShowNewIconPicker(!showNewIconPicker)}
@@ -193,7 +196,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                 title="Choose icon">
                 {newIcon}
               </button>
-              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Room name..." autoFocus
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("roomNamePlaceholder")} autoFocus
                 onKeyDown={e => { if (e.key === "Enter") handleAdd(); }}
                 style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal, outline: "none" }} />
             </div>
@@ -202,19 +205,19 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
 
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <button onClick={() => { setAdding(false); setNewName(""); setShowNewIconPicker(false); }}
-                style={{ flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${T.color.cream}`, background: "transparent", fontFamily: T.font.body, fontSize: 12, color: T.color.muted, cursor: "pointer" }}>Cancel</button>
+                style={{ flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${T.color.cream}`, background: "transparent", fontFamily: T.font.body, fontSize: 12, color: T.color.muted, cursor: "pointer" }}>{tc("cancel")}</button>
               <button onClick={handleAdd} disabled={!newName.trim()}
-                style={{ flex: 2, padding: 10, borderRadius: 10, border: "none", background: newName.trim() ? accent : `${T.color.sandstone}40`, color: newName.trim() ? "#FFF" : T.color.muted, fontFamily: T.font.body, fontSize: 12, fontWeight: 600, cursor: newName.trim() ? "pointer" : "default" }}>Add room</button>
+                style={{ flex: 2, padding: 10, borderRadius: 10, border: "none", background: newName.trim() ? accent : `${T.color.sandstone}40`, color: newName.trim() ? "#FFF" : T.color.muted, fontFamily: T.font.body, fontSize: 12, fontWeight: 600, cursor: newName.trim() ? "pointer" : "default" }}>{t("addRoomButton")}</button>
             </div>
           </div>
         ) : canAdd ? (
           <button onClick={() => { setAdding(true); setEditingId(null); setPickingIconId(null); setConfirmDelete(null); }}
             style={{ width: "100%", padding: 14, borderRadius: 12, border: `1.5px dashed ${accent}50`, background: `${accent}06`, color: accent, fontFamily: T.font.body, fontSize: 13, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all .15s" }}>
-            + Add room
+            {t("addRoom")}
           </button>
         ) : (
           <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textAlign: "center", padding: 12 }}>
-            Maximum {MAX_ROOMS_PER_WING} rooms reached for this wing
+            {t("maxRoomsReached", { max: String(MAX_ROOMS_PER_WING) })}
           </div>
         )}
       </div>

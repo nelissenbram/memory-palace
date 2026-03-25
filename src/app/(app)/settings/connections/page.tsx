@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ── Provider definitions ──
 interface ProviderDef {
   id: string;
   name: string;
-  description: string;
+  descKey: string;
   icon: string;
   accentColor: string;
   connectUrl: string;
@@ -19,7 +20,7 @@ const PROVIDERS: ProviderDef[] = [
   {
     id: "google_photos",
     name: "Google Photos",
-    description: "Import photos and videos from your Google Photos library.",
+    descKey: "googlePhotosDesc",
     icon: "\u{1F4F8}",
     accentColor: "#4285F4",
     connectUrl: "/api/integrations/google/connect",
@@ -28,7 +29,7 @@ const PROVIDERS: ProviderDef[] = [
   {
     id: "dropbox",
     name: "Dropbox",
-    description: "Browse and import files from your Dropbox storage.",
+    descKey: "dropboxDesc",
     icon: "\u{1F4E6}",
     accentColor: "#0061FF",
     connectUrl: "/api/integrations/dropbox/connect",
@@ -37,7 +38,7 @@ const PROVIDERS: ProviderDef[] = [
   {
     id: "onedrive",
     name: "OneDrive",
-    description: "Access photos and documents from your Microsoft OneDrive.",
+    descKey: "onedriveDesc",
     icon: "\u2601\uFE0F",
     accentColor: "#0078D4",
     connectUrl: "/api/integrations/onedrive/connect",
@@ -46,7 +47,7 @@ const PROVIDERS: ProviderDef[] = [
   {
     id: "box",
     name: "Box",
-    description: "Import files from your Box cloud storage.",
+    descKey: "boxDesc",
     icon: "\u{1F4C1}",
     accentColor: "#0061D5",
     connectUrl: "/api/integrations/box/connect",
@@ -55,7 +56,7 @@ const PROVIDERS: ProviderDef[] = [
   {
     id: "apple_photos",
     name: "Apple Photos",
-    description: "Export from Apple Photos app, then upload via Mass Import.",
+    descKey: "applePhotosDesc",
     icon: "\u{1F34E}",
     accentColor: "#999999",
     connectUrl: "",
@@ -73,14 +74,16 @@ interface ConnectedAccount {
 }
 
 export default function ConnectionsPage() {
+  const { t } = useTranslation("connections");
   return (
-    <Suspense fallback={<div style={{padding:40,textAlign:"center",fontFamily:T.font.body,color:T.color.muted}}>Loading connections...</div>}>
+    <Suspense fallback={<div style={{padding:40,textAlign:"center",fontFamily:T.font.body,color:T.color.muted}}>{t("loading")}</div>}>
       <ConnectionsContent />
     </Suspense>
   );
 }
 
 function ConnectionsContent() {
+  const { t } = useTranslation("connections");
   const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,7 +114,7 @@ function ConnectionsContent() {
     if (connected) {
       const provider = PROVIDERS.find((p) => p.id === connected);
       setToast({
-        message: `${provider?.name || connected} connected successfully!`,
+        message: t("connectedSuccess", { provider: provider?.name || connected }),
         type: "success",
       });
       fetchAccounts();
@@ -119,7 +122,7 @@ function ConnectionsContent() {
       window.history.replaceState({}, "", "/settings/connections");
     }
     if (error) {
-      setToast({ message: `Connection failed: ${error}`, type: "error" });
+      setToast({ message: t("connectionFailed", { error }), type: "error" });
       window.history.replaceState({}, "", "/settings/connections");
     }
   }, [searchParams, fetchAccounts]);
@@ -139,12 +142,12 @@ function ConnectionsContent() {
       if (res.ok) {
         setAccounts((prev) => prev.filter((a) => a.provider !== provider));
         const p = PROVIDERS.find((p) => p.id === provider);
-        setToast({ message: `${p?.name || provider} disconnected.`, type: "success" });
+        setToast({ message: t("disconnected", { provider: p?.name || provider }), type: "success" });
       } else {
-        setToast({ message: "Failed to disconnect. Please try again.", type: "error" });
+        setToast({ message: t("disconnectFailed"), type: "error" });
       }
     } catch {
-      setToast({ message: "Failed to disconnect. Please try again.", type: "error" });
+      setToast({ message: t("disconnectFailed"), type: "error" });
     }
     setDisconnecting(null);
   };
@@ -180,14 +183,13 @@ function ConnectionsContent() {
           fontFamily: T.font.display, fontSize: 28, fontWeight: 500,
           color: T.color.charcoal, margin: "0 0 8px",
         }}>
-          Connected Accounts
+          {t("title")}
         </h2>
         <p style={{
           fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
           margin: 0, lineHeight: 1.5,
         }}>
-          Link your cloud storage and photo services to import memories directly into your palace.
-          Your files remain in their original location — we only copy what you choose to import.
+          {t("description")}
         </p>
       </div>
 
@@ -197,7 +199,7 @@ function ConnectionsContent() {
           textAlign: "center", padding: 48,
           fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
         }}>
-          Loading your connections...
+          {t("loading")}
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -251,7 +253,7 @@ function ConnectionsContent() {
                             width: 6, height: 6, borderRadius: 3,
                             background: "#4A6741", display: "inline-block",
                           }} />
-                          Connected
+                          {t("connected")}
                         </span>
                       )}
                     </div>
@@ -260,7 +262,7 @@ function ConnectionsContent() {
                       fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
                       margin: 0, lineHeight: 1.4,
                     }}>
-                      {provider.description}
+                      {t(provider.descKey)}
                     </p>
 
                     {/* Connection details */}
@@ -272,9 +274,9 @@ function ConnectionsContent() {
                         {account.provider_email && (
                           <span>{account.provider_email}</span>
                         )}
-                        <span>Connected {formatRelativeDate(account.connected_at)}</span>
+                        <span>{t("connectedDate", { date: formatRelativeDate(account.connected_at, t) })}</span>
                         {account.last_sync_at && (
-                          <span>Last import {formatRelativeDate(account.last_sync_at)}</span>
+                          <span>{t("lastImport", { date: formatRelativeDate(account.last_sync_at, t) })}</span>
                         )}
                       </div>
                     )}
@@ -294,7 +296,7 @@ function ConnectionsContent() {
                           transition: "all .15s",
                         }}
                       >
-                        {appleGuide ? "Hide Guide" : "View Guide"}
+                        {appleGuide ? t("hideGuide") : t("viewGuide")}
                       </button>
                     ) : isConnected ? (
                       <button
@@ -310,7 +312,7 @@ function ConnectionsContent() {
                           transition: "all .15s",
                         }}
                       >
-                        {disconnecting === provider.id ? "Disconnecting..." : "Disconnect"}
+                        {disconnecting === provider.id ? t("disconnecting") : t("disconnect")}
                       </button>
                     ) : (
                       <a
@@ -326,7 +328,7 @@ function ConnectionsContent() {
                           transition: "all .15s",
                         }}
                       >
-                        Connect
+                        {t("connect")}
                       </a>
                     )}
                   </div>
@@ -357,9 +359,7 @@ function ConnectionsContent() {
           fontFamily: T.font.body, fontSize: 12, color: T.color.walnut,
           margin: 0, lineHeight: 1.5,
         }}>
-          <strong>Privacy note:</strong> Memory Palace only accesses your files when you explicitly choose
-          to import them. We never scan, index, or store your cloud files without your direct action.
-          You can disconnect any service at any time.
+          {t("privacyNote")}
         </p>
       </div>
 
@@ -372,42 +372,17 @@ function ConnectionsContent() {
 
 // ── Apple Photos guide sub-component ──
 function ApplePhotosGuide() {
+  const { t } = useTranslation("connections");
   const [platform, setPlatform] = useState<"mac" | "iphone" | "icloud">("mac");
 
-  const guides: Record<string, { title: string; steps: string[] }> = {
-    mac: {
-      title: "From Mac",
-      steps: [
-        "Open the Photos app on your Mac.",
-        "Select the photos you would like to import.",
-        "Go to File \u2192 Export \u2192 Export Unmodified Originals.",
-        "Save them to a folder on your computer.",
-        "Return to Memory Palace and use the Mass Import panel to upload.",
-      ],
-    },
-    iphone: {
-      title: "From iPhone / iPad",
-      steps: [
-        "Open the Photos app on your device.",
-        "Tap 'Select' and choose the photos you want.",
-        "Tap the Share button and choose 'Save to Files'.",
-        "Save them to iCloud Drive or another accessible location.",
-        "On your computer, open Memory Palace and use Mass Import to upload.",
-      ],
-    },
-    icloud: {
-      title: "From iCloud.com",
-      steps: [
-        "Visit icloud.com/photos in your web browser.",
-        "Sign in with your Apple ID.",
-        "Select the photos you want to import.",
-        "Click the download button to save them to your computer.",
-        "Return to Memory Palace and use the Mass Import panel to upload.",
-      ],
-    },
+  const guides: Record<string, { titleKey: string; stepsKey: string }> = {
+    mac: { titleKey: "appleFromMac", stepsKey: "appleMacSteps" },
+    iphone: { titleKey: "appleFromIphone", stepsKey: "appleIphoneSteps" },
+    icloud: { titleKey: "appleFromIcloud", stepsKey: "appleIcloudSteps" },
   };
 
   const guide = guides[platform];
+  const steps = t(guide.stepsKey).split("|");
 
   return (
     <div>
@@ -421,7 +396,7 @@ function ApplePhotosGuide() {
             color: platform === key ? T.color.terracotta : T.color.muted,
             cursor: "pointer", transition: "all .15s",
           }}>
-            {guides[key].title}
+            {t(guides[key].titleKey)}
           </button>
         ))}
       </div>
@@ -431,7 +406,7 @@ function ApplePhotosGuide() {
         fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal,
         lineHeight: 1.8,
       }}>
-        {guide.steps.map((step, i) => (
+        {steps.map((step, i) => (
           <li key={i} style={{ paddingLeft: 4 }}>{step}</li>
         ))}
       </ol>
@@ -439,15 +414,15 @@ function ApplePhotosGuide() {
   );
 }
 
-function formatRelativeDate(iso: string): string {
+function formatRelativeDate(iso: string, t: (key: string, params?: Record<string, string>) => string): string {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return "today";
-  if (diffDays === 1) return "yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays === 0) return t("today");
+  if (diffDays === 1) return t("yesterday");
+  if (diffDays < 7) return t("daysAgo", { count: String(diffDays) });
+  if (diffDays < 30) return t("weeksAgo", { count: String(Math.floor(diffDays / 7)) });
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }

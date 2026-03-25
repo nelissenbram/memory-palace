@@ -8,6 +8,7 @@ import { mk } from "@/lib/3d/meshHelpers";
 import { layoutForRoom } from "@/lib/3d/roomLayouts";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
+import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -37,15 +38,16 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
     const layout=layoutForRoom(actualRoomId||roomId,layoutOverride);
-    const scene=new THREE.Scene();scene.background=new THREE.Color("#D8CFC0");
+    const dlPreset=getLightingPreset();
+    const scene=new THREE.Scene();scene.background=new THREE.Color(dlPreset.fogColor);
     const camera=new THREE.PerspectiveCamera(58,w/h,0.1,60);
     const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.7;
+    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.7*dlPreset.exposure;
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
-    const envMapProc=createInteriorEnvMap(ren,{warmth:0.75,brightness:0.45});
+    const envMapProc=createInteriorEnvMap(ren,{warmth:dlPreset.envWarmth,brightness:dlPreset.envBrightness});
     scene.environment=envMapProc;
     scene.environmentIntensity=0.8;
     let envMapHDRI: THREE.Texture|null=null;
@@ -55,13 +57,13 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     const composer=createPostProcessing(ren,scene,camera,"interior",{ssao:false});
 
     // ── ATMOSPHERIC FOG ──
-    scene.fog=new THREE.Fog("#D8CFC0",3,22);
+    scene.fog=new THREE.Fog(dlPreset.fogColor,3,22/dlPreset.fogDensity);
 
-    scene.add(new THREE.HemisphereLight("#FFF2E0","#C4B8A0",.4));
-    const sun=new THREE.DirectionalLight("#FFE8C0",1.1);sun.position.set(10,14,-4);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#C4B8A0",.4*dlPreset.ambientIntensity/0.5));
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.1*dlPreset.sunIntensity);sun.position.set(10,14,-4);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=30;sun.shadow.camera.left=-12;sun.shadow.camera.right=12;sun.shadow.camera.top=12;sun.shadow.camera.bottom=-12;
     scene.add(sun);
-    const ambL=new THREE.PointLight("#FFD8A0",.3,15);ambL.position.set(0,4,0);scene.add(ambL);
+    const ambL=new THREE.PointLight(dlPreset.fillColor,.3*dlPreset.fillIntensity/0.35,15);ambL.position.set(0,4,0);scene.add(ambL);
 
     // ── REAL PBR TEXTURES (Poly Haven) ──
     const marbleTex=loadMarbleTextures([3,3]);

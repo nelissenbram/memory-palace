@@ -36,6 +36,8 @@ export interface LegacySettings {
   trusted_verifier_email: string | null;
   trusted_verifier_name: string | null;
   status: string;
+  verification_sent_at: string | null;
+  verification_token: string | null;
   created_at: string;
   updated_at: string;
 }

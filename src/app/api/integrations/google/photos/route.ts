@@ -3,6 +3,10 @@ import { getAuthenticatedUser, getConnectedAccount } from "@/lib/integrations/he
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { listPhotos } from "@/lib/integrations/google-photos";
 
+/**
+ * GET — Browse Google Photos media items (paginated).
+ * Query params: cursor (optional page token)
+ */
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser();
@@ -23,21 +27,22 @@ export async function GET(request: NextRequest) {
 
     const result = await listPhotos(token, cursor, pageSize);
 
+    // Map to the CloudItem shape expected by CloudImportPanel
+    const items = result.items.map((item) => ({
+      id: item.id,
+      name: item.filename || item.id,
+      filename: item.filename,
+      thumbnailUrl: item.baseUrl ? `${item.baseUrl}=w256-h256-c` : undefined,
+      isFolder: false,
+      isImage: item.mimeType.startsWith("image/"),
+      isVideo: item.mimeType.startsWith("video/"),
+      isMedia: true,
+      mimeType: item.mimeType,
+      createdAt: item.mediaMetadata.creationTime,
+    }));
+
     return NextResponse.json({
-      items: result.items.map((item) => ({
-        id: item.id,
-        filename: item.filename,
-        mimeType: item.mimeType,
-        description: item.description,
-        thumbnailUrl: `${item.baseUrl}=w256-h256-c`,
-        width: parseInt(item.mediaMetadata.width, 10),
-        height: parseInt(item.mediaMetadata.height, 10),
-        createdAt: item.mediaMetadata.creationTime,
-        isVideo: item.mimeType.startsWith("video/"),
-        camera: item.mediaMetadata.photo
-          ? `${item.mediaMetadata.photo.cameraMake || ""} ${item.mediaMetadata.photo.cameraModel || ""}`.trim()
-          : undefined,
-      })),
+      items,
       nextCursor: result.nextPageToken,
     });
   } catch (err: unknown) {

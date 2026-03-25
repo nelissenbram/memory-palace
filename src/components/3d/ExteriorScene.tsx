@@ -7,6 +7,7 @@ import { mk } from "@/lib/3d/meshHelpers";
 import { useUserStore } from "@/lib/stores/userStore";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
+import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
@@ -31,7 +32,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
-    const scene=new THREE.Scene();scene.fog=new THREE.FogExp2("#D8C090",.0018);
+    const dlPreset=getLightingPreset();
+    const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(dlPreset.fogColor,.0018*dlPreset.fogDensity);
     // ── PHOTOREALISTIC TUSCAN GOLDEN HOUR SKY ──
     const skyGeo=new THREE.SphereGeometry(500,64,40);
     const skyC=document.createElement("canvas");skyC.width=4096;skyC.height=2048;
@@ -122,12 +124,12 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     const camera=new THREE.PerspectiveCamera(32,w/h,0.1,600);
     const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.2;
+    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.2*dlPreset.exposure;
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
-    const envMapProc=createExteriorEnvMap(ren,{sunIntensity:0.9,skyBrightness:0.7});
+    const envMapProc=createExteriorEnvMap(ren,{sunIntensity:0.9*dlPreset.sunIntensity,skyBrightness:0.7*dlPreset.envBrightness/0.45});
     scene.environment=envMapProc;
     scene.environmentIntensity=0.6;
     let envMapHDRI: THREE.Texture|null=null;
@@ -156,14 +158,14 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     el.appendChild(hovLabel);
 
     // Dramatic golden-hour lighting
-    scene.add(new THREE.HemisphereLight("#FFE8C8","#6A8858",0.6));
-    const sun=new THREE.DirectionalLight("#FFD080",3.2);sun.position.set(40,55,25);sun.castShadow=true;
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#6A8858",0.6*dlPreset.ambientIntensity/0.5));
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,3.2*dlPreset.sunIntensity);sun.position.set(dlPreset.sunPosition[0],dlPreset.sunPosition[1],dlPreset.sunPosition[2]);sun.castShadow=true;
     sun.shadow.mapSize.set(4096,4096);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
     sun.shadow.camera.left=-80;sun.shadow.camera.right=80;sun.shadow.camera.top=80;sun.shadow.camera.bottom=-80;sun.shadow.bias=-0.0003;scene.add(sun);
-    const fill=new THREE.DirectionalLight("#B8C8E0",0.4);fill.position.set(-25,20,-15);scene.add(fill);
-    const rim=new THREE.DirectionalLight("#FFE8C8",0.6);rim.position.set(-15,30,30);scene.add(rim);
+    const fill=new THREE.DirectionalLight(dlPreset.fillColor,0.4*dlPreset.fillIntensity/0.35);fill.position.set(-25,20,-15);scene.add(fill);
+    const rim=new THREE.DirectionalLight(dlPreset.sunColor,0.6*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);
     // Warm uplight for drama
-    const uplight=new THREE.PointLight("#FFC880",.4,80);uplight.position.set(0,2,0);scene.add(uplight);
+    const uplight=new THREE.PointLight(dlPreset.fillColor,.4*dlPreset.fillIntensity/0.35,80);uplight.position.set(0,2,0);scene.add(uplight);
 
     const M={
       // ── WALLS — aged Tuscan intonaco plaster & stone (worn plaster PBR textures)

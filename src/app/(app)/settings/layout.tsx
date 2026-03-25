@@ -6,20 +6,24 @@ import { T } from "@/lib/theme";
 import { isNative } from "@/lib/native/platform";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { signOut } from "@/lib/auth/actions";
+import { useAccessibility } from "@/components/providers/AccessibilityProvider";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const NAV_ITEMS = [
-  { href: "/settings/profile", label: "Profile", icon: "\u{1F464}" },
-  { href: "/settings/family", label: "Family", icon: "\u{1F46A}" },
-  { href: "/settings/subscription", label: "Subscription", icon: "\u{2B50}", hideInNative: true },
-  { href: "/settings/connections", label: "Connections", icon: "\u{1F517}" },
-  { href: "/settings/notifications", label: "Notifications", icon: "\u{1F514}" },
-  { href: "/settings/legacy", label: "Legacy", icon: "\u{1F3DB}\u{FE0F}" },
-  { href: "/security", label: "Security & Privacy", icon: "\u{1F6E1}\u{FE0F}", external: true },
-];
+  { href: "/settings/profile", labelKey: "profile", icon: "\u{1F464}" },
+  { href: "/settings/family", labelKey: "family", icon: "\u{1F46A}" },
+  { href: "/settings/subscription", labelKey: "subscription", icon: "\u{2B50}", hideInNative: true },
+  { href: "/settings/connections", labelKey: "connections", icon: "\u{1F517}" },
+  { href: "/settings/notifications", labelKey: "notifications", icon: "\u{1F514}" },
+  { href: "/settings/legacy", labelKey: "legacy", icon: "\u{1F3DB}\u{FE0F}" },
+  { href: "/security", labelKey: "security", icon: "\u{1F6E1}\u{FE0F}", external: true },
+] as const;
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const { scale } = useAccessibility();
+  const { t: tc } = useTranslation("common");
 
   const filteredItems = NAV_ITEMS.filter((item) => !("hideInNative" in item && item.hideInNative && isNative()));
 
@@ -47,14 +51,14 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           transition: "color .2s",
         }}>
           <span style={{ fontSize: isMobile ? 20 : 18 }}>{"\u2190"}</span>
-          Back to Palace
+          {tc("backToPalace")}
         </Link>
         <div style={{ width: 1, height: 20, background: T.color.cream }} />
         <h1 style={{
-          fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
+          fontFamily: T.font.display, fontSize: 22 * scale, fontWeight: 500,
           color: T.color.charcoal, margin: 0,
         }}>
-          Settings
+          {tc("settings")}
         </h1>
       </header>
 
@@ -86,11 +90,11 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                   textDecoration: "none",
                   background: isActive ? `${T.color.terracotta}10` : "transparent",
                   color: isActive ? T.color.terracotta : T.color.charcoal,
-                  fontFamily: T.font.body, fontSize: 14, fontWeight: isActive ? 600 : 400,
+                  fontFamily: T.font.body, fontSize: 14 * scale, fontWeight: isActive ? 600 : 400,
                   transition: "all .15s",
                 }}>
                   <span style={{ fontSize: 16 }}>{item.icon}</span>
-                  {item.label}
+                  {tc(item.labelKey)}
                 </Link>
               );
             })}
@@ -111,7 +115,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               }}
             >
               <span style={{ fontSize: 16 }}>{"\u{1F6AA}"}</span>
-              Sign Out
+              {tc("signOut")}
             </button>
           </nav>
 
@@ -155,11 +159,11 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                     textDecoration: "none",
                     background: isActive ? `${T.color.terracotta}10` : "transparent",
                     color: isActive ? T.color.terracotta : T.color.charcoal,
-                    fontFamily: T.font.body, fontSize: 14, fontWeight: isActive ? 600 : 400,
+                    fontFamily: T.font.body, fontSize: 14 * scale, fontWeight: isActive ? 600 : 400,
                     transition: "all .15s",
                   }}>
                     <span style={{ fontSize: 16 }}>{item.icon}</span>
-                    {item.label}
+                    {tc(item.labelKey)}
                   </Link>
                 );
               })}
@@ -181,7 +185,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 }}
               >
                 <span style={{ fontSize: 16 }}>{"\u{1F6AA}"}</span>
-                Sign Out
+                {tc("signOut")}
               </button>
             </div>
           </nav>
