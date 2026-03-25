@@ -8,7 +8,7 @@ import { updateProfile } from "@/lib/auth/profile-actions";
 import {
   loadBustModel,
   loadImage,
-  validateFacePhoto,
+  detectAndCropFace,
   type BustStyle,
   type BustGender,
 } from "@/lib/3d/bustBuilder";
@@ -18,7 +18,7 @@ interface BustBuilderPanelProps {
   pedestalIndex?: number;
 }
 
-type Stage = "manage" | "upload" | "creating" | "done" | "error";
+type Stage = "manage" | "upload" | "calibrating" | "ready" | "creating" | "done" | "error";
 
 export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBuilderPanelProps) {
   const isMobile = useIsMobile();
@@ -27,9 +27,12 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
   const hasBust = !!pedestalData?.faceUrl;
 
   const [preview, setPreview] = useState<string | null>(null);
+  const [croppedFace, setCroppedFace] = useState<string | null>(null);
   const [stage, setStage] = useState<Stage>(hasBust ? "manage" : "upload");
   const [error, setError] = useState<string | null>(null);
-  const [photoFeedback, setPhotoFeedback] = useState<string | null>(null);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const [calibrationMessage, setCalibrationMessage] = useState<string | null>(null);
+  const [creationStep, setCreationStep] = useState("");
   const [doneBustGroup, setDoneBustGroup] = useState<THREE.Group | null>(null);
   const [bustNameInput, setBustNameInput] = useState(pedestalData?.name || (pedestalIndex === 0 ? userName : "") || "");
   const [bustGender, setBustGender] = useState<BustGender>(
@@ -44,18 +47,23 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
   const handleFile = useCallback(async (f: File) => {
     const url = URL.createObjectURL(f);
     setPreview(url);
-    setPhotoFeedback(null);
     setError(null);
+    setCroppedFace(null);
+    setFaceDetected(false);
+    setCalibrationMessage(null);
+    setStage("calibrating");
 
-    // Validate the photo
     try {
       const img = await loadImage(url);
-      const result = await validateFacePhoto(img);
-      if (!result.valid) {
-        setPhotoFeedback(result.message || "Please use a clear face photo.");
-      }
+      const result = await detectAndCropFace(img);
+      setCroppedFace(result.croppedUrl);
+      setFaceDetected(result.detected);
+      setCalibrationMessage(result.message);
+      setStage("ready");
     } catch {
-      // Validation failed silently, allow upload anyway
+      setCalibrationMessage("Failed to process photo. Please try another image.");
+      setFaceDetected(false);
+      setStage("ready");
     }
   }, []);
 
@@ -69,7 +77,6 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
   const handleRemove = async () => {
     const store = useUserStore.getState();
     store.removeBustPedestal(pedestalIndex);
-    // Persist to DB
     await updateProfile({ bustPedestals: useUserStore.getState().bustPedestals }).catch(() => {});
     if (pedestalIndex === 0) {
       await updateProfile({ bustTextureUrl: "" }).catch(() => {});
@@ -79,13 +86,16 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
   // ── Create bust ──
   const handleCreate = async () => {
-    if (!preview) return;
+    if (!croppedFace && !preview) return;
     setError(null);
     setStage("creating");
 
     try {
-      // Save the face photo as the bust texture
-      const img = await loadImage(preview);
+      setCreationStep("Preparing face portrait...");
+      const faceUrl = croppedFace || preview!;
+
+      // Convert to a reasonable-sized data URL
+      const img = await loadImage(faceUrl);
       const canvas = document.createElement("canvas");
       const maxSize = 512;
       const ratio = Math.min(maxSize / img.width, maxSize / img.height);
@@ -96,6 +106,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
       const textureDataUrl = canvas.toDataURL("image/jpeg", 0.85);
 
       // Save per-pedestal data
+      setCreationStep("Saving to your palace...");
       const store = useUserStore.getState();
       store.setBustPedestal(pedestalIndex, {
         faceUrl: textureDataUrl,
@@ -103,14 +114,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         gender: bustGender,
       });
 
-      // Persist to DB
       await updateProfile({ bustPedestals: useUserStore.getState().bustPedestals }).catch(() => {});
-      // Also keep legacy fields for pedestal 0
       if (pedestalIndex === 0) {
         await updateProfile({ bustTextureUrl: textureDataUrl, bustName: bustNameInput, bustGender }).catch(() => {});
       }
 
       // Load the composite bust for preview
+      setCreationStep("Sculpting your bust...");
       const bustGroup = await loadBustModel(bustStyle, bustGender, textureDataUrl);
       setDoneBustGroup(bustGroup);
       setStage("done");
@@ -152,7 +162,6 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
     const clone = bustGroup.clone();
 
-    // Auto-scale to fit camera view
     const box = new THREE.Box3().setFromObject(clone);
     const modelHeight = box.max.y - box.min.y;
     const targetH = 0.7;
@@ -162,16 +171,10 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
     clone.scale.set(sc, sc, sc);
     scene.add(clone);
 
-    let frameId: number;
-    const animate = () => {
-      frameId = requestAnimationFrame(animate);
-      clone.rotation.y += 0.008;
-      renderer.render(scene, camera);
-    };
-    animate();
+    // Fixed frontal render (no rotation)
+    renderer.render(scene, camera);
 
-    const cleanup = () => { cancelAnimationFrame(frameId); renderer.dispose(); };
-    setTimeout(cleanup, 30000);
+    const cleanup = () => { renderer.dispose(); };
     (el as any).__cleanup = cleanup;
   }, []);
 
@@ -232,7 +235,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               Your {bustStyleLabel} bust is displayed on pedestal {pedestalIndex + 1} in the entrance hall.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-              <button onClick={() => { setStage("upload"); setPreview(null); }} style={{
+              <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); }} style={{
                 fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
                 padding: "10px 24px", borderRadius: 10, border: "none",
                 background: `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,
@@ -331,56 +334,21 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             <div
               onDragOver={e => e.preventDefault()}
               onDrop={handleDrop}
-              onClick={() => !preview && inputRef.current?.click()}
+              onClick={() => inputRef.current?.click()}
               style={{
-                border: `2px dashed ${preview ? T.color.terracotta : T.color.sandstone}`,
-                borderRadius: 14, padding: preview ? "16px" : "36px 20px",
-                textAlign: "center", cursor: preview ? "default" : "pointer",
+                border: `2px dashed ${T.color.sandstone}`,
+                borderRadius: 14, padding: "36px 20px",
+                textAlign: "center", cursor: "pointer",
                 background: `${T.color.warmStone}80`,
               }}
             >
-              {preview ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <img src={preview} alt="Selected" style={{
-                    width: 80, height: 80, objectFit: "cover", borderRadius: 12,
-                    border: `2px solid ${photoFeedback ? "#C0392B" : T.color.terracotta}`,
-                  }} />
-                  <div style={{ flex: 1, textAlign: "left" }}>
-                    {photoFeedback ? (
-                      <div style={{
-                        fontFamily: T.font.body, fontSize: 13, color: "#C0392B",
-                        lineHeight: 1.4,
-                      }}>
-                        {photoFeedback}
-                      </div>
-                    ) : (
-                      <div style={{
-                        fontFamily: T.font.body, fontSize: 13, color: "#4A6741",
-                        fontWeight: 500,
-                      }}>
-                        Photo looks good!
-                      </div>
-                    )}
-                    <button onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }} style={{
-                      fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
-                      background: "none", border: "none", cursor: "pointer",
-                      textDecoration: "underline", marginTop: 4, padding: 0,
-                    }}>
-                      Change photo
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: 36, marginBottom: 8 }}>{"📷"}</div>
-                  <div style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.muted }}>
-                    Drop a portrait photo or click to browse
-                  </div>
-                  <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginTop: 4, opacity: 0.7 }}>
-                    A head &amp; shoulders portrait works best
-                  </div>
-                </>
-              )}
+              <div style={{ fontSize: 36, marginBottom: 8 }}>{"📷"}</div>
+              <div style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.muted }}>
+                Drop a portrait photo or click to browse
+              </div>
+              <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginTop: 4, opacity: 0.7 }}>
+                A head &amp; shoulders portrait works best
+              </div>
               <input ref={inputRef} type="file" accept="image/*" style={{ display: "none" }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
             </div>
@@ -396,17 +364,201 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   Back
                 </button>
               )}
+            </div>
+          </>
+        )}
+
+        {/* ═══ CALIBRATING — detecting face ═══ */}
+        {stage === "calibrating" && (
+          <div style={{ textAlign: "center", padding: "30px 0" }}>
+            <h2 style={{
+              fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
+              color: T.color.charcoal, marginBottom: 16,
+            }}>
+              Detecting Face...
+            </h2>
+            {preview && (
+              <img src={preview} alt="Processing" style={{
+                width: 100, height: 100, objectFit: "cover",
+                borderRadius: "50%", margin: "0 auto 16px",
+                border: `3px solid ${T.color.sandstone}`,
+                display: "block", opacity: 0.7,
+                animation: "pulse 1.2s ease-in-out infinite",
+              }} />
+            )}
+            <p style={{
+              fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+            }}>
+              Analyzing your photo...
+            </p>
+          </div>
+        )}
+
+        {/* ═══ READY — face calibrated, preview shown ═══ */}
+        {stage === "ready" && (
+          <>
+            <h2 style={{
+              fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
+              color: T.color.charcoal, textAlign: "center", marginBottom: 16,
+            }}>
+              {faceDetected ? "Face Calibrated" : "Photo Loaded"}
+            </h2>
+
+            {/* Crop preview: original with crop overlay + cropped result */}
+            <div style={{
+              display: "flex", gap: 20, justifyContent: "center",
+              alignItems: "center", marginBottom: 16,
+            }}>
+              {/* Original photo with crop circle overlay */}
+              <div style={{ textAlign: "center" }}>
+                <div style={{
+                  fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                  textTransform: "uppercase", letterSpacing: 1, marginBottom: 6,
+                }}>
+                  Original
+                </div>
+                <div style={{
+                  position: "relative", width: 110, height: 110,
+                  borderRadius: 10, overflow: "hidden",
+                  border: `2px solid ${T.color.sandstone}`,
+                }}>
+                  {preview && (
+                    <>
+                      <img src={preview} alt="Original" style={{
+                        width: "100%", height: "100%", objectFit: "cover",
+                      }} />
+                      {/* Dimmed overlay with circular crop cutout */}
+                      <div style={{
+                        position: "absolute", inset: 0,
+                        background: "rgba(0,0,0,0.45)",
+                        maskImage: "radial-gradient(ellipse 42% 50% at 50% 45%, transparent 98%, black 100%)",
+                        WebkitMaskImage: "radial-gradient(ellipse 42% 50% at 50% 45%, transparent 98%, black 100%)",
+                      }} />
+                      {/* Crop circle border */}
+                      <div style={{
+                        position: "absolute", left: "50%", top: "45%",
+                        transform: "translate(-50%, -50%)",
+                        width: "84%", height: "90%",
+                        borderRadius: "45%",
+                        border: `2px dashed ${faceDetected ? "#4A6741" : "#FFB74D"}`,
+                        pointerEvents: "none",
+                      }} />
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Arrow */}
+              <div style={{
+                fontFamily: T.font.body, fontSize: 22, color: T.color.muted,
+              }}>
+                →
+              </div>
+
+              {/* Cropped face result */}
+              <div style={{ textAlign: "center" }}>
+                <div style={{
+                  fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                  textTransform: "uppercase", letterSpacing: 1, marginBottom: 6,
+                }}>
+                  Face crop
+                </div>
+                {croppedFace && (
+                  <img src={croppedFace} alt="Cropped face" style={{
+                    width: 110, height: 110, objectFit: "cover",
+                    borderRadius: "50%",
+                    border: `3px solid ${faceDetected ? "#4A6741" : T.color.sandstone}`,
+                    filter: bustStyle === "roman"
+                      ? "saturate(0.35) sepia(0.25) brightness(1.05)"
+                      : "saturate(0.3) sepia(0.45) brightness(0.85)",
+                  }} />
+                )}
+              </div>
+            </div>
+
+            {/* Calibration feedback */}
+            <div style={{
+              padding: "10px 16px", borderRadius: 10, marginBottom: 16,
+              background: faceDetected ? "#E8F5E4" : "#FFF3E0",
+              border: `1px solid ${faceDetected ? "#A5D6A0" : "#FFB74D"}`,
+              textAlign: "center",
+            }}>
+              <div style={{
+                fontFamily: T.font.body, fontSize: 13,
+                color: faceDetected ? "#2E7D32" : "#E65100",
+                lineHeight: 1.4,
+              }}>
+                {faceDetected ? "✓ " : "⚠ "}{calibrationMessage}
+              </div>
+            </div>
+
+            {/* Gender + Name (compact) */}
+            <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                  textTransform: "uppercase", letterSpacing: 1,
+                }}>
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={bustNameInput}
+                  onChange={e => setBustNameInput(e.target.value)}
+                  placeholder="Name on plaque..."
+                  style={{
+                    width: "100%", padding: "8px 10px", borderRadius: 8, marginTop: 4,
+                    border: `1px solid ${T.color.sandstone}`, background: `${T.color.warmStone}60`,
+                    fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal,
+                    outline: "none", boxSizing: "border-box",
+                  }}
+                />
+              </div>
+              <div style={{ width: 120 }}>
+                <label style={{
+                  fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                  textTransform: "uppercase", letterSpacing: 1,
+                }}>
+                  Body
+                </label>
+                <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                  {(["male", "female"] as const).map(g => (
+                    <button
+                      key={g}
+                      onClick={() => setBustGender(g)}
+                      style={{
+                        flex: 1, padding: "7px 0", borderRadius: 6, cursor: "pointer",
+                        fontFamily: T.font.body, fontSize: 12, fontWeight: bustGender === g ? 600 : 400,
+                        border: bustGender === g
+                          ? `2px solid ${T.color.terracotta}`
+                          : `1px solid ${T.color.sandstone}`,
+                        background: bustGender === g ? `${T.color.terracotta}18` : "transparent",
+                        color: bustGender === g ? T.color.charcoal : T.color.muted,
+                      }}
+                    >
+                      {g === "male" ? "M" : "F"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); }} style={{
+                fontFamily: T.font.body, fontSize: 14, padding: "10px 20px",
+                borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
+                background: "transparent", color: T.color.walnut, cursor: "pointer",
+              }}>
+                Change Photo
+              </button>
               <button
                 onClick={handleCreate}
-                disabled={!preview}
                 style={{
                   fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
                   padding: "12px 32px", borderRadius: 10, border: "none",
-                  background: preview
-                    ? `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`
-                    : T.color.sandstone,
-                  color: "#FFF", cursor: preview ? "pointer" : "not-allowed",
-                  opacity: preview ? 1 : 0.5,
+                  background: `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,
+                  color: "#FFF", cursor: "pointer",
                 }}
               >
                 Create Bust
@@ -424,20 +576,50 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             }}>
               Creating Your Bust
             </h2>
-            {preview && (
-              <img src={preview} alt="Processing" style={{
-                width: 80, height: 80, objectFit: "cover",
-                borderRadius: "50%", margin: "0 auto 20px",
-                border: `3px solid ${T.color.sandstone}`,
-                display: "block", opacity: 0.7,
-                animation: "pulse 1.5s ease-in-out infinite",
+            {/* Face preview with sculpting animation */}
+            <div style={{
+              width: 120, height: 140, margin: "0 auto 20px",
+              position: "relative",
+            }}>
+              {croppedFace && (
+                <img src={croppedFace} alt="Sculpting" style={{
+                  width: 90, height: 110, objectFit: "cover",
+                  borderRadius: "45% 45% 40% 40%",
+                  border: `3px solid ${T.color.sandstone}`,
+                  display: "block", margin: "0 auto",
+                  filter: bustStyle === "roman"
+                    ? "saturate(0.4) sepia(0.3) brightness(1.1)"
+                    : "saturate(0.3) sepia(0.5) brightness(0.8)",
+                  animation: "pulse 1.5s ease-in-out infinite",
+                }} />
+              )}
+              {/* Bust body silhouette */}
+              <div style={{
+                width: 70, height: 35, margin: "-4px auto 0",
+                background: bustStyle === "roman"
+                  ? "linear-gradient(180deg, #E8E0D4, #D8D0C4)"
+                  : "linear-gradient(180deg, #6A5840, #5A4830)",
+                borderRadius: "0 0 50% 50% / 0 0 100% 100%",
+                opacity: 0.6,
               }} />
-            )}
+            </div>
             <p style={{
               fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+              marginBottom: 8,
             }}>
-              Sculpting your {bustStyleLabel} bust...
+              {creationStep || `Sculpting your ${bustStyleLabel} bust...`}
             </p>
+            {/* Progress dots */}
+            <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: T.color.terracotta,
+                  animation: `pulse 1.2s ease-in-out ${i * 0.3}s infinite`,
+                  opacity: 0.5,
+                }} />
+              ))}
+            </div>
           </div>
         )}
 
@@ -456,7 +638,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             }}>
               {error || "Please try again with a different photo."}
             </p>
-            <button onClick={() => { setStage("upload"); setError(null); setPreview(null); }} style={{
+            <button onClick={() => { setStage("upload"); setError(null); setPreview(null); setCroppedFace(null); }} style={{
               fontFamily: T.font.body, fontSize: 14, padding: "10px 24px",
               borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
               background: "transparent", color: T.color.walnut, cursor: "pointer",
@@ -487,14 +669,28 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               Your {bustStyleLabel} bust has been placed on pedestal {pedestalIndex + 1} in the entrance hall.
               Re-enter the hall to see it.
             </p>
-            <button onClick={onClose} style={{
-              fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
-              padding: "12px 32px", borderRadius: 10, border: "none",
-              background: `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,
-              color: "#FFF", cursor: "pointer",
-            }}>
-              Done
-            </button>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button onClick={() => {
+                setStage("upload");
+                setPreview(null);
+                setCroppedFace(null);
+                setDoneBustGroup(null);
+              }} style={{
+                fontFamily: T.font.body, fontSize: 14, padding: "10px 20px",
+                borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
+                background: "transparent", color: T.color.walnut, cursor: "pointer",
+              }}>
+                Change Photo
+              </button>
+              <button onClick={onClose} style={{
+                fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
+                padding: "12px 32px", borderRadius: 10, border: "none",
+                background: `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,
+                color: "#FFF", cursor: "pointer",
+              }}>
+                Done
+              </button>
+            </div>
           </div>
         )}
       </div>

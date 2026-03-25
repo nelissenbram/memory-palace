@@ -30,6 +30,12 @@ const DOOR_ANGLES = HALL_DOORS.map((_, i) => {
   return a;
 });
 
+/** Convert number to Roman numeral (1-10) */
+function toRoman(n: number): string {
+  const map = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+  return map[n] || `${n}`;
+}
+
 /** Add 3D bust to scene — loads GLB torso + cameo head for user, full bust for others */
 function addBustToScene(
   scene: THREE.Scene, bx: number, bz: number, bustAngle: number,
@@ -171,6 +177,7 @@ export default function EntranceHallScene({
     ren.toneMapping = THREE.ACESFilmicToneMapping;
     ren.toneMappingExposure = 1.1;
     ren.outputColorSpace = THREE.SRGBColorSpace;
+    ren.localClippingEnabled = true;
     el.appendChild(ren.domElement);
 
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
@@ -906,94 +913,8 @@ export default function EntranceHallScene({
     // (Inlay panels removed — locked doors are now part of the 7-door ring above)
     const inlayMeshes: THREE.Mesh[] = []; // kept for click handler compatibility
 
-    // ── BUST PEDESTALS — 10 positions evenly spaced, avoiding doors ──
+    // ── BUST PEDESTALS — disabled for now, will revisit later ──
     const bustMeshes: THREE.Mesh[] = [];
-    // Pre-compute 10 valid pedestal angles that don't overlap doors
-    const PEDESTAL_COUNT = 10;
-    const candidateAngles: number[] = [];
-    const totalSlots = PEDESTAL_COUNT + DOOR_ANGLES.length;
-    for (let i = 0; i < totalSlots * 2; i++) {
-      const a = (i / (totalSlots * 2)) * Math.PI * 2;
-      const tooClose = DOOR_ANGLES.some(da => {
-        let diff = Math.abs(a - da);
-        if (diff > Math.PI) diff = Math.PI * 2 - diff;
-        return diff < Math.PI / 9;
-      });
-      if (!tooClose) candidateAngles.push(a);
-    }
-    // Pick PEDESTAL_COUNT evenly spaced from candidates
-    const pedestalAngles: number[] = [];
-    const step = Math.max(1, Math.floor(candidateAngles.length / PEDESTAL_COUNT));
-    for (let i = 0; i < candidateAngles.length && pedestalAngles.length < PEDESTAL_COUNT; i += step) {
-      pedestalAngles.push(candidateAngles[i]);
-    }
-
-    const bR = RADIUS - 1.8;
-    const bustStyle: BustStyle = styleEra === "renaissance" ? "renaissance" : "roman";
-
-    for (let bi = 0; bi < pedestalAngles.length; bi++) {
-      const bustAngle = pedestalAngles[bi];
-      const bx = Math.cos(bustAngle) * bR, bz = Math.sin(bustAngle) * bR;
-
-      // Pedestal — square base, column, matching top (all aligned at 0.55)
-      const pedBaseH = 0.15;
-      scene.add(mk(new THREE.BoxGeometry(0.55, pedBaseH, 0.55), MS.marble, bx, pedBaseH / 2, bz));
-      const pedColH = 0.7;
-      const pedColY = pedBaseH + pedColH / 2;
-      scene.add(mk(new THREE.BoxGeometry(0.30, pedColH, 0.30), MS.marble, bx, pedColY, bz));
-      const pedTopH = 0.1;
-      const pedTopY = pedBaseH + pedColH + pedTopH / 2;
-      scene.add(mk(new THREE.BoxGeometry(0.55, pedTopH, 0.55), MS.marble, bx, pedTopY, bz));
-
-      const pedestalTopY = pedBaseH + pedColH + pedTopH;
-
-      // Per-pedestal data — each pedestal can have its own face/name/gender
-      const pedData = bustPedestals?.[bi];
-      const thisFaceUrl = pedData?.faceUrl || null;
-      const thisName = pedData?.name || null;
-      const thisGender: BustGender = pedData?.gender || (bi % 2 === 0 ? "male" : "female");
-
-      // Name plaque on pedestal base, facing inward
-      if (thisName) {
-        const plaqueTex = createNamePlaqueTexture(thisName);
-        const plaqueGeo = new THREE.PlaneGeometry(0.40, 0.12);
-        const plaqueMat = new THREE.MeshStandardMaterial({
-          map: plaqueTex,
-          roughness: 0.3,
-          metalness: 0.1,
-          side: THREE.DoubleSide,
-        });
-        const plaque = new THREE.Mesh(plaqueGeo, plaqueMat);
-        const toCenterLen = Math.sqrt(bx * bx + bz * bz);
-        const nDx = -bx / toCenterLen, nDz = -bz / toCenterLen;
-        plaque.position.set(
-          bx + nDx * 0.285,
-          pedBaseH * 0.55,
-          bz + nDz * 0.285,
-        );
-        plaque.rotation.y = Math.atan2(nDx, nDz);
-        scene.add(plaque);
-      }
-
-      // Bust — uses per-pedestal face if available, otherwise generic with alternating gender
-      addBustToScene(
-        scene, bx, bz, bustAngle, bustStyle, pedestalTopY,
-        thisFaceUrl,
-        marbleTex,
-        thisGender,
-        ren,
-      );
-
-      // Click target — all busts are interactive
-      const bustClick = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.35, 0.35, 1.5, 8),
-        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-      );
-      bustClick.position.set(bx, pedestalTopY + 0.55, bz);
-      bustClick.userData = { isBust: true, pedestalIndex: bi };
-      scene.add(bustClick);
-      bustMeshes.push(bustClick);
-    }
 
     // ── ERA-SPECIFIC MODIFICATIONS ──
     if (styleEra === "renaissance") {

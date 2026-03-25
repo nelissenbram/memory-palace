@@ -5,6 +5,7 @@ export type BustStyle = "roman" | "renaissance";
 export type BustGender = "male" | "female";
 
 const BUST_MODEL_PATH = "/models/bust_base.glb";
+const BUST_FEMALE_MODEL_PATH = "/models/bust_female.glb";
 
 // ════════════════════════════════════════════
 // PRIMARY: COMPOSITE BUST (TORSO + PHOTO HEAD)
@@ -21,255 +22,464 @@ export async function loadBustModel(
   faceImageUrl?: string | null,
   marblePBR?: { map?: THREE.Texture; normalMap?: THREE.Texture; roughnessMap?: THREE.Texture; aoMap?: THREE.Texture } | null,
 ): Promise<THREE.Group> {
+  const mat = style === "renaissance"
+    ? createBronzePhysicalMaterial()
+    : createMarblePhysicalMaterial(marblePBR);
+
+  // Both genders use GLB models
+  const modelPath = gender === "female" ? BUST_FEMALE_MODEL_PATH : BUST_MODEL_PATH;
+  const fallbackGen = gender === "female" ? generateFemaleBust : generateMaleBust;
+
   try {
-    const model = await loadModel(BUST_MODEL_PATH);
-    const mat = style === "renaissance"
-      ? createBronzePhysicalMaterial()
-      : createMarblePhysicalMaterial(marblePBR);
-
-    if (!faceImageUrl) {
-      // Generic bust — full model with gender adjustments
-      model.traverse((child) => {
-        if (child instanceof THREE.Mesh) child.material = mat;
-      });
-      applyGenderAdjustments(model, gender, mat, style);
-      return model;
-    }
-
-    // User bust — torso + portrait disc head
-    const group = new THREE.Group();
-    group.name = "CompositeBust";
-
-    // Compute model bounds for clipping
-    const box = new THREE.Box3().setFromObject(model);
-    const totalHeight = box.max.y - box.min.y;
-    const neckCutY = box.min.y + totalHeight * 0.58; // cut at ~58% height (neck)
-
-    // Apply clipping plane to hide the head
-    const clipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), neckCutY);
-
+    const model = await loadModel(modelPath);
     model.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return;
-      const clonedMat = mat.clone();
-      clonedMat.clippingPlanes = [clipPlane];
-      clonedMat.clipShadows = true;
-      child.material = clonedMat;
+      if (child instanceof THREE.Mesh) child.material = mat;
     });
 
-    // Gender adjustment on torso
+    // Female bust: scale slightly for feminine proportions
+    // (narrower shoulders, slightly smaller overall)
     if (gender === "female") {
-      model.scale.x *= 0.78;
-      model.scale.z *= 0.85;
-      model.scale.y *= 0.93;
+      model.scale.set(0.88, 0.95, 0.90);
     }
-    group.add(model);
 
-    // Neck cap — disc to cover the open cut
-    const modelWidth = box.max.x - box.min.x;
-    const capRadius = modelWidth * 0.08;
-    const capGeo = new THREE.CircleGeometry(capRadius, 24);
-    capGeo.rotateX(-Math.PI / 2);
-    const capMat = mat.clone();
-    const capMesh = new THREE.Mesh(capGeo, capMat);
-    const modelCenterX = (box.min.x + box.max.x) / 2;
-    const modelCenterZ = (box.min.z + box.max.z) / 2;
-    capMesh.position.set(modelCenterX, neckCutY, modelCenterZ);
-    group.add(capMesh);
+    if (!faceImageUrl) return model;
 
-    // Portrait disc head with user's photo
-    const portrait = await createPortraitDisc(faceImageUrl, style, modelWidth);
-    portrait.position.set(modelCenterX, neckCutY, modelCenterZ);
-    group.add(portrait);
-
-    return group;
+    // User bust — torso + portrait head
+    return addPortraitToGLBBust(model, faceImageUrl, style, mat, gender);
   } catch {
-    // Fallback: simple procedural bust
-    return generateFallbackBust(style, gender);
+    const bust = fallbackGen(style, mat);
+    if (faceImageUrl) {
+      return addPortraitToProceduralBust(bust, faceImageUrl, style, mat);
+    }
+    return bust;
   }
 }
 
-// ════════════════════════════════════════════
-// GENDER ADJUSTMENTS
-// ════════════════════════════════════════════
+/** Wrap a model in a named group */
+function wrapInGroup(model: THREE.Object3D, name: string): THREE.Group {
+  const group = new THREE.Group();
+  group.name = name;
+  group.add(model);
+  return group;
+}
 
-/** Apply gender-specific visual adjustments to a bust model */
-function applyGenderAdjustments(
-  model: THREE.Group,
-  gender: BustGender,
-  mat: THREE.MeshPhysicalMaterial,
+/** Add a portrait head to a GLB bust model — removes head geometry and adds a 3D portrait sphere.
+ *  Uses geometry trimming (not clipping planes) so it works correctly after scene scaling/positioning. */
+async function addPortraitToGLBBust(
+  model: THREE.Object3D,
+  faceImageUrl: string,
   style: BustStyle,
-) {
-  if (gender === "female") {
-    // Narrower shoulders, slimmer proportions
-    model.scale.x *= 0.78;
-    model.scale.z *= 0.85;
-    model.scale.y *= 0.93;
+  mat: THREE.MeshPhysicalMaterial,
+  gender: BustGender,
+): Promise<THREE.Group> {
+  const group = new THREE.Group();
+  group.name = "CompositeBust";
 
-    // Add a hair bun — small sphere at top-back of head
-    const box = new THREE.Box3().setFromObject(model);
-    const headTopY = box.max.y;
-    const centerX = (box.min.x + box.max.x) / 2;
-    const centerZ = (box.min.z + box.max.z) / 2;
+  const box = new THREE.Box3().setFromObject(model);
+  const totalHeight = box.max.y - box.min.y;
+  // Neck cut at ~58% from bottom for male, ~65% for female
+  const neckRatio = gender === "female" ? 0.65 : 0.58;
+  const neckCutY = box.min.y + totalHeight * neckRatio;
 
-    const bunMat = mat.clone();
-    if (style === "roman") bunMat.color.set("#E8E0D4");
-    const bunGeo = new THREE.SphereGeometry(0.06, 16, 12);
-    const bun = new THREE.Mesh(bunGeo, bunMat);
-    bun.position.set(centerX, headTopY - 0.02, centerZ - 0.05);
-    bun.scale.set(1.2, 0.8, 1.0);
-    bun.castShadow = true;
-    model.add(bun);
+  // Remove vertices above neck by modifying geometry directly
+  model.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    child.material = mat.clone();
 
-    // Small decorative band around the bun
-    const bandGeo = new THREE.TorusGeometry(0.055, 0.008, 6, 16);
-    const bandMat = mat.clone();
-    bandMat.color.multiplyScalar(0.85);
-    const band = new THREE.Mesh(bandGeo, bandMat);
-    band.position.set(centerX, headTopY - 0.02, centerZ - 0.05);
-    band.rotation.x = Math.PI * 0.35;
-    model.add(band);
-  }
+    const geo = child.geometry;
+    if (!geo || !geo.attributes.position) return;
+
+    // Get world transform to handle any local transforms on the mesh
+    child.updateMatrixWorld(true);
+    const posAttr = geo.attributes.position;
+    const vertex = new THREE.Vector3();
+
+    if (geo.index) {
+      // Indexed geometry — rebuild index excluding triangles above neck
+      const oldIndex = geo.index.array;
+      const newIndices: number[] = [];
+      for (let i = 0; i < oldIndex.length; i += 3) {
+        const i0 = oldIndex[i], i1 = oldIndex[i + 1], i2 = oldIndex[i + 2];
+        // Check if ALL vertices of the triangle are above cut — if so, skip it
+        vertex.fromBufferAttribute(posAttr, i0); child.localToWorld(vertex);
+        const y0 = vertex.y;
+        vertex.fromBufferAttribute(posAttr, i1); child.localToWorld(vertex);
+        const y1 = vertex.y;
+        vertex.fromBufferAttribute(posAttr, i2); child.localToWorld(vertex);
+        const y2 = vertex.y;
+        // Keep triangle if any vertex is below cut line
+        if (y0 <= neckCutY || y1 <= neckCutY || y2 <= neckCutY) {
+          newIndices.push(i0, i1, i2);
+        }
+      }
+      geo.setIndex(newIndices);
+    } else {
+      // Non-indexed geometry — rebuild position buffer
+      const positions = posAttr.array as Float32Array;
+      const keep: number[] = [];
+      for (let i = 0; i < positions.length; i += 9) {
+        vertex.set(positions[i], positions[i + 1], positions[i + 2]);
+        child.localToWorld(vertex);
+        const y0 = vertex.y;
+        vertex.set(positions[i + 3], positions[i + 4], positions[i + 5]);
+        child.localToWorld(vertex);
+        const y1 = vertex.y;
+        vertex.set(positions[i + 6], positions[i + 7], positions[i + 8]);
+        child.localToWorld(vertex);
+        const y2 = vertex.y;
+        if (y0 <= neckCutY || y1 <= neckCutY || y2 <= neckCutY) {
+          for (let j = 0; j < 9; j++) keep.push(positions[i + j]);
+        }
+      }
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(keep, 3));
+    }
+    geo.computeBoundingSphere();
+    geo.computeBoundingBox();
+  });
+  group.add(model);
+
+  // Neck cap
+  const modelWidth = box.max.x - box.min.x;
+  const capGeo = new THREE.CircleGeometry(modelWidth * 0.1, 24);
+  capGeo.rotateX(-Math.PI / 2);
+  const capMesh = new THREE.Mesh(capGeo, mat.clone());
+  const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2;
+  capMesh.position.set(cx, neckCutY, cz);
+  group.add(capMesh);
+
+  // Portrait head — 3D sphere with face mapped
+  const portrait = await createPortraitHead(faceImageUrl, style, modelWidth);
+  portrait.position.set(cx, neckCutY + modelWidth * 0.11 * 0.85, cz);
+  group.add(portrait);
+
+  return group;
 }
 
 // ════════════════════════════════════════════
-// PORTRAIT DISC — FLAT COIN-LIKE MEDALLION
+// PROCEDURAL BUST GENERATORS
+// ════════════════════════════════════════════
+
+/** Generate a distinctly male procedural bust — broad shoulders, strong jaw, short hair */
+function generateMaleBust(style: BustStyle, mat: THREE.MeshPhysicalMaterial): THREE.Group {
+  const group = new THREE.Group();
+  group.name = "MaleBust";
+
+  // Broad-shouldered torso
+  const torsoRaw: [number, number][] = [
+    [0.00, 0.00], [0.28, 0.00], [0.30, 0.02], [0.29, 0.08],
+    [0.27, 0.14], [0.22, 0.18], [0.13, 0.22], [0.10, 0.30],
+    [0.09, 0.36], [0.00, 0.38],
+  ];
+  const torsoPts = new THREE.SplineCurve(torsoRaw.map(([r, h]) => new THREE.Vector2(r, h))).getPoints(30);
+  const torsoMesh = new THREE.Mesh(new THREE.LatheGeometry(torsoPts, 32), mat);
+  torsoMesh.castShadow = true;
+  group.add(torsoMesh);
+
+  // Strong neck
+  const neckGeo = new THREE.CylinderGeometry(0.055, 0.065, 0.08, 16);
+  const neck = new THREE.Mesh(neckGeo, mat.clone());
+  neck.position.y = 0.41;
+  neck.castShadow = true;
+  group.add(neck);
+
+  // Head — slightly squared (wider)
+  const headGeo = new THREE.SphereGeometry(0.09, 24, 18);
+  headGeo.scale(1.0, 1.05, 0.95);
+  const head = new THREE.Mesh(headGeo, mat.clone());
+  head.position.y = 0.52;
+  head.castShadow = true;
+  group.add(head);
+
+  // Short hair cap — flattened sphere on top
+  const hairGeo = new THREE.SphereGeometry(0.085, 20, 10, 0, Math.PI * 2, 0, Math.PI * 0.5);
+  const hairMat = mat.clone();
+  hairMat.color.multiplyScalar(0.92);
+  const hair = new THREE.Mesh(hairGeo, hairMat);
+  hair.position.y = 0.545;
+  hair.scale.set(1.02, 0.4, 1.0);
+  group.add(hair);
+
+  return group;
+}
+
+/** Generate a classical female bust — graceful proportions, draped toga, upswept hair */
+function generateFemaleBust(style: BustStyle, mat: THREE.MeshPhysicalMaterial): THREE.Group {
+  const group = new THREE.Group();
+  group.name = "FemaleBust";
+
+  // ── Torso — graceful feminine silhouette via lathe profile ──
+  // Profile: starts at base, curves out for shoulders, narrows at chest, to neckline
+  const torsoProfile: [number, number][] = [
+    [0.00, 0.00], [0.24, 0.00], [0.26, 0.02], [0.27, 0.05],
+    [0.26, 0.08], [0.24, 0.12], [0.22, 0.15],
+    [0.18, 0.20], [0.15, 0.24], [0.14, 0.27],
+    [0.13, 0.30], [0.10, 0.33], [0.07, 0.36], [0.00, 0.38],
+  ];
+  const torsoCurve = new THREE.SplineCurve(
+    torsoProfile.map(([r, h]) => new THREE.Vector2(r, h))
+  ).getPoints(40);
+  const torsoGeo = new THREE.LatheGeometry(torsoCurve, 32);
+  const torsoMesh = new THREE.Mesh(torsoGeo, mat);
+  torsoMesh.castShadow = true;
+  group.add(torsoMesh);
+
+  // ── Draped toga — overlapping curved surfaces wrapping around torso ──
+  const drapeMat = mat.clone();
+  drapeMat.color.multiplyScalar(0.94);
+
+  // Main drape fold across chest (curved surface using lathe)
+  const drapeProfile: [number, number][] = [
+    [0.00, 0.18], [0.12, 0.19], [0.16, 0.21], [0.18, 0.24],
+    [0.15, 0.28], [0.10, 0.31], [0.00, 0.33],
+  ];
+  const drapeCurve = new THREE.SplineCurve(
+    drapeProfile.map(([r, h]) => new THREE.Vector2(r, h))
+  ).getPoints(20);
+  // Partial lathe — only the front half (toga doesn't wrap all the way around)
+  const drapeGeo = new THREE.LatheGeometry(drapeCurve, 16, 0, Math.PI * 1.3);
+  const drapeMesh = new THREE.Mesh(drapeGeo, drapeMat);
+  drapeMesh.scale.set(1.02, 1.0, 1.02);
+  drapeMesh.rotation.y = -Math.PI * 0.15; // offset slightly
+  drapeMesh.castShadow = true;
+  group.add(drapeMesh);
+
+  // Shoulder drape — a second layer draped from one shoulder
+  const shoulderDrapeGeo = new THREE.LatheGeometry(drapeCurve, 12, 0, Math.PI * 0.6);
+  const shoulderDrape = new THREE.Mesh(shoulderDrapeGeo, drapeMat);
+  shoulderDrape.scale.set(1.04, 1.02, 1.04);
+  shoulderDrape.rotation.y = Math.PI * 0.6;
+  group.add(shoulderDrape);
+
+  // ── Elegant neck — slender, slightly longer than male ──
+  const neckGeo = new THREE.CylinderGeometry(0.042, 0.055, 0.09, 16);
+  const neck = new THREE.Mesh(neckGeo, mat.clone());
+  neck.position.y = 0.42;
+  neck.castShadow = true;
+  group.add(neck);
+
+  // ── Head — softer, rounder proportions ──
+  const headGeo = new THREE.SphereGeometry(0.08, 24, 20);
+  headGeo.scale(0.95, 1.05, 0.93); // elegant oval
+  const head = new THREE.Mesh(headGeo, mat.clone());
+  head.position.y = 0.52;
+  head.castShadow = true;
+  group.add(head);
+
+  // ── Classical upswept hairstyle ──
+  const hairMat = mat.clone();
+  hairMat.color.multiplyScalar(0.88);
+
+  // Main hair volume — covers top and back of head like a classical coiffure
+  const hairProfile: [number, number][] = [
+    [0.00, 0.00], [0.085, 0.00], [0.09, 0.03], [0.088, 0.06],
+    [0.082, 0.09], [0.06, 0.11], [0.00, 0.12],
+  ];
+  const hairCurve = new THREE.SplineCurve(
+    hairProfile.map(([r, h]) => new THREE.Vector2(r, h))
+  ).getPoints(16);
+  const hairGeo = new THREE.LatheGeometry(hairCurve, 20);
+  const hairMesh = new THREE.Mesh(hairGeo, hairMat);
+  hairMesh.position.set(0, 0.52, -0.01);
+  hairMesh.castShadow = true;
+  group.add(hairMesh);
+
+  // Bun / chignon at the back-top
+  const bunGeo = new THREE.SphereGeometry(0.045, 14, 10);
+  const bun = new THREE.Mesh(bunGeo, hairMat);
+  bun.position.set(0, 0.59, -0.035);
+  bun.scale.set(1.0, 0.8, 0.9);
+  bun.castShadow = true;
+  group.add(bun);
+
+  // Side waves framing the face — smooth capsules
+  for (const side of [-1, 1]) {
+    const waveGeo = new THREE.CapsuleGeometry(0.016, 0.05, 4, 8);
+    const wave = new THREE.Mesh(waveGeo, hairMat);
+    wave.position.set(side * 0.058, 0.50, 0.025);
+    wave.rotation.z = side * 0.2;
+    group.add(wave);
+  }
+
+  // ── Base trim / socle ring ──
+  const baseRing = new THREE.Mesh(
+    new THREE.TorusGeometry(0.25, 0.015, 6, 24),
+    drapeMat
+  );
+  baseRing.rotation.x = Math.PI / 2;
+  baseRing.position.y = 0.01;
+  group.add(baseRing);
+
+  return group;
+}
+
+/** Add a portrait disc to a procedural bust (clip head, add photo disc) */
+async function addPortraitToProceduralBust(
+  bust: THREE.Group,
+  faceImageUrl: string,
+  style: BustStyle,
+  mat: THREE.MeshPhysicalMaterial,
+): Promise<THREE.Group> {
+  const group = new THREE.Group();
+  group.name = "CompositeBust";
+
+  // Find and remove head-related meshes (above neck level ~0.42)
+  const toRemove: THREE.Object3D[] = [];
+  bust.children.forEach(child => {
+    if (child.position.y > 0.42) toRemove.push(child);
+  });
+  toRemove.forEach(child => bust.remove(child));
+  group.add(bust);
+
+  // Add portrait head — 3D sphere at neck height
+  const portrait = await createPortraitHead(faceImageUrl, style, 0.55);
+  portrait.position.set(0, 0.42 + 0.055 * 0.85, 0);
+  group.add(portrait);
+
+  return group;
+}
+
+// ════════════════════════════════════════════
+// PORTRAIT HEAD — 3D SPHERE WITH FACE MAPPED
 // ════════════════════════════════════════════
 
 /**
- * Create a flat circular portrait disc that sits on top of the clipped torso.
- * Like a Roman portrait medallion / coin — face photo on front, marble/bronze on back.
+ * Create a 3D portrait head: a head-shaped sphere with the face photo
+ * mapped on the front and marble/bronze on the back.
+ * Sits naturally on the bust neck.
  */
-async function createPortraitDisc(
+async function createPortraitHead(
   imageUrl: string,
   style: BustStyle,
   modelWidth: number,
 ): Promise<THREE.Group> {
   const group = new THREE.Group();
-  const discRadius = modelWidth * 0.11;
-  const discThickness = discRadius * 0.06;
+  group.name = "PortraitHead";
+  const headRadius = modelWidth * 0.11;
 
-  // Load and process the face image
+  // Load and create the wrapped head texture
   const img = await loadImage(imageUrl);
-  const faceTexture = createCameoTexture(img, style);
+  const headTexture = createHeadTexture(img, style);
 
   const baseMat = style === "renaissance"
     ? createBronzePhysicalMaterial()
     : createMarblePhysicalMaterial();
 
-  // Front face — circular disc with photo
-  const frontGeo = new THREE.CircleGeometry(discRadius, 32);
-  const frontMat = new THREE.MeshPhysicalMaterial({
-    map: faceTexture,
-    roughness: baseMat.roughness * 1.2,
+  // Head sphere — slightly taller than wide (natural head proportions)
+  const headGeo = new THREE.SphereGeometry(headRadius, 32, 24);
+  headGeo.scale(1.0, 1.15, 0.95); // taller, slightly flatter front-back
+
+  const headMat = new THREE.MeshPhysicalMaterial({
+    map: headTexture,
+    roughness: baseMat.roughness * 1.1,
     metalness: baseMat.metalness,
-    clearcoat: 0.1,
-    clearcoatRoughness: 0.25,
-    envMapIntensity: 0.5,
+    clearcoat: 0.15,
+    clearcoatRoughness: 0.2,
+    envMapIntensity: 0.6,
   });
-  const frontMesh = new THREE.Mesh(frontGeo, frontMat);
-  frontMesh.position.z = discThickness / 2;
-  frontMesh.castShadow = true;
-  group.add(frontMesh);
+  const headMesh = new THREE.Mesh(headGeo, headMat);
+  headMesh.castShadow = true;
+  group.add(headMesh);
 
-  // Back face — solid material
-  const backGeo = new THREE.CircleGeometry(discRadius, 32);
-  backGeo.rotateY(Math.PI);
-  const backMesh = new THREE.Mesh(backGeo, baseMat.clone());
-  backMesh.position.z = -discThickness / 2;
-  backMesh.castShadow = true;
-  group.add(backMesh);
-
-  // Edge — thin cylinder connecting front and back (like a coin edge)
-  const edgeGeo = new THREE.CylinderGeometry(discRadius, discRadius, discThickness, 32, 1, true);
-  edgeGeo.rotateX(Math.PI / 2);
-  const edgeMat = baseMat.clone();
-  edgeMat.color.multiplyScalar(0.92);
-  const edgeMesh = new THREE.Mesh(edgeGeo, edgeMat);
-  group.add(edgeMesh);
-
-  // Decorative rim — thin torus around the disc
-  const rimGeo = new THREE.TorusGeometry(discRadius * 1.02, discRadius * 0.025, 8, 32);
-  const rimMat = baseMat.clone();
-  rimMat.color.multiplyScalar(0.88);
-  const rimMesh = new THREE.Mesh(rimGeo, rimMat);
-  rimMesh.position.z = discThickness * 0.3;
-  group.add(rimMesh);
-
-  // Tilt very slightly forward for a natural look
-  group.rotation.x = -0.05;
+  // Thin neck cylinder connecting to torso
+  const neckR = headRadius * 0.45;
+  const neckH = headRadius * 0.3;
+  const neckGeo = new THREE.CylinderGeometry(neckR, neckR * 1.15, neckH, 16);
+  const neckMesh = new THREE.Mesh(neckGeo, baseMat.clone());
+  neckMesh.position.y = -headRadius * 1.0;
+  neckMesh.castShadow = true;
+  group.add(neckMesh);
 
   return group;
 }
 
 /**
- * Create the portrait face texture: desaturated, marble/bronze tinted,
- * with a smooth circular vignette.
+ * Create an equirectangular-style texture for a sphere head:
+ * face photo centered on front, marble/bronze color wrapping around sides and back.
  */
-function createCameoTexture(
+function createHeadTexture(
   faceImage: HTMLImageElement,
   style: BustStyle,
 ): THREE.CanvasTexture {
-  const size = 512;
+  // 2:1 aspect for sphere UV mapping
+  const w = 1024, h = 512;
   const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext("2d")!;
 
-  // Base color
+  // Fill with base material color (marble cream or bronze)
   const baseColor = style === "roman" ? "#E8E0D4" : "#6A5840";
   ctx.fillStyle = baseColor;
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(0, 0, w, h);
 
-  // Draw the photo within a circular clip
+  // Add subtle texture noise to base
+  const imgData = ctx.getImageData(0, 0, w, h);
+  for (let i = 0; i < imgData.data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * 10;
+    imgData.data[i] += noise;
+    imgData.data[i + 1] += noise;
+    imgData.data[i + 2] += noise;
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // Draw the face photo in the center region (front of sphere)
+  // UV center (0.5, 0.5) = front of sphere
+  const faceW = w * 0.45; // covers ~45% of width (front ~160°)
+  const faceH = h * 0.75; // covers most of vertical
+  const faceX = (w - faceW) / 2;
+  const faceY = (h - faceH) / 2;
+
   ctx.save();
+  // Soft elliptical clip for face region
   ctx.beginPath();
-  ctx.arc(size / 2, size / 2, size * 0.46, 0, Math.PI * 2);
+  ctx.ellipse(w / 2, h / 2, faceW / 2, faceH / 2, 0, 0, Math.PI * 2);
   ctx.clip();
 
-  // Fill the photo, covering the circle
+  // Draw face image covering the clip area
   const imgAspect = faceImage.width / faceImage.height;
-  let drawW = size * 0.96;
+  let drawW = faceW;
   let drawH = drawW / imgAspect;
-  if (drawH < size * 0.96) {
-    drawH = size * 0.96;
+  if (drawH < faceH) {
+    drawH = faceH;
     drawW = drawH * imgAspect;
   }
-  ctx.drawImage(faceImage, (size - drawW) / 2, (size - drawH) / 2, drawW, drawH);
+  ctx.drawImage(faceImage, faceX + (faceW - drawW) / 2, faceY + (faceH - drawH) / 2, drawW, drawH);
   ctx.restore();
 
-  // Desaturate — partial, keeping ~20% color for warmth
-  const imageData = ctx.getImageData(0, 0, size, size);
-  const data = imageData.data;
-  const desatAmount = style === "roman" ? 0.85 : 0.75;
+  // Desaturate face region partially for marble/bronze look
+  const faceData = ctx.getImageData(0, 0, w, h);
+  const data = faceData.data;
+  const desatAmount = style === "roman" ? 0.65 : 0.55;
   for (let i = 0; i < data.length; i += 4) {
     const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
     data[i] = data[i] + (gray - data[i]) * desatAmount;
     data[i + 1] = data[i + 1] + (gray - data[i + 1]) * desatAmount;
     data[i + 2] = data[i + 2] + (gray - data[i + 2]) * desatAmount;
   }
-  ctx.putImageData(imageData, 0, 0);
+  ctx.putImageData(faceData, 0, 0);
 
   // Material tint overlay
   ctx.globalCompositeOperation = "multiply";
   ctx.fillStyle = style === "roman" ? "#F5EDE0" : "#8A7050";
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(0, 0, w, h);
   ctx.globalCompositeOperation = "source-over";
 
-  // Soft circular vignette — fade edges to base color
+  // Soft elliptical vignette — blend edges to base color
   const gradient = ctx.createRadialGradient(
-    size / 2, size / 2, size * 0.28,
-    size / 2, size / 2, size * 0.48
+    w / 2, h / 2, Math.min(faceW, faceH) * 0.3,
+    w / 2, h / 2, Math.max(faceW, faceH) * 0.55
   );
   gradient.addColorStop(0, "rgba(0,0,0,0)");
-  gradient.addColorStop(0.6, "rgba(0,0,0,0)");
-  gradient.addColorStop(1, style === "roman" ? "rgba(232,224,212,0.85)" : "rgba(106,88,64,0.85)");
+  gradient.addColorStop(0.5, "rgba(0,0,0,0)");
+  gradient.addColorStop(1, style === "roman" ? "rgba(232,224,212,0.9)" : "rgba(106,88,64,0.9)");
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(0, 0, w, h);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
+
 
 // ════════════════════════════════════════════
 // HIGH-QUALITY MATERIALS
@@ -431,56 +641,12 @@ function generateNormalMapFromCanvas(source: HTMLCanvasElement, strength: number
 // FALLBACK: SIMPLE PROCEDURAL BUST
 // ════════════════════════════════════════════
 
+/** Legacy fallback — delegates to gender-specific generators */
 function generateFallbackBust(style: BustStyle, gender: BustGender = "male"): THREE.Group {
-  const group = new THREE.Group();
-  group.name = "FallbackBust";
-
   const mat = style === "renaissance"
     ? createBronzePhysicalMaterial()
     : createMarblePhysicalMaterial();
-
-  // Gender-specific torso profile
-  const raw: [number, number][] = gender === "female"
-    ? [
-        [0.00, 0.00], [0.22, 0.00], [0.24, 0.03], [0.23, 0.10],
-        [0.21, 0.15], [0.18, 0.19], [0.11, 0.23], [0.09, 0.30],
-        [0.08, 0.36], [0.00, 0.38],
-      ]
-    : [
-        [0.00, 0.00], [0.28, 0.00], [0.30, 0.02], [0.28, 0.10],
-        [0.26, 0.14], [0.22, 0.18], [0.12, 0.22], [0.10, 0.30],
-        [0.09, 0.36], [0.00, 0.38],
-      ];
-  const curvePoints = raw.map(([r, h]) => new THREE.Vector2(r, h));
-  const curve = new THREE.SplineCurve(curvePoints);
-  const pts = curve.getPoints(30);
-
-  const latheGeo = new THREE.LatheGeometry(pts, 32);
-  const bustMesh = new THREE.Mesh(latheGeo, mat);
-  bustMesh.castShadow = true;
-  bustMesh.receiveShadow = true;
-  group.add(bustMesh);
-
-  // Head sphere — slightly smaller for female
-  const headRadius = gender === "female" ? 0.082 : 0.09;
-  const headGeo = new THREE.SphereGeometry(headRadius, 24, 18);
-  headGeo.translate(0, 0.46, 0);
-  const headMesh = new THREE.Mesh(headGeo, mat.clone());
-  headMesh.castShadow = true;
-  group.add(headMesh);
-
-  // Female: add hair bun
-  if (gender === "female") {
-    const bunMat = mat.clone();
-    const bunGeo = new THREE.SphereGeometry(0.05, 14, 10);
-    const bun = new THREE.Mesh(bunGeo, bunMat);
-    bun.position.set(0, 0.52, -0.04);
-    bun.scale.set(1.1, 0.7, 0.9);
-    bun.castShadow = true;
-    group.add(bun);
-  }
-
-  return group;
+  return gender === "female" ? generateFemaleBust(style, mat) : generateMaleBust(style, mat);
 }
 
 // ════════════════════════════════════════════
@@ -498,41 +664,104 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Validate that an image contains a well-cropped face.
- * Uses the browser's FaceDetector API if available, otherwise basic heuristics.
+ * Detect and crop the face from an image.
+ * Uses the browser FaceDetector API (Chrome/Edge) for detection,
+ * with a center-crop fallback for other browsers.
+ *
+ * Returns a data URL of the cropped face image (square, 512x512).
  */
-export async function validateFacePhoto(
-  img: HTMLImageElement
-): Promise<{ valid: boolean; message?: string }> {
+export async function detectAndCropFace(
+  img: HTMLImageElement,
+): Promise<{
+  croppedUrl: string;
+  detected: boolean;
+  message: string;
+}> {
+  const outputSize = 512;
+  let faceBox: { x: number; y: number; width: number; height: number } | null = null;
+
   // Try browser FaceDetector API (Chrome/Edge)
   if ("FaceDetector" in window) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detector = new (window as any).FaceDetector();
       const faces = await detector.detect(img);
-      if (faces.length === 0) {
-        return { valid: false, message: "No face detected. Please upload a clear face photo." };
+      if (faces.length === 1) {
+        faceBox = faces[0].boundingBox;
+      } else if (faces.length > 1) {
+        // Pick the largest face
+        let largest = faces[0];
+        for (const f of faces) {
+          if (f.boundingBox.width * f.boundingBox.height > largest.boundingBox.width * largest.boundingBox.height) {
+            largest = f;
+          }
+        }
+        faceBox = largest.boundingBox;
       }
-      if (faces.length > 1) {
-        return { valid: false, message: "Multiple faces detected. Please crop to a single face." };
-      }
-      // Check face size relative to image
-      const face = faces[0].boundingBox;
-      const faceArea = face.width * face.height;
-      const imgArea = img.width * img.height;
-      if (faceArea / imgArea < 0.08) {
-        return { valid: false, message: "Face is too small. Please use a closer crop or portrait photo." };
-      }
-      return { valid: true };
     } catch {
-      // FaceDetector failed, fall through to basic check
+      // FaceDetector failed silently
     }
   }
 
-  // Basic heuristic: check image dimensions
-  if (img.width < 100 || img.height < 100) {
-    return { valid: false, message: "Image is too small. Please use a higher resolution photo." };
+  const canvas = document.createElement("canvas");
+  canvas.width = outputSize;
+  canvas.height = outputSize;
+  const ctx = canvas.getContext("2d")!;
+
+  if (faceBox) {
+    // Face detected — crop around it with margin for head + neck
+    const cx = faceBox.x + faceBox.width / 2;
+    const cy = faceBox.y + faceBox.height / 2;
+    // Expand to include forehead + chin + some neck. The face box usually
+    // covers brow to chin, so add ~40% above and ~60% below.
+    const headSize = Math.max(faceBox.width, faceBox.height) * 2.0;
+    const cropSize = Math.min(headSize, Math.min(img.width, img.height));
+    const halfCrop = cropSize / 2;
+
+    // Clamp to image bounds
+    let sx = Math.max(0, cx - halfCrop);
+    let sy = Math.max(0, cy - halfCrop * 0.7); // shift up to show more forehead
+    if (sx + cropSize > img.width) sx = img.width - cropSize;
+    if (sy + cropSize > img.height) sy = img.height - cropSize;
+    sx = Math.max(0, sx);
+    sy = Math.max(0, sy);
+    const actualCrop = Math.min(cropSize, img.width - sx, img.height - sy);
+
+    ctx.drawImage(img, sx, sy, actualCrop, actualCrop, 0, 0, outputSize, outputSize);
+
+    return {
+      croppedUrl: canvas.toDataURL("image/jpeg", 0.9),
+      detected: true,
+      message: "Face detected and calibrated!",
+    };
   }
-  // Accept — we can't validate without FaceDetector
-  return { valid: true };
+
+  // No FaceDetector or no face found — center-crop as portrait
+  const minDim = Math.min(img.width, img.height);
+  const sx = (img.width - minDim) / 2;
+  const sy = Math.max(0, (img.height - minDim) / 2 - img.height * 0.1); // shift up slightly
+  ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, outputSize, outputSize);
+
+  // Check basic quality
+  if (img.width < 100 || img.height < 100) {
+    return {
+      croppedUrl: canvas.toDataURL("image/jpeg", 0.9),
+      detected: false,
+      message: "Image is too small. Please use a higher resolution photo.",
+    };
+  }
+
+  return {
+    croppedUrl: canvas.toDataURL("image/jpeg", 0.9),
+    detected: false,
+    message: "Could not auto-detect face. The photo will be center-cropped. For best results, use a clear portrait photo.",
+  };
+}
+
+/** Legacy validation wrapper */
+export async function validateFacePhoto(
+  img: HTMLImageElement
+): Promise<{ valid: boolean; message?: string }> {
+  const result = await detectAndCropFace(img);
+  return { valid: result.detected, message: result.detected ? undefined : result.message };
 }

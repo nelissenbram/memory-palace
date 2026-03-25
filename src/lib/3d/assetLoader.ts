@@ -14,13 +14,12 @@ const rgbeLoader = new RGBELoader();
 
 // ── Caches (persist across scene transitions) ──
 const pbrCache = new Map<string, PBRTextureSet>();
-const hdriCache = new Map<string, Promise<THREE.Texture>>();
-const resolvedHDRITextures = new Set<THREE.Texture>();
+// Cache raw HDR data (ArrayBuffer) so we don't re-fetch, but re-run PMREM per renderer
+const hdrDataCache = new Map<string, THREE.DataTexture>();
 
-/** Check if a texture is managed by the asset cache (HDRI or PBR). Cached textures
+/** Check if a texture is managed by the PBR asset cache. Cached textures
  *  must NOT be disposed by individual scenes — they are shared across scene transitions. */
 export function isCachedTexture(tex: THREE.Texture): boolean {
-  if (resolvedHDRITextures.has(tex)) return true;
   for (const set of pbrCache.values()) {
     if (tex === set.map || tex === set.normalMap || tex === set.roughnessMap || tex === set.aoMap) return true;
   }
@@ -32,29 +31,36 @@ export function isCachedTexture(tex: THREE.Texture): boolean {
 // ════════════════════════════════════════════
 
 /** Load an HDR environment map and generate a prefiltered env map for PBR IBL.
- *  Results are cached — subsequent calls for the same path return instantly. */
+ *  Raw HDR data is cached for reuse, but PMREM is regenerated per renderer
+ *  since PMREM textures are GPU render targets tied to the renderer that created them. */
 export function loadHDRI(
   renderer: THREE.WebGLRenderer,
   path: string,
   onLoad?: (envMap: THREE.Texture) => void
 ): Promise<THREE.Texture> {
-  const cached = hdriCache.get(path);
-  if (cached) {
-    cached.then(t => onLoad?.(t));
-    return cached;
+  // If we already have the raw HDR data cached, just re-run PMREM with this renderer
+  const cachedRaw = hdrDataCache.get(path);
+  if (cachedRaw) {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    pmrem.compileEquirectangularShader();
+    const envMap = pmrem.fromEquirectangular(cachedRaw).texture;
+    pmrem.dispose();
+    onLoad?.(envMap);
+    return Promise.resolve(envMap);
   }
 
-  const promise = new Promise<THREE.Texture>((resolve, reject) => {
+  return new Promise<THREE.Texture>((resolve, reject) => {
     const pmrem = new THREE.PMREMGenerator(renderer);
     pmrem.compileEquirectangularShader();
 
     rgbeLoader.load(
       path,
       (hdrTexture) => {
+        // Cache the raw HDR texture for future renderers
+        hdrDataCache.set(path, hdrTexture);
         const envMap = pmrem.fromEquirectangular(hdrTexture).texture;
-        hdrTexture.dispose();
+        // Don't dispose hdrTexture — it's cached for reuse
         pmrem.dispose();
-        resolvedHDRITextures.add(envMap);
         onLoad?.(envMap);
         resolve(envMap);
       },
@@ -62,14 +68,10 @@ export function loadHDRI(
       (err) => {
         console.warn(`[AssetLoader] Failed to load HDRI: ${path}`, err);
         pmrem.dispose();
-        hdriCache.delete(path); // allow retry
         reject(err);
       }
     );
   });
-
-  hdriCache.set(path, promise);
-  return promise;
 }
 
 /** Interior HDRI — warm ballroom with chandeliers */
