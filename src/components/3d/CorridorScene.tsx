@@ -65,7 +65,10 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         floorPat:"mosaic",ceilStyle:"exposed_beams",wallStyle:"gallery"},
     };
     const C=(cfg as any)[wingId]||cfg.family;
-    const cW=C.cW,cH=C.cH,cL=Math.max(rooms.length,8)*C.sp+14;
+    const MAX_ROOMS_PER_WING = 8;
+    const hasLockedNiche = rooms.length < MAX_ROOMS_PER_WING;
+    const totalSlots = rooms.length + (hasLockedNiche ? 1 : 0);
+    const cW=C.cW,cH=C.cH,cL=totalSlots*C.sp+14;
 
     // ── REAL PBR TEXTURES (Poly Haven) ──
     const marbleTex=loadMarbleTextures([4,4]);
@@ -803,8 +806,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     }
 
     // ── WALLS + WAINSCOTING (varies by wing) ──
-    const MAX_ROOMS_PER_WING = 8;
-    const inlayCount = MAX_ROOMS_PER_WING - rooms.length;
+    const inlayCount = hasLockedNiche ? 1 : 0;
     for(let s of[-1,1]){const wm=new THREE.Mesh(new THREE.PlaneGeometry(cL,cH),MS.wall);wm.rotation.y=s*(-Math.PI/2);wm.position.set(s*(cW/2),cH/2,0);scene.add(wm);}
     scene.add(mk(new THREE.PlaneGeometry(cW,cH),MS.wall,0,cH/2,-cL/2));
     const wB=new THREE.Mesh(new THREE.PlaneGeometry(cW,cH),MS.wall);wB.rotation.y=Math.PI;wB.position.set(0,cH/2,cL/2);scene.add(wB);
@@ -865,16 +867,13 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       // Crown molding at ceiling (continuous, doesn't clip doors)
       scene.add(mk(new THREE.BoxGeometry(.10,.14,cL-.2),MS.gold,s*(cW/2-.05),cH-.07,0));
       scene.add(mk(new THREE.BoxGeometry(.06,.08,cL-.2),MS.trim,s*(cW/2-.03),cH-.18,0));
-      // Wall panels between doors (skip zones occupied by doors/paintings)
+      // Wainscoting lower panels between doors (skip zones occupied by doors)
       const pnl=Math.floor(cL/3);
       for(let p=0;p<pnl;p++){
         const pz = -cL/2 + 1.5 + p * 3;
         const blocked = occupiedZones.some(z => Math.abs(pz - z.center) < z.halfW);
         if (blocked) continue;
         scene.add(mk(new THREE.BoxGeometry(.01,.55,1.4),MS.wainP,s*(cW/2-.01),.7,pz));
-        scene.add(mk(new THREE.BoxGeometry(.008,.8,1.2),MS.wainP,s*(cW/2-.008),2.8,pz));
-        scene.add(mk(new THREE.BoxGeometry(.006,.02,1.25),MS.gold,s*(cW/2-.006),3.22,pz));
-        scene.add(mk(new THREE.BoxGeometry(.006,.02,1.25),MS.gold,s*(cW/2-.006),2.38,pz));
       }
     }
 
@@ -1088,7 +1087,8 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       if(pz>cL/2-3||pz<-cL/2+3)continue;
       const s=i%2===0?-1:1;
       const fx=s*(cW/2-.005);
-      const slotKey=`corridor-${wingId}-painting-${i}`;
+      // Use room ID as key to match CorridorGalleryPanel's slot keys
+      const slotKey=rooms[i]?.id || `corridor-${wingId}-painting-${i}`;
       const paintingData=corridorPaintings?.[slotKey];
       const fw=1.3,fh=1.0,frameW=0.07;
       // Gold frame — ornate border
@@ -1290,6 +1290,8 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       for (let si = 1; si <= sconceLightCount; si++) {
         const sz = -cL / 2 + si * sconceSpacing;
         const sSide = si % 2 === 0 ? -1 : 1;
+        // Skip if too close to any door
+        if (allDoorZones.some(dz => Math.abs(sz - dz) < 1.8)) continue;
         const sx = sSide * (cW / 2 - 0.05);
         // Wall plate
         scene.add(mk(new THREE.BoxGeometry(0.04, 0.15, 0.1), candleMat, sx, 2.8, sz));
@@ -1493,8 +1495,23 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       const colX = 1 * (cW / 2); // side=1 wall
       const capitalMat = new THREE.MeshStandardMaterial({ color: "#E0D8CC", roughness: 0.3, metalness: 0.05 });
 
+      // Collect door z-positions on side=1 (odd-indexed rooms) for column/railing skip
+      const side1DoorZs: number[] = [];
+      rooms.forEach((_: any, ri: number) => {
+        if (ri % 2 !== 0) side1DoorZs.push(cL / 2 - 5.5 - ri * C.sp);
+      });
+      // Also include niche z on side=1 if present
+      if (hasLockedNiche && inlayCount > 0) {
+        for (let ii = 0; ii < inlayCount; ii++) {
+          if (ii % 2 !== 0) side1DoorZs.push(-cL / 2 + 5.5 + ii * C.sp);
+        }
+      }
+      const doorHalfW = 1.3; // half-width of door zone to skip
+
       for (let ci = 0; ci <= colCount; ci++) {
         const cz = -cL / 2 + 0.5 + ci * colSpacing;
+        // Skip columns that overlap with doors on this wall
+        if (side1DoorZs.some(dz => Math.abs(cz - dz) < doorHalfW)) continue;
         // Column base
         scene.add(mk(new THREE.CylinderGeometry(colR + 0.08, colR + 0.1, 0.15, 12), MS.marble, colX, 0.075, cz));
         // Column shaft
@@ -1505,10 +1522,24 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         scene.add(mk(new THREE.BoxGeometry(0.6, 0.08, 0.6), capitalMat, colX, colH + 0.39, cz));
       }
 
-      // Low railing between columns
-      scene.add(mk(new THREE.BoxGeometry(0.12, 0.6, cL - 1), MS.marble, colX, 0.3, 0));
-      // Railing cap
-      scene.add(mk(new THREE.BoxGeometry(0.18, 0.06, cL - 0.8), capitalMat, colX, 0.63, 0));
+      // Low railing between columns — split into segments that skip door openings
+      const railZones = [...side1DoorZs].sort((a, b) => a - b);
+      let railStart = -cL / 2 + 0.5;
+      const railEnd = cL / 2 - 0.5;
+      const railSegs: { start: number; end: number }[] = [];
+      for (const dz of railZones) {
+        const gapL = dz - doorHalfW;
+        const gapR = dz + doorHalfW;
+        if (gapL > railStart + 0.3) railSegs.push({ start: railStart, end: gapL });
+        railStart = gapR;
+      }
+      if (railEnd > railStart + 0.3) railSegs.push({ start: railStart, end: railEnd });
+      for (const seg of railSegs) {
+        const segLen = seg.end - seg.start;
+        const segCenter = (seg.start + seg.end) / 2;
+        scene.add(mk(new THREE.BoxGeometry(0.12, 0.6, segLen), MS.marble, colX, 0.3, segCenter));
+        scene.add(mk(new THREE.BoxGeometry(0.18, 0.06, segLen), capitalMat, colX, 0.63, segCenter));
+      }
 
       // Entablature beam above columns
       scene.add(mk(new THREE.BoxGeometry(0.3, 0.2, cL), capitalMat, colX, colH + 0.5, 0));
@@ -1667,13 +1698,25 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       }
       mInsts.forEach((inst, i) => { inst.count = mIdxs[i]; inst.instanceMatrix.needsUpdate = true; scene.add(inst); });
 
-      // ── OIL LAMP BRACKETS on solid wall ──
+      // ── OIL LAMP BRACKETS on solid wall — skip near doors/niches ──
       const lampBracketMat = MS.bronze;
       const lampCount = Math.min(10, Math.floor(cL / 3));
       const lampSpacing = cL / (lampCount + 1);
       let lampLightCount = 0;
+      // Collect door/niche z-positions on the solid wall (side=-1, even-indexed rooms)
+      const solidWallDoorZs: number[] = [];
+      rooms.forEach((_: any, ri: number) => {
+        if (ri % 2 === 0) solidWallDoorZs.push(cL / 2 - 5.5 - ri * C.sp);
+      });
+      if (hasLockedNiche && inlayCount > 0) {
+        for (let ii = 0; ii < inlayCount; ii++) {
+          if (ii % 2 === 0) solidWallDoorZs.push(-cL / 2 + 5.5 + ii * C.sp);
+        }
+      }
       for (let li = 1; li <= lampCount; li++) {
         const lz = -cL / 2 + li * lampSpacing;
+        // Skip if too close to a door or niche on this wall
+        if (solidWallDoorZs.some(dz => Math.abs(lz - dz) < 1.8)) continue;
         const lx = nicheWall * (cW / 2 - 0.03);
         // Wall bracket arm
         scene.add(mk(new THREE.BoxGeometry(0.04, 0.04, 0.04), lampBracketMat, lx, 2.6, lz));
