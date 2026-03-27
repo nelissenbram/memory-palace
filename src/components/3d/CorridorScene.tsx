@@ -877,66 +877,102 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       }
     }
 
-    // ═══ ARCHED WINDOWS — elegant recessed windows on the solid wall only ═══
-    const winH=2.2,winW=1.0,winY=cH*0.55;
-    const winStoneMat=new THREE.MeshStandardMaterial({color:"#C8BCA8",roughness:.45,metalness:.05});
-    const winGlassMat=new THREE.MeshPhysicalMaterial({color:"#B8D4E8",transparent:true,opacity:0.18,roughness:0.02,metalness:0.0,transmission:0.7,thickness:0.1,side:THREE.DoubleSide});
-    const winSillMat=new THREE.MeshStandardMaterial({color:"#D0C8B8",roughness:.35,metalness:.08});
-    const archR=winW/2;
-    const rectH=winH-archR;
-    const recessD=0.35;
-    // Only place windows on the solid wall (opposite of colonnade in Roman style)
-    // Each window sits opposite a door on the other wall
-    rooms.forEach((_room: any,i: number)=>{
+    // ═══ TALL ARCHED WINDOWS — large, frequent, flooding the corridor with light ═══
+    const winW=2.0,winH=cH*0.7,winBottom=1.0;
+    const winCenterY=winBottom+winH/2;
+    const winArchR=winW/2;
+    const winRectH=winH-winArchR;
+    const winRecess=0.4;
+    const winStoneMat=new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.4,metalness:.05});
+    const winGlassMat=new THREE.MeshPhysicalMaterial({color:"#CEE4F4",transparent:true,opacity:0.08,roughness:0.01,metalness:0.0,transmission:0.85,thickness:0.05,side:THREE.DoubleSide});
+    // Place windows on solid wall (side=-1) at regular intervals — one between every pair of doors
+    const winSide=-1; // solid wall in Roman style
+    const winX=winSide*(cW/2);
+    // Generate window positions: between each pair of adjacent doors on this wall, plus extra gaps
+    const winPositions: number[]=[];
+    // Place a window at every door z-position on the OPPOSITE wall (side=1 doors = odd-indexed)
+    for(let i=0;i<rooms.length;i++){
       const doorSide=i%2===0?-1:1;
-      const winSide=-doorSide;
-      // In Roman era, skip windows on the colonnade wall (side=1)
-      if(styleEra==="roman"&&winSide===1)return;
-      const wz=cL/2-5.5-i*C.sp;
-      const wx=winSide*(cW/2);
-      const inset=winSide*0.01; // tiny offset to avoid z-fighting with wall
-      // ── Deep recess — carved into wall ──
-      scene.add(mk(new THREE.BoxGeometry(recessD,rectH+archR*0.4,winW+0.04),MS.wallD,wx-(winSide*recessD/2),winY-archR*0.2,wz));
-      for(const zSide of[-1,1]){
-        scene.add(mk(new THREE.BoxGeometry(recessD,rectH+archR*0.6,0.06),MS.wallD,wx-(winSide*recessD/2),winY,wz+zSide*(winW/2+0.02)));
+      if(doorSide!==-winSide)continue; // only between doors on the opposite wall
+      winPositions.push(cL/2-5.5-i*C.sp);
+    }
+    // Also add windows between doors on the solid wall (midpoint between even-indexed doors)
+    const solidDoors: number[]=[];
+    for(let i=0;i<rooms.length;i++){
+      if(i%2===0) solidDoors.push(cL/2-5.5-i*C.sp);
+    }
+    for(let i=0;i<solidDoors.length-1;i++){
+      const mid=(solidDoors[i]+solidDoors[i+1])/2;
+      // Only add if not too close to existing window or door
+      const tooClose=winPositions.some(wz=>Math.abs(mid-wz)<2.5)||solidDoors.some(dz=>Math.abs(mid-dz)<1.8);
+      if(!tooClose) winPositions.push(mid);
+    }
+    // Skip windows that overlap with doors on the solid wall
+    const solidWallAllDoorZs: number[]=[];
+    for(let i=0;i<rooms.length;i++){
+      if(i%2===0) solidWallAllDoorZs.push(cL/2-5.5-i*C.sp);
+    }
+    if(hasLockedNiche){
+      for(let ii=0;ii<inlayCount;ii++){
+        if(ii%2===0) solidWallAllDoorZs.push(-cL/2+5.5+ii*C.sp);
       }
-      // ── Thick stone surround — proper pilaster jambs ──
-      const jambW=0.14,jambD=0.08;
-      for(const zSide of[-1,1]){
-        // Stone jambs (tall vertical pillars flanking window)
-        scene.add(mk(new THREE.BoxGeometry(jambD,rectH+0.1,jambW),winStoneMat,wx-(winSide*jambD/2),winY-archR/2,wz+zSide*(winW/2+jambW/2)));
-        // Subtle capital at top of each jamb
-        scene.add(mk(new THREE.BoxGeometry(jambD+0.02,0.06,jambW+0.04),winStoneMat,wx-(winSide*jambD/2),winY+rectH/2+0.03,wz+zSide*(winW/2+jambW/2)));
+    }
+    winPositions.sort((a,b)=>a-b);
+    let winLightCount=0;
+    for(const wz of winPositions){
+      if(wz>cL/2-3||wz<-cL/2+3)continue;
+      if(solidWallAllDoorZs.some(dz=>Math.abs(wz-dz)<2.0))continue;
+      // ── Deep wall opening ──
+      scene.add(mk(new THREE.BoxGeometry(winRecess,winRectH+winArchR*0.3,winW+0.06),MS.wallD,winX-(winSide*winRecess/2),winCenterY-winArchR*0.15,wz));
+      // Side reveals (angled light catch)
+      for(const zs of[-1,1]){
+        scene.add(mk(new THREE.BoxGeometry(winRecess,winRectH+winArchR*0.5,0.05),MS.wallD,winX-(winSide*winRecess/2),winCenterY,wz+zs*(winW/2+0.03)));
       }
-      // ── Smooth arch — using TorusGeometry for a clean semicircle ──
-      const archCY=winY+rectH/2;
-      const archGeo=new THREE.TorusGeometry(archR,0.07,8,20,Math.PI);
+      // ── Stone frame — hefty jambs ──
+      const jW=0.16,jD=0.1;
+      for(const zs of[-1,1]){
+        scene.add(mk(new THREE.BoxGeometry(jD,winRectH+0.2,jW),winStoneMat,winX-(winSide*jD/2),winBottom+winRectH/2,wz+zs*(winW/2+jW/2)));
+        // Impost block (transition from jamb to arch)
+        scene.add(mk(new THREE.BoxGeometry(jD+0.03,0.08,jW+0.06),winStoneMat,winX-(winSide*jD/2),winBottom+winRectH+0.04,wz+zs*(winW/2+jW/2)));
+      }
+      // ── Smooth semicircular arch ──
+      const archCY=winBottom+winRectH;
+      const archGeo=new THREE.TorusGeometry(winArchR,0.09,8,24,Math.PI);
       const archMesh=new THREE.Mesh(archGeo,winStoneMat);
-      archMesh.position.set(wx-inset,archCY,wz);
+      archMesh.position.set(winX-(winSide*0.01),archCY,wz);
       archMesh.rotation.y=winSide*(-Math.PI/2);
       scene.add(archMesh);
-      // Keystone at arch apex
-      scene.add(mk(new THREE.BoxGeometry(jambD+0.02,0.16,0.14),MS.gold,wx-(winSide*jambD/2),archCY+archR,wz));
-      // ── Pronounced stone sill ──
-      scene.add(mk(new THREE.BoxGeometry(recessD+0.12,0.1,winW+jambW*2+0.1),winSillMat,wx-(winSide*recessD/2),winY-rectH/2-0.05,wz));
-      scene.add(mk(new THREE.BoxGeometry(recessD+0.14,0.03,winW+jambW*2+0.12),MS.gold,wx-(winSide*recessD/2),winY-rectH/2+0.005,wz));
-      // ── Glass pane — set inside the recess ──
-      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.06,rectH+archR*0.5),winGlassMat);
+      // Keystone
+      scene.add(mk(new THREE.BoxGeometry(jD+0.03,0.2,0.18),MS.gold,winX-(winSide*jD/2),archCY+winArchR,wz));
+      // ── Wide stone sill ──
+      scene.add(mk(new THREE.BoxGeometry(winRecess+0.15,0.1,winW+jW*2+0.14),winStoneMat,winX-(winSide*winRecess/2),winBottom-0.05,wz));
+      scene.add(mk(new THREE.BoxGeometry(winRecess+0.18,0.03,winW+jW*2+0.18),MS.gold,winX-(winSide*winRecess/2),winBottom+0.005,wz));
+      // ── Glass — nearly transparent, letting light flood in ──
+      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.08,winRectH+winArchR*0.4),winGlassMat);
       glass.rotation.y=winSide*(-Math.PI/2);
-      glass.position.set(wx-(winSide*recessD*0.8),winY,wz);
+      glass.position.set(winX-(winSide*winRecess*0.7),winCenterY,wz);
       scene.add(glass);
-      // ── Tuscan landscape behind glass ──
-      const landscapeMat=new THREE.MeshBasicMaterial({map:tuscanTex.clone(),side:THREE.DoubleSide});
-      const landscape=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.08,rectH+archR*0.4),landscapeMat);
-      landscape.rotation.y=winSide*(-Math.PI/2);
-      landscape.position.set(wx-(winSide*(recessD*0.8+0.01)),winY,wz);
-      scene.add(landscape);
-      // ── Thin mullion cross ──
-      scene.add(mk(new THREE.BoxGeometry(0.02,0.02,winW-0.1),winStoneMat,wx-(winSide*recessD*0.8),winY-rectH*0.1,wz));
-      scene.add(mk(new THREE.BoxGeometry(0.02,rectH*0.7,0.02),winStoneMat,wx-(winSide*recessD*0.8),winY-archR*0.15,wz));
-      // ── Warm sunlight spill ──
-      const wLight=new THREE.PointLight("#FFF5E0",0.5,7);wLight.position.set(wx-(winSide*0.8),winY,wz);scene.add(wLight);
-    });
+      // ── Sky/landscape behind — bright and airy ──
+      const skyMat=new THREE.MeshBasicMaterial({map:tuscanTex.clone(),side:THREE.DoubleSide});
+      const sky=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.1,winRectH+winArchR*0.35),skyMat);
+      sky.rotation.y=winSide*(-Math.PI/2);
+      sky.position.set(winX-(winSide*(winRecess*0.7+0.01)),winCenterY,wz);
+      scene.add(sky);
+      // ── Elegant thin mullions (cross pattern) ──
+      scene.add(mk(new THREE.BoxGeometry(0.02,0.02,winW*0.85),winStoneMat,winX-(winSide*winRecess*0.7),winCenterY-winRectH*0.15,wz));
+      scene.add(mk(new THREE.BoxGeometry(0.02,winRectH*0.65,0.02),winStoneMat,winX-(winSide*winRecess*0.7),winCenterY-winArchR*0.1,wz));
+      // ── Bright natural light flooding in ──
+      if(winLightCount<10){
+        const sunBeam=new THREE.PointLight("#FFF8E8",0.8,12);
+        sunBeam.position.set(winX-(winSide*1.0),winCenterY,wz);
+        scene.add(sunBeam);
+        // Secondary fill light lower (floor bounce)
+        const fillBeam=new THREE.PointLight("#FFF0D8",0.3,8);
+        fillBeam.position.set(winX-(winSide*1.5),winBottom+0.5,wz);
+        scene.add(fillBeam);
+        winLightCount++;
+      }
+    }
 
     // ═══ DECORATIONS — carefully laid out to avoid overlaps ═══
     // Layout plan per door zone i:
