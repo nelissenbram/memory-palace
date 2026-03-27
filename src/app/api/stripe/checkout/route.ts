@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      payment_method_types: ["card", "ideal"],
+      payment_method_types: ["card"],
       line_items: [
         {
           price: planDef.stripePriceId,
@@ -74,7 +74,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
-    console.error("Checkout error:", message);
+    const details = err instanceof Error ? err.stack : String(err);
+    console.error("Checkout error:", message, details);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
