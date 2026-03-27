@@ -51,8 +51,8 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<"all" | "wing" | "upload">("all");
 
-  // Painting slots — one per room
-  const slots = rooms.map((r) => r.id);
+  // Painting slots — 1 per 2 doors (every other gap between adjacent doors)
+  const slots = rooms.filter((_, i) => i % 2 === 0 && i < rooms.length - 1).map((r) => r.id);
 
   // Get all memories with images from ALL wings (not just current wing)
   const allMems: { mem: Mem; room: WingRoom; wingName: string }[] = [];

@@ -877,82 +877,65 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       }
     }
 
-    // ═══ TUSCAN LANDSCAPE WINDOWS — arched gallery windows recessed into walls ═══
-    const winH=2.4,winW=1.2,winY=cH*0.58;
-    const winGlassMat=new THREE.MeshPhysicalMaterial({color:"#D8E8F4",transparent:true,opacity:0.12,roughness:0.05,metalness:0.0,transmission:0.6,side:THREE.DoubleSide});
-    const winFrameMat=new THREE.MeshStandardMaterial({color:"#D8CFC0",roughness:.3,metalness:.1});
-    const recessD=0.3; // recess depth into wall
-    const frameTh=0.12; // frame thickness
-    const archR=winW/2; // semicircle radius = half window width
-    const archSegsW=10; // segments for arch curve
-    const rectH=winH-archR; // rectangular portion height (below the arch)
+    // ═══ ARCHED WINDOWS — elegant recessed windows on the solid wall only ═══
+    const winH=2.2,winW=1.0,winY=cH*0.55;
+    const winStoneMat=new THREE.MeshStandardMaterial({color:"#C8BCA8",roughness:.45,metalness:.05});
+    const winGlassMat=new THREE.MeshPhysicalMaterial({color:"#B8D4E8",transparent:true,opacity:0.18,roughness:0.02,metalness:0.0,transmission:0.7,thickness:0.1,side:THREE.DoubleSide});
+    const winSillMat=new THREE.MeshStandardMaterial({color:"#D0C8B8",roughness:.35,metalness:.08});
+    const archR=winW/2;
+    const rectH=winH-archR;
+    const recessD=0.35;
+    // Only place windows on the solid wall (opposite of colonnade in Roman style)
+    // Each window sits opposite a door on the other wall
     rooms.forEach((_room: any,i: number)=>{
       const doorSide=i%2===0?-1:1;
       const winSide=-doorSide;
+      // In Roman era, skip windows on the colonnade wall (side=1)
+      if(styleEra==="roman"&&winSide===1)return;
       const wz=cL/2-5.5-i*C.sp;
       const wx=winSide*(cW/2);
-      // Wall-relative positions: outer face of wall is at wx, interior is wx - winSide*recessD
-      const outerX=wx;
-      const innerX=wx-(winSide*recessD);
-      const midX=wx-(winSide*recessD*0.5);
-      // ── Recess/alcove — cut into the wall ──
-      // Back wall of recess (dark)
-      scene.add(mk(new THREE.BoxGeometry(recessD,rectH+archR*0.5,winW+0.02),MS.wallD,midX,winY-archR*0.25,wz));
-      // Top of recess (ceiling of alcove)
-      scene.add(mk(new THREE.BoxGeometry(recessD,0.05,winW+0.02),MS.wallD,midX,winY+rectH/2+archR-0.02,wz));
-      // Side walls of recess
+      const inset=winSide*0.01; // tiny offset to avoid z-fighting with wall
+      // ── Deep recess — carved into wall ──
+      scene.add(mk(new THREE.BoxGeometry(recessD,rectH+archR*0.4,winW+0.04),MS.wallD,wx-(winSide*recessD/2),winY-archR*0.2,wz));
       for(const zSide of[-1,1]){
-        scene.add(mk(new THREE.BoxGeometry(recessD,rectH+archR,0.05),MS.wallD,midX,winY+(archR-rectH)*0.25,wz+zSide*(winW/2+0.01)));
+        scene.add(mk(new THREE.BoxGeometry(recessD,rectH+archR*0.6,0.06),MS.wallD,wx-(winSide*recessD/2),winY,wz+zSide*(winW/2+0.02)));
       }
-      // ── Stone frame — rectangular bottom portion, flush with wall face ──
-      // Left jamb
-      scene.add(mk(new THREE.BoxGeometry(frameTh,rectH,frameTh),winFrameMat,outerX,winY-archR/2,wz-winW/2-frameTh/2));
-      // Right jamb
-      scene.add(mk(new THREE.BoxGeometry(frameTh,rectH,frameTh),winFrameMat,outerX,winY-archR/2,wz+winW/2+frameTh/2));
-      // Bottom sill — pronounced, projecting inward
-      scene.add(mk(new THREE.BoxGeometry(recessD+0.1,0.08,winW+frameTh*2+0.1),winFrameMat,midX,winY-rectH/2-0.04,wz));
-      // Sill gold trim
-      scene.add(mk(new THREE.BoxGeometry(recessD+0.12,0.025,winW+frameTh*2+0.12),MS.gold,midX,winY-rectH/2-0.005,wz));
-      // ── Semicircular arch at top — box segments arranged in arc, flush with wall ──
-      const archCenterY=winY+rectH/2; // y where arch springs from
-      for(let ai=0;ai<=archSegsW;ai++){
-        const ang=(ai/archSegsW)*Math.PI;
-        const az=Math.cos(ang)*archR;
-        const ay=Math.sin(ang)*archR;
-        // Outer arch frame segments — flush with wall surface
-        const seg=mk(new THREE.BoxGeometry(frameTh,frameTh,frameTh),winFrameMat,outerX,archCenterY+ay,wz+az);
-        scene.add(seg);
+      // ── Thick stone surround — proper pilaster jambs ──
+      const jambW=0.14,jambD=0.08;
+      for(const zSide of[-1,1]){
+        // Stone jambs (tall vertical pillars flanking window)
+        scene.add(mk(new THREE.BoxGeometry(jambD,rectH+0.1,jambW),winStoneMat,wx-(winSide*jambD/2),winY-archR/2,wz+zSide*(winW/2+jambW/2)));
+        // Subtle capital at top of each jamb
+        scene.add(mk(new THREE.BoxGeometry(jambD+0.02,0.06,jambW+0.04),winStoneMat,wx-(winSide*jambD/2),winY+rectH/2+0.03,wz+zSide*(winW/2+jambW/2)));
       }
-      // Keystone at top center of arch — slightly larger
-      scene.add(mk(new THREE.BoxGeometry(frameTh+0.02,frameTh*1.5,frameTh+0.04),MS.gold,outerX,archCenterY+archR,wz));
-      // ── Mullion cross — thin and elegant ──
-      scene.add(mk(new THREE.BoxGeometry(0.03,0.025,winW-0.05),winFrameMat,outerX,winY-rectH*0.15,wz));
-      scene.add(mk(new THREE.BoxGeometry(0.03,rectH-0.05,0.025),winFrameMat,outerX,winY-archR/2,wz));
-      // ── Glass pane — positioned at the back of the recess (flush with outer wall) ──
-      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW,rectH+archR*0.6),winGlassMat);
-      glass.rotation.y=winSide*(-Math.PI/2);glass.position.set(outerX,winY,wz);scene.add(glass);
-      // ── TUSCAN LANDSCAPE behind window — flush with outer wall ──
+      // ── Smooth arch — using TorusGeometry for a clean semicircle ──
+      const archCY=winY+rectH/2;
+      const archGeo=new THREE.TorusGeometry(archR,0.07,8,20,Math.PI);
+      const archMesh=new THREE.Mesh(archGeo,winStoneMat);
+      archMesh.position.set(wx-inset,archCY,wz);
+      archMesh.rotation.y=winSide*(-Math.PI/2);
+      scene.add(archMesh);
+      // Keystone at arch apex
+      scene.add(mk(new THREE.BoxGeometry(jambD+0.02,0.16,0.14),MS.gold,wx-(winSide*jambD/2),archCY+archR,wz));
+      // ── Pronounced stone sill ──
+      scene.add(mk(new THREE.BoxGeometry(recessD+0.12,0.1,winW+jambW*2+0.1),winSillMat,wx-(winSide*recessD/2),winY-rectH/2-0.05,wz));
+      scene.add(mk(new THREE.BoxGeometry(recessD+0.14,0.03,winW+jambW*2+0.12),MS.gold,wx-(winSide*recessD/2),winY-rectH/2+0.005,wz));
+      // ── Glass pane — set inside the recess ──
+      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.06,rectH+archR*0.5),winGlassMat);
+      glass.rotation.y=winSide*(-Math.PI/2);
+      glass.position.set(wx-(winSide*recessD*0.8),winY,wz);
+      scene.add(glass);
+      // ── Tuscan landscape behind glass ──
       const landscapeMat=new THREE.MeshBasicMaterial({map:tuscanTex.clone(),side:THREE.DoubleSide});
-      const landscape=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.04,rectH+archR*0.5),landscapeMat);
-      landscape.rotation.y=winSide*(-Math.PI/2);landscape.position.set(outerX+(winSide*0.01),winY,wz);scene.add(landscape);
-      // ── Curtains — thin planes hanging on each side, flush with wall ──
-      for(const cSide of[-1,1]){
-        const cZ=wz+cSide*(winW/2+0.18);
-        const cX=outerX;
-        // Single thin curtain plane per side
-        const curtainPlane=new THREE.Mesh(new THREE.PlaneGeometry(0.35,winH+0.3),MS.curtain);
-        curtainPlane.rotation.y=winSide*(-Math.PI/2)+cSide*0.06;
-        curtainPlane.position.set(cX,winY,cZ);
-        scene.add(curtainPlane);
-        // Gold tie-back
-        scene.add(mk(new THREE.SphereGeometry(0.03,6,6),MS.gold,cX,winY-0.5,cZ));
-      }
-      // Curtain rod spanning the top
-      const rodMesh=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,winW+0.7,6),MS.gold);
-      rodMesh.rotation.x=Math.PI/2;rodMesh.position.set(outerX,winY+rectH/2+0.1,wz);scene.add(rodMesh);
-      // ── Warm sunlight — PointLight only, no floating shaft planes ──
-      const wLight=new THREE.PointLight("#FFF5E0",0.6,8);wLight.position.set(wx-(winSide*0.6),winY,wz);scene.add(wLight);
-      const wLight2=new THREE.PointLight("#FFE8C0",0.25,5);wLight2.position.set(wx-(winSide*1.2),winY-0.5,wz);scene.add(wLight2);
+      const landscape=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.08,rectH+archR*0.4),landscapeMat);
+      landscape.rotation.y=winSide*(-Math.PI/2);
+      landscape.position.set(wx-(winSide*(recessD*0.8+0.01)),winY,wz);
+      scene.add(landscape);
+      // ── Thin mullion cross ──
+      scene.add(mk(new THREE.BoxGeometry(0.02,0.02,winW-0.1),winStoneMat,wx-(winSide*recessD*0.8),winY-rectH*0.1,wz));
+      scene.add(mk(new THREE.BoxGeometry(0.02,rectH*0.7,0.02),winStoneMat,wx-(winSide*recessD*0.8),winY-archR*0.15,wz));
+      // ── Warm sunlight spill ──
+      const wLight=new THREE.PointLight("#FFF5E0",0.5,7);wLight.position.set(wx-(winSide*0.8),winY,wz);scene.add(wLight);
     });
 
     // ═══ DECORATIONS — carefully laid out to avoid overlaps ═══
@@ -1080,9 +1063,10 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     else{scene.add(mk(new THREE.CylinderGeometry(.1,.15,.65,8),MS.statue,0,pH2+.33,sZ));scene.add(mk(new THREE.SphereGeometry(.14,8,8),MS.statue,0,pH2+.8,sZ));}
     const sL=new THREE.SpotLight("#FFF5E0",.7,5,Math.PI/6,.5,1);sL.position.set(0,cH-.1,sZ);sL.target.position.set(0,pH2,sZ);scene.add(sL);scene.add(sL.target);
 
-    // ═══ INTERACTIVE PAINTING/MEDIA SLOTS — between doors on same wall ═══
+    // ═══ INTERACTIVE PAINTING/MEDIA SLOTS — 1 painting per 2 doors ═══
     const paintingClickMeshes: {mesh: THREE.Mesh, slotKey: string}[] = [];
-    for(let i=0;i<rooms.length-1;i++){
+    let paintingSlotIdx = 0;
+    for(let i=0;i<rooms.length-1;i+=2){
       const pz=cL/2-5.5-i*C.sp-C.sp/2;
       if(pz>cL/2-3||pz<-cL/2+3)continue;
       const s=i%2===0?-1:1;
@@ -1090,6 +1074,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       // Use room ID as key to match CorridorGalleryPanel's slot keys
       const slotKey=rooms[i]?.id || `corridor-${wingId}-painting-${i}`;
       const paintingData=corridorPaintings?.[slotKey];
+      paintingSlotIdx++;
       const fw=1.3,fh=1.0,frameW=0.07;
       // Gold frame — ornate border
       scene.add(mk(new THREE.BoxGeometry(.03,frameW,fw+frameW*2),MS.gold,fx,2.8+fh/2+frameW/2,pz)); // top
