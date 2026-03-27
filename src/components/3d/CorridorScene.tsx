@@ -922,45 +922,39 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     for(const wz of winPositions){
       if(wz>cL/2-3||wz<-cL/2+3)continue;
       if(solidWallAllDoorZs.some(dz=>Math.abs(wz-dz)<2.0))continue;
-      // ── Deep wall opening ──
-      scene.add(mk(new THREE.BoxGeometry(winRecess,winRectH+winArchR*0.3,winW+0.06),MS.wallD,winX-(winSide*winRecess/2),winCenterY-winArchR*0.15,wz));
-      // Side reveals (angled light catch)
-      for(const zs of[-1,1]){
-        scene.add(mk(new THREE.BoxGeometry(winRecess,winRectH+winArchR*0.5,0.05),MS.wallD,winX-(winSide*winRecess/2),winCenterY,wz+zs*(winW/2+0.03)));
-      }
-      // ── Stone frame — hefty jambs ──
+      // ── Stone frame — hefty jambs flush with wall ──
       const jW=0.16,jD=0.1;
       for(const zs of[-1,1]){
-        scene.add(mk(new THREE.BoxGeometry(jD,winRectH+0.2,jW),winStoneMat,winX-(winSide*jD/2),winBottom+winRectH/2,wz+zs*(winW/2+jW/2)));
+        scene.add(mk(new THREE.BoxGeometry(jD,winRectH+0.2,jW),winStoneMat,winX,winBottom+winRectH/2,wz+zs*(winW/2+jW/2)));
         // Impost block (transition from jamb to arch)
-        scene.add(mk(new THREE.BoxGeometry(jD+0.03,0.08,jW+0.06),winStoneMat,winX-(winSide*jD/2),winBottom+winRectH+0.04,wz+zs*(winW/2+jW/2)));
+        scene.add(mk(new THREE.BoxGeometry(jD+0.03,0.08,jW+0.06),winStoneMat,winX,winBottom+winRectH+0.04,wz+zs*(winW/2+jW/2)));
       }
       // ── Smooth semicircular arch ──
       const archCY=winBottom+winRectH;
       const archGeo=new THREE.TorusGeometry(winArchR,0.09,8,24,Math.PI);
       const archMesh=new THREE.Mesh(archGeo,winStoneMat);
-      archMesh.position.set(winX-(winSide*0.01),archCY,wz);
+      archMesh.position.set(winX+(winSide*0.01),archCY,wz);
       archMesh.rotation.y=winSide*(-Math.PI/2);
       scene.add(archMesh);
       // Keystone
-      scene.add(mk(new THREE.BoxGeometry(jD+0.03,0.2,0.18),MS.gold,winX-(winSide*jD/2),archCY+winArchR,wz));
+      scene.add(mk(new THREE.BoxGeometry(jD+0.03,0.2,0.18),MS.gold,winX,archCY+winArchR,wz));
       // ── Wide stone sill ──
-      scene.add(mk(new THREE.BoxGeometry(winRecess+0.15,0.1,winW+jW*2+0.14),winStoneMat,winX-(winSide*winRecess/2),winBottom-0.05,wz));
-      scene.add(mk(new THREE.BoxGeometry(winRecess+0.18,0.03,winW+jW*2+0.18),MS.gold,winX-(winSide*winRecess/2),winBottom+0.005,wz));
-      // ── Glass — nearly transparent, letting light flood in ──
-      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.08,winRectH+winArchR*0.4),winGlassMat);
-      glass.rotation.y=winSide*(-Math.PI/2);
-      glass.position.set(winX-(winSide*winRecess*0.7),winCenterY,wz);
-      scene.add(glass);
-      // ── Sky/landscape behind — bright and airy ──
+      scene.add(mk(new THREE.BoxGeometry(0.2,0.1,winW+jW*2+0.14),winStoneMat,winX,winBottom-0.05,wz));
+      scene.add(mk(new THREE.BoxGeometry(0.22,0.03,winW+jW*2+0.18),MS.gold,winX,winBottom+0.005,wz));
+      // ── Landscape OUTSIDE the wall — visible through the opening ──
       const skyMat=new THREE.MeshBasicMaterial({map:tuscanTex.clone(),side:THREE.DoubleSide});
-      const sky=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.1,winRectH+winArchR*0.35),skyMat);
+      const sky=new THREE.Mesh(new THREE.PlaneGeometry(winW+0.5,winRectH+winArchR*0.5),skyMat);
       sky.rotation.y=winSide*(-Math.PI/2);
-      sky.position.set(winX-(winSide*(winRecess*0.7+0.01)),winCenterY,wz);
+      sky.position.set(winX+(winSide*0.3),winCenterY,wz);
       scene.add(sky);
-      // ── Elegant thin mullions (cross pattern) ──
-      scene.add(mk(new THREE.BoxGeometry(0.02,0.02,winW*0.85),winStoneMat,winX-(winSide*winRecess*0.7),winCenterY-winRectH*0.15,wz));
-      scene.add(mk(new THREE.BoxGeometry(0.02,winRectH*0.65,0.02),winStoneMat,winX-(winSide*winRecess*0.7),winCenterY-winArchR*0.1,wz));
+      // ── Glass — flush with wall, nearly invisible ──
+      const glass=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.04,winRectH+winArchR*0.4),winGlassMat);
+      glass.rotation.y=winSide*(-Math.PI/2);
+      glass.position.set(winX+(winSide*0.01),winCenterY,wz);
+      scene.add(glass);
+      // ── Thin mullions (cross pattern) on glass plane ──
+      scene.add(mk(new THREE.BoxGeometry(0.025,0.025,winW*0.85),winStoneMat,winX+(winSide*0.02),winCenterY-winRectH*0.15,wz));
+      scene.add(mk(new THREE.BoxGeometry(0.025,winRectH*0.65,0.025),winStoneMat,winX+(winSide*0.02),winCenterY-winArchR*0.1,wz));
       // ── Bright natural light flooding in ──
       if(winLightCount<10){
         const sunBeam=new THREE.PointLight("#FFF8E8",0.8,12);
