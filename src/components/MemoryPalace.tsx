@@ -380,11 +380,11 @@ export default function MemoryPalace(){
         if (view==="corridor"&&activeWing) {
           return <ActionMenu
             accent={wingData?.accent||T.color.terracotta}
-            primary={{ icon: "\u{1F527}", label: "Manage Rooms", action: ()=>setShowRoomManager(true) }}
+            primary={{ icon: "\uD83C\uDF99\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) }}
             secondary={[
               { icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: ()=>setShowCorridorGallery(true) },
               { icon: "\uD83C\uDF0D", label: "Memory Map", action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
-              { icon: "\uD83C\uDF99\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) },
+              { icon: "\u{1F527}", label: "Manage Rooms", action: ()=>setShowRoomManager(true) },
             ]}
           />;
         }
@@ -551,8 +551,8 @@ export default function MemoryPalace(){
         onClick={()=>setShowUpgradePrompt(false)}>
         <div onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:18,padding:"32px 36px",maxWidth:380,textAlign:"center",boxShadow:"0 8px 40px rgba(0,0,0,.18)"}}>
           <div style={{fontSize:40,marginBottom:12}}>{"🔒"}</div>
-          <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,marginBottom:8}}>Locked Room</h3>
-          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,lineHeight:1.5,marginBottom:20}}>Upgrade to unlock additional rooms in this wing.</p>
+          <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,marginBottom:8}}>{view==="entrance"?"Locked Wing":"Locked Room"}</h3>
+          <p style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,lineHeight:1.5,marginBottom:20}}>{view==="entrance"?"Upgrade to unlock additional wings in your palace.":"Upgrade to unlock additional rooms in this wing."}</p>
           <button onClick={()=>setShowUpgradePrompt(false)}
             style={{fontFamily:T.font.body,fontSize:15,fontWeight:600,padding:"12px 32px",borderRadius:10,border:"none",
               background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer"}}>
