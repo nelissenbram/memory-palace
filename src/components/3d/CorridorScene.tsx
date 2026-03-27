@@ -356,12 +356,22 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       // ── Wide stone sill ──
       scene.add(mk(new THREE.BoxGeometry(0.2,0.1,winW+jW*2+0.14),winStoneMat,winX,winBottom-0.05,wz));
       scene.add(mk(new THREE.BoxGeometry(0.22,0.03,winW+jW*2+0.18),MS.gold,winX,winBottom+0.005,wz));
-      // ── Bright sky glow — simple emissive plane behind wall (no landscape texture) ──
+      // ── Bright sky glow — simple emissive plane behind wall ──
       const skyGlowMat=new THREE.MeshBasicMaterial({color:"#E8F0FA",side:THREE.DoubleSide});
       const skyGlow=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.1,winH-0.1),skyGlowMat);
       skyGlow.rotation.y=winSide*(-Math.PI/2);
       skyGlow.position.set(winX+(winSide*0.15),winCenterY,wz);
       scene.add(skyGlow);
+      // ── Mullion grid (square glass dividers) ──
+      const mullMat=winStoneMat;
+      const mullThick=0.03;
+      // Horizontal bars (3 rows dividing window into 4 panes)
+      for(let mh=1;mh<=3;mh++){
+        const my=winBottom+mh*(winRectH/4);
+        scene.add(mk(new THREE.BoxGeometry(mullThick,mullThick,winW-0.12),mullMat,winX+(winSide*0.02),my,wz));
+      }
+      // Vertical bar (center, dividing into 2 columns)
+      scene.add(mk(new THREE.BoxGeometry(mullThick,winRectH-0.1,mullThick),mullMat,winX+(winSide*0.02),winBottom+winRectH/2,wz));
       // ── Bright natural light flooding in ──
       if(winLightCount<10){
         const sunBeam=new THREE.PointLight("#FFF8E8",0.8,12);
@@ -1141,8 +1151,9 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       }
       for (let li = 1; li <= lampCount; li++) {
         const lz = -cL / 2 + li * lampSpacing;
-        // Skip if too close to a door or niche on this wall
+        // Skip if too close to a door, niche, or window on this wall
         if (solidWallDoorZs.some(dz => Math.abs(lz - dz) < 1.8)) continue;
+        if (validWinPositions.some(wz => Math.abs(lz - wz) < winHalfGap + 0.5)) continue;
         const lx = nicheWall * (cW / 2 - 0.03);
         // Wall bracket arm
         scene.add(mk(new THREE.BoxGeometry(0.04, 0.04, 0.04), lampBracketMat, lx, 2.6, lz));
