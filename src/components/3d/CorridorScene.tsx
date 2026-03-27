@@ -805,9 +805,87 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       for(let i=0;i<Math.floor(cL/4);i++){const bz=-cL/2+2+i*4;scene.add(mk(new THREE.BoxGeometry(cW-.3,.15,.12),MS.trim,0,cH-.08,bz));}
     }
 
-    // ── WALLS + WAINSCOTING (varies by wing) ──
+    // ── PRE-COMPUTE WINDOW POSITIONS (needed before walls to cut openings) ──
     const inlayCount = hasLockedNiche ? 1 : 0;
-    for(let s of[-1,1]){const wm=new THREE.Mesh(new THREE.PlaneGeometry(cL,cH),MS.wall);wm.rotation.y=s*(-Math.PI/2);wm.position.set(s*(cW/2),cH/2,0);scene.add(wm);}
+    const winW=2.0,winH=cH*0.7,winBottom=1.0;
+    const winCenterY=winBottom+winH/2;
+    const winArchR=winW/2;
+    const winRectH=winH-winArchR;
+    const winHalfGap=winW/2+0.15; // half-width of wall gap per window
+    // Collect door z-positions on solid wall (side=-1)
+    const solidWallDoorZsForWin: number[]=[];
+    for(let i=0;i<rooms.length;i++){
+      if(i%2===0) solidWallDoorZsForWin.push(cL/2-5.5-i*C.sp);
+    }
+    if(hasLockedNiche){
+      for(let ii=0;ii<inlayCount;ii++){
+        if(ii%2===0) solidWallDoorZsForWin.push(-cL/2+5.5+ii*C.sp);
+      }
+    }
+    // Generate window z-positions on solid wall
+    const finalWinPositions: number[]=[];
+    // Windows opposite each door on side=1 (odd-indexed rooms)
+    for(let i=0;i<rooms.length;i++){
+      if(i%2!==0) finalWinPositions.push(cL/2-5.5-i*C.sp);
+    }
+    // Extra windows between doors on solid wall
+    const solidDoorsW=[...solidWallDoorZsForWin].sort((a,b)=>a-b);
+    for(let i=0;i<solidDoorsW.length-1;i++){
+      const mid=(solidDoorsW[i]+solidDoorsW[i+1])/2;
+      const tooCloseW=finalWinPositions.some(wz=>Math.abs(mid-wz)<2.5)||solidDoorsW.some(dz=>Math.abs(mid-dz)<1.8);
+      if(!tooCloseW) finalWinPositions.push(mid);
+    }
+    // Filter: skip if out of bounds or overlapping doors
+    const validWinPositions=finalWinPositions.filter(wz=>
+      wz<=cL/2-3&&wz>=-cL/2+3&&!solidWallDoorZsForWin.some(dz=>Math.abs(wz-dz)<2.0)
+    ).sort((a,b)=>a-b);
+
+    // ── WALLS + WAINSCOTING (varies by wing) ──
+    // Side=1 wall (colonnade side in Roman) — single plane
+    {const wm=new THREE.Mesh(new THREE.PlaneGeometry(cL,cH),MS.wall);wm.rotation.y=1*(-Math.PI/2);wm.position.set(1*(cW/2),cH/2,0);scene.add(wm);}
+    // Side=-1 wall (solid wall) — split into segments with gaps for windows
+    {
+      const wallZones=[...validWinPositions].sort((a,b)=>a-b);
+      let segStart=-cL/2;
+      const wallSegs:{start:number,end:number}[]=[];
+      for(const wz of wallZones){
+        const gapL=wz-winHalfGap;
+        const gapR=wz+winHalfGap;
+        if(gapL>segStart+0.1) wallSegs.push({start:segStart,end:gapL});
+        segStart=gapR;
+      }
+      if(cL/2>segStart+0.1) wallSegs.push({start:segStart,end:cL/2});
+      for(const seg of wallSegs){
+        const segLen=seg.end-seg.start;
+        const segCenter=(seg.start+seg.end)/2;
+        // Full-height wall segment
+        const wallMesh=new THREE.Mesh(new THREE.PlaneGeometry(segLen,cH),MS.wall);
+        wallMesh.rotation.y=-1*(-Math.PI/2);
+        wallMesh.position.set(-1*(cW/2),cH/2,segCenter);
+        scene.add(wallMesh);
+      }
+      // Fill above and below each window opening (wall material)
+      for(const wz of validWinPositions){
+        const wx=-1*(cW/2);
+        // Wall below window
+        if(winBottom>0.01){
+          const belowH=winBottom;
+          const below=new THREE.Mesh(new THREE.PlaneGeometry(winW+0.3,belowH),MS.wall);
+          below.rotation.y=-1*(-Math.PI/2);
+          below.position.set(wx,belowH/2,wz);
+          scene.add(below);
+        }
+        // Wall above window
+        const winTop=winBottom+winRectH+winArchR;
+        if(winTop<cH-0.01){
+          const aboveH=cH-winTop;
+          const above=new THREE.Mesh(new THREE.PlaneGeometry(winW+0.3,aboveH),MS.wall);
+          above.rotation.y=-1*(-Math.PI/2);
+          above.position.set(wx,winTop+aboveH/2,wz);
+          scene.add(above);
+        }
+      }
+    }
     scene.add(mk(new THREE.PlaneGeometry(cW,cH),MS.wall,0,cH/2,-cL/2));
     const wB=new THREE.Mesh(new THREE.PlaneGeometry(cW,cH),MS.wall);wB.rotation.y=Math.PI;wB.position.set(0,cH/2,cL/2);scene.add(wB);
     for(let s of[-1,1]){
@@ -822,6 +900,13 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         if (inlaySide === s) {
           doorZonesForSide.push({ center: inlayZ, halfW: 1.3 });
           occupiedZones.push({ center: inlayZ, halfW: 1.5 });
+        }
+      }
+      // Window zones on the solid wall (side=-1) — skip wainscoting/panels here
+      if (s === -1) {
+        for (const wz of validWinPositions) {
+          doorZonesForSide.push({ center: wz, halfW: winHalfGap });
+          occupiedZones.push({ center: wz, halfW: winHalfGap + 0.2 });
         }
       }
       // Room doors near entrance (high z, counting from entrance portal)
@@ -877,51 +962,13 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       }
     }
 
-    // ═══ TALL ARCHED WINDOWS — large, frequent, flooding the corridor with light ═══
-    const winW=2.0,winH=cH*0.7,winBottom=1.0;
-    const winCenterY=winBottom+winH/2;
-    const winArchR=winW/2;
-    const winRectH=winH-winArchR;
-    const winRecess=0.4;
+    // ═══ TALL ARCHED WINDOWS — render into wall openings ═══
     const winStoneMat=new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.4,metalness:.05});
     const winGlassMat=new THREE.MeshPhysicalMaterial({color:"#CEE4F4",transparent:true,opacity:0.08,roughness:0.01,metalness:0.0,transmission:0.85,thickness:0.05,side:THREE.DoubleSide});
-    // Place windows on solid wall (side=-1) at regular intervals — one between every pair of doors
-    const winSide=-1; // solid wall in Roman style
+    const winSide=-1;
     const winX=winSide*(cW/2);
-    // Generate window positions: between each pair of adjacent doors on this wall, plus extra gaps
-    const winPositions: number[]=[];
-    // Place a window at every door z-position on the OPPOSITE wall (side=1 doors = odd-indexed)
-    for(let i=0;i<rooms.length;i++){
-      const doorSide=i%2===0?-1:1;
-      if(doorSide!==-winSide)continue; // only between doors on the opposite wall
-      winPositions.push(cL/2-5.5-i*C.sp);
-    }
-    // Also add windows between doors on the solid wall (midpoint between even-indexed doors)
-    const solidDoors: number[]=[];
-    for(let i=0;i<rooms.length;i++){
-      if(i%2===0) solidDoors.push(cL/2-5.5-i*C.sp);
-    }
-    for(let i=0;i<solidDoors.length-1;i++){
-      const mid=(solidDoors[i]+solidDoors[i+1])/2;
-      // Only add if not too close to existing window or door
-      const tooClose=winPositions.some(wz=>Math.abs(mid-wz)<2.5)||solidDoors.some(dz=>Math.abs(mid-dz)<1.8);
-      if(!tooClose) winPositions.push(mid);
-    }
-    // Skip windows that overlap with doors on the solid wall
-    const solidWallAllDoorZs: number[]=[];
-    for(let i=0;i<rooms.length;i++){
-      if(i%2===0) solidWallAllDoorZs.push(cL/2-5.5-i*C.sp);
-    }
-    if(hasLockedNiche){
-      for(let ii=0;ii<inlayCount;ii++){
-        if(ii%2===0) solidWallAllDoorZs.push(-cL/2+5.5+ii*C.sp);
-      }
-    }
-    winPositions.sort((a,b)=>a-b);
     let winLightCount=0;
-    for(const wz of winPositions){
-      if(wz>cL/2-3||wz<-cL/2+3)continue;
-      if(solidWallAllDoorZs.some(dz=>Math.abs(wz-dz)<2.0))continue;
+    for(const wz of validWinPositions){
       // ── Stone frame — hefty jambs flush with wall ──
       const jW=0.16,jD=0.1;
       for(const zs of[-1,1]){
@@ -1007,6 +1054,8 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const allDoorZones: number[] = [];
     for(let ii=0;ii<inlayCount;ii++) allDoorZones.push(-cL/2+5.5+ii*C.sp);
     for(let i=0;i<rooms.length;i++) allDoorZones.push(cL/2-5.5-i*C.sp);
+    // Include window positions so sconces/lamps skip them too
+    for(const wz of validWinPositions) allDoorZones.push(wz);
     for(let i=0;i<rooms.length;i++){
       const sz=cL/2-5.5-i*C.sp-C.sp*0.25;
       if(sz>cL/2-3||sz<-cL/2+3)continue;
