@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const STORAGE_KEY = "mp_feature_spotlight";
 
@@ -17,34 +18,30 @@ const CARDS: SpotlightCard[] = [
   {
     id: "import_photos",
     icon: "\u{1F4F7}",
-    title: "Import Your Photos",
-    description:
-      "Bring in photos from your phone or computer. Upload one by one, or use Mass Import to add entire folders at once.",
-    cta: "Open Import",
+    title: "importTitle",
+    description: "importDesc",
+    cta: "importCta",
   },
   {
     id: "record_story",
     icon: "\u{1F3A4}",
-    title: "Record Your Story",
-    description:
-      "Our AI interviewer guides you through your life story with thoughtful questions. Just talk — we turn it into memories.",
-    cta: "Start Interview",
+    title: "interviewTitle",
+    description: "interviewDesc",
+    cta: "interviewCta",
   },
   {
     id: "time_capsule",
     icon: "\u{1F4E6}",
-    title: "Create a Time Capsule",
-    description:
-      "Fill a room with messages, photos, and videos for someone special. Set it to open on a future date.",
-    cta: "Create One",
+    title: "capsuleTitle",
+    description: "capsuleDesc",
+    cta: "capsuleCta",
   },
   {
     id: "share_family",
     icon: "\u{1F91D}",
-    title: "Share with Family",
-    description:
-      "Invite loved ones to view your rooms or contribute their own memories. Building a palace is better together.",
-    cta: "Share a Room",
+    title: "shareTitle",
+    description: "shareDesc",
+    cta: "shareCta",
   },
 ];
 
@@ -81,6 +78,7 @@ export default function FeatureSpotlight({
   onShare,
 }: FeatureSpotlightProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("featureSpotlight");
   const [currentCard, setCurrentCard] = useState<SpotlightCard | null>(null);
   const [visible, setVisible] = useState(false);
   const [exiting, setExiting] = useState(false);
@@ -207,7 +205,7 @@ export default function FeatureSpotlight({
             lineHeight: 1.2,
           }}
         >
-          {currentCard.title}
+          {t(currentCard.title)}
         </h2>
 
         {/* Description */}
@@ -223,7 +221,7 @@ export default function FeatureSpotlight({
             marginRight: "auto",
           }}
         >
-          {currentCard.description}
+          {t(currentCard.description)}
         </p>
 
         {/* Action button */}
@@ -255,7 +253,7 @@ export default function FeatureSpotlight({
               "0 4px 16px rgba(193, 127, 89, 0.3)";
           }}
         >
-          {currentCard.cta}
+          {t(currentCard.cta)}
         </button>
 
         {/* Skip */}
@@ -274,7 +272,7 @@ export default function FeatureSpotlight({
               padding: "8px 16px",
             }}
           >
-            {remaining <= 1 ? "Close" : "Skip — show me the next one"}
+            {remaining <= 1 ? t("close") : t("skipShowNext")}
           </button>
         </div>
       </div>

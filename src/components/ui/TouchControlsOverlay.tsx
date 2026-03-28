@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const LS_KEY = "mp_touch_tutorial_seen";
 
@@ -9,6 +10,7 @@ interface TouchControlsOverlayProps {
 }
 
 export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps) {
+  const { t } = useTranslation("touchControls");
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -68,8 +70,8 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
           }}
         >
           {isCorridor
-            ? "Drag to look around \u00B7 Tap a door to enter"
-            : "Left side: move \u00B7 Right side: look \u00B7 Tap memories to view"}
+            ? t("desktopHint")
+            : t("mobileHint")}
         </div>
 
         {/* Diagram for room view */}
@@ -103,7 +105,7 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
                 <circle cx="10" cy="10" r="3" fill="rgba(250,250,247,0.6)" />
                 <path d="M10 4L10 7M10 13L10 16M4 10L7 10M13 10L16 10" stroke="rgba(250,250,247,0.4)" strokeWidth="1" />
               </svg>
-              <span style={{ fontFamily: T.font.body, fontSize: 9, color: "rgba(250,250,247,0.7)" }}>Move</span>
+              <span style={{ fontFamily: T.font.body, fontSize: 9, color: "rgba(250,250,247,0.7)" }}>{t("move")}</span>
             </div>
             {/* Right half — camera */}
             <div
@@ -121,7 +123,7 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
                 <circle cx="10" cy="10" r="7" stroke="rgba(250,250,247,0.5)" strokeWidth="1.5" fill="none" />
                 <path d="M10 5L10 10L14 8" stroke="rgba(250,250,247,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span style={{ fontFamily: T.font.body, fontSize: 9, color: "rgba(250,250,247,0.7)" }}>Look</span>
+              <span style={{ fontFamily: T.font.body, fontSize: 9, color: "rgba(250,250,247,0.7)" }}>{t("look")}</span>
             </div>
           </div>
         )}
@@ -142,7 +144,7 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
             letterSpacing: 0.5,
           }}
         >
-          Got it
+          {t("gotIt")}
         </button>
       </div>
     </div>

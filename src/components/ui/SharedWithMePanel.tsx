@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { getAcceptedShares } from "@/lib/auth/invite-actions";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface AcceptedShare {
   id: string;
@@ -23,6 +24,7 @@ interface SharedWithMePanelProps {
 }
 
 export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedWithMePanelProps) {
+  const { t } = useTranslation("sharedWithMe");
   const isMobile = useIsMobile();
   const [shares, setShares] = useState<AcceptedShare[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,10 +64,10 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <div>
             <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
-              Shared with me
+              {t("title")}
             </h3>
             <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "4px 0 0" }}>
-              {shares.length > 0 ? `${shares.length} shared room${shares.length !== 1 ? "s" : ""}` : "No shared rooms yet"}
+              {shares.length > 0 ? t("roomCount", { count: String(shares.length) }) : t("noRooms")}
             </p>
           </div>
           <button onClick={onClose} style={{
@@ -78,16 +80,16 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
 
         {loading ? (
           <div style={{ textAlign: "center", padding: 40, color: T.color.muted, fontFamily: T.font.body, fontSize: 13 }}>
-            Loading shared rooms...
+            {t("loading")}
           </div>
         ) : shares.length === 0 ? (
           <div style={{ textAlign: "center", padding: 40 }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>&#x1F3DB;&#xFE0F;</div>
             <p style={{ fontFamily: T.font.display, fontSize: 18, color: T.color.charcoal, margin: "0 0 8px" }}>
-              No shared rooms yet
+              {t("noRooms")}
             </p>
             <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, margin: 0, lineHeight: 1.6 }}>
-              When someone shares a room from their Memory Palace with you, it will appear here.
+              {t("emptyDesc")}
             </p>
           </div>
         ) : (
@@ -110,10 +112,10 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
                     </div>
                     <div>
                       <div style={{ fontFamily: T.font.body, fontSize: 13, fontWeight: 600, color: T.color.charcoal }}>
-                        {group.ownerName}&rsquo;s Palace
+                        {group.ownerName}{t("palace")}
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted }}>
-                        {group.rooms.length} room{group.rooms.length !== 1 ? "s" : ""} shared
+                        {t("roomsShared", { count: String(group.rooms.length) })}
                       </div>
                     </div>
                   </div>
@@ -151,7 +153,7 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
                               {share.permission}
                             </span>
                             <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.sandstone }}>
-                              {share.memoryCount} memories
+                              {t("memories", { count: String(share.memoryCount) })}
                             </span>
                           </div>
                         </div>

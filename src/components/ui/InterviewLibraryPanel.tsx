@@ -5,6 +5,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { INTERVIEW_TEMPLATES, WING_ID_TO_LABEL, getTemplatesByWing } from "@/lib/constants/interviews";
 import type { InterviewTemplate } from "@/lib/constants/interviews";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface InterviewLibraryPanelProps {
   onClose: () => void;
@@ -13,13 +14,14 @@ interface InterviewLibraryPanelProps {
 
 const WING_ORDER = ["family", "travel", "childhood", "career", "creativity", "general"];
 
-const difficultyColors: Record<string, { bg: string; text: string; label: string }> = {
-  light: { bg: "#4A674118", text: "#6A8A62", label: "Light" },
-  medium: { bg: "#C17F5918", text: "#C17F59", label: "Medium" },
-  deep: { bg: "#7A5A9E18", text: "#9A7AB8", label: "Deep" },
+const difficultyColors: Record<string, { bg: string; text: string; labelKey: string }> = {
+  light: { bg: "#4A674118", text: "#6A8A62", labelKey: "difficultyLight" },
+  medium: { bg: "#C17F5918", text: "#C17F59", labelKey: "difficultyMedium" },
+  deep: { bg: "#7A5A9E18", text: "#9A7AB8", labelKey: "difficultyDeep" },
 };
 
 export default function InterviewLibraryPanel({ onClose, highlightWingId }: InterviewLibraryPanelProps) {
+  const { t } = useTranslation("interviewLibrary");
   const isMobile = useIsMobile();
   const { sessions, sessionsLoaded, loadHistory, startSession, resumeSession, setShowLibrary } = useInterviewStore();
   const [filter, setFilter] = useState<string>(highlightWingId || "all");
@@ -76,10 +78,10 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div>
               <h2 style={{ fontFamily: T.font.display, fontSize: 24, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
-                Life Interviews
+                {t("title")}
               </h2>
               <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, margin: "4px 0 0" }}>
-                Guided conversations about your life story
+                {t("subtitle")}
               </p>
             </div>
             <button onClick={onClose} style={{
@@ -96,7 +98,7 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
 
           {/* Wing filter tabs */}
           <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 4 }}>
-            <FilterTab label="All" active={filter === "all"} onClick={() => setFilter("all")} />
+            <FilterTab label={t("all")} active={filter === "all"} onClick={() => setFilter("all")} />
             {WING_ORDER.map((wid) => (
               <FilterTab key={wid} label={WING_ID_TO_LABEL[wid] || wid} active={filter === wid} onClick={() => setFilter(wid)} highlight={wid === highlightWingId} />
             ))}
@@ -119,14 +121,14 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
                     {WING_ID_TO_LABEL[wingId]}
                   </h3>
                   {templates.map((tmpl) => (
-                    <TemplateCard key={tmpl.id} template={tmpl} completion={completionMap[tmpl.id]} onStart={() => handleStart(tmpl)} isMobile={isMobile} />
+                    <TemplateCard key={tmpl.id} template={tmpl} completion={completionMap[tmpl.id]} onStart={() => handleStart(tmpl)} isMobile={isMobile} t={t} />
                   ))}
                 </div>
               );
             })
           ) : (
             filteredTemplates.map((tmpl) => (
-              <TemplateCard key={tmpl.id} template={tmpl} completion={completionMap[tmpl.id]} onStart={() => handleStart(tmpl)} isMobile={isMobile} />
+              <TemplateCard key={tmpl.id} template={tmpl} completion={completionMap[tmpl.id]} onStart={() => handleStart(tmpl)} isMobile={isMobile} t={t} />
             ))
           )}
         </div>
@@ -149,11 +151,12 @@ function FilterTab({ label, active, onClick, highlight }: { label: string; activ
   );
 }
 
-function TemplateCard({ template, completion, onStart, isMobile }: {
+function TemplateCard({ template, completion, onStart, isMobile, t }: {
   template: InterviewTemplate;
   completion?: { status: string; sessionId: string };
   onStart: () => void;
   isMobile: boolean;
+  t: (key: string, params?: Record<string, string>) => string;
 }) {
   const diff = difficultyColors[template.difficulty];
   const isCompleted = completion?.status === "completed";
@@ -190,14 +193,14 @@ function TemplateCard({ template, completion, onStart, isMobile }: {
               fontFamily: T.font.body, fontSize: 10, fontWeight: 600,
               color: T.color.sage, background: `${T.color.sage}15`,
               padding: "2px 8px", borderRadius: 8,
-            }}>Done</span>
+            }}>{t("done")}</span>
           )}
           {isInProgress && (
             <span style={{
               fontFamily: T.font.body, fontSize: 10, fontWeight: 600,
               color: T.color.terracotta, background: `${T.color.terracotta}15`,
               padding: "2px 8px", borderRadius: 8,
-            }}>Continue</span>
+            }}>{t("continueLabel")}</span>
           )}
         </div>
 
@@ -215,13 +218,13 @@ function TemplateCard({ template, completion, onStart, isMobile }: {
             color: diff.text, background: diff.bg,
             padding: "2px 8px", borderRadius: 8,
           }}>
-            {diff.label}
+            {t(diff.labelKey)}
           </span>
           <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.sandstone }}>
-            ~{template.estimatedTotalMinutes} min
+            ~{template.estimatedTotalMinutes} {t("minutes")}
           </span>
           <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.sandstone }}>
-            {template.questions.length} questions
+            {template.questions.length} {t("questions")}
           </span>
         </div>
       </div>

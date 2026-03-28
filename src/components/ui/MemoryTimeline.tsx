@@ -2,12 +2,13 @@
 import { useMemo } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 
-const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTH_KEYS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
 
 interface TimelineEntry {
   mem: Mem;
@@ -32,6 +33,7 @@ interface MemoryTimelineProps {
 
 export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
   const isMobile = useIsMobile();
+  const { t, locale } = useTranslation("memoryTimeline");
   const { userMems, setSelMem } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
 
@@ -84,7 +86,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
       const y = entry.date.getFullYear();
       const m = entry.date.getMonth();
       if (!current || current.year !== y || current.month !== m) {
-        current = { year: y, month: m, label: `${MONTH_NAMES[m]} ${y}`, entries: [] };
+        current = { year: y, month: m, label: `${MONTH_KEYS[m]}|${y}`, entries: [] };
         grouped.push(current);
       }
       current.entries.push(entry);
@@ -144,7 +146,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                 margin: 0,
               }}
             >
-              Memory Timeline
+              {t("title")}
             </h3>
             <p
               style={{
@@ -154,7 +156,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                 margin: "4px 0 0",
               }}
             >
-              {totalCount} memories across time
+              {t("memoriesAcrossTime", { count: String(totalCount) })}
             </p>
           </div>
           <button
@@ -213,7 +215,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                     margin: 0,
                   }}
                 >
-                  {group.label}
+                  {t(group.label.split("|")[0])} {group.label.split("|")[1]}
                 </h4>
               </div>
 
@@ -333,7 +335,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                         <span>{entry.roomName}</span>
                         <span style={{ color: T.color.sandstone }}>{"  \u00B7  "}</span>
                         <span>
-                          {entry.date.toLocaleDateString("en-US", {
+                          {entry.date.toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", {
                             month: "short",
                             day: "numeric",
                           })}
@@ -390,7 +392,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                   color: T.color.muted,
                 }}
               >
-                No dated memories yet
+                {t("noMemories")}
               </p>
               <p
                 style={{
@@ -400,7 +402,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                   marginTop: 4,
                 }}
               >
-                Memories with dates will appear here on a timeline
+                {t("noMemoriesDesc")}
               </p>
             </div>
           )}

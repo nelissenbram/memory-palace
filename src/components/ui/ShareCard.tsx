@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { T } from "@/lib/theme";
 import type { Mem } from "@/lib/constants/defaults";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface ShareCardProps {
   mem?: Mem;
@@ -57,6 +58,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 }
 
 export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon, memCount, accent, onClose }: ShareCardProps) {
+  const { t } = useTranslation("shareCard");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
@@ -313,20 +315,20 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
           {/* Action buttons */}
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
             <button onClick={handleCopyLink} style={{ ...btnBase, flex: 1, background: copied ? `${accent}15` : T.color.white, color: copied ? accent : T.color.charcoal }}>
-              {copied ? "\u2713 Copied" : "\uD83D\uDD17 Copy link"}
+              {copied ? `\u2713 ${t("copied")}` : `\uD83D\uDD17 ${t("copyLink")}`}
             </button>
             <button onClick={handleDownload} style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.charcoal }}>
-              {"\u2B07\uFE0F Download"}
+              {`\u2B07\uFE0F ${t("download")}`}
             </button>
             {canShare && (
               <button onClick={handleShare} style={{ ...btnBase, flex: 1, background: accent, color: T.color.white, border: "none" }}>
-                {"\uD83D\uDCE4 Share"}
+                {`\uD83D\uDCE4 ${t("share")}`}
               </button>
             )}
           </div>
 
           {/* Quick share platforms */}
-          <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 8 }}>Share to</div>
+          <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 8 }}>{t("shareTo")}</div>
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
             {socialLinks.map(s => (
               <a key={s.name} href={s.url} target="_blank" rel="noopener noreferrer"
@@ -339,7 +341,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
 
           {/* Close */}
           <button onClick={onClose} style={{ width: "100%", padding: 12, fontFamily: T.font.body, fontSize: 13, background: "transparent", border: `1px solid ${T.color.cream}`, borderRadius: 10, cursor: "pointer", color: T.color.muted }}>
-            Close
+            {t("close")}
           </button>
         </div>
       </div>

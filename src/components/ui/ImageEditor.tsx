@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ── Filter presets ──
 interface FilterPreset {
@@ -11,16 +12,16 @@ interface FilterPreset {
 }
 
 const PRESETS: FilterPreset[] = [
-  { name: "Original", icon: "\u{2B55}", filter: "none" },
-  { name: "Warm", icon: "\u{1F525}", filter: "brightness(1.05) saturate(1.3) sepia(0.15)" },
-  { name: "Cool", icon: "\u{2744}\uFE0F", filter: "brightness(1.05) saturate(0.9) hue-rotate(15deg)" },
-  { name: "Vivid", icon: "\u{1F308}", filter: "saturate(1.6) contrast(1.1)" },
-  { name: "Soft", icon: "\u{2601}\uFE0F", filter: "brightness(1.08) contrast(0.9) saturate(0.85)" },
-  { name: "Vintage", icon: "\u{1F4F7}", filter: "sepia(0.4) contrast(1.1) brightness(0.95) saturate(0.8)" },
-  { name: "B&W", icon: "\u{1F3B9}", filter: "grayscale(1) contrast(1.1)" },
-  { name: "Dramatic", icon: "\u{1F3AD}", filter: "contrast(1.4) brightness(0.9) saturate(1.2)" },
-  { name: "Fade", icon: "\u{1F32B}\uFE0F", filter: "brightness(1.1) contrast(0.85) saturate(0.7)" },
-  { name: "Noir", icon: "\u{1F5A4}", filter: "grayscale(1) contrast(1.5) brightness(0.85)" },
+  { name: "filterOriginal", icon: "\u{2B55}", filter: "none" },
+  { name: "filterWarm", icon: "\u{1F525}", filter: "brightness(1.05) saturate(1.3) sepia(0.15)" },
+  { name: "filterCool", icon: "\u{2744}\uFE0F", filter: "brightness(1.05) saturate(0.9) hue-rotate(15deg)" },
+  { name: "filterVivid", icon: "\u{1F308}", filter: "saturate(1.6) contrast(1.1)" },
+  { name: "filterSoft", icon: "\u{2601}\uFE0F", filter: "brightness(1.08) contrast(0.9) saturate(0.85)" },
+  { name: "filterVintage", icon: "\u{1F4F7}", filter: "sepia(0.4) contrast(1.1) brightness(0.95) saturate(0.8)" },
+  { name: "filterBW", icon: "\u{1F3B9}", filter: "grayscale(1) contrast(1.1)" },
+  { name: "filterDramatic", icon: "\u{1F3AD}", filter: "contrast(1.4) brightness(0.9) saturate(1.2)" },
+  { name: "filterFade", icon: "\u{1F32B}\uFE0F", filter: "brightness(1.1) contrast(0.85) saturate(0.7)" },
+  { name: "filterNoir", icon: "\u{1F5A4}", filter: "grayscale(1) contrast(1.5) brightness(0.85)" },
 ];
 
 // ── Slider config ──
@@ -36,11 +37,11 @@ interface Adjustment {
 }
 
 const ADJUSTMENTS: Adjustment[] = [
-  { key: "brightness", label: "Brightness", min: 0.3, max: 2, default: 1, step: 0.05, unit: "", cssProp: "brightness" },
-  { key: "contrast", label: "Contrast", min: 0.3, max: 2, default: 1, step: 0.05, unit: "", cssProp: "contrast" },
-  { key: "saturate", label: "Saturation", min: 0, max: 2.5, default: 1, step: 0.05, unit: "", cssProp: "saturate" },
-  { key: "hueRotate", label: "Hue", min: -180, max: 180, default: 0, step: 5, unit: "deg", cssProp: "hue-rotate" },
-  { key: "blur", label: "Blur", min: 0, max: 10, default: 0, step: 0.5, unit: "px", cssProp: "blur" },
+  { key: "brightness", label: "brightness", min: 0.3, max: 2, default: 1, step: 0.05, unit: "", cssProp: "brightness" },
+  { key: "contrast", label: "contrast", min: 0.3, max: 2, default: 1, step: 0.05, unit: "", cssProp: "contrast" },
+  { key: "saturate", label: "saturation", min: 0, max: 2.5, default: 1, step: 0.05, unit: "", cssProp: "saturate" },
+  { key: "hueRotate", label: "hue", min: -180, max: 180, default: 0, step: 5, unit: "deg", cssProp: "hue-rotate" },
+  { key: "blur", label: "blur", min: 0, max: 10, default: 0, step: 0.5, unit: "px", cssProp: "blur" },
 ];
 
 type Tab = "presets" | "adjust" | "crop";
@@ -54,6 +55,7 @@ interface ImageEditorProps {
 
 export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: ImageEditorProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("imageEditor");
   const color = accent || T.color.terracotta;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -318,9 +320,9 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
   };
 
   const TABS: { key: Tab; label: string; icon: string }[] = [
-    { key: "presets", label: "Filters", icon: "\u{2728}" },
-    { key: "adjust", label: "Adjust", icon: "\u{1F39A}\uFE0F" },
-    { key: "crop", label: "Crop & Rotate", icon: "\u{1F5A8}\uFE0F" },
+    { key: "presets", label: t("filters"), icon: "\u{2728}" },
+    { key: "adjust", label: t("adjust"), icon: "\u{1F39A}\uFE0F" },
+    { key: "crop", label: t("cropRotate"), icon: "\u{1F5A8}\uFE0F" },
   ];
 
   return (
@@ -329,9 +331,9 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
 
         {/* Header */}
         <div style={{ padding: "16px 20px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${T.color.cream}` }}>
-          <div style={{ fontFamily: T.font.display, fontSize: 18, fontWeight: 500, color: T.color.charcoal }}>Edit Image</div>
+          <div style={{ fontFamily: T.font.display, fontSize: 18, fontWeight: 500, color: T.color.charcoal }}>{t("title")}</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 11, color: T.color.muted, cursor: "pointer" }}>Reset</button>
+            <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 11, color: T.color.muted, cursor: "pointer" }}>{t("reset")}</button>
             <button onClick={onCancel} style={{ width: 28, height: 28, borderRadius: 14, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
           </div>
         </div>
@@ -368,7 +370,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
                 <button key={p.name} onClick={() => setPreset(i)}
                   style={{ padding: "10px 4px", borderRadius: 10, border: preset === i ? `2px solid ${color}` : `1px solid ${T.color.cream}`, background: preset === i ? `${color}10` : T.color.white, cursor: "pointer", textAlign: "center", transition: "all .15s" }}>
                   <div style={{ fontSize: 18 }}>{p.icon}</div>
-                  <div style={{ fontFamily: T.font.body, fontSize: 9, color: preset === i ? color : T.color.muted, fontWeight: preset === i ? 600 : 400, marginTop: 3 }}>{p.name}</div>
+                  <div style={{ fontFamily: T.font.body, fontSize: 9, color: preset === i ? color : T.color.muted, fontWeight: preset === i ? 600 : 400, marginTop: 3 }}>{t(p.name)}</div>
                 </button>
               ))}
             </div>
@@ -380,7 +382,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
               {ADJUSTMENTS.map(a => (
                 <div key={a.key}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal, fontWeight: 500 }}>{a.label}</span>
+                    <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal, fontWeight: 500 }}>{t(a.label)}</span>
                     <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted }}>{adjustments[a.key]}{a.unit}</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -407,7 +409,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {/* Rotation */}
               <div>
-                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal, fontWeight: 500, marginBottom: 8 }}>Rotate</div>
+                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal, fontWeight: 500, marginBottom: 8 }}>{t("rotate")}</div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {[
                     { label: "0\u00B0", val: 0 },
@@ -425,10 +427,10 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
 
               {/* Crop presets */}
               <div>
-                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal, fontWeight: 500, marginBottom: 8 }}>Crop</div>
+                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal, fontWeight: 500, marginBottom: 8 }}>{t("crop")}</div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {[
-                    { label: "Free", ratio: 0 },
+                    { label: t("free"), ratio: 0 },
                     { label: "1:1", ratio: 1 },
                     { label: "4:3", ratio: 4 / 3 },
                     { label: "16:9", ratio: 16 / 9 },
@@ -445,12 +447,12 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
                   {cropActive && (
                     <button onClick={() => { setCropActive(false); setCropRect(null); }}
                       style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #D0606080", background: T.color.white, fontFamily: T.font.body, fontSize: 11, color: "#C05050", cursor: "pointer" }}>
-                      Clear crop
+                      {t("clearCrop")}
                     </button>
                   )}
                 </div>
                 {cropActive && <p style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, marginTop: 6 }}>
-                  {cropRect && cropRect.w > 10 ? "Crop region selected. Drag on image to adjust." : "Click and drag on the image to select crop region."}
+                  {cropRect && cropRect.w > 10 ? t("cropSelected") : t("cropInstruction")}
                 </p>}
               </div>
             </div>
@@ -459,10 +461,10 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
 
         {/* Footer: Save / Cancel */}
         <div style={{ padding: "12px 16px 16px", borderTop: `1px solid ${T.color.cream}`, display: "flex", gap: 10 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: 12, fontFamily: T.font.body, fontSize: 13, background: "transparent", border: `1px solid ${T.color.cream}`, borderRadius: 10, cursor: "pointer", color: T.color.muted }}>Cancel</button>
+          <button onClick={onCancel} style={{ flex: 1, padding: 12, fontFamily: T.font.body, fontSize: 13, background: "transparent", border: `1px solid ${T.color.cream}`, borderRadius: 10, cursor: "pointer", color: T.color.muted }}>{t("cancel")}</button>
           <button onClick={handleSave} disabled={saving}
             style={{ flex: 2, padding: 12, fontFamily: T.font.body, fontSize: 13, fontWeight: 600, background: saving ? `${T.color.sandstone}60` : color, border: "none", borderRadius: 10, cursor: saving ? "default" : "pointer", color: T.color.white }}>
-            {saving ? "Applying..." : "Apply changes"}
+            {saving ? t("applying") : t("applyChanges")}
           </button>
         </div>
       </div>

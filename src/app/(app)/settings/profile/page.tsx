@@ -147,7 +147,7 @@ export default function ProfilePage() {
     try {
       const response = await fetch("/api/export/zip");
       if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: "Export failed" }));
+        const err = await response.json().catch(() => ({ error: t("exportFailed") }));
         showToast(err.error || t("exportZipError"), "error");
         setExporting(false);
         return;
@@ -264,7 +264,7 @@ export default function ProfilePage() {
             {profile.avatar_url ? (
               <img
                 src={profile.avatar_url}
-                alt="Avatar"
+                alt=""
                 style={{
                   width: 72, height: 72, borderRadius: 36,
                   objectFit: "cover",

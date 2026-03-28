@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { WINGS } from "@/lib/constants/wings";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
@@ -68,6 +69,7 @@ interface ClusteredPin {
 
 export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("memoryMap");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredPin, setHoveredPin] = useState<ClusteredPin | null>(null);
@@ -230,10 +232,10 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
         }}>
           <div>
             <h2 style={{ fontFamily: T.font.display, fontSize: 24, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
-              {"\uD83C\uDF0D"} Memory Map
+              {"\uD83C\uDF0D"} {t("title")}
             </h2>
             <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "4px 0 0" }}>
-              {allLocMems.length} memories across {uniqueLocations} locations
+              {t("memoriesAcross", { memCount: String(allLocMems.length), locCount: String(uniqueLocations) })}
             </p>
           </div>
           <button onClick={onClose} style={{
@@ -257,7 +259,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
               fontFamily: T.font.body, fontSize: 11, fontWeight: !filterWing ? 600 : 400,
               color: !filterWing ? T.color.walnut : T.color.muted, cursor: "pointer", whiteSpace: "nowrap",
             }}
-          >All wings</button>
+          >{t("allWings")}</button>
           {WINGS.map(w => (
             <button key={w.id} onClick={() => setFilterWing(w.id)} style={{
               padding: "6px 14px", borderRadius: 8,
@@ -328,7 +330,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                       </div>
                     ))}
                     {pin.mems.length > 4 && (
-                      <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>+{pin.mems.length - 4} more</div>
+                      <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>{t("more", { count: String(pin.mems.length - 4) })}</div>
                     )}
                     <div style={{
                       position: "absolute", bottom: -4, left: "50%", transform: "translateX(-50%)",
@@ -353,9 +355,9 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                 padding: "24px 36px", borderRadius: 16, textAlign: "center",
               }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>{"\uD83C\uDF10"}</div>
-                <p style={{ fontFamily: T.font.display, fontSize: 18, color: "#FFF", margin: "0 0 4px" }}>No locations yet</p>
+                <p style={{ fontFamily: T.font.display, fontSize: 18, color: "#FFF", margin: "0 0 4px" }}>{t("noLocations")}</p>
                 <p style={{ fontFamily: T.font.body, fontSize: 12, color: "rgba(255,255,255,0.6)", margin: 0 }}>
-                  Add GPS coordinates to your memories to see them on the map
+                  {t("noLocationsDesc")}
                 </p>
               </div>
             </div>
@@ -378,7 +380,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                     {"\uD83D\uDCCD"} {selectedPin.locationName}
                   </h3>
                   <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "2px 0 0" }}>
-                    {selectedPin.mems.length} {selectedPin.mems.length === 1 ? "memory" : "memories"}
+                    {selectedPin.mems.length} {selectedPin.mems.length === 1 ? t("memory") : t("memories")}
                   </p>
                 </div>
                 <button onClick={() => setSelectedPin(null)} style={{
@@ -451,7 +453,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
           padding: "10px 24px 16px", display: "flex", gap: 16, flexShrink: 0,
           borderTop: `1px solid ${T.color.cream}`, alignItems: "center", flexWrap: "wrap",
         }}>
-          <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>Legend:</span>
+          <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("legend")}</span>
           {WINGS.map(w => (
             <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 5 }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: w.accent, border: "1px solid rgba(0,0,0,0.1)" }} />

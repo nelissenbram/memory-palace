@@ -2,21 +2,23 @@
 
 import { useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useNotificationStore } from "@/lib/stores/notificationStore";
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string, t: (key: string, params?: Record<string, string>) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t("justNow");
+  if (mins < 60) return t("minutesAgo", { count: String(mins) });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t("hoursAgo", { count: String(hrs) });
   const days = Math.floor(hrs / 24);
-  if (days === 1) return "yesterday";
-  return `${days}d ago`;
+  if (days === 1) return t("yesterday");
+  return t("daysAgo", { count: String(days) });
 }
 
 export default function NotificationBell() {
+  const { t } = useTranslation("notificationBell");
   const { notifications, open, loading, setOpen, toggle, load, markRead, markAllRead, unreadCount } =
     useNotificationStore();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -46,7 +48,7 @@ export default function NotificationBell() {
       {/* Bell button */}
       <button
         onClick={toggle}
-        title="Notifications"
+        title={t("title")}
         style={{
           width: 36,
           height: 36,
@@ -165,7 +167,7 @@ export default function NotificationBell() {
                 color: T.color.charcoal,
               }}
             >
-              Notifications
+              {t("title")}
             </span>
             {count > 0 && (
               <button
@@ -188,7 +190,7 @@ export default function NotificationBell() {
                   (e.currentTarget as HTMLElement).style.background = "none";
                 }}
               >
-                Mark all read
+                {t("markAllRead")}
               </button>
             )}
           </div>
@@ -205,7 +207,7 @@ export default function NotificationBell() {
                   color: T.color.muted,
                 }}
               >
-                Loading...
+                {t("loading")}
               </div>
             )}
 
@@ -226,7 +228,7 @@ export default function NotificationBell() {
                     color: T.color.muted,
                   }}
                 >
-                  No new notifications
+                  {t("noNew")}
                 </div>
                 <div
                   style={{
@@ -237,7 +239,7 @@ export default function NotificationBell() {
                     opacity: 0.7,
                   }}
                 >
-                  When collaborators add memories to your shared rooms, you&#39;ll see it here.
+                  {t("emptyDesc")}
                 </div>
               </div>
             )}
@@ -313,7 +315,7 @@ export default function NotificationBell() {
                       marginTop: 2,
                     }}
                   >
-                    {timeAgo(n.created_at)}
+                    {timeAgo(n.created_at, t)}
                   </div>
                 </div>
 

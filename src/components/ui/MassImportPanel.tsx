@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback, useEffect, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useImportStore, type ImportItem } from "@/lib/stores/importStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -44,6 +45,7 @@ function isFileTooLarge(file: File): boolean {
 // ═══ Main Panel ═══
 export default function MassImportPanel({ onClose, initialWingId, initialRoomId }: Props) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("massImport");
   const store = useImportStore();
   const addMemory = useMemoryStore((s) => s.addMemory);
   const { getWings, getWingRooms } = useRoomStore();
@@ -253,11 +255,11 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               <div>
                 <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 600, color: T.color.charcoal, margin: 0 }}>Mass Import</h3>
                 <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "2px 0 0" }}>
-                  {step === "drop" && "Drop files to begin"}
-                  {step === "processing" && `Processing ${progress.processed}/${progress.total}...`}
-                  {step === "review" && "Review and confirm placements"}
-                  {step === "committing" && `Committing ${progress.committed}/${progress.total}...`}
-                  {step === "done" && "Import complete!"}
+                  {step === "drop" && t("dropToBegin")}
+                  {step === "processing" && t("processing", { processed: String(progress.processed), total: String(progress.total) })}
+                  {step === "review" && t("reviewConfirm")}
+                  {step === "committing" && t("committing", { committed: String(progress.committed), total: String(progress.total) })}
+                  {step === "done" && t("importComplete")}
                 </p>
               </div>
             </div>
@@ -274,7 +276,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 fontFamily: T.font.body, fontSize: 12, fontWeight: !showCloud ? 600 : 400, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}>
-                {"\u{1F4C1}"} Local Files
+                {"\u{1F4C1}"} {t("localFiles")}
               </button>
               <button onClick={() => setShowCloud(true)} style={{
                 flex: 1, padding: "8px 12px", borderRadius: 8, border: "none",
@@ -283,7 +285,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 fontFamily: T.font.body, fontSize: 12, fontWeight: showCloud ? 600 : 400, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}>
-                {"\u2601\uFE0F"} Import from Cloud
+                {"\u2601\uFE0F"} {t("importFromCloud")}
               </button>
             </div>
           )}
@@ -306,7 +308,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         {showCloud && step === "drop" ? (
           <Suspense fallback={
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48, fontFamily: T.font.body, fontSize: 14, color: T.color.muted }}>
-              Loading cloud import...
+              {t("loadingCloudImport")}
             </div>
           }>
             <CloudImportPanel onClose={onClose} embedded />
@@ -326,8 +328,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 cursor: "pointer", textAlign: "left",
               }}>
                 <div style={{ fontSize: 24, marginBottom: 6 }}>{"\u2728"}</div>
-                <div style={{ fontFamily: T.font.display, fontSize: 14, fontWeight: 600, color: mode === "ai" ? T.color.terracotta : T.color.charcoal }}>AI-Assisted</div>
-                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, lineHeight: 1.4, marginTop: 4 }}>AI suggests titles, descriptions, types, and room placement. You verify a sample.</div>
+                <div style={{ fontFamily: T.font.display, fontSize: 14, fontWeight: 600, color: mode === "ai" ? T.color.terracotta : T.color.charcoal }}>{t("aiAssisted")}</div>
+                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, lineHeight: 1.4, marginTop: 4 }}>{t("aiAssistedDesc")}</div>
               </button>
               <button onClick={() => store.setMode("manual")} style={{
                 padding: "16px 14px", borderRadius: 14,
@@ -336,8 +338,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 cursor: "pointer", textAlign: "left",
               }}>
                 <div style={{ fontSize: 24, marginBottom: 6 }}>{"\u{1F4CB}"}</div>
-                <div style={{ fontFamily: T.font.display, fontSize: 14, fontWeight: 600, color: mode === "manual" ? T.color.terracotta : T.color.charcoal }}>Manual</div>
-                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, lineHeight: 1.4, marginTop: 4 }}>Place files directly into a specific room. Smart defaults from file metadata.</div>
+                <div style={{ fontFamily: T.font.display, fontSize: 14, fontWeight: 600, color: mode === "manual" ? T.color.terracotta : T.color.charcoal }}>{t("manual")}</div>
+                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, lineHeight: 1.4, marginTop: 4 }}>{t("manualDesc")}</div>
               </button>
             </div>
 
@@ -345,22 +347,22 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 16 }}>
               <div>
                 <label style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", display: "block", marginBottom: 6 }}>
-                  {mode === "manual" ? "Target Wing" : "Default Wing (AI may override)"}
+                  {mode === "manual" ? t("targetWing") : t("defaultWingAi")}
                 </label>
                 <select value={targetWingId || ""} onChange={(e) => store.setTarget(e.target.value || null, null)}
                   style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, cursor: "pointer", outline: "none" }}>
-                  <option value="">— Select wing —</option>
+                  <option value="">{t("selectWing")}</option>
                   {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}
                 </select>
               </div>
               <div>
                 <label style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", display: "block", marginBottom: 6 }}>
-                  {mode === "manual" ? "Target Room" : "Default Room (AI may override)"}
+                  {mode === "manual" ? t("targetRoom") : t("defaultRoomAi")}
                 </label>
                 <select value={targetRoomId || ""} onChange={(e) => store.setTarget(targetWingId, e.target.value || null)}
                   disabled={!targetWingId}
                   style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.color.cream}`, background: !targetWingId ? `${T.color.warmStone}` : T.color.white, fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, cursor: targetWingId ? "pointer" : "default", outline: "none" }}>
-                  <option value="">— Select room —</option>
+                  <option value="">{t("selectRoom")}</option>
                   {targetWingId && getWingRooms(targetWingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
                 </select>
               </div>
@@ -381,10 +383,10 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             >
               <div style={{ fontSize: 36, marginBottom: 6 }}>{dragOver ? "\u2728" : "\u{1F4E5}"}</div>
               <p style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal, margin: 0, fontWeight: 500 }}>
-                {items.length > 0 ? "Drop more files or click to add" : "Drop files here or click to browse"}
+                {items.length > 0 ? t("dropMoreOrBrowse") : t("dropOrBrowse")}
               </p>
               <p style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, margin: "4px 0 0" }}>
-                Photos, videos, audio, PDFs, documents
+                {t("supportedTypes")}
               </p>
             </div>
             <input ref={fileRef} type="file" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
@@ -395,7 +397,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             {skippedOversized > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: "#C0505010", border: "1px solid #C0505033", marginBottom: 12 }}>
                 <span style={{ fontFamily: T.font.body, fontSize: 12, color: "#C05050", lineHeight: 1.5, flex: 1 }}>
-                  {skippedOversized} file{skippedOversized > 1 ? "s were" : " was"} skipped because {skippedOversized > 1 ? "they exceed" : "it exceeds"} the size limit (50 MB for images, 100 MB for videos).
+                  {t("filesSkipped", { count: String(skippedOversized) })}
                 </span>
                 <button onClick={() => setSkippedOversized(0)} style={{ background: "none", border: "none", color: "#C05050", fontSize: 14, cursor: "pointer", padding: 4, flexShrink: 0 }}>{"\u2715"}</button>
               </div>
@@ -404,8 +406,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             {/* File list */}
             {items.length > 0 && <>
               <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
-                <span>{items.length} files ({formatBytes(totalSize)})</span>
-                <button onClick={() => store.reset()} style={{ background: "none", border: "none", color: T.color.terracotta, fontFamily: T.font.body, fontSize: 11, cursor: "pointer" }}>Clear all</button>
+                <span>{t("fileCount", { count: String(items.length), size: formatBytes(totalSize) })}</span>
+                <button onClick={() => store.reset()} style={{ background: "none", border: "none", color: T.color.terracotta, fontFamily: T.font.body, fontSize: 11, cursor: "pointer" }}>{t("clearAll")}</button>
               </div>
               <div style={{ maxHeight: 200, overflowY: "auto", borderRadius: 12, border: `1px solid ${T.color.cream}`, background: T.color.white }}>
                 {items.map((item) => (
@@ -435,7 +437,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 fontFamily: T.font.body, fontSize: 14, fontWeight: 600, cursor: (mode === "manual" && (!targetWingId || !targetRoomId)) ? "default" : "pointer",
               }}
             >
-              {mode === "ai" ? `Process ${items.length} files with AI` : `Process ${items.length} files`} {"\u{1F680}"}
+              {mode === "ai" ? t("processWithAi", { count: String(items.length) }) : t("processFiles", { count: String(items.length) })} {"\u{1F680}"}
             </button>}
           </>}
 
@@ -443,7 +445,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           {step === "processing" && <>
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontFamily: T.font.body, fontSize: 12, color: T.color.muted, marginBottom: 6 }}>
-                <span>Processing files...</span>
+                <span>{t("processingFiles")}</span>
                 <span>{progress.processed}/{progress.total}</span>
               </div>
               <div style={{ width: "100%", height: 8, borderRadius: 4, background: `${T.color.sandstone}33`, overflow: "hidden" }}>
@@ -485,7 +487,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               <button onClick={() => store.acceptAll()} style={{
                 padding: "8px 14px", borderRadius: 8, border: `1px solid ${T.color.cream}`,
                 background: T.color.white, fontFamily: T.font.body, fontSize: 11, fontWeight: 500, color: "#4A6741", cursor: "pointer",
-              }}>Accept all ready</button>
+              }}>{t("acceptAllReady")}</button>
             </div>
 
             {/* Items */}
@@ -495,7 +497,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               ))}
               {filteredItems(items, tab).length === 0 && (
                 <div style={{ textAlign: "center", padding: 32, fontFamily: T.font.body, fontSize: 13, color: T.color.muted }}>
-                  No items in this tab
+                  {t("noItemsInTab")}
                 </div>
               )}
             </div>
@@ -507,7 +509,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                 color: "#FFF", fontFamily: T.font.body, fontSize: 14, fontWeight: 600, cursor: "pointer",
               }}>
-                Commit {items.filter((i) => i.status === "accepted").length} memories to palace {"\u{1F3DB}\uFE0F"}
+                {t("commitMemories", { count: String(items.filter((i) => i.status === "accepted").length) })} {"\u{1F3DB}\uFE0F"}
               </button>
             )}
           </>}
@@ -516,7 +518,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           {step === "committing" && <>
             <div style={{ marginBottom: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontFamily: T.font.body, fontSize: 12, color: T.color.muted, marginBottom: 6 }}>
-                <span>Adding memories to palace...</span>
+                <span>{t("addingMemories")}</span>
                 <span>{progress.committed}/{progress.total}</span>
               </div>
               <div style={{ width: "100%", height: 8, borderRadius: 4, background: `${T.color.sandstone}33`, overflow: "hidden" }}>
@@ -529,23 +531,23 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           {step === "done" && <>
             <div style={{ textAlign: "center", padding: "32px 0" }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>{"\u{1F389}"}</div>
-              <h3 style={{ fontFamily: T.font.display, fontSize: 24, fontWeight: 600, color: T.color.charcoal, margin: "0 0 8px" }}>Import Complete!</h3>
+              <h3 style={{ fontFamily: T.font.display, fontSize: 24, fontWeight: 600, color: T.color.charcoal, margin: "0 0 8px" }}>{t("importCompleteHeading")}</h3>
               <p style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.muted, margin: "0 0 4px" }}>
-                {progress.committed} memories added to your palace
+                {t("memoriesAdded", { count: String(progress.committed) })}
               </p>
               {progress.errors > 0 && (
-                <p style={{ fontFamily: T.font.body, fontSize: 12, color: "#C05050" }}>{progress.errors} items had errors</p>
+                <p style={{ fontFamily: T.font.body, fontSize: 12, color: "#C05050" }}>{t("itemsHadErrors", { count: String(progress.errors) })}</p>
               )}
               <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>
                 <button onClick={() => store.reset()} style={{
                   padding: "12px 24px", borderRadius: 12, border: `1px solid ${T.color.cream}`,
                   background: T.color.white, fontFamily: T.font.body, fontSize: 13, fontWeight: 500, color: T.color.charcoal, cursor: "pointer",
-                }}>Import more</button>
+                }}>{t("importMore")}</button>
                 <button onClick={onClose} style={{
                   padding: "12px 24px", borderRadius: 12, border: "none",
                   background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                   fontFamily: T.font.body, fontSize: 13, fontWeight: 600, color: "#FFF", cursor: "pointer",
-                }}>Close</button>
+                }}>{t("close")}</button>
               </div>
             </div>
           </>}
@@ -588,6 +590,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
 }) {
   const store = useImportStore();
   const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation("massImport");
 
   const accent = wings.find((w) => w.id === item.confirmed.wingId)?.accent || T.color.terracotta;
 
@@ -644,31 +647,31 @@ function ReviewCard({ item, wings, getWingRooms }: {
         <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.color.cream}` }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Title</label>
+              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("title")}</label>
               <input value={item.confirmed.title} onChange={(e) => store.updateConfirmed(item.localId, { title: e.target.value })}
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
             </div>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Location</label>
-              <input value={item.confirmed.locationName} onChange={(e) => store.updateConfirmed(item.localId, { locationName: e.target.value })} placeholder="e.g. Rome, Italy"
+              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("location")}</label>
+              <input value={item.confirmed.locationName} onChange={(e) => store.updateConfirmed(item.localId, { locationName: e.target.value })} placeholder={t("locationPlaceholder")}
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
             </div>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Description</label>
-            <textarea value={item.confirmed.desc} onChange={(e) => store.updateConfirmed(item.localId, { desc: e.target.value })} rows={2} placeholder="What makes this memory special..."
+            <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("description")}</label>
+            <textarea value={item.confirmed.desc} onChange={(e) => store.updateConfirmed(item.localId, { desc: e.target.value })} rows={2} placeholder={t("descriptionPlaceholder")}
               style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, outline: "none", boxSizing: "border-box", resize: "none" }} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Type</label>
+              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("type")}</label>
               <select value={item.confirmed.type} onChange={(e) => store.updateConfirmed(item.localId, { type: e.target.value })}
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, cursor: "pointer", outline: "none" }}>
                 {DISPLAY_TYPES.map(([v, icon, label]) => <option key={v} value={v}>{icon} {label}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Wing</label>
+              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("wing")}</label>
               <select value={item.confirmed.wingId} onChange={(e) => {
                 const rooms = getWingRooms(e.target.value);
                 store.updateConfirmed(item.localId, { wingId: e.target.value, roomId: rooms[0]?.id || "" });
@@ -679,7 +682,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
               </select>
             </div>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>Room</label>
+              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("room")}</label>
               <select value={item.confirmed.roomId} onChange={(e) => store.updateConfirmed(item.localId, { roomId: e.target.value })}
                 disabled={!item.confirmed.wingId}
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: !item.confirmed.wingId ? T.color.warmStone : T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, cursor: item.confirmed.wingId ? "pointer" : "default", outline: "none" }}>

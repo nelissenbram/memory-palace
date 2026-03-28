@@ -631,7 +631,7 @@ export default function FamilyTreePage() {
       for (const indi of indis) {
         if (!indi.first_name && !indi.last_name) continue;
         const result = await addPerson({
-          first_name: indi.first_name || "Unknown",
+          first_name: indi.first_name || t("unknown"),
           last_name: indi.last_name || undefined,
           birth_date: indi.birth_date,
           death_date: indi.death_date,

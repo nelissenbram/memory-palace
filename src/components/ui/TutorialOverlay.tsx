@@ -2,11 +2,13 @@
 import { useEffect, useState } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useTutorialStore, TUTORIAL_STEPS } from "@/lib/stores/tutorialStore";
 
 // ═══ TUTORIAL OVERLAY — speech bubble + controls ═══
 export default function TutorialOverlay() {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("tutorial");
   const { active, stepIndex, fadeIn, next, skip } = useTutorialStore();
   const [typewriterText, setTypewriterText] = useState("");
   const [typing, setTyping] = useState(false);
@@ -189,7 +191,7 @@ export default function TutorialOverlay() {
             onMouseEnter={e => { (e.target as HTMLElement).style.color = "rgba(250,250,247,0.7)"; }}
             onMouseLeave={e => { (e.target as HTMLElement).style.color = "rgba(250,250,247,0.4)"; }}
           >
-            {isMobile ? "Skip" : "Skip tour"}
+            {isMobile ? t("skip") : t("skipTour")}
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -235,7 +237,7 @@ export default function TutorialOverlay() {
                 (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(212,175,55,0.3)";
               }}
             >
-              {typing ? "Show all" : (step.nextLabel || "Next")}
+              {typing ? t("showAll") : (step.nextLabel || t("next"))}
             </button>
           </div>
         </div>
@@ -251,13 +253,14 @@ export default function TutorialOverlay() {
 /** "Take the Tour" button — place anywhere in the UI */
 export function TourButton({ style }: { style?: React.CSSProperties }) {
   const isMobile = useIsMobile();
+  const { t: tTour } = useTranslation("tutorial");
   const { active, start } = useTutorialStore();
   if (active) return null;
 
   return (
     <button
       onClick={start}
-      title="Take a guided tour of your Memory Palace"
+      title={tTour("tourTitle")}
       style={{
         background: `${T.color.white}ee`,
         backdropFilter: "blur(10px)",
@@ -289,7 +292,7 @@ export function TourButton({ style }: { style?: React.CSSProperties }) {
         display: "inline-block",
         flexShrink: 0,
       }} />
-      <span>{isMobile ? "Tour" : "Take the Tour"}</span>
+      <span>{isMobile ? tTour("tour") : tTour("takeTour")}</span>
     </button>
   );
 }

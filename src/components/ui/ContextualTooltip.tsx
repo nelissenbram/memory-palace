@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const STORAGE_PREFIX = "mp_ctx_tooltip_";
 
@@ -12,24 +13,24 @@ type TooltipId =
 
 interface TooltipConfig {
   id: TooltipId;
-  message: string;
+  messageKey: string;
   position: "bottom-center" | "center";
 }
 
 const TOOLTIP_DEFS: Record<string, TooltipConfig> = {
   corridor_click_door: {
     id: "corridor_click_door",
-    message: "Click a door to enter a room",
+    messageKey: "doorHint",
     position: "bottom-center",
   },
   room_click_furniture: {
     id: "room_click_furniture",
-    message: "Click furniture to view or add memories",
+    messageKey: "furnitureHint",
     position: "bottom-center",
   },
   room_empty_upload: {
     id: "room_empty_upload",
-    message: "This room is empty \u2014 upload your first memory!",
+    messageKey: "emptyRoomHint",
     position: "center",
   },
 };
@@ -62,6 +63,7 @@ export default function ContextualTooltip({
   show,
   delay = 1200,
 }: ContextualTooltipProps) {
+  const { t } = useTranslation("contextualTooltip");
   const isMobile = useIsMobile();
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -164,7 +166,7 @@ export default function ContextualTooltip({
             lineHeight: 1.4,
           }}
         >
-          {config.message}
+          {t(config.messageKey)}
         </span>
 
         <span

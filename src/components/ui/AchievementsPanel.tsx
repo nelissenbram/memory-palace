@@ -1,6 +1,7 @@
 "use client";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAchievementStore, ACHIEVEMENTS, type Achievement } from "@/lib/stores/achievementStore";
 
 const CATEGORIES = [
@@ -16,6 +17,7 @@ interface Props {
 
 export default function AchievementsPanel({ onClose }: Props) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("achievementsPanel");
   const { earnedIds, earnedDates, getProgress } = useAchievementStore();
   const { earned, total, percentage } = getProgress();
 
@@ -55,10 +57,10 @@ export default function AchievementsPanel({ onClose }: Props) {
             }}>{"\u{1F3C6}"}</div>
             <div>
               <div style={{ fontFamily: T.font.display, fontSize: 24, fontWeight: 600, color: T.color.charcoal }}>
-                Achievements
+                {t("title")}
               </div>
               <div style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted }}>
-                {earned} of {total} unlocked
+                {t("unlocked", { earned: String(earned), total: String(total) })}
               </div>
             </div>
           </div>
@@ -121,6 +123,7 @@ export default function AchievementsPanel({ onClose }: Props) {
 function AchievementCard({ achievement, earned, earnedDate }: {
   achievement: Achievement; earned: boolean; earnedDate?: string;
 }) {
+  const { t } = useTranslation("achievementsPanel");
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 12,
@@ -162,7 +165,7 @@ function AchievementCard({ achievement, earned, earnedDate }: {
             fontFamily: T.font.body, fontSize: 10, color: T.color.goldLight,
             marginTop: 2,
           }}>
-            Unlocked {earnedDate}
+            {t("unlockedDate", { date: earnedDate || "" })}
           </div>
         )}
       </div>

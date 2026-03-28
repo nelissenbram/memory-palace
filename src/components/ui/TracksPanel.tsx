@@ -7,6 +7,7 @@ import { useTrackStore } from "@/lib/stores/trackStore";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 
@@ -16,6 +17,7 @@ interface TracksPanelProps {
 
 export default function TracksPanel({ onClose }: TracksPanelProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("tracksPanel");
   const { tracks, totalPoints, getLevelInfo, getLevelProgressInfo, setSelectedTrackId } = useTrackStore();
   const { userGoal } = useUserStore();
   const { userMems } = useMemoryStore();
@@ -78,11 +80,11 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
               <h2 style={{
                 fontFamily: T.font.display, fontSize: isMobile ? 22 : 26, fontWeight: 500,
                 color: T.color.charcoal, margin: 0,
-              }}>Memory Building</h2>
+              }}>{t("title")}</h2>
               <p style={{
                 fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginTop: 4,
               }}>
-                Complete tracks to earn Memory Points and build your legacy.
+                {t("description")}
               </p>
             </div>
             <button onClick={onClose} style={{
@@ -109,7 +111,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <span style={{ fontFamily: T.font.display, fontSize: 18, fontWeight: 600, color: T.color.charcoal }}>
-                  {totalPoints} MP
+                  {totalPoints} {t("mp")}
                 </span>
                 <span style={{ fontFamily: T.font.body, fontSize: 11, color: levelInfo.color, fontWeight: 500 }}>
                   {levelInfo.title}
@@ -131,8 +133,8 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                 fontFamily: T.font.body, fontSize: 10, color: T.color.muted, marginTop: 3,
               }}>
                 {progressInfo.nextLevel
-                  ? `${progressInfo.pointsInLevel} / ${progressInfo.pointsNeeded} to ${progressInfo.nextLevel.title}`
-                  : "Highest tier reached"}
+                  ? `${progressInfo.pointsInLevel} / ${progressInfo.pointsNeeded} ${t("to")} ${progressInfo.nextLevel.title}`
+                  : t("highestTier")}
               </div>
             </div>
           </div>
@@ -154,7 +156,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
               fontFamily: T.font.display, fontSize: 17, fontWeight: 600,
               color: T.color.sage, marginBottom: 12, display: "flex", alignItems: "center", gap: 8,
             }}>
-              My Resolutions
+              {t("myResolutions")}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {resolutions.map((m) => {
@@ -179,7 +181,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                           color: daysLeft > 0 ? T.color.sage : T.color.error,
                           marginLeft: "auto",
                         }}>
-                          {daysLeft > 0 ? `${daysLeft}d left` : "Past due"}
+                          {daysLeft > 0 ? t("daysLeft", { count: String(daysLeft) }) : t("pastDue")}
                         </span>
                       )}
                     </div>
@@ -239,7 +241,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     color: track.color, textTransform: "uppercase", letterSpacing: 1,
                     padding: "3px 8px", borderRadius: 6,
                     background: `${track.color}15`, border: `1px solid ${track.color}25`,
-                  }}>Recommended</div>
+                  }}>{t("recommended")}</div>
                 )}
 
                 {/* Completed badge */}
@@ -250,7 +252,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     color: T.color.success, textTransform: "uppercase", letterSpacing: 1,
                     padding: "3px 8px", borderRadius: 6,
                     background: `${T.color.success}15`, border: `1px solid ${T.color.success}25`,
-                  }}>Complete</div>
+                  }}>{t("complete")}</div>
                 )}
 
                 {/* Top row: icon + name */}
@@ -277,7 +279,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                 <div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted }}>
-                      {stepsCompleted} of {totalSteps} steps
+                      {stepsCompleted} {t("of")} {totalSteps} {t("steps")}
                     </span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
@@ -313,7 +315,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                       fontFamily: T.font.body, fontSize: 11, color: T.color.walnut,
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
                     }}>
-                      Next: {nextStep.title}
+                      {t("next")} {nextStep.title}
                     </span>
                     <span style={{
                       marginLeft: "auto", fontFamily: T.font.body, fontSize: 10,

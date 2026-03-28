@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 
@@ -29,6 +30,7 @@ type FilterType = string | null;
 
 export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSelect }: Props) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("roomGallery");
   const accent = wing?.accent || T.color.terracotta;
   const [mode, setMode] = useState<ViewMode>("grid");
   const [filter, setFilter] = useState<FilterType>(null);
@@ -103,9 +105,9 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 22 }}>{room?.icon}</span>
               <div>
-                <h3 style={{ fontFamily: T.font.display, fontSize: 20, fontWeight: 600, color: T.color.charcoal, margin: 0 }}>{room?.name} Gallery</h3>
+                <h3 style={{ fontFamily: T.font.display, fontSize: 20, fontWeight: 600, color: T.color.charcoal, margin: 0 }}>{room?.name} {t("gallery")}</h3>
                 <p style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, margin: "2px 0 0" }}>
-                  {mems.length} memories {mems.filter((m) => m.displayed !== false).length < mems.length && `· ${mems.filter((m) => m.displayed !== false).length} displayed in room`}
+                  {mems.length} {t("memories")} {mems.filter((m) => m.displayed !== false).length < mems.length && `· ${mems.filter((m) => m.displayed !== false).length} ${t("displayedInRoom")}`}
                 </p>
               </div>
             </div>
@@ -116,18 +118,18 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                   padding: "6px 12px", borderRadius: 6, border: "none",
                   background: mode === "grid" ? T.color.white : "transparent",
                   fontFamily: T.font.body, fontSize: 11, color: mode === "grid" ? T.color.charcoal : T.color.muted, cursor: "pointer",
-                }}>{"\u25A6"} Grid</button>
+                }}>{"\u25A6"} {t("grid")}</button>
                 <button onClick={() => { setMode("player"); setPlayerIdx(0); }} style={{
                   padding: "6px 12px", borderRadius: 6, border: "none",
                   background: mode === "player" ? T.color.white : "transparent",
                   fontFamily: T.font.body, fontSize: 11, color: mode === "player" ? T.color.charcoal : T.color.muted, cursor: "pointer",
-                }}>{"\u25B6"} Player</button>
+                }}>{"\u25B6"} {t("player")}</button>
               </div>
               <button onClick={() => setShowDisplayMgr(!showDisplayMgr)} style={{
                 padding: "6px 12px", borderRadius: 8, border: `1px solid ${showDisplayMgr ? accent + "60" : T.color.cream}`,
                 background: showDisplayMgr ? accent + "10" : T.color.white,
                 fontFamily: T.font.body, fontSize: 11, color: showDisplayMgr ? accent : T.color.muted, cursor: "pointer",
-              }}>{"\u{1F3DB}\uFE0F"} Display</button>
+              }}>{"\u{1F3DB}\uFE0F"} {t("display")}</button>
               <button onClick={onClose} style={{
                 width: 32, height: 32, borderRadius: 16, border: `1px solid ${T.color.cream}`,
                 background: T.color.warmStone, color: T.color.muted, fontSize: 14, cursor: "pointer",
@@ -142,7 +144,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
               padding: "5px 12px", borderRadius: 8, border: filter === null ? `1.5px solid ${accent}` : `1px solid ${T.color.cream}`,
               background: filter === null ? accent + "10" : T.color.white,
               fontFamily: T.font.body, fontSize: 11, color: filter === null ? accent : T.color.muted, cursor: "pointer",
-            }}>All ({mems.length})</button>
+            }}>{t("all")} ({mems.length})</button>
             {Object.entries(typeGroups).map(([type, items]) => (
               <button key={type} onClick={() => setFilter(type)} style={{
                 padding: "5px 10px", borderRadius: 8, border: filter === type ? `1.5px solid ${accent}` : `1px solid ${T.color.cream}`,
@@ -164,10 +166,10 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <div>
                   <div style={{ fontFamily: T.font.display, fontSize: 14, fontWeight: 600, color: T.color.charcoal }}>
-                    3D Room Display Settings
+                    {t("displaySettings")}
                   </div>
                   <p style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, margin: "4px 0 0", lineHeight: 1.5 }}>
-                    Toggle which memories appear as physical objects in the room. Each type has limited furniture slots.
+                    {t("displaySettingsDesc")}
                   </p>
                 </div>
               </div>
@@ -185,14 +187,14 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                           {TYPE_ICONS[type]} {type}
                         </span>
                         <span style={{ fontFamily: T.font.body, fontSize: 10, color: shown >= limit ? accent : T.color.muted }}>
-                          {shown}/{limit} slots
+                          {shown}/{limit} {t("slots")}
                         </span>
                       </div>
                       <div style={{ height: 3, borderRadius: 2, background: T.color.cream, marginBottom: 4 }}>
                         <div style={{ height: "100%", borderRadius: 2, background: accent, width: `${Math.min(100, (shown / limit) * 100)}%`, transition: "width .3s" }} />
                       </div>
                       {hidden > 0 && <div style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted }}>
-                        {hidden} stored (not displayed)
+                        {hidden} {t("storedNotDisplayed")}
                       </div>}
                     </div>
                   );
@@ -206,7 +208,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                 return (
                   <div>
                     <div style={{ fontFamily: T.font.body, fontSize: 11, fontWeight: 600, color: T.color.walnut, marginBottom: 8, textTransform: "uppercase", letterSpacing: ".5px" }}>
-                      Stored memories ({unallocated.length}) — click to display in room
+                      {t("storedMemories")} ({unallocated.length}) — {t("clickToDisplay")}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 200, overflowY: "auto" }}>
                       {unallocated.map((mem) => {
@@ -232,7 +234,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                                 {mem.title}
                               </div>
                               <div style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted }}>
-                                {TYPE_ICONS[mem.type]} {mem.type} — {canDisplay ? `${limit - typeCount} slot${limit - typeCount > 1 ? "s" : ""} available` : "all slots full"}
+                                {TYPE_ICONS[mem.type]} {mem.type} — {canDisplay ? `${limit - typeCount} ${limit - typeCount > 1 ? t("slotsAvailable") : t("slotAvailable")}` : t("allSlotsFull")}
                               </div>
                             </div>
                             {/* Display button */}
@@ -244,7 +246,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                                 fontFamily: T.font.body, fontSize: 11, fontWeight: 500, cursor: canDisplay ? "pointer" : "default",
                                 whiteSpace: "nowrap",
                               }}>
-                              {canDisplay ? "Display" : "Full"}
+                              {canDisplay ? t("displayBtn") : t("full")}
                             </button>
                           </div>
                         );
@@ -261,7 +263,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                 return (
                   <div style={{ marginTop: 12 }}>
                     <div style={{ fontFamily: T.font.body, fontSize: 11, fontWeight: 600, color: T.color.walnut, marginBottom: 8, textTransform: "uppercase", letterSpacing: ".5px" }}>
-                      Currently displayed — click to store
+                      {t("currentlyDisplayed")}
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {displayed.map((mem) => (
@@ -327,7 +329,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                         {/* Display toggle */}
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleDisplay(mem); }}
-                          title={isDisplayed ? "Remove from 3D room" : canDisplay ? "Show in 3D room" : `Max ${typeLimit} ${mem.type}s displayed`}
+                          title={isDisplayed ? t("removeFrom3d") : canDisplay ? t("showIn3d") : t("maxDisplayed", { count: String(typeLimit), type: mem.type })}
                           style={{
                             width: 22, height: 22, borderRadius: 6, border: "none",
                             background: isDisplayed ? accent + "20" : T.color.warmStone,
@@ -343,7 +345,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
               })}
               {filtered.length === 0 && (
                 <div style={{ gridColumn: "1/-1", textAlign: "center", padding: 40, fontFamily: T.font.body, color: T.color.muted }}>
-                  No memories{filter ? ` of type "${filter}"` : ""} in this room
+                  {t("noMemories")}{filter ? ` ${t("ofType")} "${filter}"` : ""}
                 </div>
               )}
             </div>
@@ -449,7 +451,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                     {playerMem.title}
                   </div>
                   <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted }}>
-                    {playerIdx + 1} of {filtered.length} {filter ? `${filter}s` : "memories"}
+                    {playerIdx + 1} of {filtered.length} {filter ? `${filter}s` : t("memories")}
                     {playerMem.createdAt && ` · ${new Date(playerMem.createdAt).toLocaleDateString()}`}
                   </div>
                 </div>
@@ -457,7 +459,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                 {/* View detail */}
                 <button onClick={() => onSelect(playerMem)}
                   style={{ padding: "8px 14px", borderRadius: 10, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 11, color: T.color.muted, cursor: "pointer" }}>
-                  Details
+                  {t("details")}
                 </button>
               </div>
 
@@ -486,7 +488,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
             </div>
           )}
           {mode === "player" && !playerMem && (
-            <div style={{ textAlign: "center", padding: 60, fontFamily: T.font.body, color: T.color.muted }}>No memories to play</div>
+            <div style={{ textAlign: "center", padding: 60, fontFamily: T.font.body, color: T.color.muted }}>{t("noMemoriesToPlay")}</div>
           )}
         </div>
       </div>

@@ -76,7 +76,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
                   {isComingSoon && <div style={{position:"absolute",bottom:8,left:"50%",transform:"translateX(-50%)",
                     background:"rgba(0,0,0,.6)",color:"#FFF",fontFamily:T.font.body,fontSize:12,fontWeight:600,
                     padding:"4px 14px",borderRadius:20,whiteSpace:"nowrap",letterSpacing:".5px",
-                    textTransform:"uppercase"}}>Coming soon</div>}
+                    textTransform:"uppercase"}}>{t("comingSoon")}</div>}
                 </div>
                 <div style={{fontFamily:T.font.display,fontSize:isMobile?18:20,fontWeight:600,color:isComingSoon?T.color.muted:T.color.charcoal}}>
                   {t(era.id === "roman" ? "styleRoman" : "styleRenaissance")}

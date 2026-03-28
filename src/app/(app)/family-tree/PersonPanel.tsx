@@ -52,7 +52,7 @@ export default function PersonPanel({
 
   const getPersonName = (id: string) => {
     const p = allPersons.find((x) => x.id === id);
-    return p ? `${p.first_name}${p.last_name ? " " + p.last_name : ""}` : "Unknown";
+    return p ? `${p.first_name}${p.last_name ? " " + p.last_name : ""}` : t("unknown");
   };
 
   const handleSave = async () => {
@@ -465,10 +465,17 @@ export default function PersonPanel({
                   rel.person_id === person.id
                     ? rel.related_person_id
                     : rel.person_id;
-                const label =
+                const relTypeMap: Record<string, string> = {
+                  parent: t("parentOf"),
+                  child: t("childOf"),
+                  spouse: t("spouseOf"),
+                  sibling: t("siblingOf"),
+                };
+                const rawLabel =
                   rel.person_id === person.id
                     ? rel.relationship_type
                     : reverseRelType(rel.relationship_type);
+                const label = relTypeMap[rawLabel] || rawLabel;
                 return (
                   <div
                     key={rel.id}

@@ -411,7 +411,7 @@ export default function MFASetup() {
                 }}>
                   <img
                     src={qrDataUrl}
-                    alt="Scan this QR code with your authenticator app"
+                    alt={t("qrCodeAlt")}
                     width={240}
                     height={240}
                     style={{ display: "block" }}

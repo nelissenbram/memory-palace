@@ -6,6 +6,7 @@ import { useAudioRecorder } from "@/lib/hooks/useAudioRecorder";
 import { useSpeechRecognition } from "@/lib/hooks/useSpeechRecognition";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { useUserStore } from "@/lib/stores/userStore";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Mem } from "@/lib/constants/defaults";
 
 interface InterviewPanelProps {
@@ -23,6 +24,7 @@ function fmtTime(sec: number): string {
 export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPanelProps) {
   const isMobile = useIsMobile();
   const { userName } = useUserStore();
+  const { t } = useTranslation("interview");
 
   const {
     currentSession, currentTemplate, currentQuestionIndex, isFollowUp,
@@ -90,7 +92,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
     const finalText = spokenText || speech.transcript;
 
     if (!finalText.trim()) {
-      setApiError("We didn't catch any words. You can type your answer below, or try recording again.");
+      setApiError(t("noWordsDetected"));
       setInputMode("text");
       setPhase("question");
       return;
@@ -188,7 +190,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         .map((r) => r.transcript)
         .filter(Boolean)
         .join("\n\n");
-      setNarrative(basicSummary || "Your stories have been recorded.");
+      setNarrative(basicSummary || t("storiesRecorded"));
       return;
     }
 
@@ -210,10 +212,10 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       });
 
       const data = await res.json();
-      setNarrative(data.narrative || data.error || "Your stories have been recorded.");
+      setNarrative(data.narrative || data.error || t("storiesRecorded"));
     } catch {
       const fallback = (currentSession.responses || []).map((r) => r.transcript).filter(Boolean).join("\n\n");
-      setNarrative(fallback || "Your stories have been recorded.");
+      setNarrative(fallback || t("storiesRecorded"));
     }
   };
 
@@ -250,7 +252,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
   const handleExit = () => {
     if (phase !== "intro" && phase !== "complete") {
-      if (!confirm("Are you sure you want to leave? Your progress in this interview will be saved.")) return;
+      if (!confirm(t("leaveConfirm"))) return;
     }
     abandonSession();
     onClose();
@@ -293,7 +295,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
           )}
           {phase !== "intro" && phase !== "summary" && phase !== "complete" && question && (
             <div style={{ fontFamily: T.font.body, fontSize: 13, color: "#7A7368", marginTop: 2 }}>
-              Question {progress.current} of {progress.total}
+              {t("questionProgress", { current: String(progress.current), total: String(progress.total) })}
             </div>
           )}
         </div>
@@ -349,8 +351,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               fontFamily: T.font.display, fontSize: isMobile ? 16 : 18, color: "#B8AE9C",
               fontStyle: "italic", lineHeight: 1.6, marginBottom: 40,
             }}>
-              Take your time. There are no wrong answers.<br />
-              This is your story, told in your own words.
+              {t("encouragement1")}<br />
+              {t("encouragement2")}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
               <button onClick={handleStart} style={{
@@ -360,10 +362,10 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 cursor: "pointer", boxShadow: `0 8px 32px ${accentColor}40`,
                 transition: "transform 0.2s", minHeight: 56,
               }}>
-                Begin Interview
+                {t("beginInterview")}
               </button>
               <p style={{ fontFamily: T.font.body, fontSize: 13, color: "#7A7368" }}>
-                About {currentTemplate.estimatedTotalMinutes} minutes &middot; {currentTemplate.questions.length} questions
+                {t("aboutMinutes", { minutes: String(currentTemplate.estimatedTotalMinutes), count: String(currentTemplate.questions.length) })}
               </p>
             </div>
 
@@ -378,7 +380,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   fontFamily: T.font.body, fontSize: 13, cursor: "pointer",
                   transition: "all 0.2s",
                 }}>
-                  {mode === "voice" ? "\uD83C\uDF99\uFE0F Speak answers" : "\u2328\uFE0F Type answers"}
+                  {mode === "voice" ? `\uD83C\uDF99\uFE0F ${t("speakAnswers")}` : `\u2328\uFE0F ${t("typeAnswers")}`}
                 </button>
               ))}
             </div>
@@ -386,13 +388,13 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {/* Writing style selector */}
             <div style={{ marginTop: 20 }}>
               <p style={{ fontFamily: T.font.body, fontSize: 12, color: "#7A7368", marginBottom: 8 }}>
-                Writing style for your story
+                {t("writingStyleTitle")}
               </p>
               <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
                 {([
-                  { id: "literary" as const, label: "\u270D\uFE0F Literary", desc: "Vivid, evocative, memoir-like prose" },
-                  { id: "balanced" as const, label: "\u2696\uFE0F Balanced", desc: "Warm storytelling with personal details" },
-                  { id: "factual" as const, label: "\uD83D\uDCCB Factual", desc: "Clear, straightforward, close to your words" },
+                  { id: "literary" as const, label: `\u270D\uFE0F ${t("styleLiterary")}`, desc: t("styleLiteraryDesc") },
+                  { id: "balanced" as const, label: `\u2696\uFE0F ${t("styleBalanced")}`, desc: t("styleBalancedDesc") },
+                  { id: "factual" as const, label: `\uD83D\uDCCB ${t("styleFactual")}`, desc: t("styleFactualDesc") },
                 ]).map((s) => (
                   <button key={s.id} onClick={() => setWritingStyle(s.id)} title={s.desc} style={{
                     padding: "8px 16px", borderRadius: 16,
@@ -445,7 +447,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   {"\uD83C\uDF99\uFE0F"}
                 </button>
                 <p style={{ fontFamily: T.font.body, fontSize: 14, color: "#9A917F" }}>
-                  Tap to start recording
+                  {t("tapToRecord")}
                 </p>
               </div>
             ) : (
@@ -454,7 +456,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   ref={textareaRef}
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Type your answer here... take your time."
+                  placeholder={t("typeAnswerPlaceholder")}
                   rows={5}
                   style={{
                     width: "100%", padding: "16px 20px", borderRadius: 16,
@@ -474,7 +476,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   cursor: textInput.trim() ? "pointer" : "default",
                   transition: "all 0.2s", minHeight: 48,
                 }}>
-                  Share this answer
+                  {t("shareAnswer")}
                 </button>
               </div>
             )}
@@ -486,7 +488,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               color: "#6A6358", fontFamily: T.font.body, fontSize: 13,
               cursor: "pointer", transition: "color 0.2s",
             }}>
-              Skip this question
+              {t("skipQuestion")}
             </button>
           </div>
         )}
@@ -527,7 +529,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               {fmtTime(recorder.duration)}
             </div>
             <p style={{ fontFamily: T.font.body, fontSize: 13, color: "#9A917F", marginBottom: 16 }}>
-              Recording... speak naturally
+              {t("recording")}
             </p>
 
             {/* Live transcript preview */}
@@ -588,7 +590,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             <p style={{
               fontFamily: T.font.body, fontSize: 16, color: bodyColor,
             }}>
-              Reflecting on what you shared...
+              {t("reflecting")}
             </p>
             <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
           </div>
@@ -605,7 +607,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 marginBottom: 24,
               }}>
                 <p style={{ fontFamily: T.font.body, fontSize: 11, color: "#7A7368", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
-                  You said
+                  {t("youSaid")}
                 </p>
                 <p style={{ fontFamily: T.font.body, fontSize: isMobile ? 15 : 14, color: bodyColor, lineHeight: 1.7, margin: 0 }}>
                   {transcript}
@@ -638,7 +640,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 marginBottom: 32,
               }}>
                 <p style={{ fontFamily: T.font.body, fontSize: 11, color: aiColor, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>
-                  A thought to explore
+                  {t("thoughtToExplore")}
                 </p>
                 <p style={{
                   fontFamily: T.font.display, fontSize: isMobile ? 18 : 20,
@@ -657,7 +659,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 color: "#FFF", fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
                 cursor: "pointer", transition: "all 0.2s", minHeight: 48,
               }}>
-                {isLastQuestion ? "Finish Interview" : "Next Question"}
+                {isLastQuestion ? t("finishInterview") : t("nextQuestion")}
               </button>
             </div>
           </div>
@@ -670,13 +672,13 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               fontFamily: T.font.display, fontSize: isMobile ? 24 : 28, fontWeight: 400,
               color: questionColor, textAlign: "center", marginBottom: 8,
             }}>
-              Your Story
+              {t("yourStory")}
             </h2>
             <p style={{
               fontFamily: T.font.body, fontSize: 13, color: "#7A7368",
               textAlign: "center", marginBottom: 24,
             }}>
-              Here is a narrative woven from your answers. You can edit it before saving.
+              {t("storyIntro")}
             </p>
 
             {!narrative ? (
@@ -687,7 +689,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   animation: "spin 0.8s linear infinite",
                 }} />
                 <p style={{ fontFamily: T.font.body, fontSize: 14, color: bodyColor }}>
-                  Weaving your stories together...
+                  {t("weavingStories")}
                 </p>
               </div>
             ) : (
@@ -730,7 +732,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                     color: "#9A917F", fontFamily: T.font.body, fontSize: 13,
                     cursor: "pointer",
                   }}>
-                    {editingNarrative ? "Done editing" : "Edit"}
+                    {editingNarrative ? t("doneEditing") : t("editStory")}
                   </button>
                   <button onClick={handleComplete} style={{
                     padding: "14px 32px", borderRadius: 24, border: "none",
@@ -738,7 +740,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                     color: "#FFF", fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
                     cursor: "pointer", minHeight: 48,
                   }}>
-                    Save This Story
+                    {t("saveStory")}
                   </button>
                 </div>
               </>
@@ -754,19 +756,19 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               fontFamily: T.font.display, fontSize: isMobile ? 26 : 32, fontWeight: 400,
               color: questionColor, marginBottom: 12,
             }}>
-              Beautifully told.
+              {t("beautifully")}
             </h2>
             <p style={{
               fontFamily: T.font.body, fontSize: isMobile ? 16 : 17, color: bodyColor,
               lineHeight: 1.7, marginBottom: 8, maxWidth: 420, margin: "0 auto",
             }}>
-              Your interview on &ldquo;{currentTemplate.title}&rdquo; has been saved.
+              {t("storySaved", { title: currentTemplate.title })}
             </p>
             <p style={{
               fontFamily: T.font.display, fontSize: 15, color: "#9A917F",
               fontStyle: "italic", lineHeight: 1.6, margin: "16px auto 40px", maxWidth: 380,
             }}>
-              These stories are a gift to everyone who comes after you.
+              {t("giftMessage")}
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
@@ -778,7 +780,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   cursor: "pointer", boxShadow: `0 8px 32px ${accentColor}40`,
                   minHeight: 56,
                 }}>
-                  Add to Memory Palace
+                  {t("addToPalace")}
                 </button>
               )}
               <button onClick={onClose} style={{
@@ -787,7 +789,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 color: "#9A917F", fontFamily: T.font.body, fontSize: 14,
                 cursor: "pointer",
               }}>
-                Done
+                {t("done")}
               </button>
             </div>
           </div>

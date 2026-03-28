@@ -43,7 +43,7 @@ interface InviteResult {
 
 export default function InviteLanding({ shareId, result }: { shareId: string; result: InviteResult }) {
   const router = useRouter();
-  const { t } = useTranslation("invite");
+  const { t, locale } = useTranslation("invite");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -90,7 +90,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
     const days = Math.floor(hours / 24);
     if (days === 1) return t("yesterday");
     if (days < 7) return t("daysAgo", { count: String(days) });
-    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return new Date(dateStr).toLocaleDateString(locale, { month: "short", day: "numeric" });
   };
 
   // Error state

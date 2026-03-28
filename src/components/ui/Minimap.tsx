@@ -4,8 +4,10 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 export default function Minimap(){
+  const { t } = useTranslation("minimap");
   const isMobile = useIsMobile();
   const { view, activeWing, activeRoomId, exitToPalace, enterRoom, switchWing } = usePalaceStore();
   const { getWingRooms, getWings } = useRoomStore();
@@ -19,12 +21,12 @@ export default function Minimap(){
     <div style={{position:"absolute",top:view==="room"?110:62,right:18,zIndex:25,animation:"fadeIn .5s ease .4s both",maxWidth:"min(220px, 40vw)"}}>
       <div style={{background:`${T.color.white}ee`,backdropFilter:"blur(12px)",borderRadius:14,border:`1px solid ${T.color.cream}`,padding:collapsed?8:12,boxShadow:"0 4px 20px rgba(44,44,42,.08)"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:collapsed?0:8,cursor:"pointer"}} onClick={()=>setCollapsed(c=>!c)}>
-          <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,textTransform:"uppercase",letterSpacing:"1px"}}>{collapsed?"\uD83D\uDDFA\uFE0F":"Palace map"}</div>
+          <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,textTransform:"uppercase",letterSpacing:"1px"}}>{collapsed?"\uD83D\uDDFA\uFE0F":t("palaceMap")}</div>
           <span style={{fontSize:11,color:T.color.muted}}>{collapsed?"\u25BC":"\u25B2"}</span>
         </div>
         {!collapsed&&<div style={{display:"flex",flexDirection:"column",gap:3}}>
           <button onClick={exitToPalace} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 8px",borderRadius:8,border:"none",background:view==="exterior"?`${T.color.sandstone}30`:"transparent",cursor:"pointer",fontFamily:T.font.body,fontSize:11,color:T.color.muted,textAlign:"left"}}>
-            <div style={{width:6,height:6,borderRadius:3,background:T.color.sandstone,opacity:view==="exterior"?1:.3}}/>Palace overview
+            <div style={{width:6,height:6,borderRadius:3,background:T.color.sandstone,opacity:view==="exterior"?1:.3}}/>{t("palaceOverview")}
           </button>
           {WINGS.map(w=>{
             const isActive=activeWing===w.id;const wRooms=getWingRooms(w.id);

@@ -695,6 +695,7 @@ function PhotoGrid({ items, selected, onToggle }: {
   selected: Set<string>;
   onToggle: (id: string) => void;
 }) {
+  const { t } = useTranslation("import");
   return (
     <div style={{
       display: "grid",
@@ -753,7 +754,7 @@ function PhotoGrid({ items, selected, onToggle }: {
                 background: "rgba(0,0,0,.6)", color: "#FFF",
                 fontFamily: T.font.body, fontSize: 9, fontWeight: 600,
               }}>
-                VIDEO
+                {t("video")}
               </div>
             )}
 
@@ -786,6 +787,7 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
   onToggle: (id: string) => void;
   onOpenFolder: (item: CloudItem) => void;
 }) {
+  const { t, locale } = useTranslation("import");
   // Sort: folders first, then files
   const sorted = [...items].sort((a, b) => {
     if (a.isFolder && !b.isFolder) return -1;
@@ -866,13 +868,13 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
                 display: "flex", gap: 8,
               }}>
                 {isFolder && item.childCount != null && (
-                  <span>{item.childCount} items</span>
+                  <span>{t("items", { count: String(item.childCount) })}</span>
                 )}
                 {!isFolder && item.size != null && item.size > 0 && (
                   <span>{formatBytes(item.size)}</span>
                 )}
                 {item.modified && (
-                  <span>{new Date(item.modified).toLocaleDateString()}</span>
+                  <span>{new Date(item.modified).toLocaleDateString(locale)}</span>
                 )}
               </div>
             </div>

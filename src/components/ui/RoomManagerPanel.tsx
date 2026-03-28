@@ -117,7 +117,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                 {/* Icon button */}
                 <button onClick={() => { setPickingIconId(pickingIconId === room.id ? null : room.id); setEditingId(null); setAdding(false); }}
                   style={{ width: 38, height: 38, borderRadius: 10, border: `1px solid ${T.color.cream}`, background: pickingIconId === room.id ? `${accent}12` : T.color.warmStone, fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s" }}
-                  title="Change icon">
+                  title={t("changeIcon")}>
                   {room.icon}
                 </button>
 
@@ -132,7 +132,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                   ) : (
                     <div onClick={() => startEdit(room.id, room.name)}
                       style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, cursor: "text", padding: "4px 0" }}
-                      title="Click to rename">
+                      title={t("clickToRename")}>
                       {room.name}
                     </div>
                   )}
@@ -154,14 +154,14 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                 {onEnterRoom && (
                   <button onClick={() => { onEnterRoom(room.id); onClose(); }}
                     style={{ width: isMobile ? 38 : 30, height: isMobile ? 38 : 30, borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 14 : 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}
-                    title="Enter room">{"\u279C"}</button>
+                    title={t("enterRoom")}>{"\u279C"}</button>
                 )}
 
                 {/* Delete button */}
                 {rooms.length > 1 && (
                   <button onClick={() => setConfirmDelete(confirmDelete === room.id ? null : room.id)}
                     style={{ width: isMobile ? 38 : 30, height: isMobile ? 38 : 30, borderRadius: 8, border: confirmDelete === room.id ? "1px solid #D0606080" : `1px solid ${T.color.cream}`, background: confirmDelete === room.id ? "#D0606010" : "transparent", color: confirmDelete === room.id ? "#C05050" : T.color.muted, fontSize: isMobile ? 14 : 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}
-                    title="Delete room">{"\u{1F5D1}"}</button>
+                    title={t("deleteRoom")}>{"\u{1F5D1}"}</button>
                 )}
               </div>
 
@@ -193,7 +193,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
               <button onClick={() => setShowNewIconPicker(!showNewIconPicker)}
                 style={{ width: 42, height: 42, borderRadius: 10, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-                title="Choose icon">
+                title={t("chooseIcon")}>
                 {newIcon}
               </button>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("roomNamePlaceholder")} autoFocus

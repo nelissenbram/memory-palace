@@ -12,6 +12,7 @@ import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffect
 import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { loadBustModel, type BustStyle, type BustGender } from "@/lib/3d/bustBuilder";
 import type { BustPedestalData } from "@/lib/stores/userStore";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ═══ ENTRANCE HALL — Grand Roman Senate / Pantheon Chamber ═══
 const HALL_DOORS = [
@@ -140,6 +141,7 @@ export default function EntranceHallScene({
   bustName?: string | null;
   bustGender?: string | null;
 }) {
+  const { t } = useTranslation("entranceHall");
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -2147,7 +2149,7 @@ export default function EntranceHallScene({
         }}
         onMouseEnter={e => { (e.target as HTMLElement).style.opacity = "1"; }}
         onMouseLeave={e => { (e.target as HTMLElement).style.opacity = "0.7"; }}
-        title={muted ? "Unmute music" : "Mute music"}
+        title={muted ? t("unmute") : t("mute")}
       >
         {muted ? "\uD83D\uDD07" : "\uD83D\uDD0A"}
       </button>

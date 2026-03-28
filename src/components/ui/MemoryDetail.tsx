@@ -2,6 +2,7 @@
 import { useState, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import ImageEditor from "@/components/ui/ImageEditor";
@@ -23,6 +24,7 @@ interface MemoryDetailProps {
 
 export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: MemoryDetailProps){
   const isMobile = useIsMobile();
+  const { t, locale } = useTranslation("memoryDetail");
   const [editing,setEditing]=useState(false);
   const [imageEditing,setImageEditing]=useState(false);
   const [sharing,setSharing]=useState(false);
@@ -116,11 +118,11 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
         <div style={{padding:"20px 24px 24px"}}>
           {editing?<>
             {/* Description */}
-            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Description</label>
-            <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="What makes this moment special..." rows={3}
+            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>{t("description")}</label>
+            <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder={t("descriptionPlaceholder")} rows={3}
               style={{width:"100%",padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:16,resize:"none"}}/>
             {/* Display type */}
-            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:8}}>Display as</label>
+            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:8}}>{t("displayAs")}</label>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:20}}>
               {DISPLAY_TYPES.map(([val,icon,label])=>(
                 <button key={val} onClick={()=>setType(val)} style={{padding:"8px 6px",borderRadius:8,border:type===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:type===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
@@ -130,13 +132,13 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
               ))}
               {mem.dataUrl&&<button onClick={()=>setImageEditing(true)} style={{padding:"8px 6px",borderRadius:8,border:`1px solid ${accent}60`,background:`${accent}08`,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
                 <div style={{fontSize:16}}>{"\u{2728}"}</div>
-                <div style={{fontFamily:T.font.body,fontSize:9,color:accent,fontWeight:600,marginTop:1}}>Edit Image</div>
+                <div style={{fontFamily:T.font.body,fontSize:9,color:accent,fontWeight:600,marginTop:1}}>{t("editImage")}</div>
               </button>}
             </div>
             {/* Visibility */}
-            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:8}}>Visibility</label>
+            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:8}}>{t("visibility")}</label>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:20}}>
-              {([["private","\u{1F512}","Private"],["shared","\u{1F465}","Shared"],["family","\u{1F46A}","Family"],["public","\u{1F30D}","Public"]] as const).map(([val,icon,label])=>(
+              {([["private","\u{1F512}",t("visPrivate")],["shared","\u{1F465}",t("visShared")],["family","\u{1F46A}",t("visFamily")],["public","\u{1F30D}",t("visPublic")]] as const).map(([val,icon,label])=>(
                 <button key={val} onClick={()=>setVisibility(val)} style={{padding:"8px 6px",borderRadius:8,border:visibility===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:visibility===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
                   <div style={{fontSize:14}}>{icon}</div>
                   <div style={{fontFamily:T.font.body,fontSize:9,color:visibility===val?accent:T.color.muted,fontWeight:visibility===val?600:400,marginTop:1}}>{label}</div>
@@ -145,36 +147,36 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
             </div>
             {/* Save / Cancel */}
             <div style={{display:"flex",gap:10}}>
-              <button onClick={handleCancel} style={{flex:1,padding:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.cream}`,borderRadius:10,cursor:"pointer",color:T.color.muted}}>Cancel</button>
-              <button onClick={handleSave} disabled={!title.trim()} style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:title.trim()?accent:`${T.color.sandstone}40`,border:"none",borderRadius:10,cursor:title.trim()?"pointer":"default",color:title.trim()?T.color.white:T.color.muted}}>Save changes</button>
+              <button onClick={handleCancel} style={{flex:1,padding:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.cream}`,borderRadius:10,cursor:"pointer",color:T.color.muted}}>{t("cancel")}</button>
+              <button onClick={handleSave} disabled={!title.trim()} style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:title.trim()?accent:`${T.color.sandstone}40`,border:"none",borderRadius:10,cursor:title.trim()?"pointer":"default",color:title.trim()?T.color.white:T.color.muted}}>{t("saveChanges")}</button>
             </div>
           </>:<>
             {/* View mode */}
             {isLocked&&<div style={{background:"linear-gradient(135deg,rgba(42,34,24,.06),rgba(200,168,104,.1))",border:`1px solid ${T.color.cream}`,borderRadius:12,padding:16,marginBottom:16,textAlign:"center"}}>
               <div style={{fontSize:28,marginBottom:8}}>🔒</div>
               <div style={{fontFamily:T.font.display,fontSize:18,color:T.color.charcoal,marginBottom:4}}>
-                {daysUntilReveal===1?"Opens tomorrow":daysUntilReveal<=30?`Opens in ${daysUntilReveal} days`:`Opens on ${new Date(mem.revealDate!+"T00:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}`}
+                {daysUntilReveal===1?t("opensTomorrow"):daysUntilReveal<=30?t("opensInDays", { count: String(daysUntilReveal) }):t("opensOn", { date: new Date(mem.revealDate!+"T00:00:00").toLocaleDateString(locale==="nl"?"nl-NL":"en-US",{month:"long",day:"numeric",year:"numeric"}) })}
               </div>
-              <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted}}>This time capsule is sealed</div>
+              <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted}}>{t("capsuleSealed")}</div>
               {mem.resolution&&<div style={{marginTop:12,padding:"10px 14px",borderRadius:10,background:"rgba(74,103,65,.08)",border:`1px solid ${T.color.sage}30`}}>
                 <div style={{fontFamily:T.font.body,fontSize:12,fontStyle:"italic",color:T.color.walnut,lineHeight:1.5}}>
-                  You set a goal... it will be revealed on {new Date(mem.revealDate!+"T00:00:00").toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}
+                  {t("resolutionGoal", { date: new Date(mem.revealDate!+"T00:00:00").toLocaleDateString(locale==="nl"?"nl-NL":"en-US",{month:"long",day:"numeric",year:"numeric"}) })}
                 </div>
               </div>}
             </div>}
             {!isLocked&&(mem.desc||desc)&&<p style={{fontFamily:T.font.body,fontSize:14,color:T.color.walnut,lineHeight:1.7,marginBottom:12}}>{mem.desc}</p>}
             {/* Resolution progress section */}
             {!isLocked&&mem.resolution&&<div style={{marginBottom:16,padding:16,borderRadius:12,border:`1px solid ${T.color.sage}30`,background:"linear-gradient(135deg,rgba(74,103,65,.06),rgba(74,103,65,.02))"}}>
-              <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.sage,letterSpacing:".5px",textTransform:"uppercase",marginBottom:10,fontWeight:600}}>Resolution</div>
+              <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.sage,letterSpacing:".5px",textTransform:"uppercase",marginBottom:10,fontWeight:600}}>{t("resolutionLabel")}</div>
               <div style={{fontFamily:T.font.body,fontSize:14,color:T.color.charcoal,lineHeight:1.5,marginBottom:12}}>{mem.resolution.goal}</div>
               {mem.resolution.targetDate&&<div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,marginBottom:12,display:"flex",alignItems:"center",gap:6}}>
-                <span>Target:</span>
-                <span style={{fontWeight:600,color:T.color.walnut}}>{new Date(mem.resolution.targetDate+"T00:00:00").toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</span>
-                {(()=>{const d=Math.ceil((new Date(mem.resolution.targetDate!+"T00:00:00").getTime()-Date.now())/(1000*60*60*24));return d>0?<span style={{color:T.color.sage,fontStyle:"italic"}}>({d} day{d!==1?"s":""} left)</span>:<span style={{color:T.color.error,fontStyle:"italic"}}>(past due)</span>;})()}
+                <span>{t("target")}</span>
+                <span style={{fontWeight:600,color:T.color.walnut}}>{new Date(mem.resolution.targetDate+"T00:00:00").toLocaleDateString(locale==="nl"?"nl-NL":"en-US",{month:"short",day:"numeric",year:"numeric"})}</span>
+                {(()=>{const d=Math.ceil((new Date(mem.resolution.targetDate!+"T00:00:00").getTime()-Date.now())/(1000*60*60*24));return d>0?<span style={{color:T.color.sage,fontStyle:"italic"}}>{t("daysLeft", { count: String(d) })}</span>:<span style={{color:T.color.error,fontStyle:"italic"}}>{t("pastDue")}</span>;})()}
               </div>}
               {typeof mem.resolution.progress==="number"&&<div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                  <span style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted}}>Progress</span>
+                  <span style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted}}>{t("progress")}</span>
                   <span style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:resProgress>=100?T.color.success:T.color.sage}}>{resProgress}%</span>
                 </div>
                 <input type="range" min={0} max={100} value={resProgress} onChange={e=>setResProgress(Number(e.target.value))}
@@ -186,45 +188,45 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
                   const updatedRes={...mem.resolution!,progress:resProgress};
                   onUpdate(mem.id,{resolution:updatedRes});
                 }} style={{width:"100%",padding:"8px 14px",borderRadius:8,border:"none",background:T.color.sage,color:"#FFF",fontFamily:T.font.body,fontSize:12,fontWeight:600,cursor:"pointer",transition:"all .15s"}}>
-                  Update Progress
+                  {t("updateProgress")}
                 </button>}
               </div>}
             </div>}
             <p style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,marginBottom:4,display:"flex",alignItems:"center",gap:6}}>
               <span>{DISPLAY_TYPES.find(d=>d[0]===mem.type)?.[1]}</span>
-              <span style={{fontStyle:"italic"}}>Displayed as {DISPLAY_TYPES.find(d=>d[0]===mem.type)?.[2]||mem.type}</span>
+              <span style={{fontStyle:"italic"}}>{t("displayedAs", { type: DISPLAY_TYPES.find(d=>d[0]===mem.type)?.[2]||mem.type })}</span>
             </p>
             <p style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,fontStyle:"italic",marginBottom:16}}>
-              This memory lives in: {room?room.name:"Unknown room"}
+              {t("livesIn", { room: room?room.name:t("unknownRoom") })}
             </p>
             {/* Historical Context section */}
             {!isLocked&&<div style={{marginBottom:16}}>
               {historicalContext?<div style={{background:"linear-gradient(135deg,rgba(74,103,65,.06),rgba(193,127,89,.06))",border:`1px solid ${T.color.cream}`,borderRadius:12,padding:16}}>
                 <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <span>Historical Context</span>
-                  <button onClick={()=>{setHistoricalContext("");onUpdate(mem.id,{historicalContext:""});}} style={{background:"none",border:"none",cursor:"pointer",fontFamily:T.font.body,fontSize:11,color:T.color.muted,padding:0,textDecoration:"underline"}}>Remove</button>
+                  <span>{t("historicalContext")}</span>
+                  <button onClick={()=>{setHistoricalContext("");onUpdate(mem.id,{historicalContext:""});}} style={{background:"none",border:"none",cursor:"pointer",fontFamily:T.font.body,fontSize:11,color:T.color.muted,padding:0,textDecoration:"underline"}}>{t("remove")}</button>
                 </div>
                 <p style={{fontFamily:T.font.body,fontSize:13,color:T.color.walnut,lineHeight:1.7,margin:0,whiteSpace:"pre-wrap"}}>{historicalContext}</p>
               </div>
               :contextLoading?<div style={{background:`${T.color.cream}40`,border:`1px solid ${T.color.cream}`,borderRadius:12,padding:16,textAlign:"center"}}>
                 <div style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
                   <span style={{display:"inline-block",width:14,height:14,border:`2px solid ${T.color.sandstone}`,borderTopColor:"transparent",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-                  Discovering what the world was like...
+                  {t("discoveringContext")}
                 </div>
                 <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
               </div>
               :contextError?<div style={{fontFamily:T.font.body,fontSize:12,color:T.color.error,marginBottom:4}}>{contextError}</div>
               :<button onClick={fetchHistoricalContext} style={{width:"100%",padding:"10px 16px",fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px dashed ${T.color.sandstone}`,borderRadius:10,cursor:"pointer",color:T.color.walnut,display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .15s"}}>
-                <span style={{fontSize:16}}>&#x1F30D;</span> Add Historical Context
+                <span style={{fontSize:16}}>&#x1F30D;</span> {t("addHistoricalContext")}
               </button>}
             </div>}
             <div style={{display:"flex",gap:isMobile?8:10,flexWrap:isMobile?"wrap":"nowrap"}}>
-              <button onClick={()=>{onDelete(mem.id);onClose();}} disabled={isLocked} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.error}80`,borderRadius:10,cursor:isLocked?"default":"pointer",color:isLocked?T.color.muted:T.color.error,opacity:isLocked?.5:1,minHeight:44}}>Delete</button>
-              <button onClick={onClose} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.cream}`,borderRadius:10,cursor:"pointer",color:T.color.muted,minHeight:44}}>Close</button>
-              <button onClick={()=>setSharing(true)} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.cream}`,borderRadius:10,cursor:"pointer",color:T.color.walnut,minHeight:44}}>Share</button>
+              <button onClick={()=>{onDelete(mem.id);onClose();}} disabled={isLocked} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.error}80`,borderRadius:10,cursor:isLocked?"default":"pointer",color:isLocked?T.color.muted:T.color.error,opacity:isLocked?.5:1,minHeight:44}}>{t("deleteBtn")}</button>
+              <button onClick={onClose} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.cream}`,borderRadius:10,cursor:"pointer",color:T.color.muted,minHeight:44}}>{t("closeBtn")}</button>
+              <button onClick={()=>setSharing(true)} style={{flex:1,padding:isMobile?14:12,fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px solid ${T.color.cream}`,borderRadius:10,cursor:"pointer",color:T.color.walnut,minHeight:44}}>{t("shareBtn")}</button>
               {isLocked
-                ?<button disabled style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:`${T.color.sandstone}40`,border:"none",borderRadius:10,cursor:"default",color:T.color.muted,minWidth:44,minHeight:44}}>Sealed 🔒</button>
-                :<button onClick={()=>setEditing(true)} style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:accent,border:"none",borderRadius:10,cursor:"pointer",color:T.color.white,minWidth:44,minHeight:44}}>Edit memory</button>
+                ?<button disabled style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:`${T.color.sandstone}40`,border:"none",borderRadius:10,cursor:"default",color:T.color.muted,minWidth:44,minHeight:44}}>{t("sealed")} 🔒</button>
+                :<button onClick={()=>setEditing(true)} style={{flex:2,padding:12,fontFamily:T.font.body,fontSize:13,fontWeight:600,background:accent,border:"none",borderRadius:10,cursor:"pointer",color:T.color.white,minWidth:44,minHeight:44}}>{t("editMemory")}</button>
               }
             </div>
           </>}

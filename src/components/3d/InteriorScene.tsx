@@ -12,11 +12,13 @@ import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
 // wall, screen, vinyl player, vitrine, orbs. Layout varies size & décor.
 export default function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClick,wingData:wingDataProp,styleEra="roman"}: {roomId: any,actualRoomId?: string,layoutOverride?: string,memories: any,onMemoryClick: any,wingData?: Wing,styleEra?: string}){
+  const { t } = useTranslation("interior3d");
   const { getWingRooms } = useRoomStore();
   const currentRoomName = getWingRooms(roomId).find(r => r.id === (actualRoomId || roomId))?.name || "";
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
@@ -752,7 +754,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       const scrGl=new THREE.PointLight(`hsl(${vm.hue},40%,60%)`,.15,4);scrGl.position.set(scrX-.5,2.2,0);scene.add(scrGl);
     }else{
       const idleC=document.createElement("canvas");idleC.width=384;idleC.height=256;const ic=idleC.getContext("2d")!;
-      ic.fillStyle="#1A1A1A";ic.fillRect(0,0,384,256);ic.fillStyle="#333";ic.font="24px Georgia,serif";ic.textAlign="center";ic.fillText("No videos yet",192,128);
+      ic.fillStyle="#1A1A1A";ic.fillRect(0,0,384,256);ic.fillStyle="#333";ic.font="24px Georgia,serif";ic.textAlign="center";ic.fillText(t("noVideos"),192,128);
       const idleTex=new THREE.CanvasTexture(idleC);idleTex.colorSpace=THREE.SRGBColorSpace;
       const idleMesh=new THREE.Mesh(new THREE.PlaneGeometry(2.8,1.8),new THREE.MeshBasicMaterial({map:idleTex}));
       idleMesh.rotation.y=-Math.PI/2;idleMesh.position.set(scrX-.06,2.2,0);
@@ -1371,7 +1373,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       </div>
       <div style={{minWidth:0,maxWidth:120}}>
         <div style={{fontFamily:"system-ui,sans-serif",fontSize:8,color:barAccent,textTransform:"uppercase",letterSpacing:"1.2px",fontWeight:700,marginBottom:1}}>
-          {isVid?"Cinema Screen":"Vinyl Player"}{hasMultiple?` (${curIdx+1}/${playlist.length})`:""}
+          {isVid?t("cinemaScreen"):t("vinylPlayer")}{hasMultiple?` (${curIdx+1}/${playlist.length})`:""}
         </div>
         <div style={{fontFamily:"Georgia,serif",fontSize:11,color:"#F0EAE0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{title}</div>
         <div style={{fontFamily:"system-ui,sans-serif",fontSize:9,color:"rgba(240,234,224,.5)",marginTop:1}}>{fmt(st.time)} / {fmt(st.duration)}</div>
@@ -1381,15 +1383,15 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       </div>
       <div style={{display:"flex",gap:3,alignItems:"center"}}>
         {/* Prev track */}
-        {hasMultiple&&<button onClick={()=>switchTrack(curIdx-1)} title="Previous" style={{width:28,height:28,fontSize:11,...btnS}}>{"\u23EE"}</button>}
-        <button onClick={()=>act(ref,el=>{el.pause();el.currentTime=0;})} title="Stop" style={{width:28,height:28,fontSize:13,...btnS}}>{"\u23F9"}</button>
+        {hasMultiple&&<button onClick={()=>switchTrack(curIdx-1)} title={t("previous")} style={{width:28,height:28,fontSize:11,...btnS}}>{"\u23EE"}</button>}
+        <button onClick={()=>act(ref,el=>{el.pause();el.currentTime=0;})} title={t("stop")} style={{width:28,height:28,fontSize:13,...btnS}}>{"\u23F9"}</button>
         {st.playing
-          ?<button onClick={()=>act(ref,el=>el.pause())} title="Pause" style={{width:32,height:32,fontSize:14,...btnS,borderRadius:10,background:barAccent,color:"#FFF"}}>{"\u23F8"}</button>
-          :<button onClick={()=>act(ref,el=>{el.muted=false;el.play().catch(()=>{});})} title="Play" style={{width:32,height:32,fontSize:14,...btnS,borderRadius:10,background:barAccent,color:"#FFF"}}>{"\u25B6"}</button>
+          ?<button onClick={()=>act(ref,el=>el.pause())} title={t("pause")} style={{width:32,height:32,fontSize:14,...btnS,borderRadius:10,background:barAccent,color:"#FFF"}}>{"\u23F8"}</button>
+          :<button onClick={()=>act(ref,el=>{el.muted=false;el.play().catch(()=>{});})} title={t("play")} style={{width:32,height:32,fontSize:14,...btnS,borderRadius:10,background:barAccent,color:"#FFF"}}>{"\u25B6"}</button>
         }
         {/* Next track */}
-        {hasMultiple&&<button onClick={()=>switchTrack(curIdx+1)} title="Next" style={{width:28,height:28,fontSize:11,...btnS}}>{"\u23ED"}</button>}
-        <button onClick={()=>act(ref,el=>{el.loop=!el.loop;})} title={st.loop?"Loop on":"Loop off"} style={{width:28,height:28,fontSize:12,...btnS,border:st.loop?`1.5px solid ${barAccent}`:"none",background:st.loop?`${barAccent}20`:"rgba(255,255,255,.08)",color:st.loop?barAccent:"#F0EAE0"}}>{"\uD83D\uDD01"}</button>
+        {hasMultiple&&<button onClick={()=>switchTrack(curIdx+1)} title={t("next")} style={{width:28,height:28,fontSize:11,...btnS}}>{"\u23ED"}</button>}
+        <button onClick={()=>act(ref,el=>{el.loop=!el.loop;})} title={st.loop?t("loopOn"):t("loopOff")} style={{width:28,height:28,fontSize:12,...btnS,border:st.loop?`1.5px solid ${barAccent}`:"none",background:st.loop?`${barAccent}20`:"rgba(255,255,255,.08)",color:st.loop?barAccent:"#F0EAE0"}}>{"\uD83D\uDD01"}</button>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:4}}>
         <span style={{fontSize:11,color:"rgba(240,234,224,.5)"}}>{"\uD83D\uDD0A"}</span>

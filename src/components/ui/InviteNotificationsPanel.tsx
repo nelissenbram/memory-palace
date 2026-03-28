@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { getPendingInvites, acceptInvite, declineInvite } from "@/lib/auth/invite-actions";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface PendingInvite {
   id: string;
@@ -22,6 +23,7 @@ interface InviteNotificationsPanelProps {
 }
 
 export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: InviteNotificationsPanelProps) {
+  const { t, locale } = useTranslation("inviteNotifications");
   const isMobile = useIsMobile();
   const [invites, setInvites] = useState<PendingInvite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,14 +64,14 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
   const timeAgo = (dateStr: string) => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return t("justNow");
+    if (mins < 60) return t("minutesAgo", { count: String(mins) });
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return t("hoursAgo", { count: String(hours) });
     const days = Math.floor(hours / 24);
-    if (days === 1) return "yesterday";
-    if (days < 7) return `${days}d ago`;
-    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (days === 1) return t("yesterday");
+    if (days < 7) return t("daysAgo", { count: String(days) });
+    return new Date(dateStr).toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", { month: "short", day: "numeric" });
   };
 
   return (
@@ -91,10 +93,10 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <div>
             <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
-              Invitations
+              {t("title")}
             </h3>
             <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "4px 0 0" }}>
-              {invites.length > 0 ? `${invites.length} pending` : "No pending invitations"}
+              {invites.length > 0 ? t("pending", { count: String(invites.length) }) : t("noPending")}
             </p>
           </div>
           <button onClick={onClose} style={{
@@ -116,16 +118,16 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
 
         {loading ? (
           <div style={{ textAlign: "center", padding: 40, color: T.color.muted, fontFamily: T.font.body, fontSize: 13 }}>
-            Loading invitations...
+            {t("loading")}
           </div>
         ) : invites.length === 0 ? (
           <div style={{ textAlign: "center", padding: 40 }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>&#x1F4EC;</div>
             <p style={{ fontFamily: T.font.display, fontSize: 18, color: T.color.charcoal, margin: "0 0 8px" }}>
-              All caught up!
+              {t("allCaughtUp")}
             </p>
             <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, margin: 0 }}>
-              No pending invitations right now.
+              {t("noPendingNow")}
             </p>
           </div>
         ) : (
@@ -155,8 +157,8 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
                         {invite.inviterName}
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, marginTop: 2 }}>
-                        Shared <strong>{invite.roomName}</strong>
-                        {invite.wingName && <span> in {invite.wingIcon} {invite.wingName}</span>}
+                        {t("shared")} <strong>{invite.roomName}</strong>
+                        {invite.wingName && <span> {t("in")} {invite.wingIcon} {invite.wingName}</span>}
                       </div>
                       <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
                         <span style={{
@@ -165,7 +167,7 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
                           fontFamily: T.font.body, fontSize: 10,
                           color: invite.permission === "contribute" ? T.color.sage : T.color.walnut,
                         }}>
-                          Can {invite.permission === "contribute" ? "view & contribute" : "view"}
+                          {invite.permission === "contribute" ? t("canViewContribute") : t("canViewOnly")}
                         </span>
                         <span style={{
                           fontFamily: T.font.body, fontSize: 10, color: T.color.muted,
@@ -200,7 +202,7 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
                       color: "#FFF", fontFamily: T.font.body, fontSize: 12, fontWeight: 600,
                       cursor: isProcessing ? "default" : "pointer", opacity: isProcessing ? 0.6 : 1,
                     }}>
-                      {isProcessing ? "..." : "Accept"}
+                      {isProcessing ? "..." : t("accept")}
                     </button>
                     <button onClick={() => handleDecline(invite.id)} disabled={isProcessing} style={{
                       flex: 1, padding: "10px 14px", borderRadius: 10,
@@ -208,7 +210,7 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
                       color: T.color.muted, fontFamily: T.font.body, fontSize: 12, fontWeight: 500,
                       cursor: isProcessing ? "default" : "pointer",
                     }}>
-                      Decline
+                      {t("decline")}
                     </button>
                   </div>
                 </div>

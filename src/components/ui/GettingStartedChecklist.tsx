@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const STORAGE_KEY = "mp_getting_started";
 const DISMISSED_KEY = "mp_getting_started_dismissed";
@@ -17,26 +18,26 @@ interface ChecklistItem {
 const ITEMS: ChecklistItem[] = [
   {
     id: "upload_memory",
-    label: "Upload your first memory",
-    description: "Add a photo, video, or document to any room",
+    label: "uploadFirst",
+    description: "uploadFirstDesc",
     icon: "\u{1F4F7}",
   },
   {
     id: "complete_interview",
-    label: "Complete a life interview",
-    description: "Let our AI guide you through your story",
+    label: "completeInterview",
+    description: "completeInterviewDesc",
     icon: "\u{1F3A4}",
   },
   {
     id: "customize_room",
-    label: "Customize a room",
-    description: "Change a room's name, icon, or layout",
+    label: "customizeRoom",
+    description: "customizeRoomDesc",
     icon: "\u{1F3A8}",
   },
   {
     id: "share_room",
-    label: "Share with someone",
-    description: "Invite a family member to view a room",
+    label: "shareWithSomeone",
+    description: "shareWithSomeoneDesc",
     icon: "\u{1F91D}",
   },
 ];
@@ -110,6 +111,7 @@ export default function GettingStartedChecklist({
   onShare,
 }: GettingStartedChecklistProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("gettingStarted");
   const [completed, setCompleted] = useState<string[]>([]);
   const [dismissed, setDismissed] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
@@ -226,7 +228,7 @@ export default function GettingStartedChecklist({
             color: T.color.walnut,
           }}
         >
-          Getting Started
+          {t("title")}
         </span>
       </button>
     );
@@ -273,7 +275,7 @@ export default function GettingStartedChecklist({
               lineHeight: 1.2,
             }}
           >
-            {allDone ? "All done!" : "Getting Started"}
+            {allDone ? t("allDone") : t("title")}
           </h3>
           <p
             style={{
@@ -284,13 +286,13 @@ export default function GettingStartedChecklist({
             }}
           >
             {allDone
-              ? "You've completed all the basics."
-              : `${completedCount} of ${totalCount} completed`}
+              ? t("completedBasics")
+              : `${completedCount} / ${totalCount} ${t("completedCount")}`}
           </p>
         </div>
         <button
           onClick={() => setCollapsed(true)}
-          title="Minimize"
+          title={t("minimize")}
           style={{
             background: "none",
             border: "none",
@@ -392,7 +394,7 @@ export default function GettingStartedChecklist({
                     lineHeight: 1.3,
                   }}
                 >
-                  {item.label}
+                  {t(item.label)}
                 </div>
                 {!done && (
                   <div
@@ -404,7 +406,7 @@ export default function GettingStartedChecklist({
                       marginTop: 2,
                     }}
                   >
-                    {item.description}
+                    {t(item.description)}
                   </div>
                 )}
               </div>
@@ -447,7 +449,7 @@ export default function GettingStartedChecklist({
             padding: "6px 12px",
           }}
         >
-          Dismiss permanently
+          {t("dismissPermanently")}
         </button>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const TYPES: [string, string, string][] = [
   ["photo","\u{1F5BC}\uFE0F","Photos"],["painting","\u{1F3A8}","Paintings"],["video","\u{1F3AC}","Videos"],["album","\u{1F4D6}","Albums"],
@@ -19,6 +20,7 @@ interface SearchBarProps {
 
 export default function SearchBar({query,filterType,totalCount,filteredCount,accent,onQueryChange,onFilterChange}: SearchBarProps){
   const isMobile = useIsMobile();
+  const { t } = useTranslation("searchBar");
   const color=accent||T.color.terracotta;
   const isFiltering=!!query||!!filterType;
 
@@ -30,7 +32,7 @@ export default function SearchBar({query,filterType,totalCount,filteredCount,acc
         <input
           value={query}
           onChange={e=>onQueryChange(e.target.value)}
-          placeholder="Search memories..."
+          placeholder={t("placeholder")}
           style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:isMobile?16:12,color:T.color.charcoal,outline:"none",padding:isMobile?"6px 0":"4px 0"}}
         />
         {isFiltering&&<button onClick={()=>{onQueryChange("");onFilterChange(null);}} style={{background:"none",border:"none",color:T.color.muted,fontSize:12,cursor:"pointer",padding:"2px 4px"}}>✕</button>}
@@ -54,7 +56,7 @@ export default function SearchBar({query,filterType,totalCount,filteredCount,acc
 
       {/* Result count */}
       {isFiltering&&<div style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted,paddingLeft:2}}>
-        Showing {filteredCount} of {totalCount} memories
+        {t("showing", { filtered: String(filteredCount), total: String(totalCount) })}
       </div>}
     </div>
   );

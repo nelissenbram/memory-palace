@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
@@ -43,6 +44,7 @@ interface CorridorGalleryPanelProps {
 
 export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintingsChange, currentPaintings }: CorridorGalleryPanelProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("corridorGallery");
   const accent = wing.accent;
   const userMems = useMemoryStore((s) => s.userMems);
   const { getWingRooms } = useRoomStore();
@@ -143,8 +145,8 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>Corridor Gallery</h3>
-            <p style={{ fontFamily: T.font.body, fontSize: 12, color: accent, margin: "4px 0 0" }}>{wing.icon} {wing.name} Wing</p>
+            <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
+            <p style={{ fontFamily: T.font.body, fontSize: 12, color: accent, margin: "4px 0 0" }}>{wing.icon} {wing.name} {t("wing")}</p>
           </div>
           <button onClick={onClose} style={{
             width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16,
@@ -157,7 +159,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
         {/* Description */}
         <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginBottom: 18, lineHeight: 1.5 }}>
-          Customize the paintings on your corridor walls. Choose photos from any wing, or upload your own images.
+          {t("description")}
         </p>
 
         {/* Reset button */}
@@ -168,7 +170,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
             fontFamily: T.font.body, fontSize: 12, color: T.color.walnut,
             cursor: "pointer", transition: "all .15s",
           }}>
-            Reset to defaults
+            {t("resetDefaults")}
           </button>
         )}
 
@@ -206,17 +208,17 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: T.font.display, fontSize: 14, fontWeight: 500, color: T.color.charcoal }}>
-                      Painting {idx + 1}
+                      {t("painting")} {idx + 1}
                     </div>
                     <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {override?.title ? override.title : `${room.icon} ${room.name} (default)`}
+                      {override?.title ? override.title : `${room.icon} ${room.name} ${t("default")}`}
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                     {override && (
-                      <button onClick={() => handleClear(roomId)} title="Remove override" style={{
+                      <button onClick={() => handleClear(roomId)} title={t("removeOverride")} style={{
                         width: 30, height: 30, borderRadius: 8,
                         border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
                         color: T.color.muted, fontSize: 12, cursor: "pointer",
@@ -230,7 +232,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                       fontFamily: T.font.body, fontSize: 11, fontWeight: 500,
                       color: isPicking ? accent : T.color.walnut, cursor: "pointer",
                     }}>
-                      {isPicking ? "Cancel" : "Choose"}
+                      {isPicking ? t("cancel") : t("choose")}
                     </button>
                   </div>
                 </div>
@@ -246,7 +248,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                         fontFamily: T.font.body, fontSize: 11, fontWeight: 500,
                         color: accent, cursor: "pointer",
                       }}>
-                        Upload Image
+                        {t("uploadImage")}
                       </button>
                       <button onClick={() => setSourceFilter("all")} style={{
                         padding: "5px 10px", borderRadius: 8,
@@ -254,18 +256,18 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                         background: sourceFilter === "all" ? `${accent}15` : T.color.warmStone,
                         fontFamily: T.font.body, fontSize: 10, color: sourceFilter === "all" ? accent : T.color.muted,
                         cursor: "pointer",
-                      }}>All Wings</button>
+                      }}>{t("allWings")}</button>
                       <button onClick={() => setSourceFilter("wing")} style={{
                         padding: "5px 10px", borderRadius: 8,
                         border: `1px solid ${sourceFilter === "wing" ? accent : T.color.cream}`,
                         background: sourceFilter === "wing" ? `${accent}15` : T.color.warmStone,
                         fontFamily: T.font.body, fontSize: 10, color: sourceFilter === "wing" ? accent : T.color.muted,
                         cursor: "pointer",
-                      }}>This Wing</button>
+                      }}>{t("thisWing")}</button>
                     </div>
                     {filteredMems.length === 0 ? (
                       <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, textAlign: "center", padding: "16px 0" }}>
-                        No photo memories found. Add photos to your rooms or upload an image.
+                        {t("noPhotos")}
                       </p>
                     ) : (
                       <div style={{
@@ -312,7 +314,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
         {/* Footer hint */}
         <p style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginTop: 20, textAlign: "center", lineHeight: 1.5 }}>
-          Photos assigned here will appear as paintings in the corridor. Click a painting in-scene to enter its room.
+          {t("hint")}
         </p>
       </div>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface StatusBarProps {
   earned: number;
@@ -11,6 +12,7 @@ interface StatusBarProps {
 }
 
 export default function StatusBar({ earned, total, percentage, onAchievements, onTracks, pointsElement }: StatusBarProps) {
+  const { t } = useTranslation("statusBar");
   return (
     <div style={{
       position: "absolute", bottom: 70, left: 28, zIndex: 35,
@@ -27,7 +29,7 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
       {/* Achievements */}
       <button
         onClick={onAchievements}
-        title="Achievements"
+        title={t("achievements")}
         style={{
           display: "flex", alignItems: "center", gap: 6,
           padding: "0 14px 0 12px", height: "100%",
@@ -52,7 +54,7 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
       {/* Tracks */}
       <button
         onClick={onTracks}
-        title="Memory Building Tracks"
+        title={t("memoryTracks")}
         style={{
           display: "flex", alignItems: "center", gap: 6,
           padding: "0 14px", height: "100%",
@@ -63,7 +65,7 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
       >
         <span style={{ fontSize: 14 }}>{"\uD83D\uDCDC"}</span>
-        <span style={{ fontFamily: T.font.body, fontSize: 11, fontWeight: 500, color: T.color.sage }}>Tracks</span>
+        <span style={{ fontFamily: T.font.body, fontSize: 11, fontWeight: 500, color: T.color.sage }}>{t("tracks")}</span>
       </button>
 
       {/* Divider */}

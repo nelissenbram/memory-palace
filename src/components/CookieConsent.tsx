@@ -225,7 +225,7 @@ export default function CookieConsent() {
                   transition: "background 0.2s",
                   flexShrink: 0,
                 }}
-                aria-label={`Analytics cookies ${analyticsEnabled ? "enabled" : "disabled"}`}
+                aria-label={analyticsEnabled ? t("analyticsEnabled") : t("analyticsDisabled")}
               >
                 <div
                   style={{

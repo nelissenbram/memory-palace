@@ -1,5 +1,6 @@
 "use client";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { TRACK_MAP } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
 
@@ -10,6 +11,7 @@ interface TrackDetailPanelProps {
 }
 
 export default function TrackDetailPanel({ trackId, onClose, onNavigate }: TrackDetailPanelProps) {
+  const { t } = useTranslation("trackDetail");
   const { getTrackProgress, setShowLegacyPanel } = useTrackStore();
   const track = TRACK_MAP[trackId];
   const progress = getTrackProgress(trackId);
@@ -86,7 +88,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
           <div style={{ marginTop: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <span style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
-                {progress.stepsCompleted.length} of {track.steps.length} completed
+                {progress.stepsCompleted.length} {t("of")} {track.steps.length} {t("completed")}
               </span>
               <span style={{
                 fontFamily: T.font.body, fontSize: 12, fontWeight: 600,
@@ -114,7 +116,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
               fontFamily: T.font.body, fontSize: 12, color: "#4A6741",
               textAlign: "center",
             }}>
-              Track completed! You earned a {track.completionBonus}-point bonus.
+              {t("trackCompleted", { points: String(track.completionBonus) })}
             </div>
           )}
         </div>
@@ -195,13 +197,13 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                       onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.03)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; }}
                     >
-                      {step.navigateTo === "legacy" ? "Open Legacy Settings" :
-                       step.navigateTo === "upload" ? "Go to Upload" :
-                       step.navigateTo === "room" ? "Go to Room" :
-                       step.navigateTo === "share" ? "Go to Share" :
-                       step.navigateTo === "wings" ? "Explore Wings" :
-                       step.navigateTo === "corridor" ? "Go to Corridor" :
-                       "Continue"} {"\u2192"}
+                      {step.navigateTo === "legacy" ? t("openLegacy") :
+                       step.navigateTo === "upload" ? t("goToUpload") :
+                       step.navigateTo === "room" ? t("goToRoom") :
+                       step.navigateTo === "share" ? t("goToShare") :
+                       step.navigateTo === "wings" ? t("exploreWings") :
+                       step.navigateTo === "corridor" ? t("goToCorridor") :
+                       t("continue")} {"\u2192"}
                     </button>
                   )}
                 </div>
@@ -212,7 +214,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                   color: isDone ? "#C9A84C" : `${T.color.sandstone}80`,
                   flexShrink: 0, paddingTop: 2,
                 }}>
-                  {isDone ? `+${step.pointValue}` : `${step.pointValue} pts`}
+                  {isDone ? `+${step.pointValue}` : `${step.pointValue} ${t("pts")}`}
                 </div>
               </div>
             );
@@ -226,14 +228,14 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
           background: `${T.color.warmStone}80`,
         }}>
           <span style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
-            Track points earned
+            {t("trackPointsEarned")}
           </span>
           <span style={{ fontFamily: T.font.body, fontSize: 14, fontWeight: 700, color: "#C9A84C" }}>
             {progress.stepsCompleted.reduce((sum, stepId) => {
               const step = track.steps.find((s) => s.id === stepId);
               return sum + (step?.pointValue || 0);
             }, 0)}
-            {isComplete ? ` + ${track.completionBonus} bonus` : ""}
+            {isComplete ? ` + ${track.completionBonus} ${t("bonus")}` : ""}
           </span>
         </div>
       </div>

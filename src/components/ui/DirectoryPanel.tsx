@@ -7,6 +7,7 @@ import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const TYPE_ICONS: Record<string,string> = {
   photo:"\u{1F5BC}\uFE0F",video:"\u{1F3AC}",album:"\u{1F4D6}",orb:"\u{1F52E}","case":"\u{1F3FA}",voice:"\u{1F399}\uFE0F",document:"\u{1F4DC}",
@@ -17,6 +18,7 @@ interface DirectoryPanelProps {
 }
 
 export default function DirectoryPanel({onClose}: DirectoryPanelProps){
+  const { t } = useTranslation("directoryPanel");
   const isMobile = useIsMobile();
   const [query,setQuery]=useState("");
   const [expanded,setExpanded]=useState<Record<string,boolean>>({});
@@ -67,8 +69,8 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
         {/* Header */}
         <div style={{padding:"24px 24px 0",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <div>
-            <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>Directory</h3>
-            <p style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,margin:"4px 0 0"}}>{WINGS.length} wings · {totalMems} memories</p>
+            <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>{t("title")}</h3>
+            <p style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,margin:"4px 0 0"}}>{t("summary", { wings: String(WINGS.length), memories: String(totalMems) })}</p>
           </div>
           <button onClick={onClose} style={{width:32,height:32,borderRadius:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
@@ -77,7 +79,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
         <div style={{padding:"0 24px",marginBottom:16}}>
           <div style={{background:T.color.white,borderRadius:10,border:`1px solid ${T.color.cream}`,padding:"8px 12px",display:"flex",alignItems:"center",gap:8}}>
             <span style={{fontSize:13,opacity:.5}}>🔍</span>
-            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search all memories..."
+            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t("searchPlaceholder")}
               style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none"}}/>
             {query&&<button onClick={()=>setQuery("")} style={{background:"none",border:"none",color:T.color.muted,fontSize:12,cursor:"pointer"}}>✕</button>}
           </div>
@@ -101,7 +103,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
                   <span style={{fontSize:18}}>{wing.icon}</span>
                   <div style={{flex:1}}>
                     <div style={{fontFamily:T.font.display,fontSize:14,fontWeight:500,color:isActive?wing.accent:T.color.charcoal}}>{wing.name}</div>
-                    <div style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>{wing.rooms.length} rooms · {wing.totalMems} memories</div>
+                    <div style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>{t("wingSummary", { rooms: String(wing.rooms.length), memories: String(wing.totalMems) })}</div>
                   </div>
                 </button>
 
@@ -123,10 +125,10 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
                             <span style={{fontSize:14}}>{room.icon}</span>
                             <div style={{flex:1}}>
                               <div style={{fontFamily:T.font.body,fontSize:12,fontWeight:isRoomActive?600:400,color:isRoomActive?wing.accent:T.color.charcoal}}>{room.name}</div>
-                              <div style={{fontFamily:T.font.body,fontSize:9,color:T.color.muted}}>{room.mems.length} memories{room.shared?" · Shared":""}</div>
+                              <div style={{fontFamily:T.font.body,fontSize:9,color:T.color.muted}}>{t("roomMemories", { count: String(room.mems.length) })}{room.shared?` · ${t("shared")}`:""}</div>
                             </div>
                           </button>
-                          <button onClick={()=>navigateToRoom(wing.id,room.id)} title="Open in 3D"
+                          <button onClick={()=>navigateToRoom(wing.id,room.id)} title={t("openIn3d")}
                             style={{width:26,height:26,borderRadius:8,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,
                               fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:T.color.muted,flexShrink:0}}>
                             🏛️
@@ -152,7 +154,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
                           ))}
                         </div>}
                         {roomExpanded&&mems.length===0&&!q&&<div style={{paddingLeft:34,paddingBottom:4}}>
-                          <span style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted,fontStyle:"italic"}}>Empty room</span>
+                          <span style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted,fontStyle:"italic"}}>{t("emptyRoom")}</span>
                         </div>}
                       </div>
                     );
@@ -163,7 +165,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
           })}
           {q&&tree.every(w=>w.matchingRooms.length===0)&&<div style={{textAlign:"center",padding:"32px 0"}}>
             <div style={{fontSize:24,marginBottom:8,opacity:.4}}>🔍</div>
-            <p style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted}}>No memories matching "{query}"</p>
+            <p style={{fontFamily:T.font.body,fontSize:13,color:T.color.muted}}>{t("noMatching", { query })}</p>
           </div>}
         </div>
       </div>

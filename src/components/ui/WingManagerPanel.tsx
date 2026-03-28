@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomStore } from "@/lib/stores/roomStore";
 
 const EMOJI_PRESETS = [
@@ -24,22 +25,22 @@ const EMOJI_PRESETS = [
 ];
 
 const ACCENT_PALETTE = [
-  { color: "#C17F59", name: "Terracotta" },
-  { color: "#4A6741", name: "Forest" },
-  { color: "#B8926A", name: "Sand" },
-  { color: "#8B7355", name: "Walnut" },
-  { color: "#9B6B8E", name: "Mauve" },
-  { color: "#5A7898", name: "Slate Blue" },
-  { color: "#7A5A3A", name: "Bronze" },
-  { color: "#6A8848", name: "Olive" },
-  { color: "#B85A5A", name: "Brick" },
-  { color: "#5A6A8A", name: "Steel" },
-  { color: "#8A6A4A", name: "Cognac" },
-  { color: "#6A5A7A", name: "Plum" },
-  { color: "#4A8A7A", name: "Teal" },
-  { color: "#AA7A4A", name: "Amber" },
-  { color: "#7A4A5A", name: "Wine" },
-  { color: "#5A8A5A", name: "Sage" },
+  { color: "#C17F59", nameKey: "terracotta" },
+  { color: "#4A6741", nameKey: "forest" },
+  { color: "#B8926A", nameKey: "sand" },
+  { color: "#8B7355", nameKey: "walnut" },
+  { color: "#9B6B8E", nameKey: "mauve" },
+  { color: "#5A7898", nameKey: "slateBlue" },
+  { color: "#7A5A3A", nameKey: "bronze" },
+  { color: "#6A8848", nameKey: "olive" },
+  { color: "#B85A5A", nameKey: "brick" },
+  { color: "#5A6A8A", nameKey: "steel" },
+  { color: "#8A6A4A", nameKey: "cognac" },
+  { color: "#6A5A7A", nameKey: "plum" },
+  { color: "#4A8A7A", nameKey: "teal" },
+  { color: "#AA7A4A", nameKey: "amber" },
+  { color: "#7A4A5A", nameKey: "wine" },
+  { color: "#5A8A5A", nameKey: "sage" },
 ];
 
 interface WingManagerPanelProps {
@@ -48,6 +49,7 @@ interface WingManagerPanelProps {
 
 export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("wingManager");
   const { getWings, renameWing, changeWingIcon, changeWingAccent } = useRoomStore();
   const wings = getWings();
 
@@ -82,7 +84,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   const colorPicker = (currentColor: string, onPick: (color: string) => void) => (
     <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: isMobile ? 8 : 10, display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? 8 : 6, marginTop: 6 }}>
       {ACCENT_PALETTE.map((p, i) => (
-        <button key={i} onClick={() => onPick(p.color)} title={p.name}
+        <button key={i} onClick={() => onPick(p.color)} title={t(p.nameKey)}
           style={{
             width: isMobile ? 38 : 32, height: isMobile ? 38 : 32, borderRadius: isMobile ? 19 : 16, border: p.color === currentColor ? "3px solid #3A2818" : "2px solid transparent",
             background: p.color, cursor: "pointer", boxShadow: p.color === currentColor ? `0 0 0 2px ${T.color.white}, 0 2px 8px ${p.color}60` : "0 1px 4px rgba(0,0,0,.12)",
@@ -101,8 +103,8 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <div>
-            <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>Customize Wings</h3>
-            <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "4px 0 0" }}>Rename, change icons, and set accent colors</p>
+            <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
+            <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "4px 0 0" }}>{t("description")}</p>
           </div>
           <button onClick={onClose} style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 16 : 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}>{"\u2715"}</button>
         </div>
@@ -119,7 +121,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                     background: pickingIconId === wing.id ? `${wing.accent}12` : T.color.warmStone,
                     fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s",
                   }}
-                  title="Change icon">
+                  title={t("changeIcon")}>
                   {wing.icon}
                 </button>
 
@@ -134,8 +136,8 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                   ) : (
                     <div onClick={() => startEdit(wing.id, wing.name)}
                       style={{ fontFamily: T.font.display, fontSize: 15, fontWeight: 500, color: T.color.charcoal, cursor: "text", padding: "2px 0" }}
-                      title="Click to rename">
-                      {wing.name} Wing
+                      title={t("clickToRename")}>
+                      {wing.name} {t("wing")}
                     </div>
                   )}
                   <div style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, marginTop: 2 }}>
@@ -150,7 +152,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                     background: wing.accent, cursor: "pointer", flexShrink: 0, transition: "all .15s",
                     boxShadow: pickingColorId === wing.id ? `0 0 0 2px ${T.color.white}, 0 2px 8px ${wing.accent}60` : `0 1px 4px ${wing.accent}30`,
                   }}
-                  title="Change accent color" />
+                  title={t("changeAccent")} />
               </div>
 
               {/* Icon picker (expanded) */}
@@ -170,7 +172,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
 
         {/* Footer hint */}
         <div style={{ marginTop: 20, padding: "12px 16px", background: `${T.color.warmStone}80`, borderRadius: 10, fontFamily: T.font.body, fontSize: 11, color: T.color.muted, lineHeight: 1.5 }}>
-          Changes are saved automatically and reflected throughout the palace. Click a wing name to rename, the icon to change it, or the colored circle to pick an accent color.
+          {t("hint")}
         </div>
       </div>
     </div>

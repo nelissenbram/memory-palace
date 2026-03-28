@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { WINGS } from "@/lib/constants/wings";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import {
@@ -20,26 +21,27 @@ interface LegacyContact {
   accessible_rooms: string[];
 }
 
-const RELATIONSHIPS = [
-  { id: "spouse", label: "Spouse / Partner" },
-  { id: "child", label: "Child" },
-  { id: "sibling", label: "Sibling" },
-  { id: "friend", label: "Close Friend" },
-  { id: "lawyer", label: "Lawyer / Executor" },
-  { id: "other", label: "Other" },
-];
-
-const ACCESS_LEVELS = [
-  { id: "full", label: "Full Access", desc: "Access to your entire palace" },
-  { id: "selected_wings", label: "Selected Wings", desc: "Access only to specific wings" },
-];
-
 interface LegacyPanelProps {
   onClose: () => void;
 }
 
 export default function LegacyPanel({ onClose }: LegacyPanelProps) {
   const { markLegacyReviewed } = useTrackStore();
+  const { t } = useTranslation("legacyPanel");
+
+  const RELATIONSHIPS = [
+    { id: "spouse", label: t("relSpouse") },
+    { id: "child", label: t("relChild") },
+    { id: "sibling", label: t("relSibling") },
+    { id: "friend", label: t("relFriend") },
+    { id: "lawyer", label: t("relLawyer") },
+    { id: "other", label: t("relOther") },
+  ];
+
+  const ACCESS_LEVELS = [
+    { id: "full", label: t("accessFull"), desc: t("accessFullDesc") },
+    { id: "selected_wings", label: t("accessWings"), desc: t("accessWingsDesc") },
+  ];
   const [contacts, setContacts] = useState<LegacyContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -165,10 +167,10 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                 <h2 style={{
                   fontFamily: T.font.display, fontSize: 22, fontWeight: 600,
                   color: T.color.charcoal, margin: 0,
-                }}>Your Legacy</h2>
+                }}>{t("title")}</h2>
                 <p style={{
                   fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: 0, marginTop: 2,
-                }}>Ensure your memories live on for those you love</p>
+                }}>{t("subtitle")}</p>
               </div>
             </div>
             <button onClick={onClose} style={{
@@ -187,9 +189,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
               lineHeight: 1.6, margin: 0,
             }}>
-              Your legacy contacts are people you trust to receive access to your Memory Palace.
-              If your account becomes inactive, they will be able to visit the parts of your palace
-              you have chosen to share with them.
+              {t("description")}
             </p>
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
             <div style={{
               fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
               textAlign: "center", padding: 40,
-            }}>Loading your legacy settings...</div>
+            }}>{t("loading")}</div>
           )}
 
           {/* Contact list */}
@@ -236,8 +236,8 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                       borderRadius: 6, background: `${T.color.sandstone}15`,
                       color: T.color.walnut,
                     }}>
-                      {contact.access_level === "full" ? "Full access" :
-                       `${(contact.accessible_wings || []).length} wings`}
+                      {contact.access_level === "full" ? t("fullAccess") :
+                       t("wingsAccess", { count: String((contact.accessible_wings || []).length) })}
                     </span>
                   </div>
                 </div>
@@ -246,12 +246,12 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                     padding: "6px 10px", borderRadius: 6, border: `1px solid ${T.color.cream}`,
                     background: T.color.linen, cursor: "pointer", fontFamily: T.font.body,
                     fontSize: 11, color: T.color.walnut,
-                  }}>Edit</button>
+                  }}>{t("edit")}</button>
                   <button onClick={() => handleRemove(contact.id)} style={{
                     padding: "6px 10px", borderRadius: 6, border: `1px solid #C1665520`,
                     background: "#C1665508", cursor: "pointer", fontFamily: T.font.body,
                     fontSize: 11, color: "#C16655",
-                  }}>Remove</button>
+                  }}>{t("removeBtn")}</button>
                 </div>
               </div>
             </div>
@@ -267,13 +267,12 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               <div style={{
                 fontFamily: T.font.display, fontSize: 18, fontWeight: 500,
                 color: T.color.charcoal, marginBottom: 8,
-              }}>No legacy contacts yet</div>
+              }}>{t("noContacts")}</div>
               <p style={{
                 fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
                 lineHeight: 1.6, maxWidth: 360, margin: "0 auto",
               }}>
-                Add someone you trust to ensure your memories are preserved
-                and passed on to those who matter most.
+                {t("noContactsDesc")}
               </p>
             </div>
           )}
@@ -290,17 +289,17 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                 fontFamily: T.font.display, fontSize: 16, fontWeight: 600,
                 color: T.color.charcoal, marginBottom: 14,
               }}>
-                {editingId ? "Edit Contact" : "Add Legacy Contact"}
+                {editingId ? t("editContact") : t("addContact")}
               </div>
 
               {/* Name */}
               <label style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut, fontWeight: 500 }}>
-                Full Name
+                {t("fullName")}
               </label>
               <input
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="Their full name"
+                placeholder={t("fullNamePlaceholder")}
                 style={{
                   width: "100%", padding: "10px 12px", borderRadius: 8,
                   border: `1px solid ${T.color.sandstone}40`, background: T.color.white,
@@ -312,12 +311,12 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
 
               {/* Email */}
               <label style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut, fontWeight: 500 }}>
-                Email Address
+                {t("emailAddress")}
               </label>
               <input
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
-                placeholder="their.email@example.com"
+                placeholder={t("emailPlaceholder")}
                 type="email"
                 style={{
                   width: "100%", padding: "10px 12px", borderRadius: 8,
@@ -330,7 +329,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
 
               {/* Relationship */}
               <label style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut, fontWeight: 500 }}>
-                Relationship
+                {t("relationship")}
               </label>
               <div style={{
                 display: "flex", flexWrap: "wrap", gap: 6,
@@ -350,7 +349,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
 
               {/* Access level */}
               <label style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut, fontWeight: 500 }}>
-                What can they access?
+                {t("whatAccess")}
               </label>
               <div style={{
                 display: "flex", flexDirection: "column", gap: 6,
@@ -378,7 +377,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               {formAccessLevel === "selected_wings" && (
                 <div style={{ marginBottom: 14 }}>
                   <label style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut, fontWeight: 500 }}>
-                    Select Wings
+                    {t("selectWings")}
                   </label>
                   <div style={{
                     display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6,
@@ -421,7 +420,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                     fontFamily: T.font.body, fontSize: 13, fontWeight: 600,
                   }}
                 >
-                  {saving ? "Saving..." : editingId ? "Update" : "Add Contact"}
+                  {saving ? t("saving") : editingId ? t("update") : t("addContactBtn")}
                 </button>
               </div>
             </div>
@@ -438,7 +437,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.color.walnut; e.currentTarget.style.background = `${T.color.walnut}06`; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${T.color.sandstone}40`; e.currentTarget.style.background = "transparent"; }}
             >
-              + Add Legacy Contact
+              {t("addLegacyContact")}
             </button>
           )}
         </div>

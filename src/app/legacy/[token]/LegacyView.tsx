@@ -37,7 +37,7 @@ interface LegacyData {
 }
 
 export default function LegacyView({ data }: { data: LegacyData }) {
-  const { t } = useTranslation("legacyView");
+  const { t, locale } = useTranslation("legacyView");
 
   if (data.error === "not_found" || data.error === "not_configured") {
     return (
@@ -68,8 +68,8 @@ export default function LegacyView({ data }: { data: LegacyData }) {
   }
 
   const {
-    senderName = "Someone",
-    contactName = "Friend",
+    senderName = t("someoneFallback"),
+    contactName = t("friendFallback"),
     message,
     wings = [],
     rooms = [],
@@ -91,7 +91,7 @@ export default function LegacyView({ data }: { data: LegacyData }) {
   }
 
   const expiresDate = expiresAt
-    ? new Date(expiresAt).toLocaleDateString("en-US", {
+    ? new Date(expiresAt).toLocaleDateString(locale, {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -177,7 +177,7 @@ export default function LegacyView({ data }: { data: LegacyData }) {
                           )}
                           <p style={styles.memoryDate}>
                             {new Date(memory.created_at).toLocaleDateString(
-                              "en-US",
+                              locale,
                               {
                                 year: "numeric",
                                 month: "long",

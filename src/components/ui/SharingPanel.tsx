@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { SharingInfo } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { fetchRoomShares, shareRoomWithEmail, removeRoomShare, toggleRoomSharing } from "@/lib/auth/sharing-actions";
@@ -31,6 +32,7 @@ interface SharingPanelProps {
 
 export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}: SharingPanelProps){
   const isMobile = useIsMobile();
+  const { t } = useTranslation("sharingPanel");
   const [email,setEmail]=useState("");
   const [personalMessage,setPersonalMessage]=useState("");
   const [permission,setPermission]=useState<"view"|"contribute">("view");
@@ -75,7 +77,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
     }else if(result.publicShare){
       setPublicShare(result.publicShare);
       if(result.publicShare.is_active){
-        setSuccess("Public link created!");
+        setSuccess(t("publicLinkCreated"));
         setTimeout(()=>setSuccess(null),3000);
       }
     }
@@ -100,13 +102,13 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
       const data=await res.json();
       if(data.success){
         setShares(prev=>prev.map(s=>s.id===shareId?{...s,email_sent:true}:s));
-        setSuccess("Invitation email sent!");
+        setSuccess(t("emailSent"));
         setTimeout(()=>setSuccess(null),3000);
       }else{
-        setError(data.error||"Failed to send email");
+        setError(data.error||t("emailFailed"));
       }
     }catch{
-      setError("Failed to send email");
+      setError(t("emailFailed"));
     }
     setSendingEmailFor(null);
   };
@@ -127,7 +129,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
       onUpdate({sharedWith:sharing.sharedWith.filter(e=>e!==tempEmail)});
     }else if(result.share){
       setShares(prev=>[...prev,result.share]);
-      setSuccess(`Invitation sent to ${tempEmail}!`);
+      setSuccess(t("invitationSent", { email: tempEmail }));
       setTimeout(()=>setSuccess(null),4000);
       // Auto-send email
       sendInviteEmail(result.share.id);
@@ -183,9 +185,9 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
 
   const statusLabel=(share: Share)=>{
     const s=share.status||(!share.accepted?"pending":"accepted");
-    if(s==="accepted") return "Accepted";
-    if(s==="declined") return "Declined";
-    return "Pending";
+    if(s==="accepted") return t("accepted");
+    if(s==="declined") return t("declined");
+    return t("pending");
   };
 
   return(
@@ -194,7 +196,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
         {/* Header */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div>
-            <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>Share room</h3>
+            <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>{t("shareRoom")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:12,color:accent,margin:"4px 0 0"}}>{room?.icon} {room?.name}</p>
           </div>
           <button onClick={onClose} style={{width:isMobile?40:32,height:isMobile?40:32,borderRadius:isMobile?20:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?16:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:44,minHeight:44}}>&#x2715;</button>
@@ -215,8 +217,8 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
         {/* Toggle */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",background:T.color.warmStone,borderRadius:12,border:`1px solid ${T.color.cream}`,marginBottom:20}}>
           <div>
-            <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>Room sharing</div>
-            <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{sharing.shared?"People you invite can view this room":"Only you can see this room"}</div>
+            <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>{t("roomSharing")}</div>
+            <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{sharing.shared?t("peopleCanView"):t("onlyYouCanSee")}</div>
           </div>
           <button onClick={handleToggle} style={{width:44,height:24,borderRadius:12,border:"none",background:sharing.shared?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s"}}>
             <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:sharing.shared?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
@@ -227,8 +229,8 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
         <div style={{padding:"14px 16px",background:T.color.warmStone,borderRadius:12,border:`1px solid ${T.color.cream}`,marginBottom:20}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:publicShare?.is_active?12:0}}>
             <div>
-              <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>Public link</div>
-              <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{publicShare?.is_active?"Anyone with the link can view":"No account required to view"}</div>
+              <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>{t("publicLink")}</div>
+              <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{publicShare?.is_active?t("anyoneCanView"):t("noAccountRequired")}</div>
             </div>
             <button onClick={handleTogglePublicShare} disabled={publicLoading} style={{width:44,height:24,borderRadius:12,border:"none",background:publicShare?.is_active?T.color.success:T.color.sandstone,cursor:publicLoading?"default":"pointer",position:"relative",transition:"background .2s",opacity:publicLoading?.6:1}}>
               <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:publicShare?.is_active?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
@@ -240,7 +242,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                 {typeof window!=="undefined"?`${window.location.origin}/public/${publicShare.slug}`:`/public/${publicShare.slug}`}
               </div>
               <button onClick={copyPublicLink} style={{padding:"8px 14px",borderRadius:8,border:"none",background:publicCopied?`${T.color.sage}15`:accent,color:publicCopied?T.color.sage:T.color.white,fontFamily:T.font.body,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",transition:"all .15s"}}>
-                {publicCopied?"\u2713 Copied":"Copy"}
+                {publicCopied?`\u2713 ${t("copied")}`:t("copy")}
               </button>
             </div>
           )}
@@ -248,11 +250,11 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
 
         {/* Invite section */}
         {sharing.shared&&<>
-          <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Invite by email</label>
+          <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>{t("inviteByEmail")}</label>
           <div style={{display:"flex",gap:8,marginBottom:10}}>
-            <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addPerson();}} placeholder="name@example.com" style={{flex:1,padding:isMobile?"12px 14px":"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:isMobile?16:13,color:T.color.charcoal,outline:"none"}}/>
+            <input value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")addPerson();}} placeholder={t("emailPlaceholder")} style={{flex:1,padding:isMobile?"12px 14px":"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:isMobile?16:13,color:T.color.charcoal,outline:"none"}}/>
             <button onClick={addPerson} disabled={loading} style={{padding:isMobile?"12px 20px":"10px 16px",borderRadius:10,border:"none",background:loading?T.color.sandstone:accent,color:"#FFF",fontFamily:T.font.body,fontSize:isMobile?14:12,fontWeight:600,cursor:loading?"default":"pointer",opacity:loading?.6:1,minHeight:44}}>
-              {loading?"...":"Invite"}
+              {loading?"...":t("invite")}
             </button>
           </div>
 
@@ -266,7 +268,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                 cursor:"pointer",fontFamily:T.font.body,fontSize:isMobile?13:11,
                 color:permission===p?accent:T.color.muted,fontWeight:permission===p?600:400,
               }}>
-                {p==="view"?"Can view":"Can contribute"}
+                {p==="view"?t("canView"):t("canContribute")}
               </button>
             ))}
           </div>
@@ -275,7 +277,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           <textarea
             value={personalMessage}
             onChange={e=>setPersonalMessage(e.target.value)}
-            placeholder="Add a personal message (optional)"
+            placeholder={t("personalMessage")}
             rows={2}
             style={{
               width:"100%",padding:"10px 14px",borderRadius:10,
@@ -289,12 +291,12 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           {/* Copy generic link */}
           <button onClick={copyGenericLink} style={{width:"100%",padding:"12px 16px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,cursor:"pointer",display:"flex",alignItems:"center",gap:8,marginBottom:20,transition:"all .2s"}}>
             <span style={{fontSize:14}}>{copied?"&#x2705;":"&#x1F517;"}</span>
-            <span style={{fontFamily:T.font.body,fontSize:12,color:copied?T.color.success:T.color.walnut,fontWeight:500}}>{copied?"Link copied!":"Copy share link"}</span>
+            <span style={{fontFamily:T.font.body,fontSize:12,color:copied?T.color.success:T.color.walnut,fontWeight:500}}>{copied?t("linkCopied"):t("copyShareLink")}</span>
           </button>
 
           {/* People list */}
           {shares.length>0&&<>
-            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:10}}>Shared with ({shares.length})</label>
+            <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:10}}>{t("sharedWith", { count: String(shares.length) })}</label>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {shares.map(share=>(
                 <div key={share.id} style={{padding:"12px 14px",background:T.color.warmStone,borderRadius:10,border:`1px solid ${T.color.cream}`}}>
@@ -305,7 +307,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                         <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.charcoal}}>{share.shared_with_email}</div>
                         <div style={{fontFamily:T.font.body,fontSize:10,color:statusColor(share)}}>
                           {statusLabel(share)}
-                          {" · Can "+share.permission}
+                          {" · "+t("canPermission", { permission: share.permission })}
                         </div>
                       </div>
                     </div>
@@ -318,7 +320,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                       background:T.color.white,cursor:"pointer",fontFamily:T.font.body,fontSize:10,
                       color:T.color.walnut,display:"flex",alignItems:"center",justifyContent:"center",gap:4,
                     }}>
-                      &#x1F517; Copy invite link
+                      &#x1F517; {t("copyInviteLink")}
                     </button>
                     {(!share.status||share.status==="pending")&&(
                       <button onClick={()=>sendInviteEmail(share.id)} disabled={sendingEmailFor===share.id} style={{
@@ -328,7 +330,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                         opacity:sendingEmailFor===share.id?.6:1,
                         display:"flex",alignItems:"center",justifyContent:"center",gap:4,
                       }}>
-                        {sendingEmailFor===share.id?"Sending...":share.email_sent?"&#x1F504; Resend email":"&#x2709;&#xFE0F; Send email"}
+                        {sendingEmailFor===share.id?t("sending"):share.email_sent?`&#x1F504; ${t("resendEmail")}`:`&#x2709;&#xFE0F; ${t("sendEmail")}`}
                       </button>
                     )}
                   </div>
@@ -343,7 +345,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           <button onClick={()=>setPrivacyOpen(!privacyOpen)} style={{width:"100%",padding:"14px 16px",background:`${T.color.warmStone}80`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:12}}>{"\u{1F512}"}</span>
-              <span style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:T.color.charcoal}}>Privacy & Permissions</span>
+              <span style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:T.color.charcoal}}>{t("privacyPermissions")}</span>
             </div>
             <span style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,transform:privacyOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",display:"inline-block"}}>{"\u25BE"}</span>
           </button>
@@ -351,8 +353,8 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             {/* Download permission toggle */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
               <div>
-                <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>Allow collaborators to download media</div>
-                <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>When disabled, shared users cannot save photos or videos</div>
+                <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>{t("allowDownload")}</div>
+                <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{t("allowDownloadDesc")}</div>
               </div>
               <button onClick={async()=>{
                 const next=!allowDownload;
@@ -369,8 +371,8 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             {/* Show in public palace toggle */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
               <div>
-                <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>Show room in public palace view</div>
-                <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>For future public profiles - make this room discoverable</div>
+                <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>{t("showPublicView")}</div>
+                <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{t("showPublicViewDesc")}</div>
               </div>
               <button onClick={async()=>{
                 const next=!showPublicPalace;
@@ -384,7 +386,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             {/* Per-collaborator permission editing */}
             {shares.length>0&&<>
               <div style={{borderTop:`1px solid ${T.color.cream}`,paddingTop:14,marginTop:4}}>
-                <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:10}}>Per-collaborator permissions</label>
+                <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:10}}>{t("perCollaborator")}</label>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {shares.map(share=>(
                     <div key={share.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",background:T.color.linen,borderRadius:8,border:`1px solid ${T.color.cream}`}}>
@@ -404,7 +406,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                               color:share.permission===p?accent:T.color.muted,
                               fontWeight:share.permission===p?600:400,
                             }}>
-                              {p==="view"?"View":p==="contribute"?"Contribute":"Admin"}
+                              {p==="view"?t("permView"):p==="contribute"?t("permContribute"):t("permAdmin")}
                             </button>
                           ))}
                         </div>
@@ -416,7 +418,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                           cursor:"pointer",fontFamily:T.font.body,fontSize:11,
                           color:T.color.walnut,fontWeight:500,
                         }}>
-                          Can {share.permission} {"\u270E"}
+                          {t("canPermission", { permission: share.permission })} {"\u270E"}
                         </button>
                       )}
                     </div>
@@ -427,7 +429,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
 
             {/* Privacy info */}
             <p style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,lineHeight:1.6,margin:"14px 0 0"}}>
-              Your wing is always private. Only this specific room can be shared. Invited people see room contents but cannot access other wings or rooms.
+              {t("privacyInfo")}
             </p>
           </div>}
         </div>

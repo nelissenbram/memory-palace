@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import * as THREE from "three";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useUserStore } from "@/lib/stores/userStore";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import {
@@ -22,6 +23,7 @@ type Stage = "manage" | "upload" | "calibrating" | "ready" | "creating" | "done"
 
 export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBuilderPanelProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("bustBuilder");
   const { styleEra, bustPedestals, userName } = useUserStore();
   const pedestalData = bustPedestals[pedestalIndex];
   const hasBust = !!pedestalData?.faceUrl;
@@ -61,7 +63,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
       setCalibrationMessage(result.message);
       setStage("ready");
     } catch {
-      setCalibrationMessage("Failed to process photo. Please try another image.");
+      setCalibrationMessage(t("failedToProcess"));
       setFaceDetected(false);
       setStage("ready");
     }
@@ -91,7 +93,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
     setStage("creating");
 
     try {
-      setCreationStep("Preparing face portrait...");
+      setCreationStep(t("preparingPortrait"));
       const faceUrl = croppedFace || preview!;
 
       // Convert to a reasonable-sized data URL
@@ -106,7 +108,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
       const textureDataUrl = canvas.toDataURL("image/jpeg", 0.85);
 
       // Save per-pedestal data
-      setCreationStep("Saving to your palace...");
+      setCreationStep(t("savingToPalace"));
       const store = useUserStore.getState();
       store.setBustPedestal(pedestalIndex, {
         faceUrl: textureDataUrl,
@@ -120,13 +122,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
       }
 
       // Load the composite bust for preview
-      setCreationStep("Sculpting your bust...");
+      setCreationStep(t("sculptingBust"));
       const bustGroup = await loadBustModel(bustStyle, bustGender, textureDataUrl);
       setDoneBustGroup(bustGroup);
       setStage("done");
     } catch (err) {
       console.error("Bust creation failed:", err);
-      setError("Failed to create bust. Please try a different photo.");
+      setError(t("failedToCreate"));
       setStage("error");
     }
   };
@@ -219,10 +221,10 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, textAlign: "center", marginBottom: 16,
             }}>
-              Pedestal {pedestalIndex + 1}{pedestalData?.name ? ` — ${pedestalData.name}` : ""}
+              {t("pedestalTitle", { index: String(pedestalIndex + 1) })}{pedestalData?.name ? ` — ${pedestalData.name}` : ""}
             </h2>
             {pedestalData?.faceUrl && (
-              <img src={pedestalData.faceUrl} alt="Current bust" style={{
+              <img src={pedestalData.faceUrl} alt={t("currentBust")} style={{
                 width: 160, height: 160, objectFit: "cover",
                 borderRadius: 16, margin: "0 auto 16px",
                 border: `3px solid ${T.color.sandstone}`, display: "block",
@@ -232,7 +234,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
               textAlign: "center", marginBottom: 20, lineHeight: 1.5,
             }}>
-              Your {bustStyleLabel} bust is displayed on pedestal {pedestalIndex + 1} in the entrance hall.
+              {t("bustDescription", { style: bustStyleLabel, index: String(pedestalIndex + 1) })}
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); }} style={{
@@ -241,21 +243,21 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 background: `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,
                 color: "#FFF", cursor: "pointer",
               }}>
-                Change Photo
+                {t("changePhoto")}
               </button>
               <button onClick={handleRemove} style={{
                 fontFamily: T.font.body, fontSize: 14, padding: "10px 20px",
                 borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
                 background: "transparent", color: T.color.muted, cursor: "pointer",
               }}>
-                Remove Bust
+                {t("removeBust")}
               </button>
               <button onClick={onClose} style={{
                 fontFamily: T.font.body, fontSize: 14, padding: "10px 20px",
                 borderRadius: 10, border: `1px solid ${T.color.cream}`,
                 background: "transparent", color: T.color.walnut, cursor: "pointer",
               }}>
-                Close
+                {t("close")}
               </button>
             </div>
           </>
@@ -268,13 +270,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, textAlign: "center", marginBottom: 8,
             }}>
-              {hasBust ? "Change Bust" : "Create a Bust"} — Pedestal {pedestalIndex + 1}
+              {hasBust ? t("changeBust", { index: String(pedestalIndex + 1) }) : t("createBust", { index: String(pedestalIndex + 1) })}
             </h2>
             <p style={{
               fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
               textAlign: "center", marginBottom: 16, lineHeight: 1.5,
             }}>
-              Upload a portrait photo to place on a {bustStyleLabel} bust in your palace.
+              {t("uploadPrompt", { style: bustStyleLabel })}
             </p>
 
             {/* Name input */}
@@ -283,13 +285,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
                 textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 4,
               }}>
-                Name on plaque
+                {t("nameOnPlaque")}
               </label>
               <input
                 type="text"
                 value={bustNameInput}
                 onChange={e => setBustNameInput(e.target.value)}
-                placeholder="Enter name for the bust..."
+                placeholder={t("namePlaceholder")}
                 style={{
                   width: "100%", padding: "10px 14px", borderRadius: 10,
                   border: `1px solid ${T.color.sandstone}`, background: `${T.color.warmStone}60`,
@@ -305,7 +307,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
                 textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6,
               }}>
-                Bust style
+                {t("bustStyle")}
               </label>
               <div style={{ display: "flex", gap: 8 }}>
                 {(["male", "female"] as const).map(g => (
@@ -324,7 +326,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                       color: bustGender === g ? T.color.charcoal : T.color.muted,
                     }}
                   >
-                    {g === "male" ? "Male" : "Female"}
+                    {g === "male" ? t("male") : t("female")}
                   </button>
                 ))}
               </div>
@@ -344,10 +346,10 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             >
               <div style={{ fontSize: 36, marginBottom: 8 }}>{"📷"}</div>
               <div style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.muted }}>
-                Drop a portrait photo or click to browse
+                {t("dropPortrait")}
               </div>
               <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginTop: 4, opacity: 0.7 }}>
-                A head &amp; shoulders portrait works best
+                {t("portraitTip")}
               </div>
               <input ref={inputRef} type="file" accept="image/*" style={{ display: "none" }}
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
@@ -361,7 +363,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
                   background: "transparent", color: T.color.walnut, cursor: "pointer",
                 }}>
-                  Back
+                  {t("back")}
                 </button>
               )}
             </div>
@@ -375,7 +377,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, marginBottom: 16,
             }}>
-              Detecting Face...
+              {t("detectingFace")}
             </h2>
             {preview && (
               <img src={preview} alt="Processing" style={{
@@ -389,7 +391,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             <p style={{
               fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
             }}>
-              Analyzing your photo...
+              {t("analyzingPhoto")}
             </p>
           </div>
         )}
@@ -401,7 +403,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, textAlign: "center", marginBottom: 16,
             }}>
-              {faceDetected ? "Face Calibrated" : "Photo Loaded"}
+              {faceDetected ? t("faceCalibrated") : t("photoLoaded")}
             </h2>
 
             {/* Crop preview: original with crop overlay + cropped result */}
@@ -415,7 +417,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
                   textTransform: "uppercase", letterSpacing: 1, marginBottom: 6,
                 }}>
-                  Original
+                  {t("original")}
                 </div>
                 <div style={{
                   position: "relative", width: 110, height: 110,
@@ -461,7 +463,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
                   textTransform: "uppercase", letterSpacing: 1, marginBottom: 6,
                 }}>
-                  Face crop
+                  {t("faceCrop")}
                 </div>
                 {croppedFace && (
                   <img src={croppedFace} alt="Cropped face" style={{
@@ -499,7 +501,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
                   textTransform: "uppercase", letterSpacing: 1,
                 }}>
-                  Name
+                  {t("name")}
                 </label>
                 <input
                   type="text"
@@ -519,7 +521,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
                   textTransform: "uppercase", letterSpacing: 1,
                 }}>
-                  Body
+                  {t("body")}
                 </label>
                 <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
                   {(["male", "female"] as const).map(g => (
@@ -550,7 +552,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
                 background: "transparent", color: T.color.walnut, cursor: "pointer",
               }}>
-                Change Photo
+                {t("changePhoto")}
               </button>
               <button
                 onClick={handleCreate}
@@ -561,7 +563,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   color: "#FFF", cursor: "pointer",
                 }}
               >
-                Create Bust
+                {t("createBustBtn")}
               </button>
             </div>
           </>
@@ -574,7 +576,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, marginBottom: 16,
             }}>
-              Creating Your Bust
+              {t("creatingBust")}
             </h2>
             {/* Face preview with sculpting animation */}
             <div style={{
@@ -607,7 +609,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
               marginBottom: 8,
             }}>
-              {creationStep || `Sculpting your ${bustStyleLabel} bust...`}
+              {creationStep || t("sculptingStyle", { style: bustStyleLabel })}
             </p>
             {/* Progress dots */}
             <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
@@ -630,20 +632,20 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, marginBottom: 12,
             }}>
-              Something went wrong
+              {t("somethingWrong")}
             </h2>
             <p style={{
               fontFamily: T.font.body, fontSize: 14, color: "#C0392B",
               marginBottom: 16,
             }}>
-              {error || "Please try again with a different photo."}
+              {error || t("tryAgain")}
             </p>
             <button onClick={() => { setStage("upload"); setError(null); setPreview(null); setCroppedFace(null); }} style={{
               fontFamily: T.font.body, fontSize: 14, padding: "10px 24px",
               borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
               background: "transparent", color: T.color.walnut, cursor: "pointer",
             }}>
-              Try Again
+              {t("tryAgainBtn")}
             </button>
           </div>
         )}
@@ -655,7 +657,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, marginBottom: 12,
             }}>
-              Your Bust is Ready
+              {t("bustReady")}
             </h2>
             <div ref={previewCanvasRef} style={{
               width: 220, height: 260, margin: "0 auto 16px",
@@ -666,8 +668,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
               marginBottom: 16,
             }}>
-              Your {bustStyleLabel} bust has been placed on pedestal {pedestalIndex + 1} in the entrance hall.
-              Re-enter the hall to see it.
+              {t("bustPlaced", { style: bustStyleLabel, index: String(pedestalIndex + 1) })}
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
               <button onClick={() => {
@@ -680,7 +681,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
                 background: "transparent", color: T.color.walnut, cursor: "pointer",
               }}>
-                Change Photo
+                {t("changePhoto")}
               </button>
               <button onClick={onClose} style={{
                 fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
@@ -688,7 +689,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 background: `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,
                 color: "#FFF", cursor: "pointer",
               }}>
-                Done
+                {t("doneBtn")}
               </button>
             </div>
           </div>
