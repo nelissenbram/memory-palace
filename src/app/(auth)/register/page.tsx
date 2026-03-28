@@ -114,6 +114,7 @@ function RegisterContent() {
 
       {error && (
         <div
+          role="alert"
           style={{
             padding: "10px 14px",
             borderRadius: 10,
@@ -128,16 +129,18 @@ function RegisterContent() {
         </div>
       )}
 
-      <label style={labelStyle}>{t("name")}</label>
+      <label htmlFor="register-name" style={labelStyle}>{t("name")}</label>
       <input
+        id="register-name"
         name="displayName"
         type="text"
         placeholder={t("namePlaceholder")}
         style={inputStyle}
       />
 
-      <label style={{ ...labelStyle, marginTop: 14 }}>{t("email")}</label>
+      <label htmlFor="register-email" style={{ ...labelStyle, marginTop: 14 }}>{t("email")}</label>
       <input
+        id="register-email"
         name="email"
         type="email"
         required
@@ -145,8 +148,9 @@ function RegisterContent() {
         style={inputStyle}
       />
 
-      <label style={{ ...labelStyle, marginTop: 14 }}>{t("password")}</label>
+      <label htmlFor="register-password" style={{ ...labelStyle, marginTop: 14 }}>{t("password")}</label>
       <input
+        id="register-password"
         name="password"
         type="password"
         required
@@ -154,8 +158,9 @@ function RegisterContent() {
         style={inputStyle}
       />
 
-      <label style={{ ...labelStyle, marginTop: 14 }}>{t("confirmPassword")}</label>
+      <label htmlFor="register-confirm-password" style={{ ...labelStyle, marginTop: 14 }}>{t("confirmPassword")}</label>
       <input
+        id="register-confirm-password"
         name="confirmPassword"
         type="password"
         required

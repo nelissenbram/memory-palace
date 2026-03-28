@@ -35,7 +35,7 @@ export default function SearchBar({query,filterType,totalCount,filteredCount,acc
           placeholder={t("placeholder")}
           style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:isMobile?16:12,color:T.color.charcoal,outline:"none",padding:isMobile?"6px 0":"4px 0"}}
         />
-        {isFiltering&&<button onClick={()=>{onQueryChange("");onFilterChange(null);}} style={{background:"none",border:"none",color:T.color.muted,fontSize:12,cursor:"pointer",padding:"2px 4px"}}>✕</button>}
+        {isFiltering&&<button onClick={()=>{onQueryChange("");onFilterChange(null);}} aria-label="Clear filter" style={{background:"none",border:"none",color:T.color.muted,fontSize:12,cursor:"pointer",padding:"2px 4px"}}>✕</button>}
       </div>
 
       {/* Type filter pills */}

@@ -334,7 +334,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
           <div style={{ fontFamily: T.font.display, fontSize: 18, fontWeight: 500, color: T.color.charcoal }}>{t("title")}</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 11, color: T.color.muted, cursor: "pointer" }}>{t("reset")}</button>
-            <button onClick={onCancel} style={{ width: 28, height: 28, borderRadius: 14, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onCancel} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 14, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
           </div>
         </div>
 

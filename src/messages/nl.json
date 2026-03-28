@@ -1522,5 +1522,65 @@
   "entranceHall": {
     "unmute": "Muziek dempen opheffen",
     "mute": "Muziek dempen"
+  },
+  "contributorBanner": {
+    "contributing": "Bijdragen aan het paleis van {ownerName}",
+    "viewing": "Herinneringen van {ownerName} bekijken"
+  },
+  "firstMemoryPrompt": {
+    "title": "Deze kamer wacht op jou",
+    "description": "Voeg je eerste foto, video of verhaal toe om {roomName} tot leven te brengen.",
+    "thisRoom": "deze kamer",
+    "addFirstMemory": "+ Eerste herinnering toevoegen",
+    "hint": "Foto's, video's, documenten of spraaknotities"
+  },
+  "interviewHistory": {
+    "title": "Interviewgeschiedenis",
+    "completedCount": "{count} afgeronde {count, plural, one {interview} other {interviews}}",
+    "completedInterview": "interview",
+    "completedInterviews": "interviews",
+    "completed": "afgerond",
+    "inProgress": "Bezig",
+    "answeredOf": "{answered} van {total} beantwoord",
+    "continue": "Doorgaan",
+    "words": "woorden",
+    "narrative": "Verhaal",
+    "responses": "Antwoorden",
+    "questionFallback": "Vraag {number}",
+    "noTranscript": "(geen transcriptie)",
+    "noInterviewsTitle": "Nog geen interviews",
+    "noInterviewsDescription": "Start een levensinterview om je verhalen op te nemen en rijke herinneringen te maken.",
+    "minuteAbbr": "m",
+    "secondAbbr": "s"
+  },
+  "storagePlayer": {
+    "title": "Opslagruimte",
+    "close": "Sluiten",
+    "empty": "De Opslagruimte is leeg.",
+    "emptyDescription": "Niet-toegewezen herinneringen verschijnen hier.",
+    "typeVideo": "video",
+    "typeAudio": "audio",
+    "typePhoto": "foto",
+    "typePainting": "schilderij",
+    "typeDocument": "document",
+    "typeStory": "verhaal"
+  },
+  "timeCapsule": {
+    "resolutionReminder": "Voornemensherinnering",
+    "goalsWithDeadlines": "{count} {count, plural, one {doel} other {doelen}} met naderende {count, plural, one {deadline} other {deadlines}}",
+    "goalSingular": "doel",
+    "goalPlural": "doelen",
+    "deadlineSingular": "deadline",
+    "deadlinePlural": "deadlines",
+    "daysLeft": "nog {count} {count, plural, one {dag} other {dagen}}",
+    "daySingular": "dag",
+    "dayPlural": "dagen",
+    "view": "Bekijken",
+    "capsuleOpenedSingular": "Tijdcapsule geopend!",
+    "capsuleOpenedPlural": "Tijdcapsules geopend!",
+    "memoriesRevealedSingular": "{count} herinnering is onthuld",
+    "memoriesRevealedPlural": "{count} herinneringen zijn onthuld",
+    "moreCapsulesSingular": "+{count} capsule meer",
+    "moreCapsulePlural": "+{count} capsules meer"
   }
 }

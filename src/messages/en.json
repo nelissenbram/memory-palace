@@ -1522,5 +1522,65 @@
   "entranceHall": {
     "unmute": "Unmute music",
     "mute": "Mute music"
+  },
+  "contributorBanner": {
+    "contributing": "Contributing to {ownerName}'s palace",
+    "viewing": "Viewing {ownerName}'s memories"
+  },
+  "firstMemoryPrompt": {
+    "title": "This room is waiting for you",
+    "description": "Add your first photo, video, or story to bring {roomName} to life.",
+    "thisRoom": "this room",
+    "addFirstMemory": "+ Add First Memory",
+    "hint": "Photos, videos, documents, or voice notes"
+  },
+  "interviewHistory": {
+    "title": "Interview History",
+    "completedCount": "{count} completed {count, plural, one {interview} other {interviews}}",
+    "completedInterview": "interview",
+    "completedInterviews": "interviews",
+    "completed": "completed",
+    "inProgress": "In Progress",
+    "answeredOf": "{answered} of {total} answered",
+    "continue": "Continue",
+    "words": "words",
+    "narrative": "Narrative",
+    "responses": "Responses",
+    "questionFallback": "Question {number}",
+    "noTranscript": "(no transcript)",
+    "noInterviewsTitle": "No interviews yet",
+    "noInterviewsDescription": "Start a life interview to record your stories and create rich memory entries.",
+    "minuteAbbr": "m",
+    "secondAbbr": "s"
+  },
+  "storagePlayer": {
+    "title": "Storage Room",
+    "close": "Close",
+    "empty": "The Storage Room is empty.",
+    "emptyDescription": "Unallocated memories will appear here.",
+    "typeVideo": "video",
+    "typeAudio": "audio",
+    "typePhoto": "photo",
+    "typePainting": "painting",
+    "typeDocument": "document",
+    "typeStory": "story"
+  },
+  "timeCapsule": {
+    "resolutionReminder": "Resolution Reminder",
+    "goalsWithDeadlines": "{count} {count, plural, one {goal} other {goals}} with upcoming {count, plural, one {deadline} other {deadlines}}",
+    "goalSingular": "goal",
+    "goalPlural": "goals",
+    "deadlineSingular": "deadline",
+    "deadlinePlural": "deadlines",
+    "daysLeft": "{count} {count, plural, one {day} other {days}} left",
+    "daySingular": "day",
+    "dayPlural": "days",
+    "view": "View",
+    "capsuleOpenedSingular": "Time Capsule Opened!",
+    "capsuleOpenedPlural": "Time Capsules Opened!",
+    "memoriesRevealedSingular": "{count} memory has been revealed",
+    "memoriesRevealedPlural": "{count} memories have been revealed",
+    "moreCapsulesSingular": "+{count} more capsule",
+    "moreCapsulePlural": "+{count} more capsules"
   }
 }

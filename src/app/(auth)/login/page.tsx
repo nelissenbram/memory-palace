@@ -170,6 +170,7 @@ function LoginContent() {
 
         {error && (
           <div
+            role="alert"
             style={{
               padding: "12px 16px",
               borderRadius: 10,
@@ -207,6 +208,7 @@ function LoginContent() {
               onChange={(e) => handleMfaCodeChange(i, e.target.value)}
               onKeyDown={(e) => handleMfaKeyDown(i, e)}
               autoFocus={i === 0}
+              aria-label={`Digit ${i + 1} of 6`}
               style={{
                 width: 52,
                 height: 64,
@@ -292,6 +294,7 @@ function LoginContent() {
 
       {error && (
         <div
+          role="alert"
           style={{
             padding: "10px 14px",
             borderRadius: 10,
@@ -306,8 +309,9 @@ function LoginContent() {
         </div>
       )}
 
-      <label style={labelStyle}>{t("email")}</label>
+      <label htmlFor="login-email" style={labelStyle}>{t("email")}</label>
       <input
+        id="login-email"
         name="email"
         type="email"
         required
@@ -315,8 +319,9 @@ function LoginContent() {
         style={inputStyle}
       />
 
-      <label style={{ ...labelStyle, marginTop: 14 }}>{t("password")}</label>
+      <label htmlFor="login-password" style={{ ...labelStyle, marginTop: 14 }}>{t("password")}</label>
       <input
+        id="login-password"
         name="password"
         type="password"
         required

@@ -308,7 +308,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
 
         {/* Accept error */}
         {acceptError && (
-          <div style={{
+          <div role="alert" style={{
             padding: "10px 14px", borderRadius: 10,
             background: "#FDF2F2", border: "1px solid #FECACA",
             color: "#B91C1C", fontSize: 13, marginBottom: 16,

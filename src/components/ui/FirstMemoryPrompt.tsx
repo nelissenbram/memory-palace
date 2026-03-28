@@ -1,6 +1,7 @@
 "use client";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 
 interface FirstMemoryPromptProps {
@@ -11,6 +12,7 @@ interface FirstMemoryPromptProps {
 
 export default function FirstMemoryPrompt({ wing, room, onUpload }: FirstMemoryPromptProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("firstMemoryPrompt");
   const accent = wing?.accent || T.color.terracotta;
 
   return (
@@ -49,7 +51,7 @@ export default function FirstMemoryPrompt({ wing, room, onUpload }: FirstMemoryP
           marginBottom: 10,
           lineHeight: 1.2,
         }}>
-          This room is waiting for you
+          {t("title")}
         </h3>
 
         {/* Description */}
@@ -63,7 +65,7 @@ export default function FirstMemoryPrompt({ wing, room, onUpload }: FirstMemoryP
           marginLeft: "auto",
           marginRight: "auto",
         }}>
-          Add your first photo, video, or story to bring <strong style={{ color: T.color.walnut }}>{room?.name || "this room"}</strong> to life.
+          {t("description", { roomName: room?.name || t("thisRoom") })}
         </p>
 
         {/* Upload button */}
@@ -93,7 +95,7 @@ export default function FirstMemoryPrompt({ wing, room, onUpload }: FirstMemoryP
             (e.currentTarget as HTMLElement).style.transform = "none";
           }}
         >
-          + Add First Memory
+          {t("addFirstMemory")}
         </button>
 
         {/* Subtle hint */}
@@ -104,7 +106,7 @@ export default function FirstMemoryPrompt({ wing, room, onUpload }: FirstMemoryP
           marginTop: 14,
           lineHeight: 1.4,
         }}>
-          Photos, videos, documents, or voice notes
+          {t("hint")}
         </p>
       </div>
     </div>

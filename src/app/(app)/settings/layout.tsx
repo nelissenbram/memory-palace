@@ -71,7 +71,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           margin: "0 auto",
         }}>
           {/* Horizontal scrollable tab bar */}
-          <nav style={{
+          <nav aria-label={tc("settingsNavigation")} style={{
             overflowX: "auto",
             whiteSpace: "nowrap",
             borderBottom: `1px solid ${T.color.cream}`,
@@ -82,7 +82,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             {filteredItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
               return (
-                <Link key={item.href} href={item.href} style={{
+                <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
                   minHeight: 44,
                   padding: "10px 16px",
@@ -120,9 +120,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </nav>
 
           {/* Content */}
-          <main style={{ flex: 1, minWidth: 0, padding: "16px 12px" }}>
+          <section style={{ flex: 1, minWidth: 0, padding: "16px 12px" }}>
             {children}
-          </main>
+          </section>
         </div>
       ) : (
         /* ── Desktop layout: sidebar + content side-by-side (unchanged) ── */
@@ -134,7 +134,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           gap: 32,
         }}>
           {/* Sidebar */}
-          <nav style={{
+          <nav aria-label={tc("settingsNavigation")} style={{
             width: 220,
             flexShrink: 0,
             display: "flex",
@@ -153,7 +153,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               {filteredItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
-                  <Link key={item.href} href={item.href} style={{
+                  <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} style={{
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "12px 14px", borderRadius: 10,
                     textDecoration: "none",
@@ -191,9 +191,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </nav>
 
           {/* Content */}
-          <main style={{ flex: 1, minWidth: 0 }}>
+          <section style={{ flex: 1, minWidth: 0 }}>
             {children}
-          </main>
+          </section>
         </div>
       )}
     </div>

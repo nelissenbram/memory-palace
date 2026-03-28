@@ -212,7 +212,7 @@ export default function FamilyPage() {
     <div>
       {/* Toast */}
       {toast && (
-        <div style={{
+        <div role={toast.type === "success" ? "status" : "alert"} style={{
           position: "fixed", top: 24, right: 24, zIndex: 100,
           padding: "14px 20px", borderRadius: 12,
           background: toast.type === "success" ? T.color.sage : T.color.error,
@@ -222,9 +222,9 @@ export default function FamilyPage() {
           animation: "fadeIn .2s ease",
           display: "flex", alignItems: "center", gap: 10,
         }}>
-          <span>{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
+          <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} style={{
+          <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: 16, cursor: "pointer", marginLeft: 8, opacity: 0.7,
           }}>{"\u2715"}</button>
@@ -314,8 +314,9 @@ export default function FamilyPage() {
           </p>
 
           <div>
-            <label style={labelStyle}>{t("groupName")}</label>
+            <label htmlFor="family-group-name" style={labelStyle}>{t("groupName")}</label>
             <input
+              id="family-group-name"
               type="text"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
@@ -396,9 +397,10 @@ export default function FamilyPage() {
                 border: `1px solid ${T.color.cream}`,
                 marginBottom: 24,
               }}>
-                <label style={labelStyle}>{t("inviteMember")}</label>
+                <label htmlFor="family-invite-email" style={labelStyle}>{t("inviteMember")}</label>
                 <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
                   <input
+                    id="family-invite-email"
                     type="email"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
@@ -434,6 +436,7 @@ export default function FamilyPage() {
                     <button
                       key={r}
                       onClick={() => setInviteRole(r)}
+                      aria-pressed={inviteRole === r}
                       style={{
                         padding: "8px 16px",
                         borderRadius: 8,
@@ -579,6 +582,7 @@ export default function FamilyPage() {
                     <button
                       key={wingId}
                       onClick={() => setShareWingId(wingId)}
+                      aria-pressed={shareWingId === wingId}
                       style={{
                         padding: "8px 16px",
                         borderRadius: 8,
@@ -598,8 +602,9 @@ export default function FamilyPage() {
                 </div>
 
                 {/* Family member selector */}
-                <label style={{ ...labelStyle, marginTop: 8 }}>{t("familyMember")}</label>
+                <label htmlFor="family-share-member" style={{ ...labelStyle, marginTop: 8 }}>{t("familyMember")}</label>
                 <select
+                  id="family-share-member"
                   value={shareMemberEmail}
                   onChange={(e) => setShareMemberEmail(e.target.value)}
                   style={{
@@ -624,6 +629,7 @@ export default function FamilyPage() {
                     <button
                       key={perm}
                       onClick={() => setSharePermission(perm)}
+                      aria-pressed={sharePermission === perm}
                       style={{
                         padding: "8px 16px",
                         borderRadius: 8,

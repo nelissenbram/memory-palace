@@ -226,7 +226,7 @@ export default function MFASetup() {
       </p>
 
       {error && (
-        <div style={{
+        <div role="alert" style={{
           padding: "12px 16px",
           borderRadius: 10,
           background: "#FDF2F2",

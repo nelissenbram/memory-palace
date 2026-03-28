@@ -56,6 +56,8 @@ export function useTranslation<S extends Section>(section: S) {
     localStorage.setItem("mp_locale", newLocale);
     // Also set cookie so server-side can read it
     document.cookie = `mp_locale=${newLocale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+    // Sync the lang attribute on <html> for accessibility
+    document.documentElement.lang = newLocale;
     setLocaleState(newLocale);
     // Reload to apply everywhere
     window.location.reload();

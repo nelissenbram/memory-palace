@@ -4,6 +4,7 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRoomStore, MAX_ROOMS_PER_WING } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Wing } from "@/lib/constants/wings";
 
 const EMOJI_PRESETS = [
@@ -35,6 +36,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
   const { t } = useTranslation("room");
   const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { getWingRooms, renameRoom, changeRoomIcon, addRoom, deleteRoom, reorderRoom } = useRoomStore();
   const rooms = getWingRooms(wing.id);
   const accent = wing.accent;
@@ -98,7 +100,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
             <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("manageRooms")}</h3>
             <p style={{ fontFamily: T.font.body, fontSize: 12, color: accent, margin: "4px 0 0" }}>{t("wingLabel", { icon: wing.icon, name: wing.name })}</p>
           </div>
-          <button onClick={onClose} style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 16 : 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}>{"\u2715"}</button>
+          <button onClick={onClose} aria-label="Close" style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 16 : 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}>{"\u2715"}</button>
         </div>
 
         {/* Room count */}
@@ -144,9 +146,9 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
 
                 {/* Reorder buttons */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <button onClick={() => reorderRoom(wing.id, room.id, -1)} disabled={i === 0}
+                  <button onClick={() => reorderRoom(wing.id, room.id, -1)} disabled={i === 0} aria-label="Move up"
                     style={{ width: isMobile ? 32 : 22, height: isMobile ? 26 : 18, borderRadius: 4, border: "none", background: i === 0 ? "transparent" : T.color.warmStone, color: i === 0 ? T.color.cream : T.color.muted, fontSize: isMobile ? 11 : 9, cursor: i === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25B2"}</button>
-                  <button onClick={() => reorderRoom(wing.id, room.id, 1)} disabled={i === rooms.length - 1}
+                  <button onClick={() => reorderRoom(wing.id, room.id, 1)} disabled={i === rooms.length - 1} aria-label="Move down"
                     style={{ width: isMobile ? 32 : 22, height: isMobile ? 26 : 18, borderRadius: 4, border: "none", background: i === rooms.length - 1 ? "transparent" : T.color.warmStone, color: i === rooms.length - 1 ? T.color.cream : T.color.muted, fontSize: isMobile ? 11 : 9, cursor: i === rooms.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25BC"}</button>
                 </div>
 
@@ -154,7 +156,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                 {onEnterRoom && (
                   <button onClick={() => { onEnterRoom(room.id); onClose(); }}
                     style={{ width: isMobile ? 38 : 30, height: isMobile ? 38 : 30, borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 14 : 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}
-                    title={t("enterRoom")}>{"\u279C"}</button>
+                    title={t("enterRoom")} aria-label={t("enterRoom")}>{"\u279C"}</button>
                 )}
 
                 {/* Delete button */}

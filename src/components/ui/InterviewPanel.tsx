@@ -7,6 +7,7 @@ import { useSpeechRecognition } from "@/lib/hooks/useSpeechRecognition";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 
 interface InterviewPanelProps {
@@ -25,6 +26,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   const isMobile = useIsMobile();
   const { userName } = useUserStore();
   const { t } = useTranslation("interview");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
 
   const {
     currentSession, currentTemplate, currentQuestionIndex, isFollowUp,
@@ -266,7 +268,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   const aiColor = T.color.sage;
 
   return (
-    <div style={{
+    <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") handleExit(); handleKeyDown(e); }} style={{
       position: "fixed", inset: 0, zIndex: 60,
       background: bg,
       opacity: fadeIn ? 1 : 0,
@@ -424,7 +426,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             </h2>
 
             {apiError && (
-              <div style={{
+              <div role="alert" style={{
                 fontFamily: T.font.body, fontSize: 14, color: "#D4A07A",
                 background: "#D4A07A14", padding: "12px 20px", borderRadius: 12,
                 marginBottom: 24, maxWidth: 400, margin: "0 auto 24px",
@@ -435,7 +437,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
             {inputMode === "voice" ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
-                <button onClick={handleStartRecording} style={{
+                <button onClick={handleStartRecording} aria-label={t("tapToRecord")} style={{
                   width: isMobile ? 88 : 80, height: isMobile ? 88 : 80, borderRadius: "50%",
                   border: "none", background: `linear-gradient(135deg, ${accentColor}, #D4926A)`,
                   color: "#FFF", fontSize: 28, cursor: "pointer",
@@ -548,7 +550,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             )}
 
             {/* Stop button */}
-            <button onClick={handleStopRecording} style={{
+            <button onClick={handleStopRecording} aria-label="Stop recording" style={{
               width: isMobile ? 88 : 80, height: isMobile ? 88 : 80, borderRadius: "50%",
               border: "3px solid #FFF3",
               background: `linear-gradient(135deg, #C75040, #A03030)`,

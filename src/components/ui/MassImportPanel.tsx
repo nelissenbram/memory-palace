@@ -263,7 +263,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 </p>
               </div>
             </div>
-            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onClose} aria-label="Close" style={{ width: 32, height: 32, borderRadius: 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
           </div>
 
           {/* Source toggle: Local / Cloud */}
@@ -399,7 +399,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <span style={{ fontFamily: T.font.body, fontSize: 12, color: "#C05050", lineHeight: 1.5, flex: 1 }}>
                   {t("filesSkipped", { count: String(skippedOversized) })}
                 </span>
-                <button onClick={() => setSkippedOversized(0)} style={{ background: "none", border: "none", color: "#C05050", fontSize: 14, cursor: "pointer", padding: 4, flexShrink: 0 }}>{"\u2715"}</button>
+                <button onClick={() => setSkippedOversized(0)} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#C05050", fontSize: 14, cursor: "pointer", padding: 4, flexShrink: 0 }}>{"\u2715"}</button>
               </div>
             )}
 

@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import ImageEditor from "@/components/ui/ImageEditor";
@@ -25,6 +26,7 @@ interface MemoryDetailProps {
 export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: MemoryDetailProps){
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("memoryDetail");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const [editing,setEditing]=useState(false);
   const [imageEditing,setImageEditing]=useState(false);
   const [sharing,setSharing]=useState(false);
@@ -95,7 +97,7 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
 
   return(
     <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.5)",backdropFilter:"blur(14px)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:50,animation:"fadeIn .2s ease"}}>
-      <div onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:isMobile?0:20,border:isMobile?"none":`1px solid ${T.color.cream}`,boxShadow:isMobile?"none":"0 16px 70px rgba(44,44,42,.2)",maxWidth:isMobile?undefined:480,width:isMobile?"100%":"90%",height:isMobile?"100%":undefined,overflow:isMobile?"auto":"hidden",animation:isMobile?"fadeIn .2s ease":"fadeUp .3s cubic-bezier(.23,1,.32,1)",display:isMobile?"flex":undefined,flexDirection:isMobile?"column":undefined}}>
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:isMobile?0:20,border:isMobile?"none":`1px solid ${T.color.cream}`,boxShadow:isMobile?"none":"0 16px 70px rgba(44,44,42,.2)",maxWidth:isMobile?undefined:480,width:isMobile?"100%":"90%",height:isMobile?"100%":undefined,overflow:isMobile?"auto":"hidden",animation:isMobile?"fadeIn .2s ease":"fadeUp .3s cubic-bezier(.23,1,.32,1)",display:isMobile?"flex":undefined,flexDirection:isMobile?"column":undefined}}>
         {/* Header gradient with image preview */}
         <div style={{height:180,background:isLocked?`linear-gradient(145deg,hsl(${mem.hue},${Math.max(mem.s-20,10)}%,${Math.max(mem.l-25,20)}%),hsl(${mem.hue+18},${Math.max(mem.s-25,8)}%,${Math.max(mem.l-30,15)}%))`:mem.dataUrl?`url(${mem.dataUrl}) center/cover`:`linear-gradient(145deg,hsl(${mem.hue},${mem.s}%,${mem.l}%),hsl(${mem.hue+18},${mem.s-5}%,${mem.l-6}%))`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}}>
           {isLocked&&<>
@@ -215,7 +217,7 @@ export default function MemoryDetail({mem,room,wing,onClose,onDelete,onUpdate}: 
                 </div>
                 <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
               </div>
-              :contextError?<div style={{fontFamily:T.font.body,fontSize:12,color:T.color.error,marginBottom:4}}>{contextError}</div>
+              :contextError?<div role="alert" style={{fontFamily:T.font.body,fontSize:12,color:T.color.error,marginBottom:4}}>{contextError}</div>
               :<button onClick={fetchHistoricalContext} style={{width:"100%",padding:"10px 16px",fontFamily:T.font.body,fontSize:13,background:"transparent",border:`1px dashed ${T.color.sandstone}`,borderRadius:10,cursor:"pointer",color:T.color.walnut,display:"flex",alignItems:"center",justifyContent:"center",gap:8,transition:"all .15s"}}>
                 <span style={{fontSize:16}}>&#x1F30D;</span> {t("addHistoricalContext")}
               </button>}

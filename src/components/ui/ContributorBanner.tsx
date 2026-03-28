@@ -1,5 +1,6 @@
 "use client";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface ContributorBannerProps {
   ownerName: string;
@@ -7,6 +8,7 @@ interface ContributorBannerProps {
 }
 
 export default function ContributorBanner({ ownerName, permission }: ContributorBannerProps) {
+  const { t } = useTranslation("contributorBanner");
   const isContributor = permission === "contribute" || permission === "admin";
 
   return (
@@ -37,8 +39,8 @@ export default function ContributorBanner({ ownerName, permission }: Contributor
         fontWeight: 500,
       }}>
         {isContributor
-          ? `Contributing to ${ownerName}'s palace`
-          : `Viewing ${ownerName}'s memories`
+          ? t("contributing", { ownerName })
+          : t("viewing", { ownerName })
         }
       </span>
     </div>

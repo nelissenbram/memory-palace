@@ -1,14 +1,25 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import type { Mem } from "@/lib/constants/defaults";
+
+const TYPE_KEY_MAP: Record<string, string> = {
+  video: "typeVideo",
+  audio: "typeAudio",
+  photo: "typePhoto",
+  painting: "typePainting",
+  document: "typeDocument",
+  story: "typeStory",
+};
 
 /**
  * Storage Room — a simple media player overlay for unallocated memories.
  * Shows all memories in the "at1" room (storage) as a scrollable list with inline playback.
  */
 export default function StoragePlayerPanel({ onClose }: { onClose: () => void }) {
+  const { t, locale } = useTranslation("storagePlayer");
   const { userMems, fetchRoomMemories } = useMemoryStore();
   const [mems, setMems] = useState<Mem[]>([]);
   const [activeMem, setActiveMem] = useState<Mem | null>(null);
@@ -27,6 +38,11 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
 
   const hasMedia = activeMem && (activeMem.type === "video" || activeMem.type === "audio" || activeMem.type === "photo" || activeMem.type === "painting");
 
+  const localizeType = (type: string) => {
+    const key = TYPE_KEY_MAP[type];
+    return key ? t(key) : type;
+  };
+
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 200, background: "rgba(20,16,12,0.92)",
@@ -40,14 +56,14 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 22 }}>{"\u{1F4E6}"}</span>
           <span style={{ fontFamily: T.font.display, fontSize: 20, color: "#E8DCC8", letterSpacing: "0.03em" }}>
-            Storage Room
+            {t("title")}
           </span>
         </div>
         <button onClick={onClose} style={{
           background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
           borderRadius: 8, padding: "6px 16px", color: "#C8B898", cursor: "pointer",
           fontFamily: T.font.body, fontSize: 13,
-        }}>Close</button>
+        }}>{t("close")}</button>
       </div>
 
       {/* Player area */}
@@ -60,9 +76,9 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
             fontFamily: T.font.body, fontSize: 15,
           }}>
             <p style={{ fontSize: 40, marginBottom: 16 }}>{"\u{1F4E6}"}</p>
-            <p>The Storage Room is empty.</p>
+            <p>{t("empty")}</p>
             <p style={{ fontSize: 13, marginTop: 8, color: "#887858" }}>
-              Unallocated memories will appear here.
+              {t("emptyDescription")}
             </p>
           </div>
         ) : (
@@ -101,7 +117,7 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
                     </p>
                   )}
                   <div style={{ fontFamily: T.font.body, fontSize: 11, color: "#887858", marginTop: 6 }}>
-                    {activeMem.type} {activeMem.createdAt ? `\u00B7 ${new Date(activeMem.createdAt).toLocaleDateString()}` : ""}
+                    {localizeType(activeMem.type)} {activeMem.createdAt ? `\u00B7 ${new Date(activeMem.createdAt).toLocaleDateString(locale)}` : ""}
                   </div>
                 </div>
               </div>
@@ -126,7 +142,7 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>{mem.title}</div>
                     <div style={{ fontFamily: T.font.body, fontSize: 11, color: "#887858" }}>
-                      {mem.type}
+                      {localizeType(mem.type)}
                     </div>
                   </div>
                 </button>

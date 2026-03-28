@@ -11,7 +11,7 @@ export default async function AppLayout({
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return <>{children}</>;
+    return <main id="main-content" style={{ height: "100%", width: "100%" }}>{children}</main>;
   }
 
   const supabase = await createClient();
@@ -23,5 +23,5 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return <>{children}</>;
+  return <main id="main-content" style={{ height: "100%", width: "100%" }}>{children}</main>;
 }

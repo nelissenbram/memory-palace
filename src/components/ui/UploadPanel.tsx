@@ -3,6 +3,7 @@ import { useState, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useOnlineStatus } from "@/lib/hooks/useOfflineSync";
 import { UPLOAD_DEMOS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
@@ -21,6 +22,7 @@ interface UploadPanelProps {
 export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onUpdateMemory,suggestedType}: UploadPanelProps){
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("uploadPanel");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const isOnline = useOnlineStatus();
   const [savedOffline,setSavedOffline]=useState(false);
   const [title,setTitle]=useState("");
@@ -131,27 +133,27 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
 
   return(
     <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
-      <div onClick={e=>e.stopPropagation()} style={{position:"absolute",right:0,top:0,bottom:0,width:isMobile?"100%":"min(380px, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":`1px solid ${T.color.cream}`,padding:isMobile?"20px 16px":"28px 24px",overflowY:"auto",animation:"slideInRight .3s cubic-bezier(.23,1,.32,1)"}}>
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("addMemory")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e=>e.stopPropagation()} style={{position:"absolute",right:0,top:0,bottom:0,width:isMobile?"100%":"min(380px, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":`1px solid ${T.color.cream}`,padding:isMobile?"20px 16px":"28px 24px",overflowY:"auto",animation:"slideInRight .3s cubic-bezier(.23,1,.32,1)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <div>
             <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>{t("addMemory")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:12,color:accent,margin:"4px 0 0"}}>{room?.icon} {room?.name}</p>
           </div>
-          <button onClick={onClose} style={{width:isMobile?40:32,height:isMobile?40:32,borderRadius:isMobile?20:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?16:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:44,minHeight:44}}>✕</button>
+          <button onClick={onClose} aria-label="Close" style={{width:isMobile?40:32,height:isMobile?40:32,borderRadius:isMobile?20:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?16:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:44,minHeight:44}}>✕</button>
         </div>
 
         {/* Method tabs */}
         <div style={{display:"flex",gap:4,marginBottom:16,background:T.color.warmStone,borderRadius:10,padding:3}}>
           {[["url",t("pasteUrl")],["file",t("uploadFile")],...(roomMemories.length>0?[["room",t("fromRoom")]]:[] as string[][])].map(([val,label])=>(
-            <button key={val} onClick={()=>setUploadMethod(val)} style={{flex:1,padding:isMobile?"12px 12px":"8px 12px",borderRadius:8,border:"none",background:uploadMethod===val?T.color.white:"transparent",color:uploadMethod===val?T.color.charcoal:T.color.muted,fontFamily:T.font.body,fontSize:isMobile?14:12,fontWeight:uploadMethod===val?600:400,cursor:"pointer",transition:"all .2s"}}>{label}</button>
+            <button key={val} onClick={()=>setUploadMethod(val)} role="tab" aria-selected={uploadMethod===val} style={{flex:1,padding:isMobile?"12px 12px":"8px 12px",borderRadius:8,border:"none",background:uploadMethod===val?T.color.white:"transparent",color:uploadMethod===val?T.color.charcoal:T.color.muted,fontFamily:T.font.body,fontSize:isMobile?14:12,fontWeight:uploadMethod===val?600:400,cursor:"pointer",transition:"all .2s"}}>{label}</button>
           ))}
         </div>
 
         {uploadMethod==="url"?<>
           {/* URL input */}
-          <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>{t("imageOrVideoUrl")}</label>
+          <label htmlFor="upload-url" style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>{t("imageOrVideoUrl")}</label>
           <div style={{display:"flex",gap:6,marginBottom:12}}>
-            <input value={imageUrl} onChange={e=>setImageUrl(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadUrl();}} placeholder={t("urlPlaceholder")} style={{flex:1,padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+            <input id="upload-url" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadUrl();}} placeholder={t("urlPlaceholder")} style={{flex:1,padding:"10px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
             <button onClick={loadUrl} style={{padding:"10px 14px",borderRadius:10,border:"none",background:accent,color:"#FFF",fontFamily:T.font.body,fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>{t("load")}</button>
           </div>
           {/* Quick demo images */}
@@ -174,7 +176,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           </div>
           <input ref={fileRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" style={{display:"none"}} onChange={e=>{if(e.target.files?.[0])processFile(e.target.files[0]);}}/>
           {fileName&&<p style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,marginBottom:8}}>File: {fileName}</p>}
-          {fileSizeError&&<p style={{fontFamily:T.font.body,fontSize:12,color:T.color.error,background:`${T.color.error}10`,padding:"10px 14px",borderRadius:10,marginBottom:12,lineHeight:1.5}}>{fileSizeError}</p>}
+          {fileSizeError&&<p role="alert" style={{fontFamily:T.font.body,fontSize:12,color:T.color.error,background:`${T.color.error}10`,padding:"10px 14px",borderRadius:10,marginBottom:12,lineHeight:1.5}}>{fileSizeError}</p>}
         </>}
 
         {/* Room memory picker */}
@@ -238,11 +240,11 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
         </div>}
 
         {/* Title */}
-        <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Title</label>
-        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder={t("nameMemory")} style={{width:"100%",padding:"12px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:14,color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:16}}/>
+        <label htmlFor="upload-title" style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>Title</label>
+        <input id="upload-title" value={title} onChange={e=>setTitle(e.target.value)} placeholder={t("nameMemory")} style={{width:"100%",padding:"12px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:14,color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:16}}/>
         {/* Description */}
-        <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>{t("descriptionOptional")}</label>
-        <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder={t("descriptionPlaceholder")} rows={2} style={{width:"100%",padding:"12px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:16,resize:"none"}}/>
+        <label htmlFor="upload-description" style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:6}}>{t("descriptionOptional")}</label>
+        <textarea id="upload-description" value={desc} onChange={e=>setDesc(e.target.value)} placeholder={t("descriptionPlaceholder")} rows={2} style={{width:"100%",padding:"12px 14px",borderRadius:10,border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:16,resize:"none"}}/>
         {/* Display type */}
         <label style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:8}}>{t("displayAs")}</label>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:24}}>

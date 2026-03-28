@@ -84,6 +84,7 @@ export default function ForgotPasswordPage() {
 
       {error && (
         <div
+          role="alert"
           style={{
             padding: "10px 14px",
             borderRadius: 10,
@@ -99,6 +100,7 @@ export default function ForgotPasswordPage() {
       )}
 
       <label
+        htmlFor="forgot-password-email"
         style={{
           fontFamily: T.font.body,
           fontSize: 11,
@@ -112,6 +114,7 @@ export default function ForgotPasswordPage() {
         {t("email")}
       </label>
       <input
+        id="forgot-password-email"
         name="email"
         type="email"
         required

@@ -158,7 +158,7 @@ function ConnectionsContent() {
     <div>
       {/* Toast */}
       {toast && (
-        <div style={{
+        <div role={toast.type === "success" ? "status" : "alert"} style={{
           position: "fixed", top: 24, right: 24, zIndex: 100,
           padding: "14px 20px", borderRadius: 12,
           background: toast.type === "success" ? "#4A6741" : "#C05050",
@@ -168,9 +168,9 @@ function ConnectionsContent() {
           animation: "fadeIn .2s ease",
           display: "flex", alignItems: "center", gap: 10,
         }}>
-          <span>{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
+          <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} style={{
+          <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: 14, cursor: "pointer", marginLeft: 8, opacity: 0.7,
           }}>{"\u2715"}</button>

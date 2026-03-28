@@ -1,3 +1,25 @@
+/* Skip-to-content link */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: #fff;
+  color: #000;
+  text-decoration: underline;
+  font-size: 14px;
+}
+.skip-to-content:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+}
+
 /* Global reset */
 *,
 *::before,
@@ -154,4 +176,14 @@ canvas {
 }
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

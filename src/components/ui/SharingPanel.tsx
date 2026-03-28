@@ -199,19 +199,19 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>{t("shareRoom")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:12,color:accent,margin:"4px 0 0"}}>{room?.icon} {room?.name}</p>
           </div>
-          <button onClick={onClose} style={{width:isMobile?40:32,height:isMobile?40:32,borderRadius:isMobile?20:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?16:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:44,minHeight:44}}>&#x2715;</button>
+          <button onClick={onClose} aria-label="Close" style={{width:isMobile?40:32,height:isMobile?40:32,borderRadius:isMobile?20:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?16:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:44,minHeight:44}}>&#x2715;</button>
         </div>
 
         {/* Success toast */}
-        {success&&<div style={{padding:"10px 14px",background:`${T.color.sage}15`,border:`1px solid ${T.color.sage}30`,borderRadius:10,marginBottom:16,fontFamily:T.font.body,fontSize:12,color:T.color.sage,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        {success&&<div role="status" style={{padding:"10px 14px",background:`${T.color.sage}15`,border:`1px solid ${T.color.sage}30`,borderRadius:10,marginBottom:16,fontFamily:T.font.body,fontSize:12,color:T.color.sage,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span>{success}</span>
-          <button onClick={()=>setSuccess(null)} style={{background:"none",border:"none",color:T.color.sage,cursor:"pointer",fontSize:14}}>&#x2715;</button>
+          <button onClick={()=>setSuccess(null)} aria-label="Close" style={{background:"none",border:"none",color:T.color.sage,cursor:"pointer",fontSize:14}}>&#x2715;</button>
         </div>}
 
         {/* Error */}
-        {error&&<div style={{padding:"10px 14px",background:`${T.color.error}10`,border:`1px solid ${T.color.error}30`,borderRadius:10,marginBottom:16,fontFamily:T.font.body,fontSize:12,color:T.color.error,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        {error&&<div role="alert" style={{padding:"10px 14px",background:`${T.color.error}10`,border:`1px solid ${T.color.error}30`,borderRadius:10,marginBottom:16,fontFamily:T.font.body,fontSize:12,color:T.color.error,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span>{error}</span>
-          <button onClick={()=>setError(null)} style={{background:"none",border:"none",color:T.color.error,cursor:"pointer",fontSize:14}}>&#x2715;</button>
+          <button onClick={()=>setError(null)} aria-label="Close" style={{background:"none",border:"none",color:T.color.error,cursor:"pointer",fontSize:14}}>&#x2715;</button>
         </div>}
 
         {/* Toggle */}
@@ -311,7 +311,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                         </div>
                       </div>
                     </div>
-                    <button onClick={()=>removePerson(share)} style={{width:24,height:24,borderRadius:12,border:`1px solid ${T.color.cream}`,background:"transparent",color:T.color.muted,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>&#x2715;</button>
+                    <button onClick={()=>removePerson(share)} aria-label="Remove" style={{width:24,height:24,borderRadius:12,border:`1px solid ${T.color.cream}`,background:"transparent",color:T.color.muted,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>&#x2715;</button>
                   </div>
                   {/* Action row */}
                   <div style={{display:"flex",gap:6,marginTop:8}}>

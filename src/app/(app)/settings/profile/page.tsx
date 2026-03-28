@@ -206,7 +206,7 @@ export default function ProfilePage() {
     <div>
       {/* Toast */}
       {toast && (
-        <div style={{
+        <div role={toast.type === "success" ? "status" : "alert"} style={{
           position: "fixed", top: 24, right: 24, zIndex: 100,
           padding: "14px 20px", borderRadius: 12,
           background: toast.type === "success" ? "#4A6741" : "#C05050",
@@ -216,9 +216,9 @@ export default function ProfilePage() {
           animation: "fadeIn .2s ease",
           display: "flex", alignItems: "center", gap: 10,
         }}>
-          <span>{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
+          <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} style={{
+          <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: 16, cursor: "pointer", marginLeft: 8, opacity: 0.7,
           }}>{"\u2715"}</button>
@@ -294,8 +294,9 @@ export default function ProfilePage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
           {/* Display Name */}
           <div>
-            <label style={labelStyle}>{t("displayName")}</label>
+            <label htmlFor="profile-display-name" style={labelStyle}>{t("displayName")}</label>
             <input
+              id="profile-display-name"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -306,8 +307,9 @@ export default function ProfilePage() {
 
           {/* Email (read-only) */}
           <div>
-            <label style={labelStyle}>{t("emailAddress")}</label>
+            <label htmlFor="profile-email" style={labelStyle}>{t("emailAddress")}</label>
             <input
+              id="profile-email"
               type="email"
               value={profile.email}
               readOnly
@@ -328,8 +330,9 @@ export default function ProfilePage() {
 
           {/* Bio */}
           <div>
-            <label style={labelStyle}>{t("aboutMe")}</label>
+            <label htmlFor="profile-bio" style={labelStyle}>{t("aboutMe")}</label>
             <textarea
+              id="profile-bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder={t("aboutMePlaceholder")}
@@ -361,6 +364,7 @@ export default function ProfilePage() {
                 <button
                   key={gId}
                   onClick={() => setGoal(gId)}
+                  aria-pressed={goal === gId}
                   style={{
                     padding: "14px 16px",
                     borderRadius: 12,
@@ -400,6 +404,7 @@ export default function ProfilePage() {
                 return (
                 <button
                   key={era}
+                  aria-pressed={styleEra === era && !isComingSoon}
                   onClick={async () => {
                     if (isComingSoon) return;
                     setStyleEra(era);
@@ -613,6 +618,7 @@ export default function ProfilePage() {
         <div style={{ display: "flex", gap: 10 }}>
           <button
             onClick={() => setLocale("en")}
+            aria-pressed={locale === "en"}
             style={{
               padding: "14px 24px",
               borderRadius: 12,
@@ -630,6 +636,7 @@ export default function ProfilePage() {
           </button>
           <button
             onClick={() => setLocale("nl")}
+            aria-pressed={locale === "nl"}
             style={{
               padding: "14px 24px",
               borderRadius: 12,
@@ -684,6 +691,8 @@ export default function ProfilePage() {
             </div>
           </div>
           <button
+            role="switch"
+            aria-checked={accessibilityMode}
             onClick={() => {
               toggleAccessibility();
               showToast(accessibilityMode ? tA11y("disabled") : tA11y("enabled"), "success");
@@ -775,6 +784,8 @@ export default function ProfilePage() {
               dangerouslySetInnerHTML={{ __html: t("deleteConfirmDescription") }}
             />
             <input
+              id="profile-delete-confirm"
+              aria-label={t("deleteConfirmTitle")}
               type="text"
               value={deleteText}
               onChange={(e) => setDeleteText(e.target.value)}

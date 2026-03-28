@@ -72,7 +72,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
             <h3 style={{fontFamily:T.font.display,fontSize:22,fontWeight:500,color:T.color.charcoal,margin:0}}>{t("title")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,margin:"4px 0 0"}}>{t("summary", { wings: String(WINGS.length), memories: String(totalMems) })}</p>
           </div>
-          <button onClick={onClose} style={{width:32,height:32,borderRadius:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <button onClick={onClose} aria-label="Close" style={{width:32,height:32,borderRadius:16,border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
 
         {/* Search */}
@@ -81,7 +81,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
             <span style={{fontSize:13,opacity:.5}}>🔍</span>
             <input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t("searchPlaceholder")}
               style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:13,color:T.color.charcoal,outline:"none"}}/>
-            {query&&<button onClick={()=>setQuery("")} style={{background:"none",border:"none",color:T.color.muted,fontSize:12,cursor:"pointer"}}>✕</button>}
+            {query&&<button onClick={()=>setQuery("")} aria-label="Clear search" style={{background:"none",border:"none",color:T.color.muted,fontSize:12,cursor:"pointer"}}>✕</button>}
           </div>
         </div>
 

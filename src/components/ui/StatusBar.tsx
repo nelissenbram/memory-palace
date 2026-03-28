@@ -30,6 +30,7 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
       <button
         onClick={onAchievements}
         title={t("achievements")}
+        aria-label={t("achievements")}
         style={{
           display: "flex", alignItems: "center", gap: 6,
           padding: "0 14px 0 12px", height: "100%",
@@ -43,7 +44,7 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
         <span style={{ fontFamily: T.font.body, fontSize: 11, fontWeight: 500, color: T.color.walnut }}>
           {earned}/{total}
         </span>
-        <div style={{ width: 40, height: 6, borderRadius: 3, background: `${T.color.sandstone}33`, overflow: "hidden" }}>
+        <div role="progressbar" aria-valuenow={earned} aria-valuemin={0} aria-valuemax={total} aria-label={t("achievements")} style={{ width: 40, height: 6, borderRadius: 3, background: `${T.color.sandstone}33`, overflow: "hidden" }}>
           <div style={{ width: `${percentage}%`, height: "100%", borderRadius: 2, background: `linear-gradient(90deg,${T.color.goldLight},${T.color.gold})`, transition: "width .6s ease" }} />
         </div>
       </button>
@@ -55,6 +56,7 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
       <button
         onClick={onTracks}
         title={t("memoryTracks")}
+        aria-label={t("memoryTracks")}
         style={{
           display: "flex", alignItems: "center", gap: 6,
           padding: "0 14px", height: "100%",

@@ -1398,7 +1398,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
         <input type="range" min={0} max={1} step={0.01} value={st.volume} onChange={e=>{const v=parseFloat(e.target.value);volOverride.current[type]=v;act(ref,el=>{el.muted=false;el.volume=v;});}}
           style={{width:50,height:4,accentColor:barAccent,cursor:"pointer"}}/>
       </div>
-      <button onClick={()=>setShowMedia(s=>({...s,[type]:false}))} style={{...btnS,width:24,height:24,borderRadius:12,fontSize:11,color:"rgba(240,234,224,.6)"}}>{"\u2715"}</button>
+      <button onClick={()=>setShowMedia(s=>({...s,[type]:false}))} aria-label="Close" style={{...btnS,width:24,height:24,borderRadius:12,fontSize:11,color:"rgba(240,234,224,.6)"}}>{"\u2715"}</button>
     </div>
     );
   };

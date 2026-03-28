@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { cookies } from "next/headers";
 import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
@@ -46,13 +47,16 @@ export const viewport: Viewport = {
   themeColor: "#FAFAF7",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const locale = cookieStore.get("mp_locale")?.value || "en";
+
   return (
-    <html lang="en" className={`${cormorant.variable} ${sourceSans.variable}`}>
+    <html lang={locale} className={`${cormorant.variable} ${sourceSans.variable}`}>
       <head>
         {/* Force clear stale PWA caches — runs before any JS bundles */}
         <script dangerouslySetInnerHTML={{ __html: `
@@ -135,6 +139,9 @@ export default function RootLayout({
         />
       </head>
       <body style={{ margin: 0, padding: 0 }}>
+        <a href="#main-content" className="skip-to-content">
+          Skip to content
+        </a>
         <ServiceWorkerRegistration />
         <PWAInstallBanner />
         <OfflineBanner />

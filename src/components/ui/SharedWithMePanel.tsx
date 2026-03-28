@@ -70,7 +70,7 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
               {shares.length > 0 ? t("roomCount", { count: String(shares.length) }) : t("noRooms")}
             </p>
           </div>
-          <button onClick={onClose} style={{
+          <button onClick={onClose} aria-label="Close" style={{
             width: 32, height: 32, borderRadius: 16,
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
             color: T.color.muted, fontSize: 14, cursor: "pointer",

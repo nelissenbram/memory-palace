@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { T } from "@/lib/theme";
 import { signOut } from "@/lib/auth/actions";
 import { useUserStore } from "@/lib/stores/userStore";
@@ -46,6 +46,16 @@ export default function TopBar({crumbs}: TopBarProps){
     return () => { document.removeEventListener("keydown", handleKey); document.removeEventListener("mousedown", handleClick); };
   }, [userMenuOpen]);
 
+  // Close mobile menu on Escape
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [menuOpen]);
+
   // Mobile: show only current location + menu toggle
   if (isMobile) {
     return (
@@ -57,19 +67,19 @@ export default function TopBar({crumbs}: TopBarProps){
           background: "linear-gradient(180deg,rgba(221,213,200,.95),rgba(221,213,200,0))",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
-            <button onClick={()=>{if(view!=="exterior")exitToPalace();}} style={{
-              width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+            <button onClick={()=>{if(view!=="exterior")exitToPalace();}} aria-label={t("backToPalace")} style={{
+              width: 44, height: 44, borderRadius: 6, flexShrink: 0,
               background: `linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12,
               border: `1px solid ${T.color.sandstone}`, cursor: view!=="exterior"?"pointer":"default", padding: 0,
             }}>{"\u{1F3DB}\uFE0F"}</button>
             {/* Current location breadcrumb */}
-            <div style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden", minWidth: 0 }}>
+            <nav aria-label="Breadcrumb" style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden", minWidth: 0 }}>
               {crumbs.map((c, i) => (
                 <span key={i} style={{ display: "flex", alignItems: "center", gap: 3, minWidth: 0 }}>
                   {i > 0 && <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, flexShrink: 0 }}>/</span>}
                   {c.action ? (
-                    <button onClick={c.action} style={{
+                    <button onClick={c.action} aria-current={i === crumbs.length - 1 ? "page" : undefined} style={{
                       fontFamily: T.font.display, fontSize: i === crumbs.length - 1 ? 14 : 12,
                       fontWeight: 500, color: i === crumbs.length - 1 ? T.color.charcoal : T.color.muted,
                       background: "none", border: "none", cursor: "pointer", padding: 0,
@@ -78,7 +88,7 @@ export default function TopBar({crumbs}: TopBarProps){
                       textUnderlineOffset: 3, minWidth: 0,
                     }}>{c.label}</button>
                   ) : (
-                    <span style={{
+                    <span aria-current={i === crumbs.length - 1 ? "page" : undefined} style={{
                       fontFamily: T.font.display, fontSize: i === crumbs.length - 1 ? 14 : 12,
                       fontWeight: 500, color: T.color.charcoal,
                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
@@ -86,9 +96,9 @@ export default function TopBar({crumbs}: TopBarProps){
                   )}
                 </span>
               ))}
-            </div>
+            </nav>
           </div>
-          <button onClick={() => setMenuOpen(!menuOpen)} style={{
+          <button onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? t("closeMenu") : t("openMenu")} aria-expanded={menuOpen} style={{
             width: 44, height: 44, borderRadius: 12, flexShrink: 0,
             border: `1px solid ${T.color.cream}`,
             background: menuOpen ? `${T.color.sandstone}30` : `${T.color.white}bb`,
@@ -100,7 +110,7 @@ export default function TopBar({crumbs}: TopBarProps){
         </div>
         {/* Mobile menu overlay */}
         {menuOpen && (
-          <div onClick={() => setMenuOpen(false)} style={{
+          <div onClick={() => setMenuOpen(false)} role="dialog" aria-modal="true" aria-label={t("navigationMenu")} style={{
             position: "absolute", inset: 0, zIndex: 39, background: "rgba(42,34,24,.3)",
           }}>
             <div onClick={e => e.stopPropagation()} style={{
@@ -181,14 +191,14 @@ export default function TopBar({crumbs}: TopBarProps){
               </div>
               {/* Language switcher */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginTop: 8, padding: "0 2px" }}>
-                <button onClick={() => setLocale("en")} style={{
+                <button onClick={() => setLocale("en")} aria-pressed={locale === "en"} style={{
                   padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: T.font.body,
                   fontWeight: locale === "en" ? 600 : 400,
                   border: `1px solid ${locale === "en" ? T.color.terracotta : T.color.cream}`,
                   background: locale === "en" ? `${T.color.terracotta}12` : T.color.white,
                   color: locale === "en" ? T.color.terracotta : T.color.muted, cursor: "pointer",
                 }}>EN</button>
-                <button onClick={() => setLocale("nl")} style={{
+                <button onClick={() => setLocale("nl")} aria-pressed={locale === "nl"} style={{
                   padding: "6px 12px", borderRadius: 8, fontSize: 12, fontFamily: T.font.body,
                   fontWeight: locale === "nl" ? 600 : 400,
                   border: `1px solid ${locale === "nl" ? T.color.terracotta : T.color.cream}`,
@@ -210,16 +220,16 @@ export default function TopBar({crumbs}: TopBarProps){
     <div style={{position:"absolute",top:0,left:0,right:0,height:54,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 22px",zIndex:40,background:"linear-gradient(180deg,rgba(221,213,200,.92),rgba(221,213,200,0))"}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <button onClick={()=>{if(view!=="exterior")exitToPalace();}} title="Back to Palace" style={{width:30,height:30,borderRadius:7,background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,border:`1px solid ${T.color.sandstone}`,cursor:view!=="exterior"?"pointer":"default",padding:0}}>{"\u{1F3DB}\uFE0F"}</button>
-          <button onClick={()=>setShowDirectory(!showDirectory)} title="Directory" style={{width:30,height:30,borderRadius:7,border:`1px solid ${showDirectory?T.color.sandstone:T.color.cream}`,background:showDirectory?`${T.color.sandstone}30`:`${T.color.white}bb`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,cursor:"pointer",color:T.color.muted}}>{"\u{1F4C2}"}</button>
+          <button onClick={()=>{if(view!=="exterior")exitToPalace();}} title="Back to Palace" aria-label={t("backToPalace")} style={{width:36,height:36,borderRadius:7,background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,border:`1px solid ${T.color.sandstone}`,cursor:view!=="exterior"?"pointer":"default",padding:0}}>{"\u{1F3DB}\uFE0F"}</button>
+          <button onClick={()=>setShowDirectory(!showDirectory)} title="Directory" aria-label={t("directory")} style={{width:36,height:36,borderRadius:7,border:`1px solid ${showDirectory?T.color.sandstone:T.color.cream}`,background:showDirectory?`${T.color.sandstone}30`:`${T.color.white}bb`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,cursor:"pointer",color:T.color.muted}}>{"\u{1F4C2}"}</button>
           {userName&&<span style={{fontFamily:T.font.display,fontSize:14,fontWeight:600,fontStyle:"italic",color:T.color.charcoal,background:`${T.color.linen}cc`,padding:"2px 8px",borderRadius:6,textShadow:"0 1px 2px rgba(255,255,255,.9)"}}>{t("palace", { name: userName })}</span>}
-          <div style={{display:"flex",alignItems:"center",gap:4,background:`${T.color.linen}cc`,padding:"2px 8px",borderRadius:6}}>
+          <nav aria-label="Breadcrumb" style={{display:"flex",alignItems:"center",gap:4,background:`${T.color.linen}cc`,padding:"2px 8px",borderRadius:6}}>
             {crumbs.map((c,i)=><span key={i} style={{display:"flex",alignItems:"center",gap:4}}>
               {i>0&&<span style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>/</span>}
-              {c.action?<button onClick={c.action} style={{fontFamily:T.font.display,fontSize:i===0?15:13,fontWeight:600,color:i===crumbs.length-1?T.color.charcoal:T.color.walnut,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textDecorationColor:`${T.color.sandstone}88`,textUnderlineOffset:3,padding:0}}>{c.label}</button>
-              :<span style={{fontFamily:T.font.display,fontSize:i===0?15:13,fontWeight:600,color:T.color.charcoal}}>{c.label}</span>}
+              {c.action?<button onClick={c.action} aria-current={i===crumbs.length-1?"page":undefined} style={{fontFamily:T.font.display,fontSize:i===0?15:13,fontWeight:600,color:i===crumbs.length-1?T.color.charcoal:T.color.walnut,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textDecorationColor:`${T.color.sandstone}88`,textUnderlineOffset:3,padding:0}}>{c.label}</button>
+              :<span aria-current={i===crumbs.length-1?"page":undefined} style={{fontFamily:T.font.display,fontSize:i===0?15:13,fontWeight:600,color:T.color.charcoal}}>{c.label}</span>}
             </span>)}
-          </div>
+          </nav>
         </div>
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -498,8 +508,12 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
         setExpandedWing(null);
       }
     };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { setWingsOpen(false); setExpandedWing(null); }
+    };
     document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => { document.removeEventListener("mousedown", handleClick); document.removeEventListener("keydown", handleKey); };
   }, [wingsOpen]);
 
   const activeWingData = wings.find(w => w.id === activeWing);
@@ -508,6 +522,8 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
     <div ref={wingsRef} style={{ position: "relative" }}>
       <button
         onClick={() => { setWingsOpen(!wingsOpen); setExpandedWing(null); }}
+        aria-haspopup="true"
+        aria-expanded={wingsOpen}
         style={{
           padding: "6px 14px", borderRadius: 16,
           fontFamily: T.font.body, fontSize: 12, fontWeight: 500,
@@ -523,7 +539,7 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
       </button>
 
       {wingsOpen && (
-        <div style={{
+        <div role="menu" aria-label={tc("palaceMap")} style={{
           position: "absolute", top: "calc(100% + 6px)", right: 0,
           minWidth: 240, maxHeight: 420, overflowY: "auto",
           background: `${T.color.linen}f8`,
@@ -540,6 +556,7 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
               <div key={w.id}>
                 <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
                   <button
+                    role="menuitem"
                     onClick={() => { enterCorridor(w.id); setWingsOpen(false); setExpandedWing(null); }}
                     style={{
                       flex: 1, padding: "9px 12px", borderRadius: isExpanded ? "10px 0 0 0" : "10px 0 0 10px",
@@ -586,6 +603,7 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
                     {rooms.map(r => (
                       <button
                         key={r.id}
+                        role="menuitem"
                         onClick={() => { enterWing(w.id); setTimeout(() => enterRoom(r.id), 100); setWingsOpen(false); setExpandedWing(null); }}
                         style={{
                           padding: "6px 10px", borderRadius: 8,

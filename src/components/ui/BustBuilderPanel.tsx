@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useUserStore } from "@/lib/stores/userStore";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import {
@@ -24,6 +25,7 @@ type Stage = "manage" | "upload" | "calibrating" | "ready" | "creating" | "done"
 export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBuilderPanelProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("bustBuilder");
+  const { containerRef: focusTrapRef, handleKeyDown } = useFocusTrap(true);
   const { styleEra, bustPedestals, userName } = useUserStore();
   const pedestalData = bustPedestals[pedestalIndex];
   const hasBust = !!pedestalData?.faceUrl;
@@ -207,7 +209,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
       display: "flex", alignItems: "center", justifyContent: "center",
       background: "rgba(44,44,42,.6)", backdropFilter: "blur(6px)",
     }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div ref={focusTrapRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{
         background: T.color.linen, borderRadius: 20,
         padding: isMobile ? "24px 18px" : "32px 36px",
         maxWidth: 440, width: "90%",
@@ -627,7 +629,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
         {/* ═══ ERROR ═══ */}
         {stage === "error" && (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <div role="alert" style={{ textAlign: "center", padding: "20px 0" }}>
             <h2 style={{
               fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
               color: T.color.charcoal, marginBottom: 12,

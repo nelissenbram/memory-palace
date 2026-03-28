@@ -104,7 +104,7 @@ export default function LegacyPage() {
     <div>
       {/* Toast */}
       {toast && (
-        <div style={{
+        <div role={toast.type === "success" ? "status" : "alert"} style={{
           position: "fixed", top: 24, right: 24, zIndex: 100,
           padding: "14px 20px", borderRadius: 12,
           background: toast.type === "success" ? T.color.sage : T.color.error,
@@ -114,9 +114,9 @@ export default function LegacyPage() {
           animation: "fadeIn .2s ease",
           display: "flex", alignItems: "center", gap: 10,
         }}>
-          <span>{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
+          <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} style={{
+          <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: 16, cursor: "pointer", marginLeft: 8, opacity: 0.7,
           }}>{"\u2715"}</button>
@@ -165,6 +165,8 @@ export default function LegacyPage() {
           <button
             key={tab.key}
             onClick={() => setActiveSection(tab.key)}
+            role="tab"
+            aria-selected={activeSection === tab.key}
             style={{
               padding: "12px 20px", borderRadius: 12,
               border: `1.5px solid ${activeSection === tab.key ? T.color.terracotta : T.color.cream}`,
@@ -461,8 +463,9 @@ function ContactsSection({
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {/* Name */}
             <div>
-              <label style={labelStyle}>{t("contactName")}</label>
+              <label htmlFor="legacy-contact-name" style={labelStyle}>{t("contactName")}</label>
               <input
+                id="legacy-contact-name"
                 type="text" value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t("contactNamePlaceholder")}
@@ -472,8 +475,9 @@ function ContactsSection({
 
             {/* Email */}
             <div>
-              <label style={labelStyle}>{t("contactEmail")}</label>
+              <label htmlFor="legacy-contact-email" style={labelStyle}>{t("contactEmail")}</label>
               <input
+                id="legacy-contact-email"
                 type="email" value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t("contactEmailPlaceholder")}
@@ -489,6 +493,7 @@ function ContactsSection({
                   <button
                     key={r.value}
                     onClick={() => setRelationship(r.value)}
+                    aria-pressed={relationship === r.value}
                     style={{
                       padding: "10px 16px", borderRadius: 10,
                       border: `1.5px solid ${relationship === r.value ? T.color.terracotta : T.color.sandstone}`,
@@ -519,6 +524,7 @@ function ContactsSection({
                   <button
                     key={a.value}
                     onClick={() => setAccessLevel(a.value)}
+                    aria-pressed={accessLevel === a.value}
                     style={{
                       padding: "14px 18px", borderRadius: 12, textAlign: "left",
                       border: `1.5px solid ${accessLevel === a.value ? T.color.terracotta : T.color.sandstone}`,
@@ -560,6 +566,7 @@ function ContactsSection({
                               : [...prev, slug]
                           );
                         }}
+                        aria-pressed={selected}
                         style={{
                           padding: "10px 18px", borderRadius: 10,
                           border: `1.5px solid ${selected ? T.color.sage : T.color.sandstone}`,

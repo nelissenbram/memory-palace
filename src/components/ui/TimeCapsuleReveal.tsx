@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -145,6 +146,7 @@ interface TimeCapsuleRevealProps {
 
 export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevealProps) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("timeCapsule");
   const { userMems } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
@@ -242,13 +244,13 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
       <div style={{ padding: "14px 18px 8px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h4 style={{ fontFamily: T.font.display, fontSize: 17, fontWeight: 500, color: T.color.sage, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
-            Resolution Reminder
+            {t("resolutionReminder")}
           </h4>
           <p style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, margin: "3px 0 0" }}>
-            {resolutionReminders.length} goal{resolutionReminders.length !== 1 ? "s" : ""} with upcoming deadline{resolutionReminders.length !== 1 ? "s" : ""}
+            {resolutionReminders.length} {resolutionReminders.length === 1 ? t("goalSingular") : t("goalPlural")} {resolutionReminders.length === 1 ? t("deadlineSingular") : t("deadlinePlural")}
           </p>
         </div>
-        <button onClick={handleDismissReminders} style={{ width: 26, height: 26, borderRadius: 13, border: `1px solid ${T.color.sage}40`, background: `rgba(74,103,65,.08)`, color: T.color.muted, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"\u2715"}</button>
+        <button onClick={handleDismissReminders} aria-label="Dismiss" style={{ width: 26, height: 26, borderRadius: 13, border: `1px solid ${T.color.sage}40`, background: `rgba(74,103,65,.08)`, color: T.color.muted, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"\u2715"}</button>
       </div>
       <div style={{ padding: "0 14px 14px" }}>
         {resolutionReminders.slice(0, 3).map((r, i) => (
@@ -262,10 +264,10 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: T.font.body, fontSize: 13, fontWeight: 600, color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.mem.resolution?.goal}</div>
               <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginTop: 1 }}>
-                {r.daysLeft} day{r.daysLeft !== 1 ? "s" : ""} left {r.roomIcon} {r.roomName}
+                {r.daysLeft} {r.daysLeft === 1 ? t("daySingular") : t("dayPlural")} {r.roomIcon} {r.roomName}
               </div>
             </div>
-            <div style={{ background: `linear-gradient(135deg, ${T.color.sage}, ${T.color.sage}cc)`, color: "#FFF", fontFamily: T.font.body, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: 8, whiteSpace: "nowrap", flexShrink: 0 }}>View</div>
+            <div style={{ background: `linear-gradient(135deg, ${T.color.sage}, ${T.color.sage}cc)`, color: "#FFF", fontFamily: T.font.body, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: 8, whiteSpace: "nowrap", flexShrink: 0 }}>{t("view")}</div>
           </button>
         ))}
       </div>
@@ -324,7 +326,7 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
             }}
           >
             <span style={{ fontSize: 22 }}>{"\u2728"}</span>
-            Time Capsule{revealed.length > 1 ? "s" : ""} Opened!
+            {revealed.length === 1 ? t("capsuleOpenedSingular") : t("capsuleOpenedPlural")}
           </h4>
           <p
             style={{
@@ -334,9 +336,9 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
               margin: "3px 0 0",
             }}
           >
-            {revealed.length}{" "}
-            {revealed.length === 1 ? "memory has" : "memories have"} been
-            revealed
+            {revealed.length === 1
+              ? t("memoriesRevealedSingular", { count: String(revealed.length) })
+              : t("memoriesRevealedPlural", { count: String(revealed.length) })}
           </p>
         </div>
         <button
@@ -461,7 +463,7 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
                 flexShrink: 0,
               }}
             >
-              View
+              {t("view")}
             </div>
           </button>
         ))}
@@ -478,8 +480,9 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
             textAlign: "center",
           }}
         >
-          +{revealed.length - 3} more{" "}
-          {revealed.length - 3 === 1 ? "capsule" : "capsules"}
+          {revealed.length - 3 === 1
+            ? t("moreCapsulesSingular", { count: String(revealed.length - 3) })
+            : t("moreCapsulePlural", { count: String(revealed.length - 3) })}
         </div>
       )}
     </div>}

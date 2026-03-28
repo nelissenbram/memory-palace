@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { getTemplate } from "@/lib/constants/interviews";
 import type { InterviewSession } from "@/lib/stores/interviewStore";
@@ -10,21 +11,22 @@ interface InterviewHistoryPanelProps {
   onClose: () => void;
 }
 
-function fmtDate(iso: string): string {
+function fmtDate(iso: string, locale: string): string {
   try {
-    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    return new Date(iso).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
   } catch { return iso; }
 }
 
-function fmtDuration(sec: number): string {
+function fmtDuration(sec: number, mAbbr: string, sAbbr: string): string {
   if (!sec) return "--";
   const m = Math.floor(sec / 60);
   const s = sec % 60;
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  return m > 0 ? `${m}${mAbbr} ${s}${sAbbr}` : `${s}${sAbbr}`;
 }
 
 export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanelProps) {
   const isMobile = useIsMobile();
+  const { t, locale } = useTranslation("interviewHistory");
   const { sessions, sessionsLoaded, loadHistory, resumeSession, setShowHistory } = useInterviewStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [fadeIn, setFadeIn] = useState(false);
@@ -64,10 +66,10 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
         }}>
           <div>
             <h2 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
-              Interview History
+              {t("title")}
             </h2>
             <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, margin: "4px 0 0" }}>
-              {completedSessions.length} completed {completedSessions.length === 1 ? "interview" : "interviews"}
+              {completedSessions.length} {t("completed")} {completedSessions.length === 1 ? t("completedInterview") : t("completedInterviews")}
             </p>
           </div>
           <button onClick={onClose} style={{
@@ -91,7 +93,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                 color: T.color.terracotta, textTransform: "uppercase",
                 letterSpacing: "0.5px", marginBottom: 10,
               }}>
-                In Progress
+                {t("inProgress")}
               </h3>
               {inProgressSessions.map((session) => {
                 const template = getTemplate(session.templateId);
@@ -109,7 +111,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                         {template?.title || session.templateId}
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
-                        {session.responses.length} of {template?.questions.length || "?"} answered
+                        {t("answeredOf", { answered: String(session.responses.length), total: String(template?.questions.length || "?") })}
                       </div>
                     </div>
                     <span style={{
@@ -117,7 +119,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                       color: T.color.terracotta, background: `${T.color.terracotta}15`,
                       padding: "4px 12px", borderRadius: 10,
                     }}>
-                      Continue
+                      {t("continue")}
                     </span>
                   </div>
                 );
@@ -159,9 +161,9 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                         {template?.title || session.templateId}
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, display: "flex", gap: 10 }}>
-                        <span>{fmtDate(session.startedAt)}</span>
-                        {session.totalDurationSeconds > 0 && <span>{fmtDuration(session.totalDurationSeconds)}</span>}
-                        <span>{wordCount} words</span>
+                        <span>{fmtDate(session.startedAt, locale)}</span>
+                        {session.totalDurationSeconds > 0 && <span>{fmtDuration(session.totalDurationSeconds, t("minuteAbbr"), t("secondAbbr"))}</span>}
+                        <span>{wordCount} {t("words")}</span>
                       </div>
                     </div>
                     <span style={{
@@ -187,7 +189,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                             color: T.color.muted, textTransform: "uppercase",
                             letterSpacing: "0.5px", marginBottom: 8,
                           }}>
-                            Narrative
+                            {t("narrative")}
                           </p>
                           <p style={{
                             fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal,
@@ -206,7 +208,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                         color: T.color.muted, textTransform: "uppercase",
                         letterSpacing: "0.5px", marginBottom: 8, marginTop: 14,
                       }}>
-                        Responses
+                        {t("responses")}
                       </p>
                       {session.responses.map((r, i) => {
                         const q = template?.questions.find((tq) => tq.id === r.questionId);
@@ -216,10 +218,10 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                             background: T.color.warmStone, marginBottom: 6,
                           }}>
                             <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut, fontWeight: 600, margin: "0 0 4px" }}>
-                              {q?.text || `Question ${i + 1}`}
+                              {q?.text || t("questionFallback", { number: String(i + 1) })}
                             </p>
                             <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, lineHeight: 1.6, margin: 0 }}>
-                              {r.transcript || "(no transcript)"}
+                              {r.transcript || t("noTranscript")}
                             </p>
                           </div>
                         );
@@ -234,10 +236,10 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
               <div style={{ textAlign: "center", padding: "40px 20px" }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>{"\uD83C\uDF99\uFE0F"}</div>
                 <p style={{ fontFamily: T.font.display, fontSize: 18, color: T.color.charcoal, marginBottom: 8 }}>
-                  No interviews yet
+                  {t("noInterviewsTitle")}
                 </p>
                 <p style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.muted, lineHeight: 1.6 }}>
-                  Start a life interview to record your stories and create rich memory entries.
+                  {t("noInterviewsDescription")}
                 </p>
               </div>
             )

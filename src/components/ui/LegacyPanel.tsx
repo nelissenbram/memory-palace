@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { WINGS } from "@/lib/constants/wings";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import {
@@ -28,6 +29,7 @@ interface LegacyPanelProps {
 export default function LegacyPanel({ onClose }: LegacyPanelProps) {
   const { markLegacyReviewed } = useTrackStore();
   const { t } = useTranslation("legacyPanel");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
 
   const RELATIONSHIPS = [
     { id: "spouse", label: t("relSpouse") },
@@ -139,7 +141,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
         background: "rgba(42,34,24,.45)", backdropFilter: "blur(6px)",
       }} />
 
-      <div style={{
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} style={{
         position: "relative", zIndex: 1,
         width: "95%", maxWidth: 540, maxHeight: "88vh",
         background: T.color.linen, borderRadius: 20,

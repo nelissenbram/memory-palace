@@ -99,7 +99,7 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
               {invites.length > 0 ? t("pending", { count: String(invites.length) }) : t("noPending")}
             </p>
           </div>
-          <button onClick={onClose} style={{
+          <button onClick={onClose} aria-label="Close" style={{
             width: 32, height: 32, borderRadius: 16,
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
             color: T.color.muted, fontSize: 14, cursor: "pointer",
@@ -108,7 +108,7 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
         </div>
 
         {error && (
-          <div style={{
+          <div role="alert" style={{
             padding: "10px 14px", background: "#C0505010", border: "1px solid #C0505030",
             borderRadius: 10, marginBottom: 16, fontFamily: T.font.body, fontSize: 12, color: "#C05050",
           }}>

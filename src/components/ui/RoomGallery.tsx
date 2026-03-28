@@ -428,19 +428,19 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                 background: T.color.white, borderRadius: 14, border: `1px solid ${T.color.cream}`,
               }}>
                 {/* Prev */}
-                <button onClick={() => setPlayerIdx(Math.max(0, playerIdx - 1))} disabled={playerIdx === 0}
+                <button onClick={() => setPlayerIdx(Math.max(0, playerIdx - 1))} disabled={playerIdx === 0} aria-label="Previous"
                   style={{ width: 36, height: 36, borderRadius: 10, border: "none", background: playerIdx > 0 ? T.color.warmStone : "transparent", color: playerIdx > 0 ? T.color.charcoal : T.color.cream, fontSize: 16, cursor: playerIdx > 0 ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {"\u25C0"}
                 </button>
 
                 {/* Play/pause (for slideshow or auto-advance) */}
-                <button onClick={() => setPlaying(!playing)}
+                <button onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}
                   style={{ width: 44, height: 44, borderRadius: 22, border: "none", background: `linear-gradient(135deg, ${accent}, ${T.color.walnut})`, color: "#FFF", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {playing ? "\u23F8" : "\u25B6"}
                 </button>
 
                 {/* Next */}
-                <button onClick={() => setPlayerIdx(Math.min(filtered.length - 1, playerIdx + 1))} disabled={playerIdx >= filtered.length - 1}
+                <button onClick={() => setPlayerIdx(Math.min(filtered.length - 1, playerIdx + 1))} disabled={playerIdx >= filtered.length - 1} aria-label="Next"
                   style={{ width: 36, height: 36, borderRadius: 10, border: "none", background: playerIdx < filtered.length - 1 ? T.color.warmStone : "transparent", color: playerIdx < filtered.length - 1 ? T.color.charcoal : T.color.cream, fontSize: 16, cursor: playerIdx < filtered.length - 1 ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {"\u25B6"}
                 </button>

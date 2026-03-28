@@ -819,6 +819,8 @@ export default function FamilyTreePage() {
           }}
         >
           <input
+            id="family-tree-first-name"
+            aria-label={t("firstName")}
             value={newFirst}
             onChange={(e) => setNewFirst(e.target.value)}
             placeholder={t("firstName")}
@@ -827,6 +829,8 @@ export default function FamilyTreePage() {
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
           <input
+            id="family-tree-last-name"
+            aria-label={t("lastName")}
             value={newLast}
             onChange={(e) => setNewLast(e.target.value)}
             placeholder={t("lastName")}
