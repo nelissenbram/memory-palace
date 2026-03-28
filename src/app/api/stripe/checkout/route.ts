@@ -4,7 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { PLANS, type PlanId } from "@/lib/constants/plans";
 
 function getStripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+  return new Stripe(process.env.STRIPE_SECRET_KEY!.trim(), {
+    maxNetworkRetries: 2,
+    timeout: 10000,
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -52,10 +55,9 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      payment_method_types: ["card"],
       line_items: [
         {
-          price: planDef.stripePriceId,
+          price: planDef.stripePriceId.trim(),
           quantity: 1,
         },
       ],
@@ -75,7 +77,9 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     const details = err instanceof Error ? err.stack : String(err);
-    console.error("Checkout error:", message, details);
+    const stripeCode = (err as { code?: string })?.code;
+    const stripeType = (err as { type?: string })?.type;
+    console.error("Checkout error:", { message, stripeCode, stripeType, details });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

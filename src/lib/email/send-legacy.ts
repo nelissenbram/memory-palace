@@ -1,14 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-/** Escape user-provided strings before inserting into HTML templates. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider } from "./shared";
 
 // ── Verification email (sent to the inactive user) ──
 
@@ -21,71 +11,54 @@ interface VerificationEmailParams {
 
 export function generateVerificationEmailHtml(params: VerificationEmailParams): string {
   const displayName = escapeHtml(params.displayName);
-  const verifyUrl = `${SITE_URL}/api/legacy/verify?token=${encodeURIComponent(params.verificationToken)}`;
+  const verifyUrl = `${getSiteUrl()}/api/legacy/verify?token=${encodeURIComponent(params.verificationToken)}`;
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#FAFAF7;font-family:'Georgia',serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAFAF7;padding:40px 20px;">
-<tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background-color:#FFFFFF;border-radius:20px;border:1px solid #EEEAE3;box-shadow:0 4px 24px rgba(44,44,42,0.08);overflow:hidden;">
+  return emailLayout({
+    preheader: `${params.displayName}, please confirm you're still active. Your legacy contacts will be notified otherwise.`,
+    headerHtml: `
+      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+        Legacy Check-In
+      </p>
+      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
+        Are you still there, ${displayName}?
+      </h1>`,
+    bodyHtml: `
+      <p class="text-primary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
+        We noticed you have not visited your Memory Palace in <strong>${params.inactiveDays} days</strong>.
+      </p>
 
-  <!-- Header gradient -->
-  <tr><td style="background:linear-gradient(135deg,#C17F59 0%,#8B7355 100%);padding:36px 32px 28px;text-align:center;">
-    <div style="font-size:36px;margin-bottom:12px;">&#x1F3DB;&#xFE0F;</div>
-    <h1 style="margin:0;font-family:'Georgia',serif;font-size:22px;font-weight:400;color:#FFFFFF;line-height:1.4;">
-      Are you still there, ${displayName}?
-    </h1>
-  </td></tr>
+      <p class="text-secondary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;">
+        Your legacy contacts are configured to receive your memories if you become
+        inactive. To confirm you are still here and reset this timer, please
+        click the button below.
+      </p>
 
-  <!-- Body -->
-  <tr><td style="padding:32px 32px 24px;">
-    <p style="margin:0 0 20px;font-family:'Georgia',serif;font-size:16px;color:#2C2C2A;line-height:1.7;">
-      We noticed you haven&rsquo;t visited your Memory Palace in <strong>${params.inactiveDays} days</strong>.
-    </p>
-    <p style="margin:0 0 20px;font-family:'Georgia',serif;font-size:15px;color:#8B7355;line-height:1.7;">
-      Your legacy contacts are configured to receive your memories if you become
-      inactive. To confirm you&rsquo;re still here and reset this timer, please
-      click the button below.
-    </p>
-    <p style="margin:0 0 28px;font-family:'Georgia',serif;font-size:14px;color:#9A9183;line-height:1.7;">
-      If we don&rsquo;t hear from you within 30 days, your legacy messages and
-      shared memories will be delivered to your designated contacts.
-    </p>
+      ${ornamentalDivider()}
 
-    <!-- CTA Button -->
-    <table width="100%" cellpadding="0" cellspacing="0">
-    <tr><td align="center">
-      <a href="${verifyUrl}" style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#4A6741,#5A7751);color:#FFFFFF;font-family:'Georgia',serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:12px;box-shadow:0 4px 16px rgba(74,103,65,0.3);">
-        I&rsquo;m Still Here
-      </a>
-    </td></tr>
-    </table>
-  </td></tr>
-
-  <!-- Footer -->
-  <tr><td style="padding:20px 32px 28px;border-top:1px solid #EEEAE3;text-align:center;">
-    <p style="margin:0 0 8px;font-family:'Georgia',serif;font-size:13px;color:#9A9183;line-height:1.5;">
-      The Memory Palace &mdash; Embrace Eternity
-    </p>
-    <p style="margin:0;font-family:'Georgia',serif;font-size:11px;color:#D4C5B2;">
-      You received this because you have legacy delivery enabled.
-    </p>
-  </td></tr>
-
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;">
+      <tr><td class="section-bg" style="padding:20px 24px;background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;">
+        <p class="text-muted" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#9A9183;line-height:1.7;">
+          If we do not hear from you within 30 days, your legacy messages and
+          shared memories will be delivered to your designated contacts.
+        </p>
+      </td></tr>
+      </table>`,
+    ctaText: "I\u2019m Still Here",
+    ctaUrl: verifyUrl,
+    footerExtra: `
+      <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+        You received this because you have legacy delivery enabled.
+      </p>`,
+  });
 }
 
 export async function sendVerificationEmail(params: VerificationEmailParams): Promise<{ success: boolean; error?: string }> {
-  const html = generateVerificationEmailHtml(params);
-  const subject = `Are you still there, ${params.displayName}? — The Memory Palace`;
-
-  return sendEmail(params.recipientEmail, subject, html);
+  return sendEmail({
+    to: params.recipientEmail,
+    subject: `Are you still there, ${params.displayName}?`,
+    html: generateVerificationEmailHtml(params),
+    tag: "legacy-verification",
+  });
 }
 
 // ── Legacy delivery email (sent to contacts) ──
@@ -105,125 +78,68 @@ export function generateDeliveryEmailHtml(params: LegacyDeliveryEmailParams): st
   const senderName = escapeHtml(params.senderName);
   const messageSubject = escapeHtml(params.messageSubject);
   const messageBody = escapeHtml(params.messageBody).replace(/\n/g, "<br>");
-  const accessUrl = `${SITE_URL}/legacy/${encodeURIComponent(params.accessToken)}`;
+  const accessUrl = `${getSiteUrl()}/legacy/${encodeURIComponent(params.accessToken)}`;
   const expiresDate = new Date(params.expiresAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#FAFAF7;font-family:'Georgia',serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAFAF7;padding:40px 20px;">
-<tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background-color:#FFFFFF;border-radius:20px;border:1px solid #EEEAE3;box-shadow:0 4px 24px rgba(44,44,42,0.08);overflow:hidden;">
-
-  <!-- Header gradient -->
-  <tr><td style="background:linear-gradient(135deg,#C17F59 0%,#8B7355 100%);padding:36px 32px 28px;text-align:center;">
-    <div style="font-size:36px;margin-bottom:12px;">&#x1F3DB;&#xFE0F;</div>
-    <h1 style="margin:0;font-family:'Georgia',serif;font-size:22px;font-weight:400;color:#FFFFFF;line-height:1.4;">
-      A Message from ${senderName}
-    </h1>
-    <p style="margin:8px 0 0;font-family:'Georgia',serif;font-size:14px;color:#FFFFFF;opacity:0.85;">
-      Left for you in their Memory Palace
-    </p>
-  </td></tr>
-
-  <!-- Body -->
-  <tr><td style="padding:32px 32px 24px;">
-    <p style="margin:0 0 20px;font-family:'Georgia',serif;font-size:16px;color:#2C2C2A;line-height:1.7;">
-      Dear ${recipientName},
-    </p>
-    <p style="margin:0 0 20px;font-family:'Georgia',serif;font-size:15px;color:#8B7355;line-height:1.7;">
-      ${senderName} prepared this message for you in their Memory Palace, to be
-      delivered as part of their digital legacy.
-    </p>
-
-    ${messageSubject ? `
-    <p style="margin:0 0 8px;font-family:'Georgia',serif;font-size:14px;font-weight:600;color:#2C2C2A;">
-      ${messageSubject}
-    </p>` : ""}
-
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;border-radius:12px;border:1px solid #EEEAE3;margin:0 0 24px;">
-    <tr><td style="padding:20px 24px;">
-      <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#2C2C2A;line-height:1.7;">
-        ${messageBody}
+  return emailLayout({
+    preheader: `${params.senderName} left a message for you in their Memory Palace.`,
+    headerHtml: `
+      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+        A Legacy Message
       </p>
-    </td></tr>
-    </table>
+      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
+        From ${senderName}
+      </h1>
+      <p class="header-subtitle" style="margin:14px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;color:#8B7355;line-height:1.6;font-style:italic;">
+        Left for you in their Memory Palace
+      </p>`,
+    bodyHtml: `
+      <p class="text-primary" style="margin:0 0 8px;font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;color:#2C2C2A;line-height:1.5;">
+        Dear ${recipientName},
+      </p>
+      <p class="text-secondary" style="margin:0 0 28px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;">
+        ${senderName} prepared this message for you in their Memory Palace, to be
+        delivered as part of their digital legacy.
+      </p>
 
-    <p style="margin:0 0 28px;font-family:'Georgia',serif;font-size:14px;color:#9A9183;line-height:1.7;">
-      ${senderName} also shared some of their memories with you. You can view
-      them using the link below. This link expires on ${expiresDate}.
-    </p>
+      ${messageSubject ? `
+      <p class="text-primary" style="margin:0 0 12px;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;font-weight:600;color:#2C2C2A;">
+        ${messageSubject}
+      </p>` : ""}
 
-    <!-- CTA Button -->
-    <table width="100%" cellpadding="0" cellspacing="0">
-    <tr><td align="center">
-      <a href="${accessUrl}" style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#C17F59,#8B7355);color:#FFFFFF;font-family:'Georgia',serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:12px;box-shadow:0 4px 16px rgba(193,127,89,0.3);">
-        View Shared Memories
-      </a>
-    </td></tr>
-    </table>
-  </td></tr>
+      <!-- The message itself -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
+      <tr><td style="padding:28px 32px;border-left:2px solid #C17F59;">
+        <p class="text-primary" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
+          ${messageBody}
+        </p>
+      </td></tr>
+      </table>
 
-  <!-- Footer -->
-  <tr><td style="padding:20px 32px 28px;border-top:1px solid #EEEAE3;text-align:center;">
-    <p style="margin:0 0 8px;font-family:'Georgia',serif;font-size:13px;color:#9A9183;line-height:1.5;">
-      The Memory Palace &mdash; Embrace Eternity
-    </p>
-    <p style="margin:0;font-family:'Georgia',serif;font-size:11px;color:#D4C5B2;">
-      This is a one-time legacy delivery. No further emails will be sent.
-    </p>
-  </td></tr>
+      ${ornamentalDivider()}
 
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
+      <p class="text-muted" style="margin:16px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#9A9183;line-height:1.7;">
+        ${senderName} also shared some of their memories with you. You can view
+        them using the link below. This link expires on ${expiresDate}.
+      </p>`,
+    ctaText: "View Shared Memories",
+    ctaUrl: accessUrl,
+    footerExtra: `
+      <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+        This is a one-time legacy delivery. No further emails will be sent.
+      </p>`,
+  });
 }
 
 export async function sendDeliveryEmail(params: LegacyDeliveryEmailParams): Promise<{ success: boolean; error?: string }> {
-  const html = generateDeliveryEmailHtml(params);
-  const subject = `A legacy message from ${params.senderName} — The Memory Palace`;
-
-  return sendEmail(params.recipientEmail, subject, html);
-}
-
-// ── Shared email sender ──
-
-async function sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; error?: string }> {
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM_EMAIL || "The Memory Palace <noreply@memorypalace.app>",
-          to: [to],
-          subject,
-          html,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return { success: false, error: `Email service error: ${(err as Record<string, unknown>).message || res.statusText}` };
-      }
-
-      return { success: true };
-    } catch (e) {
-      return { success: false, error: `Email send failed: ${e instanceof Error ? e.message : "Unknown error"}` };
-    }
-  }
-
-  // Fallback: log
-  console.log(`[Legacy Email] Would send to ${to}: ${subject}`);
-  return { success: true };
+  return sendEmail({
+    to: params.recipientEmail,
+    subject: `A legacy message from ${params.senderName}`,
+    html: generateDeliveryEmailHtml(params),
+    tag: "legacy-delivery",
+  });
 }

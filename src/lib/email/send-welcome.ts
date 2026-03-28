@@ -1,14 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-/** Escape user-provided strings before inserting into HTML templates. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider } from "./shared";
 
 interface WelcomeEmailParams {
   recipientEmail: string;
@@ -17,97 +7,63 @@ interface WelcomeEmailParams {
 
 export function generateWelcomeEmailHtml(params: WelcomeEmailParams): string {
   const displayName = escapeHtml(params.displayName);
-  const palaceUrl = `${SITE_URL}/palace`;
+  const palaceUrl = `${getSiteUrl()}/palace`;
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#FAFAF7;font-family:'Georgia',serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAFAF7;padding:40px 20px;">
-<tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background-color:#FFFFFF;border-radius:20px;border:1px solid #EEEAE3;box-shadow:0 4px 24px rgba(44,44,42,0.08);overflow:hidden;">
-
-  <!-- Header gradient -->
-  <tr><td style="background:linear-gradient(135deg,#C17F59 0%,#8B7355 100%);padding:36px 32px 28px;text-align:center;">
-    <div style="font-size:36px;margin-bottom:12px;">&#x1F3DB;&#xFE0F;</div>
-    <h1 style="margin:0;font-family:'Georgia',serif;font-size:22px;font-weight:400;color:#FFFFFF;line-height:1.4;">
-      Welcome to The Memory Palace, ${displayName}
+  const headerHtml = `
+    <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+      Welcome
+    </p>
+    <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:32px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
+      Hello, ${displayName}
     </h1>
-  </td></tr>
+    <p class="header-subtitle" style="margin:14px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#8B7355;line-height:1.6;">
+      Your journey of preserving memories begins now.
+    </p>`;
 
-  <!-- Body -->
-  <tr><td style="padding:32px 32px 24px;">
-    <p style="margin:0 0 24px;font-family:'Georgia',serif;font-size:16px;color:#2C2C2A;line-height:1.7;">
-      Your journey of preserving memories begins now. We&rsquo;re so glad you&rsquo;re here.
-    </p>
-    <p style="margin:0 0 20px;font-family:'Georgia',serif;font-size:15px;color:#8B7355;line-height:1.7;">
-      Here are three tips to help you get started:
-    </p>
-
-    <!-- Tip 1 -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
+  const step = (n: number, title: string, desc: string, isLast: boolean) => `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 ${isLast ? "0" : "24"}px;">
     <tr>
       <td width="44" valign="top" style="padding-top:2px;">
-        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#C17F59,#8B7355);color:#FFFFFF;font-family:'Georgia',serif;font-size:16px;font-weight:600;text-align:center;line-height:32px;">1</div>
+        <div class="step-number" style="width:34px;height:34px;border-radius:50%;border:1.5px solid #D4C5B2;color:#C17F59;font-family:'Cormorant Garamond',Georgia,serif;font-size:15px;font-weight:600;text-align:center;line-height:34px;">
+          ${n}
+        </div>
       </td>
-      <td style="padding-left:12px;">
-        <p style="margin:0 0 4px;font-family:'Georgia',serif;font-size:15px;font-weight:600;color:#2C2C2A;">Take the guided tour</p>
-        <p style="margin:0;font-family:'Georgia',serif;font-size:14px;color:#9A9183;line-height:1.5;">Walk through the onboarding wizard to set up your very first wing and room.</p>
-      </td>
-    </tr>
-    </table>
-
-    <!-- Tip 2 -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;">
-    <tr>
-      <td width="44" valign="top" style="padding-top:2px;">
-        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#C17F59,#8B7355);color:#FFFFFF;font-family:'Georgia',serif;font-size:16px;font-weight:600;text-align:center;line-height:32px;">2</div>
-      </td>
-      <td style="padding-left:12px;">
-        <p style="margin:0 0 4px;font-family:'Georgia',serif;font-size:15px;font-weight:600;color:#2C2C2A;">Import photos from your cloud</p>
-        <p style="margin:0;font-family:'Georgia',serif;font-size:14px;color:#9A9183;line-height:1.5;">Bring your favourite photos in to start building your collection of memories.</p>
+      <td style="padding-left:16px;">
+        <p class="text-primary" style="margin:0 0 4px;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;font-weight:600;color:#2C2C2A;line-height:1.3;">
+          ${title}
+        </p>
+        <p class="text-secondary" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.6;">
+          ${desc}
+        </p>
       </td>
     </tr>
-    </table>
+    </table>`;
 
-    <!-- Tip 3 -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
-    <tr>
-      <td width="44" valign="top" style="padding-top:2px;">
-        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#C17F59,#8B7355);color:#FFFFFF;font-family:'Georgia',serif;font-size:16px;font-weight:600;text-align:center;line-height:32px;">3</div>
-      </td>
-      <td style="padding-left:12px;">
-        <p style="margin:0 0 4px;font-family:'Georgia',serif;font-size:15px;font-weight:600;color:#2C2C2A;">Start your first memory building track</p>
-        <p style="margin:0;font-family:'Georgia',serif;font-size:14px;color:#9A9183;line-height:1.5;">Create themed rooms and fill them with the moments that matter most.</p>
-      </td>
-    </tr>
-    </table>
-
-    <!-- CTA Button -->
-    <table width="100%" cellpadding="0" cellspacing="0">
-    <tr><td align="center">
-      <a href="${palaceUrl}" style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#C17F59,#8B7355);color:#FFFFFF;font-family:'Georgia',serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:12px;box-shadow:0 4px 16px rgba(193,127,89,0.3);">
-        Enter Your Palace
-      </a>
-    </td></tr>
-    </table>
-  </td></tr>
-
-  <!-- Footer -->
-  <tr><td style="padding:20px 32px 28px;border-top:1px solid #EEEAE3;text-align:center;">
-    <p style="margin:0 0 8px;font-family:'Georgia',serif;font-size:13px;color:#9A9183;line-height:1.5;">
-      The Memory Palace &mdash; Embrace Eternity
+  const bodyHtml = `
+    <p class="text-secondary" style="margin:0 0 12px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#5C564E;line-height:1.8;">
+      The Memory Palace is your private space to collect, preserve, and share
+      the moments that matter most. Here is how to begin.
     </p>
-    <p style="margin:0;font-family:'Georgia',serif;font-size:11px;color:#D4C5B2;">
-      You received this because you signed up at ${SITE_URL}.
-    </p>
-  </td></tr>
 
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
+    ${ornamentalDivider()}
+
+    <div style="padding:20px 0 0;">
+      ${step(1, "Take the guided tour", "Walk through the onboarding wizard to set up your first wing and room.", false)}
+      ${step(2, "Import your photos", "Bring your favourite photos in from your device or cloud to start building your collection.", false)}
+      ${step(3, "Start a memory track", "Themed prompts guide you to fill your palace room by room, one memory at a time.", true)}
+    </div>`;
+
+  return emailLayout({
+    preheader: `Welcome to The Memory Palace, ${params.displayName}. Your journey starts now.`,
+    headerHtml,
+    bodyHtml,
+    ctaText: "Enter Your Palace",
+    ctaUrl: palaceUrl,
+    footerExtra: `
+      <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+        You received this because you signed up at thememorypalace.ai.
+      </p>`,
+  });
 }
 
 export function generateWelcomeEmailSubject(displayName: string): string {
@@ -115,38 +71,10 @@ export function generateWelcomeEmailSubject(displayName: string): string {
 }
 
 export async function sendWelcomeEmail(params: WelcomeEmailParams): Promise<{ success: boolean; error?: string }> {
-  const html = generateWelcomeEmailHtml(params);
-  const subject = generateWelcomeEmailSubject(params.displayName);
-
-  // Try Resend first (recommended for transactional email)
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM_EMAIL || "The Memory Palace <noreply@memorypalace.app>",
-          to: [params.recipientEmail],
-          subject,
-          html,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return { success: false, error: `Email service error: ${(err as Record<string, unknown>).message || res.statusText}` };
-      }
-
-      return { success: true };
-    } catch (e) {
-      return { success: false, error: `Email send failed: ${e instanceof Error ? e.message : "Unknown error"}` };
-    }
-  }
-
-  // Fallback: log (email delivery not configured)
-  console.log(`[Welcome Email] Would send to ${params.recipientEmail}: ${subject}`);
-  return { success: true }; // Don't block the registration flow if email isn't configured
+  return sendEmail({
+    to: params.recipientEmail,
+    subject: generateWelcomeEmailSubject(params.displayName),
+    html: generateWelcomeEmailHtml(params),
+    tag: "welcome",
+  });
 }

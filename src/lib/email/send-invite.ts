@@ -1,14 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-/** Escape user-provided strings before inserting into HTML templates. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { escapeHtml, emailLayout, sendEmail, getSiteUrl } from "./shared";
 
 interface InviteEmailParams {
   inviterName: string;
@@ -21,136 +11,82 @@ interface InviteEmailParams {
 }
 
 export function generateInviteEmailHtml(params: InviteEmailParams): string {
-  const { shareId, permission } = params;
   const inviterName = escapeHtml(params.inviterName);
   const roomName = escapeHtml(params.roomName);
   const wingName = params.wingName ? escapeHtml(params.wingName) : "";
   const personalMessage = params.personalMessage ? escapeHtml(params.personalMessage) : null;
-  const recipientEmail = escapeHtml(params.recipientEmail);
-  const acceptUrl = `${SITE_URL}/invite/${encodeURIComponent(shareId)}`;
-  const permissionText = permission === "contribute"
-    ? "see and contribute to"
-    : "explore";
+  const acceptUrl = `${getSiteUrl()}/invite/${encodeURIComponent(params.shareId)}`;
+  const permissionLabel = params.permission === "contribute" ? "Contribute" : "View";
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#FAFAF7;font-family:'Georgia',serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAFAF7;padding:40px 20px;">
-<tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background-color:#FFFFFF;border-radius:20px;border:1px solid #EEEAE3;box-shadow:0 4px 24px rgba(44,44,42,0.08);overflow:hidden;">
-
-  <!-- Header gradient -->
-  <tr><td style="background:linear-gradient(135deg,#C17F59 0%,#8B7355 100%);padding:36px 32px 28px;text-align:center;">
-    <div style="font-size:36px;margin-bottom:12px;">&#x1F3DB;&#xFE0F;</div>
-    <h1 style="margin:0;font-family:'Georgia',serif;font-size:22px;font-weight:400;color:#FFFFFF;line-height:1.4;">
-      ${inviterName} invited you to<br>explore their Memory Palace
+  const headerHtml = `
+    <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+      Invitation
+    </p>
+    <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
+      ${inviterName} invited you
     </h1>
-  </td></tr>
+    <p class="header-subtitle" style="margin:14px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#8B7355;line-height:1.6;">
+      to explore a room in their Memory Palace
+    </p>`;
 
-  <!-- Body -->
-  <tr><td style="padding:32px 32px 24px;">
-    <p style="margin:0 0 20px;font-family:'Georgia',serif;font-size:16px;color:#2C2C2A;line-height:1.7;">
-      Hi there! <strong>${inviterName}</strong> wants to share a special room with you &mdash;
-      <em>&ldquo;${roomName}&rdquo;</em>${wingName ? ` in their <strong>${wingName}</strong> wing` : ""}.
-    </p>
-    <p style="margin:0 0 20px;font-family:'Georgia',serif;font-size:15px;color:#8B7355;line-height:1.7;">
-      This room contains precious memories they&rsquo;d love you to ${permissionText}.
-    </p>
-
-    ${personalMessage ? `
-    <!-- Personal message -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-    <tr><td style="padding:16px 20px;background-color:#F2EDE7;border-radius:12px;border-left:3px solid #C17F59;">
-      <p style="margin:0 0 6px;font-family:'Georgia',serif;font-size:12px;color:#9A9183;text-transform:uppercase;letter-spacing:0.5px;">
-        ${inviterName} says:
+  /* Personal message: styled to feel handwritten / letter-like */
+  const messageBlock = personalMessage
+    ? `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+    <tr><td style="padding:24px 28px;background-color:#FAFAF7;border-radius:2px;border-left:2px solid #C17F59;">
+      <p style="margin:0 0 8px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:10px;color:#B8A99A;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">
+        A note from ${inviterName}
       </p>
-      <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#2C2C2A;line-height:1.6;font-style:italic;">
+      <p class="text-primary" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#2C2C2A;line-height:1.7;font-style:italic;">
         &ldquo;${personalMessage}&rdquo;
       </p>
     </td></tr>
-    </table>
-    ` : ""}
+    </table>`
+    : "";
+
+  const bodyHtml = `
+    <p class="text-secondary" style="margin:0 0 24px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#5C564E;line-height:1.8;">
+      <strong>${inviterName}</strong> wants to share a special room with you &mdash;
+      <em>&ldquo;${roomName}&rdquo;</em>${wingName ? ` in their <strong>${wingName}</strong> wing` : ""}.
+    </p>
+
+    ${messageBlock}
 
     <!-- Room card -->
-    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
-    <tr><td style="padding:20px;background-color:#FAFAF7;border-radius:14px;border:1px solid #EEEAE3;text-align:center;">
-      <div style="font-family:'Georgia',serif;font-size:18px;font-weight:600;color:#2C2C2A;margin-bottom:4px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
+    <tr><td class="section-bg" style="padding:28px 24px;background-color:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;text-align:center;">
+      <p class="text-primary" style="margin:0 0 4px;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:500;color:#2C2C2A;letter-spacing:-0.2px;">
         ${roomName}
-      </div>
-      ${wingName ? `<div style="font-family:'Georgia',serif;font-size:13px;color:#9A9183;">${wingName} Wing</div>` : ""}
-      <div style="margin-top:8px;display:inline-block;padding:4px 12px;background-color:${permission === "contribute" ? "#4A674118" : "#C17F5918"};border-radius:20px;font-family:'Georgia',serif;font-size:12px;color:${permission === "contribute" ? "#4A6741" : "#C17F59"};">
-        Can ${permission}
-      </div>
+      </p>
+      ${wingName ? `<p class="text-muted" style="margin:0 0 12px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:12px;color:#9A9183;letter-spacing:0.3px;">${wingName} Wing</p>` : `<div style="height:12px;"></div>`}
+      <span style="display:inline-block;padding:4px 16px;border:1px solid #D4C5B2;border-radius:2px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:10px;font-weight:600;color:#8B7355;letter-spacing:1.2px;text-transform:uppercase;">
+        ${permissionLabel} Access
+      </span>
     </td></tr>
-    </table>
+    </table>`;
 
-    <!-- CTA Button -->
-    <table width="100%" cellpadding="0" cellspacing="0">
-    <tr><td align="center">
-      <a href="${acceptUrl}" style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#C17F59,#8B7355);color:#FFFFFF;font-family:'Georgia',serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:12px;box-shadow:0 4px 16px rgba(193,127,89,0.3);">
-        View Their Memories
-      </a>
-    </td></tr>
-    </table>
-  </td></tr>
-
-  <!-- Footer -->
-  <tr><td style="padding:20px 32px 28px;border-top:1px solid #EEEAE3;text-align:center;">
-    <p style="margin:0 0 8px;font-family:'Georgia',serif;font-size:13px;color:#9A9183;line-height:1.5;">
-      The Memory Palace &mdash; Embrace Eternity
-    </p>
-    <p style="margin:0;font-family:'Georgia',serif;font-size:11px;color:#D4C5B2;">
-      You received this because ${inviterName} shared a room with ${recipientEmail}.
-    </p>
-  </td></tr>
-
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
+  return emailLayout({
+    preheader: `${params.inviterName} invited you to explore "${params.roomName}" in their Memory Palace.`,
+    headerHtml,
+    bodyHtml,
+    ctaText: "View Their Memories",
+    ctaUrl: acceptUrl,
+    footerExtra: `
+      <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+        You received this because ${inviterName} shared a room with you.
+      </p>`,
+  });
 }
 
 export function generateInviteEmailSubject(inviterName: string): string {
   return `${escapeHtml(inviterName)} invited you to explore their Memory Palace`;
 }
 
-// Send invite email using Resend (if configured) or Supabase Edge Function fallback
 export async function sendInviteEmail(params: InviteEmailParams): Promise<{ success: boolean; error?: string }> {
-  const html = generateInviteEmailHtml(params);
-  const subject = generateInviteEmailSubject(params.inviterName);
-
-  // Try Resend first (recommended for transactional email)
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM_EMAIL || "The Memory Palace <noreply@memorypalace.app>",
-          to: [params.recipientEmail],
-          subject,
-          html,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return { success: false, error: `Email service error: ${(err as any).message || res.statusText}` };
-      }
-
-      return { success: true };
-    } catch (e) {
-      return { success: false, error: `Email send failed: ${e instanceof Error ? e.message : "Unknown error"}` };
-    }
-  }
-
-  // Fallback: log the invite (email delivery not configured)
-  console.log(`[Invite Email] Would send to ${params.recipientEmail}: ${subject}`);
-  console.log(`[Invite Email] Accept URL: ${SITE_URL}/invite/${params.shareId}`);
-  return { success: true }; // Don't block the share flow if email isn't configured
+  return sendEmail({
+    to: params.recipientEmail,
+    subject: generateInviteEmailSubject(params.inviterName),
+    html: generateInviteEmailHtml(params),
+    tag: "invite",
+  });
 }

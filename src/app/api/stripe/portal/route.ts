@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 
 function getStripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+  return new Stripe(process.env.STRIPE_SECRET_KEY!.trim(), { maxNetworkRetries: 2, timeout: 10000 });
 }
 
 export async function POST() {

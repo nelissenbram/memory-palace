@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/api/email/test", "/api/stripe/webhook", "/api/stripe/test"];
 
 export async function middleware(request: NextRequest) {
   // Skip Supabase session refresh if env vars aren't configured yet

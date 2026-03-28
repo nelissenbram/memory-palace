@@ -1,14 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-/** Escape user-provided strings before inserting into HTML templates. */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider } from "./shared";
 
 export interface OnThisDayMemory {
   title: string;
@@ -17,7 +7,7 @@ export interface OnThisDayMemory {
 
 export interface UpcomingCapsule {
   title: string;
-  revealDate: string; // ISO date string
+  revealDate: string;
 }
 
 export interface SharedRoomActivity {
@@ -55,206 +45,164 @@ export interface DigestEmailParams {
   memoryOfTheWeek: MemoryOfTheWeek | null;
 }
 
-function renderOnThisDaySection(memories: OnThisDayMemory[]): string {
-  if (memories.length === 0) return "";
+/* ── Section renderers ── */
 
-  const items = memories
-    .slice(0, 5)
-    .map(
-      (m) => `
-    <tr><td style="padding:10px 16px;border-bottom:1px solid #EEEAE3;">
-      <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#2C2C2A;line-height:1.5;">
-        &ldquo;${escapeHtml(m.title)}&rdquo;
-        <span style="color:#9A9183;font-size:13px;"> &mdash; ${m.yearsAgo} ${m.yearsAgo === 1 ? "year" : "years"} ago</span>
-      </p>
-    </td></tr>`
-    )
-    .join("");
-
+function sectionHeading(title: string): string {
   return `
-    <!-- On This Day -->
-    <tr><td style="padding:28px 32px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
-      <tr><td>
-        <h2 style="margin:0 0 4px;font-family:'Georgia',serif;font-size:18px;font-weight:600;color:#2C2C2A;">
-          &#x1F4C5; On This Day
-        </h2>
-        <p style="margin:0 0 12px;font-family:'Georgia',serif;font-size:13px;color:#9A9183;line-height:1.4;">
-          Memories with anniversaries this week
-        </p>
-      </td></tr>
-      </table>
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;border-radius:12px;border:1px solid #EEEAE3;overflow:hidden;">
-        ${items}
-      </table>
-    </td></tr>`;
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;">
+      <tr>
+        <td style="font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;font-weight:600;color:#C17F59;letter-spacing:2px;text-transform:uppercase;">
+          ${title}
+        </td>
+        <td style="text-align:right;">
+          <div class="divider" style="border-top:1px solid #EEEAE3;margin-top:7px;"></div>
+        </td>
+      </tr>
+    </table>`;
 }
 
-function renderUpcomingCapsulesSection(capsules: UpcomingCapsule[]): string {
-  if (capsules.length === 0) return "";
-
-  const items = capsules
-    .slice(0, 5)
-    .map((c) => {
-      const date = new Date(c.revealDate);
-      const dateStr = date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-      return `
-    <tr><td style="padding:10px 16px;border-bottom:1px solid #EEEAE3;display:flex;align-items:center;gap:10px;">
-      <div style="display:inline-block;padding:4px 10px;background:#C17F5918;border-radius:8px;font-family:'Georgia',serif;font-size:12px;color:#C17F59;font-weight:600;">
-        ${escapeHtml(dateStr)}
-      </div>
-      <span style="font-family:'Georgia',serif;font-size:14px;color:#2C2C2A;">
-        &ldquo;${escapeHtml(c.title)}&rdquo;
-      </span>
-    </td></tr>`;
-    })
-    .join("");
-
-  return `
-    <!-- Time Capsules -->
-    <tr><td style="padding:24px 32px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
-      <tr><td>
-        <h2 style="margin:0 0 4px;font-family:'Georgia',serif;font-size:18px;font-weight:600;color:#2C2C2A;">
-          &#x23F3; Time Capsules Opening Soon
-        </h2>
-        <p style="margin:0 0 12px;font-family:'Georgia',serif;font-size:13px;color:#9A9183;line-height:1.4;">
-          These memories are almost ready to be revealed
-        </p>
-      </td></tr>
-      </table>
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;border-radius:12px;border:1px solid #EEEAE3;overflow:hidden;">
-        ${items}
-      </table>
-    </td></tr>`;
-}
-
-function renderSharedRoomSection(activities: SharedRoomActivity[]): string {
-  if (activities.length === 0) return "";
-
-  const items = activities
-    .slice(0, 5)
-    .map(
-      (a) => `
-    <tr><td style="padding:10px 16px;border-bottom:1px solid #EEEAE3;">
-      <p style="margin:0;font-family:'Georgia',serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
-        <strong>${escapeHtml(a.contributorName)}</strong> added ${a.memoryCount} ${a.memoryCount === 1 ? "memory" : "memories"} to
-        <em>&ldquo;${escapeHtml(a.roomName)}&rdquo;</em>
-      </p>
-    </td></tr>`
-    )
-    .join("");
-
-  return `
-    <!-- Shared Room Activity -->
-    <tr><td style="padding:24px 32px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
-      <tr><td>
-        <h2 style="margin:0 0 4px;font-family:'Georgia',serif;font-size:18px;font-weight:600;color:#2C2C2A;">
-          &#x1F91D; Shared Room Activity
-        </h2>
-        <p style="margin:0 0 12px;font-family:'Georgia',serif;font-size:13px;color:#9A9183;line-height:1.4;">
-          New contributions to rooms you share
-        </p>
-      </td></tr>
-      </table>
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;border-radius:12px;border:1px solid #EEEAE3;overflow:hidden;">
-        ${items}
-      </table>
-    </td></tr>`;
-}
-
-function renderTrackProgressSection(track: TrackProgress | null): string {
-  if (!track) return "";
-
-  const pct = Math.round(track.percentComplete);
-  // Width of progress bar clamped to 5-100% for visibility
-  const barWidth = Math.max(5, pct);
-
-  return `
-    <!-- Track Progress -->
-    <tr><td style="padding:24px 32px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;border-radius:12px;border:1px solid #EEEAE3;padding:16px 20px;">
-      <tr><td>
-        <p style="margin:0 0 8px;font-family:'Georgia',serif;font-size:15px;color:#2C2C2A;line-height:1.5;">
-          ${escapeHtml(track.icon)} You&rsquo;re <strong>${pct}%</strong> through the <strong>${escapeHtml(track.trackName)}</strong> track!
-        </p>
-        <div style="background:#EEEAE3;border-radius:6px;height:10px;overflow:hidden;">
-          <div style="background:linear-gradient(135deg,#4A6741,#5A7751);width:${barWidth}%;height:100%;border-radius:6px;"></div>
-        </div>
-        ${pct >= 80 ? `<p style="margin:8px 0 0;font-family:'Georgia',serif;font-size:13px;color:#4A6741;">Almost there &mdash; keep going!</p>` : ""}
-        ${pct < 30 ? `<p style="margin:8px 0 0;font-family:'Georgia',serif;font-size:13px;color:#8B7355;">Every memory counts. Keep building!</p>` : ""}
-      </td></tr>
-      </table>
-    </td></tr>`;
-}
-
-function renderWeeklyStatsSection(stats: WeeklyStats): string {
-  const statCell = (value: number, label: string) => `
-    <td width="33%" style="text-align:center;padding:16px 8px;">
-      <p style="margin:0;font-family:'Georgia',serif;font-size:28px;font-weight:600;color:#C17F59;line-height:1.2;">
+function renderStats(stats: WeeklyStats): string {
+  const cell = (value: number, label: string, showBorder: boolean) => `
+    <td class="stat-cell" width="33%" style="text-align:center;padding:22px 8px;${showBorder ? "border-right:1px solid #EEEAE3;" : ""}">
+      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;font-weight:400;color:#2C2C2A;line-height:1.1;letter-spacing:-1px;">
         ${value}
       </p>
-      <p style="margin:4px 0 0;font-family:'Georgia',serif;font-size:12px;color:#8B7355;text-transform:uppercase;letter-spacing:0.5px;">
+      <p style="margin:6px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:10px;color:#8B7355;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">
         ${label}
       </p>
     </td>`;
 
   return `
-    <!-- Weekly Stats -->
-    <tr><td style="padding:24px 32px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;border-radius:12px;border:1px solid #EEEAE3;">
-        <tr>
-          ${statCell(stats.totalMemories, "Total Memories")}
-          ${statCell(stats.memoriesThisWeek, "Added This Week")}
-          ${statCell(stats.totalRooms, "Rooms")}
-        </tr>
-      </table>
-    </td></tr>`;
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
+      <tr>
+        ${cell(stats.totalMemories, "Total Memories", true)}
+        ${cell(stats.memoriesThisWeek, "This Week", true)}
+        ${cell(stats.totalRooms, "Rooms", false)}
+      </tr>
+    </table>`;
 }
 
-function renderMemoryOfTheWeekSection(memory: MemoryOfTheWeek | null): string {
+function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null): string {
   if (!memory) return "";
 
-  const thumbnailHtml = memory.thumbnailUrl
-    ? `<img src="${escapeHtml(memory.thumbnailUrl)}" alt="" width="80" height="80" style="display:block;width:80px;height:80px;object-fit:cover;border-radius:10px;border:1px solid #EEEAE3;" />`
-    : `<div style="display:block;width:80px;height:80px;border-radius:10px;background:linear-gradient(135deg,#C17F59 0%,#8B7355 100%);text-align:center;line-height:80px;font-size:32px;">&#x1F4AD;</div>`;
+  const thumbnail = memory.thumbnailUrl
+    ? `<img src="${escapeHtml(memory.thumbnailUrl)}" alt="" width="80" height="80" style="display:block;width:80px;height:80px;object-fit:cover;border-radius:2px;" />`
+    : `<div style="width:80px;height:80px;border-radius:2px;background:linear-gradient(145deg,#C17F59 0%,#8B7355 100%);"></div>`;
 
   return `
-    <!-- Memory of the Week -->
-    <tr><td style="padding:24px 32px 0;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px;">
-      <tr><td>
-        <h2 style="margin:0 0 12px;font-family:'Georgia',serif;font-size:18px;font-weight:600;color:#2C2C2A;">
-          &#x2728; Memory of the Week
-        </h2>
-      </td></tr>
-      </table>
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;border-radius:12px;border:1px solid #EEEAE3;overflow:hidden;">
-        <tr>
-          <td style="padding:16px;width:80px;" valign="top">
-            ${thumbnailHtml}
-          </td>
-          <td style="padding:16px 16px 16px 0;" valign="middle">
-            <p style="margin:0 0 4px;font-family:'Georgia',serif;font-size:16px;font-weight:600;color:#2C2C2A;line-height:1.4;">
-              &ldquo;${escapeHtml(memory.title)}&rdquo;
-            </p>
-            <p style="margin:0;font-family:'Georgia',serif;font-size:13px;color:#8B7355;">
-              in ${escapeHtml(memory.roomName)}
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>`;
+    ${sectionHeading("Memory of the Week")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
+      <tr>
+        <td style="padding:20px;width:80px;" valign="top">${thumbnail}</td>
+        <td style="padding:20px 20px 20px 4px;" valign="middle">
+          <p class="text-primary" style="margin:0 0 6px;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;font-weight:500;color:#2C2C2A;line-height:1.3;font-style:italic;">
+            &ldquo;${escapeHtml(memory.title)}&rdquo;
+          </p>
+          <p class="text-muted" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:12px;color:#9A9183;letter-spacing:0.3px;">
+            in ${escapeHtml(memory.roomName)}
+          </p>
+        </td>
+      </tr>
+    </table>`;
 }
+
+function renderOnThisDay(memories: OnThisDayMemory[]): string {
+  if (memories.length === 0) return "";
+
+  const items = memories.slice(0, 5).map((m, i) => `
+    <tr><td style="padding:13px 20px;${i < memories.slice(0, 5).length - 1 ? "border-bottom:1px solid #F0EBE5;" : ""}">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td class="text-primary" style="font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
+          &ldquo;${escapeHtml(m.title)}&rdquo;
+        </td>
+        <td width="80" style="text-align:right;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#B8A99A;white-space:nowrap;">
+          ${m.yearsAgo} ${m.yearsAgo === 1 ? "year" : "years"} ago
+        </td>
+      </tr></table>
+    </td></tr>`).join("");
+
+  return `
+    ${sectionHeading("On This Day")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;overflow:hidden;margin:0 0 28px;">
+      ${items}
+    </table>`;
+}
+
+function renderCapsules(capsules: UpcomingCapsule[]): string {
+  if (capsules.length === 0) return "";
+
+  const items = capsules.slice(0, 5).map((c, i) => {
+    const dateStr = new Date(c.revealDate).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return `
+    <tr><td style="padding:13px 20px;${i < capsules.slice(0, 5).length - 1 ? "border-bottom:1px solid #F0EBE5;" : ""}">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td class="text-primary" style="font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;">
+          &ldquo;${escapeHtml(c.title)}&rdquo;
+        </td>
+        <td width="70" style="text-align:right;">
+          <span style="display:inline-block;padding:3px 10px;border:1px solid #D4C5B2;border-radius:2px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:10px;font-weight:600;color:#8B7355;letter-spacing:0.5px;text-transform:uppercase;">
+            ${escapeHtml(dateStr)}
+          </span>
+        </td>
+      </tr></table>
+    </td></tr>`;
+  }).join("");
+
+  return `
+    ${sectionHeading("Time Capsules Opening Soon")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;overflow:hidden;margin:0 0 28px;">
+      ${items}
+    </table>`;
+}
+
+function renderSharedActivity(activities: SharedRoomActivity[]): string {
+  if (activities.length === 0) return "";
+
+  const items = activities.slice(0, 5).map((a, i) => `
+    <tr><td style="padding:13px 20px;${i < activities.slice(0, 5).length - 1 ? "border-bottom:1px solid #F0EBE5;" : ""}">
+      <p class="text-primary" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
+        <strong>${escapeHtml(a.contributorName)}</strong> added ${a.memoryCount} ${a.memoryCount === 1 ? "memory" : "memories"} to
+        <em>&ldquo;${escapeHtml(a.roomName)}&rdquo;</em>
+      </p>
+    </td></tr>`).join("");
+
+  return `
+    ${sectionHeading("Shared Room Activity")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;overflow:hidden;margin:0 0 28px;">
+      ${items}
+    </table>`;
+}
+
+function renderTrack(track: TrackProgress | null): string {
+  if (!track) return "";
+  const pct = Math.round(track.percentComplete);
+  const barWidth = Math.max(5, pct);
+  const encouragement = pct >= 80
+    ? "Almost there &mdash; keep going."
+    : pct < 30
+      ? "Every memory counts. Keep building."
+      : "";
+
+  return `
+    ${sectionHeading("Your Progress")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;padding:20px 24px;margin:0 0 8px;">
+    <tr><td>
+      <p class="text-primary" style="margin:0 0 12px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
+        <strong>${pct}%</strong> through the <strong>${escapeHtml(track.trackName)}</strong> track
+      </p>
+      <div style="background:#E8E2DA;border-radius:2px;height:6px;overflow:hidden;">
+        <div style="background:#4A6741;width:${barWidth}%;height:100%;border-radius:2px;"></div>
+      </div>
+      ${encouragement ? `<p style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:12px;color:#4A6741;font-style:italic;">${encouragement}</p>` : ""}
+    </td></tr>
+    </table>`;
+}
+
+/* ── Main generator ── */
 
 export function generateDigestEmailHtml(params: DigestEmailParams): string {
   const displayName = escapeHtml(params.displayName);
-  const palaceUrl = `${SITE_URL}/palace`;
-  const unsubscribeUrl = `${SITE_URL}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}`;
+  const unsubscribeUrl = `${getSiteUrl()}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}`;
 
   const hasContent =
     params.weeklyStats.totalMemories > 0 ||
@@ -263,68 +211,49 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
     params.sharedRoomActivity.length > 0 ||
     params.trackProgress !== null;
 
-  const fallbackMessage = !hasContent
+  const weekday = new Date().toLocaleDateString("en-US", { weekday: "long" });
+
+  const headerHtml = `
+    <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+      Weekly Digest
+    </p>
+    <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
+      Your ${weekday} Report
+    </h1>
+    <p class="header-subtitle" style="margin:14px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#8B7355;line-height:1.6;">
+      Hello, ${displayName}. Here is what happened in your palace this week.
+    </p>`;
+
+  const bodyHtml = hasContent
     ? `
-    <tr><td style="padding:28px 32px 0;">
-      <p style="margin:0;font-family:'Georgia',serif;font-size:15px;color:#8B7355;line-height:1.7;text-align:center;">
+      ${renderStats(params.weeklyStats)}
+      ${renderMemoryOfTheWeek(params.memoryOfTheWeek)}
+      ${renderOnThisDay(params.onThisDayMemories)}
+      ${renderCapsules(params.upcomingCapsules)}
+      ${renderSharedActivity(params.sharedRoomActivity)}
+      ${renderTrack(params.trackProgress)}`
+    : `
+      ${ornamentalDivider()}
+      <p class="text-secondary" style="margin:16px 0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#8B7355;line-height:1.7;text-align:center;font-style:italic;">
         Your palace is quiet this week. Why not visit and add a new memory?
         Every moment you preserve today becomes a treasure tomorrow.
       </p>
-    </td></tr>`
-    : "";
+      ${ornamentalDivider()}`;
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#FAFAF7;font-family:'Georgia',serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAFAF7;padding:40px 20px;">
-<tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background-color:#FFFFFF;border-radius:20px;border:1px solid #EEEAE3;box-shadow:0 4px 24px rgba(44,44,42,0.08);overflow:hidden;">
-
-  <!-- Header gradient -->
-  <tr><td style="background:linear-gradient(135deg,#C17F59 0%,#8B7355 100%);padding:36px 32px 28px;text-align:center;">
-    <div style="font-size:36px;margin-bottom:12px;">&#x1F3DB;&#xFE0F;</div>
-    <h1 style="margin:0;font-family:'Georgia',serif;font-size:22px;font-weight:400;color:#FFFFFF;line-height:1.4;">
-      Your Weekly Memory Digest
-    </h1>
-    <p style="margin:8px 0 0;font-family:'Georgia',serif;font-size:14px;color:#FFFFFF;opacity:0.85;">
-      Hello, ${displayName}. Here&rsquo;s what&rsquo;s happening in your palace.
-    </p>
-  </td></tr>
-
-  ${renderWeeklyStatsSection(params.weeklyStats)}
-  ${renderMemoryOfTheWeekSection(params.memoryOfTheWeek)}
-  ${renderOnThisDaySection(params.onThisDayMemories)}
-  ${renderUpcomingCapsulesSection(params.upcomingCapsules)}
-  ${renderSharedRoomSection(params.sharedRoomActivity)}
-  ${renderTrackProgressSection(params.trackProgress)}
-  ${fallbackMessage}
-
-  <!-- CTA Button -->
-  <tr><td style="padding:28px 32px 24px;text-align:center;">
-    <a href="${palaceUrl}" style="display:inline-block;padding:16px 40px;background:linear-gradient(135deg,#C17F59,#8B7355);color:#FFFFFF;font-family:'Georgia',serif;font-size:16px;font-weight:600;text-decoration:none;border-radius:12px;box-shadow:0 4px 16px rgba(193,127,89,0.3);">
-      Visit Your Palace
-    </a>
-  </td></tr>
-
-  <!-- Footer -->
-  <tr><td style="padding:20px 32px 28px;border-top:1px solid #EEEAE3;text-align:center;">
-    <p style="margin:0 0 8px;font-family:'Georgia',serif;font-size:13px;color:#9A9183;line-height:1.5;">
-      The Memory Palace &mdash; Embrace Eternity
-    </p>
-    <p style="margin:0 0 12px;font-family:'Georgia',serif;font-size:11px;color:#D4C5B2;">
-      You receive this digest weekly because you have email notifications enabled.
-    </p>
-    <a href="${unsubscribeUrl}" style="font-family:'Georgia',serif;font-size:11px;color:#9A9183;text-decoration:underline;">
-      Unsubscribe from weekly digest
-    </a>
-  </td></tr>
-
-</table>
-</td></tr>
-</table>
-</body>
-</html>`;
+  return emailLayout({
+    preheader: `${params.displayName}, you have ${params.weeklyStats.memoriesThisWeek} new memories this week.`,
+    headerHtml,
+    bodyHtml,
+    ctaText: "Visit Your Palace",
+    ctaUrl: `${getSiteUrl()}/palace`,
+    footerExtra: `
+      <p style="margin:0 0 6px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+        You receive this digest weekly because email notifications are enabled.
+      </p>
+      <a href="${unsubscribeUrl}" style="font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#9A9183;text-decoration:underline;">
+        Unsubscribe from weekly digest
+      </a>`,
+  });
 }
 
 export function generateDigestEmailSubject(displayName: string): string {
@@ -333,40 +262,16 @@ export function generateDigestEmailSubject(displayName: string): string {
 }
 
 export async function sendDigestEmail(params: DigestEmailParams): Promise<{ success: boolean; error?: string }> {
-  const html = generateDigestEmailHtml(params);
-  const subject = generateDigestEmailSubject(params.displayName);
+  const unsubscribeUrl = `${getSiteUrl()}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}`;
 
-  if (process.env.RESEND_API_KEY) {
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({
-          from: process.env.RESEND_FROM_EMAIL || "The Memory Palace <noreply@memorypalace.app>",
-          to: [params.recipientEmail],
-          subject,
-          html,
-          headers: {
-            "List-Unsubscribe": `<${SITE_URL}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}>`,
-          },
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return { success: false, error: `Email service error: ${(err as Record<string, unknown>).message || res.statusText}` };
-      }
-
-      return { success: true };
-    } catch (e) {
-      return { success: false, error: `Email send failed: ${e instanceof Error ? e.message : "Unknown error"}` };
-    }
-  }
-
-  // Fallback: log (email delivery not configured)
-  console.log(`[Digest Email] Would send to ${params.recipientEmail}: ${subject}`);
-  return { success: true };
+  return sendEmail({
+    to: params.recipientEmail,
+    subject: generateDigestEmailSubject(params.displayName),
+    html: generateDigestEmailHtml(params),
+    tag: "digest",
+    headers: {
+      "List-Unsubscribe": `<${unsubscribeUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+  });
 }

@@ -50,3 +50,5 @@ supabase/.temp/
 *.jks
 android/keystore.properties
 .cap-build-backup/
+
+.env*.local
