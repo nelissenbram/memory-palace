@@ -9,6 +9,7 @@ import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import NotificationBell from "@/components/ui/NotificationBell";
 import type { Crumb } from "@/lib/hooks/useNavigation";
 import type { Locale } from "@/i18n/config";
@@ -20,6 +21,7 @@ interface TopBarProps {
 export default function TopBar({crumbs}: TopBarProps){
   const isMobile = useIsMobile();
   const { t, locale, setLocale } = useTranslation("common");
+  const { accessibilityMode, toggleAccessibility } = useAccessibility();
   const { userName } = useUserStore();
   const { view, activeWing, switchWing, exitToPalace } = usePalaceStore();
   const { showDirectory, setShowDirectory } = useMemoryStore();
@@ -189,22 +191,71 @@ export default function TopBar({crumbs}: TopBarProps){
                   {t("signOut")}
                 </button>
               </div>
-              {/* Language switcher */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", marginTop: "0.5rem", padding: "0 0.125rem" }}>
-                <button onClick={() => setLocale("en")} aria-pressed={locale === "en"} style={{
-                  padding: "0.375rem 0.75rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontFamily: T.font.body,
-                  fontWeight: locale === "en" ? 600 : 400,
-                  border: `1px solid ${locale === "en" ? T.color.terracotta : T.color.cream}`,
-                  background: locale === "en" ? `${T.color.terracotta}12` : T.color.white,
-                  color: locale === "en" ? T.color.terracotta : T.color.muted, cursor: "pointer",
-                }}>EN</button>
-                <button onClick={() => setLocale("nl")} aria-pressed={locale === "nl"} style={{
-                  padding: "0.375rem 0.75rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontFamily: T.font.body,
-                  fontWeight: locale === "nl" ? 600 : 400,
-                  border: `1px solid ${locale === "nl" ? T.color.terracotta : T.color.cream}`,
-                  background: locale === "nl" ? `${T.color.terracotta}12` : T.color.white,
-                  color: locale === "nl" ? T.color.terracotta : T.color.muted, cursor: "pointer",
-                }}>NL</button>
+              {/* Preferences */}
+              <div style={{
+                marginTop: "0.5rem", padding: "0.5rem 0.25rem 0",
+                borderTop: `1px solid ${T.color.cream}`,
+                display: "flex", flexDirection: "column", gap: "0.5rem",
+              }}>
+                <span style={{
+                  fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
+                  color: T.color.muted, textTransform: "uppercase",
+                  letterSpacing: "0.03125rem",
+                }}>
+                  {t("preferences")}
+                </span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, marginRight: "auto" }}>
+                    {t("language")}
+                  </span>
+                  <button onClick={() => setLocale("en")} aria-pressed={locale === "en"} style={{
+                    padding: "0.375rem 0.75rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontFamily: T.font.body,
+                    fontWeight: locale === "en" ? 600 : 400,
+                    border: `1px solid ${locale === "en" ? T.color.terracotta : T.color.cream}`,
+                    background: locale === "en" ? `${T.color.terracotta}12` : T.color.white,
+                    color: locale === "en" ? T.color.terracotta : T.color.muted, cursor: "pointer",
+                    minHeight: "2.75rem",
+                  }}>EN</button>
+                  <button onClick={() => setLocale("nl")} aria-pressed={locale === "nl"} style={{
+                    padding: "0.375rem 0.75rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontFamily: T.font.body,
+                    fontWeight: locale === "nl" ? 600 : 400,
+                    border: `1px solid ${locale === "nl" ? T.color.terracotta : T.color.cream}`,
+                    background: locale === "nl" ? `${T.color.terracotta}12` : T.color.white,
+                    color: locale === "nl" ? T.color.terracotta : T.color.muted, cursor: "pointer",
+                    minHeight: "2.75rem",
+                  }}>NL</button>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div style={{ marginRight: "auto" }}>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, display: "block" }}>
+                      {t("accessibilityMode")}
+                    </span>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>
+                      {t("accessibilityOn")}
+                    </span>
+                  </div>
+                  <button
+                    role="switch"
+                    aria-checked={accessibilityMode}
+                    onClick={toggleAccessibility}
+                    style={{
+                      width: "2.75rem", height: "1.5rem", borderRadius: "0.75rem",
+                      border: `1px solid ${accessibilityMode ? T.color.sage : T.color.cream}`,
+                      background: accessibilityMode ? T.color.sage : T.color.warmStone,
+                      cursor: "pointer", position: "relative",
+                      transition: "background 0.2s, border-color 0.2s",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span style={{
+                      position: "absolute", top: "0.125rem", left: accessibilityMode ? "1.375rem" : "0.125rem",
+                      width: "1.125rem", height: "1.125rem", borderRadius: "0.5625rem",
+                      background: T.color.white,
+                      boxShadow: "0 1px 3px rgba(0,0,0,.15)",
+                      transition: "left 0.2s",
+                    }} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -263,6 +314,8 @@ export default function TopBar({crumbs}: TopBarProps){
               userName={userName}
               locale={locale}
               setLocale={setLocale}
+              accessibilityMode={accessibilityMode}
+              toggleAccessibility={toggleAccessibility}
               t={t}
               onClose={() => { setUserMenuOpen(false); userBtnRef.current?.focus(); }}
             />
@@ -286,10 +339,12 @@ const USER_MENU_ITEMS = [
   { href: "/security", labelKey: "security", icon: "\u{1F6E1}\uFE0F" },
 ] as const;
 
-function DesktopUserMenu({ userName, locale, setLocale, t, onClose }: {
+function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggleAccessibility, t, onClose }: {
   userName: string;
   locale: Locale;
   setLocale: (l: Locale) => void;
+  accessibilityMode: boolean;
+  toggleAccessibility: () => void;
   t: (key: string, params?: Record<string, string>) => string;
   onClose: () => void;
 }) {
@@ -298,8 +353,8 @@ function DesktopUserMenu({ userName, locale, setLocale, t, onClose }: {
   const { totalPoints, getLevelInfo } = useTrackStore();
   const levelInfo = getLevelInfo();
 
-  // Total focusable items: menu links + sign-out + 2 lang buttons = items.length + 3
-  const totalItems = USER_MENU_ITEMS.length + 3;
+  // Total focusable items: menu links + a11y toggle + 2 lang buttons + sign-out = items.length + 4
+  const totalItems = USER_MENU_ITEMS.length + 4;
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -422,42 +477,100 @@ function DesktopUserMenu({ userName, locale, setLocale, t, onClose }: {
         ))}
       </div>
 
-      {/* Language switcher */}
+      {/* Preferences section */}
       <div style={{
-        padding: "0.5rem 1rem", borderTop: `1px solid ${T.color.cream}`,
-        display: "flex", alignItems: "center", gap: "0.5rem",
+        padding: "0.5rem 0.875rem", borderTop: `1px solid ${T.color.cream}`,
+        display: "flex", flexDirection: "column", gap: "0.5rem",
       }}>
         <span style={{
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginRight: "auto",
+          fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+          color: T.color.muted, textTransform: "uppercase",
+          letterSpacing: "0.03125rem",
         }}>
-          {t("language")}
+          {t("preferences")}
         </span>
-        {(["en", "nl"] as Locale[]).map((l, li) => (
+
+        {/* Language */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span style={{
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, marginRight: "auto",
+          }}>
+            {t("language")}
+          </span>
+          {(["en", "nl"] as Locale[]).map((l, li) => (
+            <button
+              key={l}
+              role="menuitem"
+              data-menu-item
+              tabIndex={-1}
+              aria-pressed={locale === l}
+              onClick={() => { setLocale(l); onClose(); }}
+              onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + li)}
+              onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + li)}
+              style={{
+                padding: "0.3125rem 0.75rem", borderRadius: "0.5rem",
+                fontSize: "0.8125rem", fontFamily: T.font.body,
+                fontWeight: locale === l ? 600 : 400,
+                border: `1px solid ${locale === l ? T.color.terracotta : T.color.cream}`,
+                background: locale === l ? `${T.color.terracotta}12` : T.color.white,
+                color: locale === l ? T.color.terracotta : T.color.muted,
+                cursor: "pointer",
+                ...(focusIdx === USER_MENU_ITEMS.length + li ? {
+                  outline: `2px solid ${T.color.terracotta}`,
+                  outlineOffset: 1,
+                } : {}),
+              }}
+            >
+              {l.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
+        {/* Accessibility toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div style={{ marginRight: "auto" }}>
+            <span style={{
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
+              display: "block",
+            }}>
+              {t("accessibilityMode")}
+            </span>
+            <span style={{
+              fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+            }}>
+              {t("accessibilityOn")}
+            </span>
+          </div>
           <button
-            key={l}
-            role="menuitem"
+            role="switch"
+            aria-checked={accessibilityMode}
             data-menu-item
             tabIndex={-1}
-            onClick={() => { setLocale(l); onClose(); }}
-            onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + li)}
-            onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + li)}
+            onClick={toggleAccessibility}
+            onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + 2)}
+            onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + 2)}
             style={{
-              padding: "0.3125rem 0.75rem", borderRadius: "0.5rem",
-              fontSize: "0.8125rem", fontFamily: T.font.body,
-              fontWeight: locale === l ? 600 : 400,
-              border: `1px solid ${locale === l ? T.color.terracotta : T.color.cream}`,
-              background: locale === l ? `${T.color.terracotta}12` : T.color.white,
-              color: locale === l ? T.color.terracotta : T.color.muted,
-              cursor: "pointer",
-              ...(focusIdx === USER_MENU_ITEMS.length + li ? {
+              width: "2.75rem", height: "1.5rem", borderRadius: "0.75rem",
+              border: `1px solid ${accessibilityMode ? T.color.sage : T.color.cream}`,
+              background: accessibilityMode ? T.color.sage : T.color.warmStone,
+              cursor: "pointer", position: "relative",
+              transition: "background 0.2s, border-color 0.2s",
+              flexShrink: 0,
+              ...(focusIdx === USER_MENU_ITEMS.length + 2 ? {
                 outline: `2px solid ${T.color.terracotta}`,
                 outlineOffset: 1,
               } : {}),
             }}
           >
-            {l.toUpperCase()}
+            <span style={{
+              position: "absolute", top: "0.125rem", left: accessibilityMode ? "1.375rem" : "0.125rem",
+              width: "1.125rem", height: "1.125rem", borderRadius: "0.5625rem",
+              background: T.color.white,
+              boxShadow: "0 1px 3px rgba(0,0,0,.15)",
+              transition: "left 0.2s",
+            }} />
           </button>
-        ))}
+        </div>
       </div>
 
       {/* Sign out */}

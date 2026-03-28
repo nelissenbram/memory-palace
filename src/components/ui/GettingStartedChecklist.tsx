@@ -164,6 +164,7 @@ export default function GettingStartedChecklist({
     return (
       <button
         onClick={() => setCollapsed(false)}
+        aria-expanded={false}
         style={{
           position: "absolute",
           top: "6.25rem",
@@ -293,6 +294,7 @@ export default function GettingStartedChecklist({
         <button
           onClick={() => setCollapsed(true)}
           title={t("minimize")}
+          aria-expanded={true}
           style={{
             background: "none",
             border: "none",

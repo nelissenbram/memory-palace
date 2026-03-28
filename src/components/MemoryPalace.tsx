@@ -69,6 +69,7 @@ export default function MemoryPalace(){
   const isMobile = useIsMobile();
   const { t: tTrack } = useTranslation("tracksPanel");
   const { t: tAch } = useTranslation("achievementsPanel");
+  const { t: tAction } = useTranslation("actionMenu");
 
   // ── Stores ──
   const { profileLoading, onboarded, firstWing, styleEra, bustTextureUrl, bustModelUrl, bustProportions, userName, bustName, bustGender, bustPedestals,
@@ -297,7 +298,7 @@ export default function MemoryPalace(){
   return(
     <div style={{width:"100vw",height:"100dvh",background:T.color.sandstone,position:"relative",overflow:"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
-      <div style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
+      <div role="application" aria-label="3D Memory Palace interactive scene" style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
         {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===0?"__entrance__":null} styleEra={styleEra||"roman"}/>}
         {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else enterCorridor(wingId);}} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={(idx: number)=>{setBustBuilderIndex(idx);setShowBustBuilder(true);}} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null}/>}
         {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>}
@@ -659,6 +660,7 @@ interface MobileBottomBarProps {
 
 function MobileBottomBar(props: MobileBottomBarProps) {
   const { view, activeWing, activeRoomId, allRoomMems, showUpload, showSharing, selMem, wingData, moreMenuOpen } = props;
+  const { t: tAction } = useTranslation("actionMenu");
   const accent = wingData?.accent || T.color.terracotta;
 
   // Define primary actions based on view
@@ -666,27 +668,27 @@ function MobileBottomBar(props: MobileBottomBarProps) {
 
   // Back button for non-exterior views
   if (view !== "exterior") {
-    primaryActions.push({ icon: "\u2190", label: "Back", action: props.onBack });
+    primaryActions.push({ icon: "\u2190", label: tAction("back"), action: props.onBack });
   }
 
   if (view === "room" && activeRoomId && !showUpload && !showSharing && !selMem) {
-    primaryActions.push({ icon: "+", label: "Add", action: props.onUpload, accent: true });
+    primaryActions.push({ icon: "+", label: tAction("add"), action: props.onUpload, accent: true });
     if (allRoomMems.length > 0) {
-      primaryActions.push({ icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: props.onGallery });
+      primaryActions.push({ icon: "\u{1F5BC}\uFE0F", label: tAction("gallery"), action: props.onGallery });
     }
-    primaryActions.push({ icon: "\u{1F91D}", label: "Share", action: props.onShare });
+    primaryActions.push({ icon: "\u{1F91D}", label: tAction("share"), action: props.onShare });
   } else if (view === "corridor" && activeWing) {
-    primaryActions.push({ icon: "\u{1F527}", label: "Rooms", action: props.onRoomManager, accent: true });
-    primaryActions.push({ icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: props.onCorridorGallery });
-    primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
+    primaryActions.push({ icon: "\u{1F527}", label: tAction("rooms"), action: props.onRoomManager, accent: true });
+    primaryActions.push({ icon: "\u{1F5BC}\uFE0F", label: tAction("gallery"), action: props.onCorridorGallery });
+    primaryActions.push({ icon: "\uD83C\uDF0D", label: tAction("map"), action: props.onMemoryMap });
   } else if (view === "entrance") {
-    primaryActions.push({ icon: "\uD83D\uDCC5", label: "Timeline", action: props.onTimeline, accent: true });
-    primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
-    primaryActions.push({ icon: "\uD83C\uDF99\uFE0F", label: "Interviews", action: props.onInterviews });
+    primaryActions.push({ icon: "\uD83D\uDCC5", label: tAction("timeline"), action: props.onTimeline, accent: true });
+    primaryActions.push({ icon: "\uD83C\uDF0D", label: tAction("map"), action: props.onMemoryMap });
+    primaryActions.push({ icon: "\uD83C\uDF99\uFE0F", label: tAction("interviews"), action: props.onInterviews });
   } else if (view === "exterior") {
-    primaryActions.push({ icon: "\uD83D\uDCC5", label: "Timeline", action: props.onTimeline, accent: true });
-    primaryActions.push({ icon: "\uD83C\uDF0D", label: "Map", action: props.onMemoryMap });
-    primaryActions.push({ icon: "\uD83C\uDF99\uFE0F", label: "Interviews", action: props.onInterviews });
+    primaryActions.push({ icon: "\uD83D\uDCC5", label: tAction("timeline"), action: props.onTimeline, accent: true });
+    primaryActions.push({ icon: "\uD83C\uDF0D", label: tAction("map"), action: props.onMemoryMap });
+    primaryActions.push({ icon: "\uD83C\uDF99\uFE0F", label: tAction("interviews"), action: props.onInterviews });
   }
 
   // Directory moved to "More" menu for cleaner bottom bar

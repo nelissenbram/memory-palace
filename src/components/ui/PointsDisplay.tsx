@@ -23,6 +23,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
       <button
         onClick={handleClick}
         title={`${levelInfo.title} \u2014 ${totalPoints} ${t("title")}`}
+        aria-label={`${levelInfo.title} \u2014 ${totalPoints} ${t("title")}`}
         style={{
           display: "flex", alignItems: "center", gap: "0.375rem",
           height: "2rem", borderRadius: "1rem", padding: "0 0.625rem 0 0.375rem",

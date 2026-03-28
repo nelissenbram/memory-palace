@@ -131,6 +131,7 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
         {/* Got it button */}
         <button
           onClick={dismiss}
+          aria-label={t("gotIt")}
           style={{
             background: "rgba(250, 250, 247, 0.15)",
             border: "1px solid rgba(250, 250, 247, 0.25)",

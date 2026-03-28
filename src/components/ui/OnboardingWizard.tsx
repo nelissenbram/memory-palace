@@ -33,7 +33,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",textAlign:"center",gap:20,animation:"fadeUp .6s ease"}}>
         <h1 style={{fontFamily:T.font.display,fontSize:isMobile?32:38,fontWeight:300,color:T.color.charcoal,letterSpacing:".5px",lineHeight:1.2}}>{t("welcomeTitle")}<br/><span style={{fontWeight:600,fontStyle:"italic"}}>{t("appName")}</span></h1>
         <div style={{width:"100%",maxWidth:420,borderRadius:16,overflow:"hidden",boxShadow:"0 8px 40px rgba(44,44,42,.18)",border:`3px solid ${T.color.sandstone}44`}}>
-          <img src={HERO_IMG} alt="The Memory Palace" style={{width:"100%",height:"auto",display:"block"}}/>
+          <img src={HERO_IMG} alt={t("welcomeTitle") + " — " + t("appName")} style={{width:"100%",height:"auto",display:"block"}}/>
         </div>
         <p style={{fontFamily:T.font.body,fontSize:16,color:T.color.muted,maxWidth:400,lineHeight:1.6}}>{t("welcomeDescription")}</p>
         <div style={{width:"100%",maxWidth:340}}>
@@ -67,7 +67,7 @@ export default function OnboardingWizard({onFinish}: OnboardingWizardProps){
                   boxShadow:selected?"0 4px 20px rgba(0,0,0,.1)":"0 2px 8px rgba(0,0,0,.04)"}}>
                 <div style={{width:"100%",aspectRatio:"4/3",borderRadius:12,overflow:"hidden",
                   background:era.fallbackColor,position:"relative",filter:isComingSoon?"grayscale(0.5)":"none"}}>
-                  <img src={era.img} alt={t(era.id === "roman" ? "styleRoman" : "styleRenaissance")}
+                  <img src={era.img} alt={t(era.id === "roman" ? "styleRomanDesc" : "styleRenaissanceDesc")}
                     style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}
                     onError={e=>{(e.target as HTMLImageElement).style.display="none";}}/>
                   {selected && <div style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:"50%",

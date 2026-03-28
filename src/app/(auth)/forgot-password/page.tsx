@@ -84,6 +84,7 @@ export default function ForgotPasswordPage() {
 
       {error && (
         <div
+          id="forgot-password-error"
           role="alert"
           style={{
             padding: "0.625rem 0.875rem",
@@ -117,7 +118,9 @@ export default function ForgotPasswordPage() {
         id="forgot-password-email"
         name="email"
         type="email"
+        autoComplete="email"
         required
+        aria-describedby={error ? "forgot-password-error" : undefined}
         placeholder={t("emailPlaceholder")}
         style={{
           width: "100%",

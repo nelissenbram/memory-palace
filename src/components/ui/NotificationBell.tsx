@@ -49,6 +49,9 @@ export default function NotificationBell() {
       <button
         onClick={toggle}
         title={t("title")}
+        aria-label={count > 0 ? t("title") + ` (${count})` : t("title")}
+        aria-haspopup="true"
+        aria-expanded={open}
         style={{
           width: "2.25rem",
           height: "2.25rem",
@@ -100,6 +103,7 @@ export default function NotificationBell() {
         {/* Unread badge */}
         {count > 0 && (
           <div
+            aria-label={`${count} unread notifications`}
             style={{
               position: "absolute",
               top: "-0.125rem",

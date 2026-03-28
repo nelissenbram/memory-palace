@@ -52,6 +52,8 @@ export default function ActionMenu({ primary, secondary, accent }: ActionMenuPro
             <button
               key={i}
               onClick={() => { setOpen(false); item.action(); }}
+              aria-label={item.label}
+              onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
               style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "6px 12px 6px 8px",
@@ -89,6 +91,9 @@ export default function ActionMenu({ primary, secondary, accent }: ActionMenuPro
         {visibleSecondary.length > 0 && (
           <button
             onClick={() => setOpen(o => !o)}
+            aria-expanded={open}
+            aria-label={open ? "Close menu" : "Open menu"}
+            onKeyDown={(e) => { if (e.key === "Escape" && open) setOpen(false); }}
             style={{
               width: 44, height: 44, borderRadius: 22,
               border: `1px solid ${T.color.cream}`,

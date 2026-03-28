@@ -222,7 +222,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>{t("roomSharing")}</div>
             <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{sharing.shared?t("peopleCanView"):t("onlyYouCanSee")}</div>
           </div>
-          <button onClick={handleToggle} style={{width:44,height:24,borderRadius:12,border:"none",background:sharing.shared?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s"}}>
+          <button onClick={handleToggle} role="switch" aria-checked={sharing.shared} style={{width:44,height:24,borderRadius:12,border:"none",background:sharing.shared?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s"}}>
             <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:sharing.shared?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
           </button>
         </div>
@@ -234,7 +234,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
               <div style={{fontFamily:T.font.body,fontSize:13,fontWeight:500,color:T.color.charcoal}}>{t("publicLink")}</div>
               <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{publicShare?.is_active?t("anyoneCanView"):t("noAccountRequired")}</div>
             </div>
-            <button onClick={handleTogglePublicShare} disabled={publicLoading} style={{width:44,height:24,borderRadius:12,border:"none",background:publicShare?.is_active?T.color.success:T.color.sandstone,cursor:publicLoading?"default":"pointer",position:"relative",transition:"background .2s",opacity:publicLoading?.6:1}}>
+            <button onClick={handleTogglePublicShare} disabled={publicLoading} role="switch" aria-checked={!!publicShare?.is_active} style={{width:44,height:24,borderRadius:12,border:"none",background:publicShare?.is_active?T.color.success:T.color.sandstone,cursor:publicLoading?"default":"pointer",position:"relative",transition:"background .2s",opacity:publicLoading?.6:1}}>
               <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:publicShare?.is_active?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
             </button>
           </div>
@@ -365,7 +365,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                 for(const share of shares){
                   await updateShareDownloadPermission(share.id,next);
                 }
-              }} style={{width:44,height:24,borderRadius:12,border:"none",background:allowDownload?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+              }} role="switch" aria-checked={allowDownload} style={{width:44,height:24,borderRadius:12,border:"none",background:allowDownload?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
                 <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:allowDownload?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
               </button>
             </div>
@@ -380,7 +380,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                 const next=!showPublicPalace;
                 setShowPublicPalace(next);
                 await updateRoomPublicVisibility(roomId,next);
-              }} style={{width:44,height:24,borderRadius:12,border:"none",background:showPublicPalace?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+              }} role="switch" aria-checked={showPublicPalace} style={{width:44,height:24,borderRadius:12,border:"none",background:showPublicPalace?T.color.success:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
                 <div style={{width:18,height:18,borderRadius:9,background:"#FFF",position:"absolute",top:3,left:showPublicPalace?23:3,transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
               </button>
             </div>

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -69,6 +70,7 @@ interface OnThisDayProps {
 }
 
 export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
+  const { t } = useTranslation("onThisDay");
   const { userMems } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
@@ -165,7 +167,7 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
               letterSpacing: ".3px",
             }}
           >
-            On this day...
+            {t("title")}
           </h4>
           <p
             style={{
@@ -175,7 +177,7 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
               margin: "3px 0 0",
             }}
           >
-            {anniversaries.length} {anniversaries.length === 1 ? "memory" : "memories"} from years past
+            {anniversaries.length === 1 ? t("memoryFromPast", { count: String(anniversaries.length) }) : t("memoriesFromPast", { count: String(anniversaries.length) })}
           </p>
         </div>
         <button
@@ -301,7 +303,7 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
                 flexShrink: 0,
               }}
             >
-              {a.yearsAgo} {a.yearsAgo === 1 ? "yr" : "yrs"} ago
+              {a.yearsAgo === 1 ? t("yrAgo", { count: String(a.yearsAgo) }) : t("yrsAgo", { count: String(a.yearsAgo) })}
             </div>
           </button>
         ))}
@@ -318,7 +320,7 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
             textAlign: "center",
           }}
         >
-          +{anniversaries.length - 3} more {anniversaries.length - 3 === 1 ? "memory" : "memories"}
+          {anniversaries.length - 3 === 1 ? t("moreMemory", { count: String(anniversaries.length - 3) }) : t("moreMemories", { count: String(anniversaries.length - 3) })}
         </div>
       )}
     </div>

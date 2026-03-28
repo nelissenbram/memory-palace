@@ -140,7 +140,7 @@ export default async function RootLayout({
       </head>
       <body style={{ margin: 0, padding: 0 }}>
         <a href="#main-content" className="skip-to-content">
-          Skip to content
+          {locale === "nl" ? "Ga naar inhoud" : "Skip to content"}
         </a>
         <ServiceWorkerRegistration />
         <PWAInstallBanner />

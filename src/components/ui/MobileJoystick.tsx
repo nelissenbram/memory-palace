@@ -122,8 +122,8 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
       onTouchCancel={handleTouchEnd}
       style={{
         position: "absolute",
-        bottom: 120,
-        left: 20,
+        bottom: "7.5rem",
+        left: "1.25rem",
         width: OUTER_R * 2,
         height: OUTER_R * 2,
         borderRadius: "50%",

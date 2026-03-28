@@ -63,7 +63,7 @@ export default async function AuthLayout({
         }}
       />
 
-      <div
+      <main
         style={{
           width: "100%",
           maxWidth: 440,
@@ -79,7 +79,7 @@ export default async function AuthLayout({
         }}
       >
         {children}
-      </div>
+      </main>
     </div>
   );
 }

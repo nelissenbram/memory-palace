@@ -347,8 +347,8 @@ export default function ProfilePage() {
           </div>
 
           {/* Goal */}
-          <div>
-            <label style={labelStyle}>{t("yourGoal")}</label>
+          <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
+            <legend style={labelStyle}>{t("yourGoal")}</legend>
             <p style={{
               fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
               margin: "0 0 0.625rem", lineHeight: 1.4,
@@ -383,11 +383,11 @@ export default function ProfilePage() {
                 </button>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           {/* Palace Style */}
-          <div>
-            <label style={labelStyle}>{t("palaceStyle")}</label>
+          <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
+            <legend style={labelStyle}>{t("palaceStyle")}</legend>
             <p style={{
               fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
               margin: "0 0 0.625rem", lineHeight: 1.4,
@@ -437,7 +437,7 @@ export default function ProfilePage() {
                 );
               })}
             </div>
-          </div>
+          </fieldset>
         </div>
 
         {/* Save button */}
@@ -577,6 +577,7 @@ export default function ProfilePage() {
             <button
               onClick={handleExportData}
               disabled={exporting}
+              aria-busy={exporting}
               style={{
                 padding: "0.75rem 1.5rem",
                 borderRadius: "0.625rem",

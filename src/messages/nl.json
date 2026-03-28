@@ -36,7 +36,12 @@
     "termsOfService": "Algemene voorwaarden",
     "add": "Toevoegen",
     "showRooms": "Kamers tonen",
-    "mpPoints": "{points} MP"
+    "mpPoints": "{points} MP",
+    "preferences": "Voorkeuren",
+    "accessibilityMode": "Toegankelijkheid",
+    "accessibilityOn": "Grotere tekst & knoppen",
+    "on": "Aan",
+    "off": "Uit"
   },
   "auth": {
     "welcomeBack": "Welkom terug",
@@ -1152,7 +1157,8 @@
     "typeOrb": "Bol",
     "typeVitrine": "Vitrine",
     "typeAudio": "Audio",
-    "typeDocument": "Document"
+    "typeDocument": "Document",
+    "fileTooLarge": "Bestand te groot ({size} MB). Maximum is {max}."
   },
   "memoryDetail": {
     "description": "Beschrijving",
@@ -1547,7 +1553,13 @@
     "location": "locatie",
     "memory": "herinnering",
     "memories": "herinneringen",
-    "legend": "Legenda:"
+    "legend": "Legenda:",
+    "northAmerica": "Noord-Amerika",
+    "southAmerica": "Zuid-Amerika",
+    "europe": "Europa",
+    "africa": "Afrika",
+    "asia": "Azië",
+    "australia": "Australië"
   },
   "memoryTimeline": {
     "title": "Herinneringen-tijdlijn",
@@ -2088,5 +2100,34 @@
     "section11Li2Company": "Bedrijf: Memory Palace, België",
     "privacyPolicy": "Privacybeleid",
     "backToHome": "Terug naar startpagina"
+  },
+  "hoverTooltip": {
+    "wingLabel": "{name} Vleugel",
+    "roomsInside": "{count} kamers",
+    "memory": "{count} herinnering",
+    "memories": "{count} herinneringen",
+    "sharedWith": "Gedeeld met {count}"
+  },
+  "onThisDay": {
+    "title": "Op deze dag...",
+    "memoriesFromPast": "{count} herinneringen uit het verleden",
+    "memoryFromPast": "{count} herinnering uit het verleden",
+    "yrAgo": "{count} jaar geleden",
+    "yrsAgo": "{count} jaar geleden",
+    "moreMemories": "+{count} meer herinneringen",
+    "moreMemory": "+{count} meer herinnering"
+  },
+  "actionMenu": {
+    "back": "Terug",
+    "add": "Toevoegen",
+    "share": "Delen",
+    "gallery": "Galerij",
+    "rooms": "Kamers",
+    "map": "Kaart",
+    "timeline": "Tijdlijn",
+    "interviews": "Interviews"
+  },
+  "layout": {
+    "skipToContent": "Ga naar inhoud"
   }
 }

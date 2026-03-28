@@ -66,6 +66,7 @@ export default function LandingPage() {
     >
       {/* ─── Sticky Nav ─── */}
       <nav
+        aria-label="Main navigation"
         style={{
           position: "fixed",
           top: 0,
@@ -110,6 +111,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
+      <main id="main-content">
       {/* ─── Hero ─── */}
       <section
         style={{
@@ -151,7 +153,7 @@ export default function LandingPage() {
             fontSize: "clamp(2.25rem, 6vw, 4.5rem)",
             fontWeight: 300,
             lineHeight: 1.1,
-            maxWidth: 850,
+            maxWidth: "53.125rem",
             margin: "0 auto 1.5rem",
             color: C.charcoal,
             animation: "fadeUp 0.8s ease 0.1s both",
@@ -167,7 +169,7 @@ export default function LandingPage() {
           style={{
             fontSize: "clamp(1.0625rem, 2.2vw, 1.3125rem)",
             color: C.walnut,
-            maxWidth: 600,
+            maxWidth: "37.5rem",
             lineHeight: 1.7,
             marginBottom: "2.5rem",
             animation: "fadeUp 0.8s ease 0.2s both",
@@ -232,8 +234,8 @@ export default function LandingPage() {
           </span>
           <div
             style={{
-              width: 1,
-              height: 28,
+              width: "0.0625rem",
+              height: "1.75rem",
               background: `linear-gradient(to bottom, ${C.muted}, transparent)`,
             }}
           />
@@ -245,7 +247,7 @@ export default function LandingPage() {
         id="features"
         style={{
           padding: "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
-          maxWidth: 1100,
+          maxWidth: "68.75rem",
           margin: "0 auto",
         }}
       >
@@ -280,7 +282,7 @@ export default function LandingPage() {
           background: C.warmStone,
         }}
       >
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+        <div style={{ maxWidth: "56.25rem", margin: "0 auto" }}>
           <p style={sectionLabel}>{landing.howItWorks.title}</p>
           <h2 style={sectionTitle}>{landing.howItWorks.subtitle}</h2>
 
@@ -347,7 +349,7 @@ export default function LandingPage() {
           style={{
             fontSize: "1rem",
             color: C.walnut,
-            maxWidth: 520,
+            maxWidth: "32.5rem",
             margin: "1rem auto 2.5rem",
             lineHeight: 1.6,
           }}
@@ -359,7 +361,7 @@ export default function LandingPage() {
         {process.env.NEXT_PUBLIC_DEMO_VIDEO_URL ? (
           <div
             style={{
-              maxWidth: 800,
+              maxWidth: "50rem",
               margin: "0 auto 3rem",
               borderRadius: "1.25rem",
               overflow: "hidden",
@@ -389,7 +391,7 @@ export default function LandingPage() {
           /* Static preview gallery — 4 mockup cards */
           <div
             style={{
-              maxWidth: 900,
+              maxWidth: "56.25rem",
               margin: "0 auto 3rem",
               display: "grid",
               gridTemplateColumns: isSmall ? "1fr" : "repeat(2, 1fr)",
@@ -434,7 +436,7 @@ export default function LandingPage() {
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  minHeight: isMobile ? 140 : 180,
+                  minHeight: isMobile ? "8.75rem" : "11.25rem",
                 }}
               >
                 <span
@@ -475,7 +477,7 @@ export default function LandingPage() {
         {/* Palace wing cards beneath */}
         <div
           style={{
-            maxWidth: 800,
+            maxWidth: "50rem",
             margin: "0 auto",
             borderRadius: "1.25rem",
             overflow: "hidden",
@@ -507,7 +509,7 @@ export default function LandingPage() {
                   boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
                 }}
               >
-                <span style={{ fontSize: "2.25rem", display: "block", marginBottom: 10 }}>
+                <span style={{ fontSize: "2.25rem", display: "block", marginBottom: "0.625rem" }}>
                   {room.icon}
                 </span>
                 <p
@@ -538,8 +540,8 @@ export default function LandingPage() {
               <div
                 key={i}
                 style={{
-                  width: 6,
-                  height: 6,
+                  width: "0.375rem",
+                  height: "0.375rem",
                   borderRadius: "50%",
                   background: C.terracotta,
                   opacity: o,
@@ -557,7 +559,7 @@ export default function LandingPage() {
       <section
         style={{
           padding: "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
-          maxWidth: 1100,
+          maxWidth: "68.75rem",
           margin: "0 auto",
         }}
       >
@@ -602,7 +604,7 @@ export default function LandingPage() {
                 borderTop: `3px solid ${a.accent}`,
               }}
             >
-              <span style={{ fontSize: "2.25rem", display: "block", marginBottom: 16 }}>
+              <span style={{ fontSize: "2.25rem", display: "block", marginBottom: "1rem" }}>
                 {a.icon}
               </span>
               <h3
@@ -631,7 +633,7 @@ export default function LandingPage() {
           background: `linear-gradient(135deg, ${C.charcoal}, #3D3D3A)`,
         }}
       >
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ maxWidth: "68.75rem", margin: "0 auto" }}>
           <p style={{ ...sectionLabel, color: C.terracotta }}>
             {landing.testimonials.title}
           </p>
@@ -747,7 +749,7 @@ export default function LandingPage() {
           style={{
             fontSize: "1.0625rem",
             color: C.walnut,
-            maxWidth: 480,
+            maxWidth: "30rem",
             margin: "0 auto 2.25rem",
             lineHeight: 1.6,
           }}
@@ -758,6 +760,7 @@ export default function LandingPage() {
           {landing.cta.button}
         </Link>
       </section>
+      </main>
 
       {/* ─── Footer ─── */}
       <footer
@@ -769,7 +772,7 @@ export default function LandingPage() {
       >
         <div
           style={{
-            maxWidth: 1100,
+            maxWidth: "68.75rem",
             margin: "0 auto",
             display: "grid",
             gridTemplateColumns: isSmall ? "1fr" : "2fr 1fr 1fr",
@@ -780,7 +783,7 @@ export default function LandingPage() {
           {/* About */}
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "0.875rem" }}>
-              <span style={{ fontSize: 20 }}>🏛️</span>
+              <span style={{ fontSize: "1.25rem" }}>🏛️</span>
               <span
                 style={{
                   fontFamily: F.display,
@@ -792,17 +795,17 @@ export default function LandingPage() {
                 {landing.title}
               </span>
             </div>
-            <p style={{ fontSize: "0.875rem", color: C.muted, lineHeight: 1.7, maxWidth: 340 }}>
+            <p style={{ fontSize: "0.875rem", color: C.muted, lineHeight: 1.7, maxWidth: "21.25rem" }}>
               {landing.footer.about}
             </p>
           </div>
 
           {/* Quick links */}
           <div>
-            <p style={{ fontSize: "0.75rem", letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: 16 }}>
+            <p style={{ fontSize: "0.75rem", letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: "1rem" }}>
               {landing.footer.quickLinks}
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
               <a href="#features" style={{ fontSize: "0.875rem", color: C.muted, textDecoration: "none" }}>
                 {landing.footer.features}
               </a>
@@ -823,10 +826,10 @@ export default function LandingPage() {
 
           {/* Contact / trust */}
           <div>
-            <p style={{ fontSize: "0.75rem", letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: 16 }}>
+            <p style={{ fontSize: "0.75rem", letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: "1rem" }}>
               {landing.footer.trustSecurity}
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
               <p style={{ fontSize: "0.875rem", color: C.muted, lineHeight: 1.5 }}>
                 🔒 {landing.footer.euHosted}
               </p>
@@ -858,7 +861,7 @@ export default function LandingPage() {
           <p style={{ fontSize: "0.75rem", color: C.muted }}>
             &copy; {new Date().getFullYear()} {landing.footer.copyright}
           </p>
-          <div style={{ display: "flex", gap: 20 }}>
+          <div style={{ display: "flex", gap: "1.25rem" }}>
             <Link href="/privacy" style={{ fontSize: "0.75rem", color: C.muted, textDecoration: "none" }}>
               {landing.footer.privacyPolicy}
             </Link>
@@ -976,10 +979,11 @@ function orbStyle(
   top: string,
   opacity: number
 ): React.CSSProperties {
+  const rem = `${size / 16}rem`;
   return {
     position: "absolute",
-    width: size,
-    height: size,
+    width: rem,
+    height: rem,
     borderRadius: "50%",
     background: `radial-gradient(circle, ${C.terracotta}30, transparent 70%)`,
     left,

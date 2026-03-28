@@ -89,7 +89,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                 {t("description")}
               </p>
             </div>
-            <button onClick={onClose} style={{
+            <button onClick={onClose} aria-label="Close" style={{
               width: "2rem", height: "2rem", minWidth: "2.75rem", minHeight: "2.75rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
               background: T.color.white, cursor: "pointer", fontSize: "1rem", color: T.color.muted,
               display: "flex", alignItems: "center", justifyContent: "center",

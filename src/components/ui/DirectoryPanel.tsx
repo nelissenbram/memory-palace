@@ -98,7 +98,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
             return(
               <div key={wing.id} style={{marginBottom:"0.125rem"}}>
                 {/* Wing row */}
-                <button onClick={()=>toggle(wing.id)}
+                <button onClick={()=>toggle(wing.id)} aria-expanded={wingExpanded}
                   style={{width:"100%",display:"flex",alignItems:"center",gap:"0.625rem",padding:"0.625rem 0.75rem",borderRadius:"0.625rem",border:"none",
                     background:isActive?`${wing.accent}10`:"transparent",cursor:"pointer",textAlign:"left",transition:"background .15s"}}>
                   <span style={{fontSize:"0.625rem",color:T.color.muted,transition:"transform .2s",transform:wingExpanded?"rotate(90deg)":"rotate(0)"}}>&#x25B6;</span>
@@ -120,7 +120,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
                       <div key={room.id} style={{marginBottom:"0.0625rem"}}>
                         {/* Room row */}
                         <div style={{display:"flex",alignItems:"center",gap:"0.125rem"}}>
-                          <button onClick={()=>toggle(room.id)}
+                          <button onClick={()=>toggle(room.id)} aria-expanded={roomExpanded}
                             style={{flex:1,display:"flex",alignItems:"center",gap:"0.5rem",padding:"0.4375rem 0.625rem",borderRadius:"0.5rem",border:"none",
                               background:isRoomActive?`${wing.accent}12`:"transparent",cursor:"pointer",textAlign:"left",transition:"background .15s"}}>
                             <span style={{fontSize:"0.5625rem",color:T.color.muted,transition:"transform .2s",transform:roomExpanded?"rotate(90deg)":"rotate(0)"}}>&#x25B6;</span>
@@ -130,7 +130,7 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
                               <div style={{fontFamily:T.font.body,fontSize:"0.5625rem",color:T.color.muted}}>{t("roomMemories", { count: String(room.mems.length) })}{room.shared?` · ${t("shared")}`:""}</div>
                             </div>
                           </button>
-                          <button onClick={()=>navigateToRoom(wing.id,room.id)} title={t("openIn3d")}
+                          <button onClick={()=>navigateToRoom(wing.id,room.id)} title={t("openIn3d")} aria-label={t("openIn3d")}
                             style={{width:"1.625rem",height:"1.625rem",borderRadius:"0.5rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,
                               fontSize:"0.6875rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:T.color.muted,flexShrink:0}}>
                             {"\uD83C\uDFDB\uFE0F"}

@@ -50,7 +50,7 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
       </button>
 
       {/* Divider */}
-      <div style={{ width: 1, height: "1.25rem", background: `${T.color.cream}` }} />
+      <div aria-hidden="true" style={{ width: 1, height: "1.25rem", background: `${T.color.cream}` }} />
 
       {/* Tracks */}
       <button
@@ -71,7 +71,7 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
       </button>
 
       {/* Divider */}
-      <div style={{ width: 1, height: "1.25rem", background: `${T.color.cream}` }} />
+      <div aria-hidden="true" style={{ width: 1, height: "1.25rem", background: `${T.color.cream}` }} />
 
       {/* Points */}
       <div style={{ padding: "0 0.75rem 0 0.5rem", height: "100%", display: "flex", alignItems: "center" }}>

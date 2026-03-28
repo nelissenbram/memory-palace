@@ -36,7 +36,12 @@
     "termsOfService": "Terms of Service",
     "add": "Add",
     "showRooms": "Show rooms",
-    "mpPoints": "{points} MP"
+    "mpPoints": "{points} MP",
+    "preferences": "Preferences",
+    "accessibilityMode": "Accessibility",
+    "accessibilityOn": "Larger text & buttons",
+    "on": "On",
+    "off": "Off"
   },
   "auth": {
     "welcomeBack": "Welcome Back",
@@ -1152,7 +1157,8 @@
     "typeOrb": "Orb",
     "typeVitrine": "Vitrine",
     "typeAudio": "Audio",
-    "typeDocument": "Document"
+    "typeDocument": "Document",
+    "fileTooLarge": "File too large ({size} MB). Maximum is {max}."
   },
   "memoryDetail": {
     "description": "Description",
@@ -1547,7 +1553,13 @@
     "location": "location",
     "memory": "memory",
     "memories": "memories",
-    "legend": "Legend:"
+    "legend": "Legend:",
+    "northAmerica": "North America",
+    "southAmerica": "South America",
+    "europe": "Europe",
+    "africa": "Africa",
+    "asia": "Asia",
+    "australia": "Australia"
   },
   "memoryTimeline": {
     "title": "Memory Timeline",
@@ -2088,5 +2100,34 @@
     "section11Li2Company": "Company: Memory Palace, Belgium",
     "privacyPolicy": "Privacy Policy",
     "backToHome": "Back to home"
+  },
+  "hoverTooltip": {
+    "wingLabel": "{name} Wing",
+    "roomsInside": "{count} rooms inside",
+    "memory": "{count} memory",
+    "memories": "{count} memories",
+    "sharedWith": "Shared with {count}"
+  },
+  "onThisDay": {
+    "title": "On this day...",
+    "memoriesFromPast": "{count} memories from years past",
+    "memoryFromPast": "{count} memory from years past",
+    "yrAgo": "{count} yr ago",
+    "yrsAgo": "{count} yrs ago",
+    "moreMemories": "+{count} more memories",
+    "moreMemory": "+{count} more memory"
+  },
+  "actionMenu": {
+    "back": "Back",
+    "add": "Add",
+    "share": "Share",
+    "gallery": "Gallery",
+    "rooms": "Rooms",
+    "map": "Map",
+    "timeline": "Timeline",
+    "interviews": "Interviews"
+  },
+  "layout": {
+    "skipToContent": "Skip to content"
   }
 }
