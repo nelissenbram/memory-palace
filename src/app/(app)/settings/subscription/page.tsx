@@ -25,7 +25,7 @@ interface UsageData {
 }
 
 export default function SubscriptionPage() {
-  const { t } = useTranslation("subscription");
+  const { t, locale } = useTranslation("subscription");
   const nativeApp = isNative();
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
@@ -138,6 +138,32 @@ export default function SubscriptionPage() {
     );
   }
 
+  const featureKeyMap: Record<string, string> = {
+    "2 wings": "feature2wings",
+    "5 rooms": "feature5rooms",
+    "100 memories": "feature100memories",
+    "1 GB storage": "feature1gbStorage",
+    "Basic sharing": "featureBasicSharing",
+    "3 wings": "feature3wings",
+    "10 rooms": "feature10rooms",
+    "500 memories": "feature500memories",
+    "5 GB storage": "feature5gbStorage",
+    "Public sharing": "featurePublicSharing",
+    "AI features": "featureAI",
+    "Unlimited wings": "featureUnlimitedWings",
+    "Unlimited rooms": "featureUnlimitedRooms",
+    "Unlimited memories": "featureUnlimitedMemories",
+    "50 GB storage": "feature50gbStorage",
+    "Legacy features": "featureLegacy",
+    "Priority support": "featurePrioritySupport",
+    "Family sharing": "featureFamilySharing",
+  };
+
+  const translateFeature = (feature: string) => {
+    const key = featureKeyMap[feature];
+    return key ? t(key) : feature;
+  };
+
   const currentPlan = sub ? PLANS[sub.plan] : PLANS.free;
   const limits = currentPlan.limits;
   const isFree = sub?.plan === "free";
@@ -223,7 +249,7 @@ export default function SubscriptionPage() {
               </span>
             </div>
             <p style={{ fontFamily: F.body, fontSize: 14, color: C.muted, margin: 0 }}>
-              {currentPlan.tagline}
+              {sub?.plan === "free" ? t("taglineFree") : sub?.plan === "keeper" ? t("taglineKeeper") : t("taglineGuardian")}
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -247,7 +273,7 @@ export default function SubscriptionPage() {
           <p style={{ fontFamily: F.body, fontSize: 13, color: C.muted, marginBottom: 16 }}>
             {sub.status === "trialing" ? t("trialEnds") : t("nextBilling")}:{" "}
             <strong style={{ color: C.charcoal }}>
-              {new Date(sub.current_period_end).toLocaleDateString("en-GB", {
+              {new Date(sub.current_period_end).toLocaleDateString(locale === "nl" ? "nl-NL" : "en-GB", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -459,7 +485,7 @@ export default function SubscriptionPage() {
                     )}
                   </div>
                   <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>
-                    {plan.features.slice(0, 3).join(" \u2022 ")}
+                    {plan.features.slice(0, 3).map(translateFeature).join(" \u2022 ")}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 16 }}>

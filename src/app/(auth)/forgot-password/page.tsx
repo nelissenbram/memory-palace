@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { resetPassword } from "@/lib/auth/actions";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation("forgotPassword");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -37,11 +39,10 @@ export default function ForgotPasswordPage() {
             margin: "0 0 12px",
           }}
         >
-          Check your email
+          {t("checkEmail")}
         </h2>
         <p style={{ fontSize: 14, color: T.color.muted, lineHeight: 1.6 }}>
-          If an account exists with that email, we&apos;ve sent a password reset
-          link.
+          {t("resetLinkSent")}
         </p>
         <Link
           href="/login"
@@ -54,7 +55,7 @@ export default function ForgotPasswordPage() {
             fontSize: 14,
           }}
         >
-          Back to sign in
+          {t("backToSignIn")}
         </Link>
       </div>
     );
@@ -74,10 +75,10 @@ export default function ForgotPasswordPage() {
             lineHeight: 1.3,
           }}
         >
-          Reset Password
+          {t("title")}
         </h1>
         <p style={{ fontSize: 14, color: T.color.muted, marginTop: 6 }}>
-          Enter your email and we&apos;ll send a reset link
+          {t("subtitle")}
         </p>
       </div>
 
@@ -108,13 +109,13 @@ export default function ForgotPasswordPage() {
           marginBottom: 6,
         }}
       >
-        Email
+        {t("email")}
       </label>
       <input
         name="email"
         type="email"
         required
-        placeholder="you@example.com"
+        placeholder={t("emailPlaceholder")}
         style={{
           width: "100%",
           padding: "13px 16px",
@@ -149,7 +150,7 @@ export default function ForgotPasswordPage() {
           transition: "all 0.2s",
         }}
       >
-        {loading ? "Sending..." : "Send Reset Link"}
+        {loading ? t("sending") : t("sendResetLink")}
       </button>
 
       <p
@@ -165,7 +166,7 @@ export default function ForgotPasswordPage() {
           href="/login"
           style={{ color: T.color.terracotta, textDecoration: "none", fontWeight: 600 }}
         >
-          Back to sign in
+          {t("backToSignIn")}
         </Link>
       </p>
     </form>

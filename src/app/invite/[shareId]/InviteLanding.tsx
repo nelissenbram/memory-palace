@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { acceptInvite } from "@/lib/auth/invite-actions";
 import { createClient } from "@/lib/supabase/client";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const T = {
   color: {
@@ -42,6 +43,7 @@ interface InviteResult {
 
 export default function InviteLanding({ shareId, result }: { shareId: string; result: InviteResult }) {
   const router = useRouter();
+  const { t } = useTranslation("invite");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
@@ -78,29 +80,42 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
     router.push("/palace");
   };
 
+  const getTimeAgo = (dateStr: string): string => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t("justNow");
+    if (mins < 60) return t("minutesAgo", { count: String(mins) });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return t("hoursAgo", { count: String(hours) });
+    const days = Math.floor(hours / 24);
+    if (days === 1) return t("yesterday");
+    if (days < 7) return t("daysAgo", { count: String(days) });
+    return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
   // Error state
   if (result.error) {
     return (
       <div style={pageStyle}>
         <div style={cardStyle}>
           <div style={{ fontSize: 48, marginBottom: 16, textAlign: "center" }}>&#x1F3DB;&#xFE0F;</div>
-          <h1 style={headingStyle}>Invitation Not Found</h1>
+          <h1 style={headingStyle}>{t("notFound")}</h1>
           <p style={bodyTextStyle}>
             {result.error === "Invitation not found"
-              ? "This invitation link may have expired or been removed."
+              ? t("notFoundDesc")
               : result.error}
           </p>
           <a href="/login" style={primaryBtnStyle}>
-            Visit The Memory Palace
+            {t("visitPalace")}
           </a>
         </div>
-        <Footer />
+        <Footer t={t} />
       </div>
     );
   }
 
   const { invite, inviter, room, wing, memoryCount } = result as Required<InviteResult>;
-  const permLabel = invite.permission === "contribute" ? "view & contribute" : "view";
+  const permLabel = invite.permission === "contribute" ? t("viewContribute") : t("view");
   const initial = inviter.name.charAt(0).toUpperCase();
   const timeAgo = getTimeAgo(invite.createdAt);
 
@@ -110,15 +125,15 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
       <div style={pageStyle}>
         <div style={cardStyle}>
           <div style={{ fontSize: 48, marginBottom: 16, textAlign: "center" }}>&#x2728;</div>
-          <h1 style={headingStyle}>Welcome!</h1>
+          <h1 style={headingStyle}>{t("welcome")}</h1>
           <p style={bodyTextStyle}>
-            You now have access to <strong>{room.name}</strong> in {inviter.name}&rsquo;s palace.
+            {t("accessGranted", { room: room.name, name: inviter.name })}
           </p>
           <button onClick={handleGoToPalace} style={primaryBtnStyle}>
-            Enter The Memory Palace
+            {t("enterPalace")}
           </button>
         </div>
-        <Footer />
+        <Footer t={t} />
       </div>
     );
   }
@@ -161,13 +176,13 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
             fontFamily: T.font.body, fontSize: 12, color: "rgba(255,255,255,0.7)",
             textTransform: "uppercase", letterSpacing: 1.5, margin: "0 0 8px",
           }}>
-            You&rsquo;ve been invited
+            {t("youveBeenInvited")}
           </p>
           <h1 style={{
             fontFamily: T.font.display, fontSize: 24, fontWeight: 400,
             color: "#FFFFFF", margin: 0, lineHeight: 1.4,
           }}>
-            {inviter.name} wants to share<br />memories with you
+            {t("wantsToShare", { name: inviter.name })}
           </h1>
         </div>
 
@@ -192,7 +207,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
               {inviter.name}
             </div>
             <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
-              Invited you {timeAgo}
+              {t("invitedYou", { timeAgo })}
             </div>
           </div>
         </div>
@@ -212,7 +227,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
           </div>
           {wing.name && (
             <div style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginBottom: 10 }}>
-              {wing.name} Wing
+              {t("wing", { name: wing.name })}
             </div>
           )}
           <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
@@ -221,7 +236,9 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
               background: `${T.color.terracotta}15`, fontFamily: T.font.body,
               fontSize: 12, color: T.color.terracotta,
             }}>
-              {memoryCount} {memoryCount === 1 ? "memory" : "memories"}
+              {memoryCount === 1
+                ? t("memoryCount", { count: String(memoryCount) })
+                : t("memoriesCount", { count: String(memoryCount) })}
             </span>
             <span style={{
               padding: "4px 12px", borderRadius: 20,
@@ -229,7 +246,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
               fontFamily: T.font.body, fontSize: 12,
               color: invite.permission === "contribute" ? T.color.sage : T.color.walnut,
             }}>
-              Can {permLabel}
+              {t("canPermission", { permission: permLabel })}
             </span>
           </div>
         </div>
@@ -246,7 +263,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
               fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
               textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 6px",
             }}>
-              {inviter.name} says:
+              {t("says", { name: inviter.name })}
             </p>
             <p style={{
               fontFamily: T.font.display, fontSize: 16, fontStyle: "italic",
@@ -285,7 +302,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
             fontFamily: T.font.display, fontSize: 15, fontStyle: "italic",
             color: T.color.walnut, margin: 0, position: "relative", zIndex: 1,
           }}>
-            Memories waiting to be explored...
+            {t("memoriesWaiting")}
           </p>
         </div>
 
@@ -308,49 +325,36 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
               opacity: accepting ? 0.6 : 1,
               cursor: accepting ? "default" : "pointer",
             }}>
-              {accepting ? "Accepting..." : "Accept Invitation"}
+              {accepting ? t("accepting") : t("acceptInvitation")}
             </button>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <a href={`/login?redirect=/invite/${shareId}`} style={primaryBtnStyle}>
-              Accept &amp; Sign In
+              {t("acceptAndSignIn")}
             </a>
             <a href={`/register?redirect=/invite/${shareId}`} style={secondaryBtnStyle}>
-              Accept &amp; Create Account
+              {t("acceptAndCreate")}
             </a>
           </div>
         )}
       </div>
 
-      <Footer />
+      <Footer t={t} />
     </div>
   );
 }
 
-function Footer() {
+function Footer({ t }: { t: (key: string) => string }) {
   return (
     <p style={{
       fontFamily: "'Cormorant Garamond', Georgia, serif",
       fontSize: 14, fontStyle: "italic",
       color: "#9A9183", marginTop: 24, textAlign: "center",
     }}>
-      The Memory Palace &mdash; Embrace Eternity
+      {t("tagline")}
     </p>
   );
-}
-
-function getTimeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days} days ago`;
-  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 // ── Styles ──

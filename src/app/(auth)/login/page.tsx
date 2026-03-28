@@ -15,6 +15,7 @@ export default function LoginPage() {
 
 function LoginContent() {
   const { t } = useTranslation("auth");
+  const { t: tc } = useTranslation("common");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
@@ -93,7 +94,7 @@ function LoginContent() {
   async function handleMfaVerify(code?: string) {
     const fullCode = code || mfaCode.join("");
     if (fullCode.length !== 6) {
-      setError("Please enter all 6 digits.");
+      setError(t("mfaEnterAllDigits"));
       return;
     }
 
@@ -114,7 +115,7 @@ function LoginContent() {
     );
 
     if (verifyResult.error) {
-      setError("Invalid code. Please try again.");
+      setError(t("mfaInvalidCode"));
       setMfaCode(["", "", "", "", "", ""]);
       mfaInputRefs.current[0]?.focus();
       setMfaLoading(false);
@@ -152,7 +153,7 @@ function LoginContent() {
               lineHeight: 1.3,
             }}
           >
-            Verification Required
+            {t("mfaTitle")}
           </h1>
           <p
             style={{
@@ -163,8 +164,7 @@ function LoginContent() {
               fontFamily: T.font.body,
             }}
           >
-            Open your authenticator app and enter<br />
-            the 6-digit code to continue.
+            {t("mfaDescription")}
           </p>
         </div>
 
@@ -231,7 +231,7 @@ function LoginContent() {
           disabled={mfaLoading || mfaCode.some((d) => !d)}
           style={buttonStyle(mfaLoading || mfaCode.some((d) => !d))}
         >
-          {mfaLoading ? "Verifying..." : "Verify Code"}
+          {mfaLoading ? t("mfaVerifying") : t("mfaVerifyCode")}
         </button>
 
         <button
@@ -256,7 +256,7 @@ function LoginContent() {
             transition: "all 0.2s",
           }}
         >
-          Back to login
+          {t("mfaBackToLogin")}
         </button>
       </div>
     );
@@ -336,7 +336,7 @@ function LoginContent() {
 
       <div style={dividerStyle}>
         <span style={dividerLineStyle} />
-        <span style={dividerTextStyle}>or continue with</span>
+        <span style={dividerTextStyle}>{t("orContinueWith")}</span>
         <span style={dividerLineStyle} />
       </div>
 
@@ -346,7 +346,7 @@ function LoginContent() {
         style={googleButtonStyle}
       >
         <GoogleIcon />
-        Sign in with Google
+        {t("signInWithGoogle")}
       </button>
 
       <button
@@ -355,7 +355,7 @@ function LoginContent() {
         style={appleButtonStyle}
       >
         <AppleIcon />
-        Sign in with Apple
+        {t("signInWithApple")}
       </button>
 
       <p
@@ -383,11 +383,11 @@ function LoginContent() {
         }}
       >
         <Link href="/privacy" style={{ color: T.color.muted, textDecoration: "none" }}>
-          Privacy Policy
+          {tc("privacyPolicy")}
         </Link>
         {" \u00B7 "}
         <Link href="/terms" style={{ color: T.color.muted, textDecoration: "none" }}>
-          Terms of Service
+          {tc("termsOfService")}
         </Link>
       </p>
     </form>

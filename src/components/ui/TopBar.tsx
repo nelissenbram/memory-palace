@@ -159,7 +159,7 @@ export default function TopBar({crumbs}: TopBarProps){
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                   textDecoration: "none",
                 }}>
-                  {"\u{1F333}"} Family Tree
+                  {"\u{1F333}"} {t("familyTree")}
                 </a>
                 <a href="/settings" onClick={() => setMenuOpen(false)} style={{
                   flex: 1, padding: "10px 12px", borderRadius: 10, minHeight: 44,
@@ -267,7 +267,7 @@ export default function TopBar({crumbs}: TopBarProps){
 
 const USER_MENU_ITEMS = [
   { href: "/settings/profile", labelKey: "profile", icon: "\u{1F464}" },
-  { href: "/family-tree", labelKey: "Family Tree", icon: "\u{1F333}" },
+  { href: "/family-tree", labelKey: "familyTree", icon: "\u{1F333}" },
   { href: "/settings/family", labelKey: "family", icon: "\u{1F46A}" },
   { href: "/settings/subscription", labelKey: "subscription", icon: "\u2B50" },
   { href: "/settings/connections", labelKey: "connections", icon: "\u{1F517}" },
@@ -483,6 +483,7 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
   activeWing: string | null;
   switchWing: (id: string) => void;
 }) {
+  const { t: tc } = useTranslation("common");
   const [wingsOpen, setWingsOpen] = useState(false);
   const [expandedWing, setExpandedWing] = useState<string | null>(null);
   const wingsRef = useRef<HTMLDivElement>(null);
@@ -517,7 +518,7 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
         }}
       >
         <span style={{ fontSize: 12 }}>{activeWingData ? activeWingData.icon : "\u{1F3DB}\uFE0F"}</span>
-        {activeWingData ? activeWingData.name : "Palace Map"}
+        {activeWingData ? activeWingData.name : tc("palaceMap")}
         <span style={{ fontSize: 10, marginLeft: 2, transition: "transform .2s", transform: wingsOpen ? "rotate(180deg)" : "none" }}>{"\u25BE"}</span>
       </button>
 

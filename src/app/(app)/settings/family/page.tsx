@@ -17,13 +17,15 @@ import {
   getWingsSharedWithMe,
 } from "@/lib/auth/sharing-actions";
 
-const WING_OPTIONS = [
-  { id: "family", label: "Family" },
-  { id: "travel", label: "Travel" },
-  { id: "childhood", label: "Childhood" },
-  { id: "career", label: "Career" },
-  { id: "creativity", label: "Creativity" },
-];
+const WING_OPTION_IDS = ["family", "travel", "childhood", "career", "creativity"] as const;
+
+const WING_LABEL_KEYS: Record<string, string> = {
+  family: "wingFamily",
+  travel: "wingTravel",
+  childhood: "wingChildhood",
+  career: "wingCareer",
+  creativity: "wingCreativity",
+};
 
 interface WingShare {
   id: string;
@@ -55,6 +57,7 @@ interface FamilyGroup {
 
 export default function FamilyPage() {
   const { t } = useTranslation("familySettings");
+  const { t: tp } = useTranslation("palace");
   const [group, setGroup] = useState<FamilyGroup | null>(null);
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [userRole, setUserRole] = useState<string>("");
@@ -166,7 +169,7 @@ export default function FamilyPage() {
     if (result.error) {
       showToast(result.error, "error");
     } else {
-      showToast(`Wing shared with ${shareMemberEmail.trim()}`, "success");
+      showToast(t("wingSharedSuccess", { email: shareMemberEmail.trim() }), "success");
       setShareMemberEmail("");
       loadWingShares();
     }
@@ -177,7 +180,7 @@ export default function FamilyPage() {
     if (result.error) {
       showToast(result.error, "error");
     } else {
-      showToast("Wing share removed", "success");
+      showToast(t("wingShareRemoved"), "success");
       loadWingShares();
     }
   };
@@ -193,7 +196,8 @@ export default function FamilyPage() {
   };
 
   const wingLabel = (wingId: string) => {
-    return WING_OPTIONS.find((w) => w.id === wingId)?.label || wingId;
+    const key = WING_LABEL_KEYS[wingId];
+    return key ? tp(key) : wingId;
   };
 
   if (loading) {
@@ -491,7 +495,7 @@ export default function FamilyPage() {
                           fontWeight: 600,
                           textTransform: "capitalize",
                         }}>
-                          {member.role}
+                          {member.role === "owner" ? t("roleOwner") : member.role === "admin" ? t("roleAdmin") : t("roleMember")}
                         </span>
                         <span style={{
                           color: member.status === "active" ? T.color.sage : T.color.muted,
@@ -548,12 +552,12 @@ export default function FamilyPage() {
                   fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
                   color: T.color.charcoal, margin: 0,
                 }}>
-                  Wing Sharing
+                  {t("wingSharing")}
                 </h3>
                 <div style={{
                   fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginTop: 2,
                 }}>
-                  Share entire wings of your palace with family members
+                  {t("wingSharingDesc")}
                 </div>
               </div>
             </div>
@@ -567,34 +571,34 @@ export default function FamilyPage() {
                 border: `1px solid ${T.color.cream}`,
                 marginBottom: 24,
               }}>
-                <label style={labelStyle}>Share a Wing</label>
+                <label style={labelStyle}>{t("shareAWing")}</label>
 
                 {/* Wing selector */}
                 <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-                  {WING_OPTIONS.map((wing) => (
+                  {WING_OPTION_IDS.map((wingId) => (
                     <button
-                      key={wing.id}
-                      onClick={() => setShareWingId(wing.id)}
+                      key={wingId}
+                      onClick={() => setShareWingId(wingId)}
                       style={{
                         padding: "8px 16px",
                         borderRadius: 8,
-                        border: `1px solid ${shareWingId === wing.id ? T.color.sage + "60" : T.color.cream}`,
-                        background: shareWingId === wing.id ? `${T.color.sage}15` : T.color.white,
+                        border: `1px solid ${shareWingId === wingId ? T.color.sage + "60" : T.color.cream}`,
+                        background: shareWingId === wingId ? `${T.color.sage}15` : T.color.white,
                         cursor: "pointer",
                         fontFamily: T.font.body,
                         fontSize: 13,
-                        color: shareWingId === wing.id ? T.color.sage : T.color.muted,
-                        fontWeight: shareWingId === wing.id ? 600 : 400,
+                        color: shareWingId === wingId ? T.color.sage : T.color.muted,
+                        fontWeight: shareWingId === wingId ? 600 : 400,
                         transition: "all .15s",
                       }}
                     >
-                      {wing.label}
+                      {tp(WING_LABEL_KEYS[wingId])}
                     </button>
                   ))}
                 </div>
 
                 {/* Family member selector */}
-                <label style={{ ...labelStyle, marginTop: 8 }}>Family Member</label>
+                <label style={{ ...labelStyle, marginTop: 8 }}>{t("familyMember")}</label>
                 <select
                   value={shareMemberEmail}
                   onChange={(e) => setShareMemberEmail(e.target.value)}
@@ -605,7 +609,7 @@ export default function FamilyPage() {
                     appearance: "auto" as React.CSSProperties["appearance"],
                   }}
                 >
-                  <option value="">Select a family member...</option>
+                  <option value="">{t("selectMember")}</option>
                   {activeMembers
                     .filter((m) => m.role !== "owner" || m.user_id !== group?.created_by)
                     .map((m) => (
@@ -614,7 +618,7 @@ export default function FamilyPage() {
                 </select>
 
                 {/* Permission selector */}
-                <label style={{ ...labelStyle, marginTop: 4 }}>Permission</label>
+                <label style={{ ...labelStyle, marginTop: 4 }}>{t("permission")}</label>
                 <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                   {(["view", "contribute"] as const).map((perm) => (
                     <button
@@ -633,7 +637,7 @@ export default function FamilyPage() {
                         transition: "all .15s",
                       }}
                     >
-                      {perm === "view" ? "View only" : "Can contribute"}
+                      {perm === "view" ? t("viewOnly") : t("canContribute")}
                     </button>
                   ))}
                 </div>
@@ -656,7 +660,7 @@ export default function FamilyPage() {
                     transition: "all .15s",
                   }}
                 >
-                  {sharingWing ? "Sharing..." : "Share Wing"}
+                  {sharingWing ? t("sharing") : t("shareWing")}
                 </button>
               </div>
             )}
@@ -673,7 +677,7 @@ export default function FamilyPage() {
                   fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
                   margin: 0, lineHeight: 1.5,
                 }}>
-                  Invite family members to your group above to start sharing wings.
+                  {t("inviteToShare")}
                 </p>
               </div>
             )}
@@ -681,7 +685,7 @@ export default function FamilyPage() {
             {/* My shared wings */}
             {myWingShares.length > 0 && (
               <>
-                <label style={labelStyle}>Wings I&apos;ve Shared</label>
+                <label style={labelStyle}>{t("wingsShared")}</label>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
                   {myWingShares.map((share) => (
                     <div key={share.id} style={{
@@ -713,7 +717,7 @@ export default function FamilyPage() {
                           padding: "2px 8px", borderRadius: 4,
                           background: `${T.color.sandstone}30`,
                         }}>
-                          {share.permission}
+                          {share.permission === "view" ? t("viewOnly") : t("canContribute")}
                         </span>
                       </div>
                       <button
@@ -740,7 +744,7 @@ export default function FamilyPage() {
             {/* Shared with me */}
             {sharedWithMe.length > 0 && (
               <>
-                <label style={labelStyle}>Shared With Me</label>
+                <label style={labelStyle}>{t("sharedWithMe")}</label>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {sharedWithMe.map((share) => (
                     <div key={share.id} style={{
@@ -765,14 +769,14 @@ export default function FamilyPage() {
                       <span style={{
                         fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal,
                       }}>
-                        from {share.owner_email}
+                        {t("from")} {share.owner_email}
                       </span>
                       <span style={{
                         fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
                         padding: "2px 8px", borderRadius: 4,
                         background: `${T.color.sandstone}30`,
                       }}>
-                        {share.permission}
+                        {share.permission === "view" ? t("viewOnly") : t("canContribute")}
                       </span>
                     </div>
                   ))}

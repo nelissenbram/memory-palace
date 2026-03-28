@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signUp } from "@/lib/auth/actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 
 export default function RegisterPage() {
@@ -12,6 +13,8 @@ export default function RegisterPage() {
 }
 
 function RegisterContent() {
+  const { t } = useTranslation("register");
+  const { t: tc } = useTranslation("common");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,12 +31,12 @@ function RegisterContent() {
     const confirm = formData.get("confirmPassword") as string;
 
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError(t("passwordTooShort"));
       setLoading(false);
       return;
     }
     if (password !== confirm) {
-      setError("Passwords do not match");
+      setError(t("passwordsMismatch"));
       setLoading(false);
       return;
     }
@@ -61,14 +64,13 @@ function RegisterContent() {
             margin: "0 0 12px",
           }}
         >
-          Check your email
+          {t("checkEmail")}
         </h2>
         <p style={{ fontSize: 14, color: T.color.muted, lineHeight: 1.6 }}>
-          We&apos;ve sent a confirmation link to your email address. Click the
-          link to activate your Memory Palace.
+          {t("confirmationSent")}
           {redirect && (
             <span style={{ display: "block", marginTop: 8, color: T.color.terracotta }}>
-              After confirming, you&apos;ll be taken to the shared room.
+              {t("afterConfirming")}
             </span>
           )}
         </p>
@@ -83,7 +85,7 @@ function RegisterContent() {
             fontSize: 14,
           }}
         >
-          Back to sign in
+          {t("backToSignIn")}
         </Link>
       </div>
     );
@@ -103,10 +105,10 @@ function RegisterContent() {
             lineHeight: 1.3,
           }}
         >
-          Build Your Palace
+          {t("title")}
         </h1>
         <p style={{ fontSize: 14, color: T.color.muted, marginTop: 6 }}>
-          Create an account to start preserving memories
+          {t("subtitle")}
         </p>
       </div>
 
@@ -126,48 +128,48 @@ function RegisterContent() {
         </div>
       )}
 
-      <label style={labelStyle}>Name</label>
+      <label style={labelStyle}>{t("name")}</label>
       <input
         name="displayName"
         type="text"
-        placeholder="Your name"
+        placeholder={t("namePlaceholder")}
         style={inputStyle}
       />
 
-      <label style={{ ...labelStyle, marginTop: 14 }}>Email</label>
+      <label style={{ ...labelStyle, marginTop: 14 }}>{t("email")}</label>
       <input
         name="email"
         type="email"
         required
-        placeholder="you@example.com"
+        placeholder={t("emailPlaceholder")}
         style={inputStyle}
       />
 
-      <label style={{ ...labelStyle, marginTop: 14 }}>Password</label>
+      <label style={{ ...labelStyle, marginTop: 14 }}>{t("password")}</label>
       <input
         name="password"
         type="password"
         required
-        placeholder="At least 6 characters"
+        placeholder={t("passwordPlaceholder")}
         style={inputStyle}
       />
 
-      <label style={{ ...labelStyle, marginTop: 14 }}>Confirm password</label>
+      <label style={{ ...labelStyle, marginTop: 14 }}>{t("confirmPassword")}</label>
       <input
         name="confirmPassword"
         type="password"
         required
-        placeholder="Repeat your password"
+        placeholder={t("confirmPasswordPlaceholder")}
         style={inputStyle}
       />
 
       <button type="submit" disabled={loading} style={buttonStyle(loading)}>
-        {loading ? "Creating account..." : "Create Account"}
+        {loading ? t("creating") : t("createAccount")}
       </button>
 
       <div style={dividerStyle}>
         <span style={dividerLineStyle} />
-        <span style={dividerTextStyle}>or sign up with</span>
+        <span style={dividerTextStyle}>{t("orSignUpWith")}</span>
         <span style={dividerLineStyle} />
       </div>
 
@@ -177,7 +179,7 @@ function RegisterContent() {
         style={googleButtonStyle}
       >
         <GoogleIcon />
-        Sign up with Google
+        {t("signUpWithGoogle")}
       </button>
 
       <button
@@ -186,7 +188,7 @@ function RegisterContent() {
         style={appleButtonStyle}
       >
         <AppleIcon />
-        Sign up with Apple
+        {t("signUpWithApple")}
       </button>
 
       <p
@@ -198,12 +200,12 @@ function RegisterContent() {
           marginBottom: 0,
         }}
       >
-        Already have an account?{" "}
+        {t("alreadyHaveAccount")}{" "}
         <Link
           href="/login"
           style={{ color: T.color.terracotta, textDecoration: "none", fontWeight: 600 }}
         >
-          Sign in
+          {t("signIn")}
         </Link>
       </p>
 
@@ -217,13 +219,13 @@ function RegisterContent() {
           lineHeight: 1.6,
         }}
       >
-        By creating an account, you agree to our{" "}
+        {t("agreeTerms")}{" "}
         <Link href="/terms" style={{ color: T.color.terracotta, textDecoration: "none" }}>
-          Terms of Service
+          {tc("termsOfService")}
         </Link>{" "}
-        and{" "}
+        {t("and")}{" "}
         <Link href="/privacy" style={{ color: T.color.terracotta, textDecoration: "none" }}>
-          Privacy Policy
+          {tc("privacyPolicy")}
         </Link>
         .
       </p>

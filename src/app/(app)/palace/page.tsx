@@ -1,9 +1,11 @@
 "use client";
 import dynamic from "next/dynamic";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
-const MemoryPalace = dynamic(() => import("@/components/MemoryPalace"), {
-  ssr: false,
-  loading: () => (
+function PalaceLoading() {
+  const { t } = useTranslation("palace");
+  const { t: tLanding } = useTranslation("landing");
+  return (
     <div
       style={{
         width: "100vw",
@@ -19,7 +21,7 @@ const MemoryPalace = dynamic(() => import("@/components/MemoryPalace"), {
     >
       <div style={{ fontSize: 48, marginBottom: 20 }}>🏛️</div>
       <div style={{ fontSize: 28, fontWeight: 300, color: "#2C2C2A" }}>
-        The Memory Palace
+        {tLanding("title")}
       </div>
       <div
         style={{
@@ -29,10 +31,15 @@ const MemoryPalace = dynamic(() => import("@/components/MemoryPalace"), {
           fontFamily: "'Source Sans 3', system-ui, sans-serif",
         }}
       >
-        Preparing your palace...
+        {t("preparingPalace")}
       </div>
     </div>
-  ),
+  );
+}
+
+const MemoryPalace = dynamic(() => import("@/components/MemoryPalace"), {
+  ssr: false,
+  loading: () => <PalaceLoading />,
 });
 
 export default function PalacePage() {

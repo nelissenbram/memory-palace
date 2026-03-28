@@ -1,9 +1,11 @@
 "use client";
 
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useOfflineSync } from "@/lib/hooks/useOfflineSync";
 
 export default function OfflineBanner() {
+  const { t } = useTranslation("offlineBanner");
   const { isOnline, isSyncing, syncProgress, queueCount } = useOfflineSync();
 
   if (isOnline && !isSyncing && queueCount === 0) return null;
@@ -50,10 +52,10 @@ export default function OfflineBanner() {
               background: "#E8A87C",
             }}
           />
-          You&apos;re offline &mdash; changes will sync when reconnected
+          {t("offline")}
           {queueCount > 0 && (
             <span style={{ opacity: 0.7, fontSize: 11 }}>
-              ({queueCount} pending)
+              ({t("pending", { count: String(queueCount) })})
             </span>
           )}
         </>
@@ -73,7 +75,7 @@ export default function OfflineBanner() {
             }}
           />
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-          Syncing memories... {syncProgress.done}/{syncProgress.total}
+          {t("syncing", { done: String(syncProgress.done), total: String(syncProgress.total) })}
         </>
       )}
 
@@ -88,7 +90,7 @@ export default function OfflineBanner() {
               background: "#E8A87C",
             }}
           />
-          {queueCount} memory{queueCount > 1 ? "ies" : ""} waiting to sync
+          {queueCount > 1 ? t("waitingPlural", { count: String(queueCount) }) : t("waitingSingular", { count: String(queueCount) })}
         </>
       )}
     </div>

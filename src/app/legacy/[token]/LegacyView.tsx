@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/lib/hooks/useTranslation";
+
 interface Memory {
   id: string;
   title: string;
@@ -35,15 +37,16 @@ interface LegacyData {
 }
 
 export default function LegacyView({ data }: { data: LegacyData }) {
+  const { t } = useTranslation("legacyView");
+
   if (data.error === "not_found" || data.error === "not_configured") {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
           <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
-          <h1 style={styles.title}>Link Not Found</h1>
+          <h1 style={styles.title}>{t("linkNotFound")}</h1>
           <p style={styles.subtitle}>
-            This legacy link is invalid or has already been used. If you believe
-            this is an error, please contact the person who shared it with you.
+            {t("linkNotFoundDesc")}
           </p>
         </div>
       </div>
@@ -55,10 +58,9 @@ export default function LegacyView({ data }: { data: LegacyData }) {
       <div style={styles.container}>
         <div style={styles.card}>
           <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
-          <h1 style={styles.title}>Link Expired</h1>
+          <h1 style={styles.title}>{t("linkExpired")}</h1>
           <p style={styles.subtitle}>
-            This legacy access link has expired. Access links are valid for 90
-            days after delivery.
+            {t("linkExpiredDesc")}
           </p>
         </div>
       </div>
@@ -102,10 +104,10 @@ export default function LegacyView({ data }: { data: LegacyData }) {
       <header style={styles.header}>
         <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
         <h1 style={styles.headerTitle}>
-          Memories from {senderName}
+          {t("memoriesFrom", { name: senderName })}
         </h1>
         <p style={styles.headerSubtitle}>
-          Dear {contactName}, {senderName} wanted you to have these memories.
+          {t("greeting", { contact: contactName, sender: senderName })}
         </p>
       </header>
 
@@ -197,7 +199,7 @@ export default function LegacyView({ data }: { data: LegacyData }) {
       {memories.length === 0 && (
         <div style={styles.card}>
           <p style={styles.subtitle}>
-            No shared memories are available at this time.
+            {t("noMemories")}
           </p>
         </div>
       )}
@@ -205,11 +207,11 @@ export default function LegacyView({ data }: { data: LegacyData }) {
       {/* Footer */}
       <footer style={styles.footer}>
         <p style={styles.footerText}>
-          The Memory Palace &mdash; Embrace Eternity
+          {t("tagline")}
         </p>
         {expiresDate && (
           <p style={styles.footerExpiry}>
-            This link expires on {expiresDate}
+            {t("expiresOn", { date: expiresDate })}
           </p>
         )}
       </footer>

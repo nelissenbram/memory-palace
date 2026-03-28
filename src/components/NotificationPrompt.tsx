@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { usePushNotificationStore } from "@/lib/stores/pushNotificationStore";
 
 /**
@@ -12,6 +13,7 @@ import { usePushNotificationStore } from "@/lib/stores/pushNotificationStore";
  * - Auto-dismisses after interaction
  */
 export default function NotificationPrompt() {
+  const { t } = useTranslation("notificationPrompt");
   const { prefs, visitCount, init, incrementVisit, setPrefs } = usePushNotificationStore();
   const [show, setShow] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -35,12 +37,12 @@ export default function NotificationPrompt() {
     // Don't show if already granted or denied
     if (Notification.permission !== "default") return;
 
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setShow(true);
       requestAnimationFrame(() => setVisible(true));
     }, 3000); // Wait 3s after page load
 
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [prefs.pushEnabled, visitCount]);
 
   const handleEnable = async () => {
@@ -141,7 +143,7 @@ export default function NotificationPrompt() {
                 margin: "0 0 4px",
               }}
             >
-              Stay connected to your memories
+              {t("title")}
             </h4>
             <p
               style={{
@@ -152,8 +154,7 @@ export default function NotificationPrompt() {
                 lineHeight: 1.5,
               }}
             >
-              Get gentle reminders for &ldquo;On This Day&rdquo; anniversaries and
-              time capsule reveals.
+              {t("description")}
             </p>
           </div>
         </div>
@@ -179,7 +180,7 @@ export default function NotificationPrompt() {
               cursor: "pointer",
             }}
           >
-            Not now
+            {t("notNow")}
           </button>
           <button
             onClick={handleEnable}
@@ -196,7 +197,7 @@ export default function NotificationPrompt() {
               boxShadow: `0 2px 8px ${T.color.terracotta}40`,
             }}
           >
-            Enable notifications
+            {t("enable")}
           </button>
         </div>
       </div>

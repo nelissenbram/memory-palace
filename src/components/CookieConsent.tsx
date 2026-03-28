@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const F = T.font;
 const C = T.color;
@@ -11,6 +12,7 @@ const STORAGE_KEY = "mp_cookie_consent";
 type ConsentState = "undecided" | "accepted" | "rejected";
 
 export default function CookieConsent() {
+  const { t } = useTranslation("cookieConsent");
   const [consent, setConsent] = useState<ConsentState>("accepted"); // default to hide flash
   const [showManage, setShowManage] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
@@ -86,7 +88,7 @@ export default function CookieConsent() {
                 flex: "1 1 400px",
               }}
             >
-              We use cookies to improve your experience and analyze usage.{" "}
+              {t("message")}{" "}
               <Link
                 href="/privacy"
                 style={{
@@ -95,7 +97,7 @@ export default function CookieConsent() {
                   textUnderlineOffset: "2px",
                 }}
               >
-                Privacy Policy
+                {t("privacyPolicy")}
               </Link>
             </p>
             <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
@@ -114,7 +116,7 @@ export default function CookieConsent() {
                   transition: "border-color 0.2s",
                 }}
               >
-                Manage
+                {t("manage")}
               </button>
               <button
                 onClick={handleAccept}
@@ -131,7 +133,7 @@ export default function CookieConsent() {
                   transition: "opacity 0.2s",
                 }}
               >
-                Accept
+                {t("accept")}
               </button>
             </div>
           </div>
@@ -147,7 +149,7 @@ export default function CookieConsent() {
                 marginBottom: 16,
               }}
             >
-              Cookie Preferences
+              {t("preferences")}
             </h3>
 
             {/* Essential */}
@@ -169,10 +171,10 @@ export default function CookieConsent() {
                     margin: "0 0 2px",
                   }}
                 >
-                  Essential Cookies
+                  {t("essentialCookies")}
                 </p>
                 <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
-                  Required for authentication and core functionality.
+                  {t("essentialDescription")}
                 </p>
               </div>
               <span
@@ -182,7 +184,7 @@ export default function CookieConsent() {
                   fontStyle: "italic",
                 }}
               >
-                Always on
+                {t("alwaysOn")}
               </span>
             </div>
 
@@ -204,10 +206,10 @@ export default function CookieConsent() {
                     margin: "0 0 2px",
                   }}
                 >
-                  Analytics Cookies
+                  {t("analyticsCookies")}
                 </p>
                 <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
-                  Help us understand usage patterns via PostHog (anonymized).
+                  {t("analyticsDescription")}
                 </p>
               </div>
               <button
@@ -261,7 +263,7 @@ export default function CookieConsent() {
                   padding: "8px 12px",
                 }}
               >
-                Back
+                {t("back")}
               </button>
               <button
                 onClick={handleSavePreferences}
@@ -277,7 +279,7 @@ export default function CookieConsent() {
                   cursor: "pointer",
                 }}
               >
-                Save Preferences
+                {t("savePreferences")}
               </button>
             </div>
           </div>

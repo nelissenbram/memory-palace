@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -9,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function PWAInstallBanner() {
+  const { t } = useTranslation("pwa");
   const [show, setShow] = useState(false);
   const [hasPrompt, setHasPrompt] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
@@ -104,12 +106,12 @@ export default function PWAInstallBanner() {
                 fontFamily: T.font.display, fontSize: 16, fontWeight: 600,
                 color: "#FFFFFF", marginBottom: 2,
               }}>
-                The Memory Palace
+                {t("title")}
               </div>
               <div style={{
                 fontFamily: T.font.body, fontSize: 12, color: "#BBAEA0",
               }}>
-                Install as app on your phone
+                {t("subtitle")}
               </div>
             </div>
 
@@ -128,7 +130,7 @@ export default function PWAInstallBanner() {
               flexShrink: 0,
               boxShadow: `0 4px 16px ${T.color.terracotta}60`,
             }}>
-              Install
+              {t("install")}
             </button>
 
             {/* Small dismiss X */}
@@ -161,20 +163,20 @@ export default function PWAInstallBanner() {
             }}>
               {isIOS ? (
                 <>
-                  <strong style={{ color: "#FFF" }}>On iPhone/iPad:</strong><br/>
-                  1. Tap the <span style={{
+                  <strong style={{ color: "#FFF" }}>{t("iosTitle")}</strong><br/>
+                  {t("iosStep1a")} <span style={{
                     display: "inline-flex", alignItems: "center",
                     background: "rgba(255,255,255,.15)", borderRadius: 4,
                     padding: "1px 6px", margin: "0 3px", fontSize: 15,
-                  }}>{"\u{1F4E4}"}</span> Share button at the bottom<br/>
-                  2. Scroll down and tap <strong style={{ color: "#FFF" }}>&quot;Add to Home Screen&quot;</strong><br/>
-                  3. Tap <strong style={{ color: "#FFF" }}>Add</strong>
+                  }}>{"\u{1F4E4}"}</span> {t("iosStep1b")}<br/>
+                  {t("iosStep2a")} <strong style={{ color: "#FFF" }}>{t("iosStep2b")}</strong><br/>
+                  {t("iosStep3a")} <strong style={{ color: "#FFF" }}>{t("iosStep3b")}</strong>
                 </>
               ) : (
                 <>
-                  <strong style={{ color: "#FFF" }}>On Android:</strong><br/>
-                  1. Tap the <strong style={{ color: "#FFF" }}>{"\u22EE"}</strong> menu (top-right corner)<br/>
-                  2. Tap <strong style={{ color: "#FFF" }}>&quot;Install app&quot;</strong> or <strong style={{ color: "#FFF" }}>&quot;Add to Home Screen&quot;</strong>
+                  <strong style={{ color: "#FFF" }}>{t("androidTitle")}</strong><br/>
+                  {t("androidStep1a")} <strong style={{ color: "#FFF" }}>{"\u22EE"}</strong> {t("androidStep1b")}<br/>
+                  {t("androidStep2a")} <strong style={{ color: "#FFF" }}>{t("androidStep2b")}</strong>
                 </>
               )}
             </div>

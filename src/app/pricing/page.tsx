@@ -7,6 +7,7 @@ import { T } from "@/lib/theme";
 import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { isNative } from "@/lib/native/platform";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const F = T.font;
 const C = T.color;
@@ -16,6 +17,8 @@ export default function PricingPage() {
   const isSmall = useIsSmall();
   const [loading, setLoading] = useState<PlanId | null>(null);
   const router = useRouter();
+  const { t } = useTranslation("pricing");
+  const { t: ts } = useTranslation("subscription");
 
   // Redirect away from pricing page in native app — Google Play forbids
   // directing users to external payment flows
@@ -46,13 +49,55 @@ export default function PricingPage() {
         // Not logged in, redirect to register
         window.location.href = "/register";
       } else {
-        alert(data.error || "Something went wrong. Please try again.");
+        alert(data.error || t("somethingWentWrong"));
       }
     } catch {
-      alert("Could not connect to payment service. Please try again.");
+      alert(t("couldNotConnect"));
     }
     setLoading(null);
   };
+
+  // Map plan features to translation keys
+  const featureKeyMap: Record<string, string> = {
+    "2 wings": "feature2wings",
+    "3 wings": "feature3wings",
+    "Unlimited wings": "featureUnlimitedWings",
+    "5 rooms": "feature5rooms",
+    "10 rooms": "feature10rooms",
+    "Unlimited rooms": "featureUnlimitedRooms",
+    "100 memories": "feature100memories",
+    "500 memories": "feature500memories",
+    "Unlimited memories": "featureUnlimitedMemories",
+    "1 GB storage": "feature1gbStorage",
+    "5 GB storage": "feature5gbStorage",
+    "50 GB storage": "feature50gbStorage",
+    "Basic sharing": "featureBasicSharing",
+    "Public sharing": "featurePublicSharing",
+    "AI features": "featureAiFeatures",
+    "Legacy features": "featureLegacy",
+    "Priority support": "featurePrioritySupport",
+    "Family sharing": "featureFamilySharing",
+  };
+
+  // Map plan names to translation keys
+  const planNameMap: Record<string, string> = {
+    "Free": "planFree",
+    "Keeper": "planKeeper",
+    "Guardian": "planGuardian",
+  };
+
+  const planTaglineMap: Record<string, string> = {
+    "Free": "taglineFree",
+    "Keeper": "taglineKeeper",
+    "Guardian": "taglineGuardian",
+  };
+
+  const faqs = [
+    { q: t("faq1q"), a: t("faq1a") },
+    { q: t("faq2q"), a: t("faq2a") },
+    { q: t("faq3q"), a: t("faq3a") },
+    { q: t("faq4q"), a: t("faq4a") },
+  ];
 
   return (
     <div
@@ -95,7 +140,7 @@ export default function PricingPage() {
               letterSpacing: "-0.3px",
             }}
           >
-            The Memory Palace
+            {t("title")}
           </span>
         </Link>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
@@ -110,7 +155,7 @@ export default function PricingPage() {
                 padding: "8px 16px",
               }}
             >
-              Sign In
+              {t("signIn")}
             </Link>
           )}
           <Link
@@ -126,7 +171,7 @@ export default function PricingPage() {
               background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
             }}
           >
-            Get Started
+            {t("getStarted")}
           </Link>
         </div>
       </nav>
@@ -149,7 +194,7 @@ export default function PricingPage() {
             marginBottom: 16,
           }}
         >
-          Simple, Honest Pricing
+          {t("headline")}
         </p>
         <h1
           style={{
@@ -161,10 +206,7 @@ export default function PricingPage() {
             marginBottom: 16,
           }}
         >
-          Choose your{" "}
-          <span style={{ fontStyle: "italic", color: C.terracotta }}>
-            legacy plan
-          </span>
+          {t("subheadline")}
         </h1>
         <p
           style={{
@@ -175,8 +217,7 @@ export default function PricingPage() {
             lineHeight: 1.6,
           }}
         >
-          Start free. Upgrade when you need more space for your memories. All
-          paid plans include a 14-day free trial.
+          {t("description")}
         </p>
       </section>
 
@@ -239,7 +280,7 @@ export default function PricingPage() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    Most Popular
+                    {t("mostPopular")}
                   </div>
                 )}
 
@@ -254,7 +295,7 @@ export default function PricingPage() {
                     marginTop: isHighlighted ? 8 : 0,
                   }}
                 >
-                  {plan.name}
+                  {planNameMap[plan.name] ? ts(planNameMap[plan.name]) : plan.name}
                 </h3>
                 <p
                   style={{
@@ -264,7 +305,7 @@ export default function PricingPage() {
                     lineHeight: 1.5,
                   }}
                 >
-                  {plan.tagline}
+                  {planTaglineMap[plan.name] ? ts(planTaglineMap[plan.name]) : plan.tagline}
                 </p>
 
                 {/* Price */}
@@ -285,7 +326,7 @@ export default function PricingPage() {
                         color: C.charcoal,
                       }}
                     >
-                      Free
+                      {t("free")}
                     </span>
                   ) : (
                     <>
@@ -305,7 +346,7 @@ export default function PricingPage() {
                           color: C.muted,
                         }}
                       >
-                        /month
+                        {t("perMonth")}
                       </span>
                     </>
                   )}
@@ -336,10 +377,10 @@ export default function PricingPage() {
                   }}
                 >
                   {loading === planId
-                    ? "Redirecting..."
+                    ? t("redirecting")
                     : isFree
-                      ? "Get Started"
-                      : "Start Free Trial"}
+                      ? t("getStartedBtn")
+                      : t("startFreeTrial")}
                 </button>
 
                 {/* Features */}
@@ -380,7 +421,7 @@ export default function PricingPage() {
                       >
                         {"\u2713"}
                       </span>
-                      {feature}
+                      {featureKeyMap[feature] ? ts(featureKeyMap[feature]) : feature}
                     </div>
                   ))}
                 </div>
@@ -407,7 +448,7 @@ export default function PricingPage() {
             marginBottom: 12,
           }}
         >
-          Questions? We have answers.
+          {t("faqTitle")}
         </h2>
         <div
           style={{
@@ -419,24 +460,7 @@ export default function PricingPage() {
             textAlign: "left",
           }}
         >
-          {[
-            {
-              q: "Can I cancel anytime?",
-              a: "Absolutely. No lock-in, no penalties. Cancel from your account settings and keep access until the end of your billing period.",
-            },
-            {
-              q: "What happens to my memories if I downgrade?",
-              a: "Your memories are never deleted. You will just not be able to add new ones until you are within the free plan limits.",
-            },
-            {
-              q: "Is my data safe?",
-              a: "Yes. All data is stored on EU-hosted infrastructure with encryption at rest and in transit. We are fully GDPR compliant.",
-            },
-            {
-              q: "Do you offer family plans?",
-              a: "The Guardian plan includes family sharing, allowing up to 5 family members to contribute to your palace.",
-            },
-          ].map((item) => (
+          {faqs.map((item) => (
             <div
               key={item.q}
               style={{
@@ -482,8 +506,7 @@ export default function PricingPage() {
         }}
       >
         <p style={{ fontSize: 12, color: C.muted }}>
-          &copy; {new Date().getFullYear()} The Memory Palace. Preserve your
-          memories for eternity.
+          &copy; {new Date().getFullYear()} {t("copyright")}
         </p>
       </footer>
     </div>

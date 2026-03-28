@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import {
   getPersons,
   getRelationships,
@@ -483,6 +484,7 @@ function TreeNodeCard({
 /* ──────────────────────────────────── Main page ── */
 
 export default function FamilyTreePage() {
+  const { t } = useTranslation("familyTree");
   const [persons, setPersons] = useState<FamilyTreePerson[]>([]);
   const [relationships, setRelationships] = useState<FamilyTreeRelationship[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<FamilyTreePerson | null>(null);
@@ -743,7 +745,7 @@ export default function FamilyTreePage() {
                 margin: 0,
               }}
             >
-              Family Tree
+              {t("title")}
             </h1>
             <p
               style={{
@@ -753,7 +755,7 @@ export default function FamilyTreePage() {
                 margin: 0,
               }}
             >
-              {persons.length} {persons.length === 1 ? "person" : "people"} in your tree
+              {persons.length === 1 ? t("personCount", { count: String(persons.length) }) : t("peopleCount", { count: String(persons.length) })}
             </p>
           </div>
         </div>
@@ -766,7 +768,7 @@ export default function FamilyTreePage() {
               color: T.color.white,
             }}
           >
-            + Add Person
+            {t("addPerson")}
           </button>
           <button
             onClick={handleExport}
@@ -779,7 +781,7 @@ export default function FamilyTreePage() {
               opacity: persons.length === 0 ? 0.5 : 1,
             }}
           >
-            Export GEDCOM
+            {t("exportGedcom")}
           </button>
           <button
             onClick={() => importRef.current?.click()}
@@ -791,7 +793,7 @@ export default function FamilyTreePage() {
               border: `1px solid ${T.color.sandstone}`,
             }}
           >
-            {importing ? "Importing..." : "Import GEDCOM"}
+            {importing ? t("importing") : t("importGedcom")}
           </button>
           <input
             ref={importRef}
@@ -819,7 +821,7 @@ export default function FamilyTreePage() {
           <input
             value={newFirst}
             onChange={(e) => setNewFirst(e.target.value)}
-            placeholder="First name"
+            placeholder={t("firstName")}
             style={{ ...inputStyle, flex: "1 1 140px" }}
             autoFocus
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
@@ -827,7 +829,7 @@ export default function FamilyTreePage() {
           <input
             value={newLast}
             onChange={(e) => setNewLast(e.target.value)}
-            placeholder="Last name"
+            placeholder={t("lastName")}
             style={{ ...inputStyle, flex: "1 1 140px" }}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
@@ -840,7 +842,7 @@ export default function FamilyTreePage() {
               color: T.color.white,
             }}
           >
-            Add
+            {t("add")}
           </button>
           <button
             onClick={() => {
@@ -855,7 +857,7 @@ export default function FamilyTreePage() {
               border: `1px solid ${T.color.cream}`,
             }}
           >
-            Cancel
+            {t("cancel")}
           </button>
         </div>
       )}
@@ -887,7 +889,7 @@ export default function FamilyTreePage() {
               color: T.color.muted,
             }}
           >
-            Loading family tree...
+            {t("loadingTree")}
           </div>
         ) : persons.length === 0 ? (
           <div
@@ -913,7 +915,7 @@ export default function FamilyTreePage() {
                 margin: 0,
               }}
             >
-              Start Your Family Tree
+              {t("emptyTitle")}
             </h2>
             <p
               style={{
@@ -925,9 +927,7 @@ export default function FamilyTreePage() {
                 lineHeight: 1.6,
               }}
             >
-              Add family members and connect them with relationships
-              to build your genealogy tree. You can also import an
-              existing GEDCOM file.
+              {t("emptyDescription")}
             </p>
             <button
               onClick={() => setShowAddForm(true)}
@@ -939,7 +939,7 @@ export default function FamilyTreePage() {
                 padding: "14px 28px",
               }}
             >
-              + Add First Person
+              {t("addFirstPerson")}
             </button>
           </div>
         ) : (
@@ -950,7 +950,7 @@ export default function FamilyTreePage() {
             style={{ minHeight: "calc(100dvh - 120px)" }}
             viewBox={`${svgMinX - 50} ${svgMinY - 50} ${svgW} ${svgH}`}
             role="img"
-            aria-label="Family tree diagram"
+            aria-label={t("treeDiagram")}
           >
             <g transform={`translate(${pan.x / zoom}, ${pan.y / zoom}) scale(${zoom})`}>
               {/* Links */}
@@ -1049,7 +1049,7 @@ export default function FamilyTreePage() {
                 alignItems: "center",
                 justifyContent: "center",
               }}
-              title="Reset view"
+              title={t("resetView")}
             >
               {"\u2302"}
             </button>

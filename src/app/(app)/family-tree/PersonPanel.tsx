@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import {
   updatePerson,
   deletePerson,
@@ -28,6 +29,7 @@ export default function PersonPanel({
   onClose,
   onUpdate,
 }: PersonPanelProps) {
+  const { t } = useTranslation("familyTree");
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState(person.first_name);
   const [lastName, setLastName] = useState(person.last_name || "");
@@ -299,7 +301,7 @@ export default function PersonPanel({
                 cursor: "pointer",
               }}
             >
-              {uploading ? "Uploading..." : "Upload Photo"}
+              {uploading ? t("uploadingPhoto") : t("uploadPhoto")}
             </button>
             <input
               ref={fileRef}
@@ -333,7 +335,7 @@ export default function PersonPanel({
         {editing ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
             <div>
-              <label style={labelStyle}>First Name</label>
+              <label style={labelStyle}>{t("firstNameLabel")}</label>
               <input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
@@ -341,7 +343,7 @@ export default function PersonPanel({
               />
             </div>
             <div>
-              <label style={labelStyle}>Last Name</label>
+              <label style={labelStyle}>{t("lastNameLabel")}</label>
               <input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
@@ -350,7 +352,7 @@ export default function PersonPanel({
             </div>
             <div style={{ display: "flex", gap: 12 }}>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Born</label>
+                <label style={labelStyle}>{t("born")}</label>
                 <input
                   type="date"
                   value={birthDate}
@@ -359,7 +361,7 @@ export default function PersonPanel({
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={labelStyle}>Died</label>
+                <label style={labelStyle}>{t("died")}</label>
                 <input
                   type="date"
                   value={deathDate}
@@ -369,20 +371,20 @@ export default function PersonPanel({
               </div>
             </div>
             <div>
-              <label style={labelStyle}>Gender</label>
+              <label style={labelStyle}>{t("gender")}</label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
                 style={inputStyle}
               >
-                <option value="">--</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="">{t("genderSelect")}</option>
+                <option value="male">{t("genderMale")}</option>
+                <option value="female">{t("genderFemale")}</option>
+                <option value="other">{t("genderOther")}</option>
               </select>
             </div>
             <div>
-              <label style={labelStyle}>Notes</label>
+              <label style={labelStyle}>{t("notes")}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -401,7 +403,7 @@ export default function PersonPanel({
                   flex: 1,
                 }}
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? t("saving") : t("save")}
               </button>
               <button
                 onClick={() => setEditing(false)}
@@ -412,7 +414,7 @@ export default function PersonPanel({
                   border: `1px solid ${T.color.cream}`,
                 }}
               >
-                Cancel
+                {t("cancel")}
               </button>
             </div>
           </div>
@@ -428,7 +430,7 @@ export default function PersonPanel({
               marginBottom: 20,
             }}
           >
-            Edit Details
+            {t("editDetails")}
           </button>
         )}
 
@@ -443,7 +445,7 @@ export default function PersonPanel({
               marginBottom: 12,
             }}
           >
-            Relationships
+            {t("relationships")}
           </h3>
           {personRels.length === 0 ? (
             <div
@@ -454,7 +456,7 @@ export default function PersonPanel({
                 fontStyle: "italic",
               }}
             >
-              No relationships yet
+              {t("noRelationships")}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -519,7 +521,7 @@ export default function PersonPanel({
                         alignItems: "center",
                         justifyContent: "center",
                       }}
-                      title="Remove relationship"
+                      title={t("removeRelationship")}
                     >
                       {"\u2715"}
                     </button>
@@ -543,13 +545,13 @@ export default function PersonPanel({
               }}
             >
               <div>
-                <label style={labelStyle}>Person</label>
+                <label style={labelStyle}>{t("person")}</label>
                 <select
                   value={relPersonId}
                   onChange={(e) => setRelPersonId(e.target.value)}
                   style={inputStyle}
                 >
-                  <option value="">Select person...</option>
+                  <option value="">{t("selectPerson")}</option>
                   {allPersons
                     .filter((p) => p.id !== person.id)
                     .map((p) => (
@@ -561,7 +563,7 @@ export default function PersonPanel({
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>Relationship</label>
+                <label style={labelStyle}>{t("relationship")}</label>
                 <select
                   value={relType}
                   onChange={(e) =>
@@ -569,10 +571,10 @@ export default function PersonPanel({
                   }
                   style={inputStyle}
                 >
-                  <option value="parent">Parent of</option>
-                  <option value="child">Child of</option>
-                  <option value="spouse">Spouse of</option>
-                  <option value="sibling">Sibling of</option>
+                  <option value="parent">{t("parentOf")}</option>
+                  <option value="child">{t("childOf")}</option>
+                  <option value="spouse">{t("spouseOf")}</option>
+                  <option value="sibling">{t("siblingOf")}</option>
                 </select>
               </div>
               <div style={{ display: "flex", gap: 10 }}>
@@ -588,7 +590,7 @@ export default function PersonPanel({
                     padding: "8px 16px",
                   }}
                 >
-                  Add
+                  {t("add")}
                 </button>
                 <button
                   onClick={() => setShowAddRel(false)}
@@ -601,7 +603,7 @@ export default function PersonPanel({
                     padding: "8px 16px",
                   }}
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
               </div>
             </div>
@@ -618,7 +620,7 @@ export default function PersonPanel({
                 fontSize: 13,
               }}
             >
-              + Add Relationship
+              {t("addRelationship")}
             </button>
           )}
         </div>
@@ -646,7 +648,7 @@ export default function PersonPanel({
                   color: T.color.error,
                 }}
               >
-                Remove {fullName} and all their relationships?
+                {t("confirmDelete", { name: fullName })}
               </span>
               <div style={{ display: "flex", gap: 10 }}>
                 <button
@@ -659,7 +661,7 @@ export default function PersonPanel({
                     padding: "8px 20px",
                   }}
                 >
-                  Yes, delete
+                  {t("yesDelete")}
                 </button>
                 <button
                   onClick={() => setConfirmDelete(false)}
@@ -672,7 +674,7 @@ export default function PersonPanel({
                     padding: "8px 20px",
                   }}
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
               </div>
             </div>
@@ -688,7 +690,7 @@ export default function PersonPanel({
                 fontSize: 13,
               }}
             >
-              Delete Person
+              {t("deletePerson")}
             </button>
           )}
         </div>

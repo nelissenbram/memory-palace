@@ -1,6 +1,9 @@
 "use client";
 
+import { useTranslation } from "@/lib/hooks/useTranslation";
+
 export default function OfflinePage() {
+  const { t } = useTranslation("offline");
   return (
     <div
       style={{
@@ -63,7 +66,7 @@ export default function OfflinePage() {
           letterSpacing: "-0.01em",
         }}
       >
-        Your palace is resting&hellip;
+        {t("title")}
       </h1>
 
       <p
@@ -77,7 +80,7 @@ export default function OfflinePage() {
           marginBottom: "0.5rem",
         }}
       >
-        It seems you&apos;ve wandered beyond the reach of the network.
+        {t("message")}
       </p>
 
       <p
@@ -91,8 +94,7 @@ export default function OfflinePage() {
           marginBottom: "2.5rem",
         }}
       >
-        Don&apos;t worry &mdash; your memories are safe and will sync
-        when you reconnect.
+        {t("reassurance")}
       </p>
 
       <button
@@ -113,7 +115,7 @@ export default function OfflinePage() {
         onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
         onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
       >
-        Try reconnecting
+        {t("retry")}
       </button>
 
       <p
@@ -124,7 +126,7 @@ export default function OfflinePage() {
           marginTop: "3rem",
         }}
       >
-        The Memory Palace
+        {t("brand")}
       </p>
     </div>
   );

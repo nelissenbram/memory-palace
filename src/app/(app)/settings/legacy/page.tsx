@@ -40,13 +40,15 @@ const DELIVERY_OPTIONS = [
   { value: "immediately", labelKey: "deliverImmediately" },
 ];
 
-const DEFAULT_WINGS = [
-  { slug: "family", label: "Family" },
-  { slug: "travel", label: "Travel" },
-  { slug: "childhood", label: "Childhood" },
-  { slug: "career", label: "Career" },
-  { slug: "creativity", label: "Creativity" },
-];
+const DEFAULT_WING_SLUGS = ["family", "travel", "childhood", "career", "creativity"] as const;
+
+const WING_LABEL_KEYS: Record<string, string> = {
+  family: "wingFamily",
+  travel: "wingTravel",
+  childhood: "wingChildhood",
+  career: "wingCareer",
+  creativity: "wingCreativity",
+};
 
 // ── Main Page ──
 
@@ -235,6 +237,7 @@ function ContactsSection({
 }) {
   const { t } = useTranslation("legacySettings");
   const { t: tc } = useTranslation("common");
+  const { t: tp } = useTranslation("palace");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -394,7 +397,7 @@ function ContactsSection({
                   {t("access")}: {(() => { const al = ACCESS_LEVELS.find((a) => a.value === c.access_level); return al ? t(al.labelKey) : c.access_level; })()}
                   {c.access_level === "wings_only" && c.wing_access.length > 0 && (
                     <span style={{ marginLeft: 6, color: T.color.muted }}>
-                      ({c.wing_access.map((w) => DEFAULT_WINGS.find((dw) => dw.slug === w)?.label || w).join(", ")})
+                      ({c.wing_access.map((w) => WING_LABEL_KEYS[w] ? tp(WING_LABEL_KEYS[w]) : w).join(", ")})
                     </span>
                   )}
                 </div>
@@ -545,16 +548,16 @@ function ContactsSection({
               <div>
                 <label style={labelStyle}>{t("selectWings")}</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {DEFAULT_WINGS.map((w) => {
-                    const selected = wingAccess.includes(w.slug);
+                  {DEFAULT_WING_SLUGS.map((slug) => {
+                    const selected = wingAccess.includes(slug);
                     return (
                       <button
-                        key={w.slug}
+                        key={slug}
                         onClick={() => {
                           setWingAccess((prev) =>
                             selected
-                              ? prev.filter((s) => s !== w.slug)
-                              : [...prev, w.slug]
+                              ? prev.filter((s) => s !== slug)
+                              : [...prev, slug]
                           );
                         }}
                         style={{
@@ -567,7 +570,7 @@ function ContactsSection({
                           cursor: "pointer", transition: "all .15s",
                         }}
                       >
-                        {selected ? "\u2713 " : ""}{w.label}
+                        {selected ? "\u2713 " : ""}{tp(WING_LABEL_KEYS[slug])}
                       </button>
                     );
                   })}
@@ -608,6 +611,7 @@ function MessagesSection({
 }) {
   const { t } = useTranslation("legacySettings");
   const { t: tc } = useTranslation("common");
+  const { t: tp } = useTranslation("palace");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -837,7 +841,7 @@ function MessagesSection({
               <input
                 type="email" value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
-                placeholder="their.email@example.com"
+                placeholder={t("contactEmailPlaceholder")}
                 style={inputStyle}
               />
             </div>

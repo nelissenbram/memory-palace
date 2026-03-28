@@ -83,7 +83,7 @@ export default function ConnectionsPage() {
 }
 
 function ConnectionsContent() {
-  const { t } = useTranslation("connections");
+  const { t, locale } = useTranslation("connections");
   const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,9 +274,9 @@ function ConnectionsContent() {
                         {account.provider_email && (
                           <span>{account.provider_email}</span>
                         )}
-                        <span>{t("connectedDate", { date: formatRelativeDate(account.connected_at, t) })}</span>
+                        <span>{t("connectedDate", { date: formatRelativeDate(account.connected_at, t, locale) })}</span>
                         {account.last_sync_at && (
-                          <span>{t("lastImport", { date: formatRelativeDate(account.last_sync_at, t) })}</span>
+                          <span>{t("lastImport", { date: formatRelativeDate(account.last_sync_at, t, locale) })}</span>
                         )}
                       </div>
                     )}
@@ -414,7 +414,7 @@ function ApplePhotosGuide() {
   );
 }
 
-function formatRelativeDate(iso: string, t: (key: string, params?: Record<string, string>) => string): string {
+function formatRelativeDate(iso: string, t: (key: string, params?: Record<string, string>) => string, locale?: string): string {
   const d = new Date(iso);
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
@@ -424,5 +424,6 @@ function formatRelativeDate(iso: string, t: (key: string, params?: Record<string
   if (diffDays === 1) return t("yesterday");
   if (diffDays < 7) return t("daysAgo", { count: String(diffDays) });
   if (diffDays < 30) return t("weeksAgo", { count: String(Math.floor(diffDays / 7)) });
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const dateLocale = locale === "nl" ? "nl-NL" : "en-US";
+  return d.toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" });
 }

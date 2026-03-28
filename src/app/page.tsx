@@ -4,77 +4,42 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
+import enMessages from "@/messages/en.json";
+import nlMessages from "@/messages/nl.json";
 
 /* ───────── tiny helpers ───────── */
 const F = T.font;
 const C = T.color;
 
-const FEATURES = [
-  {
-    icon: "🏛️",
-    title: "3D Memory Palace",
-    desc: "Walk through a breathtaking virtual villa with wings for Family, Travel, Childhood, Career, and Creativity. Your memories displayed as art in an immersive 3D world.",
-  },
-  {
-    icon: "🎙️",
-    title: "AI-Powered Interviews",
-    desc: "Our gentle AI interviewer guides you through your life story, asking the right questions to capture memories you might have forgotten. Like talking to a thoughtful friend.",
-  },
-  {
-    icon: "☁️",
-    title: "Cloud Import",
-    desc: "Connect Google Photos, Dropbox, OneDrive, or Box and let AI sort thousands of photos into the right rooms — automatically organized with smart titles and dates.",
-  },
-  {
-    icon: "⏳",
-    title: "Time Capsules",
-    desc: "Seal memories to be revealed on a future date. Leave a birthday message for your grandchild, or a letter to be opened in 2050. The future will thank you.",
-  },
-  {
-    icon: "👨‍👩‍👧‍👦",
-    title: "Sharing & Co-Creation",
-    desc: "Invite family members to contribute their own memories to shared rooms. Build your collective story together, across generations and continents.",
-  },
-  {
-    icon: "🕊️",
-    title: "Legacy Planning",
-    desc: "Designate heirs for your palace. Record video messages, write letters, and ensure your story lives on — preserved with care, for those who matter most.",
-  },
-];
-
-const STEPS = [
-  { num: "01", title: "Create Your Palace", desc: "Sign up for free and choose your palace style. Tell us about the chapters of your life — we will create personalized wings and rooms." },
-  { num: "02", title: "Fill Rooms with Memories", desc: "Upload photos and videos, record stories, or import directly from Google Photos or Dropbox. AI helps organize everything beautifully." },
-  { num: "03", title: "Share with Loved Ones", desc: "Invite family to explore your palace, contribute their own memories, and experience your life story in immersive 3D." },
-];
-
-const TESTIMONIALS = [
-  {
-    quote: "After my husband passed, I thought those memories would fade. Now I walk through our palace together with my grandchildren, and it feels like he is still here with us.",
-    name: "Margaret van den Berg, 72",
-    role: "Heritage Keeper",
-  },
-  {
-    quote: "I recorded messages for each of my children to receive on their wedding day. Knowing those words are safe, sealed, and waiting — that gives me real peace.",
-    name: "Robert Hendriks, 65",
-    role: "Heritage Keeper",
-  },
-  {
-    quote: "My mother has dementia, but together we built her palace from old photo albums. On good days, walking through the rooms brings back stories I had never heard before.",
-    name: "Elisabeth Janssen, 44",
-    role: "Legacy Guardian",
-  },
-  {
-    quote: "We imported 15,000 family photos from three decades. The AI sorted everything in under an hour. It would have taken me months.",
-    name: "Karel de Vries, 58",
-    role: "Legacy Guardian",
-  },
-];
-
 export default function LandingPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
   const [scrollY, setScrollY] = useState(0);
+  const { locale } = useTranslation("landing");
+  const landing = (locale === "nl" ? nlMessages : enMessages).landing;
+
+  const FEATURES = [
+    { icon: "🏛️", title: landing.features.palace3d, desc: landing.features.palace3dDesc },
+    { icon: "🎙️", title: landing.features.aiInterviews, desc: landing.features.aiInterviewsDesc },
+    { icon: "☁️", title: landing.features.cloudImport, desc: landing.features.cloudImportDesc },
+    { icon: "⏳", title: landing.features.timeCapsules, desc: landing.features.timeCapsuleDesc },
+    { icon: "👨‍👩‍👧‍👦", title: landing.features.sharingTitle, desc: landing.features.sharingDesc },
+    { icon: "🕊️", title: landing.features.legacyTitle, desc: landing.features.legacyDesc },
+  ];
+
+  const STEPS = [
+    { num: "01", title: landing.howItWorks.step1Title, desc: landing.howItWorks.step1Desc },
+    { num: "02", title: landing.howItWorks.step2Title, desc: landing.howItWorks.step2Desc },
+    { num: "03", title: landing.howItWorks.step3Title, desc: landing.howItWorks.step3Desc },
+  ];
+
+  const TESTIMONIALS = [
+    { quote: landing.testimonials.quote1, name: landing.testimonials.author1, role: landing.testimonials.role1 },
+    { quote: landing.testimonials.quote2, name: landing.testimonials.author2, role: landing.testimonials.role2 },
+    { quote: landing.testimonials.quote3, name: landing.testimonials.author3, role: landing.testimonials.role3 },
+    { quote: landing.testimonials.quote4, name: landing.testimonials.author4, role: landing.testimonials.role4 },
+  ];
 
   useEffect(() => {
     const el = document.getElementById("landing-scroll");
@@ -129,18 +94,18 @@ export default function LandingPage() {
               letterSpacing: "-0.3px",
             }}
           >
-            The Memory Palace
+            {landing.title}
           </span>
         </div>
         <div style={{ display: "flex", gap: isMobile ? 8 : 12, alignItems: "center" }}>
           {!isSmall && <Link href="/pricing" style={navLink}>
-            Pricing
+            {landing.nav.pricing}
           </Link>}
           {!isSmall && <Link href="/login" style={navLink}>
-            Sign In
+            {landing.nav.signIn}
           </Link>}
           <Link href="/register" style={{...navCta, padding: isMobile ? "10px 18px" : "8px 20px"}}>
-            Get Started
+            {landing.nav.getStarted}
           </Link>
         </div>
       </nav>
@@ -178,7 +143,7 @@ export default function LandingPage() {
             animation: "fadeUp 0.8s ease both",
           }}
         >
-          Preserve Your Memories for Eternity
+          {landing.hero.headline}
         </p>
         <h1
           style={{
@@ -192,10 +157,10 @@ export default function LandingPage() {
             animation: "fadeUp 0.8s ease 0.1s both",
           }}
         >
-          Your life story deserves
+          {landing.hero.storyDeserves}
           <br />
           <span style={{ fontStyle: "italic", color: C.terracotta }}>
-            more than a folder
+            {landing.hero.moreThanFolder}
           </span>
         </h1>
         <p
@@ -208,9 +173,7 @@ export default function LandingPage() {
             animation: "fadeUp 0.8s ease 0.2s both",
           }}
         >
-          Build a beautiful 3D palace for your photos, videos, and stories.
-          Walk through your memories in an immersive virtual space — and share
-          them with the people who matter most.
+          {landing.hero.description}
         </p>
         <div
           style={{
@@ -225,10 +188,10 @@ export default function LandingPage() {
           }}
         >
           <Link href="/register" style={{...heroCta, width: isSmall ? "100%" : undefined, textAlign: "center" as const, minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center"}}>
-            Get Started Free
+            {landing.hero.cta}
           </Link>
           <a href="#how-it-works" style={{...heroSecondary, width: isSmall ? "100%" : undefined, textAlign: "center" as const, minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center"}}>
-            See How It Works
+            {landing.hero.secondaryCta}
           </a>
         </div>
 
@@ -246,7 +209,7 @@ export default function LandingPage() {
             transition: "color 0.2s",
           }}
         >
-          🔒 Learn about our security
+          🔒 {landing.hero.securityLink}
         </Link>
 
         {/* Scroll hint */}
@@ -265,7 +228,7 @@ export default function LandingPage() {
           }}
         >
           <span style={{ fontSize: 11, color: C.muted, letterSpacing: 1 }}>
-            SCROLL
+            {landing.scroll}
           </span>
           <div
             style={{
@@ -286,8 +249,8 @@ export default function LandingPage() {
           margin: "0 auto",
         }}
       >
-        <p style={sectionLabel}>What makes it special</p>
-        <h2 style={sectionTitle}>More than storage. A living legacy.</h2>
+        <p style={sectionLabel}>{landing.features.title}</p>
+        <h2 style={sectionTitle}>{landing.features.subtitle}</h2>
 
         <div
           style={{
@@ -318,8 +281,8 @@ export default function LandingPage() {
         }}
       >
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <p style={sectionLabel}>Getting started</p>
-          <h2 style={sectionTitle}>Three simple steps</h2>
+          <p style={sectionLabel}>{landing.howItWorks.title}</p>
+          <h2 style={sectionTitle}>{landing.howItWorks.subtitle}</h2>
 
           <div
             style={{
@@ -378,8 +341,8 @@ export default function LandingPage() {
           textAlign: "center",
         }}
       >
-        <p style={sectionLabel}>See it in action</p>
-        <h2 style={sectionTitle}>A glimpse inside your palace</h2>
+        <p style={sectionLabel}>{landing.preview.title}</p>
+        <h2 style={sectionTitle}>{landing.preview.subtitle}</h2>
         <p
           style={{
             fontSize: 16,
@@ -389,8 +352,7 @@ export default function LandingPage() {
             lineHeight: 1.6,
           }}
         >
-          Imagine walking through elegant rooms where every photo, video, and
-          story has its place — beautifully displayed in 3D.
+          {landing.preview.description}
         </p>
 
         {/* Video or static preview */}
@@ -420,7 +382,7 @@ export default function LandingPage() {
               }}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
-              title="Memory Palace demo video"
+              title={landing.preview.videoAlt}
             />
           </div>
         ) : (
@@ -436,26 +398,26 @@ export default function LandingPage() {
           >
             {[
               {
-                label: "Exterior View",
-                desc: "Your palace, nestled in a serene landscape",
+                label: landing.preview.exterior,
+                desc: landing.preview.exteriorDesc,
                 gradient: `linear-gradient(135deg, ${C.sage}30, ${C.warmStone})`,
                 icon: "🏛️",
               },
               {
-                label: "Grand Corridor",
-                desc: "Walk through themed wings of your life",
+                label: landing.preview.corridor,
+                desc: landing.preview.corridorDesc,
                 gradient: `linear-gradient(135deg, ${C.sandstone}60, ${C.cream})`,
                 icon: "🚪",
               },
               {
-                label: "Room Interior",
-                desc: "Memories displayed as art on the walls",
+                label: landing.preview.room,
+                desc: landing.preview.roomDesc,
                 gradient: `linear-gradient(135deg, ${C.terracotta}25, ${C.warmStone})`,
                 icon: "🖼️",
               },
               {
-                label: "Upload Panel",
-                desc: "Drag, drop, or import from cloud services",
+                label: landing.preview.upload,
+                desc: landing.preview.uploadDesc,
                 gradient: `linear-gradient(135deg, ${C.walnut}20, ${C.cream})`,
                 icon: "☁️",
               },
@@ -531,9 +493,9 @@ export default function LandingPage() {
             }}
           >
             {[
-              { label: "Family Wing", icon: "👨‍👩‍👧‍👦", count: "243 memories" },
-              { label: "Travel Wing", icon: "✈️", count: "186 memories" },
-              { label: "Childhood Wing", icon: "🧒", count: "128 memories" },
+              { label: landing.preview.familyWing, icon: "👨‍👩‍👧‍👦", count: landing.preview.familyMemories },
+              { label: landing.preview.travelWing, icon: "✈️", count: landing.preview.travelMemories },
+              { label: landing.preview.childhoodWing, icon: "🧒", count: landing.preview.childhoodMemories },
             ].map((room) => (
               <div
                 key={room.label}
@@ -586,7 +548,7 @@ export default function LandingPage() {
             ))}
           </div>
           <p style={{ fontSize: 13, color: C.muted, marginTop: 10 }}>
-            Interactive 3D walkthrough — explore every room
+            {landing.preview.interactiveWalkthrough}
           </p>
         </div>
       </section>
@@ -599,8 +561,8 @@ export default function LandingPage() {
           margin: "0 auto",
         }}
       >
-        <p style={sectionLabel}>Who it&apos;s for</p>
-        <h2 style={sectionTitle}>Built for those who care about legacy</h2>
+        <p style={sectionLabel}>{landing.audience.title}</p>
+        <h2 style={sectionTitle}>{landing.audience.subtitle}</h2>
 
         <div
           style={{
@@ -613,20 +575,20 @@ export default function LandingPage() {
           {[
             {
               icon: "👵",
-              title: "Heritage Keepers",
-              desc: "Individuals 60+ who want to organize a lifetime of memories into a visualized legacy for future generations.",
+              title: landing.audience.keepersTitle,
+              desc: landing.audience.keepersDesc,
               accent: C.sage,
             },
             {
               icon: "👨‍👩‍👧",
-              title: "Legacy Guardians",
-              desc: "Parents and grandparents who want to ensure their stories, messages, and memories live on — no matter what.",
+              title: landing.audience.guardiansTitle,
+              desc: landing.audience.guardiansDesc,
               accent: C.terracotta,
             },
             {
               icon: "📸",
-              title: "Digital Archivists",
-              desc: "Anyone drowning in 50,000 photos across devices who wants AI-powered organization in a meaningful space.",
+              title: landing.audience.archivistsTitle,
+              desc: landing.audience.archivistsDesc,
               accent: C.walnut,
             },
           ].map((a) => (
@@ -671,10 +633,10 @@ export default function LandingPage() {
       >
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <p style={{ ...sectionLabel, color: C.terracotta }}>
-            What people say
+            {landing.testimonials.title}
           </p>
           <h2 style={{ ...sectionTitle, color: C.linen }}>
-            Stories from our community
+            {landing.testimonials.subtitle}
           </h2>
 
           <div
@@ -685,9 +647,9 @@ export default function LandingPage() {
               marginTop: 56,
             }}
           >
-            {TESTIMONIALS.map((t) => (
+            {TESTIMONIALS.map((tm) => (
               <div
-                key={t.name}
+                key={tm.name}
                 style={{
                   background: "rgba(255,255,255,0.06)",
                   borderRadius: 16,
@@ -721,7 +683,7 @@ export default function LandingPage() {
                       marginBottom: 24,
                     }}
                   >
-                    {t.quote}
+                    {tm.quote}
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -739,7 +701,7 @@ export default function LandingPage() {
                       flexShrink: 0,
                     }}
                   >
-                    {t.name.charAt(0)}
+                    {tm.name.charAt(0)}
                   </div>
                   <div>
                     <p
@@ -750,9 +712,9 @@ export default function LandingPage() {
                         marginBottom: 2,
                       }}
                     >
-                      {t.name}
+                      {tm.name}
                     </p>
-                    <p style={{ fontSize: 12, color: C.terracotta }}>{t.role}</p>
+                    <p style={{ fontSize: 12, color: C.terracotta }}>{tm.role}</p>
                   </div>
                 </div>
               </div>
@@ -779,7 +741,7 @@ export default function LandingPage() {
             lineHeight: 1.2,
           }}
         >
-          Ready to preserve your legacy?
+          {landing.cta.title}
         </h2>
         <p
           style={{
@@ -790,11 +752,10 @@ export default function LandingPage() {
             lineHeight: 1.6,
           }}
         >
-          Start for free. No credit card required. Your memories are waiting for
-          a home.
+          {landing.cta.description}
         </p>
         <Link href="/register" style={heroCta}>
-          Create Your Memory Palace
+          {landing.cta.button}
         </Link>
       </section>
 
@@ -828,36 +789,34 @@ export default function LandingPage() {
                   fontWeight: 500,
                 }}
               >
-                The Memory Palace
+                {landing.title}
               </span>
             </div>
             <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.7, maxWidth: 340 }}>
-              We believe every life story deserves to be preserved with beauty and
-              dignity. The Memory Palace transforms your photos, videos, and stories
-              into an immersive 3D experience that your family can treasure forever.
+              {landing.footer.about}
             </p>
           </div>
 
           {/* Quick links */}
           <div>
             <p style={{ fontSize: 12, letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: 16 }}>
-              Quick Links
+              {landing.footer.quickLinks}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <a href="#features" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
-                Features
+                {landing.footer.features}
               </a>
               <a href="#how-it-works" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
-                How It Works
+                {landing.footer.howItWorks}
               </a>
               <Link href="/pricing" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
-                Pricing
+                {landing.footer.pricing}
               </Link>
               <Link href="/login" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
-                Sign In
+                {landing.footer.signIn}
               </Link>
               <Link href="/register" style={{ fontSize: 14, color: C.terracotta, textDecoration: "none" }}>
-                Get Started Free
+                {landing.footer.getStartedFree}
               </Link>
             </div>
           </div>
@@ -865,20 +824,20 @@ export default function LandingPage() {
           {/* Contact / trust */}
           <div>
             <p style={{ fontSize: 12, letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: 16 }}>
-              Trust & Security
+              {landing.footer.trustSecurity}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.5 }}>
-                🔒 EU-hosted infrastructure
+                🔒 {landing.footer.euHosted}
               </p>
               <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.5 }}>
-                🛡️ Bank-grade encryption
+                🛡️ {landing.footer.encryption}
               </p>
               <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.5 }}>
-                📋 GDPR compliant
+                📋 {landing.footer.gdpr}
               </p>
               <Link href="/security" style={{ fontSize: 14, color: C.terracotta, textDecoration: "none", marginTop: 4 }}>
-                Learn more about security →
+                {landing.footer.learnSecurity} →
               </Link>
             </div>
           </div>
@@ -897,20 +856,20 @@ export default function LandingPage() {
           }}
         >
           <p style={{ fontSize: 12, color: C.muted }}>
-            &copy; {new Date().getFullYear()} The Memory Palace. Preserve your memories for eternity.
+            &copy; {new Date().getFullYear()} {landing.footer.copyright}
           </p>
           <div style={{ display: "flex", gap: 20 }}>
             <Link href="/privacy" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
-              Privacy Policy
+              {landing.footer.privacyPolicy}
             </Link>
             <Link href="/terms" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
-              Terms of Service
+              {landing.footer.termsOfService}
             </Link>
             <Link href="/login" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
-              Sign In
+              {landing.footer.signIn}
             </Link>
             <Link href="/register" style={{ fontSize: 12, color: C.terracotta, textDecoration: "none" }}>
-              Get Started
+              {landing.nav.getStarted}
             </Link>
           </div>
         </div>
