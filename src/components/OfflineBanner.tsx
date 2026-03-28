@@ -28,14 +28,14 @@ export default function OfflineBanner() {
         background: bannerBg,
         color: bannerText,
         fontFamily: T.font.body,
-        fontSize: 13,
+        fontSize: "0.8125rem",
         fontWeight: 500,
-        padding: "8px 16px",
+        padding: "0.5rem 1rem",
         textAlign: "center",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 8,
+        gap: "0.5rem",
         animation: "slideDown .3s ease",
       }}
     >
@@ -54,7 +54,7 @@ export default function OfflineBanner() {
           />
           {t("offline")}
           {queueCount > 0 && (
-            <span style={{ opacity: 0.7, fontSize: 11 }}>
+            <span style={{ opacity: 0.7, fontSize: "0.6875rem" }}>
               ({t("pending", { count: String(queueCount) })})
             </span>
           )}

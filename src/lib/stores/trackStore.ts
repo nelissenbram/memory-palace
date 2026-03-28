@@ -35,8 +35,8 @@ interface TrackState {
   showTracksPanel: boolean;
   selectedTrackId: string | null;
   showLegacyPanel: boolean;
-  toast: { stepTitle: string; trackName: string; points: number } | null;
-  celebration: { trackId: string; trackName: string; bonus: number } | null;
+  toast: { stepTitleKey: string; trackNameKey: string; points: number } | null;
+  celebration: { trackId: string; trackNameKey: string; bonus: number } | null;
 
   // Persisted local flags
   hasUsedMassImport: boolean;
@@ -225,8 +225,8 @@ export const useTrackStore = create<TrackState>((set, get) => ({
     let newPoints = totalPoints;
     let newHistory = [...pointsHistory];
     const newTracks = { ...tracks };
-    let toastInfo: { stepTitle: string; trackName: string; points: number } | null = null;
-    let celebrationInfo: { trackId: string; trackName: string; bonus: number } | null = null;
+    let toastInfo: { stepTitleKey: string; trackNameKey: string; points: number } | null = null;
+    let celebrationInfo: { trackId: string; trackNameKey: string; bonus: number } | null = null;
     const newFloating: { id: string; amount: number; label: string }[] = [];
 
     for (const track of TRACKS) {
@@ -268,13 +268,13 @@ export const useTrackStore = create<TrackState>((set, get) => ({
             newHistory = [entry, ...newHistory];
 
             // Show toast for the most recent step
-            toastInfo = { stepTitle: step.title, trackName: track.name, points: step.pointValue };
+            toastInfo = { stepTitleKey: step.titleKey, trackNameKey: track.nameKey, points: step.pointValue };
 
             // Queue floating points animation
             newFloating.push({
               id: `float_${Date.now()}_${stepId}`,
               amount: step.pointValue,
-              label: step.title,
+              label: step.titleKey,
             });
 
             // Persist to server (fire and forget)
@@ -293,11 +293,11 @@ export const useTrackStore = create<TrackState>((set, get) => ({
             earnedAt: new Date().toISOString(),
           };
           newHistory = [bonusEntry, ...newHistory];
-          celebrationInfo = { trackId: track.id, trackName: track.name, bonus: track.completionBonus };
+          celebrationInfo = { trackId: track.id, trackNameKey: track.nameKey, bonus: track.completionBonus };
           newFloating.push({
             id: `float_bonus_${Date.now()}_${track.id}`,
             amount: track.completionBonus,
-            label: `${track.name} complete!`,
+            label: track.nameKey,
           });
           completeTrackBonus(track.id, track.completionBonus).catch(() => {});
         }

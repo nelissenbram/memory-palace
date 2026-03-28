@@ -82,34 +82,34 @@ export default function PWAInstallBanner() {
       <div style={{
         margin: "0 auto",
         maxWidth: 480,
-        padding: "0 12px 12px",
+        padding: "0 0.75rem 0.75rem",
       }}>
         <div style={{
           background: `linear-gradient(135deg, ${T.color.charcoal}, #3A3632)`,
-          borderRadius: 18,
-          padding: "18px 20px",
+          borderRadius: "1.125rem",
+          padding: "1.125rem 1.25rem",
           boxShadow: "0 -4px 30px rgba(0,0,0,.25)",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
             {/* App icon */}
             <div style={{
-              width: 52, height: 52, borderRadius: 14,
+              width: "3.25rem", height: "3.25rem", borderRadius: "0.875rem",
               background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 26, flexShrink: 0,
+              fontSize: "1.625rem", flexShrink: 0,
             }}>
               {"\u{1F3DB}\uFE0F"}
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontFamily: T.font.display, fontSize: 16, fontWeight: 600,
+                fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
                 color: "#FFFFFF", marginBottom: 2,
               }}>
                 {t("title")}
               </div>
               <div style={{
-                fontFamily: T.font.body, fontSize: 12, color: "#BBAEA0",
+                fontFamily: T.font.body, fontSize: "0.75rem", color: "#BBAEA0",
               }}>
                 {t("subtitle")}
               </div>
@@ -117,16 +117,16 @@ export default function PWAInstallBanner() {
 
             {/* Always show Install button */}
             <button onClick={handleInstall} style={{
-              padding: "12px 22px",
-              borderRadius: 14,
+              padding: "0.75rem 1.375rem",
+              borderRadius: "0.875rem",
               border: "none",
               background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
               color: "#FFF",
               fontFamily: T.font.body,
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
               cursor: "pointer",
-              minHeight: 48,
+              minHeight: "3rem",
               flexShrink: 0,
               boxShadow: `0 4px 16px ${T.color.terracotta}60`,
             }}>
@@ -135,12 +135,12 @@ export default function PWAInstallBanner() {
 
             {/* Small dismiss X */}
             <button onClick={handleDismiss} style={{
-              width: 28, height: 28,
-              borderRadius: 14,
+              width: "1.75rem", height: "1.75rem",
+              borderRadius: "0.875rem",
               border: "none",
               background: "rgba(255,255,255,.1)",
               color: "#9A9183",
-              fontSize: 14,
+              fontSize: "0.875rem",
               cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
@@ -152,12 +152,12 @@ export default function PWAInstallBanner() {
           {/* Instructions — only show if native prompt not available and user tapped Install */}
           {showInstructions && !hasPrompt && (
             <div style={{
-              marginTop: 14,
-              padding: "12px 14px",
+              marginTop: "0.875rem",
+              padding: "0.75rem 0.875rem",
               background: "rgba(255,255,255,.08)",
-              borderRadius: 12,
+              borderRadius: "0.75rem",
               fontFamily: T.font.body,
-              fontSize: 13,
+              fontSize: "0.8125rem",
               color: "#D4C5B2",
               lineHeight: 1.5,
             }}>

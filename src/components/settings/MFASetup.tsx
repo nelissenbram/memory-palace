@@ -175,9 +175,9 @@ export default function MFASetup() {
   if (loading) {
     return (
       <div style={{
-        padding: "20px 0",
+        padding: "1.25rem 0",
         fontFamily: T.font.body,
-        fontSize: 15,
+        fontSize: "0.9375rem",
         color: T.color.muted,
       }}>
         {t("loading")}
@@ -190,28 +190,28 @@ export default function MFASetup() {
   return (
     <div style={{
       background: T.color.white,
-      borderRadius: 16,
+      borderRadius: "1rem",
       border: `1px solid ${T.color.cream}`,
-      padding: "28px 32px",
+      padding: "1.75rem 2rem",
       boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-      marginBottom: 24,
+      marginBottom: "1.5rem",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: 6 }}>
         <ShieldIcon />
         <h3 style={{
-          fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
+          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
           color: T.color.charcoal, margin: 0,
         }}>
           {t("title")}
         </h3>
         {isEnabled && (
           <span style={{
-            padding: "4px 12px",
-            borderRadius: 20,
+            padding: "0.25rem 0.75rem",
+            borderRadius: "1.25rem",
             background: `${T.color.sage}15`,
             color: T.color.sage,
             fontFamily: T.font.body,
-            fontSize: 12,
+            fontSize: "0.75rem",
             fontWeight: 600,
           }}>
             {t("enabled")}
@@ -219,7 +219,7 @@ export default function MFASetup() {
         )}
       </div>
       <p style={{
-        fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
+        fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
         margin: "0 0 22px", lineHeight: 1.6,
       }}>
         {t("description")}
@@ -227,13 +227,13 @@ export default function MFASetup() {
 
       {error && (
         <div role="alert" style={{
-          padding: "12px 16px",
-          borderRadius: 10,
+          padding: "0.75rem 1rem",
+          borderRadius: "0.625rem",
           background: "#FDF2F2",
           border: "1px solid #FECACA",
           color: T.color.error,
-          fontSize: 15,
-          marginBottom: 20,
+          fontSize: "0.9375rem",
+          marginBottom: "1.25rem",
           fontFamily: T.font.body,
         }}>
           {error}
@@ -245,13 +245,13 @@ export default function MFASetup() {
         <button
           onClick={handleEnroll}
           style={{
-            padding: "14px 28px",
-            borderRadius: 12,
+            padding: "0.875rem 1.75rem",
+            borderRadius: "0.75rem",
             border: "none",
             background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
             color: T.color.white,
             fontFamily: T.font.body,
-            fontSize: 16,
+            fontSize: "1rem",
             fontWeight: 600,
             cursor: "pointer",
             transition: "all 0.2s",
@@ -265,26 +265,26 @@ export default function MFASetup() {
         <div>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "18px 20px", borderRadius: 12,
+            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
             background: `${T.color.sage}08`,
             border: `1px solid ${T.color.sage}25`,
           }}>
             <div>
               <div style={{
-                fontFamily: T.font.body, fontSize: 16, fontWeight: 500,
+                fontFamily: T.font.body, fontSize: "1rem", fontWeight: 500,
                 color: T.color.charcoal,
               }}>
                 {t("authenticatorApp")}
               </div>
               <div style={{
-                fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+                fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
                 marginTop: 4,
               }}>
                 {t("accountProtected")}
               </div>
             </div>
             <div style={{
-              width: 36, height: 36, borderRadius: 18,
+              width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem",
               background: T.color.sage,
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0,
@@ -299,13 +299,13 @@ export default function MFASetup() {
             <button
               onClick={() => setDisableConfirm(true)}
               style={{
-                marginTop: 16,
-                padding: "12px 24px",
-                borderRadius: 10,
+                marginTop: "1rem",
+                padding: "0.75rem 1.5rem",
+                borderRadius: "0.625rem",
                 border: `1px solid ${T.color.error}30`,
                 background: "transparent",
                 fontFamily: T.font.body,
-                fontSize: 14,
+                fontSize: "0.875rem",
                 fontWeight: 500,
                 color: T.color.error,
                 cursor: "pointer",
@@ -316,20 +316,20 @@ export default function MFASetup() {
             </button>
           ) : (
             <div style={{
-              marginTop: 16,
-              padding: "18px 20px",
-              borderRadius: 12,
+              marginTop: "1rem",
+              padding: "1.125rem 1.25rem",
+              borderRadius: "0.75rem",
               background: "#FDF2F2",
               border: "1px solid #FECACA",
             }}>
               <p style={{
-                fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
+                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
                 color: "#B91C1C", margin: "0 0 8px",
               }}>
                 {t("disableConfirmTitle")}
               </p>
               <p style={{
-                fontFamily: T.font.body, fontSize: 14, color: "#7F1D1D",
+                fontFamily: T.font.body, fontSize: "0.875rem", color: "#7F1D1D",
                 margin: "0 0 16px", lineHeight: 1.5,
               }}>
                 {t("disableConfirmDesc")}
@@ -339,13 +339,13 @@ export default function MFASetup() {
                   onClick={() => handleDisable(factors[0].id)}
                   disabled={disabling}
                   style={{
-                    padding: "10px 20px",
-                    borderRadius: 10,
+                    padding: "0.625rem 1.25rem",
+                    borderRadius: "0.625rem",
                     border: "none",
                     background: disabling ? `${T.color.sandstone}60` : "#B91C1C",
                     color: disabling ? T.color.muted : "#FFF",
                     fontFamily: T.font.body,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 600,
                     cursor: disabling ? "default" : "pointer",
                     transition: "all 0.15s",
@@ -356,12 +356,12 @@ export default function MFASetup() {
                 <button
                   onClick={() => setDisableConfirm(false)}
                   style={{
-                    padding: "10px 20px",
-                    borderRadius: 10,
+                    padding: "0.625rem 1.25rem",
+                    borderRadius: "0.625rem",
                     border: `1px solid ${T.color.cream}`,
                     background: T.color.white,
                     fontFamily: T.font.body,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 500,
                     color: T.color.charcoal,
                     cursor: "pointer",
@@ -380,20 +380,20 @@ export default function MFASetup() {
       {step === "qr" && (
         <div>
           <div style={{
-            padding: "24px",
-            borderRadius: 14,
+            padding: "1.5rem",
+            borderRadius: "0.875rem",
             background: T.color.linen,
             border: `1px solid ${T.color.cream}`,
-            marginBottom: 20,
+            marginBottom: "1.25rem",
           }}>
             <h4 style={{
-              fontFamily: T.font.display, fontSize: 18, fontWeight: 500,
+              fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
               color: T.color.charcoal, margin: "0 0 8px",
             }}>
               {t("step1Title")}
             </h4>
             <p style={{
-              fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
               margin: "0 0 20px", lineHeight: 1.6,
             }}>
               {t("step1Desc")}
@@ -403,8 +403,8 @@ export default function MFASetup() {
               <div style={{ textAlign: "center", marginBottom: 16 }}>
                 <div style={{
                   display: "inline-block",
-                  padding: 16,
-                  borderRadius: 16,
+                  padding: "1rem",
+                  borderRadius: "1rem",
                   background: "#FFF",
                   border: `1px solid ${T.color.cream}`,
                   boxShadow: "0 2px 12px rgba(44,44,42,.08)",
@@ -420,8 +420,8 @@ export default function MFASetup() {
               </div>
             ) : (
               <div style={{
-                textAlign: "center", padding: 40,
-                fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
+                textAlign: "center", padding: "2.5rem",
+                fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
               }}>
                 {t("generatingQR")}
               </div>
@@ -436,7 +436,7 @@ export default function MFASetup() {
                   border: "none",
                   color: T.color.terracotta,
                   fontFamily: T.font.body,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   cursor: "pointer",
                   textDecoration: "underline",
                 }}
@@ -445,13 +445,13 @@ export default function MFASetup() {
               </button>
               {showSecret && (
                 <div style={{
-                  marginTop: 12,
-                  padding: "14px 18px",
-                  borderRadius: 10,
+                  marginTop: "0.75rem",
+                  padding: "0.875rem 1.125rem",
+                  borderRadius: "0.625rem",
                   background: T.color.white,
                   border: `1px solid ${T.color.cream}`,
                   fontFamily: "monospace",
-                  fontSize: 16,
+                  fontSize: "1rem",
                   letterSpacing: "2px",
                   color: T.color.charcoal,
                   wordBreak: "break-all",
@@ -464,20 +464,20 @@ export default function MFASetup() {
           </div>
 
           <div style={{
-            padding: "24px",
-            borderRadius: 14,
+            padding: "1.5rem",
+            borderRadius: "0.875rem",
             background: T.color.linen,
             border: `1px solid ${T.color.cream}`,
-            marginBottom: 20,
+            marginBottom: "1.25rem",
           }}>
             <h4 style={{
-              fontFamily: T.font.display, fontSize: 18, fontWeight: 500,
+              fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
               color: T.color.charcoal, margin: "0 0 8px",
             }}>
               {t("step2Title")}
             </h4>
             <p style={{
-              fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
               margin: "0 0 20px", lineHeight: 1.6,
             }}>
               {t("step2Desc")}
@@ -487,8 +487,8 @@ export default function MFASetup() {
               style={{
                 display: "flex",
                 justifyContent: "center",
-                gap: 10,
-                marginBottom: 20,
+                gap: "0.625rem",
+                marginBottom: "1.25rem",
               }}
               onPaste={handleCodePaste}
             >
@@ -503,14 +503,14 @@ export default function MFASetup() {
                   onChange={(e) => handleCodeChange(i, e.target.value)}
                   onKeyDown={(e) => handleCodeKeyDown(i, e)}
                   style={{
-                    width: 50,
-                    height: 60,
+                    width: "3.125rem",
+                    height: "3.75rem",
                     textAlign: "center",
-                    fontSize: 24,
+                    fontSize: "1.5rem",
                     fontFamily: T.font.body,
                     fontWeight: 600,
                     color: T.color.charcoal,
-                    borderRadius: 12,
+                    borderRadius: "0.75rem",
                     border: `2px solid ${digit ? T.color.terracotta : T.color.sandstone}`,
                     background: T.color.white,
                     outline: "none",
@@ -521,13 +521,13 @@ export default function MFASetup() {
               ))}
             </div>
 
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center" }}>
               <button
                 onClick={() => handleVerifyCode()}
                 disabled={verifying || code.some((d) => !d)}
                 style={{
-                  padding: "14px 32px",
-                  borderRadius: 12,
+                  padding: "0.875rem 2rem",
+                  borderRadius: "0.75rem",
                   border: "none",
                   background:
                     verifying || code.some((d) => !d)
@@ -535,7 +535,7 @@ export default function MFASetup() {
                       : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                   color: verifying || code.some((d) => !d) ? T.color.muted : T.color.white,
                   fontFamily: T.font.body,
-                  fontSize: 16,
+                  fontSize: "1rem",
                   fontWeight: 600,
                   cursor: verifying || code.some((d) => !d) ? "default" : "pointer",
                   transition: "all 0.2s",
@@ -546,13 +546,13 @@ export default function MFASetup() {
               <button
                 onClick={resetSetup}
                 style={{
-                  padding: "14px 24px",
-                  borderRadius: 12,
+                  padding: "0.875rem 1.5rem",
+                  borderRadius: "0.75rem",
                   border: `1px solid ${T.color.cream}`,
                   background: "transparent",
                   color: T.color.muted,
                   fontFamily: T.font.body,
-                  fontSize: 15,
+                  fontSize: "0.9375rem",
                   fontWeight: 500,
                   cursor: "pointer",
                   transition: "all 0.2s",
@@ -568,14 +568,14 @@ export default function MFASetup() {
       {/* ── Complete Step ── */}
       {step === "complete" && (
         <div style={{
-          padding: "28px 24px",
-          borderRadius: 14,
+          padding: "1.75rem 1.5rem",
+          borderRadius: "0.875rem",
           background: `${T.color.sage}08`,
           border: `1px solid ${T.color.sage}25`,
           textAlign: "center",
         }}>
           <div style={{
-            width: 56, height: 56, borderRadius: 28,
+            width: "3.5rem", height: "3.5rem", borderRadius: "1.75rem",
             background: T.color.sage,
             display: "flex", alignItems: "center", justifyContent: "center",
             margin: "0 auto 16px",
@@ -585,19 +585,19 @@ export default function MFASetup() {
             </svg>
           </div>
           <h4 style={{
-            fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
+            fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
             color: T.color.charcoal, margin: "0 0 8px",
           }}>
             {t("completeTitle")}
           </h4>
           <p style={{
-            fontFamily: T.font.body, fontSize: 16, color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted,
             margin: "0 0 8px", lineHeight: 1.6,
           }}>
             {t("completeDesc")}
           </p>
           <p style={{
-            fontFamily: T.font.body, fontSize: 14, color: T.color.walnut,
+            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.walnut,
             margin: "0 0 24px", lineHeight: 1.5, fontWeight: 500,
           }}>
             {t("backupWarning")}
@@ -605,12 +605,12 @@ export default function MFASetup() {
           <button
             onClick={resetSetup}
             style={{
-              padding: "12px 28px",
-              borderRadius: 10,
+              padding: "0.75rem 1.75rem",
+              borderRadius: "0.625rem",
               border: `1px solid ${T.color.cream}`,
               background: T.color.white,
               fontFamily: T.font.body,
-              fontSize: 15,
+              fontSize: "0.9375rem",
               fontWeight: 500,
               color: T.color.charcoal,
               cursor: "pointer",

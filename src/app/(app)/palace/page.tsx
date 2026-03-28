@@ -19,15 +19,15 @@ function PalaceLoading() {
         fontFamily: "'Cormorant Garamond', Georgia, serif",
       }}
     >
-      <div style={{ fontSize: 48, marginBottom: 20 }}>🏛️</div>
-      <div style={{ fontSize: 28, fontWeight: 300, color: "#2C2C2A" }}>
+      <div style={{ fontSize: "3rem", marginBottom: "1.25rem" }}>🏛️</div>
+      <div style={{ fontSize: "1.75rem", fontWeight: 300, color: "#2C2C2A" }}>
         {tLanding("title")}
       </div>
       <div
         style={{
-          fontSize: 14,
+          fontSize: "0.875rem",
           color: "#9A9183",
-          marginTop: 12,
+          marginTop: "0.75rem",
           fontFamily: "'Source Sans 3', system-ui, sans-serif",
         }}
       >

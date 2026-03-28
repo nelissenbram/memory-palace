@@ -76,7 +76,7 @@ interface ConnectedAccount {
 export default function ConnectionsPage() {
   const { t } = useTranslation("connections");
   return (
-    <Suspense fallback={<div style={{padding:40,textAlign:"center",fontFamily:T.font.body,color:T.color.muted}}>{t("loading")}</div>}>
+    <Suspense fallback={<div style={{padding:"2.5rem",textAlign:"center",fontFamily:T.font.body,color:T.color.muted}}>{t("loading")}</div>}>
       <ConnectionsContent />
     </Suspense>
   );
@@ -159,34 +159,34 @@ function ConnectionsContent() {
       {/* Toast */}
       {toast && (
         <div role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: 24, right: 24, zIndex: 100,
-          padding: "14px 20px", borderRadius: 12,
+          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
+          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
           background: toast.type === "success" ? "#4A6741" : "#C05050",
           color: "#FFF",
-          fontFamily: T.font.body, fontSize: 13, fontWeight: 500,
+          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
           boxShadow: "0 8px 24px rgba(0,0,0,.15)",
           animation: "fadeIn .2s ease",
-          display: "flex", alignItems: "center", gap: 10,
+          display: "flex", alignItems: "center", gap: "0.625rem",
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
           <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
-            fontSize: 14, cursor: "pointer", marginLeft: 8, opacity: 0.7,
+            fontSize: "0.875rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
         </div>
       )}
 
       {/* Page header */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: "1.75rem" }}>
         <h2 style={{
-          fontFamily: T.font.display, fontSize: 28, fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 8px",
+          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 0.5rem",
         }}>
           {t("title")}
         </h2>
         <p style={{
-          fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
           margin: 0, lineHeight: 1.5,
         }}>
           {t("description")}
@@ -196,13 +196,13 @@ function ConnectionsContent() {
       {/* Provider cards */}
       {loading ? (
         <div style={{
-          textAlign: "center", padding: 48,
-          fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+          textAlign: "center", padding: "3rem",
+          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
         }}>
           {t("loading")}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {PROVIDERS.map((provider) => {
             const account = connectedMap.get(provider.id);
             const isConnected = !!account;
@@ -211,23 +211,23 @@ function ConnectionsContent() {
             return (
               <div key={provider.id} style={{
                 background: T.color.white,
-                borderRadius: 16,
+                borderRadius: "1rem",
                 border: `1px solid ${isConnected ? `${provider.accentColor}30` : T.color.cream}`,
-                padding: "20px 24px",
+                padding: "1.25rem 1.5rem",
                 boxShadow: isConnected
                   ? `0 2px 12px ${provider.accentColor}10`
                   : "0 2px 8px rgba(44,44,42,.04)",
                 transition: "all .2s",
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                   {/* Icon */}
                   <div style={{
-                    width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                    width: "3.25rem", height: "3.25rem", borderRadius: "0.875rem", flexShrink: 0,
                     background: isConnected
                       ? `${provider.accentColor}12`
                       : T.color.warmStone,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 24,
+                    fontSize: "1.5rem",
                     border: isConnected ? `2px solid ${provider.accentColor}25` : "none",
                   }}>
                     {provider.icon}
@@ -235,22 +235,22 @@ function ConnectionsContent() {
 
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "0.25rem" }}>
                       <h3 style={{
-                        fontFamily: T.font.display, fontSize: 18, fontWeight: 600,
+                        fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600,
                         color: T.color.charcoal, margin: 0,
                       }}>
                         {provider.name}
                       </h3>
                       {isConnected && (
                         <span style={{
-                          display: "inline-flex", alignItems: "center", gap: 4,
-                          padding: "3px 10px", borderRadius: 20,
+                          display: "inline-flex", alignItems: "center", gap: "0.25rem",
+                          padding: "3px 0.625rem", borderRadius: "1.25rem",
                           background: "#4A674115", color: "#4A6741",
-                          fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
+                          fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                         }}>
                           <span style={{
-                            width: 6, height: 6, borderRadius: 3,
+                            width: "0.375rem", height: "0.375rem", borderRadius: "0.1875rem",
                             background: "#4A6741", display: "inline-block",
                           }} />
                           {t("connected")}
@@ -259,7 +259,7 @@ function ConnectionsContent() {
                     </div>
 
                     <p style={{
-                      fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
                       margin: 0, lineHeight: 1.4,
                     }}>
                       {t(provider.descKey)}
@@ -268,8 +268,8 @@ function ConnectionsContent() {
                     {/* Connection details */}
                     {isConnected && account && (
                       <div style={{
-                        display: "flex", gap: 16, marginTop: 8,
-                        fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                        display: "flex", gap: "1rem", marginTop: "0.5rem",
+                        fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
                       }}>
                         {account.provider_email && (
                           <span>{account.provider_email}</span>
@@ -288,10 +288,10 @@ function ConnectionsContent() {
                       <button
                         onClick={() => setAppleGuide(!appleGuide)}
                         style={{
-                          padding: "10px 20px", borderRadius: 10,
+                          padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
                           border: `1px solid ${T.color.cream}`,
                           background: T.color.warmStone,
-                          fontFamily: T.font.body, fontSize: 13, fontWeight: 500,
+                          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
                           color: T.color.charcoal, cursor: "pointer",
                           transition: "all .15s",
                         }}
@@ -303,10 +303,10 @@ function ConnectionsContent() {
                         onClick={() => handleDisconnect(provider.id)}
                         disabled={disconnecting === provider.id}
                         style={{
-                          padding: "10px 20px", borderRadius: 10,
+                          padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
                           border: `1px solid #C0505033`,
                           background: "#C0505008",
-                          fontFamily: T.font.body, fontSize: 13, fontWeight: 500,
+                          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
                           color: "#C05050", cursor: "pointer",
                           opacity: disconnecting === provider.id ? 0.5 : 1,
                           transition: "all .15s",
@@ -319,10 +319,10 @@ function ConnectionsContent() {
                         href={provider.connectUrl}
                         style={{
                           display: "inline-block",
-                          padding: "10px 20px", borderRadius: 10,
+                          padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
                           border: "none",
                           background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                          fontFamily: T.font.body, fontSize: 13, fontWeight: 600,
+                          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                           color: "#FFF", cursor: "pointer",
                           textDecoration: "none",
                           transition: "all .15s",
@@ -337,7 +337,7 @@ function ConnectionsContent() {
                 {/* Apple Photos guide (expanded) */}
                 {isApple && appleGuide && (
                   <div style={{
-                    marginTop: 16, paddingTop: 16,
+                    marginTop: "1rem", paddingTop: "1rem",
                     borderTop: `1px solid ${T.color.cream}`,
                   }}>
                     <ApplePhotosGuide />
@@ -351,12 +351,12 @@ function ConnectionsContent() {
 
       {/* Info note */}
       <div style={{
-        marginTop: 32, padding: "16px 20px", borderRadius: 12,
+        marginTop: "2rem", padding: "1rem 1.25rem", borderRadius: "0.75rem",
         background: `${T.color.terracotta}08`,
         border: `1px solid ${T.color.terracotta}15`,
       }}>
         <p style={{
-          fontFamily: T.font.body, fontSize: 12, color: T.color.walnut,
+          fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut,
           margin: 0, lineHeight: 1.5,
         }}>
           {t("privacyNote")}
@@ -386,13 +386,13 @@ function ApplePhotosGuide() {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+      <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.875rem" }}>
         {(Object.keys(guides) as Array<keyof typeof guides>).map((key) => (
           <button key={key} onClick={() => setPlatform(key as typeof platform)} style={{
-            padding: "6px 14px", borderRadius: 8,
+            padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
             border: platform === key ? `1px solid ${T.color.terracotta}40` : `1px solid ${T.color.cream}`,
             background: platform === key ? `${T.color.terracotta}10` : T.color.warmStone,
-            fontFamily: T.font.body, fontSize: 12, fontWeight: platform === key ? 600 : 400,
+            fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: platform === key ? 600 : 400,
             color: platform === key ? T.color.terracotta : T.color.muted,
             cursor: "pointer", transition: "all .15s",
           }}>
@@ -402,12 +402,12 @@ function ApplePhotosGuide() {
       </div>
 
       <ol style={{
-        margin: 0, paddingLeft: 20,
-        fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal,
+        margin: 0, paddingLeft: "1.25rem",
+        fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
         lineHeight: 1.8,
       }}>
         {steps.map((step, i) => (
-          <li key={i} style={{ paddingLeft: 4 }}>{step}</li>
+          <li key={i} style={{ paddingLeft: "0.25rem" }}>{step}</li>
         ))}
       </ol>
     </div>

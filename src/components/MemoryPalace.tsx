@@ -9,6 +9,7 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useAchievementStore } from "@/lib/stores/achievementStore";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useNavigation } from "@/lib/hooks/useNavigation";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomMemories } from "@/lib/hooks/useRoomMemories";
 import OnboardingWizard from "@/components/ui/OnboardingWizard";
 import TopBar from "@/components/ui/TopBar";
@@ -66,6 +67,8 @@ import BustBuilderPanel from "@/components/ui/BustBuilderPanel";
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
   const isMobile = useIsMobile();
+  const { t: tTrack } = useTranslation("tracksPanel");
+  const { t: tAch } = useTranslation("achievementsPanel");
 
   // ── Stores ──
   const { profileLoading, onboarded, firstWing, styleEra, bustTextureUrl, bustModelUrl, bustProportions, userName, bustName, bustGender, bustPedestals,
@@ -565,12 +568,12 @@ export default function MemoryPalace(){
       {showBustBuilder && <BustBuilderPanel pedestalIndex={bustBuilderIndex} onClose={() => setShowBustBuilder(false)} />}
 
       {/* Achievement toast notification */}
-      {achToast&&<div role="status" onClick={()=>{dismissAchToast();setShowAchievements(true);}} style={{position:"absolute",top:isMobile?12:66,right:isMobile?12:22,left:isMobile?12:undefined,zIndex:90,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(12px)",borderRadius:16,padding:"14px 18px",border:"1.5px solid #D4AF3766",boxShadow:"0 8px 32px rgba(169,124,46,.25)",display:"flex",alignItems:"center",gap:12,maxWidth:isMobile?undefined:320}}>
-        <div style={{width:44,height:44,borderRadius:12,background:"linear-gradient(135deg,#C9A84C22,#D4AF3722)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{achToast.icon}</div>
+      {achToast&&<div role="status" onClick={()=>{dismissAchToast();setShowAchievements(true);}} style={{position:"absolute",top:isMobile?"0.75rem":"4.125rem",right:isMobile?"0.75rem":"1.375rem",left:isMobile?"0.75rem":undefined,zIndex:90,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(12px)",borderRadius:"1rem",padding:"0.875rem 1.125rem",border:"1.5px solid #D4AF3766",boxShadow:"0 8px 32px rgba(169,124,46,.25)",display:"flex",alignItems:"center",gap:"0.75rem",maxWidth:isMobile?undefined:"20rem"}}>
+        <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.75rem",background:"linear-gradient(135deg,#C9A84C22,#D4AF3722)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.5rem",flexShrink:0}}>{achToast.icon}</div>
         <div>
-          <div style={{fontFamily:T.font.body,fontSize:10,fontWeight:600,color:"#C9A84C",textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Achievement unlocked!</div>
-          <div style={{fontFamily:T.font.display,fontSize:15,fontWeight:600,color:T.color.charcoal}}>{achToast.title}</div>
-          <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted,lineHeight:1.3}}>{achToast.desc}</div>
+          <div style={{fontFamily:T.font.body,fontSize:"0.625rem",fontWeight:600,color:"#C9A84C",textTransform:"uppercase",letterSpacing:"0.0625rem",marginBottom:"0.125rem"}}>{tAch("achievementUnlocked")}</div>
+          <div style={{fontFamily:T.font.display,fontSize:"0.9375rem",fontWeight:600,color:T.color.charcoal}}>{tAch(achToast.titleKey)}</div>
+          <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,lineHeight:1.3}}>{tAch(achToast.descKey)}</div>
         </div>
       </div>}
 
@@ -600,9 +603,9 @@ export default function MemoryPalace(){
       {trackToast&&<div role="status" onClick={()=>{dismissTrackToast();setShowTracksPanel(true);}} style={{position:"absolute",top:isMobile?60:66,left:isMobile?12:undefined,right:isMobile?12:22,zIndex:88,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(12px)",borderRadius:16,padding:"12px 16px",border:`1.5px solid ${T.color.sage}44`,boxShadow:"0 8px 32px rgba(74,103,65,.2)",display:"flex",alignItems:"center",gap:12,maxWidth:isMobile?undefined:340}}>
         <div style={{width:40,height:40,borderRadius:10,background:"linear-gradient(135deg,#4A674118,#4A674108)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{"\u2713"}</div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontFamily:T.font.body,fontSize:10,fontWeight:600,color:T.color.sage,textTransform:"uppercase",letterSpacing:1,marginBottom:1}}>Step completed!</div>
-          <div style={{fontFamily:T.font.display,fontSize:14,fontWeight:600,color:T.color.charcoal}}>{trackToast.stepTitle}</div>
-          <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{trackToast.trackName}</div>
+          <div style={{fontFamily:T.font.body,fontSize:10,fontWeight:600,color:T.color.sage,textTransform:"uppercase",letterSpacing:1,marginBottom:1}}>{tTrack("stepCompleted")}</div>
+          <div style={{fontFamily:T.font.display,fontSize:14,fontWeight:600,color:T.color.charcoal}}>{tTrack(trackToast.stepTitleKey)}</div>
+          <div style={{fontFamily:T.font.body,fontSize:11,color:T.color.muted}}>{tTrack(trackToast.trackNameKey)}</div>
         </div>
         <div style={{fontFamily:T.font.body,fontSize:14,fontWeight:700,color:"#C9A84C"}}>+{trackToast.points} MP</div>
       </div>}
@@ -611,11 +614,11 @@ export default function MemoryPalace(){
       {trackCelebration&&<div onClick={dismissCelebration} style={{position:"fixed",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(42,34,24,.5)",backdropFilter:"blur(4px)",animation:"fadeIn .3s ease",cursor:"pointer"}}>
         <div style={{background:T.color.linen,borderRadius:24,padding:"40px 48px",textAlign:"center",maxWidth:380,boxShadow:"0 24px 80px rgba(44,44,42,.35)",animation:"fadeUp .5s ease",border:`2px solid #C4A96244`}}>
           <div style={{fontSize:48,marginBottom:16}}>{"\u2728"}</div>
-          <div style={{fontFamily:T.font.display,fontSize:28,fontWeight:600,color:T.color.charcoal,marginBottom:8}}>Track Complete!</div>
-          <div style={{fontFamily:T.font.display,fontSize:18,fontWeight:500,color:T.color.walnut,marginBottom:12,fontStyle:"italic"}}>{trackCelebration.trackName}</div>
-          <div style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,marginBottom:16}}>You earned a bonus of</div>
+          <div style={{fontFamily:T.font.display,fontSize:28,fontWeight:600,color:T.color.charcoal,marginBottom:8}}>{tTrack("trackComplete")}</div>
+          <div style={{fontFamily:T.font.display,fontSize:18,fontWeight:500,color:T.color.walnut,marginBottom:12,fontStyle:"italic"}}>{tTrack(trackCelebration.trackNameKey)}</div>
+          <div style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,marginBottom:16}}>{tTrack("youEarnedBonus")}</div>
           <div style={{fontFamily:T.font.body,fontSize:32,fontWeight:700,color:"#C9A84C"}}>+{trackCelebration.bonus} MP</div>
-          <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,marginTop:16}}>Tap anywhere to continue</div>
+          <div style={{fontFamily:T.font.body,fontSize:12,color:T.color.muted,marginTop:16}}>{tTrack("tapToContinue")}</div>
         </div>
       </div>}
     </div>

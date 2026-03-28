@@ -15,10 +15,10 @@ export default function FloatingPoints() {
     <>
       <style>{`
         @keyframes floatPointsUp {
-          0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+          0% { opacity: 0; transform: translateY(0.5rem) scale(0.9); }
           15% { opacity: 1; transform: translateY(0) scale(1); }
-          70% { opacity: 1; transform: translateY(-28px) scale(1); }
-          100% { opacity: 0; transform: translateY(-48px) scale(0.95); }
+          70% { opacity: 1; transform: translateY(-1.75rem) scale(1); }
+          100% { opacity: 0; transform: translateY(-3rem) scale(0.95); }
         }
         @keyframes sparkleFloat {
           0% { opacity: 0; transform: translate(0, 0) scale(0); }
@@ -58,8 +58,8 @@ function FloatingEntry({ id, amount, onDone }: { id: string; amount: number; onD
   return (
     <div style={{
       position: "fixed",
-      bottom: 120,
-      left: 28,
+      bottom: "7.5rem",
+      left: "1.75rem",
       zIndex: 100,
       pointerEvents: "none",
     }}>
@@ -87,9 +87,9 @@ function FloatingEntry({ id, amount, onDone }: { id: string; amount: number; onD
         animation: "floatPointsUp 2.4s ease both",
         display: "flex",
         alignItems: "center",
-        gap: 4,
-        padding: "6px 14px",
-        borderRadius: 20,
+        gap: "0.25rem",
+        padding: "0.375rem 0.875rem",
+        borderRadius: "1.25rem",
         background: "linear-gradient(135deg, rgba(201,168,76,0.15), rgba(212,175,55,0.1))",
         border: "1px solid rgba(201,168,76,0.3)",
         backdropFilter: "blur(8px)",
@@ -98,7 +98,7 @@ function FloatingEntry({ id, amount, onDone }: { id: string; amount: number; onD
       }}>
         <span style={{
           fontFamily: T.font.body,
-          fontSize: 16,
+          fontSize: "1rem",
           fontWeight: 700,
           color: "#C9A84C",
           textShadow: "0 1px 2px rgba(201,168,76,0.2)",

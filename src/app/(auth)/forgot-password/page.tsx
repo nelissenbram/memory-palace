@@ -29,30 +29,30 @@ export default function ForgotPasswordPage() {
   if (success) {
     return (
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
+        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📬</div>
         <h2
           style={{
             fontFamily: T.font.display,
-            fontSize: 24,
+            fontSize: "1.5rem",
             fontWeight: 400,
             color: T.color.charcoal,
-            margin: "0 0 12px",
+            margin: "0 0 0.75rem",
           }}
         >
           {t("checkEmail")}
         </h2>
-        <p style={{ fontSize: 14, color: T.color.muted, lineHeight: 1.6 }}>
+        <p style={{ fontSize: "0.875rem", color: T.color.muted, lineHeight: 1.6 }}>
           {t("resetLinkSent")}
         </p>
         <Link
           href="/login"
           style={{
             display: "inline-block",
-            marginTop: 20,
+            marginTop: "1.25rem",
             color: T.color.terracotta,
             textDecoration: "none",
             fontWeight: 600,
-            fontSize: 14,
+            fontSize: "0.875rem",
           }}
         >
           {t("backToSignIn")}
@@ -63,12 +63,12 @@ export default function ForgotPasswordPage() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div style={{ fontSize: 36, marginBottom: 8 }}>🔑</div>
+      <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
+        <div style={{ fontSize: "2.25rem", marginBottom: "0.5rem" }}>🔑</div>
         <h1
           style={{
             fontFamily: T.font.display,
-            fontSize: 28,
+            fontSize: "1.75rem",
             fontWeight: 300,
             color: T.color.charcoal,
             margin: 0,
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
         >
           {t("title")}
         </h1>
-        <p style={{ fontSize: 14, color: T.color.muted, marginTop: 6 }}>
+        <p style={{ fontSize: "0.875rem", color: T.color.muted, marginTop: "0.375rem" }}>
           {t("subtitle")}
         </p>
       </div>
@@ -86,13 +86,13 @@ export default function ForgotPasswordPage() {
         <div
           role="alert"
           style={{
-            padding: "10px 14px",
-            borderRadius: 10,
+            padding: "0.625rem 0.875rem",
+            borderRadius: "0.625rem",
             background: "#FDF2F2",
             border: "1px solid #FECACA",
             color: "#B91C1C",
-            fontSize: 13,
-            marginBottom: 16,
+            fontSize: "0.8125rem",
+            marginBottom: "1rem",
           }}
         >
           {error}
@@ -103,12 +103,12 @@ export default function ForgotPasswordPage() {
         htmlFor="forgot-password-email"
         style={{
           fontFamily: T.font.body,
-          fontSize: 11,
+          fontSize: "0.6875rem",
           color: T.color.muted,
           letterSpacing: ".5px",
           textTransform: "uppercase",
           display: "block",
-          marginBottom: 6,
+          marginBottom: "0.375rem",
         }}
       >
         {t("email")}
@@ -121,12 +121,12 @@ export default function ForgotPasswordPage() {
         placeholder={t("emailPlaceholder")}
         style={{
           width: "100%",
-          padding: "13px 16px",
-          borderRadius: 10,
+          padding: "0.8125rem 1rem",
+          borderRadius: "0.625rem",
           border: `1.5px solid ${T.color.sandstone}`,
           background: T.color.white,
           fontFamily: T.font.body,
-          fontSize: 14,
+          fontSize: "0.875rem",
           color: T.color.charcoal,
           outline: "none",
           boxSizing: "border-box",
@@ -138,18 +138,18 @@ export default function ForgotPasswordPage() {
         disabled={loading}
         style={{
           width: "100%",
-          padding: 14,
-          borderRadius: 12,
+          padding: "0.875rem",
+          borderRadius: "0.75rem",
           border: "none",
           background: loading
             ? `${T.color.sandstone}40`
             : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
           color: loading ? T.color.muted : "#FFFFFF",
           fontFamily: T.font.body,
-          fontSize: 15,
+          fontSize: "0.9375rem",
           fontWeight: 600,
           cursor: loading ? "default" : "pointer",
-          marginTop: 20,
+          marginTop: "1.25rem",
           transition: "all 0.2s",
         }}
       >
@@ -159,9 +159,9 @@ export default function ForgotPasswordPage() {
       <p
         style={{
           textAlign: "center",
-          fontSize: 13,
+          fontSize: "0.8125rem",
           color: T.color.muted,
-          marginTop: 20,
+          marginTop: "1.25rem",
           marginBottom: 0,
         }}
       >

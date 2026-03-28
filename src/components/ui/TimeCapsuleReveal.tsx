@@ -223,51 +223,51 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
     {showReminders && <div
       style={{
         position: "absolute",
-        bottom: isMobile ? (showReveals ? 280 : 80) : (showReveals ? 272 : 72),
-        right: isMobile ? 12 : 24,
+        bottom: isMobile ? (showReveals ? "17.5rem" : "5rem") : (showReveals ? "17rem" : "4.5rem"),
+        right: isMobile ? "0.75rem" : "1.5rem",
         zIndex: 39,
-        width: isMobile ? "calc(100% - 24px)" : 340,
+        width: isMobile ? "calc(100% - 1.5rem)" : "21.25rem",
         background: `linear-gradient(135deg, ${T.color.linen}f5, ${T.color.warmStone}f5)`,
         backdropFilter: "blur(16px)",
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${T.color.sage}40`,
         boxShadow: `0 8px 40px rgba(74,103,65,.12), inset 0 1px 0 rgba(255,255,255,.6)`,
         padding: 0,
         overflow: "hidden",
         opacity: reminderVisible ? 1 : 0,
-        transform: reminderVisible ? "translateY(0)" : "translateY(20px)",
+        transform: reminderVisible ? "translateY(0)" : "translateY(1.25rem)",
         transition: "opacity .4s cubic-bezier(.23,1,.32,1), transform .4s cubic-bezier(.23,1,.32,1)",
         pointerEvents: reminderVisible ? "auto" : "none",
       }}
     >
       <div style={{ height: 3, background: `linear-gradient(90deg, ${T.color.sage}, ${T.color.gold}, ${T.color.sage})` }} />
-      <div style={{ padding: "14px 18px 8px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div style={{ padding: "0.875rem 1.125rem 0.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h4 style={{ fontFamily: T.font.display, fontSize: 17, fontWeight: 500, color: T.color.sage, margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <h4 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 500, color: T.color.sage, margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
             {t("resolutionReminder")}
           </h4>
-          <p style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, margin: "3px 0 0" }}>
+          <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, margin: "0.1875rem 0 0" }}>
             {resolutionReminders.length} {resolutionReminders.length === 1 ? t("goalSingular") : t("goalPlural")} {resolutionReminders.length === 1 ? t("deadlineSingular") : t("deadlinePlural")}
           </p>
         </div>
-        <button onClick={handleDismissReminders} aria-label="Dismiss" style={{ width: 26, height: 26, borderRadius: 13, border: `1px solid ${T.color.sage}40`, background: `rgba(74,103,65,.08)`, color: T.color.muted, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"\u2715"}</button>
+        <button onClick={handleDismissReminders} aria-label="Dismiss" style={{ width: "1.625rem", height: "1.625rem", borderRadius: "0.8125rem", border: `1px solid ${T.color.sage}40`, background: `rgba(74,103,65,.08)`, color: T.color.muted, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"\u2715"}</button>
       </div>
-      <div style={{ padding: "0 14px 14px" }}>
+      <div style={{ padding: "0 0.875rem 0.875rem" }}>
         {resolutionReminders.slice(0, 3).map((r, i) => (
           <button key={r.mem.id} onClick={() => { markReminderSeen([r.mem.id]); onNavigateToRoom(r.wingId, r.roomId); }}
-            style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 8px", borderRadius: 10, border: "none", background: "transparent", cursor: "pointer", textAlign: "left", transition: "background .15s", borderTop: i > 0 ? `1px solid ${T.color.cream}` : "none" }}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.625rem 0.5rem", borderRadius: "0.625rem", border: "none", background: "transparent", cursor: "pointer", textAlign: "left", transition: "background .15s", borderTop: i > 0 ? `1px solid ${T.color.cream}` : "none" }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(74,103,65,.06)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: `${T.color.sage}18`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
+            <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem", background: `${T.color.sage}18`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.125rem" }}>
               {"\uD83C\uDFAF"}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: T.font.body, fontSize: 13, fontWeight: 600, color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.mem.resolution?.goal}</div>
-              <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginTop: 1 }}>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.mem.resolution?.goal}</div>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginTop: "0.0625rem" }}>
                 {r.daysLeft} {r.daysLeft === 1 ? t("daySingular") : t("dayPlural")} {r.roomIcon} {r.roomName}
               </div>
             </div>
-            <div style={{ background: `linear-gradient(135deg, ${T.color.sage}, ${T.color.sage}cc)`, color: "#FFF", fontFamily: T.font.body, fontSize: 11, fontWeight: 600, padding: "5px 12px", borderRadius: 8, whiteSpace: "nowrap", flexShrink: 0 }}>{t("view")}</div>
+            <div style={{ background: `linear-gradient(135deg, ${T.color.sage}, ${T.color.sage}cc)`, color: "#FFF", fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, padding: "0.3125rem 0.75rem", borderRadius: "0.5rem", whiteSpace: "nowrap", flexShrink: 0 }}>{t("view")}</div>
           </button>
         ))}
       </div>
@@ -275,20 +275,20 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
     {showReveals && <div
       style={{
         position: "absolute",
-        bottom: isMobile ? 80 : 72,
-        right: isMobile ? 12 : 24,
+        bottom: isMobile ? "5rem" : "4.5rem",
+        right: isMobile ? "0.75rem" : "1.5rem",
         zIndex: 40,
-        width: isMobile ? "calc(100% - 24px)" : 340,
+        width: isMobile ? "calc(100% - 1.5rem)" : "21.25rem",
         background: `linear-gradient(135deg, ${T.color.linen}f5, ${T.color.warmStone}f5)`,
         backdropFilter: "blur(16px)",
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: "1px solid #7B68AE60",
         boxShadow:
           "0 8px 40px rgba(123,104,174,.18), 0 0 24px rgba(123,104,174,.10), inset 0 1px 0 rgba(255,255,255,.6)",
         padding: 0,
         overflow: "hidden",
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(20px)",
+        transform: visible ? "translateY(0)" : "translateY(1.25rem)",
         transition:
           "opacity .4s cubic-bezier(.23,1,.32,1), transform .4s cubic-bezier(.23,1,.32,1)",
         pointerEvents: visible ? "auto" : "none",
@@ -305,7 +305,7 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
       {/* Header */}
       <div
         style={{
-          padding: "16px 18px 10px",
+          padding: "1rem 1.125rem 0.625rem",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
@@ -315,25 +315,25 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
           <h4
             style={{
               fontFamily: T.font.display,
-              fontSize: 20,
+              fontSize: "1.25rem",
               fontWeight: 500,
               color: "#6B4E9B",
               margin: 0,
-              letterSpacing: ".3px",
+              letterSpacing: "0.01875rem",
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: "0.5rem",
             }}
           >
-            <span style={{ fontSize: 22 }}>{"\u2728"}</span>
+            <span style={{ fontSize: "1.375rem" }}>{"\u2728"}</span>
             {revealed.length === 1 ? t("capsuleOpenedSingular") : t("capsuleOpenedPlural")}
           </h4>
           <p
             style={{
               fontFamily: T.font.body,
-              fontSize: 11,
+              fontSize: "0.6875rem",
               color: T.color.muted,
-              margin: "3px 0 0",
+              margin: "0.1875rem 0 0",
             }}
           >
             {revealed.length === 1
@@ -344,13 +344,13 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
         <button
           onClick={handleDismiss}
           style={{
-            width: 26,
-            height: 26,
-            borderRadius: 13,
+            width: "1.625rem",
+            height: "1.625rem",
+            borderRadius: "0.8125rem",
             border: "1px solid #7B68AE40",
             background: "rgba(123,104,174,.08)",
             color: T.color.muted,
-            fontSize: 12,
+            fontSize: "0.75rem",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -363,7 +363,7 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
       </div>
 
       {/* Revealed memories list */}
-      <div style={{ padding: "0 14px 14px" }}>
+      <div style={{ padding: "0 0.875rem 0.875rem" }}>
         {shown.map((r, i) => (
           <button
             key={r.mem.id}
@@ -372,9 +372,9 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
               width: "100%",
               display: "flex",
               alignItems: "center",
-              gap: 12,
-              padding: "10px 8px",
-              borderRadius: 10,
+              gap: "0.75rem",
+              padding: "0.625rem 0.5rem",
+              borderRadius: "0.625rem",
               border: "none",
               background: "transparent",
               cursor: "pointer",
@@ -393,9 +393,9 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
             {/* Memory color swatch */}
             <div
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
+                width: "2.5rem",
+                height: "2.5rem",
+                borderRadius: "0.625rem",
                 background: `linear-gradient(135deg, hsl(${r.mem.hue},${r.mem.s}%,${r.mem.l}%), hsl(${r.mem.hue},${Math.max(0, r.mem.s - 10)}%,${Math.max(0, r.mem.l - 10)}%))`,
                 flexShrink: 0,
                 display: "flex",
@@ -411,14 +411,14 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
                   src={r.mem.dataUrl}
                   alt=""
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
+                    width: "2.5rem",
+                    height: "2.5rem",
+                    borderRadius: "0.625rem",
                     objectFit: "cover",
                   }}
                 />
               ) : (
-                <span style={{ fontSize: 18 }}>{"\uD83D\uDD13"}</span>
+                <span style={{ fontSize: "1.125rem" }}>{"\uD83D\uDD13"}</span>
               )}
             </div>
 
@@ -427,7 +427,7 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
               <div
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: T.color.charcoal,
                   whiteSpace: "nowrap",
@@ -440,9 +440,9 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
               <div
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: 11,
+                  fontSize: "0.6875rem",
                   color: T.color.muted,
-                  marginTop: 1,
+                  marginTop: "0.0625rem",
                 }}
               >
                 {r.roomIcon} {r.roomName}
@@ -455,10 +455,10 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
                 background: "linear-gradient(135deg, #9B7DD4, #7B68AE)",
                 color: "#FFF",
                 fontFamily: T.font.body,
-                fontSize: 11,
+                fontSize: "0.6875rem",
                 fontWeight: 600,
-                padding: "5px 12px",
-                borderRadius: 8,
+                padding: "0.3125rem 0.75rem",
+                borderRadius: "0.5rem",
                 whiteSpace: "nowrap",
                 flexShrink: 0,
               }}
@@ -473,9 +473,9 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
       {revealed.length > 3 && (
         <div
           style={{
-            padding: "0 18px 12px",
+            padding: "0 1.125rem 0.75rem",
             fontFamily: T.font.body,
-            fontSize: 10,
+            fontSize: "0.625rem",
             color: "#9B7DD4",
             textAlign: "center",
           }}

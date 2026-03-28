@@ -670,28 +670,28 @@ export default function FamilyTreePage() {
   };
 
   const inputStyle: React.CSSProperties = {
-    padding: "10px 14px",
-    borderRadius: 10,
+    padding: "0.625rem 0.875rem",
+    borderRadius: "0.625rem",
     border: `1px solid ${T.color.sandstone}`,
     background: T.color.white,
     fontFamily: T.font.body,
-    fontSize: 14,
+    fontSize: "0.875rem",
     color: T.color.charcoal,
     outline: "none",
   };
 
   const btnStyle: React.CSSProperties = {
-    padding: "10px 20px",
-    borderRadius: 12,
+    padding: "0.625rem 1.25rem",
+    borderRadius: "0.75rem",
     fontFamily: T.font.body,
-    fontSize: 14,
+    fontSize: "0.875rem",
     fontWeight: 600,
     cursor: "pointer",
     border: "none",
-    minHeight: 44,
+    minHeight: "2.75rem",
     display: "inline-flex",
     alignItems: "center",
-    gap: 8,
+    gap: "0.5rem",
   };
 
   return (
@@ -706,29 +706,29 @@ export default function FamilyTreePage() {
       {/* Header */}
       <div
         style={{
-          padding: "20px 24px",
+          padding: "1.25rem 1.5rem",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           flexWrap: "wrap",
-          gap: 12,
+          gap: "0.75rem",
           borderBottom: `1px solid ${T.color.cream}`,
           background: `${T.color.linen}e0`,
           backdropFilter: "blur(12px)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
           <a
             href="/palace"
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
+              width: "2.25rem",
+              height: "2.25rem",
+              borderRadius: "0.625rem",
               background: `linear-gradient(135deg, ${T.color.warmStone}, ${T.color.sandstone})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 16,
+              fontSize: "1rem",
               border: `1px solid ${T.color.sandstone}`,
               textDecoration: "none",
             }}
@@ -739,7 +739,7 @@ export default function FamilyTreePage() {
             <h1
               style={{
                 fontFamily: T.font.display,
-                fontSize: 28,
+                fontSize: "1.75rem",
                 fontWeight: 500,
                 color: T.color.charcoal,
                 margin: 0,
@@ -750,7 +750,7 @@ export default function FamilyTreePage() {
             <p
               style={{
                 fontFamily: T.font.body,
-                fontSize: 13,
+                fontSize: "0.8125rem",
                 color: T.color.muted,
                 margin: 0,
               }}
@@ -759,7 +759,7 @@ export default function FamilyTreePage() {
             </p>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           <button
             onClick={() => setShowAddForm(true)}
             style={{
@@ -809,12 +809,12 @@ export default function FamilyTreePage() {
       {showAddForm && (
         <div
           style={{
-            padding: "16px 24px",
+            padding: "1rem 1.5rem",
             background: T.color.warmStone,
             borderBottom: `1px solid ${T.color.cream}`,
             display: "flex",
             alignItems: "center",
-            gap: 12,
+            gap: "0.75rem",
             flexWrap: "wrap",
           }}
         >
@@ -889,7 +889,7 @@ export default function FamilyTreePage() {
               height: "100%",
               minHeight: 400,
               fontFamily: T.font.body,
-              fontSize: 16,
+              fontSize: "1rem",
               color: T.color.muted,
             }}
           >
@@ -904,15 +904,15 @@ export default function FamilyTreePage() {
               justifyContent: "center",
               height: "100%",
               minHeight: 400,
-              gap: 16,
-              padding: 40,
+              gap: "1rem",
+              padding: "2.5rem",
             }}
           >
-            <div style={{ fontSize: 64 }}>{"\u{1F333}"}</div>
+            <div style={{ fontSize: "4rem" }}>{"\u{1F333}"}</div>
             <h2
               style={{
                 fontFamily: T.font.display,
-                fontSize: 26,
+                fontSize: "1.625rem",
                 fontWeight: 500,
                 color: T.color.charcoal,
                 textAlign: "center",
@@ -924,10 +924,10 @@ export default function FamilyTreePage() {
             <p
               style={{
                 fontFamily: T.font.body,
-                fontSize: 15,
+                fontSize: "0.9375rem",
                 color: T.color.muted,
                 textAlign: "center",
-                maxWidth: 420,
+                maxWidth: "26.25rem",
                 lineHeight: 1.6,
               }}
             >
@@ -939,8 +939,8 @@ export default function FamilyTreePage() {
                 ...btnStyle,
                 background: T.color.terracotta,
                 color: T.color.white,
-                fontSize: 16,
-                padding: "14px 28px",
+                fontSize: "1rem",
+                padding: "0.875rem 1.75rem",
               }}
             >
               {t("addFirstPerson")}
@@ -993,22 +993,22 @@ export default function FamilyTreePage() {
           <div
             style={{
               position: "absolute",
-              bottom: 20,
-              right: 20,
+              bottom: "1.25rem",
+              right: "1.25rem",
               display: "flex",
               flexDirection: "column",
-              gap: 4,
+              gap: "0.25rem",
             }}
           >
             <button
               onClick={() => setZoom((z) => Math.min(3, z + 0.2))}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
+                width: "2.5rem",
+                height: "2.5rem",
+                borderRadius: "0.625rem",
                 border: `1px solid ${T.color.sandstone}`,
                 background: `${T.color.linen}e0`,
-                fontSize: 20,
+                fontSize: "1.25rem",
                 cursor: "pointer",
                 color: T.color.walnut,
                 display: "flex",
@@ -1021,12 +1021,12 @@ export default function FamilyTreePage() {
             <button
               onClick={() => setZoom((z) => Math.max(0.2, z - 0.2))}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
+                width: "2.5rem",
+                height: "2.5rem",
+                borderRadius: "0.625rem",
                 border: `1px solid ${T.color.sandstone}`,
                 background: `${T.color.linen}e0`,
-                fontSize: 20,
+                fontSize: "1.25rem",
                 cursor: "pointer",
                 color: T.color.walnut,
                 display: "flex",
@@ -1039,12 +1039,12 @@ export default function FamilyTreePage() {
             <button
               onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }}
               style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
+                width: "2.5rem",
+                height: "2.5rem",
+                borderRadius: "0.625rem",
                 border: `1px solid ${T.color.sandstone}`,
                 background: `${T.color.linen}e0`,
-                fontSize: 14,
+                fontSize: "0.875rem",
                 cursor: "pointer",
                 color: T.color.walnut,
                 fontFamily: T.font.body,

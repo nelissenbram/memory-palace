@@ -132,7 +132,7 @@ export default function SubscriptionPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 48, textAlign: "center", fontFamily: F.body, fontSize: 16, color: C.muted }}>
+      <div style={{ padding: "3rem", textAlign: "center", fontFamily: F.body, fontSize: "1rem", color: C.muted }}>
         {t("loading")}
       </div>
     );
@@ -183,34 +183,34 @@ export default function SubscriptionPage() {
       {/* Toast */}
       {toast && (
         <div role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: 24, right: 24, zIndex: 100,
-          padding: "14px 20px", borderRadius: 12,
+          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
+          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
           background: toast.type === "success" ? C.sage : C.error,
           color: "#FFF",
-          fontFamily: F.body, fontSize: 14, fontWeight: 500,
+          fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
           boxShadow: "0 8px 24px rgba(0,0,0,.15)",
           animation: "fadeIn .2s ease",
-          display: "flex", alignItems: "center", gap: 10,
+          display: "flex", alignItems: "center", gap: "0.625rem",
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
           <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
-            fontSize: 16, cursor: "pointer", marginLeft: 8, opacity: 0.7,
+            fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
         </div>
       )}
 
       {/* Header */}
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: "2rem" }}>
         <h2 style={{
-          fontFamily: F.display, fontSize: 28, fontWeight: 500,
-          color: C.charcoal, margin: "0 0 8px",
+          fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
+          color: C.charcoal, margin: "0 0 0.5rem",
         }}>
           {t("title")}
         </h2>
         <p style={{
-          fontFamily: F.body, fontSize: 15, color: C.muted,
+          fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
           margin: 0, lineHeight: 1.5,
         }}>
           {t("description")}
@@ -220,48 +220,48 @@ export default function SubscriptionPage() {
       {/* Current Plan Card */}
       <div style={{
         background: C.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${C.cream}`,
-        padding: "28px 32px",
+        padding: "1.75rem 2rem",
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-        marginBottom: 24,
+        marginBottom: "1.5rem",
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.375rem" }}>
               <h3 style={{
-                fontFamily: F.display, fontSize: 24, fontWeight: 500,
+                fontFamily: F.display, fontSize: "1.5rem", fontWeight: 500,
                 color: C.charcoal, margin: 0,
               }}>
                 {t("plan", { name: currentPlan.name })}
               </h3>
               <span style={{
-                padding: "4px 12px",
-                borderRadius: 8,
+                padding: "0.25rem 0.75rem",
+                borderRadius: "0.5rem",
                 background: `${currentStatus.color}18`,
                 color: currentStatus.color,
                 fontFamily: F.body,
-                fontSize: 12,
+                fontSize: "0.75rem",
                 fontWeight: 600,
                 letterSpacing: "0.3px",
               }}>
                 {currentStatus.text}
               </span>
             </div>
-            <p style={{ fontFamily: F.body, fontSize: 14, color: C.muted, margin: 0 }}>
+            <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: C.muted, margin: 0 }}>
               {sub?.plan === "free" ? t("taglineFree") : sub?.plan === "keeper" ? t("taglineKeeper") : t("taglineGuardian")}
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
             {currentPlan.price > 0 ? (
               <>
-                <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 400, color: C.charcoal }}>
+                <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 400, color: C.charcoal }}>
                   {"\u20AC"}{currentPlan.price.toFixed(2).replace(".", ",")}
                 </div>
-                <div style={{ fontSize: 13, color: C.muted }}>{t("perMonth")}</div>
+                <div style={{ fontSize: "0.8125rem", color: C.muted }}>{t("perMonth")}</div>
               </>
             ) : (
-              <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 400, color: C.charcoal }}>
+              <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 400, color: C.charcoal }}>
                 {t("free")}
               </div>
             )}
@@ -270,7 +270,7 @@ export default function SubscriptionPage() {
 
         {/* Period end */}
         {sub?.current_period_end && (
-          <p style={{ fontFamily: F.body, fontSize: 13, color: C.muted, marginBottom: 16 }}>
+          <p style={{ fontFamily: F.body, fontSize: "0.8125rem", color: C.muted, marginBottom: "1rem" }}>
             {sub.status === "trialing" ? t("trialEnds") : t("nextBilling")}:{" "}
             <strong style={{ color: C.charcoal }}>
               {new Date(sub.current_period_end).toLocaleDateString(locale === "nl" ? "nl-NL" : "en-GB", {
@@ -284,17 +284,17 @@ export default function SubscriptionPage() {
 
         {/* Actions — hidden in native app (Google Play policy: no external payment links) */}
         {!nativeApp && (
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
             {isPaid && (
               <button
                 onClick={handleManageBilling}
                 disabled={portalLoading}
                 style={{
-                  padding: "12px 24px",
-                  borderRadius: 12,
+                  padding: "0.75rem 1.5rem",
+                  borderRadius: "0.75rem",
                   border: `1px solid ${C.cream}`,
                   background: C.white,
-                  fontFamily: F.body, fontSize: 14, fontWeight: 500,
+                  fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
                   color: C.charcoal,
                   cursor: portalLoading ? "wait" : "pointer",
                   transition: "all .15s",
@@ -307,11 +307,11 @@ export default function SubscriptionPage() {
               <Link
                 href="/pricing"
                 style={{
-                  padding: "12px 24px",
-                  borderRadius: 12,
+                  padding: "0.75rem 1.5rem",
+                  borderRadius: "0.75rem",
                   border: "none",
                   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                  fontFamily: F.body, fontSize: 14, fontWeight: 600,
+                  fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
                   color: C.white,
                   textDecoration: "none",
                   transition: "all .15s",
@@ -324,11 +324,11 @@ export default function SubscriptionPage() {
               <button
                 onClick={() => handleUpgrade("guardian")}
                 style={{
-                  padding: "12px 24px",
-                  borderRadius: 12,
+                  padding: "0.75rem 1.5rem",
+                  borderRadius: "0.75rem",
                   border: "none",
                   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                  fontFamily: F.body, fontSize: 14, fontWeight: 600,
+                  fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
                   color: C.white,
                   cursor: "pointer",
                   transition: "all .15s",
@@ -344,20 +344,20 @@ export default function SubscriptionPage() {
       {/* Usage Stats */}
       <div style={{
         background: C.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${C.cream}`,
-        padding: "28px 32px",
+        padding: "1.75rem 2rem",
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-        marginBottom: 24,
+        marginBottom: "1.5rem",
       }}>
         <h3 style={{
-          fontFamily: F.display, fontSize: 20, fontWeight: 500,
-          color: C.charcoal, margin: "0 0 20px",
+          fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
+          color: C.charcoal, margin: "0 0 1.25rem",
         }}>
           {t("yourUsage")}
         </h3>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {([
             { label: t("wings"), current: usage?.wings || 0, limit: limits.wings },
             { label: t("rooms"), current: usage?.rooms || 0, limit: limits.rooms },
@@ -371,13 +371,13 @@ export default function SubscriptionPage() {
               <div key={item.label}>
                 <div style={{
                   display: "flex", justifyContent: "space-between",
-                  marginBottom: 6,
+                  marginBottom: "0.375rem",
                 }}>
-                  <span style={{ fontFamily: F.body, fontSize: 14, fontWeight: 500, color: C.charcoal }}>
+                  <span style={{ fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500, color: C.charcoal }}>
                     {item.label}
                   </span>
                   <span style={{
-                    fontFamily: F.body, fontSize: 13,
+                    fontFamily: F.body, fontSize: "0.8125rem",
                     color: isNearLimit ? C.terracotta : C.muted,
                     fontWeight: isNearLimit ? 600 : 400,
                   }}>
@@ -385,7 +385,7 @@ export default function SubscriptionPage() {
                   </span>
                 </div>
                 <div style={{
-                  height: 6,
+                  height: "0.375rem",
                   borderRadius: 3,
                   background: `${C.sandstone}30`,
                   overflow: "hidden",
@@ -408,14 +408,14 @@ export default function SubscriptionPage() {
         {/* Near-limit upgrade prompt — hidden in native app */}
         {!nativeApp && isFree && usage && (usage.wings >= 2 || usage.rooms >= 4 || usage.memories >= 80) && (
           <div style={{
-            marginTop: 20,
-            padding: "16px 20px",
-            borderRadius: 12,
+            marginTop: "1.25rem",
+            padding: "1rem 1.25rem",
+            borderRadius: "0.75rem",
             background: `${C.terracotta}08`,
             border: `1px solid ${C.terracotta}20`,
           }}>
             <p style={{
-              fontFamily: F.body, fontSize: 14, color: C.charcoal,
+              fontFamily: F.body, fontSize: "0.875rem", color: C.charcoal,
               margin: 0, lineHeight: 1.5,
             }}>
               {t("nearLimitWarning")}{" "}
@@ -433,25 +433,25 @@ export default function SubscriptionPage() {
       {/* Plan Comparison */}
       <div style={{
         background: C.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${C.cream}`,
-        padding: "28px 32px",
+        padding: "1.75rem 2rem",
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
       }}>
         <h3 style={{
-          fontFamily: F.display, fontSize: 20, fontWeight: 500,
-          color: C.charcoal, margin: "0 0 6px",
+          fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
+          color: C.charcoal, margin: "0 0 0.375rem",
         }}>
           {t("allPlans")}
         </h3>
         <p style={{
-          fontFamily: F.body, fontSize: 14, color: C.muted,
-          margin: "0 0 20px", lineHeight: 1.5,
+          fontFamily: F.body, fontSize: "0.875rem", color: C.muted,
+          margin: "0 0 1.25rem", lineHeight: 1.5,
         }}>
           {t("comparePlans")}
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {(["free", "keeper", "guardian"] as PlanId[]).map((planId) => {
             const plan = PLANS[planId];
             const isCurrent = planId === sub?.plan;
@@ -462,34 +462,34 @@ export default function SubscriptionPage() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "16px 20px",
-                  borderRadius: 12,
+                  padding: "1rem 1.25rem",
+                  borderRadius: "0.75rem",
                   background: isCurrent ? `${C.terracotta}08` : C.linen,
                   border: isCurrent ? `1.5px solid ${C.terracotta}30` : `1px solid ${C.cream}`,
                 }}
               >
                 <div>
                   <div style={{
-                    fontFamily: F.body, fontSize: 15, fontWeight: 600,
-                    color: C.charcoal, display: "flex", alignItems: "center", gap: 8,
+                    fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 600,
+                    color: C.charcoal, display: "flex", alignItems: "center", gap: "0.5rem",
                   }}>
                     {plan.name}
                     {isCurrent && (
                       <span style={{
-                        fontSize: 11, fontWeight: 600,
-                        padding: "2px 8px", borderRadius: 6,
+                        fontSize: "0.6875rem", fontWeight: 600,
+                        padding: "2px 0.5rem", borderRadius: "0.375rem",
                         background: `${C.terracotta}18`, color: C.terracotta,
                       }}>
                         {t("current")}
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>
+                  <div style={{ fontSize: "0.8125rem", color: C.muted, marginTop: "0.25rem" }}>
                     {plan.features.slice(0, 3).map(translateFeature).join(" \u2022 ")}
                   </div>
                 </div>
-                <div style={{ textAlign: "right", flexShrink: 0, marginLeft: 16 }}>
-                  <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 500, color: C.charcoal }}>
+                <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "1rem" }}>
+                  <div style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: C.charcoal }}>
                     {plan.price === 0 ? t("free") : `\u20AC${plan.price.toFixed(2).replace(".", ",")}/${t("perMonthShort")}`}
                   </div>
                 </div>
@@ -499,11 +499,11 @@ export default function SubscriptionPage() {
         </div>
 
         {!nativeApp && (
-          <div style={{ marginTop: 16, textAlign: "center" }}>
+          <div style={{ marginTop: "1rem", textAlign: "center" }}>
             <Link
               href="/pricing"
               style={{
-                fontFamily: F.body, fontSize: 14, fontWeight: 500,
+                fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
                 color: C.terracotta, textDecoration: "none",
               }}
             >

@@ -65,7 +65,7 @@ export default function CookieConsent() {
         style={{
           maxWidth: 1100,
           margin: "0 auto",
-          padding: showManage ? "20px 0 24px" : "16px 0",
+          padding: showManage ? "1.25rem 0 1.5rem" : "1rem 0",
         }}
       >
         {!showManage ? (
@@ -75,13 +75,13 @@ export default function CookieConsent() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: 16,
+              gap: "1rem",
               flexWrap: "wrap",
             }}
           >
             <p
               style={{
-                fontSize: 14,
+                fontSize: "0.875rem",
                 color: C.cream,
                 lineHeight: 1.5,
                 margin: 0,
@@ -100,18 +100,18 @@ export default function CookieConsent() {
                 {t("privacyPolicy")}
               </Link>
             </p>
-            <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+            <div style={{ display: "flex", gap: "0.625rem", flexShrink: 0 }}>
               <button
                 onClick={() => setShowManage(true)}
                 style={{
                   fontFamily: F.body,
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 500,
                   color: C.cream,
                   background: "transparent",
                   border: `1px solid ${C.sandstone}60`,
-                  borderRadius: 8,
-                  padding: "8px 16px",
+                  borderRadius: "0.5rem",
+                  padding: "0.5rem 1rem",
                   cursor: "pointer",
                   transition: "border-color 0.2s",
                 }}
@@ -122,13 +122,13 @@ export default function CookieConsent() {
                 onClick={handleAccept}
                 style={{
                   fontFamily: F.body,
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: C.white,
                   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
                   border: "none",
-                  borderRadius: 8,
-                  padding: "8px 20px",
+                  borderRadius: "0.5rem",
+                  padding: "0.5rem 1.25rem",
                   cursor: "pointer",
                   transition: "opacity 0.2s",
                 }}
@@ -143,10 +143,10 @@ export default function CookieConsent() {
             <h3
               style={{
                 fontFamily: F.display,
-                fontSize: 18,
+                fontSize: "1.125rem",
                 fontWeight: 500,
                 color: C.linen,
-                marginBottom: 16,
+                marginBottom: "1rem",
               }}
             >
               {t("preferences")}
@@ -158,14 +158,14 @@ export default function CookieConsent() {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                padding: "12px 0",
+                padding: "0.75rem 0",
                 borderBottom: `1px solid ${C.sandstone}20`,
               }}
             >
               <div>
                 <p
                   style={{
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 600,
                     color: C.cream,
                     margin: "0 0 2px",
@@ -173,13 +173,13 @@ export default function CookieConsent() {
                 >
                   {t("essentialCookies")}
                 </p>
-                <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+                <p style={{ fontSize: "0.75rem", color: C.muted, margin: 0 }}>
                   {t("essentialDescription")}
                 </p>
               </div>
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   color: C.muted,
                   fontStyle: "italic",
                 }}
@@ -194,13 +194,13 @@ export default function CookieConsent() {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                padding: "12px 0",
+                padding: "0.75rem 0",
               }}
             >
               <div>
                 <p
                   style={{
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 600,
                     color: C.cream,
                     margin: "0 0 2px",
@@ -208,16 +208,16 @@ export default function CookieConsent() {
                 >
                   {t("analyticsCookies")}
                 </p>
-                <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+                <p style={{ fontSize: "0.75rem", color: C.muted, margin: 0 }}>
                   {t("analyticsDescription")}
                 </p>
               </div>
               <button
                 onClick={() => setAnalyticsEnabled(!analyticsEnabled)}
                 style={{
-                  width: 44,
-                  height: 24,
-                  borderRadius: 12,
+                  width: "2.75rem",
+                  height: "1.5rem",
+                  borderRadius: "0.75rem",
                   border: "none",
                   background: analyticsEnabled ? C.sage : `${C.sandstone}60`,
                   position: "relative",
@@ -229,8 +229,8 @@ export default function CookieConsent() {
               >
                 <div
                   style={{
-                    width: 18,
-                    height: 18,
+                    width: "1.125rem",
+                    height: "1.125rem",
                     borderRadius: "50%",
                     background: C.white,
                     position: "absolute",
@@ -247,20 +247,20 @@ export default function CookieConsent() {
               style={{
                 display: "flex",
                 justifyContent: "flex-end",
-                gap: 10,
-                marginTop: 16,
+                gap: "0.625rem",
+                marginTop: "1rem",
               }}
             >
               <button
                 onClick={() => setShowManage(false)}
                 style={{
                   fontFamily: F.body,
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   color: C.muted,
                   background: "transparent",
                   border: "none",
                   cursor: "pointer",
-                  padding: "8px 12px",
+                  padding: "0.5rem 0.75rem",
                 }}
               >
                 {t("back")}
@@ -269,13 +269,13 @@ export default function CookieConsent() {
                 onClick={handleSavePreferences}
                 style={{
                   fontFamily: F.body,
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: C.white,
                   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
                   border: "none",
-                  borderRadius: 8,
-                  padding: "8px 20px",
+                  borderRadius: "0.5rem",
+                  padding: "0.5rem 1.25rem",
                   cursor: "pointer",
                 }}
               >

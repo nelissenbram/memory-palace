@@ -134,19 +134,19 @@ function LoginContent() {
   if (mfaStep) {
     return (
       <div>
-        <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <div style={{
-            width: 64, height: 64, borderRadius: 32,
+            width: "4rem", height: "4rem", borderRadius: "2rem",
             background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 16px", fontSize: 32,
+            margin: "0 auto 1rem", fontSize: "2rem",
           }}>
             <ShieldIcon />
           </div>
           <h1
             style={{
               fontFamily: T.font.display,
-              fontSize: 28,
+              fontSize: "1.75rem",
               fontWeight: 400,
               color: T.color.charcoal,
               margin: 0,
@@ -157,9 +157,9 @@ function LoginContent() {
           </h1>
           <p
             style={{
-              fontSize: 16,
+              fontSize: "1rem",
               color: T.color.muted,
-              marginTop: 10,
+              marginTop: "0.625rem",
               lineHeight: 1.6,
               fontFamily: T.font.body,
             }}
@@ -172,13 +172,13 @@ function LoginContent() {
           <div
             role="alert"
             style={{
-              padding: "12px 16px",
-              borderRadius: 10,
+              padding: "0.75rem 1rem",
+              borderRadius: "0.625rem",
               background: "#FDF2F2",
               border: "1px solid #FECACA",
               color: T.color.error,
-              fontSize: 15,
-              marginBottom: 20,
+              fontSize: "0.9375rem",
+              marginBottom: "1.25rem",
               textAlign: "center",
               fontFamily: T.font.body,
             }}
@@ -192,8 +192,8 @@ function LoginContent() {
           style={{
             display: "flex",
             justifyContent: "center",
-            gap: 10,
-            marginBottom: 28,
+            gap: "0.625rem",
+            marginBottom: "1.75rem",
           }}
           onPaste={handleMfaPaste}
         >
@@ -210,14 +210,14 @@ function LoginContent() {
               autoFocus={i === 0}
               aria-label={`Digit ${i + 1} of 6`}
               style={{
-                width: 52,
-                height: 64,
+                width: "3.25rem",
+                height: "4rem",
                 textAlign: "center",
-                fontSize: 26,
+                fontSize: "1.625rem",
                 fontFamily: T.font.body,
                 fontWeight: 600,
                 color: T.color.charcoal,
-                borderRadius: 12,
+                borderRadius: "0.75rem",
                 border: `2px solid ${digit ? T.color.terracotta : T.color.sandstone}`,
                 background: T.color.white,
                 outline: "none",
@@ -246,14 +246,14 @@ function LoginContent() {
           style={{
             display: "block",
             width: "100%",
-            margin: "14px auto 0",
-            padding: 12,
+            margin: "0.875rem auto 0",
+            padding: "0.75rem",
             background: "none",
             border: `1px solid ${T.color.cream}`,
-            borderRadius: 12,
+            borderRadius: "0.75rem",
             color: T.color.muted,
             fontFamily: T.font.body,
-            fontSize: 14,
+            fontSize: "0.875rem",
             cursor: "pointer",
             transition: "all 0.2s",
           }}
@@ -267,12 +267,12 @@ function LoginContent() {
   // ── Normal Login Screen ──
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div style={{ fontSize: 36, marginBottom: 8 }}>🏛️</div>
+      <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
+        <div style={{ fontSize: "2.25rem", marginBottom: "0.5rem" }}>🏛️</div>
         <h1
           style={{
             fontFamily: T.font.display,
-            fontSize: 28,
+            fontSize: "1.75rem",
             fontWeight: 300,
             color: T.color.charcoal,
             margin: 0,
@@ -283,9 +283,9 @@ function LoginContent() {
         </h1>
         <p
           style={{
-            fontSize: 14,
+            fontSize: "0.875rem",
             color: T.color.muted,
-            marginTop: 6,
+            marginTop: "0.375rem",
           }}
         >
           {t("signInSubtitle")}
@@ -296,13 +296,13 @@ function LoginContent() {
         <div
           role="alert"
           style={{
-            padding: "10px 14px",
-            borderRadius: 10,
+            padding: "0.625rem 0.875rem",
+            borderRadius: "0.625rem",
             background: "#FDF2F2",
             border: "1px solid #FECACA",
             color: T.color.error,
-            fontSize: 13,
-            marginBottom: 16,
+            fontSize: "0.8125rem",
+            marginBottom: "1rem",
           }}
         >
           {error}
@@ -319,7 +319,7 @@ function LoginContent() {
         style={inputStyle}
       />
 
-      <label htmlFor="login-password" style={{ ...labelStyle, marginTop: 14 }}>{t("password")}</label>
+      <label htmlFor="login-password" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("password")}</label>
       <input
         id="login-password"
         name="password"
@@ -329,7 +329,7 @@ function LoginContent() {
         style={inputStyle}
       />
 
-      <div style={{ textAlign: "right", marginTop: 6 }}>
+      <div style={{ textAlign: "right", marginTop: "0.375rem" }}>
         <Link href="/forgot-password" style={linkStyle}>
           {t("forgotPassword")}
         </Link>
@@ -366,9 +366,9 @@ function LoginContent() {
       <p
         style={{
           textAlign: "center",
-          fontSize: 13,
+          fontSize: "0.8125rem",
           color: T.color.muted,
-          marginTop: 20,
+          marginTop: "1.25rem",
           marginBottom: 0,
         }}
       >
@@ -381,9 +381,9 @@ function LoginContent() {
       <p
         style={{
           textAlign: "center",
-          fontSize: 11,
+          fontSize: "0.6875rem",
           color: T.color.muted,
-          marginTop: 16,
+          marginTop: "1rem",
           marginBottom: 0,
         }}
       >
@@ -410,22 +410,22 @@ function ShieldIcon() {
 
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
-  fontSize: 11,
+  fontSize: "0.6875rem",
   color: T.color.muted,
   letterSpacing: ".5px",
   textTransform: "uppercase",
   display: "block",
-  marginBottom: 6,
+  marginBottom: "0.375rem",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "13px 16px",
-  borderRadius: 10,
+  padding: "0.8125rem 1rem",
+  borderRadius: "0.625rem",
   border: `1.5px solid ${T.color.sandstone}`,
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: 14,
+  fontSize: "0.875rem",
   color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box",
@@ -435,31 +435,31 @@ const inputStyle: React.CSSProperties = {
 const linkStyle: React.CSSProperties = {
   color: T.color.terracotta,
   textDecoration: "none",
-  fontSize: 13,
+  fontSize: "0.8125rem",
 };
 
 const buttonStyle = (disabled: boolean): React.CSSProperties => ({
   width: "100%",
-  padding: 14,
-  borderRadius: 12,
+  padding: "0.875rem",
+  borderRadius: "0.75rem",
   border: "none",
   background: disabled
     ? `${T.color.sandstone}40`
     : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
   color: disabled ? T.color.muted : T.color.white,
   fontFamily: T.font.body,
-  fontSize: 15,
+  fontSize: "0.9375rem",
   fontWeight: 600,
   cursor: disabled ? "default" : "pointer",
-  marginTop: 20,
+  marginTop: "1.25rem",
   transition: "all 0.2s",
 });
 
 const dividerStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 12,
-  margin: "24px 0 20px",
+  gap: "0.75rem",
+  margin: "1.5rem 0 1.25rem",
 };
 
 const dividerLineStyle: React.CSSProperties = {
@@ -470,24 +470,24 @@ const dividerLineStyle: React.CSSProperties = {
 
 const dividerTextStyle: React.CSSProperties = {
   fontFamily: T.font.body,
-  fontSize: 12,
+  fontSize: "0.75rem",
   color: T.color.muted,
   whiteSpace: "nowrap",
 };
 
 const socialButtonBase: React.CSSProperties = {
   width: "100%",
-  minHeight: 44,
-  padding: "12px 16px",
-  borderRadius: 12,
+  minHeight: "2.75rem",
+  padding: "0.75rem 1rem",
+  borderRadius: "0.75rem",
   fontFamily: T.font.body,
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 600,
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: 10,
+  gap: "0.625rem",
   transition: "all 0.2s",
 };
 
@@ -496,7 +496,7 @@ const googleButtonStyle: React.CSSProperties = {
   background: T.color.white,
   color: "#3C4043",
   border: `1.5px solid ${T.color.sandstone}`,
-  marginBottom: 10,
+  marginBottom: "0.625rem",
 };
 
 const appleButtonStyle: React.CSSProperties = {

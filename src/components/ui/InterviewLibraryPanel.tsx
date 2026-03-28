@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { INTERVIEW_TEMPLATES, WING_ID_TO_LABEL, getTemplatesByWing } from "@/lib/constants/interviews";
 import type { InterviewTemplate } from "@/lib/constants/interviews";
@@ -23,6 +24,7 @@ const difficultyColors: Record<string, { bg: string; text: string; labelKey: str
 export default function InterviewLibraryPanel({ onClose, highlightWingId }: InterviewLibraryPanelProps) {
   const { t } = useTranslation("interviewLibrary");
   const isMobile = useIsMobile();
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { sessions, sessionsLoaded, loadHistory, startSession, resumeSession, setShowLibrary } = useInterviewStore();
   const [filter, setFilter] = useState<string>(highlightWingId || "all");
   const [fadeIn, setFadeIn] = useState(false);
@@ -58,7 +60,7 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
       backdropFilter: "blur(8px)", zIndex: 56,
       opacity: fadeIn ? 1 : 0, transition: "opacity 0.3s ease",
     }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
         position: "absolute", right: 0, top: 0, bottom: 0,
         width: isMobile ? "100%" : "min(480px, 95vw)",
         background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",
@@ -72,32 +74,32 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
         <div style={{
           position: "sticky", top: 0, zIndex: 2,
           background: `${T.color.linen}f0`, backdropFilter: "blur(16px)",
-          padding: isMobile ? "20px 20px 16px" : "24px 28px 16px",
+          padding: isMobile ? "1.25rem 1.25rem 1rem" : "1.5rem 1.75rem 1rem",
           borderBottom: `1px solid ${T.color.cream}`,
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <div>
-              <h2 style={{ fontFamily: T.font.display, fontSize: 24, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
+              <h2 style={{ fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
                 {t("title")}
               </h2>
-              <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, margin: "4px 0 0" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
                 {t("subtitle")}
               </p>
             </div>
             <button onClick={onClose} style={{
-              width: isMobile ? 44 : 36, height: isMobile ? 44 : 36,
-              borderRadius: isMobile ? 22 : 18,
+              width: isMobile ? "2.75rem" : "2.25rem", height: isMobile ? "2.75rem" : "2.25rem",
+              borderRadius: isMobile ? "1.375rem" : "1.125rem",
               border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
-              color: T.color.muted, fontSize: isMobile ? 16 : 14,
+              color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem",
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-              minWidth: 44, minHeight: 44,
+              minWidth: "2.75rem", minHeight: "2.75rem",
             }}>
               {"\u2715"}
             </button>
           </div>
 
           {/* Wing filter tabs */}
-          <div style={{ display: "flex", gap: 4, overflowX: "auto", paddingBottom: 4 }}>
+          <div style={{ display: "flex", gap: "0.25rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
             <FilterTab label={t("all")} active={filter === "all"} onClick={() => setFilter("all")} />
             {WING_ORDER.map((wid) => (
               <FilterTab key={wid} label={WING_ID_TO_LABEL[wid] || wid} active={filter === wid} onClick={() => setFilter(wid)} highlight={wid === highlightWingId} />
@@ -106,17 +108,17 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
         </div>
 
         {/* Templates list */}
-        <div style={{ padding: isMobile ? "16px 20px" : "20px 28px" }}>
+        <div style={{ padding: isMobile ? "1rem 1.25rem" : "1.25rem 1.75rem" }}>
           {filter === "all" ? (
             WING_ORDER.map((wingId) => {
               const templates = getTemplatesByWing(wingId);
               if (!templates.length) return null;
               return (
-                <div key={wingId} style={{ marginBottom: 28 }}>
+                <div key={wingId} style={{ marginBottom: "1.75rem" }}>
                   <h3 style={{
-                    fontFamily: T.font.display, fontSize: 16, fontWeight: 600,
-                    color: T.color.walnut, margin: "0 0 12px",
-                    textTransform: "uppercase", letterSpacing: "0.5px",
+                    fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
+                    color: T.color.walnut, margin: "0 0 0.75rem",
+                    textTransform: "uppercase", letterSpacing: "0.03125rem",
                   }}>
                     {WING_ID_TO_LABEL[wingId]}
                   </h3>
@@ -140,10 +142,10 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
 function FilterTab({ label, active, onClick, highlight }: { label: string; active: boolean; onClick: () => void; highlight?: boolean }) {
   return (
     <button onClick={onClick} style={{
-      padding: "8px 14px", borderRadius: 16, border: "none", whiteSpace: "nowrap",
+      padding: "0.5rem 0.875rem", borderRadius: "1rem", border: "none", whiteSpace: "nowrap",
       background: active ? T.color.charcoal : highlight ? `${T.color.terracotta}14` : T.color.warmStone,
       color: active ? "#FFF" : highlight ? T.color.terracotta : T.color.walnut,
-      fontFamily: T.font.body, fontSize: 12, fontWeight: active ? 600 : 400,
+      fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: active ? 600 : 400,
       cursor: "pointer", transition: "all 0.2s",
     }}>
       {label}
@@ -164,66 +166,66 @@ function TemplateCard({ template, completion, onStart, isMobile, t }: {
 
   return (
     <div onClick={onStart} style={{
-      padding: isMobile ? "16px" : "16px 20px", borderRadius: 14,
+      padding: isMobile ? "1rem" : "1rem 1.25rem", borderRadius: "0.875rem",
       border: `1px solid ${isCompleted ? `${T.color.sage}30` : T.color.cream}`,
       background: isCompleted ? `${T.color.sage}06` : T.color.white,
-      marginBottom: 10, cursor: "pointer",
+      marginBottom: "0.625rem", cursor: "pointer",
       transition: "transform 0.15s, box-shadow 0.15s",
-      display: "flex", gap: 14, alignItems: "flex-start",
+      display: "flex", gap: "0.875rem", alignItems: "flex-start",
     }}>
       <div style={{
-        width: 44, height: 44, borderRadius: 12,
+        width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem",
         background: isCompleted ? `${T.color.sage}15` : T.color.warmStone,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 22, flexShrink: 0,
+        fontSize: "1.375rem", flexShrink: 0,
       }}>
         {isCompleted ? "\u2713" : template.icon}
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
           <h4 style={{
-            fontFamily: T.font.display, fontSize: 16, fontWeight: 600,
+            fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
             color: T.color.charcoal, margin: 0,
           }}>
             {template.title}
           </h4>
           {isCompleted && (
             <span style={{
-              fontFamily: T.font.body, fontSize: 10, fontWeight: 600,
+              fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
               color: T.color.sage, background: `${T.color.sage}15`,
-              padding: "2px 8px", borderRadius: 8,
+              padding: "0.125rem 0.5rem", borderRadius: "0.5rem",
             }}>{t("done")}</span>
           )}
           {isInProgress && (
             <span style={{
-              fontFamily: T.font.body, fontSize: 10, fontWeight: 600,
+              fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
               color: T.color.terracotta, background: `${T.color.terracotta}15`,
-              padding: "2px 8px", borderRadius: 8,
+              padding: "0.125rem 0.5rem", borderRadius: "0.5rem",
             }}>{t("continueLabel")}</span>
           )}
         </div>
 
         <p style={{
-          fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-          lineHeight: 1.5, margin: "0 0 8px", overflow: "hidden",
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+          lineHeight: 1.5, margin: "0 0 0.5rem", overflow: "hidden",
           display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
         }}>
           {template.description}
         </p>
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <span style={{
-            fontFamily: T.font.body, fontSize: 11,
+            fontFamily: T.font.body, fontSize: "0.6875rem",
             color: diff.text, background: diff.bg,
-            padding: "2px 8px", borderRadius: 8,
+            padding: "0.125rem 0.5rem", borderRadius: "0.5rem",
           }}>
             {t(diff.labelKey)}
           </span>
-          <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.sandstone }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.sandstone }}>
             ~{template.estimatedTotalMinutes} {t("minutes")}
           </span>
-          <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.sandstone }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.sandstone }}>
             {template.questions.length} {t("questions")}
           </span>
         </div>

@@ -123,7 +123,7 @@ export default function ContextualTooltip({
               transform: "translate(-50%, -50%)",
             }
           : {
-              bottom: isMobile ? 90 : 60,
+              bottom: isMobile ? "5.625rem" : "3.75rem",
               left: "50%",
               transform: "translateX(-50%)",
             }),
@@ -135,22 +135,22 @@ export default function ContextualTooltip({
           background: "rgba(42, 34, 24, 0.85)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 16,
-          padding: isMobile ? "14px 22px" : "16px 28px",
+          borderRadius: "1rem",
+          padding: isMobile ? "0.875rem 1.375rem" : "1rem 1.75rem",
           border: "1px solid rgba(212, 175, 55, 0.2)",
           boxShadow: "0 8px 32px rgba(0, 0, 0, 0.25)",
           display: "flex",
           alignItems: "center",
-          gap: 12,
-          maxWidth: isMobile ? "calc(100vw - 40px)" : 400,
+          gap: "0.75rem",
+          maxWidth: isMobile ? "calc(100vw - 2.5rem)" : "25rem",
         }}
       >
         {/* Glowing dot */}
         <div
           style={{
-            width: 10,
-            height: 10,
-            borderRadius: 5,
+            width: "0.625rem",
+            height: "0.625rem",
+            borderRadius: "0.3125rem",
             background:
               "radial-gradient(circle, #FFEEBB 0%, #FFD080 60%, transparent 100%)",
             boxShadow: "0 0 12px rgba(255, 224, 160, 0.5)",
@@ -161,7 +161,7 @@ export default function ContextualTooltip({
         <span
           style={{
             fontFamily: T.font.body,
-            fontSize: isMobile ? 15 : 16,
+            fontSize: isMobile ? "0.9375rem" : "1rem",
             color: "rgba(250, 250, 247, 0.92)",
             lineHeight: 1.4,
           }}
@@ -172,10 +172,10 @@ export default function ContextualTooltip({
         <span
           style={{
             fontFamily: T.font.body,
-            fontSize: 11,
+            fontSize: "0.6875rem",
             color: "rgba(250, 250, 247, 0.35)",
             flexShrink: 0,
-            marginLeft: 4,
+            marginLeft: "0.25rem",
           }}
         >
           {"\u2715"}

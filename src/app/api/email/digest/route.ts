@@ -10,6 +10,7 @@ import {
   type WeeklyStats,
 } from "@/lib/email/send-digest";
 import { TRACKS } from "@/lib/constants/tracks";
+import enMessages from "@/messages/en.json";
 
 /**
  * POST /api/email/digest
@@ -282,7 +283,7 @@ export async function POST(request: Request) {
         const pct = Math.round((completedSteps / preserveTrack.steps.length) * 100);
         if (pct > 0 && pct < 100) {
           trackProgress = {
-            trackName: preserveTrack.name,
+            trackName: (enMessages.tracksPanel as Record<string, string>)[preserveTrack.nameKey] || preserveTrack.nameKey,
             percentComplete: pct,
             icon: preserveTrack.icon,
           };

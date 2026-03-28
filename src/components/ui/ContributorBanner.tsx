@@ -14,27 +14,27 @@ export default function ContributorBanner({ ownerName, permission }: Contributor
   return (
     <div style={{
       position: "absolute",
-      top: 56,
+      top: "3.5rem",
       left: "50%",
       transform: "translateX(-50%)",
       zIndex: 30,
       animation: "fadeIn .5s ease .5s both",
       display: "flex",
       alignItems: "center",
-      gap: 8,
+      gap: "0.5rem",
       background: `${T.color.white}ee`,
       backdropFilter: "blur(10px)",
-      borderRadius: 12,
-      padding: "8px 16px",
+      borderRadius: "0.75rem",
+      padding: "0.5rem 1rem",
       border: `1px solid ${isContributor ? T.color.sage + "40" : T.color.cream}`,
       boxShadow: "0 2px 12px rgba(44,44,42,.1)",
     }}>
       <div style={{
-        width: 8, height: 8, borderRadius: 4,
+        width: "0.5rem", height: "0.5rem", borderRadius: "0.25rem",
         background: isContributor ? T.color.sage : T.color.terracotta,
       }} />
       <span style={{
-        fontFamily: T.font.body, fontSize: 12,
+        fontFamily: T.font.body, fontSize: "0.75rem",
         color: isContributor ? T.color.sage : T.color.walnut,
         fontWeight: 500,
       }}>

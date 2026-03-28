@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { WINGS } from "@/lib/constants/wings";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
@@ -70,6 +71,7 @@ interface ClusteredPin {
 export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("memoryMap");
+  const { containerRef: focusTrapRef, handleKeyDown } = useFocusTrap(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredPin, setHoveredPin] = useState<ClusteredPin | null>(null);
@@ -217,68 +219,68 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
       animation: "fadeIn .25s ease",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width: isMobile ? "100%" : "min(1100px, 94vw)",
-        height: isMobile ? "100%" : "min(700px, 88vh)",
+      <div ref={focusTrapRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{
+        width: isMobile ? "100%" : "min(68.75rem, 94vw)",
+        height: isMobile ? "100%" : "min(43.75rem, 88vh)",
         background: `linear-gradient(145deg, ${T.color.linen}, ${T.color.warmStone})`,
-        borderRadius: isMobile ? 0 : 20, overflow: "hidden", display: "flex", flexDirection: "column",
+        borderRadius: isMobile ? 0 : "1.25rem", overflow: "hidden", display: "flex", flexDirection: "column",
         boxShadow: "0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1)",
         animation: "fadeUp .35s cubic-bezier(.23,1,.32,1)",
       }}>
         {/* Header */}
         <div style={{
-          padding: "18px 24px", display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "1.125rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center",
           borderBottom: `1px solid ${T.color.cream}`, flexShrink: 0,
         }}>
           <div>
-            <h2 style={{ fontFamily: T.font.display, fontSize: 24, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
+            <h2 style={{ fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
               {"\uD83C\uDF0D"} {t("title")}
             </h2>
-            <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "4px 0 0" }}>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
               {t("memoriesAcross", { memCount: String(allLocMems.length), locCount: String(uniqueLocations) })}
             </p>
           </div>
           <button onClick={onClose} style={{
-            width: 36, height: 36, borderRadius: 18,
+            width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem",
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
-            color: T.color.muted, fontSize: 16, cursor: "pointer",
+            color: T.color.muted, fontSize: "1rem", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>{"\u2715"}</button>
         </div>
 
         {/* Wing filter tabs */}
         <div style={{
-          padding: "10px 24px", display: "flex", gap: 6, flexShrink: 0,
+          padding: "0.625rem 1.5rem", display: "flex", gap: "0.375rem", flexShrink: 0,
           borderBottom: `1px solid ${T.color.cream}`, overflowX: "auto",
         }}>
           <button
             onClick={() => setFilterWing(null)}
             style={{
-              padding: "6px 14px", borderRadius: 8, border: `1px solid ${!filterWing ? T.color.walnut : T.color.cream}`,
+              padding: "0.375rem 0.875rem", borderRadius: "0.5rem", border: `1px solid ${!filterWing ? T.color.walnut : T.color.cream}`,
               background: !filterWing ? `${T.color.walnut}15` : T.color.white,
-              fontFamily: T.font.body, fontSize: 11, fontWeight: !filterWing ? 600 : 400,
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: !filterWing ? 600 : 400,
               color: !filterWing ? T.color.walnut : T.color.muted, cursor: "pointer", whiteSpace: "nowrap",
             }}
           >{t("allWings")}</button>
           {WINGS.map(w => (
             <button key={w.id} onClick={() => setFilterWing(w.id)} style={{
-              padding: "6px 14px", borderRadius: 8,
+              padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
               border: `1px solid ${filterWing === w.id ? w.accent : T.color.cream}`,
               background: filterWing === w.id ? `${w.accent}15` : T.color.white,
-              fontFamily: T.font.body, fontSize: 11, fontWeight: filterWing === w.id ? 600 : 400,
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: filterWing === w.id ? 600 : 400,
               color: filterWing === w.id ? w.accent : T.color.muted, cursor: "pointer",
-              whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4,
+              whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.25rem",
             }}>
-              <span style={{ fontSize: 13 }}>{w.icon}</span> {w.name}
+              <span style={{ fontSize: "0.8125rem" }}>{w.icon}</span> {w.name}
             </button>
           ))}
         </div>
 
         {/* Map area */}
-        <div ref={containerRef} style={{ flex: 1, position: "relative", overflow: "hidden", margin: 16, borderRadius: 12, border: `1px solid ${T.color.sandstone}40` }}>
+        <div ref={containerRef} style={{ flex: 1, position: "relative", overflow: "hidden", margin: "1rem", borderRadius: "0.75rem", border: `1px solid ${T.color.sandstone}40` }}>
           <canvas ref={canvasRef} width={mapSize.w} height={mapSize.h} style={{ width: "100%", height: "100%", display: "block" }} />
 
-          {/* Pins */}
+          {/* Pins — sizes stay in px since they are map overlay elements */}
           {clusters.map((pin, i) => {
             const pctX = pin.x / mapSize.w * 100;
             const pctY = pin.y / mapSize.h * 100;
@@ -307,7 +309,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                 }}>
                 {count > 1 && (
                   <span style={{
-                    fontFamily: T.font.body, fontSize: 9, fontWeight: 700,
+                    fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700,
                     color: "#FFF", lineHeight: 1,
                   }}>{count}</span>
                 )}
@@ -315,22 +317,22 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                 {/* Tooltip on hover */}
                 {isHovered && (
                   <div style={{
-                    position: "absolute", bottom: "calc(100% + 8px)", left: "50%",
+                    position: "absolute", bottom: "calc(100% + 0.5rem)", left: "50%",
                     transform: "translateX(-50%)", whiteSpace: "nowrap",
                     background: `${T.color.charcoal}f0`, backdropFilter: "blur(8px)",
-                    color: "#FFF", padding: "8px 14px", borderRadius: 10,
-                    fontFamily: T.font.body, fontSize: 11, lineHeight: 1.5,
+                    color: "#FFF", padding: "0.5rem 0.875rem", borderRadius: "0.625rem",
+                    fontFamily: T.font.body, fontSize: "0.6875rem", lineHeight: 1.5,
                     boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
                     pointerEvents: "none",
                   }}>
-                    <div style={{ fontWeight: 600, marginBottom: 2 }}>{"\uD83D\uDCCD"} {pin.locationName}</div>
+                    <div style={{ fontWeight: 600, marginBottom: "0.125rem" }}>{"\uD83D\uDCCD"} {pin.locationName}</div>
                     {pin.mems.slice(0, 4).map((m, j) => (
-                      <div key={j} style={{ color: "rgba(255,255,255,0.75)", fontSize: 10 }}>
+                      <div key={j} style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.625rem" }}>
                         {m.mem.title}
                       </div>
                     ))}
                     {pin.mems.length > 4 && (
-                      <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}>{t("more", { count: String(pin.mems.length - 4) })}</div>
+                      <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.625rem" }}>{t("more", { count: String(pin.mems.length - 4) })}</div>
                     )}
                     <div style={{
                       position: "absolute", bottom: -4, left: "50%", transform: "translateX(-50%)",
@@ -352,11 +354,11 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
             }}>
               <div style={{
                 background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)",
-                padding: "24px 36px", borderRadius: 16, textAlign: "center",
+                padding: "1.5rem 2.25rem", borderRadius: "1rem", textAlign: "center",
               }}>
-                <div style={{ fontSize: 32, marginBottom: 8 }}>{"\uD83C\uDF10"}</div>
-                <p style={{ fontFamily: T.font.display, fontSize: 18, color: "#FFF", margin: "0 0 4px" }}>{t("noLocations")}</p>
-                <p style={{ fontFamily: T.font.body, fontSize: 12, color: "rgba(255,255,255,0.6)", margin: 0 }}>
+                <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{"\uD83C\uDF10"}</div>
+                <p style={{ fontFamily: T.font.display, fontSize: "1.125rem", color: "#FFF", margin: "0 0 0.25rem" }}>{t("noLocations")}</p>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "rgba(255,255,255,0.6)", margin: 0 }}>
                   {t("noLocationsDesc")}
                 </p>
               </div>
@@ -372,32 +374,32 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
               boxShadow: "0 -8px 32px rgba(0,0,0,0.2)",
               animation: "fadeUp .25s ease",
               maxHeight: "45%", overflowY: "auto",
-              padding: isMobile ? "14px 16px" : "16px 24px",
+              padding: isMobile ? "0.875rem 1rem" : "1rem 1.5rem",
             }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                 <div>
-                  <h3 style={{ fontFamily: T.font.display, fontSize: 18, fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+                  <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
                     {"\uD83D\uDCCD"} {selectedPin.locationName}
                   </h3>
-                  <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "2px 0 0" }}>
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.125rem 0 0" }}>
                     {selectedPin.mems.length} {selectedPin.mems.length === 1 ? t("memory") : t("memories")}
                   </p>
                 </div>
                 <button onClick={() => setSelectedPin(null)} style={{
-                  width: 28, height: 28, borderRadius: 14, border: `1px solid ${T.color.cream}`,
-                  background: T.color.warmStone, color: T.color.muted, fontSize: 12,
+                  width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
+                  background: T.color.warmStone, color: T.color.muted, fontSize: "0.75rem",
                   cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                 }}>{"\u2715"}</button>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {selectedPin.mems.map((m, j) => {
                   const wing = WINGS.find(w => w.id === m.wingId);
                   return (
                     <button key={j}
                       onClick={() => { if (onNavigate) onNavigate(m.roomId); }}
                       style={{
-                        display: "flex", alignItems: "center", gap: 12,
-                        padding: "10px 14px", borderRadius: 12,
+                        display: "flex", alignItems: "center", gap: "0.75rem",
+                        padding: "0.625rem 0.875rem", borderRadius: "0.75rem",
                         border: `1px solid ${T.color.cream}`, background: `${T.color.white}dd`,
                         cursor: "pointer", textAlign: "left", width: "100%",
                         transition: "background .15s",
@@ -407,39 +409,39 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                     >
                       {m.mem.dataUrl ? (
                         <div style={{
-                          width: 48, height: 48, borderRadius: 8, overflow: "hidden", flexShrink: 0,
+                          width: "3rem", height: "3rem", borderRadius: "0.5rem", overflow: "hidden", flexShrink: 0,
                           background: `${selectedPin.accent}20`,
                         }}>
                           <img src={m.mem.dataUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                         </div>
                       ) : (
                         <div style={{
-                          width: 48, height: 48, borderRadius: 8, flexShrink: 0,
+                          width: "3rem", height: "3rem", borderRadius: "0.5rem", flexShrink: 0,
                           background: `linear-gradient(135deg, ${selectedPin.accent}30, ${selectedPin.accent}10)`,
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 20,
+                          fontSize: "1.25rem",
                         }}>{m.mem.type === "photo" ? "\uD83D\uDCF7" : m.mem.type === "voice" ? "\uD83C\uDF99\uFE0F" : "\uD83D\uDCDD"}</div>
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
-                          fontFamily: T.font.display, fontSize: 14, fontWeight: 500, color: T.color.charcoal,
+                          fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 500, color: T.color.charcoal,
                           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                         }}>{m.mem.title}</div>
                         {m.mem.desc && (
                           <div style={{
-                            fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
-                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2,
+                            fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: "0.125rem",
                           }}>{m.mem.desc}</div>
                         )}
                         <div style={{
-                          fontFamily: T.font.body, fontSize: 10, color: wing?.accent || T.color.muted,
-                          marginTop: 3, display: "flex", alignItems: "center", gap: 4,
+                          fontFamily: T.font.body, fontSize: "0.625rem", color: wing?.accent || T.color.muted,
+                          marginTop: "0.1875rem", display: "flex", alignItems: "center", gap: "0.25rem",
                         }}>
                           <span>{wing?.icon}</span> {wing?.name}
                           {m.mem.createdAt && <span style={{ color: T.color.muted }}> &middot; {new Date(m.mem.createdAt).toLocaleDateString()}</span>}
                         </div>
                       </div>
-                      <span style={{ color: T.color.muted, fontSize: 12, flexShrink: 0 }}>{"\u2192"}</span>
+                      <span style={{ color: T.color.muted, fontSize: "0.75rem", flexShrink: 0 }}>{"\u2192"}</span>
                     </button>
                   );
                 })}
@@ -450,14 +452,14 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
 
         {/* Legend */}
         <div style={{
-          padding: "10px 24px 16px", display: "flex", gap: 16, flexShrink: 0,
+          padding: "0.625rem 1.5rem 1rem", display: "flex", gap: "1rem", flexShrink: 0,
           borderTop: `1px solid ${T.color.cream}`, alignItems: "center", flexWrap: "wrap",
         }}>
-          <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("legend")}</span>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("legend")}</span>
           {WINGS.map(w => (
-            <div key={w.id} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div key={w.id} style={{ display: "flex", alignItems: "center", gap: "0.3125rem" }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: w.accent, border: "1px solid rgba(0,0,0,0.1)" }} />
-              <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.walnut }}>{w.name}</span>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.walnut }}>{w.name}</span>
             </div>
           ))}
         </div>

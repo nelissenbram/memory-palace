@@ -249,11 +249,11 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
         setImportProgress((prev) => prev ? {
           ...prev,
           failed: prev.total,
-          results: [{ id: "error", success: false, error: err.error || "Import failed" }],
+          results: [{ id: "error", success: false, error: err.error || t("importFailed") }],
         } : null);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Import failed";
+      const message = err instanceof Error ? err.message : t("importFailed");
       setImportProgress((prev) => prev ? {
         ...prev,
         failed: prev.total,

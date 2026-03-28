@@ -3,6 +3,7 @@ import { T } from "@/lib/theme";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import { TRACKS } from "@/lib/constants/tracks";
 
 /**
@@ -12,6 +13,7 @@ import { TRACKS } from "@/lib/constants/tracks";
  */
 export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => void }) {
   const isMobile = useIsMobile();
+  const { t } = useTranslation("tracksPanel");
   const { totalPoints, tracks, getLevelInfo, getLevelProgressInfo, getRecommendedTrack, getNextStep } = useTrackStore();
   const { userGoal } = useUserStore();
   const levelInfo = getLevelInfo();
@@ -140,13 +142,13 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
               color: recommended.color, textTransform: "uppercase", letterSpacing: 0.5,
               marginBottom: 1,
             }}>
-              Continue your journey
+              {t("continueJourney")}
             </div>
             <div style={{
               fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal,
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
-              {nextStep.title}
+              {t(nextStep.titleKey)}
             </div>
           </div>
           <span style={{
@@ -166,7 +168,7 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
           <span style={{
             fontFamily: T.font.body, fontSize: 11, color: levelInfo.color, fontWeight: 500,
           }}>
-            All tracks completed. Magnificent!
+            {t("allTracksCompleted")}
           </span>
         </div>
       )}

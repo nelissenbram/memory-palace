@@ -92,8 +92,8 @@ export default function LegacyPage() {
   if (loading) {
     return (
       <div style={{
-        padding: 48, textAlign: "center",
-        fontFamily: T.font.body, fontSize: 16, color: T.color.muted,
+        padding: "3rem", textAlign: "center",
+        fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted,
       }}>
         {t("loading")}
       </div>
@@ -105,34 +105,34 @@ export default function LegacyPage() {
       {/* Toast */}
       {toast && (
         <div role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: 24, right: 24, zIndex: 100,
-          padding: "14px 20px", borderRadius: 12,
+          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
+          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
           background: toast.type === "success" ? T.color.sage : T.color.error,
           color: "#FFF",
-          fontFamily: T.font.body, fontSize: 14, fontWeight: 500,
+          fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
           boxShadow: "0 8px 24px rgba(0,0,0,.15)",
           animation: "fadeIn .2s ease",
-          display: "flex", alignItems: "center", gap: 10,
+          display: "flex", alignItems: "center", gap: "0.625rem",
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
           <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
-            fontSize: 16, cursor: "pointer", marginLeft: 8, opacity: 0.7,
+            fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
         </div>
       )}
 
       {/* Page header */}
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: "2rem" }}>
         <h2 style={{
-          fontFamily: T.font.display, fontSize: 28, fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 8px",
+          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 0.5rem",
         }}>
           {t("title")}
         </h2>
         <p style={{
-          fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
           margin: 0, lineHeight: 1.6,
         }}>
           {t("description")}
@@ -141,12 +141,12 @@ export default function LegacyPage() {
 
       {/* Warm intro callout */}
       <div style={{
-        padding: "20px 24px", borderRadius: 14, marginBottom: 28,
+        padding: "1.25rem 1.5rem", borderRadius: "0.875rem", marginBottom: "1.75rem",
         background: `linear-gradient(135deg, ${T.color.terracotta}08, ${T.color.walnut}06)`,
         border: `1px solid ${T.color.terracotta}18`,
       }}>
         <p style={{
-          fontFamily: T.font.body, fontSize: 15, color: T.color.walnut,
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
           margin: 0, lineHeight: 1.7,
         }}>
           {t("introCallout")}
@@ -155,7 +155,7 @@ export default function LegacyPage() {
 
       {/* Section tabs */}
       <div style={{
-        display: "flex", gap: 8, marginBottom: 24,
+        display: "flex", gap: "0.5rem", marginBottom: "1.5rem",
       }}>
         {([
           { key: "contacts" as const, label: t("contactsTab"), count: contacts.length },
@@ -168,14 +168,14 @@ export default function LegacyPage() {
             role="tab"
             aria-selected={activeSection === tab.key}
             style={{
-              padding: "12px 20px", borderRadius: 12,
+              padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
               border: `1.5px solid ${activeSection === tab.key ? T.color.terracotta : T.color.cream}`,
               background: activeSection === tab.key ? `${T.color.terracotta}10` : T.color.white,
-              fontFamily: T.font.body, fontSize: 14,
+              fontFamily: T.font.body, fontSize: "0.875rem",
               fontWeight: activeSection === tab.key ? 600 : 400,
               color: activeSection === tab.key ? T.color.terracotta : T.color.charcoal,
               cursor: "pointer", transition: "all .2s",
-              display: "flex", alignItems: "center", gap: 8,
+              display: "flex", alignItems: "center", gap: "0.5rem",
             }}
           >
             {tab.label}
@@ -183,8 +183,8 @@ export default function LegacyPage() {
               <span style={{
                 background: activeSection === tab.key ? T.color.terracotta : T.color.sandstone,
                 color: activeSection === tab.key ? "#FFF" : T.color.walnut,
-                borderRadius: 8, padding: "2px 8px",
-                fontSize: 12, fontWeight: 600,
+                borderRadius: "0.5rem", padding: "2px 0.5rem",
+                fontSize: "0.75rem", fontWeight: 600,
               }}>
                 {tab.count}
               </span>
@@ -325,14 +325,14 @@ function ContactsSection({
   return (
     <div style={{
       background: T.color.white,
-      borderRadius: 16,
+      borderRadius: "1rem",
       border: `1px solid ${T.color.cream}`,
-      padding: "28px 32px",
+      padding: "1.75rem 2rem",
       boxShadow: "0 2px 8px rgba(44,44,42,.04)",
     }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
+          fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
           color: T.color.charcoal, margin: 0,
         }}>
           {t("contactsTitle")}
@@ -347,28 +347,28 @@ function ContactsSection({
         )}
       </div>
       <p style={{
-        fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
-        margin: "0 0 24px", lineHeight: 1.6,
+        fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+        margin: "0 0 1.5rem", lineHeight: 1.6,
       }}>
         {t("contactsDesc")}
       </p>
 
       {/* Existing contacts */}
       {contacts.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: showForm ? 24 : 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: showForm ? "1.5rem" : 0 }}>
           {contacts.map((c) => (
             <div key={c.id} style={{
-              padding: "18px 22px", borderRadius: 14,
+              padding: "1.125rem 1.375rem", borderRadius: "0.875rem",
               background: T.color.linen,
               border: `1px solid ${T.color.cream}`,
-              display: "flex", alignItems: "center", gap: 16,
+              display: "flex", alignItems: "center", gap: "1rem",
             }}>
               {/* Avatar circle */}
               <div style={{
-                width: 48, height: 48, borderRadius: 24, flexShrink: 0,
+                width: "3rem", height: "3rem", borderRadius: "1.5rem", flexShrink: 0,
                 background: `linear-gradient(135deg, ${T.color.terracotta}30, ${T.color.walnut}20)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontFamily: T.font.display, fontSize: 20, fontWeight: 600,
+                fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600,
                 color: T.color.terracotta,
               }}>
                 {c.contact_name.charAt(0).toUpperCase()}
@@ -376,36 +376,36 @@ function ContactsSection({
 
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
+                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                   color: T.color.charcoal,
                 }}>
                   {c.contact_name}
                 </div>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
                   marginTop: 2,
                 }}>
                   {c.contact_email}
                   {c.relationship && (
-                    <span style={{ marginLeft: 10, color: T.color.walnut }}>
+                    <span style={{ marginLeft: "0.625rem", color: T.color.walnut }}>
                       {(() => { const rel = RELATIONSHIPS.find((r) => r.value === c.relationship); return rel ? t(rel.labelKey) : c.relationship; })()}
                     </span>
                   )}
                 </div>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
-                  marginTop: 4,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
+                  marginTop: "0.25rem",
                 }}>
                   {t("access")}: {(() => { const al = ACCESS_LEVELS.find((a) => a.value === c.access_level); return al ? t(al.labelKey) : c.access_level; })()}
                   {c.access_level === "wings_only" && c.wing_access.length > 0 && (
-                    <span style={{ marginLeft: 6, color: T.color.muted }}>
+                    <span style={{ marginLeft: "0.375rem", color: T.color.muted }}>
                       ({c.wing_access.map((w) => WING_LABEL_KEYS[w] ? tp(WING_LABEL_KEYS[w]) : w).join(", ")})
                     </span>
                   )}
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+              <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
                 <button
                   onClick={() => startEdit(c)}
                   style={smallBtnStyle}
@@ -426,18 +426,18 @@ function ContactsSection({
 
       {contacts.length === 0 && !showForm && (
         <div style={{
-          padding: "32px 24px", textAlign: "center",
-          borderRadius: 14, background: T.color.linen,
+          padding: "2rem 1.5rem", textAlign: "center",
+          borderRadius: "0.875rem", background: T.color.linen,
           border: `1px dashed ${T.color.sandstone}`,
         }}>
           <p style={{
-            fontFamily: T.font.display, fontSize: 18, color: T.color.walnut,
-            margin: "0 0 8px",
+            fontFamily: T.font.display, fontSize: "1.125rem", color: T.color.walnut,
+            margin: "0 0 0.5rem",
           }}>
             {t("noContactsTitle")}
           </p>
           <p style={{
-            fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
             margin: 0, lineHeight: 1.6,
           }}>
             {t("noContactsDesc")}
@@ -448,19 +448,19 @@ function ContactsSection({
       {/* Add / Edit form */}
       {showForm && (
         <div style={{
-          padding: "24px 28px", borderRadius: 14,
+          padding: "1.5rem 1.75rem", borderRadius: "0.875rem",
           background: T.color.linen,
           border: `1px solid ${T.color.cream}`,
-          marginTop: contacts.length > 0 ? 0 : 16,
+          marginTop: contacts.length > 0 ? 0 : "1rem",
         }}>
           <h4 style={{
-            fontFamily: T.font.display, fontSize: 18, fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 20px",
+            fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
+            color: T.color.charcoal, margin: "0 0 1.25rem",
           }}>
             {editingId ? t("editContact") : t("addContactTitle")}
           </h4>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}>
             {/* Name */}
             <div>
               <label htmlFor="legacy-contact-name" style={labelStyle}>{t("contactName")}</label>
@@ -488,17 +488,17 @@ function ContactsSection({
             {/* Relationship */}
             <div>
               <label style={labelStyle}>{t("relationship")}</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                 {RELATIONSHIPS.map((r) => (
                   <button
                     key={r.value}
                     onClick={() => setRelationship(r.value)}
                     aria-pressed={relationship === r.value}
                     style={{
-                      padding: "10px 16px", borderRadius: 10,
+                      padding: "0.625rem 1rem", borderRadius: "0.625rem",
                       border: `1.5px solid ${relationship === r.value ? T.color.terracotta : T.color.sandstone}`,
                       background: relationship === r.value ? `${T.color.terracotta}12` : T.color.white,
-                      fontFamily: T.font.body, fontSize: 14,
+                      fontFamily: T.font.body, fontSize: "0.875rem",
                       fontWeight: relationship === r.value ? 600 : 400,
                       color: relationship === r.value ? T.color.terracotta : T.color.charcoal,
                       cursor: "pointer", transition: "all .15s",
@@ -514,32 +514,32 @@ function ContactsSection({
             <div>
               <label style={labelStyle}>{t("accessLevel")}</label>
               <p style={{
-                fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
-                margin: "0 0 10px", lineHeight: 1.5,
+                fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+                margin: "0 0 0.625rem", lineHeight: 1.5,
               }}>
                 {t("accessLevelDesc")}
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {ACCESS_LEVELS.map((a) => (
                   <button
                     key={a.value}
                     onClick={() => setAccessLevel(a.value)}
                     aria-pressed={accessLevel === a.value}
                     style={{
-                      padding: "14px 18px", borderRadius: 12, textAlign: "left",
+                      padding: "0.875rem 1.125rem", borderRadius: "0.75rem", textAlign: "left",
                       border: `1.5px solid ${accessLevel === a.value ? T.color.terracotta : T.color.sandstone}`,
                       background: accessLevel === a.value ? `${T.color.terracotta}10` : T.color.white,
                       cursor: "pointer", transition: "all .15s",
                     }}
                   >
                     <div style={{
-                      fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
+                      fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                       color: accessLevel === a.value ? T.color.terracotta : T.color.charcoal,
                     }}>
                       {t(a.labelKey)}
                     </div>
                     <div style={{
-                      fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
                       marginTop: 2,
                     }}>
                       {t(a.descKey)}
@@ -553,7 +553,7 @@ function ContactsSection({
             {accessLevel === "wings_only" && (
               <div>
                 <label style={labelStyle}>{t("selectWings")}</label>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                   {DEFAULT_WING_SLUGS.map((slug) => {
                     const selected = wingAccess.includes(slug);
                     return (
@@ -568,10 +568,10 @@ function ContactsSection({
                         }}
                         aria-pressed={selected}
                         style={{
-                          padding: "10px 18px", borderRadius: 10,
+                          padding: "0.625rem 1.125rem", borderRadius: "0.625rem",
                           border: `1.5px solid ${selected ? T.color.sage : T.color.sandstone}`,
                           background: selected ? `${T.color.sage}12` : T.color.white,
-                          fontFamily: T.font.body, fontSize: 14,
+                          fontFamily: T.font.body, fontSize: "0.875rem",
                           fontWeight: selected ? 600 : 400,
                           color: selected ? T.color.sage : T.color.charcoal,
                           cursor: "pointer", transition: "all .15s",
@@ -586,7 +586,7 @@ function ContactsSection({
             )}
 
             {/* Actions */}
-            <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+            <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.375rem" }}>
               <button onClick={handleSave} disabled={saving} style={primaryBtnStyle}>
                 {saving ? tc("saving") : editingId ? tc("save") : t("addContact")}
               </button>
@@ -703,14 +703,14 @@ function MessagesSection({
   return (
     <div style={{
       background: T.color.white,
-      borderRadius: 16,
+      borderRadius: "1rem",
       border: `1px solid ${T.color.cream}`,
-      padding: "28px 32px",
+      padding: "1.75rem 2rem",
       boxShadow: "0 2px 8px rgba(44,44,42,.04)",
     }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
+          fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
           color: T.color.charcoal, margin: 0,
         }}>
           {t("messagesTitle")}
@@ -722,37 +722,37 @@ function MessagesSection({
         )}
       </div>
       <p style={{
-        fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
-        margin: "0 0 24px", lineHeight: 1.6,
+        fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+        margin: "0 0 1.5rem", lineHeight: 1.6,
       }}>
         {t("messagesDesc")}
       </p>
 
       {/* Existing messages */}
       {messages.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: showForm ? 24 : 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: showForm ? "1.5rem" : 0 }}>
           {messages.map((m) => (
             <div key={m.id} style={{
-              padding: "18px 22px", borderRadius: 14,
+              padding: "1.125rem 1.375rem", borderRadius: "0.875rem",
               background: T.color.linen,
               border: `1px solid ${T.color.cream}`,
             }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontFamily: T.font.display, fontSize: 17, fontWeight: 500,
-                    color: T.color.charcoal, marginBottom: 4,
+                    fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 500,
+                    color: T.color.charcoal, marginBottom: "0.25rem",
                   }}>
                     {m.subject || t("noSubject")}
                   </div>
                   <div style={{
-                    fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+                    fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
                   }}>
                     {t("to")}: {m.recipient_email}
                   </div>
                   <div style={{
-                    fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
-                    marginTop: 4,
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
+                    marginTop: "0.25rem",
                   }}>
                     {t("delivery")}: {(() => { const d = DELIVERY_OPTIONS.find((d) => d.value === m.deliver_on); return d ? t(d.labelKey) : m.deliver_on; })()}
                     {m.deliver_on === "specific_date" && m.deliver_date && (
@@ -761,16 +761,16 @@ function MessagesSection({
                   </div>
                   {m.message_body && (
                     <p style={{
-                      fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal,
-                      margin: "10px 0 0", lineHeight: 1.6,
-                      maxHeight: 80, overflow: "hidden",
+                      fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
+                      margin: "0.625rem 0 0", lineHeight: 1.6,
+                      maxHeight: "5rem", overflow: "hidden",
                       opacity: 0.75,
                     }}>
                       {m.message_body.slice(0, 200)}{m.message_body.length > 200 ? "..." : ""}
                     </p>
                   )}
                 </div>
-                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
                   <button onClick={() => startEdit(m)} style={smallBtnStyle}>{tc("edit")}</button>
                   <button
                     onClick={() => handleDelete(m.id)}
@@ -787,18 +787,18 @@ function MessagesSection({
 
       {messages.length === 0 && !showForm && (
         <div style={{
-          padding: "32px 24px", textAlign: "center",
-          borderRadius: 14, background: T.color.linen,
+          padding: "2rem 1.5rem", textAlign: "center",
+          borderRadius: "0.875rem", background: T.color.linen,
           border: `1px dashed ${T.color.sandstone}`,
         }}>
           <p style={{
-            fontFamily: T.font.display, fontSize: 18, color: T.color.walnut,
-            margin: "0 0 8px",
+            fontFamily: T.font.display, fontSize: "1.125rem", color: T.color.walnut,
+            margin: "0 0 0.5rem",
           }}>
             {t("noMessagesTitle")}
           </p>
           <p style={{
-            fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
             margin: 0, lineHeight: 1.6,
           }}>
             {t("noMessagesDesc")}
@@ -809,33 +809,33 @@ function MessagesSection({
       {/* Message form */}
       {showForm && (
         <div style={{
-          padding: "24px 28px", borderRadius: 14,
+          padding: "1.5rem 1.75rem", borderRadius: "0.875rem",
           background: T.color.linen,
           border: `1px solid ${T.color.cream}`,
-          marginTop: messages.length > 0 ? 0 : 16,
+          marginTop: messages.length > 0 ? 0 : "1rem",
         }}>
           <h4 style={{
-            fontFamily: T.font.display, fontSize: 18, fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 20px",
+            fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
+            color: T.color.charcoal, margin: "0 0 1.25rem",
           }}>
             {editingId ? t("editMessage") : t("writeMessageTitle")}
           </h4>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}>
             {/* Recipient */}
             <div>
               <label style={labelStyle}>{t("recipientEmail")}</label>
               {contacts.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem", marginBottom: "0.5rem" }}>
                   {contacts.map((c) => (
                     <button
                       key={c.id}
                       onClick={() => setRecipientEmail(c.contact_email)}
                       style={{
-                        padding: "6px 12px", borderRadius: 8,
+                        padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
                         border: `1px solid ${recipientEmail === c.contact_email ? T.color.terracotta : T.color.sandstone}`,
                         background: recipientEmail === c.contact_email ? `${T.color.terracotta}12` : T.color.white,
-                        fontFamily: T.font.body, fontSize: 13,
+                        fontFamily: T.font.body, fontSize: "0.8125rem",
                         color: recipientEmail === c.contact_email ? T.color.terracotta : T.color.charcoal,
                         cursor: "pointer", transition: "all .15s",
                       }}
@@ -868,8 +868,8 @@ function MessagesSection({
             <div>
               <label style={labelStyle}>{t("yourMessage")}</label>
               <p style={{
-                fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
-                margin: "0 0 8px", lineHeight: 1.5,
+                fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+                margin: "0 0 0.5rem", lineHeight: 1.5,
               }}>
                 {t("messagePrompt")}
               </p>
@@ -881,9 +881,9 @@ function MessagesSection({
                 style={{
                   ...inputStyle,
                   resize: "vertical",
-                  minHeight: 200,
+                  minHeight: "12.5rem",
                   lineHeight: 1.7,
-                  fontSize: 15,
+                  fontSize: "0.9375rem",
                 }}
               />
             </div>
@@ -891,16 +891,16 @@ function MessagesSection({
             {/* Delivery timing */}
             <div>
               <label style={labelStyle}>{t("deliveryTiming")}</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {DELIVERY_OPTIONS.map((d) => (
                   <button
                     key={d.value}
                     onClick={() => setDeliverOn(d.value)}
                     style={{
-                      padding: "12px 18px", borderRadius: 10, textAlign: "left",
+                      padding: "0.75rem 1.125rem", borderRadius: "0.625rem", textAlign: "left",
                       border: `1.5px solid ${deliverOn === d.value ? T.color.terracotta : T.color.sandstone}`,
                       background: deliverOn === d.value ? `${T.color.terracotta}10` : T.color.white,
-                      fontFamily: T.font.body, fontSize: 15,
+                      fontFamily: T.font.body, fontSize: "0.9375rem",
                       fontWeight: deliverOn === d.value ? 600 : 400,
                       color: deliverOn === d.value ? T.color.terracotta : T.color.charcoal,
                       cursor: "pointer", transition: "all .15s",
@@ -911,7 +911,7 @@ function MessagesSection({
                 ))}
               </div>
               {deliverOn === "specific_date" && (
-                <div style={{ marginTop: 12 }}>
+                <div style={{ marginTop: "0.75rem" }}>
                   <input
                     type="date" value={deliverDate}
                     onChange={(e) => setDeliverDate(e.target.value)}
@@ -922,7 +922,7 @@ function MessagesSection({
             </div>
 
             {/* Actions */}
-            <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+            <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.375rem" }}>
               <button onClick={handleSave} disabled={saving} style={primaryBtnStyle}>
                 {saving ? tc("saving") : editingId ? tc("save") : t("saveMessage")}
               </button>
@@ -982,39 +982,39 @@ function SettingsSection({
   return (
     <div style={{
       background: T.color.white,
-      borderRadius: 16,
+      borderRadius: "1rem",
       border: `1px solid ${T.color.cream}`,
-      padding: "28px 32px",
+      padding: "1.75rem 2rem",
       boxShadow: "0 2px 8px rgba(44,44,42,.04)",
     }}>
       <h3 style={{
-        fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
-        color: T.color.charcoal, margin: "0 0 8px",
+        fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
+        color: T.color.charcoal, margin: "0 0 0.5rem",
       }}>
         {t("settingsTitle")}
       </h3>
       <p style={{
-        fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
-        margin: "0 0 28px", lineHeight: 1.6,
+        fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+        margin: "0 0 1.75rem", lineHeight: 1.6,
       }}>
         {t("settingsDesc")}
       </p>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         {/* Inactivity trigger */}
         <div style={{
-          padding: "20px 24px", borderRadius: 14,
+          padding: "1.25rem 1.5rem", borderRadius: "0.875rem",
           background: T.color.linen,
           border: `1px solid ${T.color.cream}`,
         }}>
           <label style={labelStyle}>{t("inactivityTrigger")}</label>
           <p style={{
-            fontFamily: T.font.body, fontSize: 15, color: T.color.charcoal,
-            margin: "0 0 14px", lineHeight: 1.6,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.charcoal,
+            margin: "0 0 0.875rem", lineHeight: 1.6,
           }}>
             {t("inactivityDesc")}
           </p>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <input
               type="range"
               min={3}
@@ -1025,15 +1025,15 @@ function SettingsSection({
               style={{ flex: 1, accentColor: T.color.terracotta }}
             />
             <div style={{
-              fontFamily: T.font.display, fontSize: 20, fontWeight: 600,
-              color: T.color.terracotta, minWidth: 90, textAlign: "center",
+              fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600,
+              color: T.color.terracotta, minWidth: "5.625rem", textAlign: "center",
             }}>
               {months !== 1 ? t("monthsLabel", { count: String(months) }) : t("monthLabel", { count: String(months) })}
             </div>
           </div>
           <p style={{
-            fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-            margin: "10px 0 0", lineHeight: 1.4,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+            margin: "0.625rem 0 0", lineHeight: 1.4,
           }}>
             {t("inactivityRecommendation")}
           </p>
@@ -1041,20 +1041,20 @@ function SettingsSection({
 
         {/* Trusted verifier */}
         <div style={{
-          padding: "20px 24px", borderRadius: 14,
+          padding: "1.25rem 1.5rem", borderRadius: "0.875rem",
           background: T.color.linen,
           border: `1px solid ${T.color.cream}`,
         }}>
           <label style={labelStyle}>{t("trustedVerifier")}</label>
           <p style={{
-            fontFamily: T.font.body, fontSize: 15, color: T.color.charcoal,
-            margin: "0 0 14px", lineHeight: 1.6,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.charcoal,
+            margin: "0 0 0.875rem", lineHeight: 1.6,
           }}>
             {t("trustedVerifierDesc")}
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
             <div>
-              <label style={{ ...labelStyle, fontSize: 12 }}>{t("verifierName")}</label>
+              <label style={{ ...labelStyle, fontSize: "0.75rem" }}>{t("verifierName")}</label>
               <input
                 type="text" value={verifierName}
                 onChange={(e) => setVerifierName(e.target.value)}
@@ -1063,7 +1063,7 @@ function SettingsSection({
               />
             </div>
             <div>
-              <label style={{ ...labelStyle, fontSize: 12 }}>{t("verifierEmail")}</label>
+              <label style={{ ...labelStyle, fontSize: "0.75rem" }}>{t("verifierEmail")}</label>
               <input
                 type="email" value={verifierEmail}
                 onChange={(e) => setVerifierEmail(e.target.value)}
@@ -1076,17 +1076,17 @@ function SettingsSection({
 
         {/* Status indicator */}
         <div style={{
-          padding: "16px 20px", borderRadius: 12,
+          padding: "1rem 1.25rem", borderRadius: "0.75rem",
           background: `${T.color.sage}08`,
           border: `1px solid ${T.color.sage}15`,
-          display: "flex", alignItems: "center", gap: 12,
+          display: "flex", alignItems: "center", gap: "0.75rem",
         }}>
           <div style={{
-            width: 10, height: 10, borderRadius: 5,
+            width: "0.625rem", height: "0.625rem", borderRadius: "0.3125rem",
             background: settings?.status === "active" || !settings ? T.color.sage : T.color.terracotta,
           }} />
           <p style={{
-            fontFamily: T.font.body, fontSize: 14, color: T.color.walnut,
+            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.walnut,
             margin: 0, lineHeight: 1.5,
           }}>
             {t("statusLabel")}: <strong>{settings?.status === "triggered" ? t("statusTriggered") : settings?.status === "transferred" ? t("statusTransferred") : t("statusActive")}</strong>
@@ -1099,7 +1099,7 @@ function SettingsSection({
         </div>
 
         {/* Save button */}
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: "0.75rem" }}>
           <button
             onClick={handleSave}
             disabled={!hasChanges || saving}
@@ -1133,23 +1133,23 @@ function SettingsSection({
 
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 600,
   color: T.color.walnut,
   letterSpacing: ".3px",
   textTransform: "uppercase" as const,
   display: "block",
-  marginBottom: 8,
+  marginBottom: "0.5rem",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "14px 18px",
-  borderRadius: 12,
+  padding: "0.875rem 1.125rem",
+  borderRadius: "0.75rem",
   border: `1.5px solid ${T.color.sandstone}`,
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: 15,
+  fontSize: "0.9375rem",
   color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box" as const,
@@ -1157,38 +1157,38 @@ const inputStyle: React.CSSProperties = {
 };
 
 const primaryBtnStyle: React.CSSProperties = {
-  padding: "12px 24px",
-  borderRadius: 12,
+  padding: "0.75rem 1.5rem",
+  borderRadius: "0.75rem",
   border: "none",
   background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
   color: "#FFF",
   fontFamily: T.font.body,
-  fontSize: 15,
+  fontSize: "0.9375rem",
   fontWeight: 600,
   cursor: "pointer",
   transition: "all .2s",
 };
 
 const secondaryBtnStyle: React.CSSProperties = {
-  padding: "12px 24px",
-  borderRadius: 12,
+  padding: "0.75rem 1.5rem",
+  borderRadius: "0.75rem",
   border: `1px solid ${T.color.cream}`,
   background: "transparent",
   color: T.color.muted,
   fontFamily: T.font.body,
-  fontSize: 15,
+  fontSize: "0.9375rem",
   fontWeight: 500,
   cursor: "pointer",
   transition: "all .2s",
 };
 
 const smallBtnStyle: React.CSSProperties = {
-  padding: "8px 16px",
-  borderRadius: 8,
+  padding: "0.5rem 1rem",
+  borderRadius: "0.5rem",
   border: `1px solid ${T.color.cream}`,
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 500,
   color: T.color.charcoal,
   cursor: "pointer",

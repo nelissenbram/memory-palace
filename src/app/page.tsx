@@ -75,20 +75,20 @@ export default function LandingPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 clamp(20px, 5vw, 60px)",
-          height: 64,
+          padding: "0 clamp(1.25rem, 5vw, 3.75rem)",
+          height: "4rem",
           background: headerOpaque ? "rgba(250,250,247,0.92)" : "transparent",
           backdropFilter: headerOpaque ? "blur(12px)" : "none",
           borderBottom: headerOpaque ? `1px solid ${C.sandstone}40` : "none",
           transition: "all 0.3s",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 22 }}>🏛️</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+          <span style={{ fontSize: "1.375rem" }}>🏛️</span>
           <span
             style={{
               fontFamily: F.display,
-              fontSize: 20,
+              fontSize: "1.25rem",
               fontWeight: 500,
               color: C.charcoal,
               letterSpacing: "-0.3px",
@@ -97,14 +97,14 @@ export default function LandingPage() {
             {landing.title}
           </span>
         </div>
-        <div style={{ display: "flex", gap: isMobile ? 8 : 12, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: isMobile ? "0.5rem" : "0.75rem", alignItems: "center" }}>
           {!isSmall && <Link href="/pricing" style={navLink}>
             {landing.nav.pricing}
           </Link>}
           {!isSmall && <Link href="/login" style={navLink}>
             {landing.nav.signIn}
           </Link>}
-          <Link href="/register" style={{...navCta, padding: isMobile ? "10px 18px" : "8px 20px"}}>
+          <Link href="/register" style={{...navCta, padding: isMobile ? "0.625rem 1.125rem" : "0.5rem 1.25rem"}}>
             {landing.nav.getStarted}
           </Link>
         </div>
@@ -119,7 +119,7 @@ export default function LandingPage() {
           justifyContent: "center",
           alignItems: "center",
           textAlign: "center",
-          padding: isMobile ? "80px 20px 50px" : "100px clamp(20px, 5vw, 60px) 60px",
+          padding: isMobile ? "5rem 1.25rem 3.125rem" : "6.25rem clamp(1.25rem, 5vw, 3.75rem) 3.75rem",
           background: `radial-gradient(ellipse at 50% 30%, ${C.warmStone}, ${C.linen} 70%)`,
           position: "relative",
           overflow: "hidden",
@@ -134,12 +134,12 @@ export default function LandingPage() {
         <p
           style={{
             fontFamily: F.body,
-            fontSize: 13,
+            fontSize: "0.8125rem",
             letterSpacing: "2.5px",
             textTransform: "uppercase",
             color: C.terracotta,
             fontWeight: 600,
-            marginBottom: 20,
+            marginBottom: "1.25rem",
             animation: "fadeUp 0.8s ease both",
           }}
         >
@@ -148,11 +148,11 @@ export default function LandingPage() {
         <h1
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(36px, 6vw, 72px)",
+            fontSize: "clamp(2.25rem, 6vw, 4.5rem)",
             fontWeight: 300,
             lineHeight: 1.1,
             maxWidth: 850,
-            margin: "0 auto 24px",
+            margin: "0 auto 1.5rem",
             color: C.charcoal,
             animation: "fadeUp 0.8s ease 0.1s both",
           }}
@@ -165,11 +165,11 @@ export default function LandingPage() {
         </h1>
         <p
           style={{
-            fontSize: "clamp(17px, 2.2vw, 21px)",
+            fontSize: "clamp(1.0625rem, 2.2vw, 1.3125rem)",
             color: C.walnut,
             maxWidth: 600,
             lineHeight: 1.7,
-            marginBottom: 40,
+            marginBottom: "2.5rem",
             animation: "fadeUp 0.8s ease 0.2s both",
           }}
         >
@@ -178,7 +178,7 @@ export default function LandingPage() {
         <div
           style={{
             display: "flex",
-            gap: isMobile ? 10 : 14,
+            gap: isMobile ? "0.625rem" : "0.875rem",
             flexWrap: "wrap",
             flexDirection: isSmall ? "column" : "row",
             justifyContent: "center",
@@ -187,10 +187,10 @@ export default function LandingPage() {
             width: isSmall ? "100%" : undefined,
           }}
         >
-          <Link href="/register" style={{...heroCta, width: isSmall ? "100%" : undefined, textAlign: "center" as const, minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center"}}>
+          <Link href="/register" style={{...heroCta, width: isSmall ? "100%" : undefined, textAlign: "center" as const, minHeight: "3rem", display: "flex", alignItems: "center", justifyContent: "center"}}>
             {landing.hero.cta}
           </Link>
-          <a href="#how-it-works" style={{...heroSecondary, width: isSmall ? "100%" : undefined, textAlign: "center" as const, minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center"}}>
+          <a href="#how-it-works" style={{...heroSecondary, width: isSmall ? "100%" : undefined, textAlign: "center" as const, minHeight: "3rem", display: "flex", alignItems: "center", justifyContent: "center"}}>
             {landing.hero.secondaryCta}
           </a>
         </div>
@@ -200,9 +200,9 @@ export default function LandingPage() {
           style={{
             display: "inline-flex",
             alignItems: "center",
-            gap: 6,
-            marginTop: 20,
-            fontSize: 14,
+            gap: "0.375rem",
+            marginTop: "1.25rem",
+            fontSize: "0.875rem",
             color: C.muted,
             textDecoration: "none",
             animation: "fadeUp 0.8s ease 0.4s both",
@@ -216,18 +216,18 @@ export default function LandingPage() {
         <div
           style={{
             position: "absolute",
-            bottom: 30,
+            bottom: "1.875rem",
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 6,
+            gap: "0.375rem",
             opacity: scrollY > 50 ? 0 : 0.5,
             transition: "opacity 0.3s",
           }}
         >
-          <span style={{ fontSize: 11, color: C.muted, letterSpacing: 1 }}>
+          <span style={{ fontSize: "0.6875rem", color: C.muted, letterSpacing: 1 }}>
             {landing.scroll}
           </span>
           <div
@@ -244,7 +244,7 @@ export default function LandingPage() {
       <section
         id="features"
         style={{
-          padding: "100px clamp(20px, 5vw, 60px)",
+          padding: "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
           maxWidth: 1100,
           margin: "0 auto",
         }}
@@ -256,13 +256,13 @@ export default function LandingPage() {
           style={{
             display: "grid",
             gridTemplateColumns: isSmall ? "1fr" : "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: isMobile ? 20 : 32,
-            marginTop: isMobile ? 36 : 56,
+            gap: isMobile ? "1.25rem" : "2rem",
+            marginTop: isMobile ? "2.25rem" : "3.5rem",
           }}
         >
           {FEATURES.map((f) => (
             <div key={f.title} style={featureCard}>
-              <span style={{ fontSize: 32, display: "block", marginBottom: 14 }}>
+              <span style={{ fontSize: "2rem", display: "block", marginBottom: "0.875rem" }}>
                 {f.icon}
               </span>
               <h3 style={featureTitle}>{f.title}</h3>
@@ -276,7 +276,7 @@ export default function LandingPage() {
       <section
         id="how-it-works"
         style={{
-          padding: "100px clamp(20px, 5vw, 60px)",
+          padding: "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
           background: C.warmStone,
         }}
       >
@@ -288,8 +288,8 @@ export default function LandingPage() {
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: 40,
-              marginTop: 56,
+              gap: "2.5rem",
+              marginTop: "3.5rem",
             }}
           >
             {STEPS.map((s) => (
@@ -297,11 +297,11 @@ export default function LandingPage() {
                 <div
                   style={{
                     fontFamily: F.display,
-                    fontSize: 48,
+                    fontSize: "3rem",
                     fontWeight: 300,
                     color: C.terracotta,
                     opacity: 0.4,
-                    marginBottom: 12,
+                    marginBottom: "0.75rem",
                   }}
                 >
                   {s.num}
@@ -309,9 +309,9 @@ export default function LandingPage() {
                 <h3
                   style={{
                     fontFamily: F.display,
-                    fontSize: 22,
+                    fontSize: "1.375rem",
                     fontWeight: 500,
-                    marginBottom: 8,
+                    marginBottom: "0.5rem",
                     color: C.charcoal,
                   }}
                 >
@@ -319,7 +319,7 @@ export default function LandingPage() {
                 </h3>
                 <p
                   style={{
-                    fontSize: 15,
+                    fontSize: "0.9375rem",
                     color: C.walnut,
                     lineHeight: 1.5,
                   }}
@@ -336,7 +336,7 @@ export default function LandingPage() {
       <section
         id="see-it-in-action"
         style={{
-          padding: isMobile ? "60px 20px 80px" : "80px clamp(20px, 5vw, 60px) 100px",
+          padding: isMobile ? "3.75rem 1.25rem 5rem" : "5rem clamp(1.25rem, 5vw, 3.75rem) 6.25rem",
           background: C.linen,
           textAlign: "center",
         }}
@@ -345,10 +345,10 @@ export default function LandingPage() {
         <h2 style={sectionTitle}>{landing.preview.subtitle}</h2>
         <p
           style={{
-            fontSize: 16,
+            fontSize: "1rem",
             color: C.walnut,
             maxWidth: 520,
-            margin: "16px auto 40px",
+            margin: "1rem auto 2.5rem",
             lineHeight: 1.6,
           }}
         >
@@ -360,8 +360,8 @@ export default function LandingPage() {
           <div
             style={{
               maxWidth: 800,
-              margin: "0 auto 48px",
-              borderRadius: 20,
+              margin: "0 auto 3rem",
+              borderRadius: "1.25rem",
               overflow: "hidden",
               background: C.charcoal,
               position: "relative",
@@ -390,10 +390,10 @@ export default function LandingPage() {
           <div
             style={{
               maxWidth: 900,
-              margin: "0 auto 48px",
+              margin: "0 auto 3rem",
               display: "grid",
               gridTemplateColumns: isSmall ? "1fr" : "repeat(2, 1fr)",
-              gap: isMobile ? 16 : 20,
+              gap: isMobile ? "1rem" : "1.25rem",
             }}
           >
             {[
@@ -426,8 +426,8 @@ export default function LandingPage() {
                 key={card.label}
                 style={{
                   background: card.gradient,
-                  borderRadius: 16,
-                  padding: isMobile ? "36px 20px" : "48px 28px",
+                  borderRadius: "1rem",
+                  padding: isMobile ? "2.25rem 1.25rem" : "3rem 1.75rem",
                   border: `1px solid ${C.sandstone}40`,
                   boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
                   display: "flex",
@@ -439,9 +439,9 @@ export default function LandingPage() {
               >
                 <span
                   style={{
-                    fontSize: 40,
+                    fontSize: "2.5rem",
                     display: "block",
-                    marginBottom: 14,
+                    marginBottom: "0.875rem",
                   }}
                 >
                   {card.icon}
@@ -449,17 +449,17 @@ export default function LandingPage() {
                 <p
                   style={{
                     fontFamily: F.display,
-                    fontSize: 20,
+                    fontSize: "1.25rem",
                     fontWeight: 500,
                     color: C.charcoal,
-                    marginBottom: 6,
+                    marginBottom: "0.375rem",
                   }}
                 >
                   {card.label}
                 </p>
                 <p
                   style={{
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     color: C.walnut,
                     lineHeight: 1.5,
                     margin: 0,
@@ -477,11 +477,11 @@ export default function LandingPage() {
           style={{
             maxWidth: 800,
             margin: "0 auto",
-            borderRadius: 20,
+            borderRadius: "1.25rem",
             overflow: "hidden",
             background: `linear-gradient(160deg, ${C.warmStone}, ${C.sandstone}40)`,
             border: `1px solid ${C.sandstone}60`,
-            padding: isMobile ? "32px 20px" : "48px 40px",
+            padding: isMobile ? "2rem 1.25rem" : "3rem 2.5rem",
             position: "relative",
           }}
         >
@@ -489,7 +489,7 @@ export default function LandingPage() {
             style={{
               display: "grid",
               gridTemplateColumns: isSmall ? "1fr" : "repeat(3, 1fr)",
-              gap: isMobile ? 16 : 24,
+              gap: isMobile ? "1rem" : "1.5rem",
             }}
           >
             {[
@@ -501,37 +501,37 @@ export default function LandingPage() {
                 key={room.label}
                 style={{
                   background: C.white,
-                  borderRadius: 14,
-                  padding: isMobile ? "24px 16px" : "28px 20px",
+                  borderRadius: "0.875rem",
+                  padding: isMobile ? "1.5rem 1rem" : "1.75rem 1.25rem",
                   border: `1px solid ${C.sandstone}40`,
                   boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
                 }}
               >
-                <span style={{ fontSize: 36, display: "block", marginBottom: 10 }}>
+                <span style={{ fontSize: "2.25rem", display: "block", marginBottom: 10 }}>
                   {room.icon}
                 </span>
                 <p
                   style={{
                     fontFamily: F.display,
-                    fontSize: 18,
+                    fontSize: "1.125rem",
                     fontWeight: 500,
                     color: C.charcoal,
-                    marginBottom: 4,
+                    marginBottom: "0.25rem",
                   }}
                 >
                   {room.label}
                 </p>
-                <p style={{ fontSize: 13, color: C.muted }}>{room.count}</p>
+                <p style={{ fontSize: "0.8125rem", color: C.muted }}>{room.count}</p>
               </div>
             ))}
           </div>
 
           <div
             style={{
-              marginTop: isMobile ? 20 : 28,
+              marginTop: isMobile ? "1.25rem" : "1.75rem",
               display: "flex",
               justifyContent: "center",
-              gap: 8,
+              gap: "0.5rem",
             }}
           >
             {[0.3, 0.5, 0.8, 1, 0.8, 0.5, 0.3].map((o, i) => (
@@ -547,7 +547,7 @@ export default function LandingPage() {
               />
             ))}
           </div>
-          <p style={{ fontSize: 13, color: C.muted, marginTop: 10 }}>
+          <p style={{ fontSize: "0.8125rem", color: C.muted, marginTop: "0.625rem" }}>
             {landing.preview.interactiveWalkthrough}
           </p>
         </div>
@@ -556,7 +556,7 @@ export default function LandingPage() {
       {/* ─── Target Audiences ─── */}
       <section
         style={{
-          padding: "100px clamp(20px, 5vw, 60px)",
+          padding: "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
           maxWidth: 1100,
           margin: "0 auto",
         }}
@@ -568,8 +568,8 @@ export default function LandingPage() {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: 28,
-            marginTop: 56,
+            gap: "1.75rem",
+            marginTop: "3.5rem",
           }}
         >
           {[
@@ -596,27 +596,27 @@ export default function LandingPage() {
               key={a.title}
               style={{
                 background: C.white,
-                borderRadius: 16,
-                padding: "36px 28px",
+                borderRadius: "1rem",
+                padding: "2.25rem 1.75rem",
                 border: `1px solid ${C.sandstone}60`,
                 borderTop: `3px solid ${a.accent}`,
               }}
             >
-              <span style={{ fontSize: 36, display: "block", marginBottom: 16 }}>
+              <span style={{ fontSize: "2.25rem", display: "block", marginBottom: 16 }}>
                 {a.icon}
               </span>
               <h3
                 style={{
                   fontFamily: F.display,
-                  fontSize: 22,
+                  fontSize: "1.375rem",
                   fontWeight: 500,
                   color: C.charcoal,
-                  marginBottom: 10,
+                  marginBottom: "0.625rem",
                 }}
               >
                 {a.title}
               </h3>
-              <p style={{ fontSize: 15, color: C.walnut, lineHeight: 1.6 }}>
+              <p style={{ fontSize: "0.9375rem", color: C.walnut, lineHeight: 1.6 }}>
                 {a.desc}
               </p>
             </div>
@@ -627,7 +627,7 @@ export default function LandingPage() {
       {/* ─── Testimonials ─── */}
       <section
         style={{
-          padding: "100px clamp(20px, 5vw, 60px)",
+          padding: "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
           background: `linear-gradient(135deg, ${C.charcoal}, #3D3D3A)`,
         }}
       >
@@ -643,8 +643,8 @@ export default function LandingPage() {
             style={{
               display: "grid",
               gridTemplateColumns: isSmall ? "1fr" : "repeat(2, 1fr)",
-              gap: 24,
-              marginTop: 56,
+              gap: "1.5rem",
+              marginTop: "3.5rem",
             }}
           >
             {TESTIMONIALS.map((tm) => (
@@ -652,8 +652,8 @@ export default function LandingPage() {
                 key={tm.name}
                 style={{
                   background: "rgba(255,255,255,0.06)",
-                  borderRadius: 16,
-                  padding: isMobile ? "28px 24px" : "32px 28px",
+                  borderRadius: "1rem",
+                  padding: isMobile ? "1.75rem 1.5rem" : "2rem 1.75rem",
                   border: "1px solid rgba(255,255,255,0.08)",
                   display: "flex",
                   flexDirection: "column",
@@ -665,39 +665,39 @@ export default function LandingPage() {
                   <span
                     style={{
                       fontFamily: F.display,
-                      fontSize: 48,
+                      fontSize: "3rem",
                       color: C.terracotta,
                       opacity: 0.5,
                       lineHeight: 1,
                       display: "block",
-                      marginBottom: 8,
+                      marginBottom: "0.5rem",
                     }}
                   >
                     &ldquo;
                   </span>
                   <p
                     style={{
-                      fontSize: 16,
+                      fontSize: "1rem",
                       color: C.cream,
                       lineHeight: 1.7,
-                      marginBottom: 24,
+                      marginBottom: "1.5rem",
                     }}
                   >
                     {tm.quote}
                   </p>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                   {/* Avatar placeholder */}
                   <div
                     style={{
-                      width: 42,
-                      height: 42,
+                      width: "2.625rem",
+                      height: "2.625rem",
                       borderRadius: "50%",
                       background: `linear-gradient(135deg, ${C.terracotta}40, ${C.sage}30)`,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 18,
+                      fontSize: "1.125rem",
                       flexShrink: 0,
                     }}
                   >
@@ -706,15 +706,15 @@ export default function LandingPage() {
                   <div>
                     <p
                       style={{
-                        fontSize: 14,
+                        fontSize: "0.875rem",
                         fontWeight: 600,
                         color: C.linen,
-                        marginBottom: 2,
+                        marginBottom: "0.125rem",
                       }}
                     >
                       {tm.name}
                     </p>
-                    <p style={{ fontSize: 12, color: C.terracotta }}>{tm.role}</p>
+                    <p style={{ fontSize: "0.75rem", color: C.terracotta }}>{tm.role}</p>
                   </div>
                 </div>
               </div>
@@ -726,7 +726,7 @@ export default function LandingPage() {
       {/* ─── CTA ─── */}
       <section
         style={{
-          padding: "100px clamp(20px, 5vw, 60px)",
+          padding: "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
           textAlign: "center",
           background: C.linen,
         }}
@@ -734,10 +734,10 @@ export default function LandingPage() {
         <h2
           style={{
             fontFamily: F.display,
-            fontSize: "clamp(28px, 4vw, 44px)",
+            fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
             fontWeight: 300,
             color: C.charcoal,
-            marginBottom: 16,
+            marginBottom: "1rem",
             lineHeight: 1.2,
           }}
         >
@@ -745,10 +745,10 @@ export default function LandingPage() {
         </h2>
         <p
           style={{
-            fontSize: 17,
+            fontSize: "1.0625rem",
             color: C.walnut,
             maxWidth: 480,
-            margin: "0 auto 36px",
+            margin: "0 auto 2.25rem",
             lineHeight: 1.6,
           }}
         >
@@ -762,7 +762,7 @@ export default function LandingPage() {
       {/* ─── Footer ─── */}
       <footer
         style={{
-          padding: isMobile ? "40px 20px 28px" : "56px clamp(20px, 5vw, 60px) 36px",
+          padding: isMobile ? "2.5rem 1.25rem 1.75rem" : "3.5rem clamp(1.25rem, 5vw, 3.75rem) 2.25rem",
           borderTop: `1px solid ${C.sandstone}40`,
           background: C.charcoal,
         }}
@@ -773,18 +773,18 @@ export default function LandingPage() {
             margin: "0 auto",
             display: "grid",
             gridTemplateColumns: isSmall ? "1fr" : "2fr 1fr 1fr",
-            gap: isSmall ? 32 : 48,
-            marginBottom: 40,
+            gap: isSmall ? "2rem" : "3rem",
+            marginBottom: "2.5rem",
           }}
         >
           {/* About */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "0.875rem" }}>
               <span style={{ fontSize: 20 }}>🏛️</span>
               <span
                 style={{
                   fontFamily: F.display,
-                  fontSize: 18,
+                  fontSize: "1.125rem",
                   color: C.linen,
                   fontWeight: 500,
                 }}
@@ -792,30 +792,30 @@ export default function LandingPage() {
                 {landing.title}
               </span>
             </div>
-            <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.7, maxWidth: 340 }}>
+            <p style={{ fontSize: "0.875rem", color: C.muted, lineHeight: 1.7, maxWidth: 340 }}>
               {landing.footer.about}
             </p>
           </div>
 
           {/* Quick links */}
           <div>
-            <p style={{ fontSize: 12, letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: 16 }}>
+            <p style={{ fontSize: "0.75rem", letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: 16 }}>
               {landing.footer.quickLinks}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <a href="#features" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
+              <a href="#features" style={{ fontSize: "0.875rem", color: C.muted, textDecoration: "none" }}>
                 {landing.footer.features}
               </a>
-              <a href="#how-it-works" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
+              <a href="#how-it-works" style={{ fontSize: "0.875rem", color: C.muted, textDecoration: "none" }}>
                 {landing.footer.howItWorks}
               </a>
-              <Link href="/pricing" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
+              <Link href="/pricing" style={{ fontSize: "0.875rem", color: C.muted, textDecoration: "none" }}>
                 {landing.footer.pricing}
               </Link>
-              <Link href="/login" style={{ fontSize: 14, color: C.muted, textDecoration: "none" }}>
+              <Link href="/login" style={{ fontSize: "0.875rem", color: C.muted, textDecoration: "none" }}>
                 {landing.footer.signIn}
               </Link>
-              <Link href="/register" style={{ fontSize: 14, color: C.terracotta, textDecoration: "none" }}>
+              <Link href="/register" style={{ fontSize: "0.875rem", color: C.terracotta, textDecoration: "none" }}>
                 {landing.footer.getStartedFree}
               </Link>
             </div>
@@ -823,20 +823,20 @@ export default function LandingPage() {
 
           {/* Contact / trust */}
           <div>
-            <p style={{ fontSize: 12, letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: 16 }}>
+            <p style={{ fontSize: "0.75rem", letterSpacing: "1.5px", textTransform: "uppercase", color: C.sandstone, fontWeight: 600, marginBottom: 16 }}>
               {landing.footer.trustSecurity}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.5 }}>
+              <p style={{ fontSize: "0.875rem", color: C.muted, lineHeight: 1.5 }}>
                 🔒 {landing.footer.euHosted}
               </p>
-              <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.5 }}>
+              <p style={{ fontSize: "0.875rem", color: C.muted, lineHeight: 1.5 }}>
                 🛡️ {landing.footer.encryption}
               </p>
-              <p style={{ fontSize: 14, color: C.muted, lineHeight: 1.5 }}>
+              <p style={{ fontSize: "0.875rem", color: C.muted, lineHeight: 1.5 }}>
                 📋 {landing.footer.gdpr}
               </p>
-              <Link href="/security" style={{ fontSize: 14, color: C.terracotta, textDecoration: "none", marginTop: 4 }}>
+              <Link href="/security" style={{ fontSize: "0.875rem", color: C.terracotta, textDecoration: "none", marginTop: "0.25rem" }}>
                 {landing.footer.learnSecurity} →
               </Link>
             </div>
@@ -847,28 +847,28 @@ export default function LandingPage() {
         <div
           style={{
             borderTop: `1px solid rgba(255,255,255,0.08)`,
-            paddingTop: 20,
+            paddingTop: "1.25rem",
             display: "flex",
             justifyContent: isSmall ? "center" : "space-between",
             alignItems: "center",
             flexDirection: isSmall ? "column" : "row",
-            gap: 10,
+            gap: "0.625rem",
           }}
         >
-          <p style={{ fontSize: 12, color: C.muted }}>
+          <p style={{ fontSize: "0.75rem", color: C.muted }}>
             &copy; {new Date().getFullYear()} {landing.footer.copyright}
           </p>
           <div style={{ display: "flex", gap: 20 }}>
-            <Link href="/privacy" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
+            <Link href="/privacy" style={{ fontSize: "0.75rem", color: C.muted, textDecoration: "none" }}>
               {landing.footer.privacyPolicy}
             </Link>
-            <Link href="/terms" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
+            <Link href="/terms" style={{ fontSize: "0.75rem", color: C.muted, textDecoration: "none" }}>
               {landing.footer.termsOfService}
             </Link>
-            <Link href="/login" style={{ fontSize: 12, color: C.muted, textDecoration: "none" }}>
+            <Link href="/login" style={{ fontSize: "0.75rem", color: C.muted, textDecoration: "none" }}>
               {landing.footer.signIn}
             </Link>
-            <Link href="/register" style={{ fontSize: 12, color: C.terracotta, textDecoration: "none" }}>
+            <Link href="/register" style={{ fontSize: "0.75rem", color: C.terracotta, textDecoration: "none" }}>
               {landing.nav.getStarted}
             </Link>
           </div>
@@ -882,34 +882,34 @@ export default function LandingPage() {
 
 const navLink: React.CSSProperties = {
   fontFamily: F.body,
-  fontSize: 14,
+  fontSize: "0.875rem",
   color: C.walnut,
   textDecoration: "none",
-  padding: "8px 16px",
-  borderRadius: 8,
+  padding: "0.5rem 1rem",
+  borderRadius: "0.5rem",
   transition: "color 0.2s",
 };
 
 const navCta: React.CSSProperties = {
   fontFamily: F.body,
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 600,
   color: C.white,
   textDecoration: "none",
-  padding: "8px 20px",
-  borderRadius: 10,
+  padding: "0.5rem 1.25rem",
+  borderRadius: "0.625rem",
   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
 };
 
 const heroCta: React.CSSProperties = {
   display: "inline-block",
   fontFamily: F.body,
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 600,
   color: C.white,
   textDecoration: "none",
-  padding: "16px 36px",
-  borderRadius: 14,
+  padding: "1rem 2.25rem",
+  borderRadius: "0.875rem",
   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
   boxShadow: "0 4px 20px rgba(193,127,89,0.3)",
   transition: "transform 0.2s, box-shadow 0.2s",
@@ -918,30 +918,30 @@ const heroCta: React.CSSProperties = {
 const heroSecondary: React.CSSProperties = {
   display: "inline-block",
   fontFamily: F.body,
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 500,
   color: C.walnut,
   textDecoration: "none",
-  padding: "16px 36px",
-  borderRadius: 14,
+  padding: "1rem 2.25rem",
+  borderRadius: "0.875rem",
   border: `1.5px solid ${C.sandstone}`,
   transition: "border-color 0.2s",
 };
 
 const sectionLabel: React.CSSProperties = {
   fontFamily: F.body,
-  fontSize: 12,
+  fontSize: "0.75rem",
   letterSpacing: "2px",
   textTransform: "uppercase",
   color: C.terracotta,
   fontWeight: 600,
   textAlign: "center",
-  marginBottom: 12,
+  marginBottom: "0.75rem",
 };
 
 const sectionTitle: React.CSSProperties = {
   fontFamily: F.display,
-  fontSize: "clamp(26px, 3.5vw, 40px)",
+  fontSize: "clamp(1.625rem, 3.5vw, 2.5rem)",
   fontWeight: 300,
   textAlign: "center",
   color: C.charcoal,
@@ -950,22 +950,22 @@ const sectionTitle: React.CSSProperties = {
 
 const featureCard: React.CSSProperties = {
   background: C.white,
-  borderRadius: 16,
-  padding: "32px 28px",
+  borderRadius: "1rem",
+  padding: "2rem 1.75rem",
   border: `1px solid ${C.sandstone}50`,
   transition: "box-shadow 0.2s",
 };
 
 const featureTitle: React.CSSProperties = {
   fontFamily: F.display,
-  fontSize: 20,
+  fontSize: "1.25rem",
   fontWeight: 500,
   color: C.charcoal,
-  marginBottom: 8,
+  marginBottom: "0.5rem",
 };
 
 const featureDesc: React.CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   color: C.walnut,
   lineHeight: 1.6,
 };

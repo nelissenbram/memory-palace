@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -34,6 +35,7 @@ interface MemoryTimelineProps {
 export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("memoryTimeline");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { userMems, setSelMem } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
 
@@ -109,13 +111,14 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
       }}
     >
       <div
+        ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }}
         onClick={(e) => e.stopPropagation()}
         style={{
           position: "absolute",
           left: 0,
           top: 0,
           bottom: 0,
-          width: isMobile ? "100%" : "min(420px, 94vw)",
+          width: isMobile ? "100%" : "min(26.25rem, 94vw)",
           background: `${T.color.linen}f8`,
           backdropFilter: "blur(20px)",
           borderRight: `1px solid ${T.color.cream}`,
@@ -129,18 +132,18 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
         {/* Header */}
         <div
           style={{
-            padding: "24px 24px 0",
+            padding: "1.5rem 1.5rem 0",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 20,
+            marginBottom: "1.25rem",
           }}
         >
           <div>
             <h3
               style={{
                 fontFamily: "'Cormorant Garamond', Georgia, serif",
-                fontSize: 24,
+                fontSize: "1.5rem",
                 fontWeight: 500,
                 color: T.color.charcoal,
                 margin: 0,
@@ -151,9 +154,9 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
             <p
               style={{
                 fontFamily: T.font.body,
-                fontSize: 11,
+                fontSize: "0.6875rem",
                 color: T.color.muted,
-                margin: "4px 0 0",
+                margin: "0.25rem 0 0",
               }}
             >
               {t("memoriesAcrossTime", { count: String(totalCount) })}
@@ -162,13 +165,13 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
           <button
             onClick={onClose}
             style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
+              width: "2rem",
+              height: "2rem",
+              borderRadius: "1rem",
               border: `1px solid ${T.color.cream}`,
               background: T.color.warmStone,
               color: T.color.muted,
-              fontSize: 14,
+              fontSize: "0.875rem",
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -180,7 +183,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
         </div>
 
         {/* Timeline */}
-        <div style={{ padding: "0 16px 32px 28px" }}>
+        <div style={{ padding: "0 1rem 2rem 1.75rem" }}>
           {groups.map((group, gi) => (
             <div key={group.label} style={{ position: "relative" }}>
               {/* Month/year header */}
@@ -188,17 +191,17 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
-                  marginBottom: 12,
-                  marginTop: gi > 0 ? 20 : 0,
+                  gap: "0.625rem",
+                  marginBottom: "0.75rem",
+                  marginTop: gi > 0 ? "1.25rem" : 0,
                 }}
               >
                 {/* Timeline dot */}
                 <div
                   style={{
-                    width: 12,
-                    height: 12,
-                    borderRadius: 6,
+                    width: "0.75rem",
+                    height: "0.75rem",
+                    borderRadius: "0.375rem",
                     background: T.color.walnut,
                     border: `2px solid ${T.color.warmStone}`,
                     flexShrink: 0,
@@ -209,7 +212,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                 <h4
                   style={{
                     fontFamily: "'Cormorant Garamond', Georgia, serif",
-                    fontSize: 16,
+                    fontSize: "1rem",
                     fontWeight: 600,
                     color: T.color.walnut,
                     margin: 0,
@@ -225,17 +228,17 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                   key={entry.mem.id}
                   style={{
                     position: "relative",
-                    paddingLeft: 22,
-                    marginBottom: 8,
+                    paddingLeft: "1.375rem",
+                    marginBottom: "0.5rem",
                   }}
                 >
                   {/* Vertical line */}
                   <div
                     style={{
                       position: "absolute",
-                      left: 5,
-                      top: ei === 0 ? -12 : -8,
-                      bottom: ei === group.entries.length - 1 ? "50%" : -8,
+                      left: "0.3125rem",
+                      top: ei === 0 ? "-0.75rem" : "-0.5rem",
+                      bottom: ei === group.entries.length - 1 ? "50%" : "-0.5rem",
                       width: 2,
                       background: T.color.cream,
                       zIndex: 1,
@@ -245,11 +248,11 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                   <div
                     style={{
                       position: "absolute",
-                      left: 2,
-                      top: 14,
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
+                      left: "0.125rem",
+                      top: "0.875rem",
+                      width: "0.5rem",
+                      height: "0.5rem",
+                      borderRadius: "0.25rem",
                       background: entry.wingAccent,
                       zIndex: 2,
                     }}
@@ -262,9 +265,9 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                       width: "100%",
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
-                      padding: "10px 12px",
-                      borderRadius: 12,
+                      gap: "0.625rem",
+                      padding: "0.625rem 0.75rem",
+                      borderRadius: "0.75rem",
                       border: `1px solid ${T.color.cream}`,
                       background: T.color.white,
                       cursor: "pointer",
@@ -283,9 +286,9 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                     {/* Thumbnail */}
                     <div
                       style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 8,
+                        width: "2.25rem",
+                        height: "2.25rem",
+                        borderRadius: "0.5rem",
                         background: `linear-gradient(135deg, hsl(${entry.mem.hue},${entry.mem.s}%,${entry.mem.l}%), hsl(${entry.mem.hue},${Math.max(0, entry.mem.s - 10)}%,${Math.max(0, entry.mem.l - 10)}%))`,
                         flexShrink: 0,
                         display: "flex",
@@ -298,10 +301,10 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                         <img
                           src={entry.mem.dataUrl}
                           alt=""
-                          style={{ width: 36, height: 36, objectFit: "cover", borderRadius: 8 }}
+                          style={{ width: "2.25rem", height: "2.25rem", objectFit: "cover", borderRadius: "0.5rem" }}
                         />
                       ) : (
-                        <span style={{ fontSize: 14, opacity: 0.7 }}>{entry.roomIcon}</span>
+                        <span style={{ fontSize: "0.875rem", opacity: 0.7 }}>{entry.roomIcon}</span>
                       )}
                     </div>
 
@@ -310,7 +313,7 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                       <div
                         style={{
                           fontFamily: T.font.body,
-                          fontSize: 13,
+                          fontSize: "0.8125rem",
                           fontWeight: 600,
                           color: T.color.charcoal,
                           whiteSpace: "nowrap",
@@ -323,12 +326,12 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                       <div
                         style={{
                           fontFamily: T.font.body,
-                          fontSize: 10,
+                          fontSize: "0.625rem",
                           color: T.color.muted,
-                          marginTop: 1,
+                          marginTop: "0.0625rem",
                           display: "flex",
                           alignItems: "center",
-                          gap: 4,
+                          gap: "0.25rem",
                         }}
                       >
                         <span>{entry.roomIcon}</span>
@@ -346,9 +349,9 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                     {/* Wing accent indicator */}
                     <div
                       style={{
-                        width: 4,
-                        height: 24,
-                        borderRadius: 2,
+                        width: "0.25rem",
+                        height: "1.5rem",
+                        borderRadius: "0.125rem",
                         background: entry.wingAccent,
                         opacity: 0.5,
                         flexShrink: 0,
@@ -363,13 +366,13 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                 <div
                   style={{
                     position: "relative",
-                    height: 16,
+                    height: "1rem",
                   }}
                 >
                   <div
                     style={{
                       position: "absolute",
-                      left: 5,
+                      left: "0.3125rem",
                       top: 0,
                       bottom: 0,
                       width: 2,
@@ -383,12 +386,12 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
           ))}
 
           {groups.length === 0 && (
-            <div style={{ textAlign: "center", padding: "48px 0" }}>
-              <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.4 }}>{"\uD83D\uDCC5"}</div>
+            <div style={{ textAlign: "center", padding: "3rem 0" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "0.75rem", opacity: 0.4 }}>{"\uD83D\uDCC5"}</div>
               <p
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   color: T.color.muted,
                 }}
               >
@@ -397,9 +400,9 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
               <p
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   color: T.color.sandstone,
-                  marginTop: 4,
+                  marginTop: "0.25rem",
                 }}
               >
                 {t("noMemoriesDesc")}

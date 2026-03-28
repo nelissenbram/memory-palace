@@ -408,7 +408,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                   padding: "8px 16px", borderRadius: 8,
                   border: `1px solid ${T.color.sandstone}`, background: "transparent",
                   cursor: "pointer", fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
-                }}>Cancel</button>
+                }}>{t("cancel")}</button>
                 <button
                   onClick={() => editingId ? handleUpdate(editingId) : handleAdd()}
                   disabled={saving || !formName.trim() || !formEmail.trim()}

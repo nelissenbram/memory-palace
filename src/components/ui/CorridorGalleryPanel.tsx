@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
@@ -45,6 +46,7 @@ interface CorridorGalleryPanelProps {
 export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintingsChange, currentPaintings }: CorridorGalleryPanelProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("corridorGallery");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const accent = wing.accent;
   const userMems = useMemoryStore((s) => s.userMems);
   const { getWingRooms } = useRoomStore();
@@ -130,44 +132,44 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(8px)", zIndex: 55, animation: "fadeIn .2s ease" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
         position: "absolute", right: 0, top: 0, bottom: 0,
-        width: isMobile ? "100%" : "min(440px, 92vw)",
+        width: isMobile ? "100%" : "min(27.5rem, 92vw)",
         background: `${T.color.linen}f8`,
         backdropFilter: "blur(20px)",
         borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`,
-        padding: isMobile ? "20px 16px" : "28px 24px",
+        padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem",
         overflowY: "auto",
         animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)",
       }}>
         <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div>
-            <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
-            <p style={{ fontFamily: T.font.body, fontSize: 12, color: accent, margin: "4px 0 0" }}>{wing.icon} {wing.name} {t("wing")}</p>
+            <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>{wing.icon} {wing.name} {t("wing")}</p>
           </div>
           <button onClick={onClose} style={{
-            width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16,
+            width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: isMobile ? "1.25rem" : "1rem",
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
-            color: T.color.muted, fontSize: isMobile ? 16 : 14, cursor: "pointer",
+            color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            minWidth: 44, minHeight: 44,
+            minWidth: "2.75rem", minHeight: "2.75rem",
           }}>{"\u2715"}</button>
         </div>
 
         {/* Description */}
-        <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginBottom: 18, lineHeight: 1.5 }}>
+        <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginBottom: "1.125rem", lineHeight: 1.5 }}>
           {t("description")}
         </p>
 
         {/* Reset button */}
         {Object.keys(paintings).length > 0 && (
           <button onClick={handleResetAll} style={{
-            marginBottom: 16, padding: "8px 16px", borderRadius: 10,
+            marginBottom: "1rem", padding: "0.5rem 1rem", borderRadius: "0.625rem",
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
-            fontFamily: T.font.body, fontSize: 12, color: T.color.walnut,
+            fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut,
             cursor: "pointer", transition: "all .15s",
           }}>
             {t("resetDefaults")}
@@ -175,7 +177,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
         )}
 
         {/* Painting slots */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
           {slots.map((roomId, idx) => {
             const room = rooms.find((r) => r.id === roomId);
             if (!room) return null;
@@ -184,15 +186,15 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
             return (
               <div key={roomId} style={{
-                background: T.color.white, borderRadius: 14,
+                background: T.color.white, borderRadius: "0.875rem",
                 border: `1px solid ${isPicking ? accent : T.color.cream}`,
-                padding: "14px 14px", transition: "all .15s",
+                padding: "0.875rem 0.875rem", transition: "all .15s",
               }}>
                 {/* Slot header */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: isPicking ? 12 : 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: isPicking ? "0.75rem" : 0 }}>
                   {/* Thumbnail preview */}
                   <div style={{
-                    width: 56, height: 40, borderRadius: 8, flexShrink: 0,
+                    width: "3.5rem", height: "2.5rem", borderRadius: "0.5rem", flexShrink: 0,
                     border: `1px solid ${T.color.cream}`,
                     overflow: "hidden", position: "relative",
                     background: override?.url
@@ -201,35 +203,35 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {!override?.url && (
-                      <span style={{ fontSize: 18 }}>{room.icon}</span>
+                      <span style={{ fontSize: "1.125rem" }}>{room.icon}</span>
                     )}
                   </div>
 
                   {/* Info */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: T.font.display, fontSize: 14, fontWeight: 500, color: T.color.charcoal }}>
+                    <div style={{ fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 500, color: T.color.charcoal }}>
                       {t("painting")} {idx + 1}
                     </div>
-                    <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {override?.title ? override.title : `${room.icon} ${room.name} ${t("default")}`}
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: "flex", gap: "0.375rem", flexShrink: 0 }}>
                     {override && (
                       <button onClick={() => handleClear(roomId)} title={t("removeOverride")} style={{
-                        width: 30, height: 30, borderRadius: 8,
+                        width: "1.875rem", height: "1.875rem", borderRadius: "0.5rem",
                         border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
-                        color: T.color.muted, fontSize: 12, cursor: "pointer",
+                        color: T.color.muted, fontSize: "0.75rem", cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>{"\u2715"}</button>
                     )}
                     <button onClick={() => setPickingSlot(isPicking ? null : roomId)} style={{
-                      padding: "6px 12px", borderRadius: 8,
+                      padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
                       border: `1px solid ${isPicking ? accent : T.color.cream}`,
                       background: isPicking ? `${accent}15` : T.color.warmStone,
-                      fontFamily: T.font.body, fontSize: 11, fontWeight: 500,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
                       color: isPicking ? accent : T.color.walnut, cursor: "pointer",
                     }}>
                       {isPicking ? t("cancel") : t("choose")}
@@ -241,45 +243,45 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                 {isPicking && (
                   <div>
                     {/* Upload + source filter */}
-                    <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.625rem", flexWrap: "wrap" }}>
                       <button onClick={() => handleUpload(roomId)} style={{
-                        padding: "6px 12px", borderRadius: 8,
+                        padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
                         border: `1px solid ${accent}`, background: `${accent}15`,
-                        fontFamily: T.font.body, fontSize: 11, fontWeight: 500,
+                        fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
                         color: accent, cursor: "pointer",
                       }}>
                         {t("uploadImage")}
                       </button>
                       <button onClick={() => setSourceFilter("all")} style={{
-                        padding: "5px 10px", borderRadius: 8,
+                        padding: "0.3125rem 0.625rem", borderRadius: "0.5rem",
                         border: `1px solid ${sourceFilter === "all" ? accent : T.color.cream}`,
                         background: sourceFilter === "all" ? `${accent}15` : T.color.warmStone,
-                        fontFamily: T.font.body, fontSize: 10, color: sourceFilter === "all" ? accent : T.color.muted,
+                        fontFamily: T.font.body, fontSize: "0.625rem", color: sourceFilter === "all" ? accent : T.color.muted,
                         cursor: "pointer",
                       }}>{t("allWings")}</button>
                       <button onClick={() => setSourceFilter("wing")} style={{
-                        padding: "5px 10px", borderRadius: 8,
+                        padding: "0.3125rem 0.625rem", borderRadius: "0.5rem",
                         border: `1px solid ${sourceFilter === "wing" ? accent : T.color.cream}`,
                         background: sourceFilter === "wing" ? `${accent}15` : T.color.warmStone,
-                        fontFamily: T.font.body, fontSize: 10, color: sourceFilter === "wing" ? accent : T.color.muted,
+                        fontFamily: T.font.body, fontSize: "0.625rem", color: sourceFilter === "wing" ? accent : T.color.muted,
                         cursor: "pointer",
                       }}>{t("thisWing")}</button>
                     </div>
                     {filteredMems.length === 0 ? (
-                      <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, textAlign: "center", padding: "16px 0" }}>
+                      <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, textAlign: "center", padding: "1rem 0" }}>
                         {t("noPhotos")}
                       </p>
                     ) : (
                       <div style={{
                         display: "grid",
                         gridTemplateColumns: `repeat(${isMobile ? 3 : 4}, 1fr)`,
-                        gap: 8, maxHeight: 240, overflowY: "auto",
-                        padding: 2,
+                        gap: "0.5rem", maxHeight: "15rem", overflowY: "auto",
+                        padding: "0.125rem",
                       }}>
                         {filteredMems.map(({ mem, room: memRoom, wingName }) => (
                           <button key={mem.id} onClick={() => handleAssign(roomId, mem, memRoom.id)} style={{
                             border: paintings[roomId]?.memId === mem.id ? `2px solid ${accent}` : `1px solid ${T.color.cream}`,
-                            borderRadius: 10, overflow: "hidden", cursor: "pointer",
+                            borderRadius: "0.625rem", overflow: "hidden", cursor: "pointer",
                             padding: 0, background: T.color.warmStone,
                             aspectRatio: "4/3", position: "relative",
                             transition: "all .15s",
@@ -291,14 +293,14 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                             <div style={{
                               position: "absolute", bottom: 0, left: 0, right: 0,
                               background: "linear-gradient(transparent, rgba(42,34,24,.7))",
-                              padding: "12px 6px 4px",
+                              padding: "0.75rem 0.375rem 0.25rem",
                             }}>
                               <div style={{
-                                fontFamily: T.font.body, fontSize: 9, color: "#FFF",
+                                fontFamily: T.font.body, fontSize: "0.5625rem", color: "#FFF",
                                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                               }}>{mem.title}</div>
                               <div style={{
-                                fontFamily: T.font.body, fontSize: 8, color: "rgba(255,255,255,.6)",
+                                fontFamily: T.font.body, fontSize: "0.5rem", color: "rgba(255,255,255,.6)",
                               }}>{memRoom.icon} {memRoom.name} — {wingName}</div>
                             </div>
                           </button>
@@ -313,7 +315,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
         </div>
 
         {/* Footer hint */}
-        <p style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginTop: 20, textAlign: "center", lineHeight: 1.5 }}>
+        <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginTop: "1.25rem", textAlign: "center", lineHeight: 1.5 }}>
           {t("hint")}
         </p>
       </div>

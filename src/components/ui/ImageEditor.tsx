@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 
 // ── Filter presets ──
 interface FilterPreset {
@@ -56,6 +57,7 @@ interface ImageEditorProps {
 export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: ImageEditorProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("imageEditor");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const color = accent || T.color.terracotta;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -327,50 +329,50 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
 
   return (
     <div onClick={onCancel} style={{ position: "absolute", inset: 0, background: "rgba(30,26,20,.7)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 55, animation: "fadeIn .2s ease" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: isMobile ? 0 : 20, border: isMobile ? "none" : `1px solid ${T.color.cream}`, boxShadow: isMobile ? "none" : "0 20px 80px rgba(44,44,42,.3)", maxWidth: isMobile ? undefined : 520, width: isMobile ? "100%" : "94%", height: isMobile ? "100%" : undefined, overflow: "hidden", animation: isMobile ? "fadeIn .2s ease" : "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: isMobile ? "100%" : "92vh", display: "flex", flexDirection: "column" }}>
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onCancel(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: isMobile ? 0 : "1.25rem", border: isMobile ? "none" : `1px solid ${T.color.cream}`, boxShadow: isMobile ? "none" : "0 20px 80px rgba(44,44,42,.3)", maxWidth: isMobile ? undefined : "32.5rem", width: isMobile ? "100%" : "94%", height: isMobile ? "100%" : undefined, overflow: "hidden", animation: isMobile ? "fadeIn .2s ease" : "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: isMobile ? "100%" : "92vh", display: "flex", flexDirection: "column" }}>
 
         {/* Header */}
-        <div style={{ padding: "16px 20px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${T.color.cream}` }}>
-          <div style={{ fontFamily: T.font.display, fontSize: 18, fontWeight: 500, color: T.color.charcoal }}>{t("title")}</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={handleReset} style={{ padding: "6px 12px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 11, color: T.color.muted, cursor: "pointer" }}>{t("reset")}</button>
-            <button onClick={onCancel} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 14, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+        <div style={{ padding: "1rem 1.25rem 0.75rem", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${T.color.cream}` }}>
+          <div style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500, color: T.color.charcoal }}>{t("title")}</div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button onClick={handleReset} style={{ padding: "0.375rem 0.75rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, cursor: "pointer" }}>{t("reset")}</button>
+            <button onClick={onCancel} aria-label="Close" style={{ width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
           </div>
         </div>
 
         {/* Canvas preview */}
-        <div ref={previewRef} style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "16px 16px 8px", background: "#2A2218", minHeight: 200 }}>
+        <div ref={previewRef} style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "1rem 1rem 0.5rem", background: "#2A2218", minHeight: "12.5rem" }}>
           <canvas
             ref={canvasRef}
             onMouseDown={handleCropMouseDown}
             onMouseMove={handleCropMouseMove}
             onMouseUp={handleCropMouseUp}
             onMouseLeave={handleCropMouseUp}
-            style={{ maxWidth: "100%", maxHeight: 320, borderRadius: 8, cursor: cropActive ? "crosshair" : "default" }}
+            style={{ maxWidth: "100%", maxHeight: "20rem", borderRadius: "0.5rem", cursor: cropActive ? "crosshair" : "default" }}
           />
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: "flex", borderBottom: `1px solid ${T.color.cream}`, padding: "0 16px" }}>
+        <div style={{ display: "flex", borderBottom: `1px solid ${T.color.cream}`, padding: "0 1rem" }}>
           {TABS.map(t => (
             <button key={t.key} onClick={() => { setTab(t.key); if (t.key !== "crop") { setCropActive(false); setCropRect(null); } }}
-              style={{ flex: 1, padding: "10px 0", fontFamily: T.font.body, fontSize: 12, fontWeight: tab === t.key ? 600 : 400, color: tab === t.key ? color : T.color.muted, background: "transparent", border: "none", borderBottom: tab === t.key ? `2px solid ${color}` : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-              <span style={{ fontSize: 12 }}>{t.icon}</span>{t.label}
+              style={{ flex: 1, padding: "0.625rem 0", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: tab === t.key ? 600 : 400, color: tab === t.key ? color : T.color.muted, background: "transparent", border: "none", borderBottom: tab === t.key ? `2px solid ${color}` : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3125rem" }}>
+              <span style={{ fontSize: "0.75rem" }}>{t.icon}</span>{t.label}
             </button>
           ))}
         </div>
 
         {/* Tab content */}
-        <div style={{ padding: "12px 16px 16px", overflowY: "auto", flex: 1 }}>
+        <div style={{ padding: "0.75rem 1rem 1rem", overflowY: "auto", flex: 1 }}>
 
           {/* Presets tab */}
           {tab === "presets" && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.375rem" }}>
               {PRESETS.map((p, i) => (
                 <button key={p.name} onClick={() => setPreset(i)}
-                  style={{ padding: "10px 4px", borderRadius: 10, border: preset === i ? `2px solid ${color}` : `1px solid ${T.color.cream}`, background: preset === i ? `${color}10` : T.color.white, cursor: "pointer", textAlign: "center", transition: "all .15s" }}>
-                  <div style={{ fontSize: 18 }}>{p.icon}</div>
-                  <div style={{ fontFamily: T.font.body, fontSize: 9, color: preset === i ? color : T.color.muted, fontWeight: preset === i ? 600 : 400, marginTop: 3 }}>{t(p.name)}</div>
+                  style={{ padding: "0.625rem 0.25rem", borderRadius: "0.625rem", border: preset === i ? `2px solid ${color}` : `1px solid ${T.color.cream}`, background: preset === i ? `${color}10` : T.color.white, cursor: "pointer", textAlign: "center", transition: "all .15s" }}>
+                  <div style={{ fontSize: "1.125rem" }}>{p.icon}</div>
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: preset === i ? color : T.color.muted, fontWeight: preset === i ? 600 : 400, marginTop: "0.1875rem" }}>{t(p.name)}</div>
                 </button>
               ))}
             </div>
@@ -378,14 +380,14 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
 
           {/* Adjust tab */}
           {tab === "adjust" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
               {ADJUSTMENTS.map(a => (
                 <div key={a.key}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal, fontWeight: 500 }}>{t(a.label)}</span>
-                    <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted }}>{adjustments[a.key]}{a.unit}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal, fontWeight: 500 }}>{t(a.label)}</span>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>{adjustments[a.key]}{a.unit}</span>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     <input
                       type="range"
                       min={a.min}
@@ -396,8 +398,8 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
                       style={{ flex: 1, accentColor: color }}
                     />
                     <button onClick={() => handleAdjust(a.key, a.default)}
-                      style={{ width: 22, height: 22, borderRadius: 11, border: `1px solid ${T.color.cream}`, background: T.color.white, fontSize: 10, cursor: "pointer", color: T.color.muted, display: "flex", alignItems: "center", justifyContent: "center" }}
-                      title="Reset">{"\u21BA"}</button>
+                      style={{ width: "1.375rem", height: "1.375rem", borderRadius: "0.6875rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontSize: "0.625rem", cursor: "pointer", color: T.color.muted, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      title={t("reset")}>{"\u21BA"}</button>
                   </div>
                 </div>
               ))}
@@ -406,11 +408,11 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
 
           {/* Crop & Rotate tab */}
           {tab === "crop" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               {/* Rotation */}
               <div>
-                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal, fontWeight: 500, marginBottom: 8 }}>{t("rotate")}</div>
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal, fontWeight: 500, marginBottom: "0.5rem" }}>{t("rotate")}</div>
+                <div style={{ display: "flex", gap: "0.375rem" }}>
                   {[
                     { label: "0\u00B0", val: 0 },
                     { label: "90\u00B0", val: 90 },
@@ -418,7 +420,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
                     { label: "270\u00B0", val: 270 },
                   ].map(r => (
                     <button key={r.val} onClick={() => setRotation(r.val)}
-                      style={{ padding: "8px 16px", borderRadius: 8, border: rotation === r.val ? `2px solid ${color}` : `1px solid ${T.color.cream}`, background: rotation === r.val ? `${color}10` : T.color.white, fontFamily: T.font.body, fontSize: 12, color: rotation === r.val ? color : T.color.muted, cursor: "pointer", fontWeight: rotation === r.val ? 600 : 400 }}>
+                      style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", border: rotation === r.val ? `2px solid ${color}` : `1px solid ${T.color.cream}`, background: rotation === r.val ? `${color}10` : T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: rotation === r.val ? color : T.color.muted, cursor: "pointer", fontWeight: rotation === r.val ? 600 : 400 }}>
                       {r.label}
                     </button>
                   ))}
@@ -427,8 +429,8 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
 
               {/* Crop presets */}
               <div>
-                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal, fontWeight: 500, marginBottom: 8 }}>{t("crop")}</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal, fontWeight: 500, marginBottom: "0.5rem" }}>{t("crop")}</div>
+                <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
                   {[
                     { label: t("free"), ratio: 0 },
                     { label: "1:1", ratio: 1 },
@@ -440,18 +442,18 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
                       if (c.ratio === 0) { setCropActive(true); setCropRect(null); }
                       else applyCropPreset(c.ratio);
                     }}
-                      style={{ padding: "8px 14px", borderRadius: 8, border: cropActive ? `1px solid ${T.color.cream}` : `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 11, color: T.color.muted, cursor: "pointer" }}>
+                      style={{ padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: cropActive ? `1px solid ${T.color.cream}` : `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, cursor: "pointer" }}>
                       {c.label}
                     </button>
                   ))}
                   {cropActive && (
                     <button onClick={() => { setCropActive(false); setCropRect(null); }}
-                      style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid #D0606080", background: T.color.white, fontFamily: T.font.body, fontSize: 11, color: "#C05050", cursor: "pointer" }}>
+                      style={{ padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: "1px solid #D0606080", background: T.color.white, fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C05050", cursor: "pointer" }}>
                       {t("clearCrop")}
                     </button>
                   )}
                 </div>
-                {cropActive && <p style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, marginTop: 6 }}>
+                {cropActive && <p style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, marginTop: "0.375rem" }}>
                   {cropRect && cropRect.w > 10 ? t("cropSelected") : t("cropInstruction")}
                 </p>}
               </div>
@@ -460,10 +462,10 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
         </div>
 
         {/* Footer: Save / Cancel */}
-        <div style={{ padding: "12px 16px 16px", borderTop: `1px solid ${T.color.cream}`, display: "flex", gap: 10 }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: 12, fontFamily: T.font.body, fontSize: 13, background: "transparent", border: `1px solid ${T.color.cream}`, borderRadius: 10, cursor: "pointer", color: T.color.muted }}>{t("cancel")}</button>
+        <div style={{ padding: "0.75rem 1rem 1rem", borderTop: `1px solid ${T.color.cream}`, display: "flex", gap: "0.625rem" }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: "0.75rem", fontFamily: T.font.body, fontSize: "0.8125rem", background: "transparent", border: `1px solid ${T.color.cream}`, borderRadius: "0.625rem", cursor: "pointer", color: T.color.muted }}>{t("cancel")}</button>
           <button onClick={handleSave} disabled={saving}
-            style={{ flex: 2, padding: 12, fontFamily: T.font.body, fontSize: 13, fontWeight: 600, background: saving ? `${T.color.sandstone}60` : color, border: "none", borderRadius: 10, cursor: saving ? "default" : "pointer", color: T.color.white }}>
+            style={{ flex: 2, padding: "0.75rem", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, background: saving ? `${T.color.sandstone}60` : color, border: "none", borderRadius: "0.625rem", cursor: saving ? "default" : "pointer", color: T.color.white }}>
             {saving ? t("applying") : t("applyChanges")}
           </button>
         </div>

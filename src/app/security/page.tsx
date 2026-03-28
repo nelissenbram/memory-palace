@@ -3,159 +3,66 @@
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const F = T.font;
 const C = T.color;
 
-const SECTIONS = [
+type SectionDef = {
+  icon: string;
+  titleKey: string;
+  items: { icon: string; labelKey: string; detailKey: string }[];
+};
+
+const SECTIONS: SectionDef[] = [
   {
-    icon: "🏛️",
-    title: "Hosting & Infrastructure",
+    icon: "\u{1F3DB}\uFE0F",
+    titleKey: "sectionHostingTitle",
     items: [
-      {
-        icon: "🌍",
-        label: "Hosted on Vercel",
-        detail:
-          "Your Memory Palace runs on Vercel, a world-class hosting platform with a global content delivery network (CDN). Every page loads fast, and every connection is automatically secured with HTTPS.",
-      },
-      {
-        icon: "🇪🇺",
-        label: "Database in the EU",
-        detail:
-          "All your data is stored on Supabase PostgreSQL in Frankfurt, Germany — safely within the European Union. This means your memories are protected by strict EU data protection laws (GDPR).",
-      },
-      {
-        icon: "📋",
-        label: "Fully GDPR compliant",
-        detail:
-          "We follow the General Data Protection Regulation to the letter. Your personal data is processed lawfully and transparently, and only for the purposes you have agreed to.",
-      },
+      { icon: "\u{1F30D}", labelKey: "hostingVercelLabel", detailKey: "hostingVercelDetail" },
+      { icon: "\u{1F1EA}\u{1F1FA}", labelKey: "hostingEuLabel", detailKey: "hostingEuDetail" },
+      { icon: "\u{1F4CB}", labelKey: "hostingGdprLabel", detailKey: "hostingGdprDetail" },
     ],
   },
   {
-    icon: "🔐",
-    title: "Encryption",
+    icon: "\u{1F510}",
+    titleKey: "sectionEncryptionTitle",
     items: [
-      {
-        icon: "🔒",
-        label: "Encrypted in transit (TLS 1.3)",
-        detail:
-          "Every connection between your device and our servers uses TLS 1.3, the latest and strongest transport encryption. Nobody can read your data as it travels over the internet.",
-      },
-      {
-        icon: "💾",
-        label: "Encrypted at rest (AES-256)",
-        detail:
-          "Your database is encrypted with AES-256, the same standard used by banks and governments. Even if someone accessed the physical servers, your data would be unreadable.",
-      },
-      {
-        icon: "📁",
-        label: "Encrypted file storage",
-        detail:
-          "Your photos, videos, and documents are stored in Supabase Storage, which is also encrypted at rest. Files are only accessible through authenticated, time-limited links.",
-      },
-      {
-        icon: "🔑",
-        label: "Secure password hashing",
-        detail:
-          "Your password is never stored in plain text. It is hashed using bcrypt through Supabase Auth, making it practically impossible to reverse-engineer.",
-      },
+      { icon: "\u{1F512}", labelKey: "encryptionTransitLabel", detailKey: "encryptionTransitDetail" },
+      { icon: "\u{1F4BE}", labelKey: "encryptionRestLabel", detailKey: "encryptionRestDetail" },
+      { icon: "\u{1F4C1}", labelKey: "encryptionFilesLabel", detailKey: "encryptionFilesDetail" },
+      { icon: "\u{1F511}", labelKey: "encryptionPasswordLabel", detailKey: "encryptionPasswordDetail" },
     ],
   },
   {
-    icon: "🛡️",
-    title: "Authentication & Access",
+    icon: "\u{1F6E1}\uFE0F",
+    titleKey: "sectionAuthTitle",
     items: [
-      {
-        icon: "✉️",
-        label: "Email & password login",
-        detail:
-          "Sign in securely with your email address and password. Your credentials are handled by Supabase Auth, a battle-tested authentication system.",
-      },
-      {
-        icon: "🔗",
-        label: "Social login (Google, Apple)",
-        detail:
-          "Prefer to sign in with Google or Apple? We support OAuth 2.0 social login — your password is never shared with us when you use these options.",
-      },
-      {
-        icon: "📱",
-        label: "Two-factor authentication",
-        detail:
-          "For extra peace of mind, you can enable two-factor authentication (2FA) using a TOTP app like Google Authenticator. This adds a second layer of protection to your account.",
-      },
-      {
-        icon: "👤",
-        label: "Row Level Security",
-        detail:
-          "Every database table is protected by Row Level Security (RLS). This means you can only ever access your own data — this is enforced at the database level, not just in our code.",
-      },
-      {
-        icon: "🎫",
-        label: "JWT session management",
-        detail:
-          "Your login sessions use JSON Web Tokens (JWT), which are short-lived and cryptographically signed. Sessions expire automatically, keeping your account safe even if you forget to log out.",
-      },
+      { icon: "\u2709\uFE0F", labelKey: "authEmailLabel", detailKey: "authEmailDetail" },
+      { icon: "\u{1F517}", labelKey: "authSocialLabel", detailKey: "authSocialDetail" },
+      { icon: "\u{1F4F1}", labelKey: "authMfaLabel", detailKey: "authMfaDetail" },
+      { icon: "\u{1F464}", labelKey: "authRlsLabel", detailKey: "authRlsDetail" },
+      { icon: "\u{1F3AB}", labelKey: "authJwtLabel", detailKey: "authJwtDetail" },
     ],
   },
   {
-    icon: "🎛️",
-    title: "Privacy Controls",
+    icon: "\u{1F39B}\uFE0F",
+    titleKey: "sectionPrivacyTitle",
     items: [
-      {
-        icon: "📥",
-        label: "Full data export",
-        detail:
-          "You can download everything — all your memories, stories, and photos — as a JSON file with a ZIP of your media. Your data always belongs to you.",
-      },
-      {
-        icon: "🗑️",
-        label: "Complete account deletion",
-        detail:
-          "If you choose to delete your account, all your data is permanently removed. Deletion cascades through every table — nothing is left behind.",
-      },
-      {
-        icon: "🍪",
-        label: "Cookie consent",
-        detail:
-          "We ask for your permission before setting any non-essential cookies. You can change your preferences at any time through our cookie consent controls.",
-      },
-      {
-        icon: "🚫",
-        label: "No tracking, no ads, no data selling",
-        detail:
-          "We will never sell your data, show you advertisements, or track you across the web. Your memories are private, and that is a promise.",
-      },
-      {
-        icon: "🕊️",
-        label: "Legacy contacts",
-        detail:
-          "You can designate trusted family members as legacy contacts for digital inheritance. When the time comes, your memories can be passed on to the people you choose.",
-      },
+      { icon: "\u{1F4E5}", labelKey: "privacyExportLabel", detailKey: "privacyExportDetail" },
+      { icon: "\u{1F5D1}\uFE0F", labelKey: "privacyDeleteLabel", detailKey: "privacyDeleteDetail" },
+      { icon: "\u{1F36A}", labelKey: "privacyCookieLabel", detailKey: "privacyCookieDetail" },
+      { icon: "\u{1F6AB}", labelKey: "privacyNoTrackingLabel", detailKey: "privacyNoTrackingDetail" },
+      { icon: "\u{1F54A}\uFE0F", labelKey: "privacyLegacyLabel", detailKey: "privacyLegacyDetail" },
     ],
   },
   {
-    icon: "🔄",
-    title: "Backup & Redundancy",
+    icon: "\u{1F504}",
+    titleKey: "sectionBackupTitle",
     items: [
-      {
-        icon: "💾",
-        label: "Daily automated backups",
-        detail:
-          "Your data is backed up automatically every day. In the unlikely event of a problem, we can restore your palace to its most recent state.",
-      },
-      {
-        icon: "⏱️",
-        label: "Point-in-time recovery",
-        detail:
-          "Our database supports point-in-time recovery, meaning we can restore data to any moment within the retention window — not just the last backup.",
-      },
-      {
-        icon: "🌐",
-        label: "Replicated storage",
-        detail:
-          "Files are stored with redundancy across multiple availability zones. Even if one data center has issues, your memories remain safe and accessible.",
-      },
+      { icon: "\u{1F4BE}", labelKey: "backupDailyLabel", detailKey: "backupDailyDetail" },
+      { icon: "\u23F1\uFE0F", labelKey: "backupPitrLabel", detailKey: "backupPitrDetail" },
+      { icon: "\u{1F310}", labelKey: "backupReplicatedLabel", detailKey: "backupReplicatedDetail" },
     ],
   },
 ];
@@ -163,6 +70,7 @@ const SECTIONS = [
 export default function SecurityPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
+  const { t } = useTranslation("securityPage");
 
   return (
     <div
@@ -175,7 +83,7 @@ export default function SecurityPage() {
         color: C.charcoal,
       }}
     >
-      {/* ─── Nav ─── */}
+      {/* --- Nav --- */}
       <nav
         style={{
           display: "flex",
@@ -197,7 +105,7 @@ export default function SecurityPage() {
             textDecoration: "none",
           }}
         >
-          <span style={{ fontSize: 22 }}>🏛️</span>
+          <span style={{ fontSize: 22 }}>{"\u{1F3DB}\uFE0F"}</span>
           <span
             style={{
               fontFamily: F.display,
@@ -207,7 +115,7 @@ export default function SecurityPage() {
               letterSpacing: "-0.3px",
             }}
           >
-            The Memory Palace
+            {t("navBrand")}
           </span>
         </Link>
         <Link
@@ -223,11 +131,11 @@ export default function SecurityPage() {
             background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
           }}
         >
-          Get Started
+          {t("getStarted")}
         </Link>
       </nav>
 
-      {/* ─── Hero ─── */}
+      {/* --- Hero --- */}
       <section
         style={{
           textAlign: "center",
@@ -236,7 +144,7 @@ export default function SecurityPage() {
         }}
       >
         <span style={{ fontSize: 56, display: "block", marginBottom: 20 }}>
-          🛡️
+          {"\u{1F6E1}\uFE0F"}
         </span>
         <h1
           style={{
@@ -248,7 +156,7 @@ export default function SecurityPage() {
             marginBottom: 16,
           }}
         >
-          Your data is safe
+          {t("heroTitle")}
         </h1>
         <p
           style={{
@@ -259,12 +167,11 @@ export default function SecurityPage() {
             lineHeight: 1.7,
           }}
         >
-          We understand that your memories are irreplaceable. Here is exactly how
-          we protect them — with transparency, care, and the highest standards.
+          {t("heroDescription")}
         </p>
       </section>
 
-      {/* ─── Sections ─── */}
+      {/* --- Sections --- */}
       <div
         style={{
           maxWidth: 900,
@@ -294,7 +201,7 @@ export default function SecurityPage() {
                   margin: 0,
                 }}
               >
-                {section.title}
+                {t(section.titleKey)}
               </h2>
             </div>
 
@@ -338,7 +245,7 @@ export default function SecurityPage() {
                       marginBottom: 8,
                     }}
                   >
-                    {item.label}
+                    {t(item.labelKey)}
                   </h3>
                   <p
                     style={{
@@ -348,7 +255,7 @@ export default function SecurityPage() {
                       margin: 0,
                     }}
                   >
-                    {item.detail}
+                    {t(item.detailKey)}
                   </p>
                 </div>
               ))}
@@ -356,7 +263,7 @@ export default function SecurityPage() {
           </div>
         ))}
 
-        {/* ─── Commitment ─── */}
+        {/* --- Commitment --- */}
         <div
           style={{
             background: `linear-gradient(135deg, ${C.charcoal}, #3D3D3A)`,
@@ -367,7 +274,7 @@ export default function SecurityPage() {
           }}
         >
           <span style={{ fontSize: 40, display: "block", marginBottom: 16 }}>
-            🕊️
+            {"\u{1F54A}\uFE0F"}
           </span>
           <h2
             style={{
@@ -381,9 +288,9 @@ export default function SecurityPage() {
               margin: "0 auto 16px",
             }}
           >
-            Your memories are meant to last generations.
+            {t("commitmentTitle")}
             <br />
-            We take that responsibility seriously.
+            {t("commitmentTitle2")}
           </h2>
           <p
             style={{
@@ -394,20 +301,19 @@ export default function SecurityPage() {
               margin: "0 auto",
             }}
           >
-            If you have questions about how we handle your data, or if you want
-            to exercise any of your rights under GDPR, please contact us at{" "}
+            {t("commitmentBody")}{" "}
             <a
               href="mailto:privacy@thememorypalace.ai"
               style={{ color: C.terracotta, textDecoration: "none" }}
             >
               privacy@thememorypalace.ai
             </a>
-            . We are here to help.
+            {t("commitmentBodyEnd")}
           </p>
         </div>
       </div>
 
-      {/* ─── CTA ─── */}
+      {/* --- CTA --- */}
       <section
         style={{
           padding: isMobile ? "40px 20px 60px" : "60px clamp(20px, 5vw, 60px) 80px",
@@ -425,7 +331,7 @@ export default function SecurityPage() {
             lineHeight: 1.2,
           }}
         >
-          Ready to start preserving?
+          {t("ctaTitle")}
         </h2>
         <p
           style={{
@@ -436,8 +342,7 @@ export default function SecurityPage() {
             lineHeight: 1.6,
           }}
         >
-          Your memories deserve a safe, beautiful home. Get started for free —
-          no credit card required.
+          {t("ctaDescription")}
         </p>
         <Link
           href="/register"
@@ -454,11 +359,11 @@ export default function SecurityPage() {
             boxShadow: "0 4px 20px rgba(193,127,89,0.3)",
           }}
         >
-          Create Your Memory Palace
+          {t("ctaButton")}
         </Link>
       </section>
 
-      {/* ─── Footer ─── */}
+      {/* --- Footer --- */}
       <footer
         style={{
           padding: "28px clamp(20px, 5vw, 60px)",
@@ -468,8 +373,7 @@ export default function SecurityPage() {
         }}
       >
         <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
-          &copy; {new Date().getFullYear()} The Memory Palace. Preserve your
-          memories for eternity.
+          &copy; {new Date().getFullYear()} {t("footerCopyright")}
         </p>
       </footer>
     </div>

@@ -169,34 +169,34 @@ export default function NotificationsPage() {
       {/* Toast */}
       {toast && (
         <div role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: 24, right: 24, zIndex: 100,
-          padding: "14px 20px", borderRadius: 12,
+          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
+          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
           background: toast.type === "success" ? "#4A6741" : "#C05050",
           color: "#FFF",
-          fontFamily: T.font.body, fontSize: 13, fontWeight: 500,
+          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
           boxShadow: "0 8px 24px rgba(0,0,0,.15)",
           animation: "fadeIn .2s ease",
-          display: "flex", alignItems: "center", gap: 10,
+          display: "flex", alignItems: "center", gap: "0.625rem",
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
           <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
-            fontSize: 14, cursor: "pointer", marginLeft: 8, opacity: 0.7,
+            fontSize: "0.875rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
         </div>
       )}
 
       {/* Page header */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: "1.75rem" }}>
         <h2 style={{
-          fontFamily: T.font.display, fontSize: 28, fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 8px",
+          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 0.5rem",
         }}>
           {t("title")}
         </h2>
         <p style={{
-          fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
           margin: 0, lineHeight: 1.5,
         }}>
           {t("description")}
@@ -206,12 +206,12 @@ export default function NotificationsPage() {
       {/* Browser support warning */}
       {isUnsupported && (
         <div style={{
-          padding: "16px 20px", borderRadius: 12, marginBottom: 20,
+          padding: "1rem 1.25rem", borderRadius: "0.75rem", marginBottom: "1.25rem",
           background: `${T.color.terracotta}08`,
           border: `1px solid ${T.color.terracotta}20`,
         }}>
           <p style={{
-            fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
             margin: 0, lineHeight: 1.5,
           }}>
             {t("browserUnsupported")}
@@ -222,12 +222,12 @@ export default function NotificationsPage() {
       {/* Permission denied warning */}
       {isDenied && !isUnsupported && (
         <div style={{
-          padding: "16px 20px", borderRadius: 12, marginBottom: 20,
+          padding: "1rem 1.25rem", borderRadius: "0.75rem", marginBottom: "1.25rem",
           background: `${T.color.terracotta}08`,
           border: `1px solid ${T.color.terracotta}20`,
         }}>
           <p style={{
-            fontFamily: T.font.body, fontSize: 13, color: T.color.walnut,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
             margin: 0, lineHeight: 1.5,
           }}>
             {t("permissionDenied")}
@@ -238,34 +238,34 @@ export default function NotificationsPage() {
       {/* Push notifications toggle */}
       <div style={{
         background: T.color.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${T.color.cream}`,
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
         overflow: "hidden",
       }}>
         {/* Main push toggle */}
         <div style={{
-          padding: "20px 24px",
-          display: "flex", alignItems: "center", gap: 16,
+          padding: "1.25rem 1.5rem",
+          display: "flex", alignItems: "center", gap: "1rem",
         }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+            width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", flexShrink: 0,
             background: prefs.pushEnabled ? `${T.color.sage}12` : T.color.warmStone,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 20,
+            fontSize: "1.25rem",
           }}>
             {"\uD83D\uDD14"}
           </div>
 
           <div style={{ flex: 1 }}>
             <h3 style={{
-              fontFamily: T.font.display, fontSize: 18, fontWeight: 600,
+              fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600,
               color: T.color.charcoal, margin: "0 0 2px",
             }}>
               {t("pushNotifications")}
             </h3>
             <p style={{
-              fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
               margin: 0,
             }}>
               {t("pushDescription")}
@@ -283,22 +283,22 @@ export default function NotificationsPage() {
         {/* Divider + notification type toggles */}
         {prefs.pushEnabled && (
           <>
-            <div style={{ height: 1, background: T.color.cream, margin: "0 24px" }} />
+            <div style={{ height: 1, background: T.color.cream, margin: "0 1.5rem" }} />
 
             {/* On This Day */}
             <div style={{
-              padding: "16px 24px 16px 84px",
-              display: "flex", alignItems: "center", gap: 16,
+              padding: "1rem 1.5rem 1rem 5.25rem",
+              display: "flex", alignItems: "center", gap: "1rem",
             }}>
               <div style={{ flex: 1 }}>
                 <h4 style={{
-                  fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
+                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                   color: T.color.charcoal, margin: "0 0 2px",
                 }}>
                   {t("onThisDayTitle")}
                 </h4>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
+                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
                   margin: 0,
                 }}>
                   {t("onThisDayDesc")}
@@ -311,22 +311,22 @@ export default function NotificationsPage() {
               />
             </div>
 
-            <div style={{ height: 1, background: T.color.cream, margin: "0 24px" }} />
+            <div style={{ height: 1, background: T.color.cream, margin: "0 1.5rem" }} />
 
             {/* Time Capsule */}
             <div style={{
-              padding: "16px 24px 16px 84px",
-              display: "flex", alignItems: "center", gap: 16,
+              padding: "1rem 1.5rem 1rem 5.25rem",
+              display: "flex", alignItems: "center", gap: "1rem",
             }}>
               <div style={{ flex: 1 }}>
                 <h4 style={{
-                  fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
+                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                   color: T.color.charcoal, margin: "0 0 2px",
                 }}>
                   {t("timeCapsuleTitle")}
                 </h4>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
+                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
                   margin: 0,
                 }}>
                   {t("timeCapsuleDesc")}
@@ -339,26 +339,26 @@ export default function NotificationsPage() {
               />
             </div>
 
-            <div style={{ height: 8 }} />
+            <div style={{ height: "0.5rem" }} />
           </>
         )}
       </div>
 
       {/* Email Notifications section */}
       <div style={{
-        marginTop: 24,
+        marginTop: "1.5rem",
         background: T.color.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${T.color.cream}`,
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
         overflow: "hidden",
       }}>
         {/* Section header */}
         <div style={{
-          padding: "16px 24px 8px",
+          padding: "1rem 1.5rem 0.5rem",
         }}>
           <h3 style={{
-            fontFamily: T.font.display, fontSize: 16, fontWeight: 600,
+            fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
             color: T.color.muted, margin: 0,
             textTransform: "uppercase" as const,
             letterSpacing: 0.5,
@@ -369,27 +369,27 @@ export default function NotificationsPage() {
 
         {/* Weekly digest toggle */}
         <div style={{
-          padding: "16px 24px",
-          display: "flex", alignItems: "center", gap: 16,
+          padding: "1rem 1.5rem",
+          display: "flex", alignItems: "center", gap: "1rem",
         }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+            width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", flexShrink: 0,
             background: prefs.emailDigest ? `${T.color.sage}12` : T.color.warmStone,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 20,
+            fontSize: "1.25rem",
           }}>
             {"\uD83D\uDCEC"}
           </div>
 
           <div style={{ flex: 1 }}>
             <h4 style={{
-              fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
+              fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
               color: T.color.charcoal, margin: "0 0 2px",
             }}>
               {t("weeklyDigestTitle")}
             </h4>
             <p style={{
-              fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
               margin: 0,
             }}>
               {t("weeklyDigestDesc")}
@@ -407,12 +407,12 @@ export default function NotificationsPage() {
 
       {/* Info note */}
       <div style={{
-        marginTop: 24, padding: "16px 20px", borderRadius: 12,
+        marginTop: "1.5rem", padding: "1rem 1.25rem", borderRadius: "0.75rem",
         background: `${T.color.sage}08`,
         border: `1px solid ${T.color.sage}15`,
       }}>
         <p style={{
-          fontFamily: T.font.body, fontSize: 12, color: T.color.walnut,
+          fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut,
           margin: 0, lineHeight: 1.5,
         }}>
           {t("infoNote")}
@@ -446,9 +446,9 @@ function ToggleSwitch({
       onClick={onChange}
       disabled={disabled}
       style={{
-        width: 48,
-        height: 28,
-        borderRadius: 14,
+        width: "3rem",
+        height: "1.75rem",
+        borderRadius: "0.875rem",
         border: "none",
         background: enabled
           ? `linear-gradient(135deg, ${T.color.sage}, #5A7751)`
@@ -463,13 +463,13 @@ function ToggleSwitch({
     >
       <div
         style={{
-          width: 22,
-          height: 22,
-          borderRadius: 11,
+          width: "1.375rem",
+          height: "1.375rem",
+          borderRadius: "0.6875rem",
           background: "#FFF",
           position: "absolute",
           top: 3,
-          left: enabled ? 23 : 3,
+          left: enabled ? "1.4375rem" : 3,
           transition: "left .2s ease",
           boxShadow: "0 1px 4px rgba(0,0,0,.15)",
           display: "flex",
@@ -479,7 +479,7 @@ function ToggleSwitch({
       >
         {loading && (
           <div style={{
-            width: 12, height: 12, border: `2px solid ${T.color.muted}40`,
+            width: "0.75rem", height: "0.75rem", border: `2px solid ${T.color.muted}40`,
             borderTopColor: T.color.muted, borderRadius: "50%",
             animation: "spin .6s linear infinite",
           }} />

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { getTemplate } from "@/lib/constants/interviews";
 import type { InterviewSession } from "@/lib/stores/interviewStore";
@@ -27,6 +28,7 @@ function fmtDuration(sec: number, mAbbr: string, sAbbr: string): string {
 export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanelProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("interviewHistory");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { sessions, sessionsLoaded, loadHistory, resumeSession, setShowHistory } = useInterviewStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [fadeIn, setFadeIn] = useState(false);
@@ -48,7 +50,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
       backdropFilter: "blur(8px)", zIndex: 56,
       opacity: fadeIn ? 1 : 0, transition: "opacity 0.3s ease",
     }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
         position: "absolute", right: 0, top: 0, bottom: 0,
         width: isMobile ? "100%" : "min(440px, 92vw)",
         background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",
@@ -60,38 +62,38 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
 
         {/* Header */}
         <div style={{
-          padding: isMobile ? "20px 20px" : "24px 28px",
+          padding: isMobile ? "1.25rem" : "1.5rem 1.75rem",
           borderBottom: `1px solid ${T.color.cream}`,
           display: "flex", justifyContent: "space-between", alignItems: "center",
         }}>
           <div>
-            <h2 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
+            <h2 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
               {t("title")}
             </h2>
-            <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, margin: "4px 0 0" }}>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
               {completedSessions.length} {t("completed")} {completedSessions.length === 1 ? t("completedInterview") : t("completedInterviews")}
             </p>
           </div>
           <button onClick={onClose} style={{
-            width: isMobile ? 44 : 36, height: isMobile ? 44 : 36,
-            borderRadius: isMobile ? 22 : 18,
+            width: isMobile ? "2.75rem" : "2.25rem", height: isMobile ? "2.75rem" : "2.25rem",
+            borderRadius: isMobile ? "1.375rem" : "1.125rem",
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
-            color: T.color.muted, fontSize: isMobile ? 16 : 14,
+            color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem",
             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            minWidth: 44, minHeight: 44,
+            minWidth: "2.75rem", minHeight: "2.75rem",
           }}>
             {"\u2715"}
           </button>
         </div>
 
-        <div style={{ padding: isMobile ? "16px 20px" : "20px 28px" }}>
+        <div style={{ padding: isMobile ? "1rem 1.25rem" : "1.25rem 1.75rem" }}>
           {/* In-progress sessions */}
           {inProgressSessions.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: "1.5rem" }}>
               <h3 style={{
-                fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
+                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                 color: T.color.terracotta, textTransform: "uppercase",
-                letterSpacing: "0.5px", marginBottom: 10,
+                letterSpacing: "0.03125rem", marginBottom: "0.625rem",
               }}>
                 {t("inProgress")}
               </h3>
@@ -99,25 +101,25 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                 const template = getTemplate(session.templateId);
                 return (
                   <div key={session.id} onClick={() => handleResume(session)} style={{
-                    padding: "14px 16px", borderRadius: 12,
+                    padding: "0.875rem 1rem", borderRadius: "0.75rem",
                     border: `1px solid ${T.color.terracotta}30`,
                     background: `${T.color.terracotta}06`,
-                    marginBottom: 8, cursor: "pointer",
-                    display: "flex", alignItems: "center", gap: 12,
+                    marginBottom: "0.5rem", cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: "0.75rem",
                   }}>
-                    <div style={{ fontSize: 20 }}>{template?.icon || "\uD83D\uDCDD"}</div>
+                    <div style={{ fontSize: "1.25rem" }}>{template?.icon || "\uD83D\uDCDD"}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontFamily: T.font.display, fontSize: 15, fontWeight: 600, color: T.color.charcoal }}>
+                      <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal }}>
                         {template?.title || session.templateId}
                       </div>
-                      <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
+                      <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
                         {t("answeredOf", { answered: String(session.responses.length), total: String(template?.questions.length || "?") })}
                       </div>
                     </div>
                     <span style={{
-                      fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                       color: T.color.terracotta, background: `${T.color.terracotta}15`,
-                      padding: "4px 12px", borderRadius: 10,
+                      padding: "0.25rem 0.75rem", borderRadius: "0.625rem",
                     }}>
                       {t("continue")}
                     </span>
@@ -137,7 +139,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
 
               return (
                 <div key={session.id} style={{
-                  marginBottom: 10, borderRadius: 14,
+                  marginBottom: "0.625rem", borderRadius: "0.875rem",
                   border: `1px solid ${isExpanded ? T.color.sage + "40" : T.color.cream}`,
                   background: T.color.white,
                   overflow: "hidden",
@@ -145,29 +147,29 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                 }}>
                   {/* Summary row */}
                   <div onClick={() => setExpandedId(isExpanded ? null : session.id)} style={{
-                    padding: "14px 16px", cursor: "pointer",
-                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "0.875rem 1rem", cursor: "pointer",
+                    display: "flex", alignItems: "center", gap: "0.75rem",
                   }}>
                     <div style={{
-                      width: 40, height: 40, borderRadius: 10,
+                      width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
                       background: `${T.color.sage}12`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 20, flexShrink: 0,
+                      fontSize: "1.25rem", flexShrink: 0,
                     }}>
                       {template?.icon || "\u2713"}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: T.font.display, fontSize: 15, fontWeight: 600, color: T.color.charcoal }}>
+                      <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal }}>
                         {template?.title || session.templateId}
                       </div>
-                      <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, display: "flex", gap: 10 }}>
+                      <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, display: "flex", gap: "0.625rem" }}>
                         <span>{fmtDate(session.startedAt, locale)}</span>
                         {session.totalDurationSeconds > 0 && <span>{fmtDuration(session.totalDurationSeconds, t("minuteAbbr"), t("secondAbbr"))}</span>}
                         <span>{wordCount} {t("words")}</span>
                       </div>
                     </div>
                     <span style={{
-                      fontSize: 14, color: T.color.muted,
+                      fontSize: "0.875rem", color: T.color.muted,
                       transform: isExpanded ? "rotate(180deg)" : "none",
                       transition: "transform 0.2s",
                     }}>
@@ -178,21 +180,21 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                   {/* Expanded detail */}
                   {isExpanded && (
                     <div style={{
-                      padding: "0 16px 16px",
+                      padding: "0 1rem 1rem",
                       borderTop: `1px solid ${T.color.cream}`,
                     }}>
                       {/* Narrative summary */}
                       {session.narrativeSummary && (
-                        <div style={{ margin: "14px 0" }}>
+                        <div style={{ margin: "0.875rem 0" }}>
                           <p style={{
-                            fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
+                            fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                             color: T.color.muted, textTransform: "uppercase",
-                            letterSpacing: "0.5px", marginBottom: 8,
+                            letterSpacing: "0.03125rem", marginBottom: "0.5rem",
                           }}>
                             {t("narrative")}
                           </p>
                           <p style={{
-                            fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal,
+                            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
                             lineHeight: 1.7, margin: 0,
                             display: "-webkit-box", WebkitLineClamp: 6, WebkitBoxOrient: "vertical" as any,
                             overflow: "hidden",
@@ -204,9 +206,9 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
 
                       {/* Individual responses */}
                       <p style={{
-                        fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
+                        fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                         color: T.color.muted, textTransform: "uppercase",
-                        letterSpacing: "0.5px", marginBottom: 8, marginTop: 14,
+                        letterSpacing: "0.03125rem", marginBottom: "0.5rem", marginTop: "0.875rem",
                       }}>
                         {t("responses")}
                       </p>
@@ -214,13 +216,13 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                         const q = template?.questions.find((tq) => tq.id === r.questionId);
                         return (
                           <div key={i} style={{
-                            padding: "10px 12px", borderRadius: 10,
-                            background: T.color.warmStone, marginBottom: 6,
+                            padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
+                            background: T.color.warmStone, marginBottom: "0.375rem",
                           }}>
-                            <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.walnut, fontWeight: 600, margin: "0 0 4px" }}>
+                            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, fontWeight: 600, margin: "0 0 0.25rem" }}>
                               {q?.text || t("questionFallback", { number: String(i + 1) })}
                             </p>
-                            <p style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, lineHeight: 1.6, margin: 0 }}>
+                            <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, lineHeight: 1.6, margin: 0 }}>
                               {r.transcript || t("noTranscript")}
                             </p>
                           </div>
@@ -233,12 +235,12 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
             })
           ) : (
             !inProgressSessions.length && (
-              <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>{"\uD83C\uDF99\uFE0F"}</div>
-                <p style={{ fontFamily: T.font.display, fontSize: 18, color: T.color.charcoal, marginBottom: 8 }}>
+              <div style={{ textAlign: "center", padding: "2.5rem 1.25rem" }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>{"\uD83C\uDF99\uFE0F"}</div>
+                <p style={{ fontFamily: T.font.display, fontSize: "1.125rem", color: T.color.charcoal, marginBottom: "0.5rem" }}>
                   {t("noInterviewsTitle")}
                 </p>
-                <p style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.muted, lineHeight: 1.6 }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, lineHeight: 1.6 }}>
                   {t("noInterviewsDescription")}
                 </p>
               </div>

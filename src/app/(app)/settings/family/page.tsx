@@ -202,7 +202,7 @@ export default function FamilyPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: 48, textAlign: "center", fontFamily: T.font.body, fontSize: 16, color: T.color.muted }}>
+      <div style={{ padding: "3rem", textAlign: "center", fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted }}>
         {t("loading")}
       </div>
     );
@@ -213,34 +213,34 @@ export default function FamilyPage() {
       {/* Toast */}
       {toast && (
         <div role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: 24, right: 24, zIndex: 100,
-          padding: "14px 20px", borderRadius: 12,
+          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
+          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
           background: toast.type === "success" ? T.color.sage : T.color.error,
           color: "#FFF",
-          fontFamily: T.font.body, fontSize: 14, fontWeight: 500,
+          fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
           boxShadow: "0 8px 24px rgba(0,0,0,.15)",
           animation: "fadeIn .2s ease",
-          display: "flex", alignItems: "center", gap: 10,
+          display: "flex", alignItems: "center", gap: "0.625rem",
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
           <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
-            fontSize: 16, cursor: "pointer", marginLeft: 8, opacity: 0.7,
+            fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
         </div>
       )}
 
       {/* Page header */}
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: "2rem" }}>
         <h2 style={{
-          fontFamily: T.font.display, fontSize: 28, fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 8px",
+          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 0.5rem",
         }}>
           {t("title")}
         </h2>
         <p style={{
-          fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
           margin: 0, lineHeight: 1.5,
         }}>
           {t("description")}
@@ -251,21 +251,21 @@ export default function FamilyPage() {
       {pendingInvite && group && (
         <div style={{
           background: `${T.color.terracotta}08`,
-          borderRadius: 16,
+          borderRadius: "1rem",
           border: `2px solid ${T.color.terracotta}30`,
-          padding: "28px 32px",
+          padding: "1.75rem 2rem",
           boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-          marginBottom: 24,
+          marginBottom: "1.5rem",
         }}>
           <h3 style={{
-            fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 8px",
+            fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+            color: T.color.charcoal, margin: "0 0 0.5rem",
           }}>
             {t("invitedTitle")}
           </h3>
           <p style={{
-            fontFamily: T.font.body, fontSize: 15, color: T.color.walnut,
-            margin: "0 0 20px", lineHeight: 1.5,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+            margin: "0 0 1.25rem", lineHeight: 1.5,
           }}>
             {t("invitedDescription", { name: group.name })}
           </p>
@@ -273,13 +273,13 @@ export default function FamilyPage() {
             onClick={handleAcceptInvite}
             disabled={saving}
             style={{
-              padding: "14px 32px",
-              borderRadius: 12,
+              padding: "0.875rem 2rem",
+              borderRadius: "0.75rem",
               border: "none",
               background: saving ? `${T.color.sandstone}60` : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
               color: saving ? T.color.muted : "#FFF",
               fontFamily: T.font.body,
-              fontSize: 15,
+              fontSize: "0.9375rem",
               fontWeight: 600,
               cursor: saving ? "default" : "pointer",
               transition: "all .2s",
@@ -294,21 +294,21 @@ export default function FamilyPage() {
       {!group && !pendingInvite && (
         <div style={{
           background: T.color.white,
-          borderRadius: 16,
+          borderRadius: "1rem",
           border: `1px solid ${T.color.cream}`,
-          padding: "28px 32px",
+          padding: "1.75rem 2rem",
           boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-          marginBottom: 24,
+          marginBottom: "1.5rem",
         }}>
           <h3 style={{
-            fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 6px",
+            fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+            color: T.color.charcoal, margin: "0 0 0.375rem",
           }}>
             {t("createGroup")}
           </h3>
           <p style={{
-            fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
-            margin: "0 0 22px", lineHeight: 1.5,
+            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+            margin: "0 0 1.375rem", lineHeight: 1.5,
           }}>
             {t("createGroupDesc")}
           </p>
@@ -330,16 +330,16 @@ export default function FamilyPage() {
             onClick={handleCreateGroup}
             disabled={!groupName.trim() || saving}
             style={{
-              marginTop: 20,
-              padding: "14px 32px",
-              borderRadius: 12,
+              marginTop: "1.25rem",
+              padding: "0.875rem 2rem",
+              borderRadius: "0.75rem",
               border: "none",
               background: !groupName.trim() || saving
                 ? `${T.color.sandstone}60`
                 : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
               color: !groupName.trim() || saving ? T.color.muted : "#FFF",
               fontFamily: T.font.body,
-              fontSize: 15,
+              fontSize: "0.9375rem",
               fontWeight: 600,
               cursor: !groupName.trim() || saving ? "default" : "pointer",
               transition: "all .2s",
@@ -356,31 +356,31 @@ export default function FamilyPage() {
           {/* Group card */}
           <div style={{
             background: T.color.white,
-            borderRadius: 16,
+            borderRadius: "1rem",
             border: `1px solid ${T.color.cream}`,
-            padding: "28px 32px",
+            padding: "1.75rem 2rem",
             boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-            marginBottom: 24,
+            marginBottom: "1.5rem",
           }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                 <div style={{
-                  width: 52, height: 52, borderRadius: 14,
+                  width: "3.25rem", height: "3.25rem", borderRadius: "0.875rem",
                   background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}15)`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 24,
+                  fontSize: "1.5rem",
                 }}>
                   {"\u{1F3E0}"}
                 </div>
                 <div>
                   <h3 style={{
-                    fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
+                    fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
                     color: T.color.charcoal, margin: 0,
                   }}>
                     {group.name}
                   </h3>
                   <div style={{
-                    fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginTop: 4,
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.25rem",
                   }}>
                     {members.length !== 1 ? t("membersCount", { count: String(members.length) }) : t("memberCount", { count: String(members.length) })} &middot; {t("yourRole", { role: userRole })}
                   </div>
@@ -391,14 +391,14 @@ export default function FamilyPage() {
             {/* Invite section (owner/admin only) */}
             {canManage && (
               <div style={{
-                padding: "20px 22px",
+                padding: "1.25rem 1.375rem",
                 background: T.color.linen,
-                borderRadius: 14,
+                borderRadius: "0.875rem",
                 border: `1px solid ${T.color.cream}`,
-                marginBottom: 24,
+                marginBottom: "1.5rem",
               }}>
                 <label htmlFor="family-invite-email" style={labelStyle}>{t("inviteMember")}</label>
-                <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+                <div style={{ display: "flex", gap: "0.625rem", marginBottom: "0.75rem" }}>
                   <input
                     id="family-invite-email"
                     type="email"
@@ -412,15 +412,15 @@ export default function FamilyPage() {
                     onClick={handleInvite}
                     disabled={!inviteEmail.trim() || !inviteEmail.includes("@") || inviting}
                     style={{
-                      padding: "14px 24px",
-                      borderRadius: 12,
+                      padding: "0.875rem 1.5rem",
+                      borderRadius: "0.75rem",
                       border: "none",
                       background: !inviteEmail.trim() || inviting
                         ? `${T.color.sandstone}60`
                         : T.color.terracotta,
                       color: !inviteEmail.trim() || inviting ? T.color.muted : "#FFF",
                       fontFamily: T.font.body,
-                      fontSize: 14,
+                      fontSize: "0.875rem",
                       fontWeight: 600,
                       cursor: !inviteEmail.trim() || inviting ? "default" : "pointer",
                       transition: "all .15s",
@@ -431,20 +431,20 @@ export default function FamilyPage() {
                   </button>
                 </div>
                 {/* Role selector */}
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
                   {(["member", "admin"] as const).map((r) => (
                     <button
                       key={r}
                       onClick={() => setInviteRole(r)}
                       aria-pressed={inviteRole === r}
                       style={{
-                        padding: "8px 16px",
-                        borderRadius: 8,
+                        padding: "0.5rem 1rem",
+                        borderRadius: "0.5rem",
                         border: `1px solid ${inviteRole === r ? T.color.terracotta + "40" : T.color.cream}`,
                         background: inviteRole === r ? `${T.color.terracotta}10` : T.color.white,
                         cursor: "pointer",
                         fontFamily: T.font.body,
-                        fontSize: 13,
+                        fontSize: "0.8125rem",
                         color: inviteRole === r ? T.color.terracotta : T.color.muted,
                         fontWeight: inviteRole === r ? 600 : 400,
                         transition: "all .15s",
@@ -459,42 +459,42 @@ export default function FamilyPage() {
 
             {/* Members list */}
             <label style={labelStyle}>{t("members")}</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {members.map((member) => (
                 <div key={member.id} style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "14px 18px", borderRadius: 12,
+                  padding: "0.875rem 1.125rem", borderRadius: "0.75rem",
                   background: T.color.linen,
                   border: `1px solid ${T.color.cream}`,
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                     <div style={{
-                      width: 36, height: 36, borderRadius: 18,
+                      width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem",
                       background: `${roleColor(member.role)}20`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
+                      fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                       color: roleColor(member.role),
                     }}>
                       {member.email.charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <div style={{
-                        fontFamily: T.font.body, fontSize: 14, fontWeight: 500,
+                        fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                         color: T.color.charcoal,
                       }}>
                         {member.email}
                       </div>
                       <div style={{
-                        fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
-                        display: "flex", alignItems: "center", gap: 8, marginTop: 2,
+                        fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                        display: "flex", alignItems: "center", gap: "0.5rem", marginTop: 2,
                       }}>
                         <span style={{
                           display: "inline-block",
-                          padding: "1px 8px",
-                          borderRadius: 6,
+                          padding: "1px 0.5rem",
+                          borderRadius: "0.375rem",
                           background: `${roleColor(member.role)}15`,
                           color: roleColor(member.role),
-                          fontSize: 11,
+                          fontSize: "0.6875rem",
                           fontWeight: 600,
                           textTransform: "capitalize",
                         }}>
@@ -514,11 +514,11 @@ export default function FamilyPage() {
                     <button
                       onClick={() => handleRemoveMember(member.user_id!, member.email)}
                       style={{
-                        width: 32, height: 32, borderRadius: 8,
+                        width: "2rem", height: "2rem", borderRadius: "0.5rem",
                         border: `1px solid ${T.color.cream}`,
                         background: "transparent",
                         color: T.color.muted,
-                        fontSize: 13,
+                        fontSize: "0.8125rem",
                         cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         transition: "all .15s",
@@ -535,30 +535,30 @@ export default function FamilyPage() {
           {/* ═══ WING SHARING SECTION ═══ */}
           <div style={{
             background: T.color.white,
-            borderRadius: 16,
+            borderRadius: "1rem",
             border: `1px solid ${T.color.cream}`,
-            padding: "28px 32px",
+            padding: "1.75rem 2rem",
             boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-            marginBottom: 24,
+            marginBottom: "1.5rem",
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.25rem" }}>
               <div style={{
-                width: 40, height: 40, borderRadius: 10,
+                width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
                 background: `linear-gradient(135deg, ${T.color.sage}20, ${T.color.sage}10)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18,
+                fontSize: "1.125rem",
               }}>
                 {"\u{1F3DB}"}
               </div>
               <div>
                 <h3 style={{
-                  fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
+                  fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
                   color: T.color.charcoal, margin: 0,
                 }}>
                   {t("wingSharing")}
                 </h3>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginTop: 2,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: 2,
                 }}>
                   {t("wingSharingDesc")}
                 </div>
@@ -568,29 +568,29 @@ export default function FamilyPage() {
             {/* Share a wing form */}
             {activeMembers.length > 1 && (
               <div style={{
-                padding: "20px 22px",
+                padding: "1.25rem 1.375rem",
                 background: T.color.linen,
-                borderRadius: 14,
+                borderRadius: "0.875rem",
                 border: `1px solid ${T.color.cream}`,
-                marginBottom: 24,
+                marginBottom: "1.5rem",
               }}>
                 <label style={labelStyle}>{t("shareAWing")}</label>
 
                 {/* Wing selector */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.875rem", flexWrap: "wrap" }}>
                   {WING_OPTION_IDS.map((wingId) => (
                     <button
                       key={wingId}
                       onClick={() => setShareWingId(wingId)}
                       aria-pressed={shareWingId === wingId}
                       style={{
-                        padding: "8px 16px",
-                        borderRadius: 8,
+                        padding: "0.5rem 1rem",
+                        borderRadius: "0.5rem",
                         border: `1px solid ${shareWingId === wingId ? T.color.sage + "60" : T.color.cream}`,
                         background: shareWingId === wingId ? `${T.color.sage}15` : T.color.white,
                         cursor: "pointer",
                         fontFamily: T.font.body,
-                        fontSize: 13,
+                        fontSize: "0.8125rem",
                         color: shareWingId === wingId ? T.color.sage : T.color.muted,
                         fontWeight: shareWingId === wingId ? 600 : 400,
                         transition: "all .15s",
@@ -602,14 +602,14 @@ export default function FamilyPage() {
                 </div>
 
                 {/* Family member selector */}
-                <label htmlFor="family-share-member" style={{ ...labelStyle, marginTop: 8 }}>{t("familyMember")}</label>
+                <label htmlFor="family-share-member" style={{ ...labelStyle, marginTop: "0.5rem" }}>{t("familyMember")}</label>
                 <select
                   id="family-share-member"
                   value={shareMemberEmail}
                   onChange={(e) => setShareMemberEmail(e.target.value)}
                   style={{
                     ...inputStyle,
-                    marginBottom: 14,
+                    marginBottom: "0.875rem",
                     cursor: "pointer",
                     appearance: "auto" as React.CSSProperties["appearance"],
                   }}
@@ -623,21 +623,21 @@ export default function FamilyPage() {
                 </select>
 
                 {/* Permission selector */}
-                <label style={{ ...labelStyle, marginTop: 4 }}>{t("permission")}</label>
-                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                <label style={{ ...labelStyle, marginTop: "0.25rem" }}>{t("permission")}</label>
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
                   {(["view", "contribute"] as const).map((perm) => (
                     <button
                       key={perm}
                       onClick={() => setSharePermission(perm)}
                       aria-pressed={sharePermission === perm}
                       style={{
-                        padding: "8px 16px",
-                        borderRadius: 8,
+                        padding: "0.5rem 1rem",
+                        borderRadius: "0.5rem",
                         border: `1px solid ${sharePermission === perm ? T.color.sage + "60" : T.color.cream}`,
                         background: sharePermission === perm ? `${T.color.sage}15` : T.color.white,
                         cursor: "pointer",
                         fontFamily: T.font.body,
-                        fontSize: 13,
+                        fontSize: "0.8125rem",
                         color: sharePermission === perm ? T.color.sage : T.color.muted,
                         fontWeight: sharePermission === perm ? 600 : 400,
                         transition: "all .15s",
@@ -652,15 +652,15 @@ export default function FamilyPage() {
                   onClick={handleShareWing}
                   disabled={!shareMemberEmail || sharingWing}
                   style={{
-                    padding: "12px 28px",
-                    borderRadius: 12,
+                    padding: "0.75rem 1.75rem",
+                    borderRadius: "0.75rem",
                     border: "none",
                     background: !shareMemberEmail || sharingWing
                       ? `${T.color.sandstone}60`
                       : T.color.sage,
                     color: !shareMemberEmail || sharingWing ? T.color.muted : "#FFF",
                     fontFamily: T.font.body,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 600,
                     cursor: !shareMemberEmail || sharingWing ? "default" : "pointer",
                     transition: "all .15s",
@@ -673,14 +673,14 @@ export default function FamilyPage() {
 
             {activeMembers.length <= 1 && (
               <div style={{
-                padding: "16px 20px",
+                padding: "1rem 1.25rem",
                 background: T.color.linen,
-                borderRadius: 12,
+                borderRadius: "0.75rem",
                 border: `1px solid ${T.color.cream}`,
-                marginBottom: 24,
+                marginBottom: "1.5rem",
               }}>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
                   margin: 0, lineHeight: 1.5,
                 }}>
                   {t("inviteToShare")}
@@ -692,35 +692,35 @@ export default function FamilyPage() {
             {myWingShares.length > 0 && (
               <>
                 <label style={labelStyle}>{t("wingsShared")}</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
                   {myWingShares.map((share) => (
                     <div key={share.id} style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "12px 16px", borderRadius: 12,
+                      padding: "0.75rem 1rem", borderRadius: "0.75rem",
                       background: T.color.linen,
                       border: `1px solid ${T.color.cream}`,
                     }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                         <span style={{
                           display: "inline-block",
-                          padding: "3px 10px",
-                          borderRadius: 6,
+                          padding: "3px 0.625rem",
+                          borderRadius: "0.375rem",
                           background: `${T.color.sage}15`,
                           color: T.color.sage,
                           fontFamily: T.font.body,
-                          fontSize: 12,
+                          fontSize: "0.75rem",
                           fontWeight: 600,
                         }}>
                           {wingLabel(share.wing_id)}
                         </span>
                         <span style={{
-                          fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal,
+                          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
                         }}>
                           {share.shared_with_email}
                         </span>
                         <span style={{
-                          fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
-                          padding: "2px 8px", borderRadius: 4,
+                          fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                          padding: "2px 0.5rem", borderRadius: "0.25rem",
                           background: `${T.color.sandstone}30`,
                         }}>
                           {share.permission === "view" ? t("viewOnly") : t("canContribute")}
@@ -729,11 +729,11 @@ export default function FamilyPage() {
                       <button
                         onClick={() => handleUnshareWing(share.id)}
                         style={{
-                          width: 28, height: 28, borderRadius: 7,
+                          width: "1.75rem", height: "1.75rem", borderRadius: "0.4375rem",
                           border: `1px solid ${T.color.cream}`,
                           background: "transparent",
                           color: T.color.muted,
-                          fontSize: 12,
+                          fontSize: "0.75rem",
                           cursor: "pointer",
                           display: "flex", alignItems: "center", justifyContent: "center",
                           transition: "all .15s",
@@ -751,35 +751,35 @@ export default function FamilyPage() {
             {sharedWithMe.length > 0 && (
               <>
                 <label style={labelStyle}>{t("sharedWithMe")}</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                   {sharedWithMe.map((share) => (
                     <div key={share.id} style={{
                       display: "flex", alignItems: "center",
-                      padding: "12px 16px", borderRadius: 12,
+                      padding: "0.75rem 1rem", borderRadius: "0.75rem",
                       background: `${T.color.sage}06`,
                       border: `1px solid ${T.color.sage}20`,
-                      gap: 10,
+                      gap: "0.625rem",
                     }}>
                       <span style={{
                         display: "inline-block",
-                        padding: "3px 10px",
-                        borderRadius: 6,
+                        padding: "3px 0.625rem",
+                        borderRadius: "0.375rem",
                         background: `${T.color.sage}15`,
                         color: T.color.sage,
                         fontFamily: T.font.body,
-                        fontSize: 12,
+                        fontSize: "0.75rem",
                         fontWeight: 600,
                       }}>
                         {wingLabel(share.wing_id)}
                       </span>
                       <span style={{
-                        fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal,
+                        fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
                       }}>
                         {t("from")} {share.owner_email}
                       </span>
                       <span style={{
-                        fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
-                        padding: "2px 8px", borderRadius: 4,
+                        fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                        padding: "2px 0.5rem", borderRadius: "0.25rem",
                         background: `${T.color.sandstone}30`,
                       }}>
                         {share.permission === "view" ? t("viewOnly") : t("canContribute")}
@@ -793,19 +793,19 @@ export default function FamilyPage() {
 
           {/* Info */}
           <div style={{
-            padding: "16px 20px",
+            padding: "1rem 1.25rem",
             background: `${T.color.warmStone}80`,
-            borderRadius: 12,
+            borderRadius: "0.75rem",
             border: `1px solid ${T.color.cream}`,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 14 }}>{"\u{1F512}"}</span>
-              <span style={{ fontFamily: T.font.body, fontSize: 13, fontWeight: 600, color: T.color.charcoal }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.375rem" }}>
+              <span style={{ fontSize: "0.875rem" }}>{"\u{1F512}"}</span>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal }}>
                 {t("howItWorks")}
               </span>
             </div>
             <p style={{
-              fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
               lineHeight: 1.6, margin: 0,
             }}>
               {t("howItWorksDesc")}
@@ -824,23 +824,23 @@ export default function FamilyPage() {
 // Shared styles
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 600,
   color: T.color.walnut,
   letterSpacing: ".3px",
   textTransform: "uppercase",
   display: "block",
-  marginBottom: 8,
+  marginBottom: "0.5rem",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "14px 18px",
-  borderRadius: 12,
+  padding: "0.875rem 1.125rem",
+  borderRadius: "0.75rem",
   border: `1.5px solid ${T.color.sandstone}`,
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: 15,
+  fontSize: "0.9375rem",
   color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box",

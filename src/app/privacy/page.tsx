@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const F = T.font;
 const C = T.color;
 
 export default function PrivacyPolicyPage() {
+  const { t } = useTranslation("privacy");
+
   return (
     <div
       style={{
@@ -72,7 +75,7 @@ export default function PrivacyPolicyPage() {
             marginBottom: 12,
           }}
         >
-          Legal
+          {t("legal")}
         </p>
         <h1
           style={{
@@ -84,287 +87,246 @@ export default function PrivacyPolicyPage() {
             marginBottom: 8,
           }}
         >
-          Privacy Policy
+          {t("title")}
         </h1>
         <p style={{ fontSize: 14, color: C.muted, marginBottom: 48 }}>
-          Last updated: March 25, 2026
+          {t("lastUpdated")}
         </p>
 
-        <Section title="1. Who We Are">
+        <Section title={t("whoWeAreTitle")}>
           <P>
-            The Memory Palace is operated from Belgium. We built this app to help
-            you preserve and share your most precious memories — safely and
-            privately. We are committed to protecting your personal data in full
-            compliance with the General Data Protection Regulation (GDPR) and
-            applicable Belgian and EU law.
+            {t("whoWeAreText1")}
           </P>
           <P>
-            For any privacy-related questions, you can always reach us at:{" "}
+            {t("whoWeAreText2")}
             <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
               privacy@thememorypalace.ai
             </a>
           </P>
         </Section>
 
-        <Section title="2. What We Collect">
+        <Section title={t("whatWeCollectTitle")}>
           <P>
-            We only collect what we need to provide you with a great experience.
-            Here is what we gather:
+            {t("whatWeCollectIntro")}
           </P>
           <Ul>
             <Li>
-              <strong>Profile information:</strong> your name, email address, and
-              profile photo when you create an account.
+              <strong>{t("whatWeCollectItem1Label")}</strong>
+              {t("whatWeCollectItem1Text")}
             </Li>
             <Li>
-              <strong>Your memories:</strong> the photos, videos, stories, and
-              other content you upload to your Memory Palace. This is the heart
-              of the service.
+              <strong>{t("whatWeCollectItem2Label")}</strong>
+              {t("whatWeCollectItem2Text")}
             </Li>
             <Li>
-              <strong>Minimal usage analytics:</strong> we collect anonymized
-              data about how you use the app (such as which features are popular)
-              to help us improve it. This data cannot be traced back to you
-              personally.
+              <strong>{t("whatWeCollectItem3Label")}</strong>
+              {t("whatWeCollectItem3Text")}
             </Li>
             <Li>
-              <strong>Device information:</strong> basic details like your
-              browser type and screen size, so we can make the app look and work
-              its best on your device.
+              <strong>{t("whatWeCollectItem4Label")}</strong>
+              {t("whatWeCollectItem4Text")}
             </Li>
           </Ul>
         </Section>
 
-        <Section title="3. How We Use Your Data">
+        <Section title={t("howWeUseTitle")}>
           <P>
-            We use your data solely to provide and improve The Memory Palace.
-            Specifically:
+            {t("howWeUseIntro")}
           </P>
           <Ul>
-            <Li>
-              To store, organize, and display your memories in your palace.
-            </Li>
-            <Li>
-              To authenticate your account and keep it secure.
-            </Li>
-            <Li>
-              To send you important service-related messages (such as email
-              confirmations, security alerts, or legacy notifications).
-            </Li>
-            <Li>
-              To improve the app based on anonymized usage patterns.
-            </Li>
+            <Li>{t("howWeUseItem1")}</Li>
+            <Li>{t("howWeUseItem2")}</Li>
+            <Li>{t("howWeUseItem3")}</Li>
+            <Li>{t("howWeUseItem4")}</Li>
           </Ul>
           <P>
-            We will <strong>never</strong> use your data for advertising, and we
-            will <strong>never</strong> sell it to anyone.
+            {t("howWeUseNeverPre1")}
+            <strong>{t("howWeUseNeverBold")}</strong>
+            {t("howWeUseNeverMid")}
+            <strong>{t("howWeUseNeverBold")}</strong>
+            {t("howWeUseNeverPost")}
           </P>
         </Section>
 
-        <Section title="4. Where We Store Your Data">
+        <Section title={t("whereStoredTitle")}>
           <P>
-            All your data is stored within the European Union:
+            {t("whereStoredIntro")}
           </P>
           <Ul>
             <Li>
-              <strong>Database:</strong> Supabase PostgreSQL, hosted in{" "}
-              <strong>Frankfurt, Germany (EU)</strong>. Your memories, profile
-              data, and account information all live here, encrypted at rest with
-              AES-256.
+              <strong>{t("whereStoredItem1Label")}</strong>
+              {t("whereStoredItem1Pre")}
+              <strong>{t("whereStoredItem1Location")}</strong>
+              {t("whereStoredItem1Post")}
             </Li>
             <Li>
-              <strong>Application hosting:</strong> Vercel, with servers in the
-              EU. All connections are encrypted with TLS 1.3.
+              <strong>{t("whereStoredItem2Label")}</strong>
+              {t("whereStoredItem2Text")}
             </Li>
             <Li>
-              <strong>File storage:</strong> Supabase Storage (EU region),
-              encrypted at rest. Your photos and media are only accessible
-              through authenticated, time-limited links.
+              <strong>{t("whereStoredItem3Label")}</strong>
+              {t("whereStoredItem3Text")}
             </Li>
           </Ul>
           <P>
-            Because everything is hosted in the EU, your data is fully protected
-            by European data protection laws.
+            {t("whereStoredOutro")}
           </P>
         </Section>
 
-        <Section title="5. Who We Share Your Data With">
+        <Section title={t("whoWeShareTitle")}>
           <P>
-            We do <strong>not</strong> sell, rent, or trade your personal data.
-            Period. We only share data with a small number of trusted service
-            providers who help us run The Memory Palace:
+            {t("whoWeShareIntroPre")}
+            <strong>{t("whoWeShareIntroBold")}</strong>
+            {t("whoWeShareIntroPost")}
           </P>
           <Ul>
             <Li>
-              <strong>Supabase</strong> — database hosting, file storage, and
-              authentication.
+              <strong>{t("whoWeShareItem1Label")}</strong>
+              {t("whoWeShareItem1Text")}
             </Li>
             <Li>
-              <strong>Vercel</strong> — application hosting and content delivery.
+              <strong>{t("whoWeShareItem2Label")}</strong>
+              {t("whoWeShareItem2Text")}
             </Li>
             <Li>
-              <strong>Resend</strong> — sending transactional emails (such as
-              password resets and notifications).
+              <strong>{t("whoWeShareItem3Label")}</strong>
+              {t("whoWeShareItem3Text")}
             </Li>
             <Li>
-              <strong>Stripe</strong> — processing payments securely. We never
-              see or store your credit card details.
+              <strong>{t("whoWeShareItem4Label")}</strong>
+              {t("whoWeShareItem4Text")}
             </Li>
           </Ul>
           <P>
-            All these providers are bound by data processing agreements and
-            comply with GDPR. Beyond these providers, your data is only shared
-            when:
+            {t("whoWeShareOutro")}
           </P>
           <Ul>
             <Li>
-              <strong>You choose to share:</strong> when you invite family
-              members to view rooms or memories, the shared content becomes
-              accessible to those people.
+              <strong>{t("whoWeShareCondition1Label")}</strong>
+              {t("whoWeShareCondition1Text")}
             </Li>
             <Li>
-              <strong>The law requires it:</strong> we may disclose data if
-              required by law or valid legal process.
+              <strong>{t("whoWeShareCondition2Label")}</strong>
+              {t("whoWeShareCondition2Text")}
             </Li>
           </Ul>
         </Section>
 
-        <Section title="6. Your Rights">
+        <Section title={t("yourRightsTitle")}>
           <P>
-            Under the GDPR (Articles 15-20 and beyond), you have strong rights
-            over your personal data. Here is what you can do:
+            {t("yourRightsIntro")}
           </P>
           <Ul>
             <Li>
-              <strong>Access your data:</strong> request a complete copy of
-              everything we hold about you.
+              <strong>{t("yourRightsItem1Label")}</strong>
+              {t("yourRightsItem1Text")}
             </Li>
             <Li>
-              <strong>Export your data:</strong> download all your memories,
-              stories, and photos as a JSON file with a ZIP of your media —
-              directly from your account settings.
+              <strong>{t("yourRightsItem2Label")}</strong>
+              {t("yourRightsItem2Text")}
             </Li>
             <Li>
-              <strong>Correct your data:</strong> update or fix any information
-              that is inaccurate or incomplete.
+              <strong>{t("yourRightsItem3Label")}</strong>
+              {t("yourRightsItem3Text")}
             </Li>
             <Li>
-              <strong>Delete your data:</strong> request complete deletion of
-              your account and all associated data. When you delete your account,
-              everything is permanently removed.
+              <strong>{t("yourRightsItem4Label")}</strong>
+              {t("yourRightsItem4Text")}
             </Li>
             <Li>
-              <strong>Data portability:</strong> receive your data in a
-              structured, machine-readable format that you can take to another
-              service.
+              <strong>{t("yourRightsItem5Label")}</strong>
+              {t("yourRightsItem5Text")}
             </Li>
             <Li>
-              <strong>Object to processing:</strong> opt out of analytics at any
-              time through your cookie preferences.
+              <strong>{t("yourRightsItem6Label")}</strong>
+              {t("yourRightsItem6Text")}
             </Li>
             <Li>
-              <strong>Withdraw consent:</strong> change your mind about analytics
-              cookies or other optional processing at any time.
+              <strong>{t("yourRightsItem7Label")}</strong>
+              {t("yourRightsItem7Text")}
             </Li>
           </Ul>
           <P>
-            To exercise any of these rights, email us at{" "}
+            {t("yourRightsOutroPre")}
             <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
               privacy@thememorypalace.ai
             </a>
-            . We will respond within 30 days, as required by law.
+            {t("yourRightsOutroPost")}
           </P>
         </Section>
 
-        <Section title="7. Data Retention">
+        <Section title={t("retentionTitle")}>
           <P>
-            Your data is kept for as long as your account is active. You are in
-            control:
+            {t("retentionIntro")}
           </P>
           <Ul>
             <Li>
-              <strong>Active account:</strong> your memories and data stay safely
-              stored for as long as you use The Memory Palace.
+              <strong>{t("retentionItem1Label")}</strong>
+              {t("retentionItem1Text")}
             </Li>
             <Li>
-              <strong>Account deletion:</strong> when you delete your account,
-              all personal data and uploaded content is permanently removed
-              within 30 days. Backup copies are purged within 90 days.
+              <strong>{t("retentionItem2Label")}</strong>
+              {t("retentionItem2Text")}
             </Li>
             <Li>
-              <strong>Legacy delivery:</strong> if you have set up legacy
-              contacts, your memories will be delivered to your chosen family
-              members according to your settings. This is entirely optional and
-              under your control.
+              <strong>{t("retentionItem3Label")}</strong>
+              {t("retentionItem3Text")}
             </Li>
             <Li>
-              <strong>Anonymized analytics:</strong> aggregated, non-personal
-              analytics data may be retained for up to 12 months after account
-              deletion to help us improve the service.
+              <strong>{t("retentionItem4Label")}</strong>
+              {t("retentionItem4Text")}
             </Li>
           </Ul>
         </Section>
 
-        <Section title="8. Cookies">
+        <Section title={t("cookiesTitle")}>
           <P>
-            We keep cookies to a minimum:
+            {t("cookiesIntro")}
           </P>
           <Ul>
             <Li>
-              <strong>Essential cookies:</strong> required for logging in and
-              core functionality. These cannot be disabled, as the app would not
-              work without them.
+              <strong>{t("cookiesItem1Label")}</strong>
+              {t("cookiesItem1Text")}
             </Li>
             <Li>
-              <strong>Optional analytics cookies:</strong> help us understand how
-              people use the app so we can improve it. These are only set with
-              your explicit consent, and you can change your preference at any
-              time through the cookie consent banner.
+              <strong>{t("cookiesItem2Label")}</strong>
+              {t("cookiesItem2Text")}
             </Li>
           </Ul>
           <P>
-            We do <strong>not</strong> use advertising cookies or trackers of any
-            kind.
+            {t("cookiesOutroPre")}
+            <strong>{t("cookiesOutroBold")}</strong>
+            {t("cookiesOutroPost")}
           </P>
         </Section>
 
-        <Section title="9. Children's Privacy">
+        <Section title={t("childrenTitle")}>
           <P>
-            The Memory Palace is designed for adults and is not intended for
-            children under the age of 16. We do not knowingly collect personal
-            data from anyone under 16. If you believe a child has provided us
-            with personal data, please contact us and we will promptly remove it.
+            {t("childrenText")}
           </P>
         </Section>
 
-        <Section title="10. Changes to This Policy">
+        <Section title={t("changesTitle")}>
           <P>
-            We may update this privacy policy from time to time. When we make
-            significant changes, we will notify you by email or with a clear
-            notice inside the app. Your continued use of The Memory Palace after
-            any changes means you accept the updated policy.
+            {t("changesText")}
           </P>
         </Section>
 
-        <Section title="11. Contact Us">
+        <Section title={t("contactTitle")}>
           <P>
-            If you have questions about this privacy policy, want to exercise
-            your rights, or simply want to know more about how we protect your
-            data, we would love to hear from you:
+            {t("contactIntro")}
           </P>
           <Ul>
             <Li>
-              Email:{" "}
+              {t("contactEmail")}
               <a href="mailto:privacy@thememorypalace.ai" style={linkStyle}>
                 privacy@thememorypalace.ai
               </a>
             </Li>
-            <Li>Company: The Memory Palace, Belgium</Li>
+            <Li>{t("contactCompany")}</Li>
           </Ul>
           <P>
-            You also have the right to lodge a complaint with the Belgian Data
-            Protection Authority (Gegevensbeschermingsautoriteit) if you believe
-            your rights have been violated.
+            {t("contactOutro")}
           </P>
         </Section>
 
@@ -373,16 +335,16 @@ export default function PrivacyPolicyPage() {
             href="/security"
             style={{ ...linkStyle, fontSize: 14, marginRight: 24 }}
           >
-            Security
+            {t("linkSecurity")}
           </Link>
           <Link
             href="/terms"
             style={{ ...linkStyle, fontSize: 14, marginRight: 24 }}
           >
-            Terms of Service
+            {t("linkTerms")}
           </Link>
           <Link href="/" style={{ ...linkStyle, fontSize: 14 }}>
-            Back to home
+            {t("linkHome")}
           </Link>
         </div>
       </main>

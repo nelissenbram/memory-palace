@@ -98,7 +98,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
     return (
       <div style={pageStyle}>
         <div style={cardStyle}>
-          <div style={{ fontSize: 48, marginBottom: 16, textAlign: "center" }}>&#x1F3DB;&#xFE0F;</div>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem", textAlign: "center" }}>&#x1F3DB;&#xFE0F;</div>
           <h1 style={headingStyle}>{t("notFound")}</h1>
           <p style={bodyTextStyle}>
             {result.error === "Invitation not found"
@@ -124,7 +124,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
     return (
       <div style={pageStyle}>
         <div style={cardStyle}>
-          <div style={{ fontSize: 48, marginBottom: 16, textAlign: "center" }}>&#x2728;</div>
+          <div style={{ fontSize: "3rem", marginBottom: "1rem", textAlign: "center" }}>&#x2728;</div>
           <h1 style={headingStyle}>{t("welcome")}</h1>
           <p style={bodyTextStyle}>
             {t("accessGranted", { room: room.name, name: inviter.name })}
@@ -150,9 +150,9 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
         {/* Decorative header */}
         <div style={{
           background: "linear-gradient(135deg, #C17F59 0%, #8B7355 60%, #4A6741 100%)",
-          margin: "-36px -32px 28px",
-          padding: "36px 32px 32px",
-          borderRadius: "20px 20px 0 0",
+          margin: "-2.25rem -2rem 1.75rem",
+          padding: "2.25rem 2rem 2rem",
+          borderRadius: "1.25rem 1.25rem 0 0",
           textAlign: "center",
           position: "relative",
           overflow: "hidden",
@@ -171,15 +171,15 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
             pointerEvents: "none",
           }} />
 
-          <div style={{ fontSize: 32, marginBottom: 12 }}>&#x1F3DB;&#xFE0F;</div>
+          <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>&#x1F3DB;&#xFE0F;</div>
           <p style={{
-            fontFamily: T.font.body, fontSize: 12, color: "rgba(255,255,255,0.7)",
+            fontFamily: T.font.body, fontSize: "0.75rem", color: "rgba(255,255,255,0.7)",
             textTransform: "uppercase", letterSpacing: 1.5, margin: "0 0 8px",
           }}>
             {t("youveBeenInvited")}
           </p>
           <h1 style={{
-            fontFamily: T.font.display, fontSize: 24, fontWeight: 400,
+            fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 400,
             color: "#FFFFFF", margin: 0, lineHeight: 1.4,
           }}>
             {t("wantsToShare", { name: inviter.name })}
@@ -188,25 +188,25 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
 
         {/* Inviter info */}
         <div style={{
-          display: "flex", alignItems: "center", gap: 14,
-          padding: "16px 18px", background: T.color.warmStone,
-          borderRadius: 14, border: `1px solid ${T.color.cream}`,
-          marginBottom: 20,
+          display: "flex", alignItems: "center", gap: "0.875rem",
+          padding: "1rem 1.125rem", background: T.color.warmStone,
+          borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
+          marginBottom: "1.25rem",
         }}>
           <div style={{
-            width: 48, height: 48, borderRadius: 24,
+            width: "3rem", height: "3rem", borderRadius: "1.5rem",
             background: `linear-gradient(135deg, ${T.color.terracotta}30, ${T.color.walnut}20)`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: T.font.display, fontSize: 20, fontWeight: 600,
+            fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600,
             color: T.color.terracotta, flexShrink: 0,
           }}>
             {initial}
           </div>
           <div>
-            <div style={{ fontFamily: T.font.body, fontSize: 15, fontWeight: 600, color: T.color.charcoal }}>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal }}>
               {inviter.name}
             </div>
-            <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
               {t("invitedYou", { timeAgo })}
             </div>
           </div>
@@ -214,36 +214,36 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
 
         {/* Room card */}
         <div style={{
-          padding: "20px", background: T.color.linen,
-          borderRadius: 14, border: `1px solid ${T.color.cream}`,
-          marginBottom: 20, textAlign: "center",
+          padding: "1.25rem", background: T.color.linen,
+          borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
+          marginBottom: "1.25rem", textAlign: "center",
         }}>
-          {wing.icon && <div style={{ fontSize: 28, marginBottom: 8 }}>{wing.icon}</div>}
+          {wing.icon && <div style={{ fontSize: "1.75rem", marginBottom: "0.5rem" }}>{wing.icon}</div>}
           <div style={{
-            fontFamily: T.font.display, fontSize: 20, fontWeight: 600,
-            color: T.color.charcoal, marginBottom: 4,
+            fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600,
+            color: T.color.charcoal, marginBottom: "0.25rem",
           }}>
             {room.name}
           </div>
           {wing.name && (
-            <div style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.muted, marginBottom: 10 }}>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginBottom: "0.625rem" }}>
               {t("wing", { name: wing.name })}
             </div>
           )}
-          <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem" }}>
             <span style={{
-              padding: "4px 12px", borderRadius: 20,
+              padding: "0.25rem 0.75rem", borderRadius: "1.25rem",
               background: `${T.color.terracotta}15`, fontFamily: T.font.body,
-              fontSize: 12, color: T.color.terracotta,
+              fontSize: "0.75rem", color: T.color.terracotta,
             }}>
               {memoryCount === 1
                 ? t("memoryCount", { count: String(memoryCount) })
                 : t("memoriesCount", { count: String(memoryCount) })}
             </span>
             <span style={{
-              padding: "4px 12px", borderRadius: 20,
+              padding: "0.25rem 0.75rem", borderRadius: "1.25rem",
               background: invite.permission === "contribute" ? `${T.color.sage}15` : `${T.color.walnut}15`,
-              fontFamily: T.font.body, fontSize: 12,
+              fontFamily: T.font.body, fontSize: "0.75rem",
               color: invite.permission === "contribute" ? T.color.sage : T.color.walnut,
             }}>
               {t("canPermission", { permission: permLabel })}
@@ -254,19 +254,19 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
         {/* Personal message */}
         {invite.message && (
           <div style={{
-            padding: "16px 20px", background: T.color.warmStone,
-            borderRadius: 14, border: `1px solid ${T.color.cream}`,
+            padding: "1rem 1.25rem", background: T.color.warmStone,
+            borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
             borderLeft: `3px solid ${T.color.terracotta}`,
-            marginBottom: 20,
+            marginBottom: "1.25rem",
           }}>
             <p style={{
-              fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
               textTransform: "uppercase", letterSpacing: 0.5, margin: "0 0 6px",
             }}>
               {t("says", { name: inviter.name })}
             </p>
             <p style={{
-              fontFamily: T.font.display, fontSize: 16, fontStyle: "italic",
+              fontFamily: T.font.display, fontSize: "1rem", fontStyle: "italic",
               color: T.color.charcoal, margin: 0, lineHeight: 1.6,
             }}>
               &ldquo;{invite.message}&rdquo;
@@ -276,10 +276,10 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
 
         {/* Blurred preview teaser */}
         <div style={{
-          padding: "28px 20px", borderRadius: 14,
+          padding: "1.75rem 1.25rem", borderRadius: "0.875rem",
           background: `linear-gradient(135deg, ${T.color.sandstone}40, ${T.color.warmStone}60)`,
           border: `1px solid ${T.color.cream}`,
-          marginBottom: 24, textAlign: "center",
+          marginBottom: "1.5rem", textAlign: "center",
           position: "relative", overflow: "hidden",
         }}>
           {/* Decorative blurred "memory" blobs */}
@@ -299,7 +299,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
             ))}
           </div>
           <p style={{
-            fontFamily: T.font.display, fontSize: 15, fontStyle: "italic",
+            fontFamily: T.font.display, fontSize: "0.9375rem", fontStyle: "italic",
             color: T.color.walnut, margin: 0, position: "relative", zIndex: 1,
           }}>
             {t("memoriesWaiting")}
@@ -309,9 +309,9 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
         {/* Accept error */}
         {acceptError && (
           <div role="alert" style={{
-            padding: "10px 14px", borderRadius: 10,
+            padding: "0.625rem 0.875rem", borderRadius: "0.625rem",
             background: "#FDF2F2", border: "1px solid #FECACA",
-            color: "#B91C1C", fontSize: 13, marginBottom: 16,
+            color: "#B91C1C", fontSize: "0.8125rem", marginBottom: "1rem",
           }}>
             {acceptError}
           </div>
@@ -319,7 +319,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
 
         {/* CTAs */}
         {isLoggedIn ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
             <button onClick={handleAccept} disabled={accepting} style={{
               ...primaryBtnStyle,
               opacity: accepting ? 0.6 : 1,
@@ -329,7 +329,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
             </button>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
             <a href={`/login?redirect=/invite/${shareId}`} style={primaryBtnStyle}>
               {t("acceptAndSignIn")}
             </a>
@@ -349,8 +349,8 @@ function Footer({ t }: { t: (key: string) => string }) {
   return (
     <p style={{
       fontFamily: "'Cormorant Garamond', Georgia, serif",
-      fontSize: 14, fontStyle: "italic",
-      color: "#9A9183", marginTop: 24, textAlign: "center",
+      fontSize: "0.875rem", fontStyle: "italic",
+      color: "#9A9183", marginTop: "1.5rem", textAlign: "center",
     }}>
       {t("tagline")}
     </p>
@@ -367,18 +367,18 @@ const pageStyle: React.CSSProperties = {
   justifyContent: "center",
   background: "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
   fontFamily: "'Source Sans 3', system-ui, sans-serif",
-  padding: "20px",
+  padding: "1.25rem",
   position: "relative",
   overflow: "hidden",
 };
 
 const cardStyle: React.CSSProperties = {
   width: "100%",
-  maxWidth: 480,
-  padding: "36px 32px",
+  maxWidth: "30rem",
+  padding: "2.25rem 2rem",
   background: "rgba(255,255,255,0.92)",
   backdropFilter: "blur(20px)",
-  borderRadius: 20,
+  borderRadius: "1.25rem",
   border: "1px solid #EEEAE3",
   boxShadow: "0 12px 48px rgba(44,44,42,0.15)",
   position: "relative",
@@ -387,33 +387,33 @@ const cardStyle: React.CSSProperties = {
 
 const headingStyle: React.CSSProperties = {
   fontFamily: "'Cormorant Garamond', Georgia, serif",
-  fontSize: 26,
+  fontSize: "1.625rem",
   fontWeight: 400,
   color: "#2C2C2A",
-  margin: "0 0 12px",
+  margin: "0 0 0.75rem",
   textAlign: "center",
   lineHeight: 1.3,
 };
 
 const bodyTextStyle: React.CSSProperties = {
   fontFamily: "'Source Sans 3', system-ui, sans-serif",
-  fontSize: 15,
+  fontSize: "0.9375rem",
   color: "#9A9183",
   lineHeight: 1.6,
   textAlign: "center",
-  margin: "0 0 24px",
+  margin: "0 0 1.5rem",
 };
 
 const primaryBtnStyle: React.CSSProperties = {
   display: "block",
   width: "100%",
-  padding: "16px 24px",
-  borderRadius: 14,
+  padding: "1rem 1.5rem",
+  borderRadius: "0.875rem",
   border: "none",
   background: "linear-gradient(135deg, #C17F59, #8B7355)",
   color: "#FFFFFF",
   fontFamily: "'Source Sans 3', system-ui, sans-serif",
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 600,
   cursor: "pointer",
   textAlign: "center",
@@ -425,13 +425,13 @@ const primaryBtnStyle: React.CSSProperties = {
 const secondaryBtnStyle: React.CSSProperties = {
   display: "block",
   width: "100%",
-  padding: "14px 24px",
-  borderRadius: 14,
+  padding: "0.875rem 1.5rem",
+  borderRadius: "0.875rem",
   border: "1.5px solid #D4C5B2",
   background: "#FFFFFF",
   color: "#8B7355",
   fontFamily: "'Source Sans 3', system-ui, sans-serif",
-  fontSize: 15,
+  fontSize: "0.9375rem",
   fontWeight: 600,
   cursor: "pointer",
   textAlign: "center",

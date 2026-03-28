@@ -14,6 +14,7 @@ export default function TutorialOverlay() {
   const [typing, setTyping] = useState(false);
 
   const step = TUTORIAL_STEPS[stepIndex];
+  const message = step ? t(step.messageKey) : "";
 
   // Typewriter effect for message
   useEffect(() => {
@@ -23,14 +24,14 @@ export default function TutorialOverlay() {
     let i = 0;
     const interval = setInterval(() => {
       i++;
-      setTypewriterText(step.message.slice(0, i));
-      if (i >= step.message.length) {
+      setTypewriterText(message.slice(0, i));
+      if (i >= message.length) {
         clearInterval(interval);
         setTyping(false);
       }
     }, 18);
     return () => clearInterval(interval);
-  }, [active, stepIndex, step]);
+  }, [active, stepIndex, step, message]);
 
   if (!active || !step) return null;
 
@@ -38,12 +39,12 @@ export default function TutorialOverlay() {
 
   // Position map for highlight indicator
   const highlightPositionMap: Record<string, React.CSSProperties> = {
-    "top-right": { top: 58, right: 18 },
-    "bottom-right": { bottom: 100, right: 24 },
-    "bottom-left": { bottom: 12, left: 12 },
-    "bottom-center": { bottom: 70, left: "50%", transform: "translateX(-50%)" },
+    "top-right": { top: "3.625rem", right: "1.125rem" },
+    "bottom-right": { bottom: "6.25rem", right: "1.5rem" },
+    "bottom-left": { bottom: "0.75rem", left: "0.75rem" },
+    "bottom-center": { bottom: "4.375rem", left: "50%", transform: "translateX(-50%)" },
     "center": { top: "50%", left: "50%", transform: "translate(-50%, -50%)" },
-    "top-left": { top: 58, left: 18 },
+    "top-left": { top: "3.625rem", left: "1.125rem" },
   };
 
   const hl = step.highlight;
@@ -61,37 +62,37 @@ export default function TutorialOverlay() {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 6,
+          gap: "0.375rem",
         }}>
           <div style={{
-            width: 60,
-            height: 60,
-            borderRadius: 30,
+            width: "3.75rem",
+            height: "3.75rem",
+            borderRadius: "1.875rem",
             border: "2.5px solid #D4AF37",
             background: "transparent",
             boxShadow: "0 0 18px rgba(212, 175, 55, 0.35), inset 0 0 18px rgba(212, 175, 55, 0.1)",
             animation: "tutorialPulse 1.5s ease-in-out infinite",
           }} />
-          {hl.label && (
+          {hl.labelKey && (
             <span style={{
               fontFamily: T.font.body,
-              fontSize: 11,
+              fontSize: "0.6875rem",
               fontWeight: 600,
               color: "#FFEEBB",
               textShadow: "0 1px 6px rgba(0,0,0,0.5)",
               whiteSpace: "nowrap",
-              letterSpacing: 0.3,
-            }}>{hl.label}</span>
+              letterSpacing: "0.01875rem",
+            }}>{t(hl.labelKey)}</span>
           )}
         </div>
       )}
     <div style={{
       position: "absolute",
-      bottom: isMobile ? 80 : 32,
+      bottom: isMobile ? "5rem" : "2rem",
       left: "50%",
       transform: "translateX(-50%)",
       zIndex: 80,
-      width: isMobile ? "calc(100% - 32px)" : 520,
+      width: isMobile ? "calc(100% - 2rem)" : "32.5rem",
       maxWidth: "95vw",
       animation: fadeIn ? "fadeUp .5s ease" : undefined,
       pointerEvents: "auto",
@@ -101,20 +102,20 @@ export default function TutorialOverlay() {
         background: "rgba(42, 34, 24, 0.82)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderRadius: 20,
+        borderRadius: "1.25rem",
         border: "1px solid rgba(212, 175, 55, 0.25)",
         boxShadow: "0 12px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,240,200,0.08)",
-        padding: isMobile ? "18px 20px 16px" : "24px 28px 20px",
+        padding: isMobile ? "1.125rem 1.25rem 1rem" : "1.5rem 1.75rem 1.25rem",
         position: "relative",
       }}>
         {/* Spirit indicator */}
         <div style={{
           position: "absolute",
-          top: -14,
-          left: 28,
-          width: 28,
-          height: 28,
-          borderRadius: 14,
+          top: "-0.875rem",
+          left: "1.75rem",
+          width: "1.75rem",
+          height: "1.75rem",
+          borderRadius: "0.875rem",
           background: "radial-gradient(circle, #FFEEBB 0%, #FFD080 50%, rgba(255,208,128,0) 100%)",
           boxShadow: "0 0 16px rgba(255,224,160,0.5)",
         }} />
@@ -122,31 +123,31 @@ export default function TutorialOverlay() {
         {/* Title */}
         <div style={{
           fontFamily: T.font.display,
-          fontSize: isMobile ? 17 : 20,
+          fontSize: isMobile ? "1.0625rem" : "1.25rem",
           fontWeight: 600,
           color: "#FFEEBB",
-          marginBottom: 8,
-          letterSpacing: 0.3,
+          marginBottom: "0.5rem",
+          letterSpacing: "0.01875rem",
         }}>
-          {step.title}
+          {t(step.titleKey)}
         </div>
 
         {/* Message with typewriter */}
         <div style={{
           fontFamily: T.font.body,
-          fontSize: isMobile ? 13 : 14,
+          fontSize: isMobile ? "0.8125rem" : "0.875rem",
           lineHeight: 1.6,
           color: "rgba(250, 250, 247, 0.88)",
-          minHeight: isMobile ? 48 : 56,
-          marginBottom: 16,
+          minHeight: isMobile ? "3rem" : "3.5rem",
+          marginBottom: "1rem",
         }}>
           {typewriterText}
           {typing && <span style={{
             display: "inline-block",
-            width: 2,
-            height: 14,
+            width: "0.125rem",
+            height: "0.875rem",
             background: "#FFD080",
-            marginLeft: 2,
+            marginLeft: "0.125rem",
             animation: "blink 1s step-end infinite",
             verticalAlign: "text-bottom",
           }} />}
@@ -154,17 +155,17 @@ export default function TutorialOverlay() {
 
         {/* Progress bar */}
         <div style={{
-          height: 2,
+          height: "0.125rem",
           background: "rgba(255,255,255,0.08)",
-          borderRadius: 1,
-          marginBottom: 14,
+          borderRadius: "0.0625rem",
+          marginBottom: "0.875rem",
           overflow: "hidden",
         }}>
           <div style={{
             height: "100%",
             width: `${progress}%`,
             background: "linear-gradient(90deg, #D4AF37, #FFEEBB)",
-            borderRadius: 1,
+            borderRadius: "0.0625rem",
             transition: "width 0.4s ease",
           }} />
         </div>
@@ -181,11 +182,11 @@ export default function TutorialOverlay() {
               background: "transparent",
               border: "none",
               fontFamily: T.font.body,
-              fontSize: 12,
+              fontSize: "0.75rem",
               color: "rgba(250,250,247,0.4)",
               cursor: "pointer",
-              padding: "6px 12px",
-              borderRadius: 8,
+              padding: "0.375rem 0.75rem",
+              borderRadius: "0.5rem",
               transition: "color 0.2s",
             }}
             onMouseEnter={e => { (e.target as HTMLElement).style.color = "rgba(250,250,247,0.7)"; }}
@@ -194,14 +195,14 @@ export default function TutorialOverlay() {
             {isMobile ? t("skip") : t("skipTour")}
           </button>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             {/* Step dots */}
-            <div style={{ display: "flex", gap: 4, marginRight: 8 }}>
+            <div style={{ display: "flex", gap: "0.25rem", marginRight: "0.5rem" }}>
               {TUTORIAL_STEPS.map((_, i) => (
                 <div key={i} style={{
-                  width: i === stepIndex ? 16 : 5,
-                  height: 5,
-                  borderRadius: 3,
+                  width: i === stepIndex ? "1rem" : "0.3125rem",
+                  height: "0.3125rem",
+                  borderRadius: "0.1875rem",
                   background: i === stepIndex
                     ? "linear-gradient(90deg, #D4AF37, #FFEEBB)"
                     : i < stepIndex
@@ -213,20 +214,20 @@ export default function TutorialOverlay() {
             </div>
 
             <button
-              onClick={() => { if (typing) { setTypewriterText(step.message); setTyping(false); } else { next(); } }}
+              onClick={() => { if (typing) { setTypewriterText(message); setTyping(false); } else { next(); } }}
               style={{
                 background: "linear-gradient(135deg, #D4AF37, #B8922E)",
                 border: "none",
                 fontFamily: T.font.body,
-                fontSize: 13,
+                fontSize: "0.8125rem",
                 fontWeight: 600,
                 color: "#1A1408",
-                padding: "8px 20px",
-                borderRadius: 12,
+                padding: "0.5rem 1.25rem",
+                borderRadius: "0.75rem",
                 cursor: "pointer",
                 boxShadow: "0 4px 16px rgba(212,175,55,0.3)",
                 transition: "transform 0.15s, box-shadow 0.15s",
-                letterSpacing: 0.3,
+                letterSpacing: "0.01875rem",
               }}
               onMouseEnter={e => {
                 (e.currentTarget as HTMLElement).style.transform = "scale(1.04)";
@@ -237,7 +238,7 @@ export default function TutorialOverlay() {
                 (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(212,175,55,0.3)";
               }}
             >
-              {typing ? t("showAll") : (step.nextLabel || t("next"))}
+              {typing ? t("showAll") : (step.nextLabelKey ? t(step.nextLabelKey) : t("next"))}
             </button>
           </div>
         </div>
@@ -266,17 +267,17 @@ export function TourButton({ style }: { style?: React.CSSProperties }) {
         backdropFilter: "blur(10px)",
         WebkitBackdropFilter: "blur(10px)",
         border: `1px solid ${T.color.cream}`,
-        borderRadius: 18,
-        height: 36,
-        padding: "0 14px 0 10px",
+        borderRadius: "1.125rem",
+        height: "2.25rem",
+        padding: "0 0.875rem 0 0.625rem",
         display: "flex",
         alignItems: "center",
-        gap: 6,
+        gap: "0.375rem",
         cursor: "pointer",
         boxShadow: "0 2px 10px rgba(44,44,42,.08)",
         transition: "transform .2s",
         fontFamily: T.font.body,
-        fontSize: 11,
+        fontSize: "0.6875rem",
         fontWeight: 500,
         color: T.color.walnut,
         ...style,
@@ -285,9 +286,9 @@ export function TourButton({ style }: { style?: React.CSSProperties }) {
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "none"; }}
     >
       <span style={{
-        width: 18,
-        height: 18,
-        borderRadius: 9,
+        width: "1.125rem",
+        height: "1.125rem",
+        borderRadius: "0.5625rem",
         background: "radial-gradient(circle, #FFEEBB 0%, #FFD080 60%, transparent 100%)",
         display: "inline-block",
         flexShrink: 0,

@@ -156,10 +156,10 @@ export default function FeatureSpotlight({
         onClick={(e) => e.stopPropagation()}
         style={{
           background: T.color.linen,
-          borderRadius: 24,
-          padding: isMobile ? "32px 24px 24px" : "40px 36px 28px",
-          maxWidth: 420,
-          width: isMobile ? "calc(100% - 40px)" : "90%",
+          borderRadius: "1.5rem",
+          padding: isMobile ? "2rem 1.5rem 1.5rem" : "2.5rem 2.25rem 1.75rem",
+          maxWidth: "26.25rem",
+          width: isMobile ? "calc(100% - 2.5rem)" : "90%",
           boxShadow: "0 24px 80px rgba(44, 44, 42, 0.35)",
           border: `2px solid ${T.color.cream}`,
           animation: exiting
@@ -173,10 +173,10 @@ export default function FeatureSpotlight({
         <div
           style={{
             position: "absolute",
-            top: 16,
-            right: 20,
+            top: "1rem",
+            right: "1.25rem",
             fontFamily: T.font.body,
-            fontSize: 12,
+            fontSize: "0.75rem",
             color: T.color.muted,
           }}
         >
@@ -186,8 +186,8 @@ export default function FeatureSpotlight({
         {/* Icon */}
         <div
           style={{
-            fontSize: 48,
-            marginBottom: 16,
+            fontSize: "3rem",
+            marginBottom: "1rem",
             lineHeight: 1,
           }}
         >
@@ -198,10 +198,10 @@ export default function FeatureSpotlight({
         <h2
           style={{
             fontFamily: T.font.display,
-            fontSize: isMobile ? 24 : 28,
+            fontSize: isMobile ? "1.5rem" : "1.75rem",
             fontWeight: 500,
             color: T.color.charcoal,
-            marginBottom: 12,
+            marginBottom: "0.75rem",
             lineHeight: 1.2,
           }}
         >
@@ -212,11 +212,11 @@ export default function FeatureSpotlight({
         <p
           style={{
             fontFamily: T.font.body,
-            fontSize: isMobile ? 15 : 16,
+            fontSize: isMobile ? "0.9375rem" : "1rem",
             lineHeight: 1.7,
             color: T.color.muted,
-            marginBottom: 28,
-            maxWidth: 340,
+            marginBottom: "1.75rem",
+            maxWidth: "21.25rem",
             marginLeft: "auto",
             marginRight: "auto",
           }}
@@ -229,17 +229,17 @@ export default function FeatureSpotlight({
           onClick={handleAction}
           style={{
             fontFamily: T.font.body,
-            fontSize: isMobile ? 17 : 16,
+            fontSize: isMobile ? "1.0625rem" : "1rem",
             fontWeight: 600,
-            padding: isMobile ? "15px 36px" : "13px 36px",
-            borderRadius: 12,
+            padding: isMobile ? "0.9375rem 2.25rem" : "0.8125rem 2.25rem",
+            borderRadius: "0.75rem",
             border: "none",
             background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
             color: "#FFF",
             cursor: "pointer",
             boxShadow: `0 4px 16px rgba(193, 127, 89, 0.3)`,
             transition: "transform 0.15s, box-shadow 0.15s",
-            minHeight: 48,
+            minHeight: "3rem",
             display: "inline-block",
           }}
           onMouseEnter={(e) => {
@@ -257,19 +257,19 @@ export default function FeatureSpotlight({
         </button>
 
         {/* Skip */}
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: "1rem" }}>
           <button
             onClick={dismiss}
             style={{
               fontFamily: T.font.body,
-              fontSize: 14,
+              fontSize: "0.875rem",
               color: T.color.muted,
               background: "none",
               border: "none",
               cursor: "pointer",
               textDecoration: "underline",
-              textUnderlineOffset: 3,
-              padding: "8px 16px",
+              textUnderlineOffset: "0.1875rem",
+              padding: "0.5rem 1rem",
             }}
           >
             {remaining <= 1 ? t("close") : t("skipShowNext")}

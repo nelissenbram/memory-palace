@@ -53,8 +53,8 @@ export default function CinematicWalkthrough() {
   switch (phase) {
     case 0:
       narration = isMobile
-        ? t("phase0Mobile", { name: userName || "explorer" })
-        : t("phase0", { name: userName || "explorer" });
+        ? t("phase0Mobile", { name: userName || t("explorer") })
+        : t("phase0", { name: userName || t("explorer") });
       break;
     case 1:
       narration = t("phase1");
@@ -75,28 +75,28 @@ export default function CinematicWalkthrough() {
   return (
     <>
       <style>{`
-        @keyframes wtNarrationIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes wtNarrationIn { from { opacity:0; transform:translateY(0.75rem); } to { opacity:1; transform:translateY(0); } }
       `}</style>
 
       {/* Narration bubble */}
       <div key={phase} style={{
         position: "absolute",
-        bottom: isMobile ? 140 : 80,
+        bottom: isMobile ? "8.75rem" : "5rem",
         left: "50%",
         transform: "translateX(-50%)",
-        maxWidth: isMobile ? "calc(100vw - 40px)" : 560,
+        maxWidth: isMobile ? "calc(100vw - 2.5rem)" : "35rem",
         zIndex: 80,
         background: "rgba(42,34,24,0.8)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
-        borderRadius: 24,
-        padding: "18px 28px 14px",
+        borderRadius: "1.5rem",
+        padding: "1.125rem 1.75rem 0.875rem",
         textAlign: "center",
         animation: "wtNarrationIn 0.8s ease both",
       }}>
         <div style={{
           fontFamily: T.font.display,
-          fontSize: isMobile ? 17 : 19,
+          fontSize: isMobile ? "1.0625rem" : "1.1875rem",
           fontWeight: 400,
           color: "#F5F0E8",
           lineHeight: 1.5,
@@ -105,11 +105,11 @@ export default function CinematicWalkthrough() {
           {narration}
         </div>
         <button onClick={skip} style={{
-          marginTop: 10,
+          marginTop: "0.625rem",
           background: "none",
           border: "none",
           fontFamily: T.font.body,
-          fontSize: 12,
+          fontSize: "0.75rem",
           color: "rgba(245,240,232,0.5)",
           cursor: "pointer",
           textDecoration: "underline",

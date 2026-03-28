@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { T } from "@/lib/theme";
 import type { Mem } from "@/lib/constants/defaults";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 
 interface ShareCardProps {
   mem?: Mem;
@@ -59,6 +60,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 
 export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon, memCount, accent, onClose }: ShareCardProps) {
   const { t } = useTranslation("shareCard");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copied, setCopied] = useState(false);
   const [canShare, setCanShare] = useState(false);
@@ -70,10 +72,10 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   }, [mem]);
 
   const getShareText = useCallback(() => {
-    if (mem) return `"${mem.title}" — a memory from The Memory Palace`;
-    if (roomName) return `${roomIcon || ""} ${roomName} — ${memCount ?? 0} memories in The Memory Palace`;
-    return "The Memory Palace";
-  }, [mem, roomName, roomIcon, memCount]);
+    if (mem) return t("shareTextMemory", { title: mem.title });
+    if (roomName) return t("shareTextRoom", { icon: roomIcon || "", name: roomName, count: String(memCount ?? 0) });
+    return t("shareTextDefault");
+  }, [mem, roomName, roomIcon, memCount, t]);
 
   useEffect(() => {
     setCanShare(typeof navigator !== "undefined" && !!navigator.share);
@@ -85,6 +87,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Canvas OG image dimensions — keep in px
     const W = 1200, H = 630;
     canvas.width = W;
     canvas.height = H;
@@ -169,7 +172,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
         ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
         ctx.font = "italic 16px Georgia, serif";
         ctx.textAlign = "right";
-        ctx.fillText("The Memory Palace", W - 100, H - 90);
+        ctx.fillText(t("brandName"), W - 100, H - 90);
         ctx.textAlign = "left";
 
         // Gold accent line
@@ -226,13 +229,13 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
       ctx.fillStyle = "rgba(255, 255, 255, 0.65)";
       ctx.font = "24px Georgia, serif";
       ctx.textAlign = "center";
-      ctx.fillText(`${memCount ?? 0} memories`, W / 2, 370);
+      ctx.fillText(t("memories", { count: String(memCount ?? 0) }), W / 2, 370);
 
       // Wing info
       if (wingName) {
         ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
         ctx.font = "20px Georgia, serif";
-        ctx.fillText(`${wingIcon || ""} ${wingName} Wing`, W / 2, 420);
+        ctx.fillText(`${wingIcon || ""} ${t("wing", { name: wingName || "" })}`, W / 2, 420);
       }
 
       ctx.textAlign = "left";
@@ -250,7 +253,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
       ctx.fillRect(100, H - 110, W - 200, 1);
       ctx.globalAlpha = 1;
     }
-  }, [mem, roomName, roomIcon, wingName, wingIcon, memCount, accent]);
+  }, [mem, roomName, roomIcon, wingName, wingIcon, memCount, accent, t]);
 
   const handleCopyLink = async () => {
     try {
@@ -288,7 +291,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   const shareText = getShareText();
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedText = encodeURIComponent(shareText);
-  const title = mem ? mem.title : roomName || "The Memory Palace";
+  const title = mem ? mem.title : roomName || t("brandName");
 
   const socialLinks = [
     { name: "WhatsApp", icon: "\uD83D\uDCAC", url: `https://wa.me/?text=${encodedText}%20${encodedUrl}` },
@@ -298,22 +301,22 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   ];
 
   const btnBase: React.CSSProperties = {
-    padding: "10px 16px", fontFamily: T.font.body, fontSize: 13, fontWeight: 500,
-    borderRadius: 10, border: `1px solid ${T.color.cream}`, cursor: "pointer",
-    display: "flex", alignItems: "center", gap: 6, transition: "all .15s",
+    padding: "0.625rem 1rem", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
+    borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, cursor: "pointer",
+    display: "flex", alignItems: "center", gap: "0.375rem", transition: "all .15s",
   };
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, animation: "fadeIn .2s ease" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: 20, border: `1px solid ${T.color.cream}`, boxShadow: "0 16px 70px rgba(44,44,42,.2)", maxWidth: 560, width: "92%", overflow: "hidden", animation: "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: "90vh", overflowY: "auto" }}>
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("share")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ background: T.color.linen, borderRadius: "1.25rem", border: `1px solid ${T.color.cream}`, boxShadow: "0 16px 70px rgba(44,44,42,.2)", maxWidth: "35rem", width: "92%", overflow: "hidden", animation: "fadeUp .3s cubic-bezier(.23,1,.32,1)", maxHeight: "90vh", overflowY: "auto" }}>
         {/* Canvas preview */}
-        <div style={{ padding: "20px 20px 0" }}>
-          <canvas ref={canvasRef} style={{ width: "100%", height: "auto", borderRadius: 12, border: `1px solid ${T.color.cream}` }} />
+        <div style={{ padding: "1.25rem 1.25rem 0" }}>
+          <canvas ref={canvasRef} style={{ width: "100%", height: "auto", borderRadius: "0.75rem", border: `1px solid ${T.color.cream}` }} />
         </div>
 
-        <div style={{ padding: "16px 20px 20px" }}>
+        <div style={{ padding: "1rem 1.25rem 1.25rem" }}>
           {/* Action buttons */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
             <button onClick={handleCopyLink} style={{ ...btnBase, flex: 1, background: copied ? `${accent}15` : T.color.white, color: copied ? accent : T.color.charcoal }}>
               {copied ? `\u2713 ${t("copied")}` : `\uD83D\uDD17 ${t("copyLink")}`}
             </button>
@@ -328,19 +331,19 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
           </div>
 
           {/* Quick share platforms */}
-          <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 8 }}>{t("shareTo")}</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: "0.5rem" }}>{t("shareTo")}</div>
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
             {socialLinks.map(s => (
               <a key={s.name} href={s.url} target="_blank" rel="noopener noreferrer"
-                style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.charcoal, textDecoration: "none", justifyContent: "center", fontSize: 12, padding: "10px 8px" }}>
-                <span style={{ fontSize: 16 }}>{s.icon}</span>
+                style={{ ...btnBase, flex: 1, background: T.color.white, color: T.color.charcoal, textDecoration: "none", justifyContent: "center", fontSize: "0.75rem", padding: "0.625rem 0.5rem" }}>
+                <span style={{ fontSize: "1rem" }}>{s.icon}</span>
                 <span>{s.name}</span>
               </a>
             ))}
           </div>
 
           {/* Close */}
-          <button onClick={onClose} style={{ width: "100%", padding: 12, fontFamily: T.font.body, fontSize: 13, background: "transparent", border: `1px solid ${T.color.cream}`, borderRadius: 10, cursor: "pointer", color: T.color.muted }}>
+          <button onClick={onClose} style={{ width: "100%", padding: "0.75rem", fontFamily: T.font.body, fontSize: "0.8125rem", background: "transparent", border: `1px solid ${T.color.cream}`, borderRadius: "0.625rem", cursor: "pointer", color: T.color.muted }}>
             {t("close")}
           </button>
         </div>

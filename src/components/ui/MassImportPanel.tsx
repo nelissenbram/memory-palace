@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect, lazy, Suspense } from "react"
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useImportStore, type ImportItem } from "@/lib/stores/importStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -20,10 +21,10 @@ interface Props {
 
 // ═══ Display type options ═══
 const DISPLAY_TYPES: [string, string, string][] = [
-  ["photo", "\u{1F5BC}\uFE0F", "Frame"], ["painting", "\u{1F3A8}", "Painting"],
-  ["video", "\u{1F3AC}", "Screen"], ["album", "\u{1F4D6}", "Album"],
-  ["orb", "\u{1F52E}", "Orb"], ["case", "\u{1F3FA}", "Vitrine"],
-  ["audio", "\u{1F3B5}", "Audio"], ["document", "\u{1F4DC}", "Document"],
+  ["photo", "\u{1F5BC}\uFE0F", "typeFrame"], ["painting", "\u{1F3A8}", "typePainting"],
+  ["video", "\u{1F3AC}", "typeScreen"], ["album", "\u{1F4D6}", "typeAlbum"],
+  ["orb", "\u{1F52E}", "typeOrb"], ["case", "\u{1F3FA}", "typeVitrine"],
+  ["audio", "\u{1F3B5}", "typeAudio"], ["document", "\u{1F4DC}", "typeDocument"],
 ];
 
 const TYPE_ICONS: Record<string, string> = Object.fromEntries(DISPLAY_TYPES.map(([k, v]) => [k, v]));
@@ -46,6 +47,7 @@ function isFileTooLarge(file: File): boolean {
 export default function MassImportPanel({ onClose, initialWingId, initialRoomId }: Props) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("massImport");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const store = useImportStore();
   const addMemory = useMemoryStore((s) => s.addMemory);
   const { getWings, getWingRooms } = useRoomStore();
@@ -110,7 +112,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         store.updateItem(item.localId, updates);
         store.setProgress({ processed: (useImportStore.getState().progress.processed || 0) + 1 });
       } catch (err: any) {
-        store.updateItem(item.localId, { status: "error", error: err.message || "Failed to read file" });
+        store.updateItem(item.localId, { status: "error", error: err.message || t("failedToReadFile") });
         store.setProgress({ errors: (useImportStore.getState().progress.errors || 0) + 1 });
       }
     }
@@ -236,7 +238,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(10px)", zIndex: 60, animation: "fadeIn .2s ease", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
         width: isMobile ? "100%" : "min(820px, 94vw)",
         maxHeight: isMobile ? "100%" : "90vh",
         height: isMobile ? "100%" : undefined,
@@ -253,7 +255,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 44, height: 44, borderRadius: 12, background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{"\u{1F4E6}"}</div>
               <div>
-                <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 600, color: T.color.charcoal, margin: 0 }}>Mass Import</h3>
+                <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 600, color: T.color.charcoal, margin: 0 }}>{t("heading")}</h3>
                 <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "2px 0 0" }}>
                   {step === "drop" && t("dropToBegin")}
                   {step === "processing" && t("processing", { processed: String(progress.processed), total: String(progress.total) })}
@@ -468,10 +470,10 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             {/* Tabs */}
             <div style={{ display: "flex", gap: 4, marginBottom: 16, background: T.color.warmStone, borderRadius: 10, padding: 3 }}>
               {([
-                ["review", `Review (${items.filter((i) => i.status === "ready" && i.needsReview).length})`],
-                ["accepted", `Accepted (${items.filter((i) => i.status === "accepted").length})`],
-                ["rejected", `Rejected (${items.filter((i) => i.status === "rejected").length})`],
-                ["all", `All (${items.filter((i) => !["error", "committed"].includes(i.status)).length})`],
+                ["review", t("tabReview", { count: String(items.filter((i) => i.status === "ready" && i.needsReview).length) })],
+                ["accepted", t("tabAccepted", { count: String(items.filter((i) => i.status === "accepted").length) })],
+                ["rejected", t("tabRejected", { count: String(items.filter((i) => i.status === "rejected").length) })],
+                ["all", t("tabAll", { count: String(items.filter((i) => !["error", "committed"].includes(i.status)).length) })],
               ] as [typeof tab, string][]).map(([key, label]) => (
                 <button key={key} onClick={() => setTab(key)} style={{
                   flex: 1, padding: "7px 8px", borderRadius: 8, border: "none",
@@ -667,7 +669,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
               <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("type")}</label>
               <select value={item.confirmed.type} onChange={(e) => store.updateConfirmed(item.localId, { type: e.target.value })}
                 style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, cursor: "pointer", outline: "none" }}>
-                {DISPLAY_TYPES.map(([v, icon, label]) => <option key={v} value={v}>{icon} {label}</option>)}
+                {DISPLAY_TYPES.map(([v, icon, labelKey]) => <option key={v} value={v}>{icon} {t(labelKey)}</option>)}
               </select>
             </div>
             <div>

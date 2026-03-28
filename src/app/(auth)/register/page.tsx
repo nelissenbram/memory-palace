@@ -54,22 +54,22 @@ function RegisterContent() {
   if (success) {
     return (
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>✉️</div>
+        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>✉️</div>
         <h2
           style={{
             fontFamily: T.font.display,
-            fontSize: 24,
+            fontSize: "1.5rem",
             fontWeight: 400,
             color: T.color.charcoal,
-            margin: "0 0 12px",
+            margin: "0 0 0.75rem",
           }}
         >
           {t("checkEmail")}
         </h2>
-        <p style={{ fontSize: 14, color: T.color.muted, lineHeight: 1.6 }}>
+        <p style={{ fontSize: "0.875rem", color: T.color.muted, lineHeight: 1.6 }}>
           {t("confirmationSent")}
           {redirect && (
-            <span style={{ display: "block", marginTop: 8, color: T.color.terracotta }}>
+            <span style={{ display: "block", marginTop: "0.5rem", color: T.color.terracotta }}>
               {t("afterConfirming")}
             </span>
           )}
@@ -78,11 +78,11 @@ function RegisterContent() {
           href="/login"
           style={{
             display: "inline-block",
-            marginTop: 20,
+            marginTop: "1.25rem",
             color: T.color.terracotta,
             textDecoration: "none",
             fontWeight: 600,
-            fontSize: 14,
+            fontSize: "0.875rem",
           }}
         >
           {t("backToSignIn")}
@@ -93,12 +93,12 @@ function RegisterContent() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div style={{ fontSize: 36, marginBottom: 8 }}>🏛️</div>
+      <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
+        <div style={{ fontSize: "2.25rem", marginBottom: "0.5rem" }}>🏛️</div>
         <h1
           style={{
             fontFamily: T.font.display,
-            fontSize: 28,
+            fontSize: "1.75rem",
             fontWeight: 300,
             color: T.color.charcoal,
             margin: 0,
@@ -107,7 +107,7 @@ function RegisterContent() {
         >
           {t("title")}
         </h1>
-        <p style={{ fontSize: 14, color: T.color.muted, marginTop: 6 }}>
+        <p style={{ fontSize: "0.875rem", color: T.color.muted, marginTop: "0.375rem" }}>
           {t("subtitle")}
         </p>
       </div>
@@ -116,13 +116,13 @@ function RegisterContent() {
         <div
           role="alert"
           style={{
-            padding: "10px 14px",
-            borderRadius: 10,
+            padding: "0.625rem 0.875rem",
+            borderRadius: "0.625rem",
             background: "#FDF2F2",
             border: "1px solid #FECACA",
             color: "#B91C1C",
-            fontSize: 13,
-            marginBottom: 16,
+            fontSize: "0.8125rem",
+            marginBottom: "1rem",
           }}
         >
           {error}
@@ -138,7 +138,7 @@ function RegisterContent() {
         style={inputStyle}
       />
 
-      <label htmlFor="register-email" style={{ ...labelStyle, marginTop: 14 }}>{t("email")}</label>
+      <label htmlFor="register-email" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("email")}</label>
       <input
         id="register-email"
         name="email"
@@ -148,7 +148,7 @@ function RegisterContent() {
         style={inputStyle}
       />
 
-      <label htmlFor="register-password" style={{ ...labelStyle, marginTop: 14 }}>{t("password")}</label>
+      <label htmlFor="register-password" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("password")}</label>
       <input
         id="register-password"
         name="password"
@@ -158,7 +158,7 @@ function RegisterContent() {
         style={inputStyle}
       />
 
-      <label htmlFor="register-confirm-password" style={{ ...labelStyle, marginTop: 14 }}>{t("confirmPassword")}</label>
+      <label htmlFor="register-confirm-password" style={{ ...labelStyle, marginTop: "0.875rem" }}>{t("confirmPassword")}</label>
       <input
         id="register-confirm-password"
         name="confirmPassword"
@@ -199,9 +199,9 @@ function RegisterContent() {
       <p
         style={{
           textAlign: "center",
-          fontSize: 13,
+          fontSize: "0.8125rem",
           color: T.color.muted,
-          marginTop: 20,
+          marginTop: "1.25rem",
           marginBottom: 0,
         }}
       >
@@ -217,9 +217,9 @@ function RegisterContent() {
       <p
         style={{
           textAlign: "center",
-          fontSize: 11,
+          fontSize: "0.6875rem",
           color: T.color.muted,
-          marginTop: 16,
+          marginTop: "1rem",
           marginBottom: 0,
           lineHeight: 1.6,
         }}
@@ -240,22 +240,22 @@ function RegisterContent() {
 
 const labelStyle: React.CSSProperties = {
   fontFamily: "'Source Sans 3', system-ui, sans-serif",
-  fontSize: 11,
+  fontSize: "0.6875rem",
   color: "#9A9183",
   letterSpacing: ".5px",
   textTransform: "uppercase",
   display: "block",
-  marginBottom: 6,
+  marginBottom: "0.375rem",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "13px 16px",
-  borderRadius: 10,
+  padding: "0.8125rem 1rem",
+  borderRadius: "0.625rem",
   border: "1.5px solid #D4C5B2",
   background: "#FFFFFF",
   fontFamily: "'Source Sans 3', system-ui, sans-serif",
-  fontSize: 14,
+  fontSize: "0.875rem",
   color: "#2C2C2A",
   outline: "none",
   boxSizing: "border-box",
@@ -264,26 +264,26 @@ const inputStyle: React.CSSProperties = {
 
 const buttonStyle = (loading: boolean): React.CSSProperties => ({
   width: "100%",
-  padding: 14,
-  borderRadius: 12,
+  padding: "0.875rem",
+  borderRadius: "0.75rem",
   border: "none",
   background: loading
     ? "#D4C5B240"
     : "linear-gradient(135deg, #C17F59, #8B7355)",
   color: loading ? "#9A9183" : "#FFFFFF",
   fontFamily: "'Source Sans 3', system-ui, sans-serif",
-  fontSize: 15,
+  fontSize: "0.9375rem",
   fontWeight: 600,
   cursor: loading ? "default" : "pointer",
-  marginTop: 20,
+  marginTop: "1.25rem",
   transition: "all 0.2s",
 });
 
 const dividerStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 12,
-  margin: "24px 0 20px",
+  gap: "0.75rem",
+  margin: "1.5rem 0 1.25rem",
 };
 
 const dividerLineStyle: React.CSSProperties = {
@@ -294,24 +294,24 @@ const dividerLineStyle: React.CSSProperties = {
 
 const dividerTextStyle: React.CSSProperties = {
   fontFamily: T.font.body,
-  fontSize: 12,
+  fontSize: "0.75rem",
   color: T.color.muted,
   whiteSpace: "nowrap",
 };
 
 const socialButtonBase: React.CSSProperties = {
   width: "100%",
-  minHeight: 44,
-  padding: "12px 16px",
-  borderRadius: 12,
+  minHeight: "2.75rem",
+  padding: "0.75rem 1rem",
+  borderRadius: "0.75rem",
   fontFamily: T.font.body,
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 600,
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: 10,
+  gap: "0.625rem",
   transition: "all 0.2s",
 };
 
@@ -320,7 +320,7 @@ const googleButtonStyle: React.CSSProperties = {
   background: T.color.white,
   color: "#3C4043",
   border: `1.5px solid ${T.color.sandstone}`,
-  marginBottom: 10,
+  marginBottom: "0.625rem",
 };
 
 const appleButtonStyle: React.CSSProperties = {

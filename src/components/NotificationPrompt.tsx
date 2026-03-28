@@ -92,13 +92,13 @@ export default function NotificationPrompt() {
     <div
       style={{
         position: "fixed",
-        bottom: 24,
-        right: 24,
+        bottom: "1.5rem",
+        right: "1.5rem",
         zIndex: 50,
-        width: 340,
+        width: "21.25rem",
         background: `linear-gradient(135deg, ${T.color.linen}f8, ${T.color.warmStone}f8)`,
         backdropFilter: "blur(16px)",
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${T.color.cream}`,
         boxShadow: "0 8px 40px rgba(44,44,42,.12), 0 0 24px rgba(139,115,85,.08)",
         padding: 0,
@@ -116,18 +116,18 @@ export default function NotificationPrompt() {
         }}
       />
 
-      <div style={{ padding: "18px 20px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+      <div style={{ padding: "1.125rem 1.25rem" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
           <div
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
+              width: "2.5rem",
+              height: "2.5rem",
+              borderRadius: "0.75rem",
               background: `${T.color.terracotta}15`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 20,
+              fontSize: "1.25rem",
               flexShrink: 0,
             }}
           >
@@ -137,7 +137,7 @@ export default function NotificationPrompt() {
             <h4
               style={{
                 fontFamily: T.font.display,
-                fontSize: 17,
+                fontSize: "1.0625rem",
                 fontWeight: 500,
                 color: T.color.charcoal,
                 margin: "0 0 4px",
@@ -148,7 +148,7 @@ export default function NotificationPrompt() {
             <p
               style={{
                 fontFamily: T.font.body,
-                fontSize: 12.5,
+                fontSize: "0.78125rem",
                 color: T.color.muted,
                 margin: 0,
                 lineHeight: 1.5,
@@ -162,20 +162,20 @@ export default function NotificationPrompt() {
         <div
           style={{
             display: "flex",
-            gap: 8,
-            marginTop: 16,
+            gap: "0.5rem",
+            marginTop: "1rem",
             justifyContent: "flex-end",
           }}
         >
           <button
             onClick={dismiss}
             style={{
-              padding: "8px 16px",
-              borderRadius: 10,
+              padding: "0.5rem 1rem",
+              borderRadius: "0.625rem",
               border: `1px solid ${T.color.cream}`,
               background: "transparent",
               fontFamily: T.font.body,
-              fontSize: 13,
+              fontSize: "0.8125rem",
               color: T.color.muted,
               cursor: "pointer",
             }}
@@ -185,12 +185,12 @@ export default function NotificationPrompt() {
           <button
             onClick={handleEnable}
             style={{
-              padding: "8px 18px",
-              borderRadius: 10,
+              padding: "0.5rem 1.125rem",
+              borderRadius: "0.625rem",
               border: "none",
               background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
               fontFamily: T.font.body,
-              fontSize: 13,
+              fontSize: "0.8125rem",
               fontWeight: 600,
               color: "#FFF",
               cursor: "pointer",

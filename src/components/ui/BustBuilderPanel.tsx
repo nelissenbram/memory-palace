@@ -149,7 +149,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
     renderer.localClippingEnabled = true;
     el.innerHTML = "";
     el.appendChild(renderer.domElement);
-    renderer.domElement.style.borderRadius = "14px";
+    renderer.domElement.style.borderRadius = "0.875rem";
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(35, w / h, 0.01, 100);
@@ -210,9 +210,9 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
       background: "rgba(44,44,42,.6)", backdropFilter: "blur(6px)",
     }} onClick={onClose}>
       <div ref={focusTrapRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{
-        background: T.color.linen, borderRadius: 20,
-        padding: isMobile ? "24px 18px" : "32px 36px",
-        maxWidth: 440, width: "90%",
+        background: T.color.linen, borderRadius: "1.25rem",
+        padding: isMobile ? "1.5rem 1.125rem" : "2rem 2.25rem",
+        maxWidth: "27.5rem", width: "90%",
         boxShadow: "0 12px 48px rgba(0,0,0,.2)",
         maxHeight: "90vh", overflowY: "auto",
       }}>
@@ -220,43 +220,43 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "manage" && (
           <>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
-              color: T.color.charcoal, textAlign: "center", marginBottom: 16,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              color: T.color.charcoal, textAlign: "center", marginBottom: "1rem",
             }}>
               {t("pedestalTitle", { index: String(pedestalIndex + 1) })}{pedestalData?.name ? ` — ${pedestalData.name}` : ""}
             </h2>
             {pedestalData?.faceUrl && (
               <img src={pedestalData.faceUrl} alt={t("currentBust")} style={{
                 width: 160, height: 160, objectFit: "cover",
-                borderRadius: 16, margin: "0 auto 16px",
+                borderRadius: "1rem", margin: "0 auto 1rem",
                 border: `3px solid ${T.color.sandstone}`, display: "block",
               }} />
             )}
             <p style={{
-              fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-              textAlign: "center", marginBottom: 20, lineHeight: 1.5,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              textAlign: "center", marginBottom: "1.25rem", lineHeight: 1.5,
             }}>
               {t("bustDescription", { style: bustStyleLabel, index: String(pedestalIndex + 1) })}
             </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center", flexWrap: "wrap" }}>
               <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); }} style={{
-                fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
-                padding: "10px 24px", borderRadius: 10, border: "none",
+                fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                padding: "0.625rem 1.5rem", borderRadius: "0.625rem", border: "none",
                 background: `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,
                 color: "#FFF", cursor: "pointer",
               }}>
                 {t("changePhoto")}
               </button>
               <button onClick={handleRemove} style={{
-                fontFamily: T.font.body, fontSize: 14, padding: "10px 20px",
-                borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
+                fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
+                borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
                 background: "transparent", color: T.color.muted, cursor: "pointer",
               }}>
                 {t("removeBust")}
               </button>
               <button onClick={onClose} style={{
-                fontFamily: T.font.body, fontSize: 14, padding: "10px 20px",
-                borderRadius: 10, border: `1px solid ${T.color.cream}`,
+                fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
+                borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`,
                 background: "transparent", color: T.color.walnut, cursor: "pointer",
               }}>
                 {t("close")}
@@ -269,23 +269,23 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "upload" && (
           <>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
-              color: T.color.charcoal, textAlign: "center", marginBottom: 8,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              color: T.color.charcoal, textAlign: "center", marginBottom: "0.5rem",
             }}>
               {hasBust ? t("changeBust", { index: String(pedestalIndex + 1) }) : t("createBust", { index: String(pedestalIndex + 1) })}
             </h2>
             <p style={{
-              fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
-              textAlign: "center", marginBottom: 16, lineHeight: 1.5,
+              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+              textAlign: "center", marginBottom: "1rem", lineHeight: 1.5,
             }}>
               {t("uploadPrompt", { style: bustStyleLabel })}
             </p>
 
             {/* Name input */}
-            <div style={{ marginBottom: 14 }}>
+            <div style={{ marginBottom: "0.875rem" }}>
               <label style={{
-                fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
-                textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 4,
+                fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: "0.25rem",
               }}>
                 {t("nameOnPlaque")}
               </label>
@@ -295,30 +295,30 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 onChange={e => setBustNameInput(e.target.value)}
                 placeholder={t("namePlaceholder")}
                 style={{
-                  width: "100%", padding: "10px 14px", borderRadius: 10,
+                  width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem",
                   border: `1px solid ${T.color.sandstone}`, background: `${T.color.warmStone}60`,
-                  fontFamily: T.font.body, fontSize: 15, color: T.color.charcoal,
+                  fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.charcoal,
                   outline: "none", boxSizing: "border-box",
                 }}
               />
             </div>
 
             {/* Gender selector */}
-            <div style={{ marginBottom: 18 }}>
+            <div style={{ marginBottom: "1.125rem" }}>
               <label style={{
-                fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
-                textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: 6,
+                fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: "0.375rem",
               }}>
                 {t("bustStyle")}
               </label>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
                 {(["male", "female"] as const).map(g => (
                   <button
                     key={g}
                     onClick={() => setBustGender(g)}
                     style={{
-                      flex: 1, padding: "8px 0", borderRadius: 8, cursor: "pointer",
-                      fontFamily: T.font.body, fontSize: 14, fontWeight: bustGender === g ? 600 : 400,
+                      flex: 1, padding: "0.5rem 0", borderRadius: "0.5rem", cursor: "pointer",
+                      fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: bustGender === g ? 600 : 400,
                       border: bustGender === g
                         ? `2px solid ${T.color.terracotta}`
                         : `1px solid ${T.color.sandstone}`,
@@ -341,16 +341,16 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               onClick={() => inputRef.current?.click()}
               style={{
                 border: `2px dashed ${T.color.sandstone}`,
-                borderRadius: 14, padding: "36px 20px",
+                borderRadius: "0.875rem", padding: "2.25rem 1.25rem",
                 textAlign: "center", cursor: "pointer",
                 background: `${T.color.warmStone}80`,
               }}
             >
-              <div style={{ fontSize: 36, marginBottom: 8 }}>{"📷"}</div>
-              <div style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.muted }}>
+              <div style={{ fontSize: "2.25rem", marginBottom: "0.5rem" }}>{"📷"}</div>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>
                 {t("dropPortrait")}
               </div>
-              <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginTop: 4, opacity: 0.7 }}>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginTop: "0.25rem", opacity: 0.7 }}>
                 {t("portraitTip")}
               </div>
               <input ref={inputRef} type="file" accept="image/*" style={{ display: "none" }}
@@ -358,11 +358,11 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}>
+            <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center", marginTop: "1.125rem" }}>
               {hasBust && (
                 <button onClick={() => setStage("manage")} style={{
-                  fontFamily: T.font.body, fontSize: 14, padding: "10px 20px",
-                  borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
+                  fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
+                  borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
                   background: "transparent", color: T.color.walnut, cursor: "pointer",
                 }}>
                   {t("back")}
@@ -374,24 +374,24 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
         {/* ═══ CALIBRATING — detecting face ═══ */}
         {stage === "calibrating" && (
-          <div style={{ textAlign: "center", padding: "30px 0" }}>
+          <div style={{ textAlign: "center", padding: "1.875rem 0" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
-              color: T.color.charcoal, marginBottom: 16,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              color: T.color.charcoal, marginBottom: "1rem",
             }}>
               {t("detectingFace")}
             </h2>
             {preview && (
-              <img src={preview} alt="Processing" style={{
+              <img src={preview} alt={t("altProcessing")} style={{
                 width: 100, height: 100, objectFit: "cover",
-                borderRadius: "50%", margin: "0 auto 16px",
+                borderRadius: "50%", margin: "0 auto 1rem",
                 border: `3px solid ${T.color.sandstone}`,
                 display: "block", opacity: 0.7,
                 animation: "pulse 1.2s ease-in-out infinite",
               }} />
             )}
             <p style={{
-              fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
             }}>
               {t("analyzingPhoto")}
             </p>
@@ -402,28 +402,28 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "ready" && (
           <>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
-              color: T.color.charcoal, textAlign: "center", marginBottom: 16,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              color: T.color.charcoal, textAlign: "center", marginBottom: "1rem",
             }}>
               {faceDetected ? t("faceCalibrated") : t("photoLoaded")}
             </h2>
 
             {/* Crop preview: original with crop overlay + cropped result */}
             <div style={{
-              display: "flex", gap: 20, justifyContent: "center",
-              alignItems: "center", marginBottom: 16,
+              display: "flex", gap: "1.25rem", justifyContent: "center",
+              alignItems: "center", marginBottom: "1rem",
             }}>
               {/* Original photo with crop circle overlay */}
               <div style={{ textAlign: "center" }}>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
-                  textTransform: "uppercase", letterSpacing: 1, marginBottom: 6,
+                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                  textTransform: "uppercase", letterSpacing: 1, marginBottom: "0.375rem",
                 }}>
                   {t("original")}
                 </div>
                 <div style={{
                   position: "relative", width: 110, height: 110,
-                  borderRadius: 10, overflow: "hidden",
+                  borderRadius: "0.625rem", overflow: "hidden",
                   border: `2px solid ${T.color.sandstone}`,
                 }}>
                   {preview && (
@@ -454,7 +454,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
               {/* Arrow */}
               <div style={{
-                fontFamily: T.font.body, fontSize: 22, color: T.color.muted,
+                fontFamily: T.font.body, fontSize: "1.375rem", color: T.color.muted,
               }}>
                 →
               </div>
@@ -462,13 +462,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               {/* Cropped face result */}
               <div style={{ textAlign: "center" }}>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
-                  textTransform: "uppercase", letterSpacing: 1, marginBottom: 6,
+                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                  textTransform: "uppercase", letterSpacing: 1, marginBottom: "0.375rem",
                 }}>
                   {t("faceCrop")}
                 </div>
                 {croppedFace && (
-                  <img src={croppedFace} alt="Cropped face" style={{
+                  <img src={croppedFace} alt={t("altCroppedFace")} style={{
                     width: 110, height: 110, objectFit: "cover",
                     borderRadius: "50%",
                     border: `3px solid ${faceDetected ? "#4A6741" : T.color.sandstone}`,
@@ -482,13 +482,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
             {/* Calibration feedback */}
             <div style={{
-              padding: "10px 16px", borderRadius: 10, marginBottom: 16,
+              padding: "0.625rem 1rem", borderRadius: "0.625rem", marginBottom: "1rem",
               background: faceDetected ? "#E8F5E4" : "#FFF3E0",
               border: `1px solid ${faceDetected ? "#A5D6A0" : "#FFB74D"}`,
               textAlign: "center",
             }}>
               <div style={{
-                fontFamily: T.font.body, fontSize: 13,
+                fontFamily: T.font.body, fontSize: "0.8125rem",
                 color: faceDetected ? "#2E7D32" : "#E65100",
                 lineHeight: 1.4,
               }}>
@@ -497,10 +497,10 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             </div>
 
             {/* Gender + Name (compact) */}
-            <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+            <div style={{ display: "flex", gap: "0.625rem", marginBottom: "0.875rem" }}>
               <div style={{ flex: 1 }}>
                 <label style={{
-                  fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
                   textTransform: "uppercase", letterSpacing: 1,
                 }}>
                   {t("name")}
@@ -509,30 +509,30 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   type="text"
                   value={bustNameInput}
                   onChange={e => setBustNameInput(e.target.value)}
-                  placeholder="Name on plaque..."
+                  placeholder={t("namePlaceholder")}
                   style={{
-                    width: "100%", padding: "8px 10px", borderRadius: 8, marginTop: 4,
+                    width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", marginTop: "0.25rem",
                     border: `1px solid ${T.color.sandstone}`, background: `${T.color.warmStone}60`,
-                    fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal,
+                    fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
                     outline: "none", boxSizing: "border-box",
                   }}
                 />
               </div>
-              <div style={{ width: 120 }}>
+              <div style={{ width: "7.5rem" }}>
                 <label style={{
-                  fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
                   textTransform: "uppercase", letterSpacing: 1,
                 }}>
                   {t("body")}
                 </label>
-                <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.25rem" }}>
                   {(["male", "female"] as const).map(g => (
                     <button
                       key={g}
                       onClick={() => setBustGender(g)}
                       style={{
-                        flex: 1, padding: "7px 0", borderRadius: 6, cursor: "pointer",
-                        fontFamily: T.font.body, fontSize: 12, fontWeight: bustGender === g ? 600 : 400,
+                        flex: 1, padding: "0.4375rem 0", borderRadius: "0.375rem", cursor: "pointer",
+                        fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: bustGender === g ? 600 : 400,
                         border: bustGender === g
                           ? `2px solid ${T.color.terracotta}`
                           : `1px solid ${T.color.sandstone}`,
@@ -540,7 +540,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                         color: bustGender === g ? T.color.charcoal : T.color.muted,
                       }}
                     >
-                      {g === "male" ? "M" : "F"}
+                      {g === "male" ? t("maleShort") : t("femaleShort")}
                     </button>
                   ))}
                 </div>
@@ -548,10 +548,10 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             </div>
 
             {/* Action buttons */}
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center" }}>
               <button onClick={() => { setStage("upload"); setPreview(null); setCroppedFace(null); }} style={{
-                fontFamily: T.font.body, fontSize: 14, padding: "10px 20px",
-                borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
+                fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
+                borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
                 background: "transparent", color: T.color.walnut, cursor: "pointer",
               }}>
                 {t("changePhoto")}
@@ -559,8 +559,8 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               <button
                 onClick={handleCreate}
                 style={{
-                  fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
-                  padding: "12px 32px", borderRadius: 10, border: "none",
+                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                  padding: "0.75rem 2rem", borderRadius: "0.625rem", border: "none",
                   background: `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,
                   color: "#FFF", cursor: "pointer",
                 }}
@@ -573,20 +573,20 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
         {/* ═══ CREATING ═══ */}
         {stage === "creating" && (
-          <div style={{ textAlign: "center", padding: "30px 0" }}>
+          <div style={{ textAlign: "center", padding: "1.875rem 0" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
-              color: T.color.charcoal, marginBottom: 16,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              color: T.color.charcoal, marginBottom: "1rem",
             }}>
               {t("creatingBust")}
             </h2>
             {/* Face preview with sculpting animation */}
             <div style={{
-              width: 120, height: 140, margin: "0 auto 20px",
+              width: 120, height: 140, margin: "0 auto 1.25rem",
               position: "relative",
             }}>
               {croppedFace && (
-                <img src={croppedFace} alt="Sculpting" style={{
+                <img src={croppedFace} alt={t("altSculpting")} style={{
                   width: 90, height: 110, objectFit: "cover",
                   borderRadius: "45% 45% 40% 40%",
                   border: `3px solid ${T.color.sandstone}`,
@@ -608,16 +608,16 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               }} />
             </div>
             <p style={{
-              fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
-              marginBottom: 8,
+              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+              marginBottom: "0.5rem",
             }}>
               {creationStep || t("sculptingStyle", { style: bustStyleLabel })}
             </p>
             {/* Progress dots */}
-            <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "0.375rem", justifyContent: "center" }}>
               {[0, 1, 2].map(i => (
                 <div key={i} style={{
-                  width: 8, height: 8, borderRadius: "50%",
+                  width: "0.5rem", height: "0.5rem", borderRadius: "50%",
                   background: T.color.terracotta,
                   animation: `pulse 1.2s ease-in-out ${i * 0.3}s infinite`,
                   opacity: 0.5,
@@ -629,22 +629,22 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
         {/* ═══ ERROR ═══ */}
         {stage === "error" && (
-          <div role="alert" style={{ textAlign: "center", padding: "20px 0" }}>
+          <div role="alert" style={{ textAlign: "center", padding: "1.25rem 0" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
-              color: T.color.charcoal, marginBottom: 12,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              color: T.color.charcoal, marginBottom: "0.75rem",
             }}>
               {t("somethingWrong")}
             </h2>
             <p style={{
-              fontFamily: T.font.body, fontSize: 14, color: "#C0392B",
-              marginBottom: 16,
+              fontFamily: T.font.body, fontSize: "0.875rem", color: "#C0392B",
+              marginBottom: "1rem",
             }}>
               {error || t("tryAgain")}
             </p>
             <button onClick={() => { setStage("upload"); setError(null); setPreview(null); setCroppedFace(null); }} style={{
-              fontFamily: T.font.body, fontSize: 14, padding: "10px 24px",
-              borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
+              fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.5rem",
+              borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
               background: "transparent", color: T.color.walnut, cursor: "pointer",
             }}>
               {t("tryAgainBtn")}
@@ -656,38 +656,38 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "done" && (
           <div style={{ textAlign: "center" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: 22, fontWeight: 400,
-              color: T.color.charcoal, marginBottom: 12,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              color: T.color.charcoal, marginBottom: "0.75rem",
             }}>
               {t("bustReady")}
             </h2>
             <div ref={previewCanvasRef} style={{
-              width: 220, height: 260, margin: "0 auto 16px",
-              borderRadius: 14, overflow: "hidden",
+              width: 220, height: 260, margin: "0 auto 1rem",
+              borderRadius: "0.875rem", overflow: "hidden",
               background: `linear-gradient(180deg, ${T.color.warmStone}40, ${T.color.linen})`,
             }} />
             <p style={{
-              fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-              marginBottom: 16,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              marginBottom: "1rem",
             }}>
               {t("bustPlaced", { style: bustStyleLabel, index: String(pedestalIndex + 1) })}
             </p>
-            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+            <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center" }}>
               <button onClick={() => {
                 setStage("upload");
                 setPreview(null);
                 setCroppedFace(null);
                 setDoneBustGroup(null);
               }} style={{
-                fontFamily: T.font.body, fontSize: 14, padding: "10px 20px",
-                borderRadius: 10, border: `1px solid ${T.color.sandstone}`,
+                fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
+                borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
                 background: "transparent", color: T.color.walnut, cursor: "pointer",
               }}>
                 {t("changePhoto")}
               </button>
               <button onClick={onClose} style={{
-                fontFamily: T.font.body, fontSize: 15, fontWeight: 600,
-                padding: "12px 32px", borderRadius: 10, border: "none",
+                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                padding: "0.75rem 2rem", borderRadius: "0.625rem", border: "none",
                 background: `linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,
                 color: "#FFF", cursor: "pointer",
               }}>

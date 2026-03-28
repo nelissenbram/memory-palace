@@ -3,6 +3,7 @@ import { useState } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useRoomStore } from "@/lib/stores/roomStore";
 
 const EMOJI_PRESETS = [
@@ -50,6 +51,7 @@ interface WingManagerPanelProps {
 export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("wingManager");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { getWings, renameWing, changeWingIcon, changeWingAccent } = useRoomStore();
   const wings = getWings();
 
@@ -71,10 +73,10 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   };
 
   const iconPicker = (currentIcon: string, onPick: (icon: string) => void) => (
-    <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: isMobile ? 8 : 10, display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? 6 : 4, maxHeight: isMobile ? 200 : 160, overflowY: "auto", marginTop: 6 }}>
+    <div style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`, padding: isMobile ? "0.5rem" : "0.625rem", display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? "0.375rem" : "0.25rem", maxHeight: isMobile ? "12.5rem" : "10rem", overflowY: "auto", marginTop: "0.375rem" }}>
       {EMOJI_PRESETS.map((e, i) => (
         <button key={i} onClick={() => onPick(e)}
-          style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: 6, border: e === currentIcon ? `2px solid ${T.color.terracotta}` : "1px solid transparent", background: e === currentIcon ? `${T.color.terracotta}15` : "transparent", fontSize: isMobile ? 20 : 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          style={{ width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: "0.375rem", border: e === currentIcon ? `2px solid ${T.color.terracotta}` : "1px solid transparent", background: e === currentIcon ? `${T.color.terracotta}15` : "transparent", fontSize: isMobile ? "1.25rem" : "1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {e}
         </button>
       ))}
@@ -82,11 +84,11 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   );
 
   const colorPicker = (currentColor: string, onPick: (color: string) => void) => (
-    <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: isMobile ? 8 : 10, display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? 8 : 6, marginTop: 6 }}>
+    <div style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`, padding: isMobile ? "0.5rem" : "0.625rem", display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? "0.5rem" : "0.375rem", marginTop: "0.375rem" }}>
       {ACCENT_PALETTE.map((p, i) => (
         <button key={i} onClick={() => onPick(p.color)} title={t(p.nameKey)}
           style={{
-            width: isMobile ? 38 : 32, height: isMobile ? 38 : 32, borderRadius: isMobile ? 19 : 16, border: p.color === currentColor ? "3px solid #3A2818" : "2px solid transparent",
+            width: isMobile ? "2.375rem" : "2rem", height: isMobile ? "2.375rem" : "2rem", borderRadius: isMobile ? "1.1875rem" : "1rem", border: p.color === currentColor ? "3px solid #3A2818" : "2px solid transparent",
             background: p.color, cursor: "pointer", boxShadow: p.color === currentColor ? `0 0 0 2px ${T.color.white}, 0 2px 8px ${p.color}60` : "0 1px 4px rgba(0,0,0,.12)",
             transition: "all .15s",
           }}
@@ -97,29 +99,29 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(8px)", zIndex: 55, animation: "fadeIn .2s ease" }}>
-      <div onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: isMobile ? "100%" : 420, background: `${T.color.linen}f8`, backdropFilter: "blur(20px)", borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`, padding: isMobile ? "20px 16px" : "28px 24px", overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)" }}>
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: isMobile ? "100%" : "26.25rem", background: `${T.color.linen}f8`, backdropFilter: "blur(20px)", borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`, padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem", overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)" }}>
         <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div>
-            <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
-            <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "4px 0 0" }}>{t("description")}</p>
+            <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>{t("description")}</p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 16 : 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}>{"\u2715"}</button>
+          <button onClick={onClose} aria-label="Close" style={{ width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: isMobile ? "1.25rem" : "1rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}>{"\u2715"}</button>
         </div>
 
         {/* Wing list */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
           {wings.map(wing => (
-            <div key={wing.id} style={{ background: T.color.white, borderRadius: 14, border: `1px solid ${T.color.cream}`, padding: "14px 16px", transition: "all .15s" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div key={wing.id} style={{ background: T.color.white, borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`, padding: "0.875rem 1rem", transition: "all .15s" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                 {/* Icon button */}
                 <button onClick={() => { setPickingIconId(pickingIconId === wing.id ? null : wing.id); setEditingId(null); setPickingColorId(null); }}
                   style={{
-                    width: 44, height: 44, borderRadius: 12, border: `1.5px solid ${pickingIconId === wing.id ? wing.accent : T.color.cream}`,
+                    width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", border: `1.5px solid ${pickingIconId === wing.id ? wing.accent : T.color.cream}`,
                     background: pickingIconId === wing.id ? `${wing.accent}12` : T.color.warmStone,
-                    fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s",
+                    fontSize: "1.375rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s",
                   }}
                   title={t("changeIcon")}>
                   {wing.icon}
@@ -128,19 +130,19 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                 {/* Name */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {editingId === wing.id ? (
-                    <form onSubmit={e => { e.preventDefault(); saveEdit(wing.id); }} style={{ display: "flex", gap: 6 }}>
+                    <form onSubmit={e => { e.preventDefault(); saveEdit(wing.id); }} style={{ display: "flex", gap: "0.375rem" }}>
                       <input value={editName} onChange={e => setEditName(e.target.value)} autoFocus
                         onBlur={() => saveEdit(wing.id)}
-                        style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${wing.accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal, outline: "none" }} />
+                        style={{ flex: 1, padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1.5px solid ${wing.accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, outline: "none" }} />
                     </form>
                   ) : (
                     <div onClick={() => startEdit(wing.id, wing.name)}
-                      style={{ fontFamily: T.font.display, fontSize: 15, fontWeight: 500, color: T.color.charcoal, cursor: "text", padding: "2px 0" }}
+                      style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 500, color: T.color.charcoal, cursor: "text", padding: "0.125rem 0" }}
                       title={t("clickToRename")}>
                       {wing.name} {t("wing")}
                     </div>
                   )}
-                  <div style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, marginTop: 2 }}>
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, marginTop: "0.125rem" }}>
                     {wing.desc} {"\u00B7"} {wing.id}
                   </div>
                 </div>
@@ -148,7 +150,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                 {/* Accent color swatch */}
                 <button onClick={() => { setPickingColorId(pickingColorId === wing.id ? null : wing.id); setPickingIconId(null); setEditingId(null); }}
                   style={{
-                    width: 28, height: 28, borderRadius: 14, border: pickingColorId === wing.id ? "2px solid #3A2818" : `2px solid ${T.color.cream}`,
+                    width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", border: pickingColorId === wing.id ? "2px solid #3A2818" : `2px solid ${T.color.cream}`,
                     background: wing.accent, cursor: "pointer", flexShrink: 0, transition: "all .15s",
                     boxShadow: pickingColorId === wing.id ? `0 0 0 2px ${T.color.white}, 0 2px 8px ${wing.accent}60` : `0 1px 4px ${wing.accent}30`,
                   }}
@@ -171,7 +173,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
         </div>
 
         {/* Footer hint */}
-        <div style={{ marginTop: 20, padding: "12px 16px", background: `${T.color.warmStone}80`, borderRadius: 10, fontFamily: T.font.body, fontSize: 11, color: T.color.muted, lineHeight: 1.5 }}>
+        <div style={{ marginTop: "1.25rem", padding: "0.75rem 1rem", background: `${T.color.warmStone}80`, borderRadius: "0.625rem", fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.5 }}>
           {t("hint")}
         </div>
       </div>

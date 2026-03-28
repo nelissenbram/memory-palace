@@ -183,8 +183,8 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div style={{
-        padding: 48, textAlign: "center",
-        fontFamily: T.font.body, fontSize: 16, color: T.color.muted,
+        padding: "3rem", textAlign: "center",
+        fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted,
       }}>
         {t("loadingProfile")}
       </div>
@@ -194,8 +194,8 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div style={{
-        padding: 48, textAlign: "center",
-        fontFamily: T.font.body, fontSize: 16, color: T.color.muted,
+        padding: "3rem", textAlign: "center",
+        fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted,
       }}>
         {t("profileLoadError")}
       </div>
@@ -207,34 +207,34 @@ export default function ProfilePage() {
       {/* Toast */}
       {toast && (
         <div role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: 24, right: 24, zIndex: 100,
-          padding: "14px 20px", borderRadius: 12,
+          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
+          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
           background: toast.type === "success" ? "#4A6741" : "#C05050",
           color: "#FFF",
-          fontFamily: T.font.body, fontSize: 14, fontWeight: 500,
+          fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
           boxShadow: "0 8px 24px rgba(0,0,0,.15)",
           animation: "fadeIn .2s ease",
-          display: "flex", alignItems: "center", gap: 10,
+          display: "flex", alignItems: "center", gap: "0.625rem",
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
           <button onClick={() => setToast(null)} aria-label="Close" style={{
             background: "none", border: "none", color: "#FFF",
-            fontSize: 16, cursor: "pointer", marginLeft: 8, opacity: 0.7,
+            fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
         </div>
       )}
 
       {/* Page header */}
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: "2rem" }}>
         <h2 style={{
-          fontFamily: T.font.display, fontSize: 28, fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 8px",
+          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 0.5rem",
         }}>
           {t("yourProfile")}
         </h2>
         <p style={{
-          fontFamily: T.font.body, fontSize: 15, color: T.color.muted,
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
           margin: 0, lineHeight: 1.5,
         }}>
           {t("profileDescription")}
@@ -244,20 +244,20 @@ export default function ProfilePage() {
       {/* ── Profile Card ── */}
       <div style={{
         background: T.color.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${T.color.cream}`,
-        padding: "28px 32px",
+        padding: "1.75rem 2rem",
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-        marginBottom: 24,
+        marginBottom: "1.5rem",
       }}>
         {/* Avatar + Name header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", marginBottom: "1.75rem" }}>
           <div style={{
-            width: 72, height: 72, borderRadius: 36,
+            width: "4.5rem", height: "4.5rem", borderRadius: "2.25rem",
             background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "#FFF",
-            fontFamily: T.font.display, fontSize: 28, fontWeight: 600,
+            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
             letterSpacing: "1px",
             flexShrink: 0,
           }}>
@@ -266,7 +266,7 @@ export default function ProfilePage() {
                 src={profile.avatar_url}
                 alt=""
                 style={{
-                  width: 72, height: 72, borderRadius: 36,
+                  width: "4.5rem", height: "4.5rem", borderRadius: "2.25rem",
                   objectFit: "cover",
                 }}
               />
@@ -276,14 +276,14 @@ export default function ProfilePage() {
           </div>
           <div>
             <div style={{
-              fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
               color: T.color.charcoal,
             }}>
               {displayName || t("namePlaceholder")}
             </div>
             <div style={{
-              fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
-              marginTop: 4,
+              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+              marginTop: "0.25rem",
             }}>
               {profile.email}
             </div>
@@ -291,7 +291,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Form fields */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.375rem" }}>
           {/* Display Name */}
           <div>
             <label htmlFor="profile-display-name" style={labelStyle}>{t("displayName")}</label>
@@ -321,8 +321,8 @@ export default function ProfilePage() {
               }}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
-              margin: "6px 0 0", lineHeight: 1.4,
+              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+              margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("emailReadonlyNote")}
             </p>
@@ -340,7 +340,7 @@ export default function ProfilePage() {
               style={{
                 ...inputStyle,
                 resize: "vertical",
-                minHeight: 100,
+                minHeight: "6.25rem",
                 lineHeight: 1.6,
               }}
             />
@@ -350,15 +350,15 @@ export default function ProfilePage() {
           <div>
             <label style={labelStyle}>{t("yourGoal")}</label>
             <p style={{
-              fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-              margin: "0 0 10px", lineHeight: 1.4,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              margin: "0 0 0.625rem", lineHeight: 1.4,
             }}>
               {t("goalDescription")}
             </p>
             <div style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gap: 10,
+              gap: "0.625rem",
             }}>
               {GOAL_IDS.map((gId) => (
                 <button
@@ -366,15 +366,15 @@ export default function ProfilePage() {
                   onClick={() => setGoal(gId)}
                   aria-pressed={goal === gId}
                   style={{
-                    padding: "14px 16px",
-                    borderRadius: 12,
+                    padding: "0.875rem 1rem",
+                    borderRadius: "0.75rem",
                     border: `2px solid ${goal === gId ? T.color.terracotta : T.color.cream}`,
                     background: goal === gId ? `${T.color.terracotta}12` : T.color.linen,
                     cursor: "pointer",
                     textAlign: "left",
                     transition: "all .2s",
                     fontFamily: T.font.body,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: goal === gId ? 600 : 400,
                     color: goal === gId ? T.color.terracotta : T.color.charcoal,
                   }}
@@ -389,15 +389,15 @@ export default function ProfilePage() {
           <div>
             <label style={labelStyle}>{t("palaceStyle")}</label>
             <p style={{
-              fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-              margin: "0 0 10px", lineHeight: 1.4,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              margin: "0 0 0.625rem", lineHeight: 1.4,
             }}>
               {t("palaceStyleDesc")}
             </p>
             <div style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gap: 10,
+              gap: "0.625rem",
             }}>
               {(["roman", "renaissance"] as const).map((era) => {
                 const isComingSoon = era === "renaissance";
@@ -412,8 +412,8 @@ export default function ProfilePage() {
                     showToast(t("palaceStyleUpdated"), "success");
                   }}
                   style={{
-                    padding: "14px 16px",
-                    borderRadius: 12,
+                    padding: "0.875rem 1rem",
+                    borderRadius: "0.75rem",
                     border: `2px solid ${styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.cream}`,
                     background: styleEra === era && !isComingSoon ? `${era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent}12` : T.color.linen,
                     cursor: isComingSoon ? "default" : "pointer",
@@ -421,16 +421,16 @@ export default function ProfilePage() {
                     textAlign: "left",
                     transition: "all .2s",
                     fontFamily: T.font.body,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: styleEra === era && !isComingSoon ? 600 : 400,
                     color: styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.charcoal,
                   }}
                 >
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>
                     {era === "roman" ? t("romanName") : t("renaissanceName")}
-                    {isComingSoon && <span style={{ fontSize: 11, fontWeight: 600, marginLeft: 8, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("comingSoon")}</span>}
+                    {isComingSoon && <span style={{ fontSize: "0.6875rem", fontWeight: 600, marginLeft: "0.5rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("comingSoon")}</span>}
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 400, color: T.color.muted }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 400, color: T.color.muted }}>
                     {era === "roman" ? t("romanDesc") : t("renaissanceDesc")}
                   </div>
                 </button>
@@ -441,13 +441,13 @@ export default function ProfilePage() {
         </div>
 
         {/* Save button */}
-        <div style={{ marginTop: 28, display: "flex", gap: 12 }}>
+        <div style={{ marginTop: "1.75rem", display: "flex", gap: "0.75rem" }}>
           <button
             onClick={handleSave}
             disabled={!hasChanges || saving}
             style={{
-              padding: "14px 32px",
-              borderRadius: 12,
+              padding: "0.875rem 2rem",
+              borderRadius: "0.75rem",
               border: "none",
               background:
                 !hasChanges || saving
@@ -455,7 +455,7 @@ export default function ProfilePage() {
                   : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
               color: !hasChanges || saving ? T.color.muted : "#FFF",
               fontFamily: T.font.body,
-              fontSize: 15,
+              fontSize: "0.9375rem",
               fontWeight: 600,
               cursor: !hasChanges || saving ? "default" : "pointer",
               transition: "all .2s",
@@ -471,13 +471,13 @@ export default function ProfilePage() {
                 setGoal(profile.goal);
               }}
               style={{
-                padding: "14px 24px",
-                borderRadius: 12,
+                padding: "0.875rem 1.5rem",
+                borderRadius: "0.75rem",
                 border: `1px solid ${T.color.cream}`,
                 background: "transparent",
                 color: T.color.muted,
                 fontFamily: T.font.body,
-                fontSize: 15,
+                fontSize: "0.9375rem",
                 fontWeight: 500,
                 cursor: "pointer",
                 transition: "all .2s",
@@ -492,43 +492,43 @@ export default function ProfilePage() {
       {/* ── Account Section ── */}
       <div style={{
         background: T.color.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${T.color.cream}`,
-        padding: "28px 32px",
+        padding: "1.75rem 2rem",
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-        marginBottom: 24,
+        marginBottom: "1.5rem",
       }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 6px",
+          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 0.375rem",
         }}>
           {t("account")}
         </h3>
         <p style={{
-          fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
-          margin: "0 0 22px", lineHeight: 1.5,
+          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+          margin: "0 0 1.375rem", lineHeight: 1.5,
         }}>
           {t("accountDescription")}
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {/* Change Password */}
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "18px 20px", borderRadius: 12,
+            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
             background: T.color.linen,
             border: `1px solid ${T.color.cream}`,
           }}>
             <div>
               <div style={{
-                fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
+                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
                 color: T.color.charcoal,
               }}>
                 {t("changePassword")}
               </div>
               <div style={{
-                fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-                marginTop: 4,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                marginTop: "0.25rem",
               }}>
                 {t("changePasswordDesc")}
               </div>
@@ -536,12 +536,12 @@ export default function ProfilePage() {
             <button
               onClick={handlePasswordReset}
               style={{
-                padding: "12px 24px",
-                borderRadius: 10,
+                padding: "0.75rem 1.5rem",
+                borderRadius: "0.625rem",
                 border: `1px solid ${T.color.cream}`,
                 background: T.color.white,
                 fontFamily: T.font.body,
-                fontSize: 14,
+                fontSize: "0.875rem",
                 fontWeight: 500,
                 color: T.color.charcoal,
                 cursor: "pointer",
@@ -556,20 +556,20 @@ export default function ProfilePage() {
           {/* Download My Data */}
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "18px 20px", borderRadius: 12,
+            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
             background: T.color.linen,
             border: `1px solid ${T.color.cream}`,
           }}>
             <div>
               <div style={{
-                fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
+                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
                 color: T.color.charcoal,
               }}>
                 {t("exportZip")}
               </div>
               <div style={{
-                fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-                marginTop: 4, maxWidth: 380, lineHeight: 1.4,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                marginTop: "0.25rem", maxWidth: "23.75rem", lineHeight: 1.4,
               }}>
                 {t("exportZipDesc")}
               </div>
@@ -578,12 +578,12 @@ export default function ProfilePage() {
               onClick={handleExportData}
               disabled={exporting}
               style={{
-                padding: "12px 24px",
-                borderRadius: 10,
+                padding: "0.75rem 1.5rem",
+                borderRadius: "0.625rem",
                 border: `1px solid ${T.color.cream}`,
                 background: exporting ? `${T.color.sandstone}60` : T.color.white,
                 fontFamily: T.font.body,
-                fontSize: 14,
+                fontSize: "0.875rem",
                 fontWeight: 500,
                 color: exporting ? T.color.muted : T.color.charcoal,
                 cursor: exporting ? "default" : "pointer",
@@ -603,30 +603,30 @@ export default function ProfilePage() {
       {/* ── Language ── */}
       <div style={{
         background: T.color.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${T.color.cream}`,
-        padding: "28px 32px",
+        padding: "1.75rem 2rem",
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-        marginBottom: 24,
+        marginBottom: "1.5rem",
       }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 16px",
+          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 1rem",
         }}>
           {tc("language")}
         </h3>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: "0.625rem" }}>
           <button
             onClick={() => setLocale("en")}
             aria-pressed={locale === "en"}
             style={{
-              padding: "14px 24px",
-              borderRadius: 12,
+              padding: "0.875rem 1.5rem",
+              borderRadius: "0.75rem",
               border: `2px solid ${locale === "en" ? T.color.terracotta : T.color.cream}`,
               background: locale === "en" ? `${T.color.terracotta}12` : T.color.linen,
               cursor: "pointer",
               fontFamily: T.font.body,
-              fontSize: 15,
+              fontSize: "0.9375rem",
               fontWeight: locale === "en" ? 600 : 400,
               color: locale === "en" ? T.color.terracotta : T.color.charcoal,
               transition: "all .2s",
@@ -638,13 +638,13 @@ export default function ProfilePage() {
             onClick={() => setLocale("nl")}
             aria-pressed={locale === "nl"}
             style={{
-              padding: "14px 24px",
-              borderRadius: 12,
+              padding: "0.875rem 1.5rem",
+              borderRadius: "0.75rem",
               border: `2px solid ${locale === "nl" ? T.color.terracotta : T.color.cream}`,
               background: locale === "nl" ? `${T.color.terracotta}12` : T.color.linen,
               cursor: "pointer",
               fontFamily: T.font.body,
-              fontSize: 15,
+              fontSize: "0.9375rem",
               fontWeight: locale === "nl" ? 600 : 400,
               color: locale === "nl" ? T.color.terracotta : T.color.charcoal,
               transition: "all .2s",
@@ -658,34 +658,34 @@ export default function ProfilePage() {
       {/* ── Accessibility ── */}
       <div style={{
         background: T.color.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid ${T.color.cream}`,
-        padding: "28px 32px",
+        padding: "1.75rem 2rem",
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-        marginBottom: 24,
+        marginBottom: "1.5rem",
       }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 16px",
+          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 1rem",
         }}>
           {tA11y("title")}
         </h3>
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "18px 20px", borderRadius: 12,
+          padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
           background: T.color.linen,
           border: `1px solid ${T.color.cream}`,
         }}>
           <div>
             <div style={{
-              fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
+              fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
               color: T.color.charcoal,
             }}>
               {tA11y("mode")}
             </div>
             <div style={{
-              fontFamily: T.font.body, fontSize: 13, color: T.color.muted,
-              marginTop: 4, lineHeight: 1.4,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              marginTop: "0.25rem", lineHeight: 1.4,
             }}>
               {tA11y("modeDescription")}
             </div>
@@ -698,9 +698,9 @@ export default function ProfilePage() {
               showToast(accessibilityMode ? tA11y("disabled") : tA11y("enabled"), "success");
             }}
             style={{
-              width: 52,
-              height: 28,
-              borderRadius: 14,
+              width: "3.25rem",
+              height: "1.75rem",
+              borderRadius: "0.875rem",
               border: "none",
               background: accessibilityMode
                 ? T.color.sage
@@ -714,10 +714,10 @@ export default function ProfilePage() {
             <span style={{
               position: "absolute",
               top: 3,
-              left: accessibilityMode ? 27 : 3,
-              width: 22,
-              height: 22,
-              borderRadius: 11,
+              left: accessibilityMode ? "1.6875rem" : 3,
+              width: "1.375rem",
+              height: "1.375rem",
+              borderRadius: "0.6875rem",
               background: T.color.white,
               boxShadow: "0 1px 4px rgba(0,0,0,.15)",
               transition: "left .2s",
@@ -729,20 +729,20 @@ export default function ProfilePage() {
       {/* ── Danger Zone ── */}
       <div style={{
         background: T.color.white,
-        borderRadius: 16,
+        borderRadius: "1rem",
         border: `1px solid #C0505020`,
-        padding: "28px 32px",
+        padding: "1.75rem 2rem",
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
       }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: 20, fontWeight: 500,
-          color: "#C05050", margin: "0 0 6px",
+          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+          color: "#C05050", margin: "0 0 0.375rem",
         }}>
           {t("dangerZone")}
         </h3>
         <p style={{
-          fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
-          margin: "0 0 18px", lineHeight: 1.5,
+          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+          margin: "0 0 1.125rem", lineHeight: 1.5,
         }}>
           {t("dangerDescription")}
         </p>
@@ -751,12 +751,12 @@ export default function ProfilePage() {
           <button
             onClick={() => setDeleteConfirm(true)}
             style={{
-              padding: "14px 28px",
-              borderRadius: 12,
+              padding: "0.875rem 1.75rem",
+              borderRadius: "0.75rem",
               border: `1px solid #C0505033`,
               background: "#C0505008",
               fontFamily: T.font.body,
-              fontSize: 15,
+              fontSize: "0.9375rem",
               fontWeight: 600,
               color: "#C05050",
               cursor: "pointer",
@@ -767,19 +767,19 @@ export default function ProfilePage() {
           </button>
         ) : (
           <div style={{
-            padding: "20px 24px", borderRadius: 14,
+            padding: "1.25rem 1.5rem", borderRadius: "0.875rem",
             background: "#FDF2F2",
             border: "1px solid #FECACA",
           }}>
             <p style={{
-              fontFamily: T.font.body, fontSize: 15, fontWeight: 500,
-              color: "#B91C1C", margin: "0 0 12px",
+              fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+              color: "#B91C1C", margin: "0 0 0.75rem",
             }}>
               {t("deleteConfirmTitle")}
             </p>
             <p style={{
-              fontFamily: T.font.body, fontSize: 14, color: "#7F1D1D",
-              margin: "0 0 16px", lineHeight: 1.5,
+              fontFamily: T.font.body, fontSize: "0.875rem", color: "#7F1D1D",
+              margin: "0 0 1rem", lineHeight: 1.5,
             }}
               dangerouslySetInnerHTML={{ __html: t("deleteConfirmDescription") }}
             />
@@ -793,16 +793,16 @@ export default function ProfilePage() {
               style={{
                 ...inputStyle,
                 borderColor: "#FECACA",
-                marginBottom: 14,
+                marginBottom: "0.875rem",
               }}
             />
-            <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ display: "flex", gap: "0.625rem" }}>
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteText !== "DELETE" || deleting}
                 style={{
-                  padding: "12px 24px",
-                  borderRadius: 10,
+                  padding: "0.75rem 1.5rem",
+                  borderRadius: "0.625rem",
                   border: "none",
                   background:
                     deleteText === "DELETE" && !deleting
@@ -813,7 +813,7 @@ export default function ProfilePage() {
                       ? "#FFF"
                       : T.color.muted,
                   fontFamily: T.font.body,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   fontWeight: 600,
                   cursor:
                     deleteText === "DELETE" && !deleting
@@ -830,12 +830,12 @@ export default function ProfilePage() {
                   setDeleteText("");
                 }}
                 style={{
-                  padding: "12px 24px",
-                  borderRadius: 10,
+                  padding: "0.75rem 1.5rem",
+                  borderRadius: "0.625rem",
                   border: `1px solid ${T.color.cream}`,
                   background: T.color.white,
                   fontFamily: T.font.body,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   fontWeight: 500,
                   color: T.color.charcoal,
                   cursor: "pointer",
@@ -859,23 +859,23 @@ export default function ProfilePage() {
 // ── Shared styles ──
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 600,
   color: T.color.walnut,
   letterSpacing: ".3px",
   textTransform: "uppercase" as const,
   display: "block",
-  marginBottom: 8,
+  marginBottom: "0.5rem",
 };
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  padding: "14px 18px",
-  borderRadius: 12,
+  padding: "0.875rem 1.125rem",
+  borderRadius: "0.75rem",
   border: `1.5px solid ${T.color.sandstone}`,
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: 15,
+  fontSize: "0.9375rem",
   color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box" as const,

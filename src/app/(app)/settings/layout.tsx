@@ -34,28 +34,28 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     }}>
       {/* Top bar */}
       <header style={{
-        padding: isMobile ? "12px 16px" : "16px 28px",
+        padding: isMobile ? "0.75rem 1rem" : "1rem 1.75rem",
         display: "flex",
         alignItems: "center",
-        gap: 16,
+        gap: "1rem",
         borderBottom: `1px solid ${T.color.cream}`,
         background: `${T.color.linen}e0`,
         backdropFilter: "blur(12px)",
       }}>
         <Link href="/palace" style={{
-          display: "flex", alignItems: "center", gap: 8,
+          display: "flex", alignItems: "center", gap: "0.5rem",
           textDecoration: "none", color: T.color.muted,
           fontFamily: T.font.body,
-          fontSize: isMobile ? 15 : 13,
-          minHeight: isMobile ? 44 : undefined,
+          fontSize: isMobile ? "0.9375rem" : "0.8125rem",
+          minHeight: isMobile ? "2.75rem" : undefined,
           transition: "color .2s",
         }}>
-          <span style={{ fontSize: isMobile ? 20 : 18 }}>{"\u2190"}</span>
+          <span style={{ fontSize: isMobile ? "1.25rem" : "1.125rem" }}>{"\u2190"}</span>
           {tc("backToPalace")}
         </Link>
-        <div style={{ width: 1, height: 20, background: T.color.cream }} />
+        <div style={{ width: 1, height: "1.25rem", background: T.color.cream }} />
         <h1 style={{
-          fontFamily: T.font.display, fontSize: 22 * scale, fontWeight: 500,
+          fontFamily: T.font.display, fontSize: `${1.375 * scale}rem`, fontWeight: 500,
           color: T.color.charcoal, margin: 0,
         }}>
           {tc("settings")}
@@ -76,24 +76,24 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             whiteSpace: "nowrap",
             borderBottom: `1px solid ${T.color.cream}`,
             background: T.color.white,
-            padding: "4px 8px",
+            padding: "0.25rem 0.5rem",
             WebkitOverflowScrolling: "touch",
           }}>
             {filteredItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
               return (
                 <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  minHeight: 44,
-                  padding: "10px 16px",
-                  borderRadius: 10,
+                  display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                  minHeight: "2.75rem",
+                  padding: "0.625rem 1rem",
+                  borderRadius: "0.625rem",
                   textDecoration: "none",
                   background: isActive ? `${T.color.terracotta}10` : "transparent",
                   color: isActive ? T.color.terracotta : T.color.charcoal,
-                  fontFamily: T.font.body, fontSize: 14 * scale, fontWeight: isActive ? 600 : 400,
+                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 400,
                   transition: "all .15s",
                 }}>
-                  <span style={{ fontSize: 16 }}>{item.icon}</span>
+                  <span style={{ fontSize: "1rem" }}>{item.icon}</span>
                   {tc(item.labelKey)}
                 </Link>
               );
@@ -102,25 +102,25 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             <button
               onClick={() => signOut()}
               style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                minHeight: 44,
-                padding: "10px 16px",
-                borderRadius: 10,
+                display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                minHeight: "2.75rem",
+                padding: "0.625rem 1rem",
+                borderRadius: "0.625rem",
                 border: "none",
                 background: "transparent",
                 color: T.color.muted,
-                fontFamily: T.font.body, fontSize: 14, fontWeight: 400,
+                fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 400,
                 cursor: "pointer",
                 transition: "all .15s",
               }}
             >
-              <span style={{ fontSize: 16 }}>{"\u{1F6AA}"}</span>
+              <span style={{ fontSize: "1rem" }}>{"\u{1F6AA}"}</span>
               {tc("signOut")}
             </button>
           </nav>
 
           {/* Content */}
-          <section style={{ flex: 1, minWidth: 0, padding: "16px 12px" }}>
+          <section style={{ flex: 1, minWidth: 0, padding: "1rem 0.75rem" }}>
             {children}
           </section>
         </div>
@@ -130,21 +130,21 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           display: "flex",
           maxWidth: 1100,
           margin: "0 auto",
-          padding: "32px 28px",
-          gap: 32,
+          padding: "2rem 1.75rem",
+          gap: "2rem",
         }}>
           {/* Sidebar */}
           <nav aria-label={tc("settingsNavigation")} style={{
-            width: 220,
+            width: "13.75rem",
             flexShrink: 0,
             display: "flex",
             flexDirection: "column",
           }}>
             <div style={{
               background: T.color.white,
-              borderRadius: 16,
+              borderRadius: "1rem",
               border: `1px solid ${T.color.cream}`,
-              padding: 8,
+              padding: "0.5rem",
               boxShadow: "0 2px 8px rgba(44,44,42,.04)",
               display: "flex",
               flexDirection: "column",
@@ -154,15 +154,15 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
                   <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "12px 14px", borderRadius: 10,
+                    display: "flex", alignItems: "center", gap: "0.625rem",
+                    padding: "0.75rem 0.875rem", borderRadius: "0.625rem",
                     textDecoration: "none",
                     background: isActive ? `${T.color.terracotta}10` : "transparent",
                     color: isActive ? T.color.terracotta : T.color.charcoal,
-                    fontFamily: T.font.body, fontSize: 14 * scale, fontWeight: isActive ? 600 : 400,
+                    fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 400,
                     transition: "all .15s",
                   }}>
-                    <span style={{ fontSize: 16 }}>{item.icon}</span>
+                    <span style={{ fontSize: "1rem" }}>{item.icon}</span>
                     {tc(item.labelKey)}
                   </Link>
                 );
@@ -172,19 +172,19 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               <button
                 onClick={() => signOut()}
                 style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "12px 14px", borderRadius: 10,
+                  display: "flex", alignItems: "center", gap: "0.625rem",
+                  padding: "0.75rem 0.875rem", borderRadius: "0.625rem",
                   border: "none",
                   background: "transparent",
                   color: T.color.muted,
-                  fontFamily: T.font.body, fontSize: 14, fontWeight: 400,
+                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 400,
                   cursor: "pointer",
                   transition: "all .15s",
                   width: "100%",
-                  marginTop: 4,
+                  marginTop: "0.25rem",
                 }}
               >
-                <span style={{ fontSize: 16 }}>{"\u{1F6AA}"}</span>
+                <span style={{ fontSize: "1rem" }}>{"\u{1F6AA}"}</span>
                 {tc("signOut")}
               </button>
             </div>

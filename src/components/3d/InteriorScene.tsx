@@ -739,7 +739,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
           // Draw loading frame on canvas
           vctx.fillStyle="#1A1510";vctx.fillRect(0,0,384,256);
           vctx.fillStyle="rgba(255,255,255,.3)";vctx.font="16px Georgia,serif";vctx.textAlign="center";
-          vctx.fillText("Loading video...",192,128);vtex.needsUpdate=true;
+          vctx.fillText(t("loadingVideo"),192,128);vtex.needsUpdate=true;
           // Try unmuted first (volume=0); if blocked, fall back to muted autoplay
           videoEl.muted=false;
           videoEl.play().catch(()=>{videoEl!.muted=true;videoEl!.play().catch(()=>{});});
@@ -1367,38 +1367,38 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     const hasMultiple=playlist.length>1;
     const switchTrack=isVid?switchVideoTrack:switchAudioTrack;
     return(
-    <div style={{background:"rgba(30,26,22,.88)",backdropFilter:"blur(16px)",borderRadius:14,border:`1px solid ${barBorder}`,padding:"8px 12px",display:"flex",flexWrap:"wrap",alignItems:"center",gap:8,boxShadow:"0 8px 40px rgba(0,0,0,.35)",maxWidth:"min(580px, 92vw)"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()}>
-      <div style={{width:28,height:28,borderRadius:isVid?6:14,background:isVid?"linear-gradient(135deg,#1A2744,#3A5A7A)":"linear-gradient(135deg,#3A2010,#6A4A2A)",display:"flex",alignItems:"center",justifyContent:"center",border:`1.5px solid ${barAccent}40`,flexShrink:0}}>
-        <span style={{fontSize:13}}>{isVid?"\uD83D\uDCFA":"\uD83D\uDCBF"}</span>
+    <div style={{background:"rgba(30,26,22,.88)",backdropFilter:"blur(16px)",borderRadius:"0.875rem",border:`1px solid ${barBorder}`,padding:"0.5rem 0.75rem",display:"flex",flexWrap:"wrap",alignItems:"center",gap:"0.5rem",boxShadow:"0 8px 40px rgba(0,0,0,.35)",maxWidth:"min(580px, 92vw)"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()}>
+      <div style={{width:"1.75rem",height:"1.75rem",borderRadius:isVid?"0.375rem":"0.875rem",background:isVid?"linear-gradient(135deg,#1A2744,#3A5A7A)":"linear-gradient(135deg,#3A2010,#6A4A2A)",display:"flex",alignItems:"center",justifyContent:"center",border:`1.5px solid ${barAccent}40`,flexShrink:0}}>
+        <span style={{fontSize:"0.8125rem"}}>{isVid?"\uD83D\uDCFA":"\uD83D\uDCBF"}</span>
       </div>
-      <div style={{minWidth:0,maxWidth:120}}>
-        <div style={{fontFamily:"system-ui,sans-serif",fontSize:8,color:barAccent,textTransform:"uppercase",letterSpacing:"1.2px",fontWeight:700,marginBottom:1}}>
+      <div style={{minWidth:0,maxWidth:"7.5rem"}}>
+        <div style={{fontFamily:"system-ui,sans-serif",fontSize:"0.5rem",color:barAccent,textTransform:"uppercase",letterSpacing:"1.2px",fontWeight:700,marginBottom:1}}>
           {isVid?t("cinemaScreen"):t("vinylPlayer")}{hasMultiple?` (${curIdx+1}/${playlist.length})`:""}
         </div>
-        <div style={{fontFamily:"Georgia,serif",fontSize:11,color:"#F0EAE0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{title}</div>
-        <div style={{fontFamily:"system-ui,sans-serif",fontSize:9,color:"rgba(240,234,224,.5)",marginTop:1}}>{fmt(st.time)} / {fmt(st.duration)}</div>
+        <div style={{fontFamily:"Georgia,serif",fontSize:"0.6875rem",color:"#F0EAE0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{title}</div>
+        <div style={{fontFamily:"system-ui,sans-serif",fontSize:"0.5625rem",color:"rgba(240,234,224,.5)",marginTop:1}}>{fmt(st.time)} / {fmt(st.duration)}</div>
       </div>
-      <div style={{flex:"1 1 60px",minWidth:40,height:4,background:"rgba(255,255,255,.12)",borderRadius:2,cursor:"pointer"}} onClick={e=>{const r=e.currentTarget.getBoundingClientRect();const pct=(e.clientX-r.left)/r.width;act(ref,el=>{if(el.duration)el.currentTime=pct*el.duration;});}}>
+      <div style={{flex:"1 1 3.75rem",minWidth:"2.5rem",height:4,background:"rgba(255,255,255,.12)",borderRadius:2,cursor:"pointer"}} onClick={e=>{const r=e.currentTarget.getBoundingClientRect();const pct=(e.clientX-r.left)/r.width;act(ref,el=>{if(el.duration)el.currentTime=pct*el.duration;});}}>
         <div style={{width:`${st.duration?(st.time/st.duration)*100:0}%`,height:"100%",background:barAccent,borderRadius:2,transition:"width .2s"}}/>
       </div>
-      <div style={{display:"flex",gap:3,alignItems:"center"}}>
+      <div style={{display:"flex",gap:"0.1875rem",alignItems:"center"}}>
         {/* Prev track */}
-        {hasMultiple&&<button onClick={()=>switchTrack(curIdx-1)} title={t("previous")} style={{width:28,height:28,fontSize:11,...btnS}}>{"\u23EE"}</button>}
-        <button onClick={()=>act(ref,el=>{el.pause();el.currentTime=0;})} title={t("stop")} style={{width:28,height:28,fontSize:13,...btnS}}>{"\u23F9"}</button>
+        {hasMultiple&&<button onClick={()=>switchTrack(curIdx-1)} title={t("previous")} style={{width:"1.75rem",height:"1.75rem",fontSize:"0.6875rem",...btnS}}>{"\u23EE"}</button>}
+        <button onClick={()=>act(ref,el=>{el.pause();el.currentTime=0;})} title={t("stop")} style={{width:"1.75rem",height:"1.75rem",fontSize:"0.8125rem",...btnS}}>{"\u23F9"}</button>
         {st.playing
-          ?<button onClick={()=>act(ref,el=>el.pause())} title={t("pause")} style={{width:32,height:32,fontSize:14,...btnS,borderRadius:10,background:barAccent,color:"#FFF"}}>{"\u23F8"}</button>
-          :<button onClick={()=>act(ref,el=>{el.muted=false;el.play().catch(()=>{});})} title={t("play")} style={{width:32,height:32,fontSize:14,...btnS,borderRadius:10,background:barAccent,color:"#FFF"}}>{"\u25B6"}</button>
+          ?<button onClick={()=>act(ref,el=>el.pause())} title={t("pause")} style={{width:"2rem",height:"2rem",fontSize:"0.875rem",...btnS,borderRadius:"0.625rem",background:barAccent,color:"#FFF"}}>{"\u23F8"}</button>
+          :<button onClick={()=>act(ref,el=>{el.muted=false;el.play().catch(()=>{});})} title={t("play")} style={{width:"2rem",height:"2rem",fontSize:"0.875rem",...btnS,borderRadius:"0.625rem",background:barAccent,color:"#FFF"}}>{"\u25B6"}</button>
         }
         {/* Next track */}
-        {hasMultiple&&<button onClick={()=>switchTrack(curIdx+1)} title={t("next")} style={{width:28,height:28,fontSize:11,...btnS}}>{"\u23ED"}</button>}
-        <button onClick={()=>act(ref,el=>{el.loop=!el.loop;})} title={st.loop?t("loopOn"):t("loopOff")} style={{width:28,height:28,fontSize:12,...btnS,border:st.loop?`1.5px solid ${barAccent}`:"none",background:st.loop?`${barAccent}20`:"rgba(255,255,255,.08)",color:st.loop?barAccent:"#F0EAE0"}}>{"\uD83D\uDD01"}</button>
+        {hasMultiple&&<button onClick={()=>switchTrack(curIdx+1)} title={t("next")} style={{width:"1.75rem",height:"1.75rem",fontSize:"0.6875rem",...btnS}}>{"\u23ED"}</button>}
+        <button onClick={()=>act(ref,el=>{el.loop=!el.loop;})} title={st.loop?t("loopOn"):t("loopOff")} style={{width:"1.75rem",height:"1.75rem",fontSize:"0.75rem",...btnS,border:st.loop?`1.5px solid ${barAccent}`:"none",background:st.loop?`${barAccent}20`:"rgba(255,255,255,.08)",color:st.loop?barAccent:"#F0EAE0"}}>{"\uD83D\uDD01"}</button>
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:4}}>
-        <span style={{fontSize:11,color:"rgba(240,234,224,.5)"}}>{"\uD83D\uDD0A"}</span>
+      <div style={{display:"flex",alignItems:"center",gap:"0.25rem"}}>
+        <span style={{fontSize:"0.6875rem",color:"rgba(240,234,224,.5)"}}>{"\uD83D\uDD0A"}</span>
         <input type="range" min={0} max={1} step={0.01} value={st.volume} onChange={e=>{const v=parseFloat(e.target.value);volOverride.current[type]=v;act(ref,el=>{el.muted=false;el.volume=v;});}}
-          style={{width:50,height:4,accentColor:barAccent,cursor:"pointer"}}/>
+          style={{width:"3.125rem",height:4,accentColor:barAccent,cursor:"pointer"}}/>
       </div>
-      <button onClick={()=>setShowMedia(s=>({...s,[type]:false}))} aria-label="Close" style={{...btnS,width:24,height:24,borderRadius:12,fontSize:11,color:"rgba(240,234,224,.6)"}}>{"\u2715"}</button>
+      <button onClick={()=>setShowMedia(s=>({...s,[type]:false}))} aria-label="Close" style={{...btnS,width:"1.5rem",height:"1.5rem",borderRadius:"0.75rem",fontSize:"0.6875rem",color:"rgba(240,234,224,.6)"}}>{"\u2715"}</button>
     </div>
     );
   };
@@ -1408,7 +1408,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
   return(
     <div style={{position:"relative",width:"100%",height:"100%"}}>
       <div ref={mountRef} style={{width:"100%",height:"100%"}}/>
-      {hasMedia&&<div style={{position:"absolute",bottom:60,left:"50%",transform:"translateX(-50%)",zIndex:40,animation:"fadeUp .25s ease",display:"flex",flexDirection:"column",gap:8,alignItems:"center"}}>
+      {hasMedia&&<div style={{position:"absolute",bottom:"3.75rem",left:"50%",transform:"translateX(-50%)",zIndex:40,animation:"fadeUp .25s ease",display:"flex",flexDirection:"column",gap:"0.5rem",alignItems:"center"}}>
         {showMedia.video&&videoElRef.current&&renderBar("video",videoElRef,vidState,allVideoMems.current[vidIdx]?.title||"Video")}
         {showMedia.audio&&audioElRef.current&&renderBar("audio",audioElRef,audState,allAudioMems.current[audIdx]?.title||"Audio")}
       </div>}

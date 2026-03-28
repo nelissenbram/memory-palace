@@ -50,9 +50,9 @@ export default function NotificationBell() {
         onClick={toggle}
         title={t("title")}
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 18,
+          width: "2.25rem",
+          height: "2.25rem",
+          borderRadius: "1.125rem",
           border: `1px solid ${open ? T.color.sandstone : T.color.cream}`,
           background: open ? `${T.color.sandstone}30` : `${T.color.white}ee`,
           backdropFilter: "blur(10px)",
@@ -102,23 +102,23 @@ export default function NotificationBell() {
           <div
             style={{
               position: "absolute",
-              top: -2,
-              right: -2,
-              minWidth: 16,
-              height: 16,
-              borderRadius: 8,
+              top: "-0.125rem",
+              right: "-0.125rem",
+              minWidth: "1rem",
+              height: "1rem",
+              borderRadius: "0.5rem",
               background: T.color.terracotta,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              padding: "0 4px",
+              padding: "0 0.25rem",
               border: `1.5px solid ${T.color.linen}`,
             }}
           >
             <span
               style={{
                 fontFamily: T.font.body,
-                fontSize: 9,
+                fontSize: "0.5625rem",
                 fontWeight: 700,
                 color: "#FFF",
                 lineHeight: 1,
@@ -135,14 +135,14 @@ export default function NotificationBell() {
         <div
           style={{
             position: "absolute",
-            top: 44,
+            top: "2.75rem",
             right: 0,
-            width: 320,
-            maxHeight: 400,
+            width: "20rem",
+            maxHeight: "25rem",
             background: `${T.color.linen}f8`,
             backdropFilter: "blur(16px)",
             WebkitBackdropFilter: "blur(16px)",
-            borderRadius: 16,
+            borderRadius: "1rem",
             border: `1px solid ${T.color.cream}`,
             boxShadow: "0 12px 48px rgba(44,44,42,.18)",
             overflow: "hidden",
@@ -155,14 +155,14 @@ export default function NotificationBell() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "14px 16px 10px",
+              padding: "0.875rem 1rem 0.625rem",
               borderBottom: `1px solid ${T.color.cream}`,
             }}
           >
             <span
               style={{
                 fontFamily: T.font.display,
-                fontSize: 15,
+                fontSize: "0.9375rem",
                 fontWeight: 600,
                 color: T.color.charcoal,
               }}
@@ -174,13 +174,13 @@ export default function NotificationBell() {
                 onClick={() => markAllRead()}
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: 11,
+                  fontSize: "0.6875rem",
                   color: T.color.terracotta,
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  padding: "2px 6px",
-                  borderRadius: 6,
+                  padding: "0.125rem 0.375rem",
+                  borderRadius: "0.375rem",
                   transition: "background .15s",
                 }}
                 onMouseEnter={(e) => {
@@ -196,14 +196,14 @@ export default function NotificationBell() {
           </div>
 
           {/* List */}
-          <div style={{ overflowY: "auto", maxHeight: 340, padding: "4px 0" }}>
+          <div style={{ overflowY: "auto", maxHeight: "21.25rem", padding: "0.25rem 0" }}>
             {loading && notifications.length === 0 && (
               <div
                 style={{
-                  padding: "32px 16px",
+                  padding: "2rem 1rem",
                   textAlign: "center",
                   fontFamily: T.font.body,
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   color: T.color.muted,
                 }}
               >
@@ -214,17 +214,17 @@ export default function NotificationBell() {
             {!loading && notifications.length === 0 && (
               <div
                 style={{
-                  padding: "32px 16px",
+                  padding: "2rem 1rem",
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.5 }}>
+                <div style={{ fontSize: "1.75rem", marginBottom: "0.5rem", opacity: 0.5 }}>
                   {"\uD83D\uDD14"}
                 </div>
                 <div
                   style={{
                     fontFamily: T.font.body,
-                    fontSize: 13,
+                    fontSize: "0.8125rem",
                     color: T.color.muted,
                   }}
                 >
@@ -233,9 +233,9 @@ export default function NotificationBell() {
                 <div
                   style={{
                     fontFamily: T.font.body,
-                    fontSize: 11,
+                    fontSize: "0.6875rem",
                     color: T.color.muted,
-                    marginTop: 4,
+                    marginTop: "0.25rem",
                     opacity: 0.7,
                   }}
                 >
@@ -255,9 +255,9 @@ export default function NotificationBell() {
                 style={{
                   display: "flex",
                   alignItems: "flex-start",
-                  gap: 10,
+                  gap: "0.625rem",
                   width: "100%",
-                  padding: "10px 16px",
+                  padding: "0.625rem 1rem",
                   border: "none",
                   background: n.read ? "transparent" : `${T.color.terracotta}06`,
                   cursor: "pointer",
@@ -277,18 +277,18 @@ export default function NotificationBell() {
                 {/* Icon */}
                 <div
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
+                    width: "2rem",
+                    height: "2rem",
+                    borderRadius: "0.625rem",
                     background: n.read
                       ? `${T.color.sandstone}18`
                       : `${T.color.terracotta}12`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     flexShrink: 0,
-                    marginTop: 1,
+                    marginTop: "0.0625rem",
                   }}
                 >
                   {n.type === "new_contribution" ? "\u{1F4DD}" : "\u{1F514}"}
@@ -299,7 +299,7 @@ export default function NotificationBell() {
                   <div
                     style={{
                       fontFamily: T.font.body,
-                      fontSize: 12,
+                      fontSize: "0.75rem",
                       fontWeight: n.read ? 400 : 500,
                       color: n.read ? T.color.muted : T.color.charcoal,
                       lineHeight: 1.4,
@@ -310,9 +310,9 @@ export default function NotificationBell() {
                   <div
                     style={{
                       fontFamily: T.font.body,
-                      fontSize: 10,
+                      fontSize: "0.625rem",
                       color: T.color.muted,
-                      marginTop: 2,
+                      marginTop: "0.125rem",
                     }}
                   >
                     {timeAgo(n.created_at, t)}
@@ -323,12 +323,12 @@ export default function NotificationBell() {
                 {!n.read && (
                   <div
                     style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: 3,
+                      width: "0.375rem",
+                      height: "0.375rem",
+                      borderRadius: "0.1875rem",
                       background: T.color.terracotta,
                       flexShrink: 0,
-                      marginTop: 6,
+                      marginTop: "0.375rem",
                     }}
                   />
                 )}

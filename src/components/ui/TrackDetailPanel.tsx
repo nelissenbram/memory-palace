@@ -1,6 +1,7 @@
 "use client";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { TRACK_MAP } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
 
@@ -12,6 +13,8 @@ interface TrackDetailPanelProps {
 
 export default function TrackDetailPanel({ trackId, onClose, onNavigate }: TrackDetailPanelProps) {
   const { t } = useTranslation("trackDetail");
+  const { t: tTrack } = useTranslation("tracksPanel");
+  const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { getTrackProgress, setShowLegacyPanel } = useTrackStore();
   const track = TRACK_MAP[trackId];
   const progress = getTrackProgress(trackId);
@@ -43,10 +46,10 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
         background: "rgba(42,34,24,.45)", backdropFilter: "blur(6px)",
       }} />
 
-      <div style={{
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={tTrack(track.nameKey)} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} style={{
         position: "relative", zIndex: 1,
-        width: "95%", maxWidth: 520, maxHeight: "85vh",
-        background: T.color.linen, borderRadius: 20,
+        width: "95%", maxWidth: "32.5rem", maxHeight: "85vh",
+        background: T.color.linen, borderRadius: "1.25rem",
         boxShadow: "0 24px 80px rgba(44,44,42,.3)",
         border: `1px solid ${T.color.cream}`,
         display: "flex", flexDirection: "column",
@@ -55,52 +58,52 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
       }}>
         {/* Header */}
         <div style={{
-          padding: "24px 24px 20px",
+          padding: "1.5rem 1.5rem 1.25rem",
           borderBottom: `1px solid ${T.color.cream}`,
           background: `linear-gradient(180deg, ${track.color}08 0%, ${T.color.linen} 100%)`,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <div style={{
-                width: 48, height: 48, borderRadius: 14,
+                width: "3rem", height: "3rem", borderRadius: "0.875rem",
                 background: `${track.color}18`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 24,
+                fontSize: "1.5rem",
               }}>{track.icon}</div>
               <div>
                 <h2 style={{
-                  fontFamily: T.font.display, fontSize: 22, fontWeight: 600,
+                  fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
                   color: T.color.charcoal, margin: 0,
-                }}>{track.name}</h2>
+                }}>{tTrack(track.nameKey)}</h2>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: 0,
-                }}>{track.description}</p>
+                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: 0,
+                }}>{tTrack(track.descriptionKey)}</p>
               </div>
             </div>
             <button onClick={onClose} style={{
-              width: 32, height: 32, borderRadius: 16, border: `1px solid ${T.color.cream}`,
-              background: T.color.white, cursor: "pointer", fontSize: 16, color: T.color.muted,
+              width: "2rem", height: "2rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
+              background: T.color.white, cursor: "pointer", fontSize: "1rem", color: T.color.muted,
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
             }}>{"\u2715"}</button>
           </div>
 
           {/* Progress bar */}
-          <div style={{ marginTop: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-              <span style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
+          <div style={{ marginTop: "1rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.375rem" }}>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
                 {progress.stepsCompleted.length} {t("of")} {track.steps.length} {t("completed")}
               </span>
               <span style={{
-                fontFamily: T.font.body, fontSize: 12, fontWeight: 600,
+                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
                 color: isComplete ? "#4A6741" : track.color,
               }}>{pct}%</span>
             </div>
             <div style={{
-              width: "100%", height: 8, borderRadius: 4,
+              width: "100%", height: "0.5rem", borderRadius: "0.25rem",
               background: `${T.color.sandstone}20`, overflow: "hidden",
             }}>
               <div style={{
-                width: `${pct}%`, height: "100%", borderRadius: 4,
+                width: `${pct}%`, height: "100%", borderRadius: "0.25rem",
                 background: isComplete
                   ? "linear-gradient(90deg,#4A6741,#5A8751)"
                   : `linear-gradient(90deg,${track.color}cc,${track.color})`,
@@ -111,9 +114,9 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
 
           {isComplete && (
             <div style={{
-              marginTop: 12, padding: "8px 12px", borderRadius: 8,
+              marginTop: "0.75rem", padding: "0.5rem 0.75rem", borderRadius: "0.5rem",
               background: "#4A674110", border: "1px solid #4A674120",
-              fontFamily: T.font.body, fontSize: 12, color: "#4A6741",
+              fontFamily: T.font.body, fontSize: "0.75rem", color: "#4A6741",
               textAlign: "center",
             }}>
               {t("trackCompleted", { points: String(track.completionBonus) })}
@@ -123,8 +126,8 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
 
         {/* Steps list */}
         <div style={{
-          flex: 1, overflowY: "auto", padding: "16px 20px 24px",
-          display: "flex", flexDirection: "column", gap: 2,
+          flex: 1, overflowY: "auto", padding: "1rem 1.25rem 1.5rem",
+          display: "flex", flexDirection: "column", gap: "0.125rem",
         }}>
           {track.steps.map((step, i) => {
             const isDone = progress.stepsCompleted.includes(step.id);
@@ -134,8 +137,8 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
               <div
                 key={step.id}
                 style={{
-                  display: "flex", gap: 14, padding: "14px 12px",
-                  borderRadius: 12,
+                  display: "flex", gap: "0.875rem", padding: "0.875rem 0.75rem",
+                  borderRadius: "0.75rem",
                   background: isNext ? `${track.color}06` : "transparent",
                   border: isNext ? `1px solid ${track.color}18` : "1px solid transparent",
                   animation: `fadeUp .3s ease ${i * 0.04}s both`,
@@ -143,12 +146,12 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
               >
                 {/* Step indicator */}
                 <div style={{
-                  width: 28, height: 28, borderRadius: 14, flexShrink: 0,
+                  width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", flexShrink: 0,
                   border: isDone ? "none" : `2px solid ${isNext ? track.color : T.color.sandstone}`,
                   background: isDone ? track.color : "transparent",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all .3s ease",
-                  marginTop: 1,
+                  marginTop: "0.0625rem",
                 }}>
                   {isDone && (
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -157,7 +160,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                   )}
                   {!isDone && (
                     <span style={{
-                      fontFamily: T.font.body, fontSize: 10, fontWeight: 600,
+                      fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
                       color: isNext ? track.color : T.color.muted,
                     }}>{i + 1}</span>
                   )}
@@ -166,21 +169,21 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                 {/* Step content */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontFamily: T.font.display, fontSize: 15, fontWeight: isDone ? 500 : 600,
+                    fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: isDone ? 500 : 600,
                     color: isDone ? T.color.muted : T.color.charcoal,
                     textDecoration: isDone ? "none" : "none",
-                  }}>{step.title}</div>
+                  }}>{tTrack(step.titleKey)}</div>
                   <div style={{
-                    fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
-                    lineHeight: 1.5, marginTop: 2,
-                  }}>{step.description}</div>
+                    fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                    lineHeight: 1.5, marginTop: "0.125rem",
+                  }}>{tTrack(step.descriptionKey)}</div>
 
                   {/* Hint for incomplete steps */}
                   {!isDone && (
                     <div style={{
-                      fontFamily: T.font.body, fontSize: 11, color: T.color.walnut,
-                      marginTop: 6, fontStyle: "italic", lineHeight: 1.4,
-                    }}>{step.hint}</div>
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.walnut,
+                      marginTop: "0.375rem", fontStyle: "italic", lineHeight: 1.4,
+                    }}>{tTrack(step.hintKey)}</div>
                   )}
 
                   {/* CTA for next step */}
@@ -188,10 +191,10 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                     <button
                       onClick={() => handleStepAction(step.navigateTo)}
                       style={{
-                        marginTop: 8, padding: "6px 14px", borderRadius: 8,
+                        marginTop: "0.5rem", padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
                         border: "none",
                         background: `linear-gradient(135deg,${track.color}cc,${track.color})`,
-                        color: "#FFF", fontFamily: T.font.body, fontSize: 12,
+                        color: "#FFF", fontFamily: T.font.body, fontSize: "0.75rem",
                         fontWeight: 600, cursor: "pointer", transition: "transform .2s",
                       }}
                       onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.03)"; }}
@@ -210,9 +213,9 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
 
                 {/* Points */}
                 <div style={{
-                  fontFamily: T.font.body, fontSize: 11, fontWeight: 600,
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                   color: isDone ? "#C9A84C" : `${T.color.sandstone}80`,
-                  flexShrink: 0, paddingTop: 2,
+                  flexShrink: 0, paddingTop: "0.125rem",
                 }}>
                   {isDone ? `+${step.pointValue}` : `${step.pointValue} ${t("pts")}`}
                 </div>
@@ -223,14 +226,14 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
 
         {/* Footer with total points for this track */}
         <div style={{
-          padding: "12px 24px", borderTop: `1px solid ${T.color.cream}`,
+          padding: "0.75rem 1.5rem", borderTop: `1px solid ${T.color.cream}`,
           display: "flex", justifyContent: "space-between", alignItems: "center",
           background: `${T.color.warmStone}80`,
         }}>
-          <span style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
             {t("trackPointsEarned")}
           </span>
-          <span style={{ fontFamily: T.font.body, fontSize: 14, fontWeight: 700, color: "#C9A84C" }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 700, color: "#C9A84C" }}>
             {progress.stepsCompleted.reduce((sum, stepId) => {
               const step = track.steps.find((s) => s.id === stepId);
               return sum + (step?.pointValue || 0);

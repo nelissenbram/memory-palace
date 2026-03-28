@@ -34,9 +34,9 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
     <div
       style={{
         position: "absolute",
-        bottom: 80,
-        left: 16,
-        right: 16,
+        bottom: "5rem",
+        left: "1rem",
+        right: "1rem",
         zIndex: 46,
         animation: "fadeUp .4s ease",
         pointerEvents: "auto",
@@ -47,26 +47,26 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
           background: "rgba(42, 34, 24, 0.72)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
-          borderRadius: 16,
-          padding: "16px 20px",
+          borderRadius: "1rem",
+          padding: "1rem 1.25rem",
           border: "1px solid rgba(212, 197, 178, 0.2)",
           boxShadow: "0 8px 32px rgba(44, 44, 42, 0.3)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 12,
+          gap: "0.75rem",
         }}
       >
         {/* Instruction text */}
         <div
           style={{
             fontFamily: T.font.body,
-            fontSize: 13,
+            fontSize: "0.8125rem",
             fontWeight: 500,
             color: T.color.linen,
             textAlign: "center",
             lineHeight: 1.5,
-            letterSpacing: 0.2,
+            letterSpacing: "0.0125rem",
           }}
         >
           {isCorridor
@@ -79,11 +79,11 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
           <div
             style={{
               display: "flex",
-              gap: 2,
+              gap: "0.125rem",
               width: "100%",
-              maxWidth: 220,
-              height: 48,
-              borderRadius: 10,
+              maxWidth: "13.75rem",
+              height: "3rem",
+              borderRadius: "0.625rem",
               overflow: "hidden",
               border: "1px solid rgba(212, 197, 178, 0.25)",
             }}
@@ -97,7 +97,7 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 2,
+                gap: "0.125rem",
               }}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -105,7 +105,7 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
                 <circle cx="10" cy="10" r="3" fill="rgba(250,250,247,0.6)" />
                 <path d="M10 4L10 7M10 13L10 16M4 10L7 10M13 10L16 10" stroke="rgba(250,250,247,0.4)" strokeWidth="1" />
               </svg>
-              <span style={{ fontFamily: T.font.body, fontSize: 9, color: "rgba(250,250,247,0.7)" }}>{t("move")}</span>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: "rgba(250,250,247,0.7)" }}>{t("move")}</span>
             </div>
             {/* Right half — camera */}
             <div
@@ -116,14 +116,14 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 2,
+                gap: "0.125rem",
               }}
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <circle cx="10" cy="10" r="7" stroke="rgba(250,250,247,0.5)" strokeWidth="1.5" fill="none" />
                 <path d="M10 5L10 10L14 8" stroke="rgba(250,250,247,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span style={{ fontFamily: T.font.body, fontSize: 9, color: "rgba(250,250,247,0.7)" }}>{t("look")}</span>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: "rgba(250,250,247,0.7)" }}>{t("look")}</span>
             </div>
           </div>
         )}
@@ -134,14 +134,14 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
           style={{
             background: "rgba(250, 250, 247, 0.15)",
             border: "1px solid rgba(250, 250, 247, 0.25)",
-            borderRadius: 20,
-            padding: "6px 24px",
+            borderRadius: "1.25rem",
+            padding: "0.375rem 1.5rem",
             fontFamily: T.font.body,
-            fontSize: 12,
+            fontSize: "0.75rem",
             fontWeight: 600,
             color: T.color.linen,
             cursor: "pointer",
-            letterSpacing: 0.5,
+            letterSpacing: "0.03125rem",
           }}
         >
           {t("gotIt")}

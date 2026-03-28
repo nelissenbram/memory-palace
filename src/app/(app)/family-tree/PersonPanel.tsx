@@ -131,12 +131,12 @@ export default function PersonPanel({
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
-    padding: "10px 14px",
-    borderRadius: 10,
+    padding: "0.625rem 0.875rem",
+    borderRadius: "0.625rem",
     border: `1px solid ${T.color.sandstone}`,
     background: T.color.white,
     fontFamily: T.font.body,
-    fontSize: 14,
+    fontSize: "0.875rem",
     color: T.color.charcoal,
     outline: "none",
     boxSizing: "border-box",
@@ -144,22 +144,22 @@ export default function PersonPanel({
 
   const labelStyle: React.CSSProperties = {
     fontFamily: T.font.body,
-    fontSize: 12,
+    fontSize: "0.75rem",
     fontWeight: 600,
     color: T.color.walnut,
-    marginBottom: 4,
+    marginBottom: "0.25rem",
     display: "block",
   };
 
   const btnStyle: React.CSSProperties = {
-    padding: "10px 20px",
-    borderRadius: 12,
+    padding: "0.625rem 1.25rem",
+    borderRadius: "0.75rem",
     fontFamily: T.font.body,
-    fontSize: 14,
+    fontSize: "0.875rem",
     fontWeight: 600,
     cursor: "pointer",
     border: "none",
-    minHeight: 44,
+    minHeight: "2.75rem",
   };
 
   return (
@@ -183,7 +183,7 @@ export default function PersonPanel({
       {/* Header */}
       <div
         style={{
-          padding: "20px 24px",
+          padding: "1.25rem 1.5rem",
           borderBottom: `1px solid ${T.color.cream}`,
           display: "flex",
           alignItems: "center",
@@ -193,7 +193,7 @@ export default function PersonPanel({
         <h2
           style={{
             fontFamily: T.font.display,
-            fontSize: 22,
+            fontSize: "1.375rem",
             fontWeight: 600,
             color: T.color.charcoal,
             margin: 0,
@@ -204,12 +204,12 @@ export default function PersonPanel({
         <button
           onClick={onClose}
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
+            width: "2.25rem",
+            height: "2.25rem",
+            borderRadius: "1.125rem",
             border: `1px solid ${T.color.cream}`,
             background: T.color.white,
-            fontSize: 18,
+            fontSize: "1.125rem",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -222,27 +222,27 @@ export default function PersonPanel({
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "1.5rem" }}>
         {/* Photo + basic info */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 16,
-            marginBottom: 24,
+            gap: "1rem",
+            marginBottom: "1.5rem",
           }}
         >
           <div
             style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
+              width: "5rem",
+              height: "5rem",
+              borderRadius: "2.5rem",
               border: `3px solid ${T.color.walnut}`,
               background: `linear-gradient(135deg, ${T.color.warmStone}, ${T.color.sandstone})`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 32,
+              fontSize: "2rem",
               color: T.color.walnut,
               overflow: "hidden",
               flexShrink: 0,
@@ -267,7 +267,7 @@ export default function PersonPanel({
             <div
               style={{
                 fontFamily: T.font.display,
-                fontSize: 18,
+                fontSize: "1.125rem",
                 fontWeight: 600,
                 color: T.color.charcoal,
               }}
@@ -278,9 +278,9 @@ export default function PersonPanel({
               <div
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   color: T.color.muted,
-                  marginTop: 2,
+                  marginTop: "0.125rem",
                 }}
               >
                 {lifespan}
@@ -290,13 +290,13 @@ export default function PersonPanel({
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
               style={{
-                marginTop: 8,
-                padding: "6px 14px",
-                borderRadius: 8,
+                marginTop: "0.5rem",
+                padding: "0.375rem 0.875rem",
+                borderRadius: "0.5rem",
                 border: `1px solid ${T.color.sandstone}`,
                 background: T.color.white,
                 fontFamily: T.font.body,
-                fontSize: 12,
+                fontSize: "0.75rem",
                 color: T.color.walnut,
                 cursor: "pointer",
               }}
@@ -317,12 +317,12 @@ export default function PersonPanel({
         {person.notes && !editing && (
           <div
             style={{
-              padding: 16,
-              borderRadius: 12,
+              padding: "1rem",
+              borderRadius: "0.75rem",
               background: T.color.warmStone,
-              marginBottom: 20,
+              marginBottom: "1.25rem",
               fontFamily: T.font.body,
-              fontSize: 14,
+              fontSize: "0.875rem",
               color: T.color.charcoal,
               lineHeight: 1.6,
             }}
@@ -333,7 +333,7 @@ export default function PersonPanel({
 
         {/* Edit form */}
         {editing ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem", marginBottom: "1.25rem" }}>
             <div>
               <label style={labelStyle}>{t("firstNameLabel")}</label>
               <input
@@ -350,7 +350,7 @@ export default function PersonPanel({
                 style={inputStyle}
               />
             </div>
-            <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ display: "flex", gap: "0.75rem" }}>
               <div style={{ flex: 1 }}>
                 <label style={labelStyle}>{t("born")}</label>
                 <input
@@ -392,7 +392,7 @@ export default function PersonPanel({
                 style={{ ...inputStyle, resize: "vertical" }}
               />
             </div>
-            <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ display: "flex", gap: "0.625rem" }}>
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -427,7 +427,7 @@ export default function PersonPanel({
               background: T.color.white,
               color: T.color.walnut,
               border: `1px solid ${T.color.sandstone}`,
-              marginBottom: 20,
+              marginBottom: "1.25rem",
             }}
           >
             {t("editDetails")}
@@ -435,14 +435,14 @@ export default function PersonPanel({
         )}
 
         {/* Relationships */}
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: "1.25rem" }}>
           <h3
             style={{
               fontFamily: T.font.display,
-              fontSize: 18,
+              fontSize: "1.125rem",
               fontWeight: 600,
               color: T.color.charcoal,
-              marginBottom: 12,
+              marginBottom: "0.75rem",
             }}
           >
             {t("relationships")}
@@ -451,7 +451,7 @@ export default function PersonPanel({
             <div
               style={{
                 fontFamily: T.font.body,
-                fontSize: 14,
+                fontSize: "0.875rem",
                 color: T.color.muted,
                 fontStyle: "italic",
               }}
@@ -459,7 +459,7 @@ export default function PersonPanel({
               {t("noRelationships")}
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {personRels.map((rel) => {
                 const otherId =
                   rel.person_id === person.id
@@ -483,8 +483,8 @@ export default function PersonPanel({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      padding: "10px 14px",
-                      borderRadius: 10,
+                      padding: "0.625rem 0.875rem",
+                      borderRadius: "0.625rem",
                       background: T.color.warmStone,
                     }}
                   >
@@ -492,7 +492,7 @@ export default function PersonPanel({
                       <span
                         style={{
                           fontFamily: T.font.body,
-                          fontSize: 11,
+                          fontSize: "0.6875rem",
                           fontWeight: 600,
                           color: T.color.terracotta,
                           textTransform: "uppercase",
@@ -504,10 +504,10 @@ export default function PersonPanel({
                       <div
                         style={{
                           fontFamily: T.font.display,
-                          fontSize: 15,
+                          fontSize: "0.9375rem",
                           fontWeight: 600,
                           color: T.color.charcoal,
-                          marginTop: 2,
+                          marginTop: "0.125rem",
                         }}
                       >
                         {getPersonName(otherId)}
@@ -516,12 +516,12 @@ export default function PersonPanel({
                     <button
                       onClick={() => handleRemoveRel(rel.id)}
                       style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
+                        width: "1.875rem",
+                        height: "1.875rem",
+                        borderRadius: "0.9375rem",
                         border: `1px solid ${T.color.cream}`,
                         background: T.color.white,
-                        fontSize: 12,
+                        fontSize: "0.75rem",
                         cursor: "pointer",
                         color: T.color.muted,
                         display: "flex",
@@ -542,13 +542,13 @@ export default function PersonPanel({
           {showAddRel ? (
             <div
               style={{
-                marginTop: 12,
-                padding: 16,
-                borderRadius: 12,
+                marginTop: "0.75rem",
+                padding: "1rem",
+                borderRadius: "0.75rem",
                 background: T.color.warmStone,
                 display: "flex",
                 flexDirection: "column",
-                gap: 10,
+                gap: "0.625rem",
               }}
             >
               <div>
@@ -584,7 +584,7 @@ export default function PersonPanel({
                   <option value="sibling">{t("siblingOf")}</option>
                 </select>
               </div>
-              <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ display: "flex", gap: "0.625rem" }}>
                 <button
                   onClick={handleAddRelationship}
                   disabled={!relPersonId}
@@ -593,8 +593,8 @@ export default function PersonPanel({
                     background: relPersonId ? T.color.terracotta : T.color.sandstone,
                     color: T.color.white,
                     flex: 1,
-                    fontSize: 13,
-                    padding: "8px 16px",
+                    fontSize: "0.8125rem",
+                    padding: "0.5rem 1rem",
                   }}
                 >
                   {t("add")}
@@ -606,8 +606,8 @@ export default function PersonPanel({
                     background: T.color.white,
                     color: T.color.muted,
                     border: `1px solid ${T.color.cream}`,
-                    fontSize: 13,
-                    padding: "8px 16px",
+                    fontSize: "0.8125rem",
+                    padding: "0.5rem 1rem",
                   }}
                 >
                   {t("cancel")}
@@ -620,11 +620,11 @@ export default function PersonPanel({
               style={{
                 ...btnStyle,
                 width: "100%",
-                marginTop: 12,
+                marginTop: "0.75rem",
                 background: T.color.white,
                 color: T.color.sage,
                 border: `1px solid ${T.color.sage}40`,
-                fontSize: 13,
+                fontSize: "0.8125rem",
               }}
             >
               {t("addRelationship")}
@@ -636,7 +636,7 @@ export default function PersonPanel({
         <div
           style={{
             borderTop: `1px solid ${T.color.cream}`,
-            paddingTop: 20,
+            paddingTop: "1.25rem",
           }}
         >
           {confirmDelete ? (
@@ -644,28 +644,28 @@ export default function PersonPanel({
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: 10,
+                gap: "0.625rem",
                 alignItems: "center",
               }}
             >
               <span
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   color: T.color.error,
                 }}
               >
                 {t("confirmDelete", { name: fullName })}
               </span>
-              <div style={{ display: "flex", gap: 10 }}>
+              <div style={{ display: "flex", gap: "0.625rem" }}>
                 <button
                   onClick={handleDelete}
                   style={{
                     ...btnStyle,
                     background: T.color.error,
                     color: T.color.white,
-                    fontSize: 13,
-                    padding: "8px 20px",
+                    fontSize: "0.8125rem",
+                    padding: "0.5rem 1.25rem",
                   }}
                 >
                   {t("yesDelete")}
@@ -677,8 +677,8 @@ export default function PersonPanel({
                     background: T.color.white,
                     color: T.color.muted,
                     border: `1px solid ${T.color.cream}`,
-                    fontSize: 13,
-                    padding: "8px 20px",
+                    fontSize: "0.8125rem",
+                    padding: "0.5rem 1.25rem",
                   }}
                 >
                   {t("cancel")}
@@ -694,7 +694,7 @@ export default function PersonPanel({
                 background: "transparent",
                 color: T.color.muted,
                 border: `1px solid ${T.color.cream}`,
-                fontSize: 13,
+                fontSize: "0.8125rem",
               }}
             >
               {t("deletePerson")}
