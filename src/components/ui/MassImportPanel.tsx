@@ -244,19 +244,19 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         height: isMobile ? "100%" : undefined,
         overflow: "hidden", display: "flex", flexDirection: "column",
         background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",
-        borderRadius: isMobile ? 0 : 20,
+        borderRadius: isMobile ? 0 : "1.25rem",
         border: isMobile ? "none" : `1px solid ${T.color.cream}`,
         boxShadow: isMobile ? "none" : "0 24px 80px rgba(44,44,42,.3)",
         animation: isMobile ? "fadeIn .2s ease" : "fadeUp .3s ease",
       }}>
         {/* Header */}
-        <div style={{ padding: "24px 28px 0", flexShrink: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>{"\u{1F4E6}"}</div>
+        <div style={{ padding: "1.5rem 1.75rem 0", flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <div style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.375rem" }}>{"\u{1F4E6}"}</div>
               <div>
-                <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 600, color: T.color.charcoal, margin: 0 }}>{t("heading")}</h3>
-                <p style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "2px 0 0" }}>
+                <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>{t("heading")}</h3>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.125rem 0 0" }}>
                   {step === "drop" && t("dropToBegin")}
                   {step === "processing" && t("processing", { processed: String(progress.processed), total: String(progress.total) })}
                   {step === "review" && t("reviewConfirm")}
@@ -265,27 +265,27 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 </p>
               </div>
             </div>
-            <button onClick={onClose} aria-label="Close" style={{ width: 32, height: 32, borderRadius: 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onClose} aria-label="Close" style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
           </div>
 
           {/* Source toggle: Local / Cloud */}
           {step === "drop" && (
-            <div style={{ display: "flex", gap: 4, marginBottom: 12, background: T.color.warmStone, borderRadius: 10, padding: 3 }}>
+            <div style={{ display: "flex", gap: "0.25rem", marginBottom: "0.75rem", background: T.color.warmStone, borderRadius: "0.625rem", padding: "0.1875rem" }}>
               <button onClick={() => setShowCloud(false)} style={{
-                flex: 1, padding: "8px 12px", borderRadius: 8, border: "none",
+                flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
                 background: !showCloud ? T.color.white : "transparent",
                 color: !showCloud ? T.color.charcoal : T.color.muted,
-                fontFamily: T.font.body, fontSize: 12, fontWeight: !showCloud ? 600 : 400, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: !showCloud ? 600 : 400, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
               }}>
                 {"\u{1F4C1}"} {t("localFiles")}
               </button>
               <button onClick={() => setShowCloud(true)} style={{
-                flex: 1, padding: "8px 12px", borderRadius: 8, border: "none",
+                flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
                 background: showCloud ? T.color.white : "transparent",
                 color: showCloud ? T.color.charcoal : T.color.muted,
-                fontFamily: T.font.body, fontSize: 12, fontWeight: showCloud ? 600 : 400, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: showCloud ? 600 : 400, cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
               }}>
                 {"\u2601\uFE0F"} {t("importFromCloud")}
               </button>
@@ -294,10 +294,10 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
           {/* Step indicator */}
           {!showCloud && (
-            <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1rem" }}>
               {(["drop", "processing", "review", "committing", "done"] as const).map((s, i) => (
                 <div key={s} style={{
-                  flex: 1, height: 3, borderRadius: 2,
+                  flex: 1, height: "0.1875rem", borderRadius: "0.125rem",
                   background: (["drop", "processing", "review", "committing", "done"].indexOf(step) >= i) ? T.color.terracotta : `${T.color.sandstone}40`,
                   transition: "background .3s",
                 }} />
@@ -309,7 +309,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         {/* Cloud Import Panel (replaces entire content area) */}
         {showCloud && step === "drop" ? (
           <Suspense fallback={
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 48, fontFamily: T.font.body, fontSize: 14, color: T.color.muted }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "3rem", fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>
               {t("loadingCloudImport")}
             </div>
           }>
@@ -317,53 +317,53 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           </Suspense>
         ) : (
         /* Content area (scrollable) */
-        <div style={{ flex: 1, overflow: "auto", padding: "0 28px 24px" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "0 1.75rem 1.5rem" }}>
 
           {/* ════ STEP: DROP ════ */}
           {step === "drop" && <>
             {/* Mode selection */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem", marginBottom: "1.25rem" }}>
               <button onClick={() => store.setMode("ai")} style={{
-                padding: "16px 14px", borderRadius: 14,
+                padding: "1rem 0.875rem", borderRadius: "0.875rem",
                 border: mode === "ai" ? `2px solid ${T.color.terracotta}` : `1px solid ${T.color.cream}`,
                 background: mode === "ai" ? `${T.color.terracotta}08` : T.color.white,
                 cursor: "pointer", textAlign: "left",
               }}>
-                <div style={{ fontSize: 24, marginBottom: 6 }}>{"\u2728"}</div>
-                <div style={{ fontFamily: T.font.display, fontSize: 14, fontWeight: 600, color: mode === "ai" ? T.color.terracotta : T.color.charcoal }}>{t("aiAssisted")}</div>
-                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, lineHeight: 1.4, marginTop: 4 }}>{t("aiAssistedDesc")}</div>
+                <div style={{ fontSize: "1.5rem", marginBottom: "0.375rem" }}>{"\u2728"}</div>
+                <div style={{ fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600, color: mode === "ai" ? T.color.terracotta : T.color.charcoal }}>{t("aiAssisted")}</div>
+                <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.4, marginTop: "0.25rem" }}>{t("aiAssistedDesc")}</div>
               </button>
               <button onClick={() => store.setMode("manual")} style={{
-                padding: "16px 14px", borderRadius: 14,
+                padding: "1rem 0.875rem", borderRadius: "0.875rem",
                 border: mode === "manual" ? `2px solid ${T.color.terracotta}` : `1px solid ${T.color.cream}`,
                 background: mode === "manual" ? `${T.color.terracotta}08` : T.color.white,
                 cursor: "pointer", textAlign: "left",
               }}>
-                <div style={{ fontSize: 24, marginBottom: 6 }}>{"\u{1F4CB}"}</div>
-                <div style={{ fontFamily: T.font.display, fontSize: 14, fontWeight: 600, color: mode === "manual" ? T.color.terracotta : T.color.charcoal }}>{t("manual")}</div>
-                <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, lineHeight: 1.4, marginTop: 4 }}>{t("manualDesc")}</div>
+                <div style={{ fontSize: "1.5rem", marginBottom: "0.375rem" }}>{"\u{1F4CB}"}</div>
+                <div style={{ fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600, color: mode === "manual" ? T.color.terracotta : T.color.charcoal }}>{t("manual")}</div>
+                <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.4, marginTop: "0.25rem" }}>{t("manualDesc")}</div>
               </button>
             </div>
 
             {/* Target selection */}
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "0.625rem", marginBottom: "1rem" }}>
               <div>
-                <label style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", display: "block", marginBottom: 6 }}>
+                <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", display: "block", marginBottom: "0.375rem" }}>
                   {mode === "manual" ? t("targetWing") : t("defaultWingAi")}
                 </label>
                 <select value={targetWingId || ""} onChange={(e) => store.setTarget(e.target.value || null, null)}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, cursor: "pointer", outline: "none" }}>
+                  style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, cursor: "pointer", outline: "none" }}>
                   <option value="">{t("selectWing")}</option>
                   {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", display: "block", marginBottom: 6 }}>
+                <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", display: "block", marginBottom: "0.375rem" }}>
                   {mode === "manual" ? t("targetRoom") : t("defaultRoomAi")}
                 </label>
                 <select value={targetRoomId || ""} onChange={(e) => store.setTarget(targetWingId, e.target.value || null)}
                   disabled={!targetWingId}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${T.color.cream}`, background: !targetWingId ? `${T.color.warmStone}` : T.color.white, fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, cursor: targetWingId ? "pointer" : "default", outline: "none" }}>
+                  style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: !targetWingId ? `${T.color.warmStone}` : T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, cursor: targetWingId ? "pointer" : "default", outline: "none" }}>
                   <option value="">{t("selectRoom")}</option>
                   {targetWingId && getWingRooms(targetWingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
                 </select>
@@ -378,16 +378,16 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               onClick={() => fileRef.current?.click()}
               style={{
                 border: `2px dashed ${dragOver ? T.color.terracotta : T.color.sandstone}`,
-                borderRadius: 16, padding: items.length > 0 ? 20 : 40, textAlign: "center", cursor: "pointer",
+                borderRadius: "1rem", padding: items.length > 0 ? "1.25rem" : "2.5rem", textAlign: "center", cursor: "pointer",
                 background: dragOver ? `${T.color.terracotta}08` : T.color.warmStone,
-                marginBottom: 16, transition: "all .2s",
+                marginBottom: "1rem", transition: "all .2s",
               }}
             >
-              <div style={{ fontSize: 36, marginBottom: 6 }}>{dragOver ? "\u2728" : "\u{1F4E5}"}</div>
-              <p style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal, margin: 0, fontWeight: 500 }}>
+              <div style={{ fontSize: "2.25rem", marginBottom: "0.375rem" }}>{dragOver ? "\u2728" : "\u{1F4E5}"}</div>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, margin: 0, fontWeight: 500 }}>
                 {items.length > 0 ? t("dropMoreOrBrowse") : t("dropOrBrowse")}
               </p>
-              <p style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, margin: "4px 0 0" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
                 {t("supportedTypes")}
               </p>
             </div>
@@ -397,32 +397,32 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
             {/* Oversized files warning */}
             {skippedOversized > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: "#C0505010", border: "1px solid #C0505033", marginBottom: 12 }}>
-                <span style={{ fontFamily: T.font.body, fontSize: 12, color: "#C05050", lineHeight: 1.5, flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", background: "#C0505010", border: "1px solid #C0505033", marginBottom: "0.75rem" }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#C05050", lineHeight: 1.5, flex: 1 }}>
                   {t("filesSkipped", { count: String(skippedOversized) })}
                 </span>
-                <button onClick={() => setSkippedOversized(0)} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#C05050", fontSize: 14, cursor: "pointer", padding: 4, flexShrink: 0 }}>{"\u2715"}</button>
+                <button onClick={() => setSkippedOversized(0)} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#C05050", fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>{"\u2715"}</button>
               </div>
             )}
 
             {/* File list */}
             {items.length > 0 && <>
-              <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginBottom: 8, display: "flex", justifyContent: "space-between" }}>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginBottom: "0.5rem", display: "flex", justifyContent: "space-between" }}>
                 <span>{t("fileCount", { count: String(items.length), size: formatBytes(totalSize) })}</span>
-                <button onClick={() => store.reset()} style={{ background: "none", border: "none", color: T.color.terracotta, fontFamily: T.font.body, fontSize: 11, cursor: "pointer" }}>{t("clearAll")}</button>
+                <button onClick={() => store.reset()} style={{ background: "none", border: "none", color: T.color.terracotta, fontFamily: T.font.body, fontSize: "0.6875rem", cursor: "pointer" }}>{t("clearAll")}</button>
               </div>
-              <div style={{ maxHeight: 200, overflowY: "auto", borderRadius: 12, border: `1px solid ${T.color.cream}`, background: T.color.white }}>
+              <div style={{ maxHeight: "12.5rem", overflowY: "auto", borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`, background: T.color.white }}>
                 {items.map((item) => (
-                  <div key={item.localId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderBottom: `1px solid ${T.color.cream}22` }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 6, background: T.color.warmStone, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+                  <div key={item.localId} style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.5rem 0.75rem", borderBottom: `1px solid ${T.color.cream}22` }}>
+                    <div style={{ width: "2rem", height: "2rem", borderRadius: "0.375rem", background: T.color.warmStone, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>
                       {TYPE_ICONS[item.confirmed.type] || "\u{1F4C4}"}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fileName}</div>
-                      <div style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted }}>{formatBytes(item.fileSizeBytes)}</div>
+                      <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fileName}</div>
+                      <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>{formatBytes(item.fileSizeBytes)}</div>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); store.removeItem(item.localId); }}
-                      style={{ background: "none", border: "none", color: T.color.muted, fontSize: 14, cursor: "pointer", padding: 4 }}>{"\u2715"}</button>
+                      style={{ background: "none", border: "none", color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem" }}>{"\u2715"}</button>
                   </div>
                 ))}
               </div>
@@ -433,10 +433,10 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               onClick={startProcessing}
               disabled={mode === "manual" && (!targetWingId || !targetRoomId)}
               style={{
-                width: "100%", padding: 14, borderRadius: 12, border: "none", marginTop: 16,
+                width: "100%", padding: "0.875rem", borderRadius: "0.75rem", border: "none", marginTop: "1rem",
                 background: (mode === "manual" && (!targetWingId || !targetRoomId)) ? `${T.color.sandstone}40` : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                 color: (mode === "manual" && (!targetWingId || !targetRoomId)) ? T.color.muted : "#FFF",
-                fontFamily: T.font.body, fontSize: 14, fontWeight: 600, cursor: (mode === "manual" && (!targetWingId || !targetRoomId)) ? "default" : "pointer",
+                fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, cursor: (mode === "manual" && (!targetWingId || !targetRoomId)) ? "default" : "pointer",
               }}
             >
               {mode === "ai" ? t("processWithAi", { count: String(items.length) }) : t("processFiles", { count: String(items.length) })} {"\u{1F680}"}
@@ -445,21 +445,21 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
           {/* ════ STEP: PROCESSING ════ */}
           {step === "processing" && <>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontFamily: T.font.body, fontSize: 12, color: T.color.muted, marginBottom: 6 }}>
+            <div style={{ marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginBottom: "0.375rem" }}>
                 <span>{t("processingFiles")}</span>
                 <span>{progress.processed}/{progress.total}</span>
               </div>
-              <div style={{ width: "100%", height: 8, borderRadius: 4, background: `${T.color.sandstone}33`, overflow: "hidden" }}>
-                <div style={{ width: `${progress.total ? (progress.processed / progress.total) * 100 : 0}%`, height: "100%", borderRadius: 4, background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.walnut})`, transition: "width .3s" }} />
+              <div style={{ width: "100%", height: "0.5rem", borderRadius: "0.25rem", background: `${T.color.sandstone}33`, overflow: "hidden" }}>
+                <div style={{ width: `${progress.total ? (progress.processed / progress.total) * 100 : 0}%`, height: "100%", borderRadius: "0.25rem", background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.walnut})`, transition: "width .3s" }} />
               </div>
             </div>
-            <div style={{ maxHeight: 400, overflowY: "auto" }}>
+            <div style={{ maxHeight: "25rem", overflowY: "auto" }}>
               {items.map((item) => (
-                <div key={item.localId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${T.color.cream}22` }}>
+                <div key={item.localId} style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.5rem 0", borderBottom: `1px solid ${T.color.cream}22` }}>
                   <StatusBadge status={item.status} />
-                  <span style={{ fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.fileName}</span>
-                  <span style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted }}>{item.status}</span>
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.fileName}</span>
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>{item.status}</span>
                 </div>
               ))}
             </div>
@@ -468,7 +468,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           {/* ════ STEP: REVIEW ════ */}
           {step === "review" && <>
             {/* Tabs */}
-            <div style={{ display: "flex", gap: 4, marginBottom: 16, background: T.color.warmStone, borderRadius: 10, padding: 3 }}>
+            <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1rem", background: T.color.warmStone, borderRadius: "0.625rem", padding: "0.1875rem" }}>
               {([
                 ["review", t("tabReview", { count: String(items.filter((i) => i.status === "ready" && i.needsReview).length) })],
                 ["accepted", t("tabAccepted", { count: String(items.filter((i) => i.status === "accepted").length) })],
@@ -476,29 +476,29 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 ["all", t("tabAll", { count: String(items.filter((i) => !["error", "committed"].includes(i.status)).length) })],
               ] as [typeof tab, string][]).map(([key, label]) => (
                 <button key={key} onClick={() => setTab(key)} style={{
-                  flex: 1, padding: "7px 8px", borderRadius: 8, border: "none",
+                  flex: 1, padding: "0.4375rem 0.5rem", borderRadius: "0.5rem", border: "none",
                   background: tab === key ? T.color.white : "transparent",
                   color: tab === key ? T.color.charcoal : T.color.muted,
-                  fontFamily: T.font.body, fontSize: 11, fontWeight: tab === key ? 600 : 400, cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: tab === key ? 600 : 400, cursor: "pointer",
                 }}>{label}</button>
               ))}
             </div>
 
             {/* Batch actions */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem" }}>
               <button onClick={() => store.acceptAll()} style={{
-                padding: "8px 14px", borderRadius: 8, border: `1px solid ${T.color.cream}`,
-                background: T.color.white, fontFamily: T.font.body, fontSize: 11, fontWeight: 500, color: "#4A6741", cursor: "pointer",
+                padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`,
+                background: T.color.white, fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500, color: "#4A6741", cursor: "pointer",
               }}>{t("acceptAllReady")}</button>
             </div>
 
             {/* Items */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 400, overflowY: "auto" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "25rem", overflowY: "auto" }}>
               {filteredItems(items, tab).map((item) => (
                 <ReviewCard key={item.localId} item={item} wings={wings} getWingRooms={getWingRooms} />
               ))}
               {filteredItems(items, tab).length === 0 && (
-                <div style={{ textAlign: "center", padding: 32, fontFamily: T.font.body, fontSize: 13, color: T.color.muted }}>
+                <div style={{ textAlign: "center", padding: "2rem", fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted }}>
                   {t("noItemsInTab")}
                 </div>
               )}
@@ -507,9 +507,9 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             {/* Commit button */}
             {items.some((i) => i.status === "accepted") && (
               <button onClick={commitAll} style={{
-                width: "100%", padding: 14, borderRadius: 12, border: "none", marginTop: 16,
+                width: "100%", padding: "0.875rem", borderRadius: "0.75rem", border: "none", marginTop: "1rem",
                 background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                color: "#FFF", fontFamily: T.font.body, fontSize: 14, fontWeight: 600, cursor: "pointer",
+                color: "#FFF", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, cursor: "pointer",
               }}>
                 {t("commitMemories", { count: String(items.filter((i) => i.status === "accepted").length) })} {"\u{1F3DB}\uFE0F"}
               </button>
@@ -518,37 +518,37 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
           {/* ════ STEP: COMMITTING ════ */}
           {step === "committing" && <>
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontFamily: T.font.body, fontSize: 12, color: T.color.muted, marginBottom: 6 }}>
+            <div style={{ marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginBottom: "0.375rem" }}>
                 <span>{t("addingMemories")}</span>
                 <span>{progress.committed}/{progress.total}</span>
               </div>
-              <div style={{ width: "100%", height: 8, borderRadius: 4, background: `${T.color.sandstone}33`, overflow: "hidden" }}>
-                <div style={{ width: `${progress.total ? (progress.committed / progress.total) * 100 : 0}%`, height: "100%", borderRadius: 4, background: `linear-gradient(90deg, #4A6741, #6A8848)`, transition: "width .3s" }} />
+              <div style={{ width: "100%", height: "0.5rem", borderRadius: "0.25rem", background: `${T.color.sandstone}33`, overflow: "hidden" }}>
+                <div style={{ width: `${progress.total ? (progress.committed / progress.total) * 100 : 0}%`, height: "100%", borderRadius: "0.25rem", background: `linear-gradient(90deg, #4A6741, #6A8848)`, transition: "width .3s" }} />
               </div>
             </div>
           </>}
 
           {/* ════ STEP: DONE ════ */}
           {step === "done" && <>
-            <div style={{ textAlign: "center", padding: "32px 0" }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>{"\u{1F389}"}</div>
-              <h3 style={{ fontFamily: T.font.display, fontSize: 24, fontWeight: 600, color: T.color.charcoal, margin: "0 0 8px" }}>{t("importCompleteHeading")}</h3>
-              <p style={{ fontFamily: T.font.body, fontSize: 14, color: T.color.muted, margin: "0 0 4px" }}>
+            <div style={{ textAlign: "center", padding: "2rem 0" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>{"\u{1F389}"}</div>
+              <h3 style={{ fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.5rem" }}>{t("importCompleteHeading")}</h3>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, margin: "0 0 0.25rem" }}>
                 {t("memoriesAdded", { count: String(progress.committed) })}
               </p>
               {progress.errors > 0 && (
-                <p style={{ fontFamily: T.font.body, fontSize: 12, color: "#C05050" }}>{t("itemsHadErrors", { count: String(progress.errors) })}</p>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#C05050" }}>{t("itemsHadErrors", { count: String(progress.errors) })}</p>
               )}
-              <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>
+              <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center", marginTop: "1.25rem" }}>
                 <button onClick={() => store.reset()} style={{
-                  padding: "12px 24px", borderRadius: 12, border: `1px solid ${T.color.cream}`,
-                  background: T.color.white, fontFamily: T.font.body, fontSize: 13, fontWeight: 500, color: T.color.charcoal, cursor: "pointer",
+                  padding: "0.75rem 1.5rem", borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`,
+                  background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal, cursor: "pointer",
                 }}>{t("importMore")}</button>
                 <button onClick={onClose} style={{
-                  padding: "12px 24px", borderRadius: 12, border: "none",
+                  padding: "0.75rem 1.5rem", borderRadius: "0.75rem", border: "none",
                   background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                  fontFamily: T.font.body, fontSize: 13, fontWeight: 600, color: "#FFF", cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#FFF", cursor: "pointer",
                 }}>{t("close")}</button>
               </div>
             </div>
@@ -571,13 +571,13 @@ function StatusBadge({ status }: { status: string }) {
   const isSpinning = ["reading", "extracting", "tagging"].includes(status);
   return (
     <div style={{
-      width: 20, height: 20, borderRadius: 10, flexShrink: 0,
+      width: "1.25rem", height: "1.25rem", borderRadius: "0.625rem", flexShrink: 0,
       display: "flex", alignItems: "center", justifyContent: "center",
       border: isSpinning ? `2px solid ${colors[status] || T.color.muted}` : "none",
       borderTopColor: isSpinning ? "transparent" : undefined,
       animation: isSpinning ? "spin .6s linear infinite" : undefined,
       background: isSpinning ? "transparent" : (colors[status] || T.color.sandstone) + "30",
-      color: colors[status] || T.color.muted, fontSize: 10,
+      color: colors[status] || T.color.muted, fontSize: "0.625rem",
     }}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       {!isSpinning && (status === "accepted" || status === "committed" ? "\u2713" : status === "rejected" ? "\u2715" : status === "error" ? "!" : "\u2022")}
@@ -598,29 +598,29 @@ function ReviewCard({ item, wings, getWingRooms }: {
 
   return (
     <div style={{
-      background: T.color.white, borderRadius: 14, border: `1px solid ${item.status === "accepted" ? "#4A674133" : item.status === "rejected" ? "#C0505033" : T.color.cream}`,
-      padding: "12px 14px", transition: "all .15s",
+      background: T.color.white, borderRadius: "0.875rem", border: `1px solid ${item.status === "accepted" ? "#4A674133" : item.status === "rejected" ? "#C0505033" : T.color.cream}`,
+      padding: "0.75rem 0.875rem", transition: "all .15s",
       opacity: item.status === "rejected" ? 0.5 : 1,
     }}>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div style={{ display: "flex", gap: "0.625rem", alignItems: "center" }}>
         {/* Thumbnail */}
         <div style={{
-          width: 48, height: 48, borderRadius: 8, flexShrink: 0, overflow: "hidden",
+          width: "3rem", height: "3rem", borderRadius: "0.5rem", flexShrink: 0, overflow: "hidden",
           background: `hsl(0,0%,90%)`, display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           {item.previewUrl ? (
             <img src={item.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           ) : (
-            <span style={{ fontSize: 22 }}>{TYPE_ICONS[item.confirmed.type] || "\u{1F4C4}"}</span>
+            <span style={{ fontSize: "1.375rem" }}>{TYPE_ICONS[item.confirmed.type] || "\u{1F4C4}"}</span>
           )}
         </div>
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: T.font.body, fontSize: 13, fontWeight: 500, color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {item.confirmed.title}
           </div>
-          <div style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, display: "flex", gap: 8 }}>
+          <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, display: "flex", gap: "0.5rem" }}>
             <span>{TYPE_ICONS[item.confirmed.type]} {item.confirmed.type}</span>
             {item.confirmed.wingId && <span>{"\u2192"} {wings.find((w) => w.id === item.confirmed.wingId)?.icon} {getWingRooms(item.confirmed.wingId).find((r) => r.id === item.confirmed.roomId)?.name || "?"}</span>}
             {item.aiSuggestions && <span style={{ color: "#C9A84C" }}>{Math.round(item.aiSuggestions.confidence * 100)}% AI</span>}
@@ -628,73 +628,73 @@ function ReviewCard({ item, wings, getWingRooms }: {
         </div>
 
         {/* Actions */}
-        <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+        <div style={{ display: "flex", gap: "0.25rem", flexShrink: 0 }}>
           <button onClick={() => setExpanded(!expanded)} style={{
-            width: 28, height: 28, borderRadius: 8, border: `1px solid ${T.color.cream}`,
-            background: T.color.warmStone, fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: T.color.muted,
+            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`,
+            background: T.color.warmStone, fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: T.color.muted,
           }}>{"\u270F\uFE0F"}</button>
           {item.status !== "accepted" && <button onClick={() => store.acceptItem(item.localId)} style={{
-            width: 28, height: 28, borderRadius: 8, border: "1px solid #4A674133",
-            background: "#4A674110", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#4A6741",
+            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem", border: "1px solid #4A674133",
+            background: "#4A674110", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#4A6741",
           }}>{"\u2713"}</button>}
           {item.status !== "rejected" && <button onClick={() => store.rejectItem(item.localId)} style={{
-            width: 28, height: 28, borderRadius: 8, border: "1px solid #C0505033",
-            background: "#C0505010", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#C05050",
+            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem", border: "1px solid #C0505033",
+            background: "#C0505010", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#C05050",
           }}>{"\u2715"}</button>}
         </div>
       </div>
 
       {/* Expanded edit area */}
       {expanded && (
-        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${T.color.cream}` }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+        <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: `1px solid ${T.color.cream}` }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem", marginBottom: "0.625rem" }}>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("title")}</label>
+              <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("title")}</label>
               <input value={item.confirmed.title} onChange={(e) => store.updateConfirmed(item.localId, { title: e.target.value })}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
             </div>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("location")}</label>
+              <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("location")}</label>
               <input value={item.confirmed.locationName} onChange={(e) => store.updateConfirmed(item.localId, { locationName: e.target.value })} placeholder={t("locationPlaceholder")}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
             </div>
           </div>
-          <div style={{ marginBottom: 10 }}>
-            <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("description")}</label>
+          <div style={{ marginBottom: "0.625rem" }}>
+            <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("description")}</label>
             <textarea value={item.confirmed.desc} onChange={(e) => store.updateConfirmed(item.localId, { desc: e.target.value })} rows={2} placeholder={t("descriptionPlaceholder")}
-              style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, outline: "none", boxSizing: "border-box", resize: "none" }} />
+              style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, outline: "none", boxSizing: "border-box", resize: "none" }} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.625rem" }}>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("type")}</label>
+              <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("type")}</label>
               <select value={item.confirmed.type} onChange={(e) => store.updateConfirmed(item.localId, { type: e.target.value })}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, cursor: "pointer", outline: "none" }}>
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, cursor: "pointer", outline: "none" }}>
                 {DISPLAY_TYPES.map(([v, icon, labelKey]) => <option key={v} value={v}>{icon} {t(labelKey)}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("wing")}</label>
+              <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("wing")}</label>
               <select value={item.confirmed.wingId} onChange={(e) => {
                 const rooms = getWingRooms(e.target.value);
                 store.updateConfirmed(item.localId, { wingId: e.target.value, roomId: rooms[0]?.id || "" });
               }}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, cursor: "pointer", outline: "none" }}>
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, cursor: "pointer", outline: "none" }}>
                 <option value="">—</option>
                 {wings.map((w) => <option key={w.id} value={w.id}>{w.icon} {w.name}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: 4 }}>{t("room")}</label>
+              <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("room")}</label>
               <select value={item.confirmed.roomId} onChange={(e) => store.updateConfirmed(item.localId, { roomId: e.target.value })}
                 disabled={!item.confirmed.wingId}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1px solid ${T.color.cream}`, background: !item.confirmed.wingId ? T.color.warmStone : T.color.white, fontFamily: T.font.body, fontSize: 12, color: T.color.charcoal, cursor: item.confirmed.wingId ? "pointer" : "default", outline: "none" }}>
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: !item.confirmed.wingId ? T.color.warmStone : T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, cursor: item.confirmed.wingId ? "pointer" : "default", outline: "none" }}>
                 <option value="">—</option>
                 {item.confirmed.wingId && getWingRooms(item.confirmed.wingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
               </select>
             </div>
           </div>
           {item.exif && (item.exif.dateTaken || item.exif.lat) && (
-            <div style={{ marginTop: 8, fontFamily: T.font.body, fontSize: 10, color: T.color.muted, display: "flex", gap: 12 }}>
+            <div style={{ marginTop: "0.5rem", fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, display: "flex", gap: "0.75rem" }}>
               {item.exif.dateTaken && <span>{"\u{1F4C5}"} {new Date(item.exif.dateTaken).toLocaleDateString()}</span>}
               {item.exif.lat && item.exif.lng && <span>{"\u{1F4CD}"} {item.exif.lat.toFixed(4)}, {item.exif.lng.toFixed(4)}</span>}
               {item.exif.cameraMake && <span>{"\u{1F4F7}"} {item.exif.cameraMake} {item.exif.cameraModel || ""}</span>}

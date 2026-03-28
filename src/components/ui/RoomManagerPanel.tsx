@@ -79,10 +79,10 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
   };
 
   const iconPicker = (currentIcon: string, onPick: (icon: string) => void) => (
-    <div style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: isMobile ? 8 : 10, display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? 6 : 4, maxHeight: isMobile ? 200 : 160, overflowY: "auto", marginTop: 6 }}>
+    <div style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`, padding: isMobile ? "0.5rem" : "0.625rem", display: "grid", gridTemplateColumns: isMobile ? "repeat(6,1fr)" : "repeat(8,1fr)", gap: isMobile ? "0.375rem" : "0.25rem", maxHeight: isMobile ? "12.5rem" : "10rem", overflowY: "auto", marginTop: "0.375rem" }}>
       {EMOJI_PRESETS.map((e, i) => (
         <button key={i} onClick={() => onPick(e)}
-          style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: 6, border: e === currentIcon ? `2px solid ${accent}` : "1px solid transparent", background: e === currentIcon ? `${accent}15` : "transparent", fontSize: isMobile ? 20 : 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          style={{ width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: "0.375rem", border: e === currentIcon ? `2px solid ${accent}` : "1px solid transparent", background: e === currentIcon ? `${accent}15` : "transparent", fontSize: isMobile ? "1.25rem" : "1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {e}
         </button>
       ))}
@@ -91,34 +91,34 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(8px)", zIndex: 55, animation: "fadeIn .2s ease" }}>
-      <div onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: isMobile ? "100%" : "min(400px, 92vw)", background: `${T.color.linen}f8`, backdropFilter: "blur(20px)", borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`, padding: isMobile ? "20px 16px" : "28px 24px", overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)" }}>
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("manageRooms")} onClick={e => e.stopPropagation()} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: isMobile ? "100%" : "min(400px, 92vw)", background: `${T.color.linen}f8`, backdropFilter: "blur(20px)", borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`, padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem", overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)" }}>
         <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div>
-            <h3 style={{ fontFamily: T.font.display, fontSize: 22, fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("manageRooms")}</h3>
-            <p style={{ fontFamily: T.font.body, fontSize: 12, color: accent, margin: "4px 0 0" }}>{t("wingLabel", { icon: wing.icon, name: wing.name })}</p>
+            <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("manageRooms")}</h3>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>{t("wingLabel", { icon: wing.icon, name: wing.name })}</p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: isMobile ? 20 : 16, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 16 : 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}>{"\u2715"}</button>
+          <button onClick={onClose} aria-label="Close" style={{ width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: isMobile ? "1.25rem" : "1rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}>{"\u2715"}</button>
         </div>
 
         {/* Room count */}
-        <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, marginBottom: 16 }}>
+        <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginBottom: "1rem" }}>
           {t("roomCount", { current: String(rooms.length), max: String(MAX_ROOMS_PER_WING) })}
-          <div style={{ height: 3, background: T.color.cream, borderRadius: 2, marginTop: 6 }}>
+          <div style={{ height: 3, background: T.color.cream, borderRadius: 2, marginTop: "0.375rem" }}>
             <div style={{ height: "100%", background: accent, borderRadius: 2, width: `${(rooms.length / MAX_ROOMS_PER_WING) * 100}%`, transition: "width .3s" }} />
           </div>
         </div>
 
         {/* Room list */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.25rem" }}>
           {rooms.map((room, i) => (
-            <div key={room.id} style={{ background: T.color.white, borderRadius: 12, border: `1px solid ${T.color.cream}`, padding: "12px 14px", transition: "all .15s" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div key={room.id} style={{ background: T.color.white, borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`, padding: "0.75rem 0.875rem", transition: "all .15s" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
                 {/* Icon button */}
                 <button onClick={() => { setPickingIconId(pickingIconId === room.id ? null : room.id); setEditingId(null); setAdding(false); }}
-                  style={{ width: 38, height: 38, borderRadius: 10, border: `1px solid ${T.color.cream}`, background: pickingIconId === room.id ? `${accent}12` : T.color.warmStone, fontSize: 20, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s" }}
+                  style={{ width: "2.375rem", height: "2.375rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: pickingIconId === room.id ? `${accent}12` : T.color.warmStone, fontSize: "1.25rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s" }}
                   title={t("changeIcon")}>
                   {room.icon}
                 </button>
@@ -126,19 +126,19 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                 {/* Name */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   {editingId === room.id ? (
-                    <form onSubmit={e => { e.preventDefault(); saveEdit(room.id); }} style={{ display: "flex", gap: 6 }}>
+                    <form onSubmit={e => { e.preventDefault(); saveEdit(room.id); }} style={{ display: "flex", gap: "0.375rem" }}>
                       <input value={editName} onChange={e => setEditName(e.target.value)} autoFocus
                         onBlur={() => saveEdit(room.id)}
-                        style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: `1.5px solid ${accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, outline: "none" }} />
+                        style={{ flex: 1, padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1.5px solid ${accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, outline: "none" }} />
                     </form>
                   ) : (
                     <div onClick={() => startEdit(room.id, room.name)}
-                      style={{ fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal, cursor: "text", padding: "4px 0" }}
+                      style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, cursor: "text", padding: "0.25rem 0" }}
                       title={t("clickToRename")}>
                       {room.name}
                     </div>
                   )}
-                  <div style={{ fontFamily: T.font.body, fontSize: 10, color: T.color.muted, marginTop: 1 }}>
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, marginTop: 1 }}>
                     {room.shared ? t("shared", { count: String(room.sharedWith.length) }) : t("private")}
                     {" \u00B7 "}{room.id}
                   </div>
@@ -147,22 +147,22 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                 {/* Reorder buttons */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   <button onClick={() => reorderRoom(wing.id, room.id, -1)} disabled={i === 0} aria-label="Move up"
-                    style={{ width: isMobile ? 32 : 22, height: isMobile ? 26 : 18, borderRadius: 4, border: "none", background: i === 0 ? "transparent" : T.color.warmStone, color: i === 0 ? T.color.cream : T.color.muted, fontSize: isMobile ? 11 : 9, cursor: i === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25B2"}</button>
+                    style={{ width: isMobile ? "2rem" : "1.375rem", height: isMobile ? "1.625rem" : "1.125rem", borderRadius: "0.25rem", border: "none", background: i === 0 ? "transparent" : T.color.warmStone, color: i === 0 ? T.color.cream : T.color.muted, fontSize: isMobile ? "0.6875rem" : "0.5625rem", cursor: i === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25B2"}</button>
                   <button onClick={() => reorderRoom(wing.id, room.id, 1)} disabled={i === rooms.length - 1} aria-label="Move down"
-                    style={{ width: isMobile ? 32 : 22, height: isMobile ? 26 : 18, borderRadius: 4, border: "none", background: i === rooms.length - 1 ? "transparent" : T.color.warmStone, color: i === rooms.length - 1 ? T.color.cream : T.color.muted, fontSize: isMobile ? 11 : 9, cursor: i === rooms.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25BC"}</button>
+                    style={{ width: isMobile ? "2rem" : "1.375rem", height: isMobile ? "1.625rem" : "1.125rem", borderRadius: "0.25rem", border: "none", background: i === rooms.length - 1 ? "transparent" : T.color.warmStone, color: i === rooms.length - 1 ? T.color.cream : T.color.muted, fontSize: isMobile ? "0.6875rem" : "0.5625rem", cursor: i === rooms.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25BC"}</button>
                 </div>
 
                 {/* Enter room */}
                 {onEnterRoom && (
                   <button onClick={() => { onEnterRoom(room.id); onClose(); }}
-                    style={{ width: isMobile ? 38 : 30, height: isMobile ? 38 : 30, borderRadius: 8, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? 14 : 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}
+                    style={{ width: isMobile ? "2.375rem" : "1.875rem", height: isMobile ? "2.375rem" : "1.875rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? "0.875rem" : "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}
                     title={t("enterRoom")} aria-label={t("enterRoom")}>{"\u279C"}</button>
                 )}
 
                 {/* Delete button */}
                 {rooms.length > 1 && (
                   <button onClick={() => setConfirmDelete(confirmDelete === room.id ? null : room.id)}
-                    style={{ width: isMobile ? 38 : 30, height: isMobile ? 38 : 30, borderRadius: 8, border: confirmDelete === room.id ? "1px solid #D0606080" : `1px solid ${T.color.cream}`, background: confirmDelete === room.id ? "#D0606010" : "transparent", color: confirmDelete === room.id ? "#C05050" : T.color.muted, fontSize: isMobile ? 14 : 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44 }}
+                    style={{ width: isMobile ? "2.375rem" : "1.875rem", height: isMobile ? "2.375rem" : "1.875rem", borderRadius: "0.5rem", border: confirmDelete === room.id ? "1px solid #D0606080" : `1px solid ${T.color.cream}`, background: confirmDelete === room.id ? "#D0606010" : "transparent", color: confirmDelete === room.id ? "#C05050" : T.color.muted, fontSize: isMobile ? "0.875rem" : "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}
                     title={t("deleteRoom")}>{"\u{1F5D1}"}</button>
                 )}
               </div>
@@ -175,12 +175,12 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
 
               {/* Delete confirmation */}
               {confirmDelete === room.id && (
-                <div style={{ marginTop: 8, padding: "8px 10px", background: "#FDF0F0", borderRadius: 8, display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontFamily: T.font.body, fontSize: 11, color: "#C05050", flex: 1 }}>{t("deleteConfirm", { name: room.name })}</span>
+                <div style={{ marginTop: "0.5rem", padding: "0.5rem 0.625rem", background: "#FDF0F0", borderRadius: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C05050", flex: 1 }}>{t("deleteConfirm", { name: room.name })}</span>
                   <button onClick={() => handleDelete(room.id)}
-                    style={{ padding: "5px 12px", borderRadius: 6, border: "none", background: "#C05050", color: "#FFF", fontFamily: T.font.body, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>{tc("delete")}</button>
+                    style={{ padding: "0.3125rem 0.75rem", borderRadius: "0.375rem", border: "none", background: "#C05050", color: "#FFF", fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, cursor: "pointer" }}>{tc("delete")}</button>
                   <button onClick={() => setConfirmDelete(null)}
-                    style={{ padding: "5px 10px", borderRadius: 6, border: `1px solid ${T.color.cream}`, background: T.color.white, color: T.color.muted, fontFamily: T.font.body, fontSize: 11, cursor: "pointer" }}>{tc("cancel")}</button>
+                    style={{ padding: "0.3125rem 0.625rem", borderRadius: "0.375rem", border: `1px solid ${T.color.cream}`, background: T.color.white, color: T.color.muted, fontFamily: T.font.body, fontSize: "0.6875rem", cursor: "pointer" }}>{tc("cancel")}</button>
                 </div>
               )}
             </div>
@@ -189,36 +189,36 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
 
         {/* Add room section */}
         {adding ? (
-          <div style={{ background: T.color.white, borderRadius: 12, border: `1.5px solid ${accent}40`, padding: 16 }}>
-            <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 10 }}>{t("newRoom")}</div>
+          <div style={{ background: T.color.white, borderRadius: "0.75rem", border: `1.5px solid ${accent}40`, padding: "1rem" }}>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px", marginBottom: "0.625rem" }}>{t("newRoom")}</div>
 
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem" }}>
               <button onClick={() => setShowNewIconPicker(!showNewIconPicker)}
-                style={{ width: 42, height: 42, borderRadius: 10, border: `1px solid ${T.color.cream}`, background: T.color.warmStone, fontSize: 22, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                style={{ width: "2.625rem", height: "2.625rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, fontSize: "1.375rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
                 title={t("chooseIcon")}>
                 {newIcon}
               </button>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("roomNamePlaceholder")} autoFocus
                 onKeyDown={e => { if (e.key === "Enter") handleAdd(); }}
-                style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: 14, color: T.color.charcoal, outline: "none" }} />
+                style={{ flex: 1, padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, outline: "none" }} />
             </div>
 
             {showNewIconPicker && iconPicker(newIcon, (icon) => { setNewIcon(icon); setShowNewIconPicker(false); })}
 
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
               <button onClick={() => { setAdding(false); setNewName(""); setShowNewIconPicker(false); }}
-                style={{ flex: 1, padding: 10, borderRadius: 10, border: `1px solid ${T.color.cream}`, background: "transparent", fontFamily: T.font.body, fontSize: 12, color: T.color.muted, cursor: "pointer" }}>{tc("cancel")}</button>
+                style={{ flex: 1, padding: "0.625rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: "transparent", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, cursor: "pointer" }}>{tc("cancel")}</button>
               <button onClick={handleAdd} disabled={!newName.trim()}
-                style={{ flex: 2, padding: 10, borderRadius: 10, border: "none", background: newName.trim() ? accent : `${T.color.sandstone}40`, color: newName.trim() ? "#FFF" : T.color.muted, fontFamily: T.font.body, fontSize: 12, fontWeight: 600, cursor: newName.trim() ? "pointer" : "default" }}>{t("addRoomButton")}</button>
+                style={{ flex: 2, padding: "0.625rem", borderRadius: "0.625rem", border: "none", background: newName.trim() ? accent : `${T.color.sandstone}40`, color: newName.trim() ? "#FFF" : T.color.muted, fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, cursor: newName.trim() ? "pointer" : "default" }}>{t("addRoomButton")}</button>
             </div>
           </div>
         ) : canAdd ? (
           <button onClick={() => { setAdding(true); setEditingId(null); setPickingIconId(null); setConfirmDelete(null); }}
-            style={{ width: "100%", padding: 14, borderRadius: 12, border: `1.5px dashed ${accent}50`, background: `${accent}06`, color: accent, fontFamily: T.font.body, fontSize: 13, fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all .15s" }}>
+            style={{ width: "100%", padding: "0.875rem", borderRadius: "0.75rem", border: `1.5px dashed ${accent}50`, background: `${accent}06`, color: accent, fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", transition: "all .15s" }}>
             {t("addRoom")}
           </button>
         ) : (
-          <div style={{ fontFamily: T.font.body, fontSize: 11, color: T.color.muted, textAlign: "center", padding: 12 }}>
+          <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, textAlign: "center", padding: "0.75rem" }}>
             {t("maxRoomsReached", { max: String(MAX_ROOMS_PER_WING) })}
           </div>
         )}

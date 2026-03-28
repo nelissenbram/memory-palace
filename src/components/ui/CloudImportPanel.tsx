@@ -272,21 +272,21 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
   const content = (
     <>
         {/* Header */}
-        <div style={{ padding: "24px 28px 0", flexShrink: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ padding: "1.5rem 1.75rem 0", flexShrink: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <div style={{
-                width: 44, height: 44, borderRadius: 12,
+                width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem",
                 background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.375rem",
               }}>{"\u2601\uFE0F"}</div>
               <div>
                 <h3 style={{
-                  fontFamily: T.font.display, fontSize: 22, fontWeight: 600,
+                  fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
                   color: T.color.charcoal, margin: 0,
                 }}>{t("title")}</h3>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: 12, color: T.color.muted, margin: "2px 0 0",
+                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.125rem 0 0",
                 }}>
                   {importing
                     ? t("importing")
@@ -297,9 +297,9 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               </div>
             </div>
             <button onClick={onClose} style={{
-              width: 32, height: 32, borderRadius: 16,
+              width: "2rem", height: "2rem", borderRadius: "1rem",
               border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
-              color: T.color.muted, fontSize: 14, cursor: "pointer",
+              color: T.color.muted, fontSize: "0.875rem", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>{"\u2715"}</button>
           </div>
@@ -307,8 +307,8 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
           {/* Provider tabs */}
           {!loadingAccounts && accounts.length > 0 && (
             <div style={{
-              display: "flex", gap: 4, marginBottom: 16,
-              background: T.color.warmStone, borderRadius: 10, padding: 3,
+              display: "flex", gap: "0.25rem", marginBottom: "1rem",
+              background: T.color.warmStone, borderRadius: "0.625rem", padding: "0.1875rem",
               overflowX: "auto",
             }}>
               {accounts.map((account) => {
@@ -317,11 +317,11 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 const isActive = activeProvider === account.provider;
                 return (
                   <button key={account.provider} onClick={() => setActiveProvider(account.provider)} style={{
-                    padding: "8px 14px", borderRadius: 8, border: "none",
+                    padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: "none",
                     background: isActive ? T.color.white : "transparent",
                     color: isActive ? T.color.charcoal : T.color.muted,
-                    fontFamily: T.font.body, fontSize: 12, fontWeight: isActive ? 600 : 400,
-                    cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                    fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: isActive ? 600 : 400,
+                    cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem",
                     whiteSpace: "nowrap", transition: "all .15s",
                   }}>
                     <span>{meta.icon}</span>
@@ -334,28 +334,28 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
         </div>
 
         {/* Content area */}
-        <div style={{ flex: 1, overflow: "auto", padding: "0 28px 24px" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "0 1.75rem 1.5rem" }}>
 
           {/* No accounts connected */}
           {!loadingAccounts && accounts.length === 0 && (
             <div style={{
-              textAlign: "center", padding: "48px 24px",
+              textAlign: "center", padding: "3rem 1.5rem",
             }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>{"\u{1F517}"}</div>
+              <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>{"\u{1F517}"}</div>
               <h3 style={{
-                fontFamily: T.font.display, fontSize: 22, fontWeight: 500,
-                color: T.color.charcoal, margin: "0 0 8px",
+                fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
+                color: T.color.charcoal, margin: "0 0 0.5rem",
               }}>{t("noAccountsTitle")}</h3>
               <p style={{
-                fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
-                margin: "0 0 20px", lineHeight: 1.5,
+                fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+                margin: "0 0 1.25rem", lineHeight: 1.5,
               }}>
                 {t("noAccountsDesc")}
               </p>
               <a href="/settings/connections" style={{
-                display: "inline-block", padding: "12px 24px", borderRadius: 12,
+                display: "inline-block", padding: "0.75rem 1.5rem", borderRadius: "0.75rem",
                 background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                color: "#FFF", fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
+                color: "#FFF", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                 textDecoration: "none",
               }}>
                 {t("goToSettings")}
@@ -366,8 +366,8 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
           {/* Loading accounts */}
           {loadingAccounts && (
             <div style={{
-              textAlign: "center", padding: 48,
-              fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+              textAlign: "center", padding: "3rem",
+              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
             }}>
               {t("loadingAccounts")}
             </div>
@@ -375,46 +375,46 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
 
           {/* Import complete view */}
           {importProgress && !importing && (
-            <div style={{ textAlign: "center", padding: "32px 0" }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>
+            <div style={{ textAlign: "center", padding: "2rem 0" }}>
+              <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>
                 {importProgress.failed === 0 ? "\u{1F389}" : "\u26A0\uFE0F"}
               </div>
               <h3 style={{
-                fontFamily: T.font.display, fontSize: 24, fontWeight: 600,
-                color: T.color.charcoal, margin: "0 0 8px",
+                fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 600,
+                color: T.color.charcoal, margin: "0 0 0.5rem",
               }}>
                 {importProgress.failed === 0 ? t("completeSuccess") : t("completeWithErrors")}
               </h3>
               <p style={{
-                fontFamily: T.font.body, fontSize: 14, color: T.color.muted, margin: "0 0 4px",
+                fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, margin: "0 0 0.25rem",
               }}>
                 {t("successCount", { succeeded: String(importProgress.succeeded), total: String(importProgress.total) })}
               </p>
               {importProgress.failed > 0 && (
-                <div style={{ marginTop: 12, maxHeight: 150, overflowY: "auto" }}>
+                <div style={{ marginTop: "0.75rem", maxHeight: "9.375rem", overflowY: "auto" }}>
                   {importProgress.results.filter((r) => !r.success).map((r, i) => (
                     <p key={i} style={{
-                      fontFamily: T.font.body, fontSize: 11, color: "#C05050", margin: "4px 0",
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C05050", margin: "0.25rem 0",
                     }}>
                       {r.id}: {r.error}
                     </p>
                   ))}
                 </div>
               )}
-              <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 20 }}>
+              <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center", marginTop: "1.25rem" }}>
                 <button onClick={() => {
                   setImportProgress(null);
                   setSelected(new Set());
                 }} style={{
-                  padding: "12px 24px", borderRadius: 12,
+                  padding: "0.75rem 1.5rem", borderRadius: "0.75rem",
                   border: `1px solid ${T.color.cream}`, background: T.color.white,
-                  fontFamily: T.font.body, fontSize: 13, fontWeight: 500,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
                   color: T.color.charcoal, cursor: "pointer",
                 }}>{t("importMore")}</button>
                 <button onClick={onClose} style={{
-                  padding: "12px 24px", borderRadius: 12, border: "none",
+                  padding: "0.75rem 1.5rem", borderRadius: "0.75rem", border: "none",
                   background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                  fontFamily: T.font.body, fontSize: 13, fontWeight: 600,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                   color: "#FFF", cursor: "pointer",
                 }}>{tc("close")}</button>
               </div>
@@ -423,30 +423,30 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
 
           {/* Importing progress */}
           {importing && importProgress && (
-            <div style={{ padding: "32px 0" }}>
+            <div style={{ padding: "2rem 0" }}>
               <div style={{
                 display: "flex", justifyContent: "space-between",
-                fontFamily: T.font.body, fontSize: 12, color: T.color.muted, marginBottom: 8,
+                fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginBottom: "0.5rem",
               }}>
                 <span>{t("importingFrom", { provider: PROVIDER_META[activeProvider!]?.name })}</span>
                 <span>{importProgress.succeeded + importProgress.failed} / {importProgress.total}</span>
               </div>
               <div style={{
-                width: "100%", height: 8, borderRadius: 4,
+                width: "100%", height: "0.5rem", borderRadius: "0.25rem",
                 background: `${T.color.sandstone}33`, overflow: "hidden",
               }}>
                 <div style={{
                   width: `${importProgress.total > 0
                     ? ((importProgress.succeeded + importProgress.failed) / importProgress.total) * 100
                     : 0}%`,
-                  height: "100%", borderRadius: 4,
+                  height: "100%", borderRadius: "0.25rem",
                   background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.walnut})`,
                   transition: "width .3s",
                 }} />
               </div>
               <p style={{
-                fontFamily: T.font.body, fontSize: 12, color: T.color.muted,
-                textAlign: "center", marginTop: 16,
+                fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                textAlign: "center", marginTop: "1rem",
               }}>
                 {t("importWaitMessage")}
               </p>
@@ -459,26 +459,26 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               {/* Folder breadcrumb (file-based services) */}
               {isFileProvider && folderPath.length > 0 && (
                 <div style={{
-                  display: "flex", alignItems: "center", gap: 4, marginBottom: 12,
-                  fontFamily: T.font.body, fontSize: 12,
+                  display: "flex", alignItems: "center", gap: "0.25rem", marginBottom: "0.75rem",
+                  fontFamily: T.font.body, fontSize: "0.75rem",
                   flexWrap: "wrap",
                 }}>
                   <button onClick={() => navigateBack(0)} style={{
                     background: "none", border: "none", color: T.color.terracotta,
-                    fontFamily: T.font.body, fontSize: 12, cursor: "pointer",
-                    padding: "2px 4px",
+                    fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
+                    padding: "0.125rem 0.25rem",
                   }}>
                     {t("root")}
                   </button>
                   {folderPath.map((folder, i) => (
-                    <span key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span key={i} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
                       <span style={{ color: T.color.muted }}>/</span>
                       <button onClick={() => navigateBack(i + 1)} style={{
                         background: "none", border: "none",
                         color: i === folderPath.length - 1 ? T.color.charcoal : T.color.terracotta,
-                        fontFamily: T.font.body, fontSize: 12, cursor: "pointer",
+                        fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
                         fontWeight: i === folderPath.length - 1 ? 600 : 400,
-                        padding: "2px 4px",
+                        padding: "0.125rem 0.25rem",
                       }}>
                         {folder.name}
                       </button>
@@ -491,24 +491,24 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               {items.length > 0 && (
                 <div style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  marginBottom: 12,
+                  marginBottom: "0.75rem",
                 }}>
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
                     <button onClick={selectAll} style={{
-                      padding: "6px 12px", borderRadius: 8,
+                      padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
                       border: `1px solid ${T.color.cream}`, background: T.color.white,
-                      fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal,
                       cursor: "pointer",
                     }}>{t("selectAll")}</button>
                     <button onClick={selectNone} style={{
-                      padding: "6px 12px", borderRadius: 8,
+                      padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
                       border: `1px solid ${T.color.cream}`, background: T.color.white,
-                      fontFamily: T.font.body, fontSize: 11, color: T.color.charcoal,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal,
                       cursor: "pointer",
                     }}>{t("selectNone")}</button>
                   </div>
                   <span style={{
-                    fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                    fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
                   }}>
                     {t("selected", { count: String(selected.size) })}
                     {selectedSize > 0 && ` (${formatBytes(selectedSize)})`}
@@ -519,15 +519,15 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               {/* Items grid */}
               {loadingItems && items.length === 0 ? (
                 <div style={{
-                  textAlign: "center", padding: 48,
-                  fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+                  textAlign: "center", padding: "3rem",
+                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
                 }}>
                   {t("loadingFiles")}
                 </div>
               ) : items.length === 0 ? (
                 <div style={{
-                  textAlign: "center", padding: 48,
-                  fontFamily: T.font.body, fontSize: 14, color: T.color.muted,
+                  textAlign: "center", padding: "3rem",
+                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
                 }}>
                   {t("noFiles")}
                 </div>
@@ -557,9 +557,9 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                       )}
                       disabled={loadingItems}
                       style={{
-                        width: "100%", padding: 12, borderRadius: 10, marginTop: 12,
+                        width: "100%", padding: "0.75rem", borderRadius: "0.625rem", marginTop: "0.75rem",
                         border: `1px solid ${T.color.cream}`, background: T.color.white,
-                        fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal,
+                        fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
                         cursor: "pointer",
                       }}
                     >
@@ -572,25 +572,25 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               {/* Target room selection + import button */}
               {selected.size > 0 && (
                 <div style={{
-                  marginTop: 16, paddingTop: 16,
+                  marginTop: "1rem", paddingTop: "1rem",
                   borderTop: `1px solid ${T.color.cream}`,
                 }}>
                   <div style={{
-                    display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12,
+                    display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem", marginBottom: "0.75rem",
                   }}>
                     <div>
                       <label style={{
-                        fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                        fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
                         textTransform: "uppercase", letterSpacing: ".5px",
-                        display: "block", marginBottom: 6,
+                        display: "block", marginBottom: "0.375rem",
                       }}>{t("targetWing")}</label>
                       <select
                         value={targetWingId}
                         onChange={(e) => { setTargetWingId(e.target.value); setTargetRoomId(""); }}
                         style={{
-                          width: "100%", padding: "10px 12px", borderRadius: 10,
+                          width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
                           border: `1px solid ${T.color.cream}`, background: T.color.white,
-                          fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal,
+                          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
                           cursor: "pointer", outline: "none",
                         }}
                       >
@@ -602,19 +602,19 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                     </div>
                     <div>
                       <label style={{
-                        fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
+                        fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
                         textTransform: "uppercase", letterSpacing: ".5px",
-                        display: "block", marginBottom: 6,
+                        display: "block", marginBottom: "0.375rem",
                       }}>{t("targetRoom")}</label>
                       <select
                         value={targetRoomId}
                         onChange={(e) => setTargetRoomId(e.target.value)}
                         disabled={!targetWingId}
                         style={{
-                          width: "100%", padding: "10px 12px", borderRadius: 10,
+                          width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
                           border: `1px solid ${T.color.cream}`,
                           background: !targetWingId ? T.color.warmStone : T.color.white,
-                          fontFamily: T.font.body, fontSize: 13, color: T.color.charcoal,
+                          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
                           cursor: targetWingId ? "pointer" : "default", outline: "none",
                         }}
                       >
@@ -630,12 +630,12 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                     onClick={handleImport}
                     disabled={!targetRoomId || importing}
                     style={{
-                      width: "100%", padding: 14, borderRadius: 12, border: "none",
+                      width: "100%", padding: "0.875rem", borderRadius: "0.75rem", border: "none",
                       background: !targetRoomId
                         ? `${T.color.sandstone}40`
                         : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                       color: !targetRoomId ? T.color.muted : "#FFF",
-                      fontFamily: T.font.body, fontSize: 14, fontWeight: 600,
+                      fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                       cursor: !targetRoomId ? "default" : "pointer",
                     }}
                   >
@@ -674,7 +674,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
         width: "min(900px, 94vw)", maxHeight: "90vh",
         overflow: "hidden", display: "flex", flexDirection: "column",
         background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",
-        borderRadius: 20, border: `1px solid ${T.color.cream}`,
+        borderRadius: "1.25rem", border: `1px solid ${T.color.cream}`,
         boxShadow: "0 24px 80px rgba(44,44,42,.3)",
         animation: "fadeUp .3s ease",
       }}>
@@ -700,17 +700,17 @@ function PhotoGrid({ items, selected, onToggle }: {
     <div style={{
       display: "grid",
       gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-      gap: 8,
-      maxHeight: 400,
+      gap: "0.5rem",
+      maxHeight: "25rem",
       overflowY: "auto",
-      borderRadius: 12,
+      borderRadius: "0.75rem",
     }}>
       {items.map((item) => {
         const isSelected = selected.has(item.id);
         return (
           <div key={item.id} onClick={() => onToggle(item.id)} style={{
             position: "relative", aspectRatio: "1",
-            borderRadius: 10, overflow: "hidden", cursor: "pointer",
+            borderRadius: "0.625rem", overflow: "hidden", cursor: "pointer",
             border: isSelected ? `3px solid ${T.color.terracotta}` : `1px solid ${T.color.cream}`,
             background: T.color.warmStone,
             transition: "border .15s",
@@ -726,7 +726,7 @@ function PhotoGrid({ items, selected, onToggle }: {
               <div style={{
                 width: "100%", height: "100%",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 28, color: T.color.muted,
+                fontSize: "1.75rem", color: T.color.muted,
               }}>
                 {item.isVideo ? "\u{1F3AC}" : "\u{1F5BC}\uFE0F"}
               </div>
@@ -734,12 +734,12 @@ function PhotoGrid({ items, selected, onToggle }: {
 
             {/* Selection checkbox */}
             <div style={{
-              position: "absolute", top: 6, right: 6,
-              width: 24, height: 24, borderRadius: 12,
+              position: "absolute", top: "0.375rem", right: "0.375rem",
+              width: "1.5rem", height: "1.5rem", borderRadius: "0.75rem",
               background: isSelected ? T.color.terracotta : "rgba(255,255,255,.8)",
               border: isSelected ? "none" : `2px solid ${T.color.sandstone}`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12, color: "#FFF", fontWeight: 700,
+              fontSize: "0.75rem", color: "#FFF", fontWeight: 700,
               transition: "all .15s",
               boxShadow: "0 1px 4px rgba(0,0,0,.15)",
             }}>
@@ -749,10 +749,10 @@ function PhotoGrid({ items, selected, onToggle }: {
             {/* Video badge */}
             {item.isVideo && (
               <div style={{
-                position: "absolute", bottom: 6, left: 6,
-                padding: "2px 6px", borderRadius: 4,
+                position: "absolute", bottom: "0.375rem", left: "0.375rem",
+                padding: "0.125rem 0.375rem", borderRadius: "0.25rem",
                 background: "rgba(0,0,0,.6)", color: "#FFF",
-                fontFamily: T.font.body, fontSize: 9, fontWeight: 600,
+                fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
               }}>
                 {t("video")}
               </div>
@@ -761,12 +761,12 @@ function PhotoGrid({ items, selected, onToggle }: {
             {/* Filename on hover area */}
             <div style={{
               position: "absolute", bottom: 0, left: 0, right: 0,
-              padding: "16px 6px 4px",
+              padding: "1rem 0.375rem 0.25rem",
               background: "linear-gradient(transparent, rgba(0,0,0,.5))",
               pointerEvents: "none",
             }}>
               <span style={{
-                fontFamily: T.font.body, fontSize: 9, color: "#FFF",
+                fontFamily: T.font.body, fontSize: "0.5625rem", color: "#FFF",
                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 display: "block",
               }}>
@@ -826,24 +826,24 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
             {/* Checkbox (files only) */}
             {!isFolder ? (
               <div style={{
-                width: 20, height: 20, borderRadius: 4, flexShrink: 0,
+                width: "1.25rem", height: "1.25rem", borderRadius: "0.25rem", flexShrink: 0,
                 border: isSelected ? `2px solid ${T.color.terracotta}` : `2px solid ${T.color.sandstone}`,
                 background: isSelected ? T.color.terracotta : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, color: "#FFF", transition: "all .15s",
+                fontSize: "0.6875rem", color: "#FFF", transition: "all .15s",
               }}>
                 {isSelected && "\u2713"}
               </div>
             ) : (
-              <div style={{ width: 20, flexShrink: 0 }} />
+              <div style={{ width: "1.25rem", flexShrink: 0 }} />
             )}
 
             {/* Thumbnail / icon */}
             <div style={{
-              width: 36, height: 36, borderRadius: 8, flexShrink: 0, overflow: "hidden",
+              width: "2.25rem", height: "2.25rem", borderRadius: "0.5rem", flexShrink: 0, overflow: "hidden",
               background: T.color.warmStone,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 18,
+              fontSize: "1.125rem",
             }}>
               {item.thumbnailUrl ? (
                 <img src={item.thumbnailUrl} alt="" style={{
@@ -857,15 +857,15 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
             {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontFamily: T.font.body, fontSize: 13, fontWeight: isFolder ? 500 : 400,
+                fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: isFolder ? 500 : 400,
                 color: T.color.charcoal,
                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
               }}>
                 {item.name}
               </div>
               <div style={{
-                fontFamily: T.font.body, fontSize: 10, color: T.color.muted,
-                display: "flex", gap: 8,
+                fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted,
+                display: "flex", gap: "0.5rem",
               }}>
                 {isFolder && item.childCount != null && (
                   <span>{t("items", { count: String(item.childCount) })}</span>
@@ -882,7 +882,7 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
             {/* Folder arrow */}
             {isFolder && (
               <span style={{
-                color: T.color.muted, fontSize: 14, flexShrink: 0,
+                color: T.color.muted, fontSize: "0.875rem", flexShrink: 0,
               }}>{"\u203A"}</span>
             )}
           </div>
