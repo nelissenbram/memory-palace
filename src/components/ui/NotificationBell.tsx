@@ -103,7 +103,7 @@ export default function NotificationBell() {
         {/* Unread badge */}
         {count > 0 && (
           <div
-            aria-label={`${count} unread notifications`}
+            aria-label={t("unreadNotifications", { count: String(count) })}
             style={{
               position: "absolute",
               top: "-0.125rem",

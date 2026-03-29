@@ -51,6 +51,7 @@ interface WingManagerPanelProps {
 export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("wingManager");
+  const { t: tc } = useTranslation("common");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { getWings, renameWing, changeWingIcon, changeWingAccent } = useRoomStore();
   const wings = getWings();
@@ -108,7 +109,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
             <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
             <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>{t("description")}</p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: isMobile ? "1.25rem" : "1rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}>{"\u2715"}</button>
+          <button onClick={onClose} aria-label={tc("close")} style={{ width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: isMobile ? "1.25rem" : "1rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}>{"\u2715"}</button>
         </div>
 
         {/* Wing list */}

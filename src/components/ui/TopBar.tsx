@@ -350,6 +350,7 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
 }) {
   const menuListRef = useRef<HTMLDivElement>(null);
   const [focusIdx, setFocusIdx] = useState(-1);
+  const { t: tl } = useTranslation("levels");
   const { totalPoints, getLevelInfo } = useTrackStore();
   const levelInfo = getLevelInfo();
 
@@ -439,7 +440,7 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
                 fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
                 color: levelInfo.color,
               }}>
-                {levelInfo.title}
+                {tl(levelInfo.titleKey)}
               </span>
               <span style={{
                 fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
@@ -747,6 +748,7 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
 /** Compact level badge for the mobile menu header */
 function LevelBadgeMobile() {
   const { t } = useTranslation("common");
+  const { t: tl } = useTranslation("levels");
   const { totalPoints, getLevelInfo } = useTrackStore();
   const levelInfo = getLevelInfo();
 
@@ -771,7 +773,7 @@ function LevelBadgeMobile() {
         fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 500,
         color: levelInfo.color,
       }}>
-        {levelInfo.title}
+        {tl(levelInfo.titleKey)}
       </span>
       <span style={{
         fontFamily: T.font.body, fontSize: "0.5625rem", color: T.color.muted,

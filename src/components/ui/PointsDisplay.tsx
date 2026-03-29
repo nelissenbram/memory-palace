@@ -7,6 +7,7 @@ import { useTrackStore } from "@/lib/stores/trackStore";
 /** Small Memory Points + Level badge for the StatusBar area. Click to open tracks panel. */
 export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
   const { t } = useTranslation("pointsDisplay");
+  const { t: tl } = useTranslation("levels");
   const { totalPoints, getLevelInfo, getLevelProgressInfo, pointsHistory } = useTrackStore();
   const [expanded, setExpanded] = useState(false);
   const levelInfo = getLevelInfo();
@@ -22,8 +23,8 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
       {/* Main badge */}
       <button
         onClick={handleClick}
-        title={`${levelInfo.title} \u2014 ${totalPoints} ${t("title")}`}
-        aria-label={`${levelInfo.title} \u2014 ${totalPoints} ${t("title")}`}
+        title={`${tl(levelInfo.titleKey)} \u2014 ${totalPoints} ${t("title")}`}
+        aria-label={`${tl(levelInfo.titleKey)} \u2014 ${totalPoints} ${t("title")}`}
         style={{
           display: "flex", alignItems: "center", gap: "0.375rem",
           height: "2rem", borderRadius: "1rem", padding: "0 0.625rem 0 0.375rem",
@@ -90,7 +91,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
               </div>
               <div>
                 <div style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, color: T.color.charcoal }}>
-                  {levelInfo.title}
+                  {tl(levelInfo.titleKey)}
                 </div>
                 <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
                   {totalPoints} {t("title")}
@@ -103,7 +104,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
               <div style={{ marginBottom: "0.875rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
                   <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>
-                    {t("next", { level: progressInfo.nextLevel.title })}
+                    {t("next", { level: tl(progressInfo.nextLevel.titleKey) })}
                   </span>
                   <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.walnut, fontWeight: 600 }}>
                     {progressInfo.pointsInLevel}/{progressInfo.pointsNeeded}

@@ -3,18 +3,18 @@
 
 export interface Level {
   rank: number;
-  title: string;
+  titleKey: string;
   minPoints: number;
   color: string; // accent color for the tier
 }
 
 export const LEVELS: Level[] = [
-  { rank: 0, title: "Newcomer",  minPoints: 0,    color: "#9A9183" },
-  { rank: 1, title: "Explorer",  minPoints: 50,   color: "#8B7355" },
-  { rank: 2, title: "Keeper",    minPoints: 150,  color: "#C17F59" },
-  { rank: 3, title: "Guardian",  minPoints: 300,  color: "#4A6741" },
-  { rank: 4, title: "Curator",   minPoints: 500,  color: "#5B8FA8" },
-  { rank: 5, title: "Master",    minPoints: 1000, color: "#C9A84C" },
+  { rank: 0, titleKey: "newcomer",  minPoints: 0,    color: "#9A9183" },
+  { rank: 1, titleKey: "explorer",  minPoints: 50,   color: "#8B7355" },
+  { rank: 2, titleKey: "keeper",    minPoints: 150,  color: "#C17F59" },
+  { rank: 3, titleKey: "guardian",  minPoints: 300,  color: "#4A6741" },
+  { rank: 4, titleKey: "curator",   minPoints: 500,  color: "#5B8FA8" },
+  { rank: 5, titleKey: "master",    minPoints: 1000, color: "#C9A84C" },
 ];
 
 /** Get the current level for a given point total */

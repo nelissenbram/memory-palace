@@ -343,15 +343,15 @@ export default function MemoryPalace(){
             <span style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>{allRoomMems.length}</span>
             <div style={{width:1,height:14,background:T.color.cream}} />
             <select value={roomLayouts[activeRoomId]||""} onChange={e=>setRoomLayout(activeRoomId,e.target.value)} style={{background:"transparent",border:"none",fontFamily:T.font.body,fontSize:11,color:T.color.walnut,cursor:"pointer",outline:"none",padding:"2px 0"}}>
-              <option value="">Auto</option>
+              <option value="">{tAction("auto")}</option>
               {ROOM_LAYOUTS.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
             <div style={{width:1,height:14,background:T.color.cream}} />
             <button onClick={()=>setShowSharing(true)} style={{background:"transparent",border:"none",display:"flex",alignItems:"center",gap:4,cursor:"pointer",padding:"2px 4px"}}>
-              {rs.shared?<><div style={{width:6,height:6,borderRadius:3,background:"#4A6741"}}/><span style={{fontFamily:T.font.body,fontSize:10,color:"#4A6741",fontWeight:500}}>Shared</span></>
-              :<span style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>Share</span>}
+              {rs.shared?<><div style={{width:6,height:6,borderRadius:3,background:"#4A6741"}}/><span style={{fontFamily:T.font.body,fontSize:10,color:"#4A6741",fontWeight:500}}>{tAction("shareStatus")}</span></>
+              :<span style={{fontFamily:T.font.body,fontSize:10,color:T.color.muted}}>{tAction("shareAction")}</span>}
             </button>
-            <button onClick={()=>setShowRoomShare(true)} title="Share as card" style={{background:"transparent",border:"none",cursor:"pointer",fontSize:14,lineHeight:1,padding:"2px 2px",display:"flex",alignItems:"center"}}>
+            <button onClick={()=>setShowRoomShare(true)} title={tAction("shareAsCard")} style={{background:"transparent",border:"none",cursor:"pointer",fontSize:14,lineHeight:1,padding:"2px 2px",display:"flex",alignItems:"center"}}>
               {"\uD83D\uDCE4"}
             </button>
           </div>
@@ -372,35 +372,35 @@ export default function MemoryPalace(){
         if (view==="exterior"||view==="entrance") {
           return <ActionMenu
             accent={T.color.terracotta}
-            primary={{ icon: "\uD83D\uDCC5", label: "Timeline", action: ()=>setShowTimeline(true) }}
+            primary={{ icon: "\uD83D\uDCC5", label: tAction("timeline"), action: ()=>setShowTimeline(true) }}
             secondary={[
-              { icon: "\uD83C\uDF0D", label: "Memory Map", action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
-              { icon: "\uD83C\uDF99\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) },
-              { icon: "\u{1F4E6}", label: "Mass Import", action: ()=>setShowMassImport(true) },
-              { icon: "\u2699\uFE0F", label: "Customize Wings", action: ()=>setShowWingManager(true) },
+              { icon: "\uD83C\uDF0D", label: tAction("memoryMap"), action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
+              { icon: "\uD83C\uDF99\uFE0F", label: tAction("lifeInterviews"), action: ()=>setShowInterviewLibrary(true) },
+              { icon: "\u{1F4E6}", label: tAction("massImport"), action: ()=>setShowMassImport(true) },
+              { icon: "\u2699\uFE0F", label: tAction("customizeWings"), action: ()=>setShowWingManager(true) },
             ]}
           />;
         }
         if (view==="corridor"&&activeWing) {
           return <ActionMenu
             accent={wingData?.accent||T.color.terracotta}
-            primary={{ icon: "\uD83C\uDF99\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) }}
+            primary={{ icon: "\uD83C\uDF99\uFE0F", label: tAction("lifeInterviews"), action: ()=>setShowInterviewLibrary(true) }}
             secondary={[
-              { icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: ()=>setShowCorridorGallery(true) },
-              { icon: "\uD83C\uDF0D", label: "Memory Map", action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
-              { icon: "\u{1F527}", label: "Manage Rooms", action: ()=>setShowRoomManager(true) },
+              { icon: "\u{1F5BC}\uFE0F", label: tAction("gallery"), action: ()=>setShowCorridorGallery(true) },
+              { icon: "\uD83C\uDF0D", label: tAction("memoryMap"), action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
+              { icon: "\u{1F527}", label: tAction("manageRooms"), action: ()=>setShowRoomManager(true) },
             ]}
           />;
         }
         if (view==="room"&&activeRoomId&&!showUpload&&!showSharing&&!selMem) {
           return <ActionMenu
             accent={wingData?.accent||T.color.terracotta}
-            primary={{ icon: "+", label: "Add Memory", action: ()=>setShowUpload(true) }}
+            primary={{ icon: "+", label: tAction("addMemory"), action: ()=>setShowUpload(true) }}
             secondary={[
-              { icon: "\u{1F5BC}\uFE0F", label: "Gallery", action: ()=>setShowGallery(true), hidden: allRoomMems.length===0 },
-              { icon: "\u{1F91D}", label: "Share Room", action: ()=>setShowSharing(true) },
-              { icon: "\u{1F4E6}", label: "Mass Import", action: ()=>setShowMassImport(true) },
-              { icon: "\u{1F399}\uFE0F", label: "Life Interviews", action: ()=>setShowInterviewLibrary(true) },
+              { icon: "\u{1F5BC}\uFE0F", label: tAction("gallery"), action: ()=>setShowGallery(true), hidden: allRoomMems.length===0 },
+              { icon: "\u{1F91D}", label: tAction("shareRoom"), action: ()=>setShowSharing(true) },
+              { icon: "\u{1F4E6}", label: tAction("massImport"), action: ()=>setShowMassImport(true) },
+              { icon: "\u{1F399}\uFE0F", label: tAction("lifeInterviews"), action: ()=>setShowInterviewLibrary(true) },
             ]}
           />;
         }
@@ -712,20 +712,20 @@ function MobileBottomBar(props: MobileBottomBarProps) {
           display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10,
         }}>
           {[
-            { icon: "\u{1F4C2}", label: "Directory", action: props.onDirectory },
-            { icon: "\u2699\uFE0F", label: "Palace Map", action: props.onWingManager },
-            { icon: "\uD83C\uDF99\uFE0F", label: "Interviews", action: props.onInterviews },
-            { icon: "\u{1F4E6}", label: "Import", action: props.onMassImport },
-            { icon: "\u{1F3C6}", label: `Awards ${p.earned}/${p.total}`, action: props.onAchievements },
-            { icon: "\uD83D\uDCDC", label: "Tracks", action: props.onTracks },
-            { icon: "\u{1F4EC}", label: "Invites", action: props.onInvites },
-            { icon: "\u{1F91D}", label: "Shared", action: props.onSharedWithMe },
-            { icon: "\u2728", label: "Tour", action: () => { props.onCloseMore(); useTutorialStore.getState().start(); } },
+            { icon: "\u{1F4C2}", label: tAction("directory"), action: props.onDirectory },
+            { icon: "\u2699\uFE0F", label: tAction("palaceMap"), action: props.onWingManager },
+            { icon: "\uD83C\uDF99\uFE0F", label: tAction("interviews"), action: props.onInterviews },
+            { icon: "\u{1F4E6}", label: tAction("import"), action: props.onMassImport },
+            { icon: "\u{1F3C6}", label: tAction("awards", { earned: String(p.earned), total: String(p.total) }), action: props.onAchievements },
+            { icon: "\uD83D\uDCDC", label: tAction("tracks"), action: props.onTracks },
+            { icon: "\u{1F4EC}", label: tAction("invites"), action: props.onInvites },
+            { icon: "\u{1F91D}", label: tAction("shared"), action: props.onSharedWithMe },
+            { icon: "\u2728", label: tAction("tour"), action: () => { props.onCloseMore(); useTutorialStore.getState().start(); } },
             ...(view === "room" ? [
-              { icon: "\u{1F4E4}", label: "Share Card", action: props.onShare },
+              { icon: "\u{1F4E4}", label: tAction("shareCard"), action: props.onShare },
             ] : []),
           ].map((item, i) => (
-            <button key={i} onClick={item.action} style={{
+            <button key={i} onClick={item.action} aria-label={item.label} style={{
               padding: "16px 8px", borderRadius: 12, border: `1px solid ${T.color.cream}`,
               background: `${T.color.white}ee`, cursor: "pointer", textAlign: "center",
               display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
@@ -750,7 +750,7 @@ function MobileBottomBar(props: MobileBottomBarProps) {
         animation: "fadeIn .3s ease .3s both",
       }}>
         {primaryActions.slice(0, 3).map((act, i) => (
-          <button key={i} onClick={act.action} style={{
+          <button key={i} onClick={act.action} aria-label={act.label} style={{
             flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
             padding: "8px 4px", border: "none", background: "transparent", cursor: "pointer",
             minHeight: 48, justifyContent: "center",
@@ -773,7 +773,7 @@ function MobileBottomBar(props: MobileBottomBarProps) {
           </button>
         ))}
         {/* More button */}
-        <button onClick={props.onToggleMore} style={{
+        <button onClick={props.onToggleMore} aria-label="More" style={{
           flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
           padding: "8px 4px", border: "none", background: "transparent", cursor: "pointer",
           minHeight: 48, justifyContent: "center",

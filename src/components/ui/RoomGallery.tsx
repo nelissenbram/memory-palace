@@ -430,19 +430,19 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                 background: T.color.white, borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
               }}>
                 {/* Prev */}
-                <button onClick={() => setPlayerIdx(Math.max(0, playerIdx - 1))} disabled={playerIdx === 0} aria-label="Previous"
+                <button onClick={() => setPlayerIdx(Math.max(0, playerIdx - 1))} disabled={playerIdx === 0} aria-label={t("previous")}
                   style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", border: "none", background: playerIdx > 0 ? T.color.warmStone : "transparent", color: playerIdx > 0 ? T.color.charcoal : T.color.cream, fontSize: "1rem", cursor: playerIdx > 0 ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {"\u25C0"}
                 </button>
 
                 {/* Play/pause (for slideshow or auto-advance) */}
-                <button onClick={() => setPlaying(!playing)} aria-label={playing ? "Pause" : "Play"}
+                <button onClick={() => setPlaying(!playing)} aria-label={playing ? t("pause") : t("play")}
                   style={{ width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem", border: "none", background: `linear-gradient(135deg, ${accent}, ${T.color.walnut})`, color: "#FFF", fontSize: "1.125rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {playing ? "\u23F8" : "\u25B6"}
                 </button>
 
                 {/* Next */}
-                <button onClick={() => setPlayerIdx(Math.min(filtered.length - 1, playerIdx + 1))} disabled={playerIdx >= filtered.length - 1} aria-label="Next"
+                <button onClick={() => setPlayerIdx(Math.min(filtered.length - 1, playerIdx + 1))} disabled={playerIdx >= filtered.length - 1} aria-label={t("next")}
                   style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", border: "none", background: playerIdx < filtered.length - 1 ? T.color.warmStone : "transparent", color: playerIdx < filtered.length - 1 ? T.color.charcoal : T.color.cream, fontSize: "1rem", cursor: playerIdx < filtered.length - 1 ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {"\u25B6"}
                 </button>

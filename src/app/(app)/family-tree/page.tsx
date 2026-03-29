@@ -1002,6 +1002,7 @@ export default function FamilyTreePage() {
           >
             <button
               onClick={() => setZoom((z) => Math.min(3, z + 0.2))}
+              aria-label={t("zoomIn")}
               style={{
                 width: "2.5rem",
                 height: "2.5rem",
@@ -1020,6 +1021,7 @@ export default function FamilyTreePage() {
             </button>
             <button
               onClick={() => setZoom((z) => Math.max(0.2, z - 0.2))}
+              aria-label={t("zoomOut")}
               style={{
                 width: "2.5rem",
                 height: "2.5rem",
@@ -1038,6 +1040,7 @@ export default function FamilyTreePage() {
             </button>
             <button
               onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }}
+              aria-label={t("resetZoom")}
               style={{
                 width: "2.5rem",
                 height: "2.5rem",

@@ -22,6 +22,7 @@ interface UploadPanelProps {
 export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onUpdateMemory,suggestedType}: UploadPanelProps){
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("uploadPanel");
+  const { t: tc } = useTranslation("common");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const isOnline = useOnlineStatus();
   const [savedOffline,setSavedOffline]=useState(false);
@@ -139,7 +140,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,margin:0}}>{t("addMemory")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:"0.75rem",color:accent,margin:"0.25rem 0 0"}}>{room?.icon} {room?.name}</p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{width:isMobile?"2.5rem":"2rem",height:isMobile?"2.5rem":"2rem",borderRadius:isMobile?"1.25rem":"1rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?"1rem":"0.875rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}>✕</button>
+          <button onClick={onClose} aria-label={tc("close")} style={{width:isMobile?"2.5rem":"2rem",height:isMobile?"2.5rem":"2rem",borderRadius:isMobile?"1.25rem":"1rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?"1rem":"0.875rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}>✕</button>
         </div>
 
         {/* Method tabs */}

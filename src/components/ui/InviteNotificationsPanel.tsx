@@ -25,6 +25,7 @@ interface InviteNotificationsPanelProps {
 
 export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: InviteNotificationsPanelProps) {
   const { t, locale } = useTranslation("inviteNotifications");
+  const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const [invites, setInvites] = useState<PendingInvite[]>([]);
@@ -101,7 +102,7 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
               {invites.length > 0 ? t("pending", { count: String(invites.length) }) : t("noPending")}
             </p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{
+          <button onClick={onClose} aria-label={tc("close")} style={{
             width: "2rem", height: "2rem", borderRadius: "1rem",
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
             color: T.color.muted, fontSize: "0.875rem", cursor: "pointer",

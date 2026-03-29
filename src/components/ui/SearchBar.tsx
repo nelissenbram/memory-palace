@@ -35,7 +35,7 @@ export default function SearchBar({query,filterType,totalCount,filteredCount,acc
           placeholder={t("placeholder")}
           style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:isMobile?"1rem":"0.75rem",color:T.color.charcoal,outline:"none",padding:isMobile?"0.375rem 0":"0.25rem 0"}}
         />
-        {isFiltering&&<button onClick={()=>{onQueryChange("");onFilterChange(null);}} aria-label="Clear filter" style={{background:"none",border:"none",color:T.color.muted,fontSize:"0.75rem",cursor:"pointer",padding:"0.125rem 0.25rem"}}>✕</button>}
+        {isFiltering&&<button onClick={()=>{onQueryChange("");onFilterChange(null);}} aria-label={t("clearFilter")} style={{background:"none",border:"none",color:T.color.muted,fontSize:"0.75rem",cursor:"pointer",padding:"0.125rem 0.25rem"}}>✕</button>}
       </div>
 
       {/* Type filter pills */}

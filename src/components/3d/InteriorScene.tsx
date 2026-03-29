@@ -620,15 +620,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     // Skip the first photo if it was used for the big painting
     const wallPhotos=bigPaintUsedPhoto?photoMems.slice(1):photoMems;
     if(wallPhotos.length>0){const pm=paintTex(wallPhotos[0]);const pf=new THREE.Mesh(new THREE.PlaneGeometry(.25,.2),new THREE.MeshStandardMaterial({map:pm,roughness:.8}));pf.position.set(fpX-.5,1.46,fpZ+.18);pf.userData={memory:wallPhotos[0]};scene.add(pf);memMeshes.current.push(pf);scene.add(mk(new THREE.BoxGeometry(.32,.27,.04),MS.fB,fpX-.5,1.46,fpZ+.15));}
-    wallPhotos.slice(1,4).forEach((m: any,i: any)=>{
-      const wy=2.2+Math.sin(i*.9)*.15,wz=-rL/2+.08;
-      const xOff=i===0?-Math.min(2.2,rW/2-1.5):i===1?Math.min(2.2,rW/2-1.5):Math.min(3.5,rW/2-.8);
-      const t=paintTex(m);const cv=new THREE.Mesh(new THREE.PlaneGeometry(1,0.75),new THREE.MeshStandardMaterial({map:t,roughness:.8}));
-      cv.position.set(xOff,wy,wz);cv.userData={memory:m};scene.add(cv);memMeshes.current.push(cv);
-      scene.add(mk(new THREE.BoxGeometry(1.15,.9,.08),fMats[i%3],xOff,wy,wz-.02));
-      scene.add(mk(new THREE.BoxGeometry(1.05,.8,.02),MS.gold,xOff,wy,wz+.04));
-      const sp=new THREE.SpotLight("#FFF5E0",.7,5,Math.PI/8,.5,1.2);sp.position.set(xOff,rH-.2,wz+.8);sp.target.position.set(xOff,wy,wz);sp.castShadow=true;scene.add(sp);scene.add(sp.target);
-    });
+    // Wall paintings removed — only the big fireplace painting is shown
 
     // ── ALBUM: open books on coffee table ──
     albumMems.slice(0,3).forEach((m: any,i: any)=>{

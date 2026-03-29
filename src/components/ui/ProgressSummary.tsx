@@ -14,6 +14,7 @@ import { TRACKS } from "@/lib/constants/tracks";
 export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => void }) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("tracksPanel");
+  const { t: tl } = useTranslation("levels");
   const { totalPoints, tracks, getLevelInfo, getLevelProgressInfo, getRecommendedTrack, getNextStep } = useTrackStore();
   const { userGoal } = useUserStore();
   const levelInfo = getLevelInfo();
@@ -68,7 +69,7 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
             fontFamily: T.font.display, fontSize: 15, fontWeight: 600,
             color: T.color.charcoal,
           }}>
-            {levelInfo.title}
+            {tl(levelInfo.titleKey)}
           </div>
           <div style={{
             fontFamily: T.font.body, fontSize: 11, color: T.color.muted,
@@ -95,10 +96,10 @@ export default function ProgressSummary({ onOpenTracks }: { onOpenTracks: () => 
             display: "flex", justifyContent: "space-between", marginTop: 3,
           }}>
             <span style={{ fontFamily: T.font.body, fontSize: 9, color: T.color.muted }}>
-              {levelInfo.title}
+              {tl(levelInfo.titleKey)}
             </span>
             <span style={{ fontFamily: T.font.body, fontSize: 9, color: T.color.muted }}>
-              {progressInfo.nextLevel.title}
+              {tl(progressInfo.nextLevel.titleKey)}
             </span>
           </div>
         </div>

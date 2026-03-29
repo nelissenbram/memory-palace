@@ -224,7 +224,7 @@ export default function FamilyPage() {
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} aria-label="Close" style={{
+          <button onClick={() => setToast(null)} aria-label="Close"  style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>

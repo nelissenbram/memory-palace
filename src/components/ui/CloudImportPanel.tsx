@@ -708,7 +708,7 @@ function PhotoGrid({ items, selected, onToggle }: {
       {items.map((item) => {
         const isSelected = selected.has(item.id);
         return (
-          <div key={item.id} role="button" tabIndex={0} onClick={() => onToggle(item.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(item.id); } }} aria-label={`${isSelected ? "Deselect" : "Select"} ${item.filename || item.name}`} style={{
+          <div key={item.id} role="button" tabIndex={0} onClick={() => onToggle(item.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(item.id); } }} aria-label={`${isSelected ? t("deselect") : t("select")} ${item.filename || item.name}`} style={{
             position: "relative", aspectRatio: "1",
             borderRadius: "0.625rem", overflow: "hidden", cursor: "pointer",
             border: isSelected ? `3px solid ${T.color.terracotta}` : `1px solid ${T.color.cream}`,
@@ -813,7 +813,7 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
           : "\u{1F4C4}";
 
         return (
-          <div key={item.id} role="button" tabIndex={0} aria-label={isFolder ? `Open folder ${item.name}` : `${isSelected ? "Deselect" : "Select"} ${item.name}`} style={{
+          <div key={item.id} role="button" tabIndex={0} aria-label={isFolder ? `${t("openFolder")} ${item.name}` : `${isSelected ? t("deselect") : t("select")} ${item.name}`} style={{
             display: "flex", alignItems: "center", gap: 10,
             padding: "10px 14px",
             borderBottom: `1px solid ${T.color.cream}22`,

@@ -57,6 +57,7 @@ interface ImageEditorProps {
 export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: ImageEditorProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("imageEditor");
+  const { t: tc } = useTranslation("common");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const color = accent || T.color.terracotta;
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -336,7 +337,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
           <div style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500, color: T.color.charcoal }}>{t("title")}</div>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button onClick={handleReset} style={{ padding: "0.375rem 0.75rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, cursor: "pointer" }}>{t("reset")}</button>
-            <button onClick={onCancel} aria-label="Close" style={{ width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onCancel} aria-label={tc("close")} style={{ width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
           </div>
         </div>
 

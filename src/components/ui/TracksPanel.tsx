@@ -19,6 +19,8 @@ interface TracksPanelProps {
 export default function TracksPanel({ onClose }: TracksPanelProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("tracksPanel");
+  const { t: tc } = useTranslation("common");
+  const { t: tl } = useTranslation("levels");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { tracks, totalPoints, getLevelInfo, getLevelProgressInfo, setSelectedTrackId } = useTrackStore();
   const { userGoal } = useUserStore();
@@ -89,7 +91,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                 {t("description")}
               </p>
             </div>
-            <button onClick={onClose} aria-label="Close" style={{
+            <button onClick={onClose} aria-label={tc("close")} style={{
               width: "2rem", height: "2rem", minWidth: "2.75rem", minHeight: "2.75rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
               background: T.color.white, cursor: "pointer", fontSize: "1rem", color: T.color.muted,
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -116,7 +118,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                   {totalPoints} {t("mp")}
                 </span>
                 <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: levelInfo.color, fontWeight: 500 }}>
-                  {levelInfo.title}
+                  {tl(levelInfo.titleKey)}
                 </span>
               </div>
               <div style={{
@@ -135,7 +137,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                 fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, marginTop: "0.1875rem",
               }}>
                 {progressInfo.nextLevel
-                  ? `${progressInfo.pointsInLevel} / ${progressInfo.pointsNeeded} ${t("to")} ${progressInfo.nextLevel.title}`
+                  ? `${progressInfo.pointsInLevel} / ${progressInfo.pointsNeeded} ${t("to")} ${tl(progressInfo.nextLevel.titleKey)}`
                   : t("highestTier")}
               </div>
             </div>

@@ -9,11 +9,16 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
+import enMessages from "@/messages/en.json";
 
 interface InterviewPanelProps {
   onClose: () => void;
   onCreateMemory?: (mem: Mem, wingId: string) => void;
 }
+
+// Resolve a translation key to English (for AI API calls)
+const enTpl = (enMessages as any).interviewLibrary as Record<string, string> | undefined;
+function enText(key: string): string { return enTpl?.[key] ?? key; }
 
 // Format seconds to mm:ss
 function fmtTime(sec: number): string {
@@ -26,6 +31,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   const isMobile = useIsMobile();
   const { userName } = useUserStore();
   const { t } = useTranslation("interview");
+  const { t: tTpl } = useTranslation("interviewLibrary");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
 
   const {
@@ -206,7 +212,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          interviewTitle: currentTemplate.title,
+          interviewTitle: enText(currentTemplate.titleKey),
           responses,
           userName,
           writingStyle,
@@ -235,7 +241,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   const handleCreateMemory = () => {
     if (!currentSession || !currentTemplate || !onCreateMemory) return;
 
-    const title = suggestedTitle || currentTemplate.title;
+    const title = suggestedTitle || tTpl(currentTemplate.titleKey);
     const hue = Math.floor(Math.random() * 360);
     const mem: Mem = {
       id: Date.now().toString(),
@@ -292,7 +298,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         <div>
           {currentTemplate && phase !== "intro" && (
             <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#9A917F", letterSpacing: "0.5px", textTransform: "uppercase" }}>
-              {currentTemplate.title}
+              {tTpl(currentTemplate.titleKey)}
             </div>
           )}
           {phase !== "intro" && phase !== "summary" && phase !== "complete" && question && (
@@ -341,13 +347,13 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 400,
               color: questionColor, lineHeight: 1.3, marginBottom: "1rem",
             }}>
-              {currentTemplate.title}
+              {tTpl(currentTemplate.titleKey)}
             </h1>
             <p style={{
               fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "1.125rem", color: bodyColor,
               lineHeight: 1.7, marginBottom: "2rem", maxWidth: "30rem",
             }}>
-              {currentTemplate.description}
+              {tTpl(currentTemplate.descKey)}
             </p>
             <p style={{
               fontFamily: T.font.display, fontSize: isMobile ? "1rem" : "1.125rem", color: "#B8AE9C",
@@ -422,7 +428,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               color: questionColor, lineHeight: 1.4, marginBottom: "2.5rem",
               maxWidth: "32.5rem", margin: "0 auto 2.5rem",
             }}>
-              {question.text}
+              {tTpl(question.textKey)}
             </h2>
 
             {apiError && (
@@ -503,7 +509,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               color: questionColor, lineHeight: 1.4, marginBottom: "2rem",
               maxWidth: "30rem", margin: "0 auto 2rem", opacity: 0.7,
             }}>
-              {question?.text}
+              {question ? tTpl(question.textKey) : ""}
             </h2>
 
             {/* Waveform visualization */}
@@ -764,7 +770,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "1.0625rem", color: bodyColor,
               lineHeight: 1.7, marginBottom: "0.5rem", maxWidth: "26.25rem", margin: "0 auto",
             }}>
-              {t("storySaved", { title: currentTemplate.title })}
+              {t("storySaved", { title: tTpl(currentTemplate.titleKey) })}
             </p>
             <p style={{
               fontFamily: T.font.display, fontSize: "0.9375rem", color: "#9A917F",

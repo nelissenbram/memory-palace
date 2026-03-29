@@ -26,6 +26,7 @@ interface SharedWithMePanelProps {
 
 export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedWithMePanelProps) {
   const { t } = useTranslation("sharedWithMe");
+  const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const [shares, setShares] = useState<AcceptedShare[]>([]);
@@ -72,7 +73,7 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
               {shares.length > 0 ? t("roomCount", { count: String(shares.length) }) : t("noRooms")}
             </p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{
+          <button onClick={onClose} aria-label={tc("close")} style={{
             width: "2rem", height: "2rem", borderRadius: "1rem",
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
             color: T.color.muted, fontSize: "0.875rem", cursor: "pointer",

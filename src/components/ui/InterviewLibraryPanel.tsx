@@ -4,7 +4,7 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
-import { INTERVIEW_TEMPLATES, WING_ID_TO_LABEL, getTemplatesByWing } from "@/lib/constants/interviews";
+import { INTERVIEW_TEMPLATES, WING_ID_TO_LABEL_KEY, getTemplatesByWing } from "@/lib/constants/interviews";
 import type { InterviewTemplate } from "@/lib/constants/interviews";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
@@ -102,7 +102,7 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
           <div style={{ display: "flex", gap: "0.25rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
             <FilterTab label={t("all")} active={filter === "all"} onClick={() => setFilter("all")} />
             {WING_ORDER.map((wid) => (
-              <FilterTab key={wid} label={WING_ID_TO_LABEL[wid] || wid} active={filter === wid} onClick={() => setFilter(wid)} highlight={wid === highlightWingId} />
+              <FilterTab key={wid} label={t(WING_ID_TO_LABEL_KEY[wid] || wid)} active={filter === wid} onClick={() => setFilter(wid)} highlight={wid === highlightWingId} />
             ))}
           </div>
         </div>
@@ -120,7 +120,7 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
                     color: T.color.walnut, margin: "0 0 0.75rem",
                     textTransform: "uppercase", letterSpacing: "0.03125rem",
                   }}>
-                    {WING_ID_TO_LABEL[wingId]}
+                    {t(WING_ID_TO_LABEL_KEY[wingId] || wingId)}
                   </h3>
                   {templates.map((tmpl) => (
                     <TemplateCard key={tmpl.id} template={tmpl} completion={completionMap[tmpl.id]} onStart={() => handleStart(tmpl)} isMobile={isMobile} t={t} />
@@ -188,7 +188,7 @@ function TemplateCard({ template, completion, onStart, isMobile, t }: {
             fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
             color: T.color.charcoal, margin: 0,
           }}>
-            {template.title}
+            {t(template.titleKey)}
           </h4>
           {isCompleted && (
             <span style={{
@@ -211,7 +211,7 @@ function TemplateCard({ template, completion, onStart, isMobile, t }: {
           lineHeight: 1.5, margin: "0 0 0.5rem", overflow: "hidden",
           display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
         }}>
-          {template.description}
+          {t(template.descKey)}
         </p>
 
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>

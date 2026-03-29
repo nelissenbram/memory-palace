@@ -47,6 +47,7 @@ function isFileTooLarge(file: File): boolean {
 export default function MassImportPanel({ onClose, initialWingId, initialRoomId }: Props) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("massImport");
+  const { t: tc } = useTranslation("common");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const store = useImportStore();
   const addMemory = useMemoryStore((s) => s.addMemory);
@@ -267,7 +268,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 </p>
               </div>
             </div>
-            <button onClick={onClose} aria-label="Close" style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onClose} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
           </div>
 
           {/* Source toggle: Local / Cloud */}
@@ -403,7 +404,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#C05050", lineHeight: 1.5, flex: 1 }}>
                   {t("filesSkipped", { count: String(skippedOversized) })}
                 </span>
-                <button onClick={() => setSkippedOversized(0)} aria-label="Dismiss" style={{ background: "none", border: "none", color: "#C05050", fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>{"\u2715"}</button>
+                <button onClick={() => setSkippedOversized(0)} aria-label={tc("dismiss")} style={{ background: "none", border: "none", color: "#C05050", fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>{"\u2715"}</button>
               </div>
             )}
 

@@ -28,6 +28,7 @@ function fmtDuration(sec: number, mAbbr: string, sAbbr: string): string {
 export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanelProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("interviewHistory");
+  const { t: tTpl } = useTranslation("interviewLibrary");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { sessions, sessionsLoaded, loadHistory, resumeSession, setShowHistory } = useInterviewStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -110,7 +111,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                     <div style={{ fontSize: "1.25rem" }}>{template?.icon || "\uD83D\uDCDD"}</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal }}>
-                        {template?.title || session.templateId}
+                        {template ? tTpl(template.titleKey) : session.templateId}
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
                         {t("answeredOf", { answered: String(session.responses.length), total: String(template?.questions.length || "?") })}
@@ -160,7 +161,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal }}>
-                        {template?.title || session.templateId}
+                        {template ? tTpl(template.titleKey) : session.templateId}
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, display: "flex", gap: "0.625rem" }}>
                         <span>{fmtDate(session.startedAt, locale)}</span>
@@ -220,7 +221,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                             background: T.color.warmStone, marginBottom: "0.375rem",
                           }}>
                             <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, fontWeight: 600, margin: "0 0 0.25rem" }}>
-                              {q?.text || t("questionFallback", { number: String(i + 1) })}
+                              {q ? tTpl(q.textKey) : t("questionFallback", { number: String(i + 1) })}
                             </p>
                             <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, lineHeight: 1.6, margin: 0 }}>
                               {r.transcript || t("noTranscript")}

@@ -2,12 +2,12 @@ export type PlanId = "free" | "keeper" | "guardian";
 
 export interface PlanDefinition {
   id: PlanId;
-  name: string;
-  tagline: string;
+  nameKey: string;
+  taglineKey: string;
   price: number; // EUR per month, 0 for free
   stripePriceId: string | null; // null for free plan
   limits: PlanLimits;
-  features: string[];
+  featureKeys: string[];
   highlighted?: boolean;
   trial?: number; // trial days
 }
@@ -22,8 +22,8 @@ export interface PlanLimits {
 export const PLANS: Record<PlanId, PlanDefinition> = {
   free: {
     id: "free",
-    name: "Free",
-    tagline: "Start preserving your memories",
+    nameKey: "freeName",
+    taglineKey: "freeTagline",
     price: 0,
     stripePriceId: null,
     limits: {
@@ -32,18 +32,18 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       memories: 100,
       storageMb: 1024,
     },
-    features: [
-      "2 wings",
-      "5 rooms",
-      "100 memories",
-      "1 GB storage",
-      "Basic sharing",
+    featureKeys: [
+      "feat2Wings",
+      "feat5Rooms",
+      "feat50Memories",
+      "featBasicUpload",
+      "featBasicExport",
     ],
   },
   keeper: {
     id: "keeper",
-    name: "Keeper",
-    tagline: "For dedicated memory keepers",
+    nameKey: "keeperName",
+    taglineKey: "keeperTagline",
     price: 4.99,
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_KEEPER_PRICE_ID || "",
     limits: {
@@ -52,20 +52,21 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       memories: 500,
       storageMb: 5120,
     },
-    features: [
-      "3 wings",
-      "10 rooms",
-      "500 memories",
-      "5 GB storage",
-      "Public sharing",
-      "AI features",
+    featureKeys: [
+      "feat4Wings",
+      "feat10Rooms",
+      "feat500Memories",
+      "featAllUpload",
+      "featCloudImport",
+      "featInterviews",
+      "featSharing",
     ],
     trial: 14,
   },
   guardian: {
     id: "guardian",
-    name: "Guardian",
-    tagline: "The complete legacy experience",
+    nameKey: "guardianName",
+    taglineKey: "guardianTagline",
     price: 9.99,
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_PRICE_ID || "",
     limits: {
@@ -74,14 +75,16 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       memories: -1,
       storageMb: 51200,
     },
-    features: [
-      "Unlimited wings",
-      "Unlimited rooms",
-      "Unlimited memories",
-      "50 GB storage",
-      "Legacy features",
-      "Priority support",
-      "Family sharing",
+    featureKeys: [
+      "featUnlimitedWings",
+      "featUnlimitedRooms",
+      "featUnlimitedMemories",
+      "featAllMedia",
+      "featFamilySharing",
+      "featLegacy",
+      "featTimeCapsules",
+      "featPrioritySupport",
+      "featAdvancedExport",
     ],
     highlighted: true,
     trial: 14,

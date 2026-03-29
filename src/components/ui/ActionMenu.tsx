@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 export interface ActionItem {
   icon: string;
@@ -16,6 +17,7 @@ interface ActionMenuProps {
 }
 
 export default function ActionMenu({ primary, secondary, accent }: ActionMenuProps) {
+  const { t } = useTranslation("actionMenu");
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const accentColor = accent || T.color.terracotta;
@@ -92,7 +94,7 @@ export default function ActionMenu({ primary, secondary, accent }: ActionMenuPro
           <button
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
-            aria-label={open ? "Close menu" : "Open menu"}
+            aria-label={open ? t("closeMenu") : t("openMenu")}
             onKeyDown={(e) => { if (e.key === "Escape" && open) setOpen(false); }}
             style={{
               width: 44, height: 44, borderRadius: 22,

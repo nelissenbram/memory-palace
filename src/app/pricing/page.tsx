@@ -19,6 +19,7 @@ export default function PricingPage() {
   const router = useRouter();
   const { t } = useTranslation("pricing");
   const { t: ts } = useTranslation("subscription");
+  const { t: tp } = useTranslation("plans");
 
   // Redirect away from pricing page in native app — Google Play forbids
   // directing users to external payment flows
@@ -55,41 +56,6 @@ export default function PricingPage() {
       alert(t("couldNotConnect"));
     }
     setLoading(null);
-  };
-
-  // Map plan features to translation keys
-  const featureKeyMap: Record<string, string> = {
-    "2 wings": "feature2wings",
-    "3 wings": "feature3wings",
-    "Unlimited wings": "featureUnlimitedWings",
-    "5 rooms": "feature5rooms",
-    "10 rooms": "feature10rooms",
-    "Unlimited rooms": "featureUnlimitedRooms",
-    "100 memories": "feature100memories",
-    "500 memories": "feature500memories",
-    "Unlimited memories": "featureUnlimitedMemories",
-    "1 GB storage": "feature1gbStorage",
-    "5 GB storage": "feature5gbStorage",
-    "50 GB storage": "feature50gbStorage",
-    "Basic sharing": "featureBasicSharing",
-    "Public sharing": "featurePublicSharing",
-    "AI features": "featureAiFeatures",
-    "Legacy features": "featureLegacy",
-    "Priority support": "featurePrioritySupport",
-    "Family sharing": "featureFamilySharing",
-  };
-
-  // Map plan names to translation keys
-  const planNameMap: Record<string, string> = {
-    "Free": "planFree",
-    "Keeper": "planKeeper",
-    "Guardian": "planGuardian",
-  };
-
-  const planTaglineMap: Record<string, string> = {
-    "Free": "taglineFree",
-    "Keeper": "taglineKeeper",
-    "Guardian": "taglineGuardian",
   };
 
   const faqs = [
@@ -295,7 +261,7 @@ export default function PricingPage() {
                     marginTop: isHighlighted ? 8 : 0,
                   }}
                 >
-                  {planNameMap[plan.name] ? ts(planNameMap[plan.name]) : plan.name}
+                  {tp(plan.nameKey)}
                 </h3>
                 <p
                   style={{
@@ -305,7 +271,7 @@ export default function PricingPage() {
                     lineHeight: 1.5,
                   }}
                 >
-                  {planTaglineMap[plan.name] ? ts(planTaglineMap[plan.name]) : plan.tagline}
+                  {tp(plan.taglineKey)}
                 </p>
 
                 {/* Price */}
@@ -391,9 +357,9 @@ export default function PricingPage() {
                     gap: 12,
                   }}
                 >
-                  {plan.features.map((feature) => (
+                  {plan.featureKeys.map((featureKey) => (
                     <div
-                      key={feature}
+                      key={featureKey}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -421,7 +387,7 @@ export default function PricingPage() {
                       >
                         {"\u2713"}
                       </span>
-                      {featureKeyMap[feature] ? ts(featureKeyMap[feature]) : feature}
+                      {tp(featureKey)}
                     </div>
                   ))}
                 </div>

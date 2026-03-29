@@ -126,7 +126,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
   getLevelInfo: () => getLevelForPoints(get().totalPoints),
 
-  getLevelTitle: () => getLevelForPoints(get().totalPoints).title,
+  getLevelTitle: () => getLevelForPoints(get().totalPoints).titleKey,
 
   getPointsToNextLevel: () => {
     const info = getLevelProgress(get().totalPoints);

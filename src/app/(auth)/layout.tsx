@@ -64,6 +64,7 @@ export default async function AuthLayout({
       />
 
       <main
+        id="main-content"
         style={{
           width: "100%",
           maxWidth: 440,

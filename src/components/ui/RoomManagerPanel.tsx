@@ -146,9 +146,9 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
 
                 {/* Reorder buttons */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  <button onClick={() => reorderRoom(wing.id, room.id, -1)} disabled={i === 0} aria-label="Move up"
+                  <button onClick={() => reorderRoom(wing.id, room.id, -1)} disabled={i === 0} aria-label={tc("moveUp")}
                     style={{ width: isMobile ? "2rem" : "1.375rem", height: isMobile ? "1.625rem" : "1.125rem", borderRadius: "0.25rem", border: "none", background: i === 0 ? "transparent" : T.color.warmStone, color: i === 0 ? T.color.cream : T.color.muted, fontSize: isMobile ? "0.6875rem" : "0.5625rem", cursor: i === 0 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25B2"}</button>
-                  <button onClick={() => reorderRoom(wing.id, room.id, 1)} disabled={i === rooms.length - 1} aria-label="Move down"
+                  <button onClick={() => reorderRoom(wing.id, room.id, 1)} disabled={i === rooms.length - 1} aria-label={tc("moveDown")}
                     style={{ width: isMobile ? "2rem" : "1.375rem", height: isMobile ? "1.625rem" : "1.125rem", borderRadius: "0.25rem", border: "none", background: i === rooms.length - 1 ? "transparent" : T.color.warmStone, color: i === rooms.length - 1 ? T.color.cream : T.color.muted, fontSize: isMobile ? "0.6875rem" : "0.5625rem", cursor: i === rooms.length - 1 ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u25BC"}</button>
                 </div>
 

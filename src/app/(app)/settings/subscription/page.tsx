@@ -26,6 +26,7 @@ interface UsageData {
 
 export default function SubscriptionPage() {
   const { t, locale } = useTranslation("subscription");
+  const { t: tp } = useTranslation("plans");
   const nativeApp = isNative();
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
@@ -138,31 +139,7 @@ export default function SubscriptionPage() {
     );
   }
 
-  const featureKeyMap: Record<string, string> = {
-    "2 wings": "feature2wings",
-    "5 rooms": "feature5rooms",
-    "100 memories": "feature100memories",
-    "1 GB storage": "feature1gbStorage",
-    "Basic sharing": "featureBasicSharing",
-    "3 wings": "feature3wings",
-    "10 rooms": "feature10rooms",
-    "500 memories": "feature500memories",
-    "5 GB storage": "feature5gbStorage",
-    "Public sharing": "featurePublicSharing",
-    "AI features": "featureAI",
-    "Unlimited wings": "featureUnlimitedWings",
-    "Unlimited rooms": "featureUnlimitedRooms",
-    "Unlimited memories": "featureUnlimitedMemories",
-    "50 GB storage": "feature50gbStorage",
-    "Legacy features": "featureLegacy",
-    "Priority support": "featurePrioritySupport",
-    "Family sharing": "featureFamilySharing",
-  };
-
-  const translateFeature = (feature: string) => {
-    const key = featureKeyMap[feature];
-    return key ? t(key) : feature;
-  };
+  const translateFeatureKey = (featureKey: string) => tp(featureKey);
 
   const currentPlan = sub ? PLANS[sub.plan] : PLANS.free;
   const limits = currentPlan.limits;
@@ -194,7 +171,7 @@ export default function SubscriptionPage() {
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} aria-label="Close" style={{
+          <button onClick={() => setToast(null)} aria-label="Close"  style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
@@ -233,7 +210,7 @@ export default function SubscriptionPage() {
                 fontFamily: F.display, fontSize: "1.5rem", fontWeight: 500,
                 color: C.charcoal, margin: 0,
               }}>
-                {t("plan", { name: currentPlan.name })}
+                {t("plan", { name: tp(currentPlan.nameKey) })}
               </h3>
               <span style={{
                 padding: "0.25rem 0.75rem",
@@ -473,7 +450,7 @@ export default function SubscriptionPage() {
                     fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 600,
                     color: C.charcoal, display: "flex", alignItems: "center", gap: "0.5rem",
                   }}>
-                    {plan.name}
+                    {tp(plan.nameKey)}
                     {isCurrent && (
                       <span style={{
                         fontSize: "0.6875rem", fontWeight: 600,
@@ -485,7 +462,7 @@ export default function SubscriptionPage() {
                     )}
                   </div>
                   <div style={{ fontSize: "0.8125rem", color: C.muted, marginTop: "0.25rem" }}>
-                    {plan.features.slice(0, 3).map(translateFeature).join(" \u2022 ")}
+                    {plan.featureKeys.slice(0, 3).map(translateFeatureKey).join(" \u2022 ")}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "1rem" }}>

@@ -147,6 +147,7 @@ interface TimeCapsuleRevealProps {
 export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevealProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("timeCapsule");
+  const { t: tc } = useTranslation("common");
   const { userMems } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
   const [dismissed, setDismissed] = useState(true); // start hidden to avoid flash
@@ -250,7 +251,7 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
             {resolutionReminders.length} {resolutionReminders.length === 1 ? t("goalSingular") : t("goalPlural")} {resolutionReminders.length === 1 ? t("deadlineSingular") : t("deadlinePlural")}
           </p>
         </div>
-        <button onClick={handleDismissReminders} aria-label="Dismiss" style={{ width: "1.625rem", height: "1.625rem", borderRadius: "0.8125rem", border: `1px solid ${T.color.sage}40`, background: `rgba(74,103,65,.08)`, color: T.color.muted, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"\u2715"}</button>
+        <button onClick={handleDismissReminders} aria-label={tc("dismiss")} style={{ width: "1.625rem", height: "1.625rem", borderRadius: "0.8125rem", border: `1px solid ${T.color.sage}40`, background: `rgba(74,103,65,.08)`, color: T.color.muted, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"\u2715"}</button>
       </div>
       <div style={{ padding: "0 0.875rem 0.875rem" }}>
         {resolutionReminders.slice(0, 3).map((r, i) => (
