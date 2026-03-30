@@ -50,6 +50,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.183.1",
     "babel-plugin-react-compiler": "1.0.0",
     "canvas": "^3.2.1",
     "cross-env": "^10.1.0",
