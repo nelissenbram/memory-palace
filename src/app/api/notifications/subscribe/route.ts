@@ -72,7 +72,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 /**
@@ -108,7 +110,9 @@ export async function DELETE(request: Request) {
       .eq("user_id", user.id);
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
 /**
@@ -160,5 +164,7 @@ export async function PATCH(request: Request) {
     }
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

@@ -73,7 +73,9 @@ export async function POST(req: NextRequest) {
       allow_promotion_codes: true,
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     const details = err instanceof Error ? err.stack : String(err);

@@ -120,7 +120,9 @@ Respond ONLY with a JSON array, no other text.`,
     }
 
     const suggestions = JSON.parse(jsonMatch[0]);
-    return NextResponse.json({ suggestions });
+    return NextResponse.json({ suggestions }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
   }

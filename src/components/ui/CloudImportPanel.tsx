@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import Image from "next/image";
 
 // ── Types ──
 interface ConnectedAccount {
@@ -716,11 +717,11 @@ function PhotoGrid({ items, selected, onToggle }: {
             transition: "border .15s",
           }}>
             {item.thumbnailUrl ? (
-              <img
+              <Image
                 src={item.thumbnailUrl}
                 alt={item.filename || item.name || ""}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                loading="lazy"
+                fill sizes="(max-width: 768px) 33vw, 150px"
+                style={{ objectFit: "cover" }}
               />
             ) : (
               <div style={{
@@ -844,12 +845,11 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
               width: "2.25rem", height: "2.25rem", borderRadius: "0.5rem", flexShrink: 0, overflow: "hidden",
               background: T.color.warmStone,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1.125rem",
+              fontSize: "1.125rem", position: "relative",
             }}>
               {item.thumbnailUrl ? (
-                <img src={item.thumbnailUrl} alt="" style={{
-                  width: "100%", height: "100%", objectFit: "cover",
-                }} loading="lazy" />
+                <Image src={item.thumbnailUrl} alt="" fill sizes="36px"
+                  style={{ objectFit: "cover" }} />
               ) : (
                 icon
               )}

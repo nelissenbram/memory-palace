@@ -3,10 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { exportUserData } from "@/lib/auth/export-actions";
 import JSZip from "jszip";
 
+export const maxDuration = 60;
+
 const BATCH_SIZE = 5;
 const MAX_EXPORT_FILES = 2000;
+const TIMEOUT_THRESHOLD_MS = 50_000; // bail before 60s Vercel limit
+const PER_FILE_TIMEOUT_MS = 10_000; // 10s per individual file download
 
 export async function GET() {
+  const startTime = Date.now();
   const diag: string[] = [];
   try {
     diag.push("start");
@@ -50,38 +55,65 @@ export async function GET() {
     const photosFolder = zip.folder("photos");
     const files = result.data.storage_files.slice(0, MAX_EXPORT_FILES);
     const failedFiles: string[] = [];
+    let truncated = false;
+    let filesProcessed = 0;
 
     if (photosFolder && files.length > 0) {
       const usedNames = new Set<string>();
 
       for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        // Check if we're approaching the timeout before starting next batch
+        const elapsed = Date.now() - startTime;
+        if (elapsed >= TIMEOUT_THRESHOLD_MS) {
+          truncated = true;
+          diag.push(`timeout_at_batch:${i}`);
+          break;
+        }
+
         const batch = files.slice(i, i + BATCH_SIZE);
         await Promise.allSettled(
           batch.map(async (filePath) => {
             try {
-              const { data, error } = await supabase.storage
-                .from("memories")
-                .download(filePath);
+              // Create an AbortController with per-file timeout
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), PER_FILE_TIMEOUT_MS);
 
-              if (error || !data) {
-                failedFiles.push(filePath);
-                return;
+              try {
+                const { data, error } = await supabase.storage
+                  .from("memories")
+                  .download(filePath);
+
+                clearTimeout(timeoutId);
+
+                if (error || !data) {
+                  failedFiles.push(filePath);
+                  return;
+                }
+
+                let fileName = filePath.split("/").pop() || filePath;
+                if (usedNames.has(fileName)) {
+                  const ext = fileName.includes(".")
+                    ? "." + fileName.split(".").pop()
+                    : "";
+                  const base = fileName.replace(/\.[^.]+$/, "");
+                  let counter = 2;
+                  while (usedNames.has(`${base}_${counter}${ext}`)) counter++;
+                  fileName = `${base}_${counter}${ext}`;
+                }
+                usedNames.add(fileName);
+
+                const buffer = await data.arrayBuffer();
+                photosFolder.file(fileName, buffer);
+                filesProcessed++;
+              } catch (innerErr) {
+                clearTimeout(timeoutId);
+                // Check if it was an abort
+                if (innerErr instanceof DOMException && innerErr.name === "AbortError") {
+                  failedFiles.push(`${filePath} (timeout)`);
+                } else {
+                  failedFiles.push(filePath);
+                }
               }
-
-              let fileName = filePath.split("/").pop() || filePath;
-              if (usedNames.has(fileName)) {
-                const ext = fileName.includes(".")
-                  ? "." + fileName.split(".").pop()
-                  : "";
-                const base = fileName.replace(/\.[^.]+$/, "");
-                let counter = 2;
-                while (usedNames.has(`${base}_${counter}${ext}`)) counter++;
-                fileName = `${base}_${counter}${ext}`;
-              }
-              usedNames.add(fileName);
-
-              const buffer = await data.arrayBuffer();
-              photosFolder.file(fileName, buffer);
             } catch {
               failedFiles.push(filePath);
             }
@@ -90,7 +122,21 @@ export async function GET() {
       }
     }
 
-    diag.push(`photos:${files.length - failedFiles.length}ok_${failedFiles.length}fail`);
+    diag.push(`photos:${filesProcessed}ok_${failedFiles.length}fail${truncated ? "_truncated" : ""}`);
+
+    // If truncated, add a notice file to the zip
+    if (truncated) {
+      const remaining = files.length - filesProcessed - failedFiles.length;
+      zip.file(
+        "EXPORT_TRUNCATED.txt",
+        `This export was truncated due to server time limits.\n\n` +
+        `Files included: ${filesProcessed}\n` +
+        `Files failed: ${failedFiles.length}\n` +
+        `Files not attempted: ${remaining}\n\n` +
+        `To get a complete export, try again or use the JSON export option ` +
+        `which includes all data without photos.`
+      );
+    }
 
     const zipBuffer = await zip.generateAsync({ type: "arraybuffer" });
     diag.push(`zip:${zipBuffer.byteLength}bytes`);
@@ -108,6 +154,10 @@ export async function GET() {
 
     if (failedFiles.length > 0) {
       headers["X-Export-Failed-Files"] = String(failedFiles.length);
+    }
+    if (truncated) {
+      headers["X-Export-Truncated"] = "true";
+      headers["X-Export-Files-Included"] = String(filesProcessed);
     }
 
     return new NextResponse(zipBuffer, { status: 200, headers });

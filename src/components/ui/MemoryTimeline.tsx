@@ -8,6 +8,7 @@ import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import Image from "next/image";
 
 const MONTH_KEYS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
 
@@ -298,10 +299,11 @@ export default function MemoryTimeline({ onClose }: MemoryTimelineProps) {
                       }}
                     >
                       {entry.mem.dataUrl ? (
-                        <img
-                          src={entry.mem.dataUrl}
+                        <Image
+                          src={entry.mem.dataUrl!}
                           alt=""
-                          style={{ width: "2.25rem", height: "2.25rem", objectFit: "cover", borderRadius: "0.5rem" }}
+                          width={36} height={36}
+                          style={{ objectFit: "cover", borderRadius: "0.5rem" }}
                         />
                       ) : (
                         <span style={{ fontSize: "0.875rem", opacity: 0.7 }}>{entry.roomIcon}</span>

@@ -39,5 +39,7 @@ export async function GET() {
         "Return to Memory Palace and use the Mass Import panel to upload.",
       ],
     },
+  }, {
+    headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" },
   });
 }

@@ -92,7 +92,9 @@ export async function POST(request: NextRequest) {
     const succeeded = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
 
-    return NextResponse.json({ results, summary: { total: photoIds.length, succeeded, failed } });
+    return NextResponse.json({ results, summary: { total: photoIds.length, succeeded, failed } }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     return NextResponse.json({ error: message }, { status: 500 });

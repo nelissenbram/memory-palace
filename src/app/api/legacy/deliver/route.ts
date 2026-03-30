@@ -216,5 +216,7 @@ export async function POST(request: Request) {
     errors,
     totalContacts: contacts.length,
     status: filterMessageIds ? "partial" : (errors === 0 ? "transferred" : "partially_delivered"),
+  }, {
+    headers: { "Cache-Control": "no-store" },
   });
 }

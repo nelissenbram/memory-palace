@@ -5,6 +5,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import type { Mem } from "@/lib/constants/defaults";
+import Image from "next/image";
 
 const TYPE_KEY_MAP: Record<string, string> = {
   video: "typeVideo",
@@ -101,8 +102,11 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
                   </div>
                 )}
                 {(activeMem.type === "photo" || activeMem.type === "painting") && activeMem.dataUrl && (
-                  <img src={activeMem.dataUrl} alt={activeMem.title}
-                    style={{ width: "100%", maxHeight: "22.5rem", objectFit: "contain", display: "block" }} />
+                  <div style={{ position: "relative", width: "100%", height: "22.5rem" }}>
+                    <Image src={activeMem.dataUrl!} alt={activeMem.title}
+                      fill sizes="(max-width: 768px) 100vw, 500px"
+                      style={{ objectFit: "contain" }} />
+                  </div>
                 )}
                 {!hasMedia && (
                   <div style={{ padding: "1.875rem 1.25rem", textAlign: "center" }}>

@@ -73,7 +73,9 @@ export async function POST(request: Request) {
   }
 
   if (!allAuthUsers.length) {
-    return NextResponse.json({ sent: 0, message: "No users found" });
+    return NextResponse.json({ sent: 0, message: "No users found" }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
   // ── 2. Get eligible profiles (digest enabled) ──
@@ -102,7 +104,9 @@ export async function POST(request: Request) {
     .map((u) => u.id);
 
   if (!eligibleUserIds.length) {
-    return NextResponse.json({ sent: 0, skipped: allAuthUsers.length, message: "No eligible users" });
+    return NextResponse.json({ sent: 0, skipped: allAuthUsers.length, message: "No eligible users" }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
   // ── 3. Scoped data fetching — only for eligible users ──
@@ -386,6 +390,8 @@ export async function POST(request: Request) {
     totalUsers: allAuthUsers.length,
     eligibleUsers: eligibleUserIds.length,
     timedOut,
+  }, {
+    headers: { "Cache-Control": "no-store" },
   });
 }
 

@@ -53,6 +53,8 @@ export async function GET(request: NextRequest) {
       items,
       nextCursor: result.nextPageToken,
       totalCount: result.totalCount,
+    }, {
+      headers: { "Cache-Control": "private, no-cache" },
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";

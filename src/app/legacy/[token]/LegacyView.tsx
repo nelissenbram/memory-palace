@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import Image from "next/image";
 
 interface Memory {
   id: string;
@@ -151,11 +152,11 @@ export default function LegacyView({ data }: { data: LegacyData }) {
                       <div key={memory.id} style={styles.memoryCard}>
                         {memory.media_url && memory.media_type?.startsWith("image") && (
                           <div style={styles.mediaContainer}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                            <Image
                               src={memory.media_url}
                               alt={memory.title}
-                              style={styles.mediaImage}
+                              fill sizes="(max-width: 768px) 100vw, 400px"
+                              style={{ objectFit: "cover" }}
                             />
                           </div>
                         )}
@@ -338,6 +339,7 @@ const styles: Record<string, React.CSSProperties> = {
     aspectRatio: "4/3",
     overflow: "hidden",
     backgroundColor: "#F0EDE8",
+    position: "relative" as const,
   },
   mediaImage: {
     width: "100%",

@@ -8,6 +8,7 @@ import MFASetup from "@/components/settings/MFASetup";
 import ExportPanel from "@/components/settings/ExportPanel";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
+import Image from "next/image";
 import { useDaylight } from "@/components/providers/DaylightProvider";
 
 interface ProfileData {
@@ -250,11 +251,12 @@ export default function ProfilePage() {
             flexShrink: 0,
           }}>
             {profile.avatar_url ? (
-              <img
+              <Image
                 src={profile.avatar_url}
                 alt=""
+                width={72} height={72}
                 style={{
-                  width: "4.5rem", height: "4.5rem", borderRadius: "2.25rem",
+                  borderRadius: "2.25rem",
                   objectFit: "cover",
                 }}
               />

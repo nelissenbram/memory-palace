@@ -9,6 +9,7 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { extractExif } from "@/lib/utils/exif";
 import { generateThumbnail } from "@/lib/utils/thumbnail";
+import Image from "next/image";
 import type { Mem } from "@/lib/constants/defaults";
 
 const CloudImportPanel = lazy(() => import("./CloudImportPanel"));
@@ -609,10 +610,10 @@ function ReviewCard({ item, wings, getWingRooms }: {
         {/* Thumbnail */}
         <div style={{
           width: "3rem", height: "3rem", borderRadius: "0.5rem", flexShrink: 0, overflow: "hidden",
-          background: `hsl(0,0%,90%)`, display: "flex", alignItems: "center", justifyContent: "center",
+          background: `hsl(0,0%,90%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
         }}>
           {item.previewUrl ? (
-            <img src={item.previewUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <Image src={item.previewUrl} alt="" fill sizes="48px" style={{ objectFit: "cover" }} unoptimized />
           ) : (
             <span style={{ fontSize: "1.375rem" }}>{TYPE_ICONS[item.confirmed.type] || "\u{1F4C4}"}</span>
           )}

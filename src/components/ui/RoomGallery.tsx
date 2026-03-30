@@ -6,6 +6,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import Image from "next/image";
 
 // ═══ Per-type slot limits for 3D display ═══
 const DISPLAY_LIMITS: Record<string, number> = {
@@ -409,8 +410,11 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                   /* Photo / painting / album / orb / case — image display */
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "18.75rem", background: "#1A1510" }}>
                     {playerMem.dataUrl ? (
-                      <img src={playerMem.dataUrl} alt={playerMem.title}
-                        style={{ maxWidth: "100%", maxHeight: "26.25rem", objectFit: "contain", display: "block" }} />
+                      <div style={{ position: "relative", width: "100%", height: "26.25rem" }}>
+                        <Image src={playerMem.dataUrl!} alt={playerMem.title}
+                          fill sizes="(max-width: 768px) 100vw, 600px"
+                          style={{ objectFit: "contain" }} />
+                      </div>
                     ) : (
                       <div style={{
                         width: "100%", height: "18.75rem",

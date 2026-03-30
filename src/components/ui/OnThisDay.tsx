@@ -7,6 +7,7 @@ import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
+import Image from "next/image";
 
 interface AnniversaryMem {
   mem: Mem;
@@ -245,12 +246,11 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
               }}
             >
               {a.mem.dataUrl ? (
-                <img
-                  src={a.mem.dataUrl}
+                <Image
+                  src={a.mem.dataUrl!}
                   alt=""
+                  width={40} height={40}
                   style={{
-                    width: 40,
-                    height: 40,
                     borderRadius: 10,
                     objectFit: "cover",
                   }}

@@ -12,6 +12,6 @@ export async function POST() {
 
   return NextResponse.json(
     { error: "Transcription is handled client-side via Web Speech API." },
-    { status: 410 }
+    { status: 410, headers: { "Cache-Control": "no-store" } }
   );
 }

@@ -84,5 +84,7 @@ export async function POST(request: Request) {
     })
     .eq("id", shareId);
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

@@ -32,8 +32,12 @@ export async function POST(request: Request) {
   if (!result.success) {
     console.error("[Welcome Email] Failed:", result.error);
     // Return 200 anyway — we don't want email failure to surface as an error to the user
-    return NextResponse.json({ success: false, error: result.error });
+    return NextResponse.json({ success: false, error: result.error }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

@@ -7,6 +7,7 @@ import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { WINGS } from "@/lib/constants/wings";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
+import Image from "next/image";
 
 interface MemoryMapProps {
   userMems: Record<string, Mem[]>;
@@ -410,9 +411,9 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                       {m.mem.dataUrl ? (
                         <div style={{
                           width: "3rem", height: "3rem", borderRadius: "0.5rem", overflow: "hidden", flexShrink: 0,
-                          background: `${selectedPin.accent}20`,
+                          background: `${selectedPin.accent}20`, position: "relative",
                         }}>
-                          <img src={m.mem.dataUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <Image src={m.mem.dataUrl} alt="" fill sizes="48px" style={{ objectFit: "cover" }} />
                         </div>
                       ) : (
                         <div style={{

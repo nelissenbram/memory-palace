@@ -98,7 +98,9 @@ export async function POST(request: Request) {
     .select("user_id, endpoint, keys_p256dh, keys_auth, on_this_day, time_capsule");
 
   if (!subscriptions || subscriptions.length === 0) {
-    return NextResponse.json({ sent: 0, expired: 0, message: "No subscriptions" });
+    return NextResponse.json({ sent: 0, expired: 0, message: "No subscriptions" }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   }
 
   // ── 4. Send notifications ──
@@ -171,6 +173,8 @@ export async function POST(request: Request) {
     expired,
     otdUsers: Object.keys(otdByUser).length,
     capsuleUsers: Object.keys(capsuleByUser).length,
+  }, {
+    headers: { "Cache-Control": "no-store" },
   });
 }
 

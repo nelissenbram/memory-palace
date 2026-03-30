@@ -121,6 +121,8 @@ export async function GET(request: Request) {
       deliveriesTriggered,
       scheduledDeliveries,
       errors,
+    }, {
+      headers: { "Cache-Control": "no-store" },
     });
   }
 
@@ -140,6 +142,8 @@ export async function GET(request: Request) {
       deliveriesTriggered,
       scheduledDeliveries,
       errors,
+    }, {
+      headers: { "Cache-Control": "no-store" },
     });
   }
 
@@ -314,6 +318,8 @@ export async function GET(request: Request) {
     errors,
     usersChecked: profiles.length,
     timedOut,
+  }, {
+    headers: { "Cache-Control": "no-store" },
   });
 }
 

@@ -128,6 +128,8 @@ Return ONLY the JSON, no explanation.`,
       status: "proportions_only",
       message:
         "Facial proportions extracted. Blender service not yet configured (set BLENDER_SERVICE_URL).",
+    }, {
+      headers: { "Cache-Control": "no-store" },
     });
   }
 
@@ -199,5 +201,7 @@ Return ONLY the JSON, no explanation.`,
     url: bustUrl,
     proportions,
     status: "complete",
+  }, {
+    headers: { "Cache-Control": "no-store" },
   });
 }

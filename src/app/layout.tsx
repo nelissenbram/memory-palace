@@ -10,6 +10,7 @@ import CookieConsent from "@/components/CookieConsent";
 import NativeInit from "@/components/NativeInit";
 import { AccessibilityProvider } from "@/components/providers/AccessibilityProvider";
 import { DaylightProvider } from "@/components/providers/DaylightProvider";
+import WebVitals from "@/components/WebVitals";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -144,6 +145,7 @@ export default async function RootLayout({
         <a href="#main-content" className="skip-to-content">
           {locale === "nl" ? "Ga naar inhoud" : "Skip to content"}
         </a>
+        <WebVitals />
         <ServiceWorkerRegistration />
         <PWAInstallBanner />
         <OfflineBanner />

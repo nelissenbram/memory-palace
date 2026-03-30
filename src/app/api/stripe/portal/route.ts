@@ -36,7 +36,9 @@ export async function POST() {
       return_url: `${siteUrl}/settings/subscription`,
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     console.error("Portal error:", message);

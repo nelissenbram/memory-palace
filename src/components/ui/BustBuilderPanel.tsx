@@ -6,6 +6,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useUserStore } from "@/lib/stores/userStore";
+import Image from "next/image";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import {
   loadBustModel,
@@ -226,8 +227,8 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               {t("pedestalTitle", { index: String(pedestalIndex + 1) })}{pedestalData?.name ? ` — ${pedestalData.name}` : ""}
             </h2>
             {pedestalData?.faceUrl && (
-              <img src={pedestalData.faceUrl} alt={t("currentBust")} style={{
-                width: 160, height: 160, objectFit: "cover",
+              <Image src={pedestalData.faceUrl} alt={t("currentBust")} width={160} height={160} style={{
+                objectFit: "cover",
                 borderRadius: "1rem", margin: "0 auto 1rem",
                 border: `3px solid ${T.color.sandstone}`, display: "block",
               }} />

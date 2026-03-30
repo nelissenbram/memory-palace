@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import Image from "next/image";
 import {
   updatePerson,
   deletePerson,
@@ -260,10 +261,11 @@ export default function PersonPanel({
             }}
           >
             {person.photo_path ? (
-              <img
+              <Image
                 src={person.photo_path}
                 alt={fullName}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                fill sizes="80px"
+                style={{ objectFit: "cover" }}
               />
             ) : person.gender === "female" ? (
               "\u{1F469}"

@@ -8,6 +8,7 @@ import { useOnlineStatus } from "@/lib/hooks/useOfflineSync";
 import { UPLOAD_DEMOS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import Image from "next/image";
 
 interface UploadPanelProps {
   wing: Wing | null | undefined;
@@ -201,8 +202,8 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
                 }} onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=accent;(e.currentTarget as HTMLElement).style.background=`${accent}08`;}}
                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor=T.color.cream;(e.currentTarget as HTMLElement).style.background=T.color.white;}}>
                   {m.dataUrl?
-                    <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.5rem",overflow:"hidden",flexShrink:0,border:`1px solid ${T.color.cream}`}}>
-                      <img src={m.dataUrl} style={{width:"100%",height:"100%",objectFit:"cover"}} alt=""/>
+                    <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.5rem",overflow:"hidden",flexShrink:0,border:`1px solid ${T.color.cream}`,position:"relative"}}>
+                      <Image src={m.dataUrl!} fill sizes="44px" style={{objectFit:"cover"}} alt=""/>
                     </div>
                   :
                     <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.5rem",background:`hsl(${m.hue},${m.s}%,${m.l}%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.125rem",flexShrink:0}}>

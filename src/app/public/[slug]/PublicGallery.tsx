@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { T } from "@/lib/theme";
 import { WINGS } from "@/lib/constants/wings";
+import Image from "next/image";
 
 interface PublicMemory {
   id: string;
@@ -347,17 +348,15 @@ function MemoryCard({
           aspectRatio: "4 / 3",
           overflow: "hidden",
           background: hslBg,
+          position: "relative",
         }}>
-          <img
+          <Image
             src={mem.fileUrl!}
             alt={mem.title}
+            fill sizes="(max-width: 768px) 50vw, 300px"
             style={{
-              width: "100%",
-              height: "100%",
               objectFit: "cover",
-              display: "block",
             }}
-            loading="lazy"
           />
         </div>
       ) : hasVideo ? (
@@ -539,19 +538,17 @@ function MemoryLightbox({
         {hasImage && (
           <div style={{
             width: "100%",
-            maxHeight: "60vh",
+            height: "60vh",
             overflow: "hidden",
             background: T.color.warmStone,
+            position: "relative",
           }}>
-            <img
+            <Image
               src={mem.fileUrl!}
               alt={mem.title}
+              fill sizes="(max-width: 768px) 100vw, 800px"
               style={{
-                width: "100%",
-                height: "100%",
                 objectFit: "contain",
-                maxHeight: "60vh",
-                display: "block",
               }}
             />
           </div>

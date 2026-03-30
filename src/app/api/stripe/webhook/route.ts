@@ -156,5 +156,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 });
   }
 
-  return NextResponse.json({ received: true });
+  return NextResponse.json({ received: true }, {
+    headers: { "Cache-Control": "no-store" },
+  });
 }

@@ -7,6 +7,7 @@ import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import Image from "next/image";
 
 const LS_KEY = "mp_seen_reveals";
 const LS_REMINDER_KEY = "mp_seen_res_reminders";
@@ -408,12 +409,11 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
               }}
             >
               {r.mem.dataUrl ? (
-                <img
-                  src={r.mem.dataUrl}
+                <Image
+                  src={r.mem.dataUrl!}
                   alt=""
+                  width={40} height={40}
                   style={{
-                    width: "2.5rem",
-                    height: "2.5rem",
                     borderRadius: "0.625rem",
                     objectFit: "cover",
                   }}

@@ -112,7 +112,9 @@ Please write a beautiful narrative summary that weaves these stories together.`;
       return NextResponse.json({ error: "AI returned empty response" }, { status: 500 });
     }
 
-    return NextResponse.json({ narrative: narrative.trim() });
+    return NextResponse.json({ narrative: narrative.trim() }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
   }

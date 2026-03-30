@@ -103,7 +103,9 @@ Keep it warm, personal, and under 300 words. No markdown formatting.`;
       return NextResponse.json({ error: "AI returned empty response" }, { status: 500 });
     }
 
-    return NextResponse.json({ context: context.trim() });
+    return NextResponse.json({ context: context.trim() }, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
   }

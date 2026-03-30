@@ -93,7 +93,9 @@ Respond with a JSON object containing:
     }
 
     const result = JSON.parse(jsonMatch[0]);
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
   }
