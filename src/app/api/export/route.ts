@@ -2,28 +2,34 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { exportUserData } from "@/lib/auth/export-actions";
 
+export const maxDuration = 30;
+
 export async function GET() {
   try {
-    // Verify authentication
     const supabase = await createClient();
     const {
       data: { user },
+      error: authError,
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "NOT_AUTHENTICATED" },
+        { status: 401 }
+      );
     }
 
-    const result = await exportUserData();
+    const result = await exportUserData(supabase, user.id);
 
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
-    const json = JSON.stringify(result.data, null, 2);
-    const displayName =
-      (result.data.profile as Record<string, unknown> | null)?.display_name ||
-      "user";
+    const json = JSON.stringify(
+      result.data,
+      (_key, value) => (typeof value === "bigint" ? value.toString() : value),
+      2
+    );
     const dateStr = new Date().toISOString().split("T")[0];
     const filename = `memory-palace-export-${dateStr}.json`;
 
@@ -37,7 +43,7 @@ export async function GET() {
     });
   } catch {
     return NextResponse.json(
-      { error: "Failed to export data" },
+      { error: "EXPORT_FAILED" },
       { status: 500 }
     );
   }

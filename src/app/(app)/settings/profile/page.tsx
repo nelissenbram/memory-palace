@@ -5,8 +5,10 @@ import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
 import MFASetup from "@/components/settings/MFASetup";
+import ExportPanel from "@/components/settings/ExportPanel";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
+import { useDaylight } from "@/components/providers/DaylightProvider";
 
 interface ProfileData {
   display_name: string;
@@ -24,12 +26,28 @@ const GOAL_LABEL_KEYS: Record<string, string> = {
   organize: "goalOrganize",
 };
 
+/** Format hour (0-24 float) as HH:MM */
+function formatDaylightHour(h: number): string {
+  const hr = Math.floor(h) % 24;
+  const min = Math.round((h - Math.floor(h)) * 60);
+  return `${String(hr).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+/** Get a period label for the given hour */
+function daylightPeriodLabel(h: number, t: (k: string) => string): string {
+  if (h >= 22 || h < 5) return t("daylight_night");
+  if (h >= 5 && h < 9) return t("daylight_morning");
+  if (h >= 9 && h < 16) return t("daylight_midday");
+  return t("daylight_evening");
+}
+
 export default function ProfilePage() {
   const { t, locale, setLocale } = useTranslation("settings");
   const { t: tOnboard } = useTranslation("onboarding");
   const { t: tc } = useTranslation("common");
   const { t: tA11y } = useTranslation("accessibility");
   const { accessibilityMode, toggleAccessibility } = useAccessibility();
+  const { daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour } = useDaylight();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,8 +55,6 @@ export default function ProfilePage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteText, setDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [exporting, setExporting] = useState(false);
-
   // Editable fields
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -142,34 +158,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleExportData = async () => {
-    setExporting(true);
-    try {
-      const response = await fetch("/api/export/zip");
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: t("exportFailed") }));
-        showToast(err.error || t("exportZipError"), "error");
-        setExporting(false);
-        return;
-      }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const disposition = response.headers.get("Content-Disposition");
-      const filenameMatch = disposition?.match(/filename="(.+)"/);
-      a.download = filenameMatch?.[1] || "memory-palace-export.zip";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast(t("exportZipSuccess"), "success");
-    } catch {
-      showToast(t("exportZipError"), "error");
-    }
-    setExporting(false);
-  };
-
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -206,7 +194,7 @@ export default function ProfilePage() {
     <div>
       {/* Toast */}
       {toast && (
-        <div role={toast.type === "success" ? "status" : "alert"} style={{
+        <div role={toast.type === "success" ? "status" : "alert"} aria-live={toast.type === "success" ? "polite" : "assertive"} style={{
           position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
           background: toast.type === "success" ? "#4A6741" : "#C05050",
@@ -218,7 +206,7 @@ export default function ProfilePage() {
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} aria-label="Close" style={{
+          <button onClick={() => setToast(null)} aria-label={tc("close")} style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
@@ -554,47 +542,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Download My Data */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen,
-            border: `1px solid ${T.color.cream}`,
-          }}>
-            <div>
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                color: T.color.charcoal,
-              }}>
-                {t("exportZip")}
-              </div>
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-                marginTop: "0.25rem", maxWidth: "23.75rem", lineHeight: 1.4,
-              }}>
-                {t("exportZipDesc")}
-              </div>
-            </div>
-            <button
-              onClick={handleExportData}
-              disabled={exporting}
-              aria-busy={exporting}
-              style={{
-                padding: "0.75rem 1.5rem",
-                borderRadius: "0.625rem",
-                border: `1px solid ${T.color.cream}`,
-                background: exporting ? `${T.color.sandstone}60` : T.color.white,
-                fontFamily: T.font.body,
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                color: exporting ? T.color.muted : T.color.charcoal,
-                cursor: exporting ? "default" : "pointer",
-                transition: "all .15s",
-                flexShrink: 0,
-              }}
-            >
-              {exporting ? t("exportingZip") : t("exportZip")}
-            </button>
-          </div>
+          <ExportPanel showToast={showToast} />
         </div>
       </div>
 
@@ -714,8 +662,8 @@ export default function ProfilePage() {
           >
             <span style={{
               position: "absolute",
-              top: 3,
-              left: accessibilityMode ? "1.6875rem" : 3,
+              top: "0.1875rem",
+              left: accessibilityMode ? "1.6875rem" : "0.1875rem",
               width: "1.375rem",
               height: "1.375rem",
               borderRadius: "0.6875rem",
@@ -725,6 +673,140 @@ export default function ProfilePage() {
             }} />
           </button>
         </div>
+      </div>
+
+      {/* ── Dynamic Daylight ── */}
+      <div style={{
+        background: T.color.white,
+        borderRadius: "1rem",
+        border: `1px solid ${T.color.cream}`,
+        padding: "1.75rem 2rem",
+        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        marginBottom: "1.5rem",
+      }}>
+        <h3 style={{
+          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 1rem",
+        }}>
+          {tc("daylightMode")}
+        </h3>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
+          background: T.color.linen,
+          border: `1px solid ${T.color.cream}`,
+          marginBottom: daylightEnabled ? "0.75rem" : 0,
+        }}>
+          <div>
+            <div style={{
+              fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+              color: T.color.charcoal,
+            }}>
+              {tc("daylightMode")}
+            </div>
+            <div style={{
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              marginTop: "0.25rem", lineHeight: 1.4,
+            }}>
+              {tc("daylightDesc")}
+            </div>
+          </div>
+          <button
+            role="switch"
+            aria-checked={daylightEnabled}
+            onClick={toggleDaylight}
+            style={{
+              width: "3.25rem",
+              height: "1.75rem",
+              borderRadius: "0.875rem",
+              border: "none",
+              background: daylightEnabled ? T.color.gold : T.color.sandstone,
+              cursor: "pointer",
+              position: "relative",
+              transition: "background .2s",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{
+              position: "absolute",
+              top: "0.1875rem",
+              left: daylightEnabled ? "1.6875rem" : "0.1875rem",
+              width: "1.375rem",
+              height: "1.375rem",
+              borderRadius: "0.6875rem",
+              background: T.color.white,
+              boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+              transition: "left .2s",
+            }} />
+          </button>
+        </div>
+        {daylightEnabled && (() => {
+          const isAuto = daylightMode === "auto";
+          const displayHour = isAuto
+            ? new Date().getHours() + new Date().getMinutes() / 60
+            : customHour;
+          return (
+            <div style={{ padding: "0.5rem 0", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {/* Time-of-day slider */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                <div style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  fontFamily: T.font.body, fontSize: "0.8125rem",
+                }}>
+                  <span style={{
+                    fontWeight: 500,
+                    color: isAuto ? T.color.muted : T.color.charcoal,
+                  }}>
+                    {formatDaylightHour(displayHour)} — {daylightPeriodLabel(displayHour, tc)}
+                  </span>
+                  <button
+                    aria-pressed={isAuto}
+                    onClick={() => isAuto ? setCustomHour(displayHour) : setDaylightMode("auto")}
+                    style={{
+                      padding: "0.25rem 0.75rem",
+                      borderRadius: "0.5rem",
+                      border: `1px solid ${isAuto ? T.color.gold : T.color.cream}`,
+                      background: isAuto ? `${T.color.gold}18` : T.color.linen,
+                      cursor: "pointer",
+                      fontFamily: T.font.body,
+                      fontSize: "0.75rem",
+                      fontWeight: isAuto ? 600 : 400,
+                      color: isAuto ? T.color.walnut : T.color.muted,
+                      transition: "all .2s",
+                    }}
+                  >
+                    {tc("daylight_auto")}
+                  </button>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={24}
+                  step={0.5}
+                  value={displayHour}
+                  onChange={(e) => setCustomHour(parseFloat(e.target.value))}
+                  aria-label={tc("daylightSlider")}
+                  style={{
+                    width: "100%",
+                    accentColor: T.color.gold,
+                    cursor: "pointer",
+                  }}
+                />
+                <div style={{
+                  display: "flex", justifyContent: "space-between",
+                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                  opacity: 0.6,
+                }}>
+                  <span>00:00</span>
+                  <span>06:00</span>
+                  <span>12:00</span>
+                  <span>18:00</span>
+                  <span>24:00</span>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Danger Zone ── */}

@@ -14,6 +14,18 @@ import { loadBustModel, type BustStyle, type BustGender } from "@/lib/3d/bustBui
 import type { BustPedestalData } from "@/lib/stores/userStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
+/** Shared wing data from wing_shares table */
+export interface SharedWingDoor {
+  shareId: string;
+  wingId: string;       // slug: "family", "travel", etc.
+  ownerName: string;
+  ownerId: string;
+  permission: string;
+  canAdd: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+}
+
 // ═══ ENTRANCE HALL — Grand Roman Senate / Pantheon Chamber ═══
 const HALL_DOORS = [
   { id: "family",     label: "FAMILY",      locked: false },
@@ -127,6 +139,7 @@ export default function EntranceHallScene({
   bustProportions,
   bustName,
   bustGender,
+  sharedWings,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
@@ -140,6 +153,7 @@ export default function EntranceHallScene({
   bustProportions?: Record<string, number> | null;
   bustName?: string | null;
   bustGender?: string | null;
+  sharedWings?: SharedWingDoor[];
 }) {
   const { t } = useTranslation("entranceHall");
   const WINGS = wingsProp || DEFAULT_WINGS;
@@ -157,6 +171,9 @@ export default function EntranceHallScene({
   const lookT = useRef({ yaw: 0, pitch: 0 });
   const pos = useRef(new THREE.Vector3());
   const posT = useRef(new THREE.Vector3());
+  const _rc = useRef(new THREE.Raycaster()), _mouse = useRef(new THREE.Vector2());
+  const _dir = useRef(new THREE.Vector3()), _yAxis = useRef(new THREE.Vector3(0, 1, 0));
+  const _ld = useRef(new THREE.Vector3()), _lookTarget = useRef(new THREE.Vector3());
   const keys = useRef<Record<string, boolean>>({});
   const drag = useRef(false);
   const prev = useRef({ x: 0, y: 0 });
@@ -228,7 +245,7 @@ export default function EntranceHallScene({
       bust: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.7, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.15, .15) }),
       bronze: new THREE.MeshPhysicalMaterial({ color: "#8A7050", roughness: 0.25, metalness: 0.8, envMapIntensity: 1.1, clearcoat: 0.2, clearcoatRoughness: 0.3 }),
       wall: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.2, .2), roughnessMap: wallTex.roughnessMap }),
-      lightBeam: new THREE.MeshBasicMaterial({ color: "#FFF5E0", transparent: true, opacity: 0.06, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+      lightBeam: new THREE.MeshBasicMaterial({ color: dlPreset.sunColor, transparent: true, opacity: 0.06 * dlPreset.sunIntensity, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
       atticDoor: new THREE.MeshStandardMaterial({ color: "#6A5040", roughness: 0.6, metalness: 0.0, map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: woodDoorTex.roughnessMap }),
       frescoPanel: new THREE.MeshStandardMaterial({ color: "#C4A070", roughness: 0.5, metalness: 0.05, envMapIntensity: 0.5 }),
     };
@@ -564,11 +581,23 @@ export default function EntranceHallScene({
     // ── 7 GRAND DOORS ──
     const doorMeshes: { mesh: THREE.Mesh; mat: THREE.MeshStandardMaterial; wingId: string; angle: number }[] = [];
 
+    // Map shared wings to locked door slots
+    const sharedWingsArr = sharedWings || [];
+    const lockedSlots = HALL_DOORS.map((d, idx) => ({ ...d, idx })).filter(d => d.locked);
+    const sharedDoorMap: Record<number, SharedWingDoor> = {};
+    lockedSlots.forEach((slot, si) => {
+      if (si < sharedWingsArr.length) sharedDoorMap[slot.idx] = sharedWingsArr[si];
+    });
+
     HALL_DOORS.forEach((doorDef, i) => {
-      const wingId = doorDef.id;
-      const wing = WINGS.find(ww => ww.id === wingId);
-      const isPlaceholderLocked = doorDef.locked;
-      const isUnlocked = !isPlaceholderLocked && wing && wing.unlocked !== false;
+      const sharedWingForSlot = sharedDoorMap[i];
+      const wingId = sharedWingForSlot ? `shared:${sharedWingForSlot.wingId}:${sharedWingForSlot.shareId}` : doorDef.id;
+      const wing = WINGS.find(ww => ww.id === doorDef.id);
+      const isPlaceholderLocked = doorDef.locked && !sharedWingForSlot;
+      const isSharedDoor = !!sharedWingForSlot;
+      const isUnlocked = (!doorDef.locked && wing && wing.unlocked !== false) || isSharedDoor;
+      const sharedWingRef = isSharedDoor ? DEFAULT_WINGS.find(w => w.id === sharedWingForSlot!.wingId) : null;
+      const sharedAccent = sharedWingRef?.accent || "#7AA0C8";
       const accent = wing?.accent;
       const angle = (i / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
       const dx = Math.cos(angle) * (RADIUS - 0.4);
@@ -645,10 +674,17 @@ export default function EntranceHallScene({
       if (isUnlocked) {
       // ── DOUBLE DOOR PANELS (unlocked wing) ──
       const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
-      const doorMat = new THREE.MeshStandardMaterial({
-        color: "#7A5030", roughness: 0.45, metalness: 0.0,
-        emissive: "#5A3A20", emissiveIntensity: 0.2,
-      });
+      // Shared doors get an ethereal translucent look with wing accent color
+      const doorMat = isSharedDoor
+        ? new THREE.MeshStandardMaterial({
+            color: sharedAccent, roughness: 0.2, metalness: 0.3,
+            emissive: sharedAccent, emissiveIntensity: 0.15,
+            transparent: true, opacity: 0.85,
+          })
+        : new THREE.MeshStandardMaterial({
+            color: "#7A5030", roughness: 0.45, metalness: 0.0,
+            emissive: "#5A3A20", emissiveIntensity: 0.2,
+          });
 
       const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
       leftPanel.position.set(
@@ -841,24 +877,53 @@ export default function EntranceHallScene({
       }
 
       // Warm fill light for door visibility (dimmer for locked niches)
-      const doorFill = new THREE.PointLight("#FFF0D0", isUnlocked ? 1.5 : 0.5, 10);
+      const doorFillColor = isSharedDoor ? sharedAccent : dlPreset.sunColor;
+      const doorFill = new THREE.PointLight(doorFillColor, (isUnlocked ? 1.5 : 0.5) * dlPreset.sunIntensity, 10);
       doorFill.position.set(dx + inN.x * 2.5, DOOR_H * 0.5, dz + inN.z * 2.5);
       scene.add(doorFill);
 
       // Spotlight on door face (dimmer for locked niches)
-      const doorFaceSpot = new THREE.SpotLight("#FFF5E0", isUnlocked ? 2.0 : 0.6, 16, Math.PI / 4.5, 0.4, 0.7);
+      const doorFaceSpot = new THREE.SpotLight(isSharedDoor ? sharedAccent : dlPreset.sunColor, (isUnlocked ? 2.0 : 0.6) * dlPreset.sunIntensity, 16, Math.PI / 4.5, 0.4, 0.7);
       doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
       doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
       scene.add(doorFaceSpot);
       scene.add(doorFaceSpot.target);
 
       // ── ELEGANT WING NAME LABEL (upper portion of door/niche) ──
-      if (doorDef.label) {
+      const effectiveLabel = isSharedDoor
+        ? (sharedWingRef?.name?.toUpperCase() || sharedWingForSlot!.wingId.toUpperCase())
+        : doorDef.label;
+      if (effectiveLabel) {
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 1024;
-        labelCanvas.height = 192;
+        labelCanvas.height = isSharedDoor ? 256 : 192;
         const lctx = labelCanvas.getContext("2d")!;
-        if (isUnlocked) {
+        if (isSharedDoor) {
+          // Ethereal translucent background for shared wing
+          lctx.fillStyle = "#1A2838";
+          lctx.fillRect(0, 0, 1024, 256);
+          // Subtle glowing border
+          lctx.strokeStyle = sharedAccent;
+          lctx.lineWidth = 3;
+          lctx.strokeRect(12, 12, 1000, 232);
+          // Wing name
+          lctx.fillStyle = "#FFFFFF";
+          lctx.font = "bold 80px Georgia, 'Times New Roman', serif";
+          lctx.textAlign = "center";
+          lctx.textBaseline = "middle";
+          lctx.fillText(effectiveLabel, 512, 90);
+          // Subtle "shared" badge
+          lctx.fillStyle = "#7A9AB8";
+          lctx.font = "italic 36px Georgia, 'Times New Roman', serif";
+          lctx.fillText("shared", 512, 170);
+          // Decorative line
+          lctx.strokeStyle = sharedAccent;
+          lctx.lineWidth = 2;
+          lctx.beginPath();
+          lctx.moveTo(200, 210);
+          lctx.lineTo(824, 210);
+          lctx.stroke();
+        } else if (isUnlocked) {
           // Transparent dark wood background
           lctx.fillStyle = "#3A2818";
           lctx.fillRect(0, 0, 1024, 192);
@@ -867,7 +932,7 @@ export default function EntranceHallScene({
           lctx.lineWidth = 3;
           lctx.strokeRect(12, 12, 1000, 168);
           // Wing name in refined serif
-          const eyeLabel = doorDef.label;
+          const eyeLabel = effectiveLabel;
           lctx.fillStyle = "#D4B878";
           lctx.font = "bold 100px Georgia, 'Times New Roman', serif";
           lctx.textAlign = "center";
@@ -889,7 +954,7 @@ export default function EntranceHallScene({
           lctx.lineWidth = 2;
           lctx.strokeRect(12, 12, 1000, 168);
           // Wing name — dimmer, with lock symbol
-          const eyeLabel = doorDef.label;
+          const eyeLabel = effectiveLabel;
           lctx.fillStyle = "#8A7E68";
           lctx.font = "bold 90px Georgia, 'Times New Roman', serif";
           lctx.textAlign = "center";
@@ -899,17 +964,19 @@ export default function EntranceHallScene({
 
         const labelTex = new THREE.CanvasTexture(labelCanvas);
         labelTex.colorSpace = THREE.SRGBColorSpace;
+        const labelPlaneH = isSharedDoor ? 0.72 : 0.54;
         const labelMesh = new THREE.Mesh(
-          new THREE.PlaneGeometry(2.8, 0.54),
-          new THREE.MeshBasicMaterial({ map: labelTex, side: THREE.DoubleSide, transparent: !isUnlocked, opacity: isUnlocked ? 1.0 : 0.7 })
+          new THREE.PlaneGeometry(2.8, labelPlaneH),
+          new THREE.MeshBasicMaterial({ map: labelTex, side: THREE.DoubleSide, transparent: true, opacity: isSharedDoor ? 0.95 : (isUnlocked ? 1.0 : 0.7) })
         );
         // Position at upper third of door/niche
+        const labelY = isSharedDoor ? 5.4 : (isUnlocked ? 5.5 : 5.2);
         labelMesh.position.set(
           dx + inN.x * 0.40,
-          isUnlocked ? 5.5 : 5.2,
+          labelY,
           dz + inN.z * 0.40
         );
-        labelMesh.lookAt(new THREE.Vector3(0, isUnlocked ? 5.5 : 5.2, 0));
+        labelMesh.lookAt(new THREE.Vector3(0, labelY, 0));
         scene.add(labelMesh);
       }
     });
@@ -1565,7 +1632,7 @@ export default function EntranceHallScene({
     dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
     dustGeo.setAttribute("size", new THREE.BufferAttribute(dustSizes, 1));
     const dustMat = new THREE.PointsMaterial({
-      color: "#FFF8E0", size: 0.1, transparent: true, opacity: 0.5,
+      color: dlPreset.sunColor, size: 0.1, transparent: true, opacity: 0.5 * dlPreset.sunIntensity,
       blending: THREE.AdditiveBlending, depthWrite: false,
       sizeAttenuation: true,
     });
@@ -1582,7 +1649,7 @@ export default function EntranceHallScene({
     // Bright outdoor light plane (sky visible through opening)
     const portalGlow = new THREE.Mesh(
       new THREE.PlaneGeometry(EXIT_W - 0.4, EXIT_H - 0.5),
-      new THREE.MeshBasicMaterial({ color: "#F0E8D0", transparent: true, opacity: 0.08, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ color: dlPreset.sunColor, transparent: true, opacity: 0.08 * dlPreset.sunIntensity, side: THREE.DoubleSide })
     );
     portalGlow.position.set(exitX, EXIT_H / 2, exitZ);
     portalGlow.lookAt(0, EXIT_H / 2, 0);
@@ -1672,10 +1739,10 @@ export default function EntranceHallScene({
     scene.add(portalHit);
 
     // Strong outdoor light streaming in
-    const portalLight = new THREE.PointLight("#FFF8E0", 1.2, 12);
+    const portalLight = new THREE.PointLight(dlPreset.sunColor, 1.2 * dlPreset.sunIntensity, 12);
     portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
     scene.add(portalLight);
-    const portalSpot = new THREE.SpotLight("#FFF5E0", 1.5, 18, Math.PI / 5, 0.5, 0.7);
+    const portalSpot = new THREE.SpotLight(dlPreset.sunColor, 1.5 * dlPreset.sunIntensity, 18, Math.PI / 5, 0.5, 0.7);
     portalSpot.position.set(exitX + exitInN.x * 3, EXIT_H * 0.5, exitZ + exitInN.z * 3);
     portalSpot.target.position.set(exitX - exitInN.x * 4, 0, exitZ - exitInN.z * 4);
     scene.add(portalSpot);
@@ -1726,11 +1793,11 @@ export default function EntranceHallScene({
     const goldColor=new THREE.Color("#D4AF37");
 
     // ── DUST PARTICLES (oculus light beam) ──
-    const dust = createDustParticles({ count: 150, bounds: { x: 8, y: 10, z: 8 }, center: new THREE.Vector3(0, 12, 0), opacity: 0.2, size: 0.04, color: "#FFF8D0" });
+    const dust = createDustParticles({ count: 150, bounds: { x: 8, y: 10, z: 8 }, center: new THREE.Vector3(0, 12, 0), opacity: 0.2 * dlPreset.sunIntensity, size: 0.04, color: dlPreset.sunColor });
     scene.add(dust.points);
 
     // ── VOLUMETRIC LIGHT BEAM from oculus ──
-    const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: new THREE.Vector3(0, -1, 0), length: TOTAL_H - 1, radius: 3.5, color: "#FFF8D0", opacity: 0.04 });
+    const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: new THREE.Vector3(0, -1, 0), length: TOTAL_H - 1, radius: 3.5, color: dlPreset.sunColor, opacity: 0.04 * dlPreset.sunIntensity });
     scene.add(oculusBeam.mesh);
 
     const clock = new THREE.Clock();
@@ -1746,7 +1813,7 @@ export default function EntranceHallScene({
       doorMeshes.forEach(d=>{
         if(hlTarget===d.wingId){
           const pulse=0.6+Math.sin(t*2.5)*.25;
-          d.mat.emissive=goldColor.clone();
+          d.mat.emissive.copy(goldColor);
           d.mat.emissiveIntensity+=(pulse-d.mat.emissiveIntensity)*.12;
         }
       });
@@ -1761,16 +1828,16 @@ export default function EntranceHallScene({
 
       // ── Movement (WASD / Arrow keys) ──
       const spd = 4.0 * dt;
-      const dir = new THREE.Vector3();
+      _dir.current.set(0, 0, 0);
       const k = keys.current;
-      if (k["w"] || k["arrowup"]) dir.z -= 1;
-      if (k["s"] || k["arrowdown"]) dir.z += 1;
-      if (k["a"] || k["arrowleft"]) dir.x -= 1;
-      if (k["d"] || k["arrowright"]) dir.x += 1;
-      if (dir.length() > 0) {
-        dir.normalize().multiplyScalar(spd);
-        dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), -lookA.current.yaw);
-        posT.current.add(dir);
+      if (k["w"] || k["arrowup"]) _dir.current.z -= 1;
+      if (k["s"] || k["arrowdown"]) _dir.current.z += 1;
+      if (k["a"] || k["arrowleft"]) _dir.current.x -= 1;
+      if (k["d"] || k["arrowright"]) _dir.current.x += 1;
+      if (_dir.current.length() > 0) {
+        _dir.current.normalize().multiplyScalar(spd);
+        _dir.current.applyAxisAngle(_yAxis.current, -lookA.current.yaw);
+        posT.current.add(_dir.current);
       }
 
       // ── Collision detection ──
@@ -1800,12 +1867,13 @@ export default function EntranceHallScene({
       camera.position.copy(pos.current);
 
       // Look direction
-      const ld = new THREE.Vector3(
+      _ld.current.set(
         Math.sin(lookA.current.yaw) * Math.cos(lookA.current.pitch),
         Math.sin(lookA.current.pitch),
         -Math.cos(lookA.current.yaw) * Math.cos(lookA.current.pitch)
       );
-      camera.lookAt(camera.position.clone().add(ld));
+      _lookTarget.current.copy(camera.position).add(_ld.current);
+      camera.lookAt(_lookTarget.current);
 
       // ── Distance-based door glow (strong baseline) ──
       doorMeshes.forEach(d => {
@@ -1823,7 +1891,7 @@ export default function EntranceHallScene({
         const baseGlow = 0.25;
         const proximityGlow = Math.max(0, 1 - distToDoor / 10) * 0.35;
         const hoverGlow = isHover ? 0.35 + Math.sin(t * 3) * 0.12 : 0;
-        d.mat.emissive = new THREE.Color(accent);
+        d.mat.emissive.set(accent);
         d.mat.emissiveIntensity = Math.max(baseGlow, proximityGlow, hoverGlow);
       });
 
@@ -1871,29 +1939,29 @@ export default function EntranceHallScene({
       }
       // Raycast for hover detection
       const rect = el.getBoundingClientRect();
-      const rc = new THREE.Raycaster();
-      rc.setFromCamera(new THREE.Vector2(
+      _mouse.current.set(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
         -((e.clientY - rect.top) / rect.height) * 2 + 1
-      ), camera);
+      );
+      _rc.current.setFromCamera(_mouse.current, camera);
       let found: string | null = null;
       let portalHov = false;
       let inlayHov = false;
       let bustHov: number | null = null;
       doorMeshes.forEach(d => {
-        const hits = rc.intersectObject(d.mesh);
+        const hits = _rc.current.intersectObject(d.mesh);
         if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
       });
-      const pHits = rc.intersectObject(portalHit);
+      const pHits = _rc.current.intersectObject(portalHit);
       if (pHits.length > 0 && pHits[0].distance < 15) portalHov = true;
       // Check inlay clicks
       inlayMeshes.forEach(im => {
-        const hits = rc.intersectObject(im);
+        const hits = _rc.current.intersectObject(im);
         if (hits.length > 0 && hits[0].distance < 15) inlayHov = true;
       });
       // Check bust clicks
       bustMeshes.forEach(bm => {
-        const hits = rc.intersectObject(bm);
+        const hits = _rc.current.intersectObject(bm);
         if (hits.length > 0 && hits[0].distance < 15) bustHov = bm.userData.pedestalIndex;
       });
       hoveredWing = found;
@@ -1986,19 +2054,19 @@ export default function EntranceHallScene({
         if (tch.identifier === touchLookId) {
           if (touchTap) {
             const rect = el.getBoundingClientRect();
-            const rc = new THREE.Raycaster();
-            rc.setFromCamera(new THREE.Vector2(
+            _mouse.current.set(
               ((tch.clientX - rect.left) / rect.width) * 2 - 1,
               -((tch.clientY - rect.top) / rect.height) * 2 + 1
-            ), camera);
+            );
+            _rc.current.setFromCamera(_mouse.current, camera);
             let found: string | null = null;
             doorMeshes.forEach(d => {
-              const hits = rc.intersectObject(d.mesh);
+              const hits = _rc.current.intersectObject(d.mesh);
               if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
             });
             if (found) onDoorClickRef.current(found);
             else {
-              const pHits = rc.intersectObject(portalHit);
+              const pHits = _rc.current.intersectObject(portalHit);
               if (pHits.length > 0 && pHits[0].distance < 15) onDoorClickRef.current("__exterior__");
             }
           }

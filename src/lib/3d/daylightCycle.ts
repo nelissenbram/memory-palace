@@ -19,8 +19,22 @@ export interface LightingPreset {
   exposure: number;
 }
 
+/** Global hour override — set by DaylightProvider, read by scenes */
+let _globalHourOverride: number | undefined;
+
+/** Set the global daylight hour override (called by DaylightProvider) */
+export function setDaylightHour(hour: number | undefined) {
+  _globalHourOverride = hour;
+}
+
+/** Get the current global daylight hour (for key-based scene remounting) */
+export function getDaylightHour(): number | undefined {
+  return _globalHourOverride;
+}
+
 /** Get current time of day as 0-24 float */
 export function getTimeOfDay(): number {
+  if (_globalHourOverride !== undefined) return _globalHourOverride;
   const now = new Date();
   return now.getHours() + now.getMinutes() / 60;
 }

@@ -221,7 +221,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                             background: T.color.warmStone, marginBottom: "0.375rem",
                           }}>
                             <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, fontWeight: 600, margin: "0 0 0.25rem" }}>
-                              {q ? tTpl(q.textKey) : t("questionFallback", { number: String(i + 1) })}
+                              {q ? (tTpl(q.textKey) === q.textKey ? q.text : tTpl(q.textKey)) : t("questionFallback", { number: String(i + 1) })}
                             </p>
                             <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, lineHeight: 1.6, margin: 0 }}>
                               {r.transcript || t("noTranscript")}

@@ -25,6 +25,10 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
     const dlPreset=getLightingPreset();
+    // ── Cached THREE objects (avoid per-frame / per-event allocation) ──
+    const _rc=new THREE.Raycaster(),_mouse=new THREE.Vector2();
+    const _dir=new THREE.Vector3(),_yAxis=new THREE.Vector3(0,1,0);
+    const _ld=new THREE.Vector3(),_lookTarget=new THREE.Vector3();
     const scene=new THREE.Scene();scene.background=new THREE.Color(wing.wall);
     // Add atmospheric fog for depth
     scene.fog=new THREE.FogExp2(wing.wall,.008*dlPreset.fogDensity);
@@ -108,7 +112,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       fG:new THREE.MeshPhysicalMaterial({color:"#B89850",roughness:.2,metalness:.85,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.3}),
       windowFrame:new THREE.MeshStandardMaterial({color:"#D0C4B0",roughness:.4,metalness:.15,envMapIntensity:.6}),
       windowGlass:new THREE.MeshPhysicalMaterial({color:"#C8E0F0",transparent:true,opacity:.1,side:THREE.DoubleSide,transmission:.6,ior:1.5,roughness:.02,thickness:.3}),
-      windowGlow:new THREE.MeshBasicMaterial({color:"#FFF8E0",transparent:true,opacity:.15,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}),
+      windowGlow:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}),
       bench:new THREE.MeshStandardMaterial({color:"#6A5240",roughness:.6,metalness:.04,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       benchCushion:new THREE.MeshPhysicalMaterial({color:C.accent,roughness:.92,sheen:.3,sheenRoughness:.8,sheenColor:new THREE.Color(C.accent).offsetHSL(0,0,.15),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
       portalArch:new THREE.MeshPhysicalMaterial({color:"#D4AF37",roughness:.15,metalness:.9,emissive:"#D4AF37",emissiveIntensity:.2,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.5}),
@@ -121,7 +125,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       foliageDark:new THREE.MeshStandardMaterial({color:"#2A5020",roughness:.85}),
       pedestal:new THREE.MeshStandardMaterial({color:"#D8D0C4",roughness:.3,metalness:.05,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.2,.2),envMapIntensity:.6}),
       floorGoldStrip:new THREE.MeshPhysicalMaterial({color:"#C8A858",roughness:.2,metalness:.8,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.2}),
-      portalFog:new THREE.MeshBasicMaterial({color:"#FFF8E0",transparent:true,opacity:.08,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}),
+      portalFog:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.08*dlPreset.sunIntensity,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}),
     };
 
     // (Tuscan landscape removed — windows use simple sky glow)
@@ -357,7 +361,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       scene.add(mk(new THREE.BoxGeometry(0.2,0.1,winW+jW*2+0.14),winStoneMat,winX,winBottom-0.05,wz));
       scene.add(mk(new THREE.BoxGeometry(0.22,0.03,winW+jW*2+0.18),MS.gold,winX,winBottom+0.005,wz));
       // ── Bright sky glow — simple emissive plane behind wall ──
-      const skyGlowMat=new THREE.MeshBasicMaterial({color:"#E8F0FA",side:THREE.DoubleSide});
+      const skyGlowMat=new THREE.MeshBasicMaterial({color:dlPreset.fogColor,side:THREE.DoubleSide});
       const skyGlow=new THREE.Mesh(new THREE.PlaneGeometry(winW-0.1,winH-0.1),skyGlowMat);
       skyGlow.rotation.y=winSide*(-Math.PI/2);
       skyGlow.position.set(winX+(winSide*0.15),winCenterY,wz);
@@ -374,11 +378,11 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       scene.add(mk(new THREE.BoxGeometry(mullThick,winRectH-0.1,mullThick),mullMat,winX+(winSide*0.02),winBottom+winRectH/2,wz));
       // ── Bright natural light flooding in ──
       if(winLightCount<10){
-        const sunBeam=new THREE.PointLight("#FFF8E8",0.8,12);
+        const sunBeam=new THREE.PointLight(dlPreset.sunColor,0.8*dlPreset.sunIntensity,12);
         sunBeam.position.set(winX-(winSide*1.0),winCenterY,wz);
         scene.add(sunBeam);
         // Secondary fill light lower (floor bounce)
-        const fillBeam=new THREE.PointLight("#FFF0D8",0.3,8);
+        const fillBeam=new THREE.PointLight(dlPreset.fillColor,0.3*dlPreset.fillIntensity,8);
         fillBeam.position.set(winX-(winSide*1.5),winBottom+0.5,wz);
         scene.add(fillBeam);
         winLightCount++;
@@ -1237,7 +1241,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     // Arch lintel
     scene.add(mk(new THREE.BoxGeometry(pW+1.2,.12,.22),MS.portalArch,0,pH+.14,portalZ));
     // Inner glow plane — brighter
-    const portalGlow=new THREE.Mesh(new THREE.PlaneGeometry(pW-.2,pH-.4),new THREE.MeshBasicMaterial({color:"#FFF8E0",transparent:true,opacity:.08,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
+    const portalGlow=new THREE.Mesh(new THREE.PlaneGeometry(pW-.2,pH-.4),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.08*dlPreset.sunIntensity,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
     portalGlow.position.set(0,pH/2+.2,portalZ);scene.add(portalGlow);
     // ── WARM FOG/MIST at base of portal ──
     for(let fi=0;fi<5;fi++){
@@ -1257,12 +1261,12 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       sparkP[i*3+2]=portalZ+Math.random()*.2-.1;
     }
     sparkG.setAttribute("position",new THREE.BufferAttribute(sparkP,3));
-    const sparkPoints=new THREE.Points(sparkG,new THREE.PointsMaterial({color:"#FFE8B0",size:.05,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}));
+    const sparkPoints=new THREE.Points(sparkG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.05,transparent:true,opacity:.5*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false}));
     scene.add(sparkPoints);
     // Portal lights — stronger, multiple
-    const portalLight=new THREE.PointLight("#FFE8C0",1.0,9);portalLight.position.set(0,pH/2+.5,portalZ);scene.add(portalLight);
-    const portalLight2=new THREE.PointLight("#FFF5E0",.4,5);portalLight2.position.set(0,.5,portalZ);scene.add(portalLight2);
-    const portalSpot=new THREE.SpotLight("#FFF5E0",.7,10,Math.PI/5,.4,1);portalSpot.position.set(0,cH-.2,portalZ-.8);portalSpot.target.position.set(0,pH/2,portalZ);scene.add(portalSpot);scene.add(portalSpot.target);
+    const portalLight=new THREE.PointLight(dlPreset.sunColor,1.0*dlPreset.sunIntensity,9);portalLight.position.set(0,pH/2+.5,portalZ);scene.add(portalLight);
+    const portalLight2=new THREE.PointLight(dlPreset.fillColor,.4*dlPreset.fillIntensity,5);portalLight2.position.set(0,.5,portalZ);scene.add(portalLight2);
+    const portalSpot=new THREE.SpotLight(dlPreset.sunColor,.7*dlPreset.sunIntensity,10,Math.PI/5,.4,1);portalSpot.position.set(0,cH-.2,portalZ-.8);portalSpot.target.position.set(0,pH/2,portalZ);scene.add(portalSpot);scene.add(portalSpot.target);
     // Invisible hitbox for click
     const portalHit=new THREE.Mesh(new THREE.BoxGeometry(pW,pH,.4),new THREE.MeshBasicMaterial({transparent:true,opacity:0}));
     portalHit.position.set(0,pH/2,portalZ);scene.add(portalHit);
@@ -1358,7 +1362,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const rdN=90,rdG=new THREE.BufferGeometry(),rdP=new Float32Array(rdN*3);
     for(let i=0;i<rdN;i++){rdP[i*3]=(Math.random()-.5)*cW;rdP[i*3+1]=.5+Math.random()*cH;rdP[i*3+2]=(Math.random()-.5)*cL;}
     rdG.setAttribute("position",new THREE.BufferAttribute(rdP,3));
-    scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:"#FFF8E0",size:.035,transparent:true,opacity:.28,blending:THREE.AdditiveBlending,depthWrite:false})));
+    scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.035,transparent:true,opacity:.28*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
 
     // ── CAMERA + CONTROLS ──
     camera.position.set(0,1.7,cL/2-3);
@@ -1374,24 +1378,24 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();
       lookA.yaw+=(lookT.yaw-lookA.yaw)*.08;lookA.pitch+=(lookT.pitch-lookA.pitch)*.08;
-      const spd=3*dt,dir=new THREE.Vector3();
-      if(keys.w||keys.arrowup)dir.z-=1;if(keys.s||keys.arrowdown)dir.z+=1;
-      if(keys.a||keys.arrowleft)dir.x-=1;if(keys.d||keys.arrowright)dir.x+=1;
-      if(dir.length()>0){dir.normalize().multiplyScalar(spd);dir.applyAxisAngle(new THREE.Vector3(0,1,0),-lookA.yaw);posT.add(dir);}
+      const spd=3*dt;_dir.set(0,0,0);
+      if(keys.w||keys.arrowup)_dir.z-=1;if(keys.s||keys.arrowdown)_dir.z+=1;
+      if(keys.a||keys.arrowleft)_dir.x-=1;if(keys.d||keys.arrowright)_dir.x+=1;
+      if(_dir.length()>0){_dir.normalize().multiplyScalar(spd);_dir.applyAxisAngle(_yAxis,-lookA.yaw);posT.add(_dir);}
       posT.x=Math.max(-cW/2+1,Math.min(cW/2-1,posT.x));posT.z=Math.max(-cL/2+1.5,Math.min(cL/2-1.5,posT.z));
       pos.lerp(posT,.1);camera.position.copy(pos);
-      const ld=new THREE.Vector3(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
-      camera.lookAt(camera.position.clone().add(ld));
+      _ld.set(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
+      _lookTarget.copy(camera.position).add(_ld);camera.lookAt(_lookTarget);
       const hlTarget=highlightDoorRef.current;
       dMeshes.forEach(d=>{
         if(hlTarget===d.room.id){
           // Walkthrough golden glow — strong pulse
           const pulse=0.6+Math.sin(t*2.5)*.25;
-          d.mat.emissive=goldColor.clone();
+          d.mat.emissive.copy(goldColor);
           d.mat.emissiveIntensity+=(pulse-d.mat.emissiveIntensity)*.12;
         }else{
           const isH=hovDoor===d.room.id;
-          d.mat.emissive=isH?new THREE.Color(wing.accent):new THREE.Color(0);
+          if(isH)d.mat.emissive.set(wing.accent);else d.mat.emissive.setScalar(0);
           d.mat.emissiveIntensity=isH?.12+Math.sin(t*3)*.04:0;
         }
       });
@@ -1412,25 +1416,25 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const onDown=(e: MouseEvent)=>{drag.v=false;prev.x=e.clientX;prev.y=e.clientY;};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.x,dy=e.clientY-prev.y;if(Math.abs(dx)>2||Math.abs(dy)>2)drag.v=true;
       if(e.buttons===1){lookT.yaw-=dx*.003;lookT.pitch=Math.max(-.4,Math.min(.4,lookT.pitch+dy*.003));prev.x=e.clientX;prev.y=e.clientY;}
-      const rect=el.getBoundingClientRect();const rc=new THREE.Raycaster();rc.setFromCamera(new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1),camera);
+      const rect=el.getBoundingClientRect();_mouse.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);_rc.setFromCamera(_mouse,camera);
       let found=null;let portalHov=false;
-      dMeshes.forEach(d=>{const hits=rc.intersectObject(d.mesh);if(hits.length>0&&hits[0].distance<5)found=d.room.id;});
-      const ph2=rc.intersectObject(portalHit);if(ph2.length>0&&ph2[0].distance<5)portalHov=true;
+      dMeshes.forEach(d=>{const hits=_rc.intersectObject(d.mesh);if(hits.length>0&&hits[0].distance<5)found=d.room.id;});
+      const ph2=_rc.intersectObject(portalHit);if(ph2.length>0&&ph2[0].distance<5)portalHov=true;
       let inlHov=false;
-      inlayClickMeshes.forEach(im=>{const hits=rc.intersectObject(im);if(hits.length>0&&hits[0].distance<5)inlHov=true;});
+      inlayClickMeshes.forEach(im=>{const hits=_rc.intersectObject(im);if(hits.length>0&&hits[0].distance<5)inlHov=true;});
       let paintHov=false;
-      paintingClickMeshes.forEach(pm=>{const hits=rc.intersectObject(pm.mesh);if(hits.length>0&&hits[0].distance<5)paintHov=true;});
+      paintingClickMeshes.forEach(pm=>{const hits=_rc.intersectObject(pm.mesh);if(hits.length>0&&hits[0].distance<5)paintHov=true;});
       hovDoor=found;el.style.cursor=(found||portalHov||inlHov||paintHov)?"pointer":"grab";onDoorHover(found||(portalHov?"__portal__":null));
       if((inlHov||paintHov)&&!found&&!portalHov)el.style.cursor="pointer";};
     const onCk=()=>{
       if(!drag.v&&hovDoor)onDoorClickRef.current(hovDoor);
       else if(!drag.v){
-        const rect2=el.getBoundingClientRect();const rc2=new THREE.Raycaster();rc2.setFromCamera(new THREE.Vector2(((prev.x-rect2.left)/rect2.width)*2-1,-((prev.y-rect2.top)/rect2.height)*2+1),camera);
-        const ph3=rc2.intersectObject(portalHit);if(ph3.length>0&&ph3[0].distance<5)onDoorClickRef.current("__portal__");
-        let inlHit=false;inlayClickMeshes.forEach(im=>{const h=rc2.intersectObject(im);if(h.length>0&&h[0].distance<5)inlHit=true;});
+        const rect2=el.getBoundingClientRect();_mouse.set(((prev.x-rect2.left)/rect2.width)*2-1,-((prev.y-rect2.top)/rect2.height)*2+1);_rc.setFromCamera(_mouse,camera);
+        const ph3=_rc.intersectObject(portalHit);if(ph3.length>0&&ph3[0].distance<5)onDoorClickRef.current("__portal__");
+        let inlHit=false;inlayClickMeshes.forEach(im=>{const h=_rc.intersectObject(im);if(h.length>0&&h[0].distance<5)inlHit=true;});
         if(inlHit){onInlayClick?.();return;}
         // Check painting slot clicks
-        paintingClickMeshes.forEach(pm=>{const h=rc2.intersectObject(pm.mesh);if(h.length>0&&h[0].distance<5){onPaintingClick?.();}});
+        paintingClickMeshes.forEach(pm=>{const h=_rc.intersectObject(pm.mesh);if(h.length>0&&h[0].distance<5){onPaintingClick?.();}});
       }};
 
     const onKD=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};
@@ -1478,13 +1482,13 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         if(t.identifier===touchMoveId){touchMoveId=null;touchMoveDir.x=0;touchMoveDir.z=0;}
         if(t.identifier===touchLookId){
           if(touchTap){
-            const rect=el.getBoundingClientRect();const rc=new THREE.Raycaster();
-            rc.setFromCamera(new THREE.Vector2(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1),camera);
+            const rect=el.getBoundingClientRect();_mouse.set(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1);
+            _rc.setFromCamera(_mouse,camera);
             let found: string|null=null;
-            dMeshes.forEach(d=>{const hits=rc.intersectObject(d.mesh);if(hits.length>0&&hits[0].distance<5)found=d.room.id;});
+            dMeshes.forEach(d=>{const hits=_rc.intersectObject(d.mesh);if(hits.length>0&&hits[0].distance<5)found=d.room.id;});
             if(found)onDoorClickRef.current(found);
             else{
-              const ph=rc.intersectObject(portalHit);if(ph.length>0&&ph[0].distance<5)onDoorClickRef.current("__portal__");
+              const ph=_rc.intersectObject(portalHit);if(ph.length>0&&ph[0].distance<5)onDoorClickRef.current("__portal__");
             }
           }
           touchLookId=null;

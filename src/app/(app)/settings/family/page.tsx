@@ -61,6 +61,8 @@ export default function FamilyPage() {
   const [group, setGroup] = useState<FamilyGroup | null>(null);
   const [members, setMembers] = useState<FamilyMember[]>([]);
   const [userRole, setUserRole] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [pendingInvite, setPendingInvite] = useState(false);
   const [loading, setLoading] = useState(true);
   const [groupName, setGroupName] = useState("");
@@ -94,6 +96,7 @@ export default function FamilyPage() {
     setGroup(result.group || null);
     setMembers((result.members || []) as FamilyMember[]);
     setUserRole(result.userRole || "");
+    setUserEmail(result.userEmail || "");
     setPendingInvite(!!result.pendingInvite);
     setLoading(false);
   }, []);
@@ -152,7 +155,10 @@ export default function FamilyPage() {
 
   const handleRemoveMember = async (userId: string, email: string) => {
     if (!group) return;
+    if (!window.confirm(t("confirmRemoveMember", { email }))) return;
+    setRemovingMemberId(userId);
     const result = await removeFamilyMember(group.id, userId);
+    setRemovingMemberId(null);
     if (result.error) {
       showToast(result.error, "error");
     } else {
@@ -176,6 +182,7 @@ export default function FamilyPage() {
   };
 
   const handleUnshareWing = async (shareId: string) => {
+    if (!window.confirm(t("confirmUnshare"))) return;
     const result = await unshareWing(shareId);
     if (result.error) {
       showToast(result.error, "error");
@@ -224,7 +231,7 @@ export default function FamilyPage() {
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} aria-label="Close"  style={{
+          <button onClick={() => setToast(null)} aria-label={t("close")} style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"\u2715"}</button>
@@ -459,9 +466,9 @@ export default function FamilyPage() {
 
             {/* Members list */}
             <label style={labelStyle}>{t("members")}</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {members.map((member) => (
-                <div key={member.id} style={{
+                <div key={member.id} role="listitem" style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "0.875rem 1.125rem", borderRadius: "0.75rem",
                   background: T.color.linen,
@@ -486,7 +493,7 @@ export default function FamilyPage() {
                       </div>
                       <div style={{
                         fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
-                        display: "flex", alignItems: "center", gap: "0.5rem", marginTop: 2,
+                        display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.125rem",
                       }}>
                         <span style={{
                           display: "inline-block",
@@ -513,18 +520,22 @@ export default function FamilyPage() {
                   {canManage && member.role !== "owner" && member.user_id && (
                     <button
                       onClick={() => handleRemoveMember(member.user_id!, member.email)}
+                      disabled={removingMemberId === member.user_id}
+                      aria-label={t("removeMember", { email: member.email })}
                       style={{
                         width: "2rem", height: "2rem", borderRadius: "0.5rem",
                         border: `1px solid ${T.color.cream}`,
                         background: "transparent",
                         color: T.color.muted,
                         fontSize: "0.8125rem",
-                        cursor: "pointer",
+                        cursor: removingMemberId === member.user_id ? "default" : "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                         transition: "all .15s",
+                        minWidth: "2.75rem", minHeight: "2.75rem",
+                        opacity: removingMemberId === member.user_id ? 0.5 : 1,
                       }}
                     >
-                      {"\u2715"}
+                      {removingMemberId === member.user_id ? "\u23F3" : "\u2715"}
                     </button>
                   )}
                 </div>
@@ -558,7 +569,7 @@ export default function FamilyPage() {
                   {t("wingSharing")}
                 </h3>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: 2,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.125rem",
                 }}>
                   {t("wingSharingDesc")}
                 </div>
@@ -616,7 +627,7 @@ export default function FamilyPage() {
                 >
                   <option value="">{t("selectMember")}</option>
                   {activeMembers
-                    .filter((m) => m.role !== "owner" || m.user_id !== group?.created_by)
+                    .filter((m) => m.email.toLowerCase() !== userEmail.toLowerCase())
                     .map((m) => (
                       <option key={m.id} value={m.email}>{m.email}</option>
                     ))}
@@ -688,39 +699,51 @@ export default function FamilyPage() {
               </div>
             )}
 
+            {/* Empty state for wing shares */}
+            {activeMembers.length > 1 && myWingShares.length === 0 && sharedWithMe.length === 0 && (
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                margin: "0 0 1rem", lineHeight: 1.5, fontStyle: "italic",
+              }}>
+                {t("noWingSharesYet")}
+              </p>
+            )}
+
             {/* My shared wings */}
             {myWingShares.length > 0 && (
               <>
                 <label style={labelStyle}>{t("wingsShared")}</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
+                <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginBottom: "1.5rem" }}>
                   {myWingShares.map((share) => (
-                    <div key={share.id} style={{
+                    <div key={share.id} role="listitem" style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       padding: "0.75rem 1rem", borderRadius: "0.75rem",
                       background: T.color.linen,
                       border: `1px solid ${T.color.cream}`,
                     }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", minWidth: 0 }}>
                         <span style={{
                           display: "inline-block",
-                          padding: "3px 0.625rem",
+                          padding: "0.1875rem 0.625rem",
                           borderRadius: "0.375rem",
                           background: `${T.color.sage}15`,
                           color: T.color.sage,
                           fontFamily: T.font.body,
                           fontSize: "0.75rem",
                           fontWeight: 600,
+                          flexShrink: 0,
                         }}>
                           {wingLabel(share.wing_id)}
                         </span>
                         <span style={{
                           fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
                         }}>
                           {share.shared_with_email}
                         </span>
                         <span style={{
                           fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
-                          padding: "2px 0.5rem", borderRadius: "0.25rem",
+                          padding: "0.125rem 0.5rem", borderRadius: "0.25rem",
                           background: `${T.color.sandstone}30`,
                         }}>
                           {share.permission === "view" ? t("viewOnly") : t("canContribute")}
@@ -728,6 +751,7 @@ export default function FamilyPage() {
                       </div>
                       <button
                         onClick={() => handleUnshareWing(share.id)}
+                        aria-label={t("removeShare", { email: share.shared_with_email || "" })}
                         style={{
                           width: "1.75rem", height: "1.75rem", borderRadius: "0.4375rem",
                           border: `1px solid ${T.color.cream}`,
@@ -737,6 +761,7 @@ export default function FamilyPage() {
                           cursor: "pointer",
                           display: "flex", alignItems: "center", justifyContent: "center",
                           transition: "all .15s",
+                          minWidth: "2.75rem", minHeight: "2.75rem",
                         }}
                       >
                         {"\u2715"}
@@ -751,9 +776,9 @@ export default function FamilyPage() {
             {sharedWithMe.length > 0 && (
               <>
                 <label style={labelStyle}>{t("sharedWithMe")}</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                   {sharedWithMe.map((share) => (
-                    <div key={share.id} style={{
+                    <div key={share.id} role="listitem" style={{
                       display: "flex", alignItems: "center",
                       padding: "0.75rem 1rem", borderRadius: "0.75rem",
                       background: `${T.color.sage}06`,
@@ -762,24 +787,26 @@ export default function FamilyPage() {
                     }}>
                       <span style={{
                         display: "inline-block",
-                        padding: "3px 0.625rem",
+                        padding: "0.1875rem 0.625rem",
                         borderRadius: "0.375rem",
                         background: `${T.color.sage}15`,
                         color: T.color.sage,
                         fontFamily: T.font.body,
                         fontSize: "0.75rem",
                         fontWeight: 600,
+                        flexShrink: 0,
                       }}>
                         {wingLabel(share.wing_id)}
                       </span>
                       <span style={{
                         fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
                       }}>
                         {t("from")} {share.owner_email}
                       </span>
                       <span style={{
                         fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
-                        padding: "2px 0.5rem", borderRadius: "0.25rem",
+                        padding: "0.125rem 0.5rem", borderRadius: "0.25rem",
                         background: `${T.color.sandstone}30`,
                       }}>
                         {share.permission === "view" ? t("viewOnly") : t("canContribute")}

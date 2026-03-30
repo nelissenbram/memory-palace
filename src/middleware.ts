@@ -1,41 +1,31 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
-import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/api/email/test", "/api/stripe/webhook", "/api/stripe/test"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/api/stripe/webhook", "/api/cron/"];
+
+/** Check if path matches a public route (exact prefix boundary match) */
+function isPublicPath(path: string): boolean {
+  return PUBLIC_ROUTES.some((r) =>
+    path === r || path.startsWith(r + "/") || (r.endsWith("/") && path.startsWith(r))
+  );
+}
 
 export async function middleware(request: NextRequest) {
-  // Skip Supabase session refresh if env vars aren't configured yet
+  // Fail closed: if Supabase env vars missing, only allow public routes + static assets
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return NextResponse.next();
+    const path = request.nextUrl.pathname;
+    if (isPublicPath(path) || path === "/") return NextResponse.next();
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Refresh the session first
-  const response = await updateSession(request);
-
-  // Check auth state for route protection
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll() {},
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh the session and get auth state in a single getUser() call
+  const { response, user } = await updateSession(request);
 
   const path = request.nextUrl.pathname;
-  const isPublicRoute = PUBLIC_ROUTES.some((r) => path.startsWith(r));
+  const isPublicRoute = isPublicPath(path);
 
   // Authenticated user on public route or landing → redirect to palace
   // Exception: invite pages and public share pages should be accessible to authenticated users

@@ -31,6 +31,7 @@ import ExteriorScene from "@/components/3d/ExteriorScene";
 import EntranceHallScene from "@/components/3d/EntranceHallScene";
 import InteriorScene from "@/components/3d/InteriorScene";
 import CorridorScene from "@/components/3d/CorridorScene";
+import { useDaylight } from "@/components/providers/DaylightProvider";
 import ShareCard from "@/components/ui/ShareCard";
 import MemoryMap from "@/components/ui/MemoryMap";
 import OnThisDay from "@/components/ui/OnThisDay";
@@ -41,6 +42,7 @@ import RoomGallery from "@/components/ui/RoomGallery";
 import StoragePlayerPanel from "@/components/ui/StoragePlayerPanel";
 import InviteNotificationsPanel from "@/components/ui/InviteNotificationsPanel";
 import SharedWithMePanel from "@/components/ui/SharedWithMePanel";
+import SharingSettingsPanel from "@/components/ui/SharingSettingsPanel";
 import InterviewPanel from "@/components/ui/InterviewPanel";
 import InterviewLibraryPanel from "@/components/ui/InterviewLibraryPanel";
 import InterviewHistoryPanel from "@/components/ui/InterviewHistoryPanel";
@@ -63,6 +65,8 @@ import DiscoveryMenu from "@/components/ui/DiscoveryMenu";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import BustBuilderPanel from "@/components/ui/BustBuilderPanel";
+import { getWingsSharedWithMe, getSharedWingData, getSharedRoomMemories } from "@/lib/auth/sharing-actions";
+import type { SharedWingDoor } from "@/components/3d/EntranceHallScene";
 
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
@@ -70,6 +74,9 @@ export default function MemoryPalace(){
   const { t: tTrack } = useTranslation("tracksPanel");
   const { t: tAch } = useTranslation("achievementsPanel");
   const { t: tAction } = useTranslation("actionMenu");
+  const { daylightEnabled, daylightMode, resolvedHour } = useDaylight();
+  // Key fragment for scene remounting when daylight mode changes manually
+  const dlKey = daylightEnabled ? `dl_${daylightMode}${daylightMode !== "auto" ? "_" + resolvedHour : ""}` : "dl_off";
 
   // ── Stores ──
   const { profileLoading, onboarded, firstWing, styleEra, bustTextureUrl, bustModelUrl, bustProportions, userName, bustName, bustGender, bustPedestals,
@@ -97,11 +104,23 @@ export default function MemoryPalace(){
   const [showGallery, setShowGallery] = useState(false);
   const [showInvites, setShowInvites] = useState(false);
   const [showSharedWithMe, setShowSharedWithMe] = useState(false);
+  const [showSharingSettings, setShowSharingSettings] = useState(false);
   const [showCorridorGallery, setShowCorridorGallery] = useState(false);
   const [showEraPicker, setShowEraPicker] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showBustBuilder, setShowBustBuilder] = useState(false);
   const [bustBuilderIndex, setBustBuilderIndex] = useState(0);
+  const [sharedWings, setSharedWings] = useState<SharedWingDoor[]>([]);
+  const [sharedContext, setSharedContext] = useState<{
+    shareId: string;
+    wingSlug: string;
+    ownerId: string;
+    ownerName: string;
+    canAdd: boolean;
+    canEdit: boolean;
+    canDelete: boolean;
+  } | null>(null);
+  const [sharedWingData, setSharedWingData] = useState<{ wing: any; rooms: any[] } | null>(null);
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -137,8 +156,33 @@ export default function MemoryPalace(){
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings } = useNavigation();
   const { roomMems, allRoomMems, roomMemsKey, handleAddMemory, addMemoryToRoom, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
 
-  // Load profile on mount
-  useEffect(()=>{ loadProfile(); },[loadProfile]);
+  // Load profile on mount + heartbeat for legacy inactivity detection
+  useEffect(()=>{
+    loadProfile();
+    // Update last_seen_at once per session (throttled via sessionStorage)
+    if (!sessionStorage.getItem("mp_heartbeat")) {
+      sessionStorage.setItem("mp_heartbeat", "1");
+      import("@/lib/auth/heartbeat-action").then(m => m.updateLastSeen()).catch(() => {});
+    }
+  },[loadProfile]);
+
+  // Fetch shared wings from family members
+  useEffect(() => {
+    getWingsSharedWithMe().then(({ shares }) => {
+      if (shares && shares.length > 0) {
+        setSharedWings(shares.slice(0, 2).map((s: { id: string; wing_id: string; owner_id: string; owner_name?: string; permission: string; can_add?: boolean; can_edit?: boolean; can_delete?: boolean }) => ({
+          shareId: s.id,
+          wingId: s.wing_id,
+          ownerName: s.owner_name || "Someone",
+          ownerId: s.owner_id,
+          permission: s.permission,
+          canAdd: s.can_add ?? false,
+          canEdit: s.can_edit ?? false,
+          canDelete: s.can_delete ?? false,
+        })));
+      }
+    }).catch(() => {/* ignore — shared wings are optional */});
+  }, []);
 
   // Show era picker for existing users who haven't chosen a style
   useEffect(() => {
@@ -173,6 +217,14 @@ export default function MemoryPalace(){
     if (activeWing) setCorridorPaintings(loadCorridorPaintings(activeWing));
     else setCorridorPaintings({});
   }, [activeWing]);
+
+  // Clear shared context when leaving shared wing (navigating back to entrance/exterior)
+  useEffect(() => {
+    if (view === "entrance" || view === "exterior") {
+      setSharedContext(null);
+      setSharedWingData(null);
+    }
+  }, [view]);
 
   useEffect(() => {
     if (activeRoomId) trackRoomVisit(activeRoomId);
@@ -299,16 +351,22 @@ export default function MemoryPalace(){
     <div style={{width:"100vw",height:"100dvh",background:T.color.sandstone,position:"relative",overflow:"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
       <div role="application" aria-label="3D Memory Palace interactive scene" style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
-        {view==="exterior"&&<ExteriorScene onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===0?"__entrance__":null} styleEra={styleEra||"roman"}/>}
-        {view==="entrance"&&<EntranceHallScene onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else enterCorridor(wingId);}} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={(idx: number)=>{setBustBuilderIndex(idx);setShowBustBuilder(true);}} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null}/>}
-        {view==="corridor"&&activeWing&&wingData&&<CorridorScene key={activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>}
-        {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined} styleEra={styleEra||"roman"}/>}
+        {view==="exterior"&&<ExteriorScene key={dlKey} onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===0?"__entrance__":null} styleEra={styleEra||"roman"}/>}
+        {view==="entrance"&&<EntranceHallScene key={dlKey} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){setSharedContext({shareId,wingSlug:slug,ownerId:shareInfo.ownerId||"",ownerName:shareInfo.ownerName||"Unknown",canAdd:shareInfo.canAdd??false,canEdit:shareInfo.canEdit??false,canDelete:shareInfo.canDelete??false});getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else enterCorridor(wingId);}} wings={allWings} sharedWings={sharedWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={(idx: number)=>{setBustBuilderIndex(idx);setShowBustBuilder(true);}} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null}/>}
+        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>:view==="corridor"&&activeWing&&wingData&&<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>}
+        {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={dlKey+"|"+roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined} styleEra={styleEra||"roman"}/>}
       </div>
 
       {/* Scene loading overlay — fades out after 3D canvas initializes */}
       {sceneLoading&&<div key={view} style={{position:"absolute",inset:0,zIndex:40,display:"flex",alignItems:"center",justifyContent:"center",background:T.color.warmStone,animation:"sceneLoadFadeOut 1.4s ease-in-out forwards",pointerEvents:"none"}}><span style={{fontFamily:T.font.display,fontSize:"1.3rem",color:T.color.walnut,letterSpacing:"0.04em",animation:"sceneLoadPulse 1.2s ease-in-out infinite"}}>Loading...</span></div>}
 
-      {!walkthroughActive && <TopBar crumbs={crumbs}/>}
+      {!walkthroughActive && <TopBar crumbs={crumbs} sharedWings={sharedWings} onNavigateSharedWing={(shareId, wingSlug) => {
+        const shareInfo = sharedWings.find(sw => sw.shareId === shareId);
+        if (shareInfo) {
+          setSharedContext({ shareId, wingSlug, ownerId: shareInfo.ownerId, ownerName: shareInfo.ownerName, canAdd: (shareInfo as any).canAdd ?? false, canEdit: (shareInfo as any).canEdit ?? false, canDelete: (shareInfo as any).canDelete ?? false });
+          getSharedWingData(shareId).then(result => { if (result.wing && result.rooms) { setSharedWingData(result); enterCorridor(`shared:${wingSlug}:${shareId}`); } });
+        }
+      }} onSharingSettings={() => setShowSharingSettings(true)} />}
 
       {/* Portal transition overlay */}
       {portalAnim&&<div style={{position:"absolute",inset:0,zIndex:45,pointerEvents:"none",animation:"portalFlash .5s ease both",background:"radial-gradient(ellipse at center,rgba(200,168,104,.6) 0%,rgba(200,168,104,.15) 40%,transparent 70%)"}}/>}
@@ -377,6 +435,7 @@ export default function MemoryPalace(){
               { icon: "\uD83C\uDF0D", label: tAction("memoryMap"), action: ()=>setShowMemoryMap(true), hidden: showMemoryMap },
               { icon: "\uD83C\uDF99\uFE0F", label: tAction("lifeInterviews"), action: ()=>setShowInterviewLibrary(true) },
               { icon: "\u{1F4E6}", label: tAction("massImport"), action: ()=>setShowMassImport(true) },
+              { icon: "\u{1F91D}", label: tAction("manageShares"), action: ()=>setShowSharingSettings(true) },
               { icon: "\u2699\uFE0F", label: tAction("customizeWings"), action: ()=>setShowWingManager(true) },
             ]}
           />;
@@ -445,6 +504,7 @@ export default function MemoryPalace(){
         onTracks={() => { closeMore(); setShowTracksPanel(true); }}
         onInvites={() => { closeMore(); setShowInvites(true); }}
         onSharedWithMe={() => { closeMore(); setShowSharedWithMe(true); }}
+        onSharingSettings={() => { closeMore(); setShowSharingSettings(true); }}
         onInterviews={() => { closeMore(); setShowInterviewLibrary(true); }}
         getProgress={getProgress}
         onBack={() => { closeMore(); view === "room" ? exitToCorridor() : view === "corridor" ? exitToEntrance() : exitToPalace(); }}
@@ -462,7 +522,13 @@ export default function MemoryPalace(){
         }
       }} roomMemories={allRoomMems} onUpdateMemory={handleUpdateMemory}/>}
       {showSharing&&activeRoomId&&<SharingPanel wing={wingData} room={activeRoomData} roomId={activeRoomId} sharing={currentSharing(activeRoomId)} onUpdate={(u: any)=>{updateSharing(activeRoomId,u);markChecklistItem("share_room");}} onClose={()=>setShowSharing(false)}/>}
-      {showDirectory&&<DirectoryPanel onClose={()=>setShowDirectory(false)}/>}
+      {showDirectory&&<DirectoryPanel onClose={()=>setShowDirectory(false)} onNavigateSharedWing={(shareId, wingSlug, roomId) => {
+        const shareInfo = sharedWings.find(sw => sw.shareId === shareId);
+        if (shareInfo) {
+          setSharedContext({ shareId, wingSlug, ownerId: shareInfo.ownerId, ownerName: shareInfo.ownerName, canAdd: (shareInfo as any).canAdd ?? false, canEdit: (shareInfo as any).canEdit ?? false, canDelete: (shareInfo as any).canDelete ?? false });
+          getSharedWingData(shareId).then(result => { if (result.wing && result.rooms) { setSharedWingData(result); enterCorridor(`shared:${wingSlug}:${shareId}`); if (roomId) setTimeout(() => enterRoom(roomId), 600); } });
+        }
+      }}/>}
       {showRoomManager&&activeWing&&wingData&&<RoomManagerPanel wing={wingData} onClose={()=>{setShowRoomManager(false);markChecklistItem("customize_room");}} onEnterRoom={enterRoom}/>}
       {showWingManager&&<WingManagerPanel onClose={()=>setShowWingManager(false)}/>}
       {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory}/>}
@@ -583,6 +649,7 @@ export default function MemoryPalace(){
       {/* Invite & shared panels */}
       {showInvites&&<InviteNotificationsPanel onClose={()=>setShowInvites(false)}/>}
       {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)}/>}
+      {showSharingSettings&&<SharingSettingsPanel open={showSharingSettings} onClose={()=>setShowSharingSettings(false)}/>}
 
       {/* Interview panels */}
       {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
@@ -653,6 +720,7 @@ interface MobileBottomBarProps {
   onTracks: () => void;
   onInvites: () => void;
   onSharedWithMe: () => void;
+  onSharingSettings: () => void;
   onInterviews: () => void;
   getProgress: () => { earned: number; total: number; percentage: number };
   onBack: () => void;
@@ -720,6 +788,7 @@ function MobileBottomBar(props: MobileBottomBarProps) {
             { icon: "\uD83D\uDCDC", label: tAction("tracks"), action: props.onTracks },
             { icon: "\u{1F4EC}", label: tAction("invites"), action: props.onInvites },
             { icon: "\u{1F91D}", label: tAction("shared"), action: props.onSharedWithMe },
+            { icon: "\u{1F6E0}\uFE0F", label: tAction("manageShares"), action: props.onSharingSettings },
             { icon: "\u2728", label: tAction("tour"), action: () => { props.onCloseMore(); useTutorialStore.getState().start(); } },
             ...(view === "room" ? [
               { icon: "\u{1F4E4}", label: tAction("shareCard"), action: props.onShare },

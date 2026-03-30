@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -9,6 +9,7 @@ import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { getAcceptedShares } from "@/lib/auth/invite-actions";
 
 const TYPE_ICONS: Record<string,string> = {
   photo:"\u{1F5BC}\uFE0F",video:"\u{1F3AC}",album:"\u{1F4D6}",orb:"\u{1F52E}","case":"\u{1F3FA}",voice:"\u{1F399}\uFE0F",document:"\u{1F4DC}",
@@ -16,9 +17,10 @@ const TYPE_ICONS: Record<string,string> = {
 
 interface DirectoryPanelProps {
   onClose: () => void;
+  onNavigateSharedWing?: (shareId: string, wingSlug: string, roomId?: string) => void;
 }
 
-export default function DirectoryPanel({onClose}: DirectoryPanelProps){
+export default function DirectoryPanel({onClose, onNavigateSharedWing}: DirectoryPanelProps){
   const { t } = useTranslation("directoryPanel");
   const { t: tc } = useTranslation("common");
   const isMobile = useIsMobile();
@@ -32,6 +34,61 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
 
   const q=query.toLowerCase();
 
+  // Fetch shared rooms/wings
+  interface SharedWingItem {
+    shareId: string;
+    wingSlug: string;
+    wingName: string;
+    wingIcon: string;
+    ownerName: string;
+    rooms: { id: string; name: string; icon: string; memoryCount: number }[];
+    memoryCount: number;
+  }
+  interface SharedRoomItem {
+    shareId: string;
+    wingName: string;
+    wingIcon: string;
+    ownerName: string;
+    roomName: string;
+    roomId: string;
+    memoryCount: number;
+  }
+  const [sharedWings, setSharedWings] = useState<SharedWingItem[]>([]);
+  const [sharedRooms, setSharedRooms] = useState<SharedRoomItem[]>([]);
+  useEffect(() => {
+    getAcceptedShares().then(result => {
+      if (result.shares) {
+        const wings: SharedWingItem[] = [];
+        const rooms: SharedRoomItem[] = [];
+        for (const s of result.shares as any[]) {
+          if (s.type === "wing") {
+            wings.push({
+              shareId: s.id,
+              wingSlug: s.wingId || "",
+              wingName: s.wingName || "Shared",
+              wingIcon: s.wingIcon || "\u{1F91D}",
+              ownerName: s.ownerName || "",
+              rooms: s.rooms || [],
+              memoryCount: s.memoryCount || 0,
+            });
+          } else {
+            rooms.push({
+              shareId: s.id,
+              wingName: s.wingName || "Shared",
+              wingIcon: s.wingIcon || "\u{1F91D}",
+              ownerName: s.ownerName || "",
+              roomName: s.roomName || "Room",
+              roomId: s.roomId || "",
+              memoryCount: s.memoryCount || 0,
+            });
+          }
+        }
+        setSharedWings(wings);
+        setSharedRooms(rooms);
+      }
+    }).catch(() => {});
+  }, []);
+
   // Build full tree with search filtering
   const tree=useMemo(()=>{
     return WINGS.map(wing=>{
@@ -41,9 +98,27 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
         return { ...room, mems, filteredMems, matchesSearch: !q || filteredMems.length>0 || room.name.toLowerCase().includes(q) };
       });
       const matchingRooms=q?rooms.filter(r=>r.matchesSearch):rooms;
-      return { ...wing, rooms, matchingRooms, totalMems: rooms.reduce((n,r)=>n+r.mems.length,0) };
+      return { ...wing, rooms, matchingRooms, totalMems: rooms.reduce((n,r)=>n+r.mems.length,0), isShared: false as const };
     });
   },[userMems,q,getWingRooms]);
+
+  // Filter shared wings/rooms by search
+  const filteredSharedWings = useMemo(() => {
+    return sharedWings.filter(w => !q || w.wingName.toLowerCase().includes(q) || w.rooms.some(r => r.name.toLowerCase().includes(q)));
+  }, [sharedWings, q]);
+
+  // Group standalone shared rooms by wing
+  const sharedRoomTree = useMemo(() => {
+    const grouped: Record<string, { wingName: string; wingIcon: string; ownerName: string; rooms: SharedRoomItem[] }> = {};
+    for (const item of sharedRooms) {
+      const key = item.wingName;
+      if (!grouped[key]) grouped[key] = { wingName: item.wingName, wingIcon: item.wingIcon, ownerName: item.ownerName, rooms: [] };
+      grouped[key].rooms.push(item);
+    }
+    return Object.values(grouped).filter(g => !q || g.wingName.toLowerCase().includes(q) || g.rooms.some(r => r.roomName.toLowerCase().includes(q)));
+  }, [sharedRooms, q]);
+
+  const hasShared = filteredSharedWings.length > 0 || sharedRoomTree.length > 0;
 
   const toggle=(id: string)=>setExpanded(prev=>({...prev,[id]:!prev[id]}));
 
@@ -166,7 +241,105 @@ export default function DirectoryPanel({onClose}: DirectoryPanelProps){
               </div>
             );
           })}
-          {q&&tree.every(w=>w.matchingRooms.length===0)&&<div style={{textAlign:"center",padding:"2rem 0"}}>
+          {/* Shared wings section */}
+          {hasShared && (
+            <>
+              <div style={{ padding: "0.5rem 0.75rem 0.25rem", marginTop: "0.25rem", borderTop: `1px solid ${T.color.cream}` }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.03125rem" }}>
+                  {tc("sharedWithYou")}
+                </span>
+              </div>
+
+              {/* Full wing shares */}
+              {filteredSharedWings.map(wing => {
+                const wingKey = `shared-wing-${wing.wingName}`;
+                const wingExp = expanded[wingKey] ?? (!q);
+                return (
+                  <div key={wingKey} style={{ marginBottom: "0.125rem" }}>
+                    <button onClick={() => toggle(wingKey)} aria-expanded={wingExp}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "none",
+                        background: "transparent", cursor: "pointer", textAlign: "left", transition: "background .15s" }}>
+                      <span style={{ fontSize: "0.625rem", color: T.color.muted, transition: "transform .2s", transform: wingExp ? "rotate(90deg)" : "rotate(0)" }}>&#x25B6;</span>
+                      <span style={{ fontSize: "1.125rem" }}>{wing.wingIcon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 500, color: T.color.charcoal }}>{wing.wingName}</div>
+                        <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>
+                          {t("wingSummary", { rooms: String(wing.rooms.length), memories: String(wing.memoryCount) })}
+                          {wing.ownerName && <span> · {wing.ownerName}</span>}
+                        </div>
+                      </div>
+                    </button>
+                    {wingExp && (
+                      <div style={{ paddingLeft: "1.125rem" }}>
+                        {wing.rooms.map(room => (
+                          <div key={room.id} style={{ display: "flex", alignItems: "center", gap: "0.125rem" }}>
+                            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4375rem 0.625rem", borderRadius: "0.5rem" }}>
+                              <span style={{ fontSize: "0.875rem" }}>{room.icon || wing.wingIcon}</span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal }}>{room.name}</div>
+                                <div style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: T.color.muted }}>{t("roomMemories", { count: String(room.memoryCount) })}</div>
+                              </div>
+                            </div>
+                            <button onClick={() => { onNavigateSharedWing?.(wing.shareId, wing.wingSlug, room.id); onClose(); }} title={t("openIn3d")} aria-label={t("openIn3d")}
+                              style={{ width: "1.625rem", height: "1.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
+                                fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: T.color.muted, flexShrink: 0 }}>
+                              {"\uD83C\uDFDB\uFE0F"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Standalone room shares grouped by wing */}
+              {sharedRoomTree.map(group => {
+                const wingKey = `shared-rooms-${group.wingName}`;
+                const wingExp = expanded[wingKey] ?? (!q);
+                return (
+                  <div key={wingKey} style={{ marginBottom: "0.125rem" }}>
+                    <button onClick={() => toggle(wingKey)} aria-expanded={wingExp}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: "none",
+                        background: "transparent", cursor: "pointer", textAlign: "left", transition: "background .15s" }}>
+                      <span style={{ fontSize: "0.625rem", color: T.color.muted, transition: "transform .2s", transform: wingExp ? "rotate(90deg)" : "rotate(0)" }}>&#x25B6;</span>
+                      <span style={{ fontSize: "1.125rem" }}>{group.wingIcon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 500, color: T.color.charcoal }}>{group.wingName}</div>
+                        <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>
+                          {t("wingSummary", { rooms: String(group.rooms.length), memories: String(group.rooms.reduce((n, r) => n + r.memoryCount, 0)) })}
+                          {group.ownerName && <span> · {group.ownerName}</span>}
+                        </div>
+                      </div>
+                    </button>
+                    {wingExp && (
+                      <div style={{ paddingLeft: "1.125rem" }}>
+                        {group.rooms.map(room => (
+                          <div key={room.roomId || room.roomName} style={{ display: "flex", alignItems: "center", gap: "0.125rem" }}>
+                            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4375rem 0.625rem", borderRadius: "0.5rem" }}>
+                              <span style={{ fontSize: "0.875rem" }}>{group.wingIcon}</span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal }}>{room.roomName}</div>
+                                <div style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: T.color.muted }}>{t("roomMemories", { count: String(room.memoryCount) })}</div>
+                              </div>
+                            </div>
+                            {room.roomId && (
+                              <button onClick={() => { /* Room-level shares navigate directly */ onClose(); }} title={t("openIn3d")} aria-label={t("openIn3d")}
+                                style={{ width: "1.625rem", height: "1.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
+                                  fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: T.color.muted, flexShrink: 0 }}>
+                                {"\uD83C\uDFDB\uFE0F"}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+          {q&&tree.every(w=>w.matchingRooms.length===0)&&!hasShared&&<div style={{textAlign:"center",padding:"2rem 0"}}>
             <div style={{fontSize:"1.5rem",marginBottom:"0.5rem",opacity:.4}}>{"\uD83D\uDD0D"}</div>
             <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.muted}}>{t("noMatching", { query })}</p>
           </div>}

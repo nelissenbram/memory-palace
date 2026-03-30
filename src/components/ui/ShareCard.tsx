@@ -244,7 +244,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
       ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
       ctx.font = "italic 16px Georgia, serif";
       ctx.textAlign = "right";
-      ctx.fillText("The Memory Palace", W - 100, H - 90);
+      ctx.fillText(t("brandWatermark"), W - 100, H - 90);
       ctx.textAlign = "left";
 
       // Gold line

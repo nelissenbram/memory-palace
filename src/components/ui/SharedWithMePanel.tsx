@@ -8,15 +8,21 @@ import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 
 interface AcceptedShare {
   id: string;
-  roomId: string;
+  type: "wing" | "room";
+  roomId?: string;
+  wingId?: string;
   permission: string;
   acceptedAt: string;
   ownerName: string;
   ownerAvatar: string | null;
-  roomName: string;
+  roomName?: string;
   wingName: string;
   wingIcon: string;
-  memoryCount: number;
+  memoryCount?: number;
+  canAdd?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  placedInWingId?: string;
 }
 
 interface SharedWithMePanelProps {
@@ -115,10 +121,10 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
                     </div>
                     <div>
                       <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal }}>
-                        {group.ownerName}{t("palace")}
+                        {t("roomsShared", { count: String(group.rooms.length) })}
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
-                        {t("roomsShared", { count: String(group.rooms.length) })}
+                        {t("sharedBy", { name: group.ownerName })}
                       </div>
                     </div>
                   </div>
@@ -128,7 +134,7 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
                     {group.rooms.map(share => (
                       <button
                         key={share.id}
-                        onClick={() => onNavigateToRoom?.(share.roomId)}
+                        onClick={() => share.roomId && onNavigateToRoom?.(share.roomId)}
                         style={{
                           padding: "0.875rem 1rem", background: T.color.white, borderRadius: "0.75rem",
                           border: `1px solid ${T.color.cream}`, cursor: "pointer",

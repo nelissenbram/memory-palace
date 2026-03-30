@@ -9,6 +9,7 @@ import NotificationPrompt from "@/components/NotificationPrompt";
 import CookieConsent from "@/components/CookieConsent";
 import NativeInit from "@/components/NativeInit";
 import { AccessibilityProvider } from "@/components/providers/AccessibilityProvider";
+import { DaylightProvider } from "@/components/providers/DaylightProvider";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -37,6 +38,7 @@ export const metadata: Metadata = {
   },
   other: {
     "mobile-web-app-capable": "yes",
+    referrer: "strict-origin-when-cross-origin",
   },
 };
 
@@ -148,7 +150,9 @@ export default async function RootLayout({
         <NotificationPrompt />
         <NativeInit />
         <AccessibilityProvider>
-          {children}
+          <DaylightProvider>
+            {children}
+          </DaylightProvider>
         </AccessibilityProvider>
         <CookieConsent />
       </body>

@@ -47,31 +47,31 @@ export async function GET(
     return NextResponse.json({ error: "Room not found" }, { status: 404 });
   }
 
-  // Fetch wing info
-  let wing = null;
-  if (room.wing_id) {
-    const { data: wingData } = await supabase
-      .from("wings")
-      .select("id, slug, name")
-      .eq("id", room.wing_id)
-      .single();
-    wing = wingData;
-  }
+  // Fetch wing, memories, and owner in parallel (all independent after room fetch)
+  const [wingResult, memoriesResult, ownerResult] = await Promise.all([
+    room.wing_id
+      ? supabase
+          .from("wings")
+          .select("id, slug, name")
+          .eq("id", room.wing_id)
+          .single()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("memories")
+      .select("id, title, description, type, hue, saturation, lightness, file_url, created_at")
+      .eq("room_id", share.room_id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", share.created_by)
+      .single(),
+  ]);
 
-  // Fetch memories for this room
-  const { data: memories } = await supabase
-    .from("memories")
-    .select("id, title, description, type, hue, saturation, lightness, file_url, created_at")
-    .eq("room_id", share.room_id)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  // Fetch owner's display name
-  const { data: owner } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", share.created_by)
-    .single();
+  const wing = wingResult.data;
+  const memories = memoriesResult.data;
+  const owner = ownerResult.data;
 
   return NextResponse.json({
     room: {

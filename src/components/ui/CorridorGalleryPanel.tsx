@@ -150,7 +150,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
             <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
             <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>{wing.icon} {wing.name} {t("wing")}</p>
           </div>
-          <button onClick={onClose} aria-label={t("close") || "Close"} style={{
+          <button onClick={onClose} aria-label={t("close")} style={{
             width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: isMobile ? "1.25rem" : "1rem",
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
             color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem", cursor: "pointer",

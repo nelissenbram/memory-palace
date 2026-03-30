@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import LegacyView from "./LegacyView";
 
@@ -178,12 +178,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: "Legacy — The Memory Palace",
       description: "View shared memories from a loved one.",
+      other: { referrer: "no-referrer" },
     };
   }
 
   return {
     title: `Memories from ${data.senderName} — The Memory Palace`,
     description: `${data.senderName} shared their Memory Palace with you.`,
+    other: { referrer: "no-referrer" },
   };
 }
 

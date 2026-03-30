@@ -2,20 +2,25 @@
 import { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { getPendingInvites, acceptInvite, declineInvite } from "@/lib/auth/invite-actions";
+import { getPendingInvites, acceptInvite, acceptWingInvite, declineInvite } from "@/lib/auth/invite-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 
 interface PendingInvite {
   id: string;
+  type: "wing" | "room";
   permission: string;
   message: string | null;
   createdAt: string;
   inviterName: string;
   inviterAvatar: string | null;
-  roomName: string;
+  roomName?: string;
+  wingId?: string;
   wingName: string;
   wingIcon: string;
+  canAdd?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 interface InviteNotificationsPanelProps {
@@ -43,7 +48,10 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
   const handleAccept = async (inviteId: string) => {
     setProcessingId(inviteId);
     setError(null);
-    const result = await acceptInvite(inviteId) as { error?: string; success?: boolean; alreadyAccepted?: boolean };
+    const invite = invites.find(i => i.id === inviteId);
+    const result = invite?.type === "wing"
+      ? await acceptWingInvite(inviteId) as { error?: string; success?: boolean; alreadyAccepted?: boolean }
+      : await acceptInvite(inviteId) as { error?: string; success?: boolean; alreadyAccepted?: boolean };
     if (result.error && !result.alreadyAccepted) {
       setError(result.error);
     } else {
@@ -160,8 +168,10 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
                         {invite.inviterName}
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginTop: "0.125rem" }}>
-                        {t("shared")} <strong>{invite.roomName}</strong>
-                        {invite.wingName && <span> {t("in")} {invite.wingIcon} {invite.wingName}</span>}
+                        {invite.type === "wing"
+                          ? <>{t("shared")} {invite.wingIcon} <strong>{invite.wingName}</strong> wing</>
+                          : <>{t("shared")} <strong>{invite.roomName}</strong>{invite.wingName && <span> {t("in")} {invite.wingIcon} {invite.wingName}</span>}</>
+                        }
                       </div>
                       <div style={{ display: "flex", gap: "0.375rem", marginTop: "0.375rem" }}>
                         <span style={{

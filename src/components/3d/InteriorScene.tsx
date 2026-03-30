@@ -24,6 +24,10 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const lookA=useRef({yaw:0,pitch:0}),lookT=useRef({yaw:0,pitch:0});
   const pos=useRef(new THREE.Vector3()),posT=useRef(new THREE.Vector3());
+  const _rc=useRef(new THREE.Raycaster()),_mouse=useRef(new THREE.Vector2());
+  const _dir=useRef(new THREE.Vector3()),_yAxis=useRef(new THREE.Vector3(0,1,0));
+  const _ld=useRef(new THREE.Vector3()),_lookTarget=useRef(new THREE.Vector3());
+  const _vinylPos=useRef(new THREE.Vector3()),_screenPos=useRef(new THREE.Vector3());
   const keys=useRef<Record<string,boolean>>({}),drag=useRef(false),prev=useRef({x:0,y:0}),hovMem=useRef<any>(null),memMeshes=useRef<THREE.Mesh[]>([]);
   const videoElRef=useRef<HTMLVideoElement|null>(null),audioElRef=useRef<HTMLAudioElement|null>(null);
   const volOverride=useRef<{video:number|null,audio:number|null}>({video:null,audio:null});
@@ -110,7 +114,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       fB:new THREE.MeshStandardMaterial({color:"#7A6040",roughness:.38,metalness:.5}),
       matF:new THREE.MeshStandardMaterial({color:"#F2EDE4",roughness:.95}),
       lamp:new THREE.MeshStandardMaterial({color:"#E8D8C0",roughness:.7,transparent:true,opacity:.8}),
-      lampG:new THREE.MeshBasicMaterial({color:"#FFF0D0",transparent:true,opacity:.15}),
+      lampG:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity}),
       handle:new THREE.MeshPhysicalMaterial({color:"#C8A858",roughness:.18,metalness:.85,clearcoat:.4,clearcoatRoughness:.1}),
       glass:new THREE.MeshPhysicalMaterial({color:"#E8F0F0",transparent:true,opacity:.15,roughness:.02,metalness:.0,transmission:.85,ior:1.5,thickness:.5}),
     };
@@ -887,9 +891,9 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       :[[rW/2-2,-rL/2+.01]];
     for(const[winX,winZ] of winPositions){
       // Sky/light visible through window opening
-      scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:"#C8E0F8"}),winX,2.6,winZ+.01));
+      scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:dlPreset.fogColor}),winX,2.6,winZ+.01));
       // Bright daylight glow overlay
-      scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:"#FFF8E0",transparent:true,opacity:.45}),winX,2.6,winZ+.015));
+      scene.add(mk(new THREE.PlaneGeometry(1.1,1.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.45*dlPreset.sunIntensity}),winX,2.6,winZ+.015));
       // Window frame
       scene.add(mk(new THREE.BoxGeometry(1.5,.12,.12),MS.trim,winX,3.55,winZ+.04));// top
       scene.add(mk(new THREE.BoxGeometry(1.5,.12,.12),MS.trim,winX,1.65,winZ+.04));// bottom
@@ -901,9 +905,9 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       const c1=new THREE.Mesh(new THREE.PlaneGeometry(.45,2.2),MS.curtain);c1.position.set(winX-.85,2.6,winZ+.06);scene.add(c1);
       const c2=new THREE.Mesh(new THREE.PlaneGeometry(.45,2.2),MS.curtain);c2.position.set(winX+.85,2.6,winZ+.06);scene.add(c2);
       // Strong directional light through window
-      const winSp=new THREE.SpotLight("#FFE8C0",.8,12,Math.PI/4,.5,1.2);winSp.position.set(winX,3,winZ+.5);winSp.target.position.set(winX,.5,winZ+3);scene.add(winSp);scene.add(winSp.target);
+      const winSp=new THREE.SpotLight(dlPreset.sunColor,.8*dlPreset.sunIntensity,12,Math.PI/4,.5,1.2);winSp.position.set(winX,3,winZ+.5);winSp.target.position.set(winX,.5,winZ+3);scene.add(winSp);scene.add(winSp.target);
       // Light shaft particles effect (warm glow on floor)
-      const shaftGeo=new THREE.PlaneGeometry(1.5,4);const shaftMat=new THREE.MeshBasicMaterial({color:"#FFF8D0",transparent:true,opacity:.06,side:THREE.DoubleSide});
+      const shaftGeo=new THREE.PlaneGeometry(1.5,4);const shaftMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.06*dlPreset.sunIntensity,side:THREE.DoubleSide});
       const shaft=new THREE.Mesh(shaftGeo,shaftMat);shaft.position.set(winX,1.5,winZ+2);shaft.rotation.x=-.6;scene.add(shaft);
     }
 
@@ -1094,12 +1098,12 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     }
     // Transom arch glow (semicircular light above doors, facing into room)
     const tranGeo=new THREE.CircleGeometry(.6,16,0,Math.PI);
-    const tranMat=new THREE.MeshBasicMaterial({color:"#FFF8E0",transparent:true,opacity:.15,side:THREE.DoubleSide});
+    const tranMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity,side:THREE.DoubleSide});
     const transom=new THREE.Mesh(tranGeo,tranMat);
     transom.rotation.y=Math.PI;// face into room (towards -Z)
     transom.position.set(0,3.02,bdZ-.02);scene.add(transom);
     // Warm light spilling from corridor
-    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:"#FFE8C0",transparent:true,opacity:.04,side:THREE.DoubleSide}));
+    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.04*dlPreset.sunIntensity,side:THREE.DoubleSide}));
     bdGlow.position.set(0,1.9,bdZ);scene.add(bdGlow);
     animTex.push({type:"doorGlow",mesh:bdGlow});
     const bdLight=new THREE.SpotLight("#FFE0B0",.5,6,Math.PI/5,.6,1);
@@ -1122,7 +1126,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     const rdN=70,rdG=new THREE.BufferGeometry(),rdP=new Float32Array(rdN*3);
     for(let i=0;i<rdN;i++){rdP[i*3]=(Math.random()-.5)*rW;rdP[i*3+1]=.5+Math.random()*rH;rdP[i*3+2]=(Math.random()-.5)*rL;}
     rdG.setAttribute("position",new THREE.BufferAttribute(rdP,3));
-    scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:"#FFF8E0",size:.03,transparent:true,opacity:.25,blending:THREE.AdditiveBlending,depthWrite:false})));
+    scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.03,transparent:true,opacity:.25*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
 
     pos.current.set(0,1.7,rL/2-2.5);posT.current.set(0,1.7,rL/2-2.5);
     lookT.current={yaw:0,pitch:0};lookA.current={yaw:0,pitch:0};
@@ -1135,29 +1139,29 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();
       lookA.current.yaw+=(lookT.current.yaw-lookA.current.yaw)*.08;lookA.current.pitch+=(lookT.current.pitch-lookA.current.pitch)*.08;
-      const spd=2.5*dt,dir=new THREE.Vector3();
+      const spd=2.5*dt;_dir.current.set(0,0,0);
       const k=keys.current;
-      if(k["w"]||k["arrowup"])dir.z-=1;if(k["s"]||k["arrowdown"])dir.z+=1;
-      if(k["a"]||k["arrowleft"])dir.x-=1;if(k["d"]||k["arrowright"])dir.x+=1;
-      if(dir.length()>0){dir.normalize().multiplyScalar(spd);dir.applyAxisAngle(new THREE.Vector3(0,1,0),-lookA.current.yaw);posT.current.add(dir);}
+      if(k["w"]||k["arrowup"])_dir.current.z-=1;if(k["s"]||k["arrowdown"])_dir.current.z+=1;
+      if(k["a"]||k["arrowleft"])_dir.current.x-=1;if(k["d"]||k["arrowright"])_dir.current.x+=1;
+      if(_dir.current.length()>0){_dir.current.normalize().multiplyScalar(spd);_dir.current.applyAxisAngle(_yAxis.current,-lookA.current.yaw);posT.current.add(_dir.current);}
       posT.current.x=Math.max(-rW/2+1,Math.min(rW/2-1,posT.current.x));posT.current.z=Math.max(-rL/2+1,Math.min(rL/2-1.5,posT.current.z));
       pos.current.lerp(posT.current,.1);camera.position.copy(pos.current);
-      const ld=new THREE.Vector3(Math.sin(lookA.current.yaw)*Math.cos(lookA.current.pitch),Math.sin(lookA.current.pitch),-Math.cos(lookA.current.yaw)*Math.cos(lookA.current.pitch));
-      camera.lookAt(camera.position.clone().add(ld));
+      _ld.current.set(Math.sin(lookA.current.yaw)*Math.cos(lookA.current.pitch),Math.sin(lookA.current.pitch),-Math.cos(lookA.current.yaw)*Math.cos(lookA.current.pitch));
+      _lookTarget.current.copy(camera.position).add(_ld.current);camera.lookAt(_lookTarget.current);
       animTex.forEach(a=>{
         if(a.type==="fire"){a.light.intensity=.5+Math.sin(t*5)*.15+Math.sin(t*7.3)*.1;}
         if(a.type==="doorGlow"){a.mesh.material.opacity=.03+Math.sin(t*2)*.02;}
         if(a.type==="flame"){a.mesh.position.y=a.baseY+Math.sin(t*4+a.phase)*.06;a.mesh.scale.y=.8+Math.sin(t*6+a.phase)*.3;a.mesh.material.opacity=.5+Math.sin(t*5+a.phase)*.2;}
         if(a.type==="orb"){a.mesh.position.y=a.baseY+Math.sin(t*1.5+a.phase)*.1;a.inner.position.y=a.mesh.position.y;a.light.position.y=a.mesh.position.y;a.mesh.material.emissiveIntensity=.3+Math.sin(t*2+a.phase)*.15;}
         if(a.type==="disc"){a.mesh.rotation.y=t*.5;a.label.rotation.y=t*.5;
-          if(vinylAudio){const vo=volOverride.current.audio;vinylAudio.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(new THREE.Vector3(vpX,1,vpZ))/8));}
+          if(vinylAudio){const vo=volOverride.current.audio;vinylAudio.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_vinylPos.current.set(vpX,1,vpZ))/8));}
         }
         if(a.type==="globe"){a.mesh.rotation.y=t*.15;}
         if((a as any).type==="xmasTree"){const xl=(a as any).light as THREE.PointLight;xl.intensity=.7+Math.sin(t*1.2)*.15;const sl=(a as any).star as THREE.PointLight;if(sl)sl.intensity=.5+Math.sin(t*2)*.2;const sm=(a as any).mesh;if(sm)sm.rotation.y=t*.3;}
         if(a.type==="video"){
           const cx=a.ctx,cw=a.w,ch=a.h,m=a.mem,ph=t*.5+a.phase;
           const vEl=a.videoEl?a.videoEl():null;
-          if(vEl&&!vEl.muted){const vo=volOverride.current.video;vEl.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(new THREE.Vector3(scrX,2.2,0))/10));}
+          if(vEl&&!vEl.muted){const vo=volOverride.current.video;vEl.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_screenPos.current.set(scrX,2.2,0))/10));}
           const sImg=a.screenImg?a.screenImg():null;
           if(vEl&&vEl.readyState>=2){
             const iw=vEl.videoWidth||cw,ih=vEl.videoHeight||ch,scale=Math.max(cw/iw,ch/ih);
@@ -1193,8 +1197,8 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     const onDown=(e: MouseEvent)=>{drag.current=false;prev.current={x:e.clientX,y:e.clientY};};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.current.x,dy=e.clientY-prev.current.y;if(Math.abs(dx)>2||Math.abs(dy)>2)drag.current=true;
       if(e.buttons===1){lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.5,Math.min(.5,lookT.current.pitch+dy*.003));prev.current={x:e.clientX,y:e.clientY};}
-      const rect=el.getBoundingClientRect();const r2=new THREE.Raycaster();r2.setFromCamera(new THREE.Vector2(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1),camera);
-      const hits=r2.intersectObjects(memMeshes.current).filter(h=>h.distance<12);
+      const rect=el.getBoundingClientRect();_mouse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);_rc.current.setFromCamera(_mouse.current,camera);
+      const hits=_rc.current.intersectObjects(memMeshes.current).filter(h=>h.distance<12);
       if(hits.length>0){
         // Prefer memories and back-door over station hit areas
         const memHit=hits.find(h=>h.object.userData.memory||h.object.userData.isBackDoor);
@@ -1253,9 +1257,9 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
         if(t.identifier===touchMoveId2){touchMoveId2=null;touchMoveDir2.x=0;touchMoveDir2.z=0;}
         if(t.identifier===touchLookId2){
           if(touchTap2){
-            const rect=el.getBoundingClientRect();const r2=new THREE.Raycaster();
-            r2.setFromCamera(new THREE.Vector2(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1),camera);
-            const hits=r2.intersectObjects(memMeshes.current).filter(h2=>h2.distance<12);
+            const rect=el.getBoundingClientRect();_mouse.current.set(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1);
+            _rc.current.setFromCamera(_mouse.current,camera);
+            const hits=_rc.current.intersectObjects(memMeshes.current).filter(h2=>h2.distance<12);
             if(hits.length>0){
               const memHit=hits.find(h2=>h2.object.userData.memory||h2.object.userData.isBackDoor);
               const ud=(memHit||hits[0]).object.userData;

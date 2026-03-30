@@ -29,6 +29,8 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const userId = body?.userId;
+  // Optional: only deliver specific messages (for scheduled/immediate delivery mode)
+  const filterMessageIds: string[] | null = Array.isArray(body?.messageIds) ? body.messageIds : null;
 
   if (!userId || typeof userId !== "string") {
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
@@ -66,10 +68,17 @@ export async function POST(request: Request) {
   }
 
   // ── 3. Get legacy messages ──
-  const { data: messages } = await supabase
+  let messagesQuery = supabase
     .from("legacy_messages")
     .select("*")
     .eq("user_id", userId);
+
+  // If specific message IDs provided, only fetch those (scheduled/immediate delivery)
+  if (filterMessageIds && filterMessageIds.length > 0) {
+    messagesQuery = messagesQuery.in("id", filterMessageIds);
+  }
+
+  const { data: messages } = await messagesQuery;
 
   // Build a map of messages by recipient email
   const messagesByEmail = new Map<string, Array<{ id: string; subject: string; message_body: string }>>();
@@ -90,72 +99,122 @@ export async function POST(request: Request) {
   let sent = 0;
   let errors = 0;
 
+  // Collect delivery records for batch insert (only for successfully sent emails)
+  const deliveryRecords: Array<{
+    user_id: string;
+    contact_id: string;
+    message_id: string | null;
+    access_token: string;
+    delivered_at: string;
+    expires_at: string;
+  }> = [];
+
   // ── 4. Send to each contact ──
   for (const contact of contacts) {
     const contactEmail = (contact.contact_email as string).toLowerCase();
     const contactMessages = messagesByEmail.get(contactEmail) || [];
 
-    // Generate a unique access token for this contact
+    // Generate a unique access token for this contact (for palace access)
     const accessToken = randomBytes(32).toString("hex");
 
-    // Find the primary message for this contact (or use a default)
-    const primaryMessage = contactMessages[0] || {
-      id: null,
-      subject: "",
-      message_body: `${senderName} wanted you to have access to their Memory Palace.`,
-    };
+    // Combine all messages for this contact into one delivery email
+    const allBodies: string[] = [];
+    const messageIds: string[] = [];
+    let combinedSubject = "";
 
-    // Create the delivery record
-    const { error: insertError } = await supabase
-      .from("legacy_deliveries")
-      .insert({
-        user_id: userId,
-        contact_id: contact.id,
-        message_id: primaryMessage.id,
-        access_token: accessToken,
-        delivered_at: now.toISOString(),
-        expires_at: expiresAt.toISOString(),
-      });
-
-    if (insertError) {
-      console.error(`[Legacy Deliver] DB insert failed for contact ${contact.id}:`, insertError.message);
-      errors++;
-      continue;
+    if (contactMessages.length > 0) {
+      combinedSubject = contactMessages[0].subject;
+      for (const msg of contactMessages) {
+        messageIds.push(msg.id);
+        if (msg.subject && msg.subject !== combinedSubject) {
+          allBodies.push(`── ${msg.subject} ──\n\n${msg.message_body}`);
+        } else {
+          allBodies.push(msg.message_body);
+        }
+      }
+    } else {
+      allBodies.push(`${senderName} wanted you to have access to their Memory Palace.`);
     }
 
-    // Send the email
+    const combinedBody = allBodies.join("\n\n─────\n\n");
+
+    // Send the email with all messages combined
     const result = await sendDeliveryEmail({
       recipientEmail: contactEmail,
       recipientName: contact.contact_name as string,
       senderName,
-      messageSubject: primaryMessage.subject,
-      messageBody: primaryMessage.message_body,
+      messageSubject: combinedSubject,
+      messageBody: combinedBody,
       accessToken,
       expiresAt: expiresAt.toISOString(),
     });
 
     if (result.success) {
       sent++;
+      // Create a delivery record for EVERY message sent to this contact so
+      // the cron's "already delivered" check (which looks up by message_id)
+      // correctly skips all of them on subsequent runs.
+      if (messageIds.length > 0) {
+        for (let i = 0; i < messageIds.length; i++) {
+          // First record uses the real accessToken (sent in the email).
+          // Additional records get unique derived tokens to satisfy the
+          // access_token UNIQUE constraint — they exist only for tracking.
+          const token = i === 0 ? accessToken : randomBytes(32).toString("hex");
+          deliveryRecords.push({
+            user_id: userId,
+            contact_id: contact.id,
+            message_id: messageIds[i],
+            access_token: token,
+            delivered_at: now.toISOString(),
+            expires_at: expiresAt.toISOString(),
+          });
+        }
+      } else {
+        // No specific messages — still record the delivery for this contact
+        deliveryRecords.push({
+          user_id: userId,
+          contact_id: contact.id,
+          message_id: null,
+          access_token: accessToken,
+          delivered_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+        });
+      }
     } else {
       console.error(`[Legacy Deliver] Email failed for ${contactEmail}:`, result.error);
       errors++;
     }
   }
 
-  // ── 5. Mark legacy as transferred ──
-  await supabase
-    .from("legacy_settings")
-    .update({
-      status: "transferred",
-      verification_sent_at: null,
-      verification_token: null,
-    })
-    .eq("id", userId);
+  // ── 5. Batch insert delivery records for all successful sends ──
+  if (deliveryRecords.length > 0) {
+    const { error: batchInsertError } = await supabase
+      .from("legacy_deliveries")
+      .insert(deliveryRecords);
+
+    if (batchInsertError) {
+      console.error(`[Legacy Deliver] Batch DB insert failed:`, batchInsertError.message);
+      // Records failed to persist but emails were already sent
+    }
+  }
+
+  // ── 6. Mark legacy status (only for full delivery, not partial scheduled) ──
+  if (!filterMessageIds) {
+    const newStatus = errors === 0 ? "transferred" : "partially_delivered";
+    await supabase
+      .from("legacy_settings")
+      .update({
+        status: newStatus,
+        verification_sent_at: null,
+        verification_token: null,
+      })
+      .eq("id", userId);
+  }
 
   return NextResponse.json({
     sent,
     errors,
     totalContacts: contacts.length,
-    status: "transferred",
+    status: filterMessageIds ? "partial" : (errors === 0 ? "transferred" : "partially_delivered"),
   });
 }

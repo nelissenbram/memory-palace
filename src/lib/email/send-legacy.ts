@@ -11,7 +11,7 @@ interface VerificationEmailParams {
 
 export function generateVerificationEmailHtml(params: VerificationEmailParams): string {
   const displayName = escapeHtml(params.displayName);
-  const verifyUrl = `${getSiteUrl()}/api/legacy/verify?token=${encodeURIComponent(params.verificationToken)}`;
+  const verifyUrl = `${getSiteUrl()}/api/legacy/verify?token=${encodeURIComponent(params.verificationToken)}&type=user`;
 
   return emailLayout({
     preheader: `${params.displayName}, please confirm you're still active. Your legacy contacts will be notified otherwise.`,
@@ -58,6 +58,75 @@ export async function sendVerificationEmail(params: VerificationEmailParams): Pr
     subject: `Are you still there, ${params.displayName}?`,
     html: generateVerificationEmailHtml(params),
     tag: "legacy-verification",
+  });
+}
+
+// ── Trusted verifier notification email ──
+
+interface TrustedVerifierEmailParams {
+  recipientEmail: string;
+  recipientName: string;
+  userName: string;
+  inactiveDays: number;
+  verificationToken: string;
+}
+
+export function generateTrustedVerifierEmailHtml(params: TrustedVerifierEmailParams): string {
+  const recipientName = escapeHtml(params.recipientName);
+  const userName = escapeHtml(params.userName);
+  const verifyUrl = `${getSiteUrl()}/api/legacy/verify?token=${encodeURIComponent(params.verificationToken)}&type=verifier`;
+
+  return emailLayout({
+    preheader: `${params.userName} has been inactive — their legacy plan may be activated.`,
+    headerHtml: `
+      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+        Trusted Verifier Notice
+      </p>
+      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
+        Regarding ${userName}
+      </h1>`,
+    bodyHtml: `
+      <p class="text-primary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
+        Dear ${recipientName},
+      </p>
+
+      <p class="text-secondary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;">
+        ${userName} designated you as their <strong>trusted verifier</strong> in their Memory Palace.
+        They have not visited their palace in <strong>${params.inactiveDays} days</strong>, which
+        has triggered their legacy plan.
+      </p>
+
+      <p class="text-secondary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;">
+        If ${userName} is still well and simply hasn\u2019t logged in, you can confirm on
+        their behalf by clicking the button below. This will reset their inactivity timer
+        and prevent the legacy delivery.
+      </p>
+
+      ${ornamentalDivider()}
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;">
+      <tr><td class="section-bg" style="padding:20px 24px;background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;">
+        <p class="text-muted" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#9A9183;line-height:1.7;">
+          If you do not take action, ${userName}\u2019s legacy messages and shared memories
+          will be delivered to their designated contacts in 30 days.
+        </p>
+      </td></tr>
+      </table>`,
+    ctaText: `Confirm ${userName} Is Well`,
+    ctaUrl: verifyUrl,
+    footerExtra: `
+      <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+        You received this because ${userName} designated you as their trusted verifier.
+      </p>`,
+  });
+}
+
+export async function sendTrustedVerifierEmail(params: TrustedVerifierEmailParams): Promise<{ success: boolean; error?: string }> {
+  return sendEmail({
+    to: params.recipientEmail,
+    subject: `Trusted Verifier Notice: ${params.userName} has been inactive`,
+    html: generateTrustedVerifierEmailHtml(params),
+    tag: "legacy-verifier",
   });
 }
 

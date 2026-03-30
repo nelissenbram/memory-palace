@@ -428,7 +428,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               color: questionColor, lineHeight: 1.4, marginBottom: "2.5rem",
               maxWidth: "32.5rem", margin: "0 auto 2.5rem",
             }}>
-              {tTpl(question.textKey)}
+              {tTpl(question.textKey) === question.textKey ? question.text : tTpl(question.textKey)}
             </h2>
 
             {apiError && (

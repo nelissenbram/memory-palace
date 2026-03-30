@@ -10,18 +10,44 @@ import { useTrackStore } from "@/lib/stores/trackStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
+import { useDaylight } from "@/components/providers/DaylightProvider";
 import NotificationBell from "@/components/ui/NotificationBell";
 import type { Crumb } from "@/lib/hooks/useNavigation";
 import type { Locale } from "@/i18n/config";
 
-interface TopBarProps {
-  crumbs: Crumb[];
+function formatDaylightHour(h: number): string {
+  const hr = Math.floor(h) % 24;
+  const min = Math.round((h - Math.floor(h)) * 60);
+  return `${String(hr).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
 }
 
-export default function TopBar({crumbs}: TopBarProps){
+function daylightPeriodLabel(h: number, t: (k: string) => string): string {
+  if (h >= 22 || h < 5) return t("daylight_night");
+  if (h >= 5 && h < 9) return t("daylight_morning");
+  if (h >= 9 && h < 16) return t("daylight_midday");
+  return t("daylight_evening");
+}
+
+interface SharedWingItem {
+  shareId: string;
+  wingId: string;
+  ownerName: string;
+  ownerId: string;
+  permission: string;
+}
+
+interface TopBarProps {
+  crumbs: Crumb[];
+  sharedWings?: SharedWingItem[];
+  onNavigateSharedWing?: (shareId: string, wingSlug: string) => void;
+  onSharingSettings?: () => void;
+}
+
+export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSharingSettings}: TopBarProps){
   const isMobile = useIsMobile();
   const { t, locale, setLocale } = useTranslation("common");
   const { accessibilityMode, toggleAccessibility } = useAccessibility();
+  const { daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour } = useDaylight();
   const { userName } = useUserStore();
   const { view, activeWing, switchWing, exitToPalace } = usePalaceStore();
   const { showDirectory, setShowDirectory } = useMemoryStore();
@@ -117,6 +143,7 @@ export default function TopBar({crumbs}: TopBarProps){
           }}>
             <div onClick={e => e.stopPropagation()} style={{
               position: "absolute", top: "3rem", right: "0.5rem", left: "0.5rem",
+              maxHeight: "calc(100vh - 4rem)", overflowY: "auto",
               background: `${T.color.linen}f5`, backdropFilter: "blur(16px)",
               borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
               boxShadow: "0 8px 40px rgba(44,44,42,.15)", padding: "0.75rem",
@@ -150,6 +177,32 @@ export default function TopBar({crumbs}: TopBarProps){
                     <span style={{ fontSize: "1rem" }}>{w.icon}</span>{w.name}
                   </button>
                 ))}
+                {/* Shared wings in mobile menu */}
+                {sharedWings && sharedWings.length > 0 && (
+                  <>
+                    <div style={{ padding: "0.375rem 0.25rem 0.25rem", marginTop: "0.25rem", borderTop: `1px solid ${T.color.cream}` }}>
+                      <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.03125rem" }}>
+                        {t("sharedWithYou")}
+                      </span>
+                    </div>
+                    {sharedWings.map(sw => {
+                      const wingName = sw.wingId.charAt(0).toUpperCase() + sw.wingId.slice(1);
+                      return (
+                        <button key={sw.shareId} onClick={() => { onNavigateSharedWing?.(sw.shareId, sw.wingId); setMenuOpen(false); }} style={{
+                          padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
+                          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 400,
+                          border: `1px solid ${T.color.cream}`, background: T.color.white,
+                          color: T.color.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem",
+                          textAlign: "left", minHeight: "2.75rem",
+                        }}>
+                          <span style={{ fontSize: "1rem" }}>{"\u{1F91D}"}</span>
+                          <span style={{ flex: 1 }}>{wingName}</span>
+                          <span style={{ fontSize: "0.5625rem", color: T.color.sandstone }}>{sw.ownerName}</span>
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", padding: "0 0.125rem" }}>
                 <NotificationBell />
@@ -256,6 +309,78 @@ export default function TopBar({crumbs}: TopBarProps){
                     }} />
                   </button>
                 </div>
+                {/* Daylight toggle */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div style={{ marginRight: "auto" }}>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, display: "block" }}>
+                      {t("daylightMode")}
+                    </span>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>
+                      {t("daylightDesc")}
+                    </span>
+                  </div>
+                  <button
+                    role="switch"
+                    aria-checked={daylightEnabled}
+                    onClick={toggleDaylight}
+                    style={{
+                      width: "2.75rem", height: "1.5rem", borderRadius: "0.75rem",
+                      border: `1px solid ${daylightEnabled ? T.color.gold : T.color.cream}`,
+                      background: daylightEnabled ? T.color.gold : T.color.warmStone,
+                      cursor: "pointer", position: "relative",
+                      transition: "background 0.2s, border-color 0.2s",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span style={{
+                      position: "absolute", top: "0.125rem", left: daylightEnabled ? "1.375rem" : "0.125rem",
+                      width: "1.125rem", height: "1.125rem", borderRadius: "0.5625rem",
+                      background: T.color.white,
+                      boxShadow: "0 1px 3px rgba(0,0,0,.15)",
+                      transition: "left 0.2s",
+                    }} />
+                  </button>
+                </div>
+                {/* Daylight slider */}
+                {daylightEnabled && (() => {
+                  const isAuto = daylightMode === "auto";
+                  const displayHour = isAuto
+                    ? new Date().getHours() + new Date().getMinutes() / 60
+                    : customHour;
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                      <div style={{
+                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                        fontFamily: T.font.body, fontSize: "0.6875rem",
+                      }}>
+                        <span style={{ color: isAuto ? T.color.muted : T.color.charcoal, fontWeight: 500 }}>
+                          {formatDaylightHour(displayHour)} — {daylightPeriodLabel(displayHour, t)}
+                        </span>
+                        <button
+                          aria-pressed={isAuto}
+                          onClick={() => isAuto ? setCustomHour(displayHour) : setDaylightMode("auto")}
+                          style={{
+                            padding: "0.125rem 0.5rem", borderRadius: "0.375rem",
+                            border: `1px solid ${isAuto ? T.color.gold : T.color.cream}`,
+                            background: isAuto ? `${T.color.gold}18` : T.color.white,
+                            cursor: "pointer", fontFamily: T.font.body,
+                            fontSize: "0.625rem", fontWeight: isAuto ? 600 : 400,
+                            color: isAuto ? T.color.walnut : T.color.muted,
+                          }}
+                        >
+                          {t("daylight_auto")}
+                        </button>
+                      </div>
+                      <input
+                        type="range" min={0} max={24} step={0.5}
+                        value={displayHour}
+                        onChange={(e) => setCustomHour(parseFloat(e.target.value))}
+                        aria-label={t("daylightSlider")}
+                        style={{ width: "100%", accentColor: T.color.gold, cursor: "pointer" }}
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -285,7 +410,7 @@ export default function TopBar({crumbs}: TopBarProps){
       </div>
       <div style={{display:"flex",gap:"0.5rem",alignItems:"center"}}>
         <NotificationBell />
-        <WingsDropdown wings={WINGS} activeWing={activeWing} switchWing={switchWing} />
+        <WingsDropdown wings={WINGS} activeWing={activeWing} switchWing={switchWing} sharedWings={sharedWings} onNavigateSharedWing={onNavigateSharedWing} onSharingSettings={onSharingSettings} />
 
         {/* User menu button + dropdown */}
         <div ref={userMenuRef} style={{ position: "relative", marginLeft: "0.375rem" }}>
@@ -316,6 +441,12 @@ export default function TopBar({crumbs}: TopBarProps){
               setLocale={setLocale}
               accessibilityMode={accessibilityMode}
               toggleAccessibility={toggleAccessibility}
+              daylightEnabled={daylightEnabled}
+              daylightMode={daylightMode}
+              customHour={customHour}
+              toggleDaylight={toggleDaylight}
+              setDaylightMode={setDaylightMode}
+              setCustomHour={setCustomHour}
               t={t}
               onClose={() => { setUserMenuOpen(false); userBtnRef.current?.focus(); }}
             />
@@ -339,12 +470,18 @@ const USER_MENU_ITEMS = [
   { href: "/security", labelKey: "security", icon: "\u{1F6E1}\uFE0F" },
 ] as const;
 
-function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggleAccessibility, t, onClose }: {
+function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggleAccessibility, daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour, t, onClose }: {
   userName: string;
   locale: Locale;
   setLocale: (l: Locale) => void;
   accessibilityMode: boolean;
   toggleAccessibility: () => void;
+  daylightEnabled: boolean;
+  daylightMode: string;
+  customHour: number;
+  toggleDaylight: () => void;
+  setDaylightMode: (m: "auto" | "custom") => void;
+  setCustomHour: (h: number) => void;
   t: (key: string, params?: Record<string, string>) => string;
   onClose: () => void;
 }) {
@@ -355,7 +492,7 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
   const levelInfo = getLevelInfo();
 
   // Total focusable items: menu links + a11y toggle + 2 lang buttons + sign-out = items.length + 4
-  const totalItems = USER_MENU_ITEMS.length + 4;
+  const totalItems = USER_MENU_ITEMS.length + 5;
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -395,11 +532,12 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
       ref={menuListRef}
       style={{
         position: "absolute", top: "calc(100% + 0.5rem)", right: 0,
-        width: "17.5rem", background: `${T.color.linen}f8`,
+        width: "17.5rem", maxHeight: "calc(100vh - 4.5rem)", overflowY: "auto",
+        background: `${T.color.linen}f8`,
         backdropFilter: "blur(20px)",
         borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
         boxShadow: "0 12px 48px rgba(44,44,42,.18), 0 2px 8px rgba(44,44,42,.08)",
-        padding: 0, overflow: "hidden", zIndex: 100,
+        padding: 0, zIndex: 100,
       }}
     >
       {/* User header */}
@@ -421,6 +559,7 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
             fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
             color: T.color.charcoal,
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            maxWidth: "11rem",
           }}>
             {userName || t("palaceDefault")}
           </div>
@@ -572,6 +711,94 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
             }} />
           </button>
         </div>
+
+        {/* Daylight toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div style={{ marginRight: "auto" }}>
+            <span style={{
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
+              display: "block",
+            }}>
+              {t("daylightMode")}
+            </span>
+            <span style={{
+              fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+            }}>
+              {t("daylightDesc")}
+            </span>
+          </div>
+          <button
+            role="switch"
+            aria-checked={daylightEnabled}
+            data-menu-item
+            tabIndex={-1}
+            onClick={toggleDaylight}
+            onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + 3)}
+            onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + 3)}
+            style={{
+              width: "2.75rem", height: "1.5rem", borderRadius: "0.75rem",
+              border: `1px solid ${daylightEnabled ? T.color.gold : T.color.cream}`,
+              background: daylightEnabled ? T.color.gold : T.color.warmStone,
+              cursor: "pointer", position: "relative",
+              transition: "background 0.2s, border-color 0.2s",
+              flexShrink: 0,
+              ...(focusIdx === USER_MENU_ITEMS.length + 3 ? {
+                outline: `2px solid ${T.color.terracotta}`,
+                outlineOffset: 1,
+              } : {}),
+            }}
+          >
+            <span style={{
+              position: "absolute", top: "0.125rem", left: daylightEnabled ? "1.375rem" : "0.125rem",
+              width: "1.125rem", height: "1.125rem", borderRadius: "0.5625rem",
+              background: T.color.white,
+              boxShadow: "0 1px 3px rgba(0,0,0,.15)",
+              transition: "left 0.2s",
+            }} />
+          </button>
+        </div>
+        {/* Daylight slider */}
+        {daylightEnabled && (() => {
+          const isAuto = daylightMode === "auto";
+          const displayHour = isAuto
+            ? new Date().getHours() + new Date().getMinutes() / 60
+            : customHour;
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", padding: "0 0.375rem" }}>
+              <div style={{
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                fontFamily: T.font.body, fontSize: "0.6875rem",
+              }}>
+                <span style={{ color: isAuto ? T.color.muted : T.color.charcoal, fontWeight: 500 }}>
+                  {formatDaylightHour(displayHour)} — {daylightPeriodLabel(displayHour, t)}
+                </span>
+                <button
+                  aria-pressed={isAuto}
+                  data-menu-item
+                  tabIndex={-1}
+                  onClick={() => isAuto ? setCustomHour(displayHour) : setDaylightMode("auto")}
+                  style={{
+                    padding: "0.125rem 0.5rem", borderRadius: "0.375rem",
+                    border: `1px solid ${isAuto ? T.color.gold : T.color.cream}`,
+                    background: isAuto ? `${T.color.gold}18` : T.color.white,
+                    cursor: "pointer", fontFamily: T.font.body,
+                    fontSize: "0.625rem", fontWeight: isAuto ? 600 : 400,
+                    color: isAuto ? T.color.walnut : T.color.muted,
+                  }}
+                >
+                  {t("daylight_auto")}
+                </button>
+              </div>
+              <input
+                type="range" min={0} max={24} step={0.5}
+                value={displayHour}
+                onChange={(e) => setCustomHour(parseFloat(e.target.value))}
+                aria-label={t("daylightSlider")}
+                style={{ width: "100%", accentColor: T.color.gold, cursor: "pointer" }}
+              />
+            </div>
+          );
+        })()}
       </div>
 
       {/* Sign out */}
@@ -602,14 +829,19 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
 }
 
 /** Wings dropdown — shows wings with expandable room lists for direct navigation */
-function WingsDropdown({ wings, activeWing, switchWing }: {
+function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateSharedWing, onSharingSettings }: {
   wings: { id: string; name: string; icon: string; accent: string }[];
   activeWing: string | null;
   switchWing: (id: string) => void;
+  sharedWings?: SharedWingItem[];
+  onNavigateSharedWing?: (shareId: string, wingSlug: string) => void;
+  onSharingSettings?: () => void;
 }) {
   const { t: tc } = useTranslation("common");
   const [wingsOpen, setWingsOpen] = useState(false);
   const [expandedWing, setExpandedWing] = useState<string | null>(null);
+  const [sharedWingRoomsCache, setSharedWingRoomsCache] = useState<Record<string, { id: string; name: string; icon: string }[]>>({});
+  const [sharedWingRoomsLoading, setSharedWingRoomsLoading] = useState<Record<string, boolean>>({});
   const wingsRef = useRef<HTMLDivElement>(null);
   const { getWingRooms } = useRoomStore();
   const { enterCorridor, enterRoom, enterWing } = usePalaceStore();
@@ -739,6 +971,149 @@ function WingsDropdown({ wings, activeWing, switchWing }: {
               </div>
             );
           })}
+
+          {/* Shared wings section */}
+          {sharedWings && sharedWings.length > 0 && (
+            <>
+              <div style={{
+                margin: "0.25rem 0.5rem", padding: "0.375rem 0",
+                borderTop: `1px solid ${T.color.cream}`,
+              }}>
+                <span style={{
+                  fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
+                  color: T.color.muted, textTransform: "uppercase", letterSpacing: "0.03125rem",
+                }}>{tc("sharedWithYou")}</span>
+              </div>
+              {sharedWings.map(sw => {
+                const isActive = activeWing === `shared:${sw.wingId}:${sw.shareId}`;
+                const isExpanded = expandedWing === `shared:${sw.shareId}`;
+                const cachedRooms = sharedWingRoomsCache[sw.shareId];
+                return (
+                  <div key={sw.shareId}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          onNavigateSharedWing?.(sw.shareId, sw.wingId);
+                          setWingsOpen(false); setExpandedWing(null);
+                        }}
+                        style={{
+                          flex: 1, padding: "0.5625rem 0.75rem", borderRadius: isExpanded ? "0.625rem 0 0 0" : "0.625rem 0 0 0.625rem",
+                          fontFamily: T.font.body, fontSize: "0.8125rem",
+                          fontWeight: isActive ? 600 : 400,
+                          border: isActive ? `1.5px solid ${T.color.terracotta}` : `1px solid transparent`,
+                          borderRight: "none",
+                          background: isActive ? `${T.color.terracotta}15` : "transparent",
+                          color: isActive ? T.color.terracotta : T.color.charcoal,
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem",
+                          textAlign: "left",
+                        }}
+                        onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = `${T.color.sandstone}20`; }}
+                        onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+                      >
+                        <span style={{ fontSize: "0.9375rem" }}>{"\u{1F91D}"}</span>
+                        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {sw.wingId.charAt(0).toUpperCase() + sw.wingId.slice(1)}
+                        </span>
+                        <span style={{ fontSize: "0.5625rem", color: T.color.sandstone, fontWeight: 400 }}>
+                          {sw.ownerName}
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          const key = `shared:${sw.shareId}`;
+                          if (isExpanded) { setExpandedWing(null); }
+                          else {
+                            setExpandedWing(key);
+                            if (!sharedWingRoomsCache[sw.shareId]) {
+                              setSharedWingRoomsLoading(prev => ({ ...prev, [sw.shareId]: true }));
+                              import("@/lib/auth/sharing-actions").then(mod => mod.getSharedWingData(sw.shareId)).then(result => {
+                                if (result.rooms) {
+                                  setSharedWingRoomsCache(prev => ({ ...prev, [sw.shareId]: result.rooms as { id: string; name: string; icon: string }[] }));
+                                }
+                                setSharedWingRoomsLoading(prev => ({ ...prev, [sw.shareId]: false }));
+                              }).catch(() => setSharedWingRoomsLoading(prev => ({ ...prev, [sw.shareId]: false })));
+                            }
+                          }
+                        }}
+                        style={{
+                          padding: "0.5625rem 0.625rem", borderRadius: isExpanded ? "0 0.625rem 0 0" : "0 0.625rem 0.625rem 0",
+                          border: isActive ? `1.5px solid ${T.color.terracotta}` : `1px solid transparent`,
+                          borderLeft: "none",
+                          background: isExpanded ? `${T.color.terracotta}15` : "transparent",
+                          cursor: "pointer", fontSize: "0.625rem", color: T.color.muted,
+                          display: "flex", alignItems: "center",
+                        }}
+                        title={tc("showRooms")}
+                      >
+                        <span style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .2s" }}>{"\u25BE"}</span>
+                      </button>
+                    </div>
+                    {isExpanded && (
+                      <div style={{
+                        padding: "0.125rem 0 0.25rem 1.75rem",
+                        borderLeft: `2px solid ${T.color.terracotta}30`,
+                        marginLeft: "1.125rem", marginBottom: "0.25rem",
+                        display: "flex", flexDirection: "column", gap: "0.0625rem",
+                      }}>
+                        {sharedWingRoomsLoading[sw.shareId] ? (
+                          <span style={{ padding: "0.375rem 0.625rem", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>...</span>
+                        ) : cachedRooms && cachedRooms.length > 0 ? cachedRooms.map((r: { id: string; name: string; icon: string }) => (
+                          <button
+                            key={r.id}
+                            role="menuitem"
+                            onClick={() => {
+                              onNavigateSharedWing?.(sw.shareId, sw.wingId);
+                              setTimeout(() => enterRoom(r.id), 600);
+                              setWingsOpen(false); setExpandedWing(null);
+                            }}
+                            style={{
+                              padding: "0.375rem 0.625rem", borderRadius: "0.5rem",
+                              fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 400,
+                              border: "none", background: "transparent",
+                              color: T.color.charcoal, cursor: "pointer",
+                              display: "flex", alignItems: "center", gap: "0.375rem",
+                              textAlign: "left", width: "100%",
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = `${T.color.terracotta}12`; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                          >
+                            <span style={{ fontSize: "0.8125rem" }}>{r.icon || "\u{1F4C1}"}</span>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                          </button>
+                        )) : (
+                          <span style={{ padding: "0.375rem 0.625rem", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, fontStyle: "italic" }}>{tc("noRooms")}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {/* Manage shares link */}
+          {onSharingSettings && (
+            <button
+              role="menuitem"
+              onClick={() => { onSharingSettings(); setWingsOpen(false); setExpandedWing(null); }}
+              style={{
+                padding: "0.5rem 0.75rem", borderRadius: "0.625rem",
+                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
+                border: "none", background: "transparent",
+                color: T.color.walnut, cursor: "pointer",
+                display: "flex", alignItems: "center", gap: "0.5rem",
+                textAlign: "left", width: "100%",
+                marginTop: "0.125rem", borderTop: `1px solid ${T.color.cream}`,
+                paddingTop: "0.625rem",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = `${T.color.sandstone}15`; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ fontSize: "0.8125rem" }}>{"\u2699\uFE0F"}</span>
+              {tc("manageShares")}
+            </button>
+          )}
         </div>
       )}
     </div>

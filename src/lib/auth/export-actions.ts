@@ -1,5 +1,3 @@
-"use server";
-
 import { createClient } from "@/lib/supabase/server";
 
 export interface UserDataExport {
@@ -14,73 +12,117 @@ export interface UserDataExport {
   track_progress: Record<string, unknown>[];
   memory_points: Record<string, unknown>[];
   legacy_contacts: Record<string, unknown>[];
+  legacy_messages: Record<string, unknown>[];
+  legacy_settings: Record<string, unknown>[];
+  legacy_deliveries: Record<string, unknown>[];
   connected_accounts: Record<string, unknown>[];
   notifications: Record<string, unknown>[];
+  family_groups: Record<string, unknown>[];
+  family_members: Record<string, unknown>[];
+  family_tree_persons: Record<string, unknown>[];
+  family_tree_relationships: Record<string, unknown>[];
+  wing_shares: Record<string, unknown>[];
   storage_files: string[];
 }
 
-export async function exportUserData(): Promise<
-  { data: UserDataExport } | { error: string }
-> {
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ) {
-    return { error: "Supabase is not configured" };
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+/** Safe query helper — returns empty array if table doesn't exist or query fails */
+async function safeQuery(
+  supabase: SupabaseClient,
+  table: string,
+  column: string,
+  userId: string,
+): Promise<Record<string, unknown>[]> {
+  try {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .eq(column, userId);
+    if (error) {
+      console.warn(`Export: skipping table "${table}":`, error.message);
+      return [];
+    }
+    return data || [];
+  } catch {
+    return [];
   }
+}
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { error: "Not authenticated" };
+/** Safe profile query — returns null if profile doesn't exist or query fails */
+async function safeProfileQuery(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) {
+      console.warn("Export: skipping profiles:", error.message);
+      return null;
+    }
+    return data || null;
+  } catch {
+    return null;
   }
+}
 
-  // Fetch all user data in parallel
-  const [
-    profileRes,
-    wingsRes,
-    roomsRes,
-    memoriesRes,
-    roomSharesRes,
-    publicSharesRes,
-    interviewsRes,
-    trackProgressRes,
-    memoryPointsRes,
-    legacyContactsRes,
-    connectedAccountsRes,
-    notificationsRes,
-  ] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).single(),
-    supabase.from("wings").select("*").eq("user_id", user.id),
-    supabase.from("rooms").select("*").eq("user_id", user.id),
-    supabase.from("memories").select("*").eq("user_id", user.id),
-    supabase
-      .from("room_shares")
-      .select("*")
-      .or(`owner_id.eq.${user.id},shared_with_id.eq.${user.id}`),
-    supabase.from("public_shares").select("*").eq("user_id", user.id),
-    supabase
-      .from("interview_sessions")
-      .select("*")
-      .eq("user_id", user.id),
-    supabase.from("track_progress").select("*").eq("user_id", user.id),
-    supabase.from("memory_points").select("*").eq("user_id", user.id),
-    supabase.from("legacy_contacts").select("*").eq("user_id", user.id),
-    supabase
-      .from("connected_accounts")
-      .select("*")
-      .eq("user_id", user.id),
-    supabase.from("notifications").select("*").eq("user_id", user.id),
-  ]);
+export async function exportUserData(
+  supabase: SupabaseClient,
+  uid: string,
+): Promise<{ data: UserDataExport } | { error: string }> {
+  try {
+    // Fetch all user data in parallel — safe queries won't throw on missing tables
+    const [
+      profile,
+      wings,
+      rooms,
+      memories,
+      roomShares,
+      publicShares,
+      interviews,
+      trackProgress,
+      memoryPoints,
+      legacyContacts,
+      legacyMessages,
+      legacySettings,
+      legacyDeliveries,
+      connectedAccounts,
+      notifications,
+      familyGroups,
+      familyMembers,
+      familyTreePersons,
+      familyTreeRels,
+      wingShares,
+    ] = await Promise.all([
+      safeProfileQuery(supabase, uid),
+      safeQuery(supabase, "wings", "user_id", uid),
+      safeQuery(supabase, "rooms", "user_id", uid),
+      safeQuery(supabase, "memories", "user_id", uid),
+      safeQuery(supabase, "room_shares", "owner_id", uid),
+      safeQuery(supabase, "public_shares", "user_id", uid),
+      safeQuery(supabase, "interview_sessions", "user_id", uid),
+      safeQuery(supabase, "track_progress", "user_id", uid),
+      safeQuery(supabase, "memory_points", "user_id", uid),
+      safeQuery(supabase, "legacy_contacts", "user_id", uid),
+      safeQuery(supabase, "legacy_messages", "user_id", uid),
+      safeQuery(supabase, "legacy_settings", "user_id", uid),
+      safeQuery(supabase, "legacy_deliveries", "user_id", uid),
+      safeQuery(supabase, "connected_accounts", "user_id", uid),
+      safeQuery(supabase, "notifications", "user_id", uid),
+      safeQuery(supabase, "family_groups", "owner_id", uid),
+      safeQuery(supabase, "family_members", "user_id", uid),
+      safeQuery(supabase, "family_tree_persons", "user_id", uid),
+      safeQuery(supabase, "family_tree_relationships", "user_id", uid),
+      safeQuery(supabase, "wing_shares", "owner_id", uid),
+    ]);
 
-  // Collect file paths from memories
-  const storageFiles: string[] = [];
-  if (memoriesRes.data) {
-    for (const memory of memoriesRes.data) {
+    // Collect file paths from memories
+    const storageFiles: string[] = [];
+    for (const memory of memories) {
       if (memory.file_path) {
         storageFiles.push(memory.file_path as string);
       }
@@ -92,37 +134,43 @@ export async function exportUserData(): Promise<
         storageFiles.push(memory.file_url);
       }
     }
-  }
 
-  // Strip sensitive fields from connected accounts (tokens)
-  const sanitizedConnectedAccounts = (connectedAccountsRes.data || []).map(
-    (account) => {
-      const { access_token, refresh_token, ...safe } = account as Record<
-        string,
-        unknown
-      >;
+    // Strip sensitive fields from connected accounts (tokens)
+    const sanitizedConnectedAccounts = connectedAccounts.map((account) => {
+      const { access_token, refresh_token, ...safe } = account;
       void access_token;
       void refresh_token;
       return { ...safe, access_token: "[redacted]", refresh_token: "[redacted]" };
-    }
-  );
+    });
 
-  const exportData: UserDataExport = {
-    exported_at: new Date().toISOString(),
-    profile: profileRes.data || null,
-    wings: wingsRes.data || [],
-    rooms: roomsRes.data || [],
-    memories: memoriesRes.data || [],
-    room_shares: roomSharesRes.data || [],
-    public_shares: publicSharesRes.data || [],
-    interview_sessions: interviewsRes.data || [],
-    track_progress: trackProgressRes.data || [],
-    memory_points: memoryPointsRes.data || [],
-    legacy_contacts: legacyContactsRes.data || [],
-    connected_accounts: sanitizedConnectedAccounts,
-    notifications: notificationsRes.data || [],
-    storage_files: storageFiles,
-  };
+    const exportData: UserDataExport = {
+      exported_at: new Date().toISOString(),
+      profile,
+      wings,
+      rooms,
+      memories,
+      room_shares: roomShares,
+      public_shares: publicShares,
+      interview_sessions: interviews,
+      track_progress: trackProgress,
+      memory_points: memoryPoints,
+      legacy_contacts: legacyContacts,
+      legacy_messages: legacyMessages,
+      legacy_settings: legacySettings,
+      legacy_deliveries: legacyDeliveries,
+      connected_accounts: sanitizedConnectedAccounts,
+      notifications,
+      family_groups: familyGroups,
+      family_members: familyMembers,
+      family_tree_persons: familyTreePersons,
+      family_tree_relationships: familyTreeRels,
+      wing_shares: wingShares,
+      storage_files: storageFiles,
+    };
 
-  return { data: exportData };
+    return { data: exportData };
+  } catch (err) {
+    console.error("exportUserData failed:", err);
+    return { error: "EXPORT_DATA_FAILED" };
+  }
 }

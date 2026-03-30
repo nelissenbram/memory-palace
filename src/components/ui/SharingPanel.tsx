@@ -264,7 +264,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
           {/* Permission selector */}
           <div style={{display:"flex",gap:6,marginBottom:10}}>
             {(["view","contribute"] as const).map(p=>(
-              <button key={p} onClick={()=>setPermission(p)} style={{
+              <button key={p} aria-pressed={permission===p} onClick={()=>setPermission(p)} style={{
                 flex:1,padding:isMobile?"12px 12px":"8px 12px",borderRadius:8,minHeight:44,
                 border:`1px solid ${permission===p?accent+"40":T.color.cream}`,
                 background:permission===p?`${accent}10`:T.color.white,
@@ -314,24 +314,26 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                         </div>
                       </div>
                     </div>
-                    <button onClick={()=>removePerson(share)} aria-label={tc("remove")} style={{width:24,height:24,borderRadius:12,border:`1px solid ${T.color.cream}`,background:"transparent",color:T.color.muted,fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>&#x2715;</button>
+                    <button onClick={()=>removePerson(share)} aria-label={tc("remove") + " " + share.shared_with_email} style={{width:"1.5rem",height:"1.5rem",borderRadius:"0.75rem",border:`1px solid ${T.color.cream}`,background:"transparent",color:T.color.muted,fontSize:"0.6875rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}>&#x2715;</button>
                   </div>
                   {/* Action row */}
                   <div style={{display:"flex",gap:6,marginTop:8}}>
                     <button onClick={()=>copyInviteLink(share.id)} style={{
-                      flex:1,padding:"6px 10px",borderRadius:8,border:`1px solid ${T.color.cream}`,
-                      background:T.color.white,cursor:"pointer",fontFamily:T.font.body,fontSize:10,
-                      color:T.color.walnut,display:"flex",alignItems:"center",justifyContent:"center",gap:4,
+                      flex:1,padding:"0.375rem 0.625rem",borderRadius:"0.5rem",border:`1px solid ${T.color.cream}`,
+                      background:T.color.white,cursor:"pointer",fontFamily:T.font.body,fontSize:"0.625rem",
+                      color:T.color.walnut,display:"flex",alignItems:"center",justifyContent:"center",gap:"0.25rem",
+                      minHeight:"2.75rem",
                     }}>
                       &#x1F517; {t("copyInviteLink")}
                     </button>
                     {(!share.status||share.status==="pending")&&(
                       <button onClick={()=>sendInviteEmail(share.id)} disabled={sendingEmailFor===share.id} style={{
-                        flex:1,padding:"6px 10px",borderRadius:8,border:`1px solid ${T.color.cream}`,
+                        flex:1,padding:"0.375rem 0.625rem",borderRadius:"0.5rem",border:`1px solid ${T.color.cream}`,
                         background:T.color.white,cursor:sendingEmailFor===share.id?"default":"pointer",
-                        fontFamily:T.font.body,fontSize:10,color:T.color.walnut,
+                        fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.walnut,
                         opacity:sendingEmailFor===share.id?.6:1,
-                        display:"flex",alignItems:"center",justifyContent:"center",gap:4,
+                        display:"flex",alignItems:"center",justifyContent:"center",gap:"0.25rem",
+                        minHeight:"2.75rem",
                       }}>
                         {sendingEmailFor===share.id?t("sending"):share.email_sent?`&#x1F504; ${t("resendEmail")}`:`&#x2709;&#xFE0F; ${t("sendEmail")}`}
                       </button>
@@ -345,14 +347,14 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
 
         {/* Privacy & Permissions */}
         <div style={{marginTop:24,borderRadius:12,border:`1px solid ${T.color.cream}`,overflow:"hidden"}}>
-          <button onClick={()=>setPrivacyOpen(!privacyOpen)} style={{width:"100%",padding:"14px 16px",background:`${T.color.warmStone}80`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <button aria-expanded={privacyOpen} aria-controls="sharing-privacy-panel" onClick={()=>setPrivacyOpen(!privacyOpen)} style={{width:"100%",padding:"14px 16px",background:`${T.color.warmStone}80`,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:12}}>{"\u{1F512}"}</span>
               <span style={{fontFamily:T.font.body,fontSize:13,fontWeight:600,color:T.color.charcoal}}>{t("privacyPermissions")}</span>
             </div>
             <span style={{fontFamily:T.font.body,fontSize:14,color:T.color.muted,transform:privacyOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",display:"inline-block"}}>{"\u25BE"}</span>
           </button>
-          {privacyOpen&&<div style={{padding:"16px",background:T.color.white}}>
+          {privacyOpen&&<div id="sharing-privacy-panel" style={{padding:"16px",background:T.color.white}}>
             {/* Download permission toggle */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
               <div>

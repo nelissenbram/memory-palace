@@ -43,9 +43,5 @@ const MemoryPalace = dynamic(() => import("@/components/MemoryPalace"), {
 });
 
 export default function PalacePage() {
-  // TODO: Render shared wings from family members here (wing_shares table).
-  // Use getWingsSharedWithMe() from sharing-actions.ts to fetch shared wings,
-  // then pass them to MemoryPalace as a prop to display in the exterior view
-  // alongside the user's own wings.
   return <MemoryPalace />;
 }

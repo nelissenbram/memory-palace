@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import {
   updatePerson,
   deletePerson,
@@ -30,6 +31,7 @@ export default function PersonPanel({
   onUpdate,
 }: PersonPanelProps) {
   const { t } = useTranslation("familyTree");
+  const { containerRef, handleKeyDown: trapKeyDown } = useFocusTrap(true);
   const [editing, setEditing] = useState(false);
   const [firstName, setFirstName] = useState(person.first_name);
   const [lastName, setLastName] = useState(person.last_name || "");
@@ -164,12 +166,17 @@ export default function PersonPanel({
 
   return (
     <div
+      ref={containerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={fullName}
+      onKeyDown={(e) => { if (e.key === "Escape") onClose(); trapKeyDown(e); }}
       style={{
         position: "fixed",
         top: 0,
         right: 0,
         bottom: 0,
-        width: "min(420px, 100vw)",
+        width: "min(26.25rem, 100vw)",
         background: T.color.linen,
         boxShadow: "-8px 0 40px rgba(44,44,42,.15)",
         zIndex: 100,
@@ -203,6 +210,7 @@ export default function PersonPanel({
         </h2>
         <button
           onClick={onClose}
+          aria-label={t("close")}
           style={{
             width: "2.25rem",
             height: "2.25rem",
@@ -215,6 +223,8 @@ export default function PersonPanel({
             alignItems: "center",
             justifyContent: "center",
             color: T.color.muted,
+            minWidth: "2.75rem",
+            minHeight: "2.75rem",
           }}
         >
           {"\u2715"}
@@ -529,6 +539,7 @@ export default function PersonPanel({
                         justifyContent: "center",
                       }}
                       title={t("removeRelationship")}
+                      aria-label={t("removeRelationship")}
                     >
                       {"\u2715"}
                     </button>

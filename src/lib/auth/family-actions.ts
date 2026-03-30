@@ -174,6 +174,8 @@ export async function removeFamilyMember(groupId: string, userId: string) {
     return { error: "Cannot remove the group owner" };
   }
 
+  if (!userId) return { error: "Invalid user ID" };
+
   const { error } = await supabase
     .from("family_members")
     .delete()
@@ -181,6 +183,11 @@ export async function removeFamilyMember(groupId: string, userId: string) {
     .eq("user_id", userId);
 
   if (error) return { error: error.message };
+
+  // Clean up orphaned wing_shares involving this user
+  await supabase.from("wing_shares").delete().eq("owner_id", userId);
+  await supabase.from("wing_shares").delete().eq("shared_with_id", userId);
+
   return { success: true };
 }
 
@@ -235,7 +242,7 @@ export async function getFamilyGroup() {
     .eq("group_id", group.id)
     .order("joined_at", { ascending: true });
 
-  return { group, members: members || [], userRole: membership.role };
+  return { group, members: members || [], userRole: membership.role, userEmail: user.email || "" };
 }
 
 export async function getFamilyMembers(groupId: string) {

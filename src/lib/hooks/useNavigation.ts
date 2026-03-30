@@ -31,11 +31,20 @@ export function useNavigation() {
       action: view === "corridor" || view === "room" ? exitToEntrance : null,
     });
   }
-  if (activeWing && (view === "corridor" || view === "room"))
+  if (activeWing && (view === "corridor" || view === "room")) {
+    let wingLabel: string;
+    if (activeWing.startsWith("shared:")) {
+      const parts = activeWing.split(":");
+      const slug = parts[1] || "wing";
+      wingLabel = `\u{1F91D} ${slug.charAt(0).toUpperCase() + slug.slice(1)}`;
+    } else {
+      wingLabel = `${wingData?.icon || ""} ${wingData?.name || activeWing}`;
+    }
     crumbs.push({
-      label: `${wingData?.icon} ${wingData?.name}`,
+      label: wingLabel,
       action: view === "room" ? exitToCorridor : null,
     });
+  }
   if (activeRoomData)
     crumbs.push({ label: `${activeRoomData.icon} ${activeRoomData.name}`, action: null });
 

@@ -110,7 +110,10 @@ export default function ContextualTooltip({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={handleDismiss}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleDismiss(); } }}
       style={{
         position: "absolute",
         zIndex: 75,

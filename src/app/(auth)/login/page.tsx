@@ -208,7 +208,7 @@ function LoginContent() {
               onChange={(e) => handleMfaCodeChange(i, e.target.value)}
               onKeyDown={(e) => handleMfaKeyDown(i, e)}
               autoFocus={i === 0}
-              aria-label={`Digit ${i + 1} of 6`}
+              aria-label={tc("mfaDigit", { n: String(i + 1), total: "6" })}
               style={{
                 width: "3.25rem",
                 height: "4rem",

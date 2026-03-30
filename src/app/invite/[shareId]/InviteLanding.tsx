@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { acceptInvite } from "@/lib/auth/invite-actions";
 import { createClient } from "@/lib/supabase/client";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
+import RoomPlacementPicker from "@/components/ui/RoomPlacementPicker";
 
 const T = {
   color: {
@@ -48,6 +50,9 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
+  const [showPlacement, setShowPlacement] = useState(false);
+  const [userWings, setUserWings] = useState<Array<{ id: string; slug: string; name: string; icon: string; accent: string }>>([]);
+  const [placementLoading, setPlacementLoading] = useState(false);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -60,10 +65,53 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
   // If the invite was already accepted, show that
   const alreadyAccepted = result.invite?.status === "accepted";
 
+  const fetchUserWings = async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("wings")
+      .select("id, slug, custom_name, accent_color, sort_order")
+      .order("sort_order");
+
+    if (data && data.length > 0) {
+      return data.map((w: { id: string; slug: string; custom_name: string | null; accent_color: string | null }) => {
+        const defaultWing = DEFAULT_WINGS.find((dw) => dw.id === w.slug);
+        return {
+          id: w.id,
+          slug: w.slug,
+          name: w.custom_name || defaultWing?.name || w.slug,
+          icon: defaultWing?.icon || "",
+          accent: w.accent_color || defaultWing?.accent || "#8B7355",
+        };
+      });
+    }
+    // Fallback: return default wings if no DB wings found
+    return DEFAULT_WINGS.map((dw) => ({
+      id: dw.id,
+      slug: dw.id,
+      name: dw.name,
+      icon: dw.icon,
+      accent: dw.accent,
+    }));
+  };
+
   const handleAccept = async () => {
     setAccepting(true);
     setAcceptError(null);
-    const res = await acceptInvite(shareId) as { error?: string; success?: boolean; alreadyAccepted?: boolean };
+    try {
+      const wings = await fetchUserWings();
+      setUserWings(wings);
+      setShowPlacement(true);
+    } catch {
+      setAcceptError("Failed to load wings");
+    }
+    setAccepting(false);
+  };
+
+  const handlePlacement = async (wingId: string) => {
+    setPlacementLoading(true);
+    setAcceptError(null);
+    // acceptInvite signature will be updated to accept optional placedInWingId
+    const res = await (acceptInvite as (sid: string, wid?: string) => Promise<unknown>)(shareId, wingId) as { error?: string; success?: boolean; alreadyAccepted?: boolean };
     if (res.error) {
       if (res.alreadyAccepted) {
         setAccepted(true);
@@ -73,7 +121,14 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
     } else {
       setAccepted(true);
     }
-    setAccepting(false);
+    setPlacementLoading(false);
+    setShowPlacement(false);
+  };
+
+  const handleCreateSharedWing = () => {
+    // For now, create a "shared" wing placement
+    // This will be expanded when the shared wing creation flow is built
+    handlePlacement("shared");
   };
 
   const handleGoToPalace = () => {
@@ -341,6 +396,15 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
       </div>
 
       <Footer t={t} />
+
+      {showPlacement && (
+        <RoomPlacementPicker
+          wings={userWings}
+          onSelect={handlePlacement}
+          onCreateSharedWing={handleCreateSharedWing}
+          loading={placementLoading}
+        />
+      )}
     </div>
   );
 }
