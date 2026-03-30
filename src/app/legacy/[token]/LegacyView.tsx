@@ -43,13 +43,23 @@ export default function LegacyView({ data }: { data: LegacyData }) {
   if (data.error === "not_found" || data.error === "not_configured") {
     return (
       <div style={styles.container}>
-        <div style={styles.card}>
-          <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
-          <h1 style={styles.title}>{t("linkNotFound")}</h1>
-          <p style={styles.subtitle}>
-            {t("linkNotFoundDesc")}
-          </p>
-        </div>
+        <main>
+          <div style={styles.card}>
+            <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
+            <h1 style={styles.title}>{t("linkNotFound")}</h1>
+            <p style={styles.subtitle}>
+              {t("linkNotFoundDesc")}
+            </p>
+            <div style={styles.actionLinks}>
+              <a href="https://thememorypalace.ai" style={styles.actionLink}>
+                {t("linkNotFoundHome")}
+              </a>
+              <a href="https://thememorypalace.ai/about" style={styles.actionLinkSecondary}>
+                {t("linkNotFoundAction")}
+              </a>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -57,13 +67,23 @@ export default function LegacyView({ data }: { data: LegacyData }) {
   if (data.error === "expired") {
     return (
       <div style={styles.container}>
-        <div style={styles.card}>
-          <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
-          <h1 style={styles.title}>{t("linkExpired")}</h1>
-          <p style={styles.subtitle}>
-            {t("linkExpiredDesc")}
-          </p>
-        </div>
+        <main>
+          <div style={styles.card}>
+            <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
+            <h1 style={styles.title}>{t("linkExpired")}</h1>
+            <p style={styles.subtitle}>
+              {t("linkExpiredDesc")}
+            </p>
+            <div style={styles.actionLinks}>
+              <a href="https://thememorypalace.ai" style={styles.actionLink}>
+                {t("linkExpiredHome")}
+              </a>
+              <a href="https://thememorypalace.ai/about" style={styles.actionLinkSecondary}>
+                {t("linkExpiredAction")}
+              </a>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -112,98 +132,108 @@ export default function LegacyView({ data }: { data: LegacyData }) {
         </p>
       </header>
 
-      {/* Message */}
-      {message && (message.subject || message.message_body) && (
+      <main>
+        {/* Intro explanation for outsiders */}
         <div style={styles.card}>
-          {message.subject && (
-            <h2 style={styles.messageSubject}>{message.subject}</h2>
-          )}
-          {message.message_body && (
-            <p style={styles.messageBody}>{message.message_body}</p>
-          )}
-        </div>
-      )}
-
-      {/* Memories organized by wing/room */}
-      {wings.map((wing) => {
-        const wingRooms = roomsByWing.get(wing.id) || [];
-        if (wingRooms.length === 0) return null;
-
-        return (
-          <div key={wing.id} style={styles.wingSection}>
-            <h2 style={styles.wingTitle}>{wing.name}</h2>
-            {wing.description && (
-              <p style={styles.wingDescription}>{wing.description}</p>
-            )}
-
-            {wingRooms.map((room) => {
-              const roomMemories = memoriesByRoom.get(room.id) || [];
-              if (roomMemories.length === 0) return null;
-
-              return (
-                <div key={room.id} style={styles.roomSection}>
-                  <h3 style={styles.roomTitle}>{room.name}</h3>
-                  {room.description && (
-                    <p style={styles.roomDescription}>{room.description}</p>
-                  )}
-
-                  <div style={styles.memoriesGrid}>
-                    {roomMemories.map((memory) => (
-                      <div key={memory.id} style={styles.memoryCard}>
-                        {memory.media_url && memory.media_type?.startsWith("image") && (
-                          <div style={styles.mediaContainer}>
-                            <Image
-                              src={memory.media_url}
-                              alt={memory.title}
-                              fill sizes="(max-width: 768px) 100vw, 400px"
-                              style={{ objectFit: "cover" }}
-                            />
-                          </div>
-                        )}
-                        {memory.media_url && memory.media_type?.startsWith("video") && (
-                          <div style={styles.mediaContainer}>
-                            <video
-                              src={memory.media_url}
-                              controls
-                              style={styles.mediaImage}
-                            />
-                          </div>
-                        )}
-                        <div style={styles.memoryContent}>
-                          <h4 style={styles.memoryTitle}>{memory.title}</h4>
-                          {memory.description && (
-                            <p style={styles.memoryDescription}>
-                              {memory.description}
-                            </p>
-                          )}
-                          <p style={styles.memoryDate}>
-                            {new Date(memory.created_at).toLocaleDateString(
-                              locale,
-                              {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              }
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-
-      {memories.length === 0 && (
-        <div style={styles.card}>
-          <p style={styles.subtitle}>
-            {t("noMemories")}
+          <p style={styles.introText}>
+            {t("introExplanation", { sender: senderName })}
           </p>
         </div>
-      )}
+
+        {/* Message */}
+        {message && (message.subject || message.message_body) && (
+          <div style={styles.card}>
+            {message.subject && (
+              <h2 style={styles.messageSubject}>{message.subject}</h2>
+            )}
+            {message.message_body && (
+              <p style={styles.messageBody}>{message.message_body}</p>
+            )}
+          </div>
+        )}
+
+        {/* Memories organized by wing/room */}
+        {wings.map((wing) => {
+          const wingRooms = roomsByWing.get(wing.id) || [];
+          if (wingRooms.length === 0) return null;
+
+          return (
+            <section key={wing.id} style={styles.wingSection}>
+              <h2 style={styles.wingTitle}>{wing.name}</h2>
+              {wing.description && (
+                <p style={styles.wingDescription}>{wing.description}</p>
+              )}
+
+              {wingRooms.map((room) => {
+                const roomMemories = memoriesByRoom.get(room.id) || [];
+                if (roomMemories.length === 0) return null;
+
+                return (
+                  <div key={room.id} style={styles.roomSection}>
+                    <h3 style={styles.roomTitle}>{room.name}</h3>
+                    {room.description && (
+                      <p style={styles.roomDescription}>{room.description}</p>
+                    )}
+
+                    <div style={styles.memoriesGrid}>
+                      {roomMemories.map((memory) => (
+                        <article key={memory.id} style={styles.memoryCard}>
+                          {memory.media_url && memory.media_type?.startsWith("image") && (
+                            <div style={styles.mediaContainer}>
+                              <Image
+                                src={memory.media_url}
+                                alt={memory.title}
+                                fill sizes="(max-width: 768px) 100vw, 400px"
+                                style={{ objectFit: "cover" }}
+                              />
+                            </div>
+                          )}
+                          {memory.media_url && memory.media_type?.startsWith("video") && (
+                            <div style={styles.mediaContainer}>
+                              <video
+                                src={memory.media_url}
+                                controls
+                                aria-label={t("videoMemory", { title: memory.title })}
+                                style={styles.mediaImage}
+                              />
+                            </div>
+                          )}
+                          <div style={styles.memoryContent}>
+                            <h4 style={styles.memoryTitle}>{memory.title}</h4>
+                            {memory.description && (
+                              <p style={styles.memoryDescription}>
+                                {memory.description}
+                              </p>
+                            )}
+                            <p style={styles.memoryDate}>
+                              {new Date(memory.created_at).toLocaleDateString(
+                                locale,
+                                {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                }
+                              )}
+                            </p>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          );
+        })}
+
+        {memories.length === 0 && (
+          <div style={styles.card}>
+            <p style={styles.subtitle}>
+              {t("noMemories")}
+            </p>
+          </div>
+        )}
+      </main>
 
       {/* Footer */}
       <footer style={styles.footer}>
@@ -274,6 +304,38 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "0.9375rem",
     color: "#8B7355",
     lineHeight: 1.7,
+  },
+  introText: {
+    margin: 0,
+    fontSize: "0.9375rem",
+    color: "#8B7355",
+    lineHeight: 1.7,
+    fontStyle: "italic",
+  },
+  actionLinks: {
+    marginTop: "1.5rem",
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: "0.75rem",
+    alignItems: "center",
+  },
+  actionLink: {
+    display: "inline-block",
+    padding: "0.75rem 1.5rem",
+    borderRadius: "0.75rem",
+    background: "linear-gradient(135deg, #C17F59, #8B7355)",
+    color: "#FFFFFF",
+    fontSize: "0.9375rem",
+    fontWeight: 600,
+    textDecoration: "none",
+    transition: "opacity .2s",
+  },
+  actionLinkSecondary: {
+    display: "inline-block",
+    fontSize: "0.875rem",
+    color: "#8B7355",
+    textDecoration: "underline",
+    textUnderlineOffset: "0.1875rem",
   },
   messageSubject: {
     margin: "0 0 0.75rem",

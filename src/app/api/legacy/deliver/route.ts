@@ -31,6 +31,8 @@ export async function POST(request: Request) {
   const userId = body?.userId;
   // Optional: only deliver specific messages (for scheduled/immediate delivery mode)
   const filterMessageIds: string[] | null = Array.isArray(body?.messageIds) ? body.messageIds : null;
+  // Retry mode: only deliver to contacts who don't have existing delivery records
+  const retryMode = body?.retry === true;
 
   if (!userId || typeof userId !== "string") {
     return NextResponse.json({ error: "Missing userId" }, { status: 400 });
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
   // ── 1. Get user profile + auth email ──
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, display_name")
+    .select("id, display_name, preferred_locale")
     .eq("id", userId)
     .single();
 
@@ -55,6 +57,7 @@ export async function POST(request: Request) {
   const { data: authData } = await supabase.auth.admin.getUserById(userId);
   const senderEmail = authData?.user?.email;
   const senderName = profile.display_name || senderEmail?.split("@")[0] || "Someone";
+  const userLocale = profile.preferred_locale || "en";
 
   // ── 2. Get active legacy contacts ──
   const { data: contacts } = await supabase
@@ -65,6 +68,26 @@ export async function POST(request: Request) {
 
   if (!contacts || contacts.length === 0) {
     return NextResponse.json({ error: "No active legacy contacts" }, { status: 404 });
+  }
+
+  // ── Retry mode: filter out contacts that already have delivery records ──
+  let deliverContacts = contacts;
+  if (retryMode) {
+    const contactIds = contacts.map((c: { id: string }) => c.id);
+    const { data: existingDeliveries } = await supabase
+      .from("legacy_deliveries")
+      .select("contact_id")
+      .eq("user_id", userId)
+      .in("contact_id", contactIds);
+
+    const deliveredContactIds = new Set(
+      (existingDeliveries || []).map((d: { contact_id: string }) => d.contact_id)
+    );
+    deliverContacts = contacts.filter((c: { id: string }) => !deliveredContactIds.has(c.id));
+
+    if (deliverContacts.length === 0) {
+      return NextResponse.json({ sent: 0, errors: 0, message: "All contacts already delivered" });
+    }
   }
 
   // ── 3. Get legacy messages ──
@@ -99,18 +122,10 @@ export async function POST(request: Request) {
   let sent = 0;
   let errors = 0;
 
-  // Collect delivery records for batch insert (only for successfully sent emails)
-  const deliveryRecords: Array<{
-    user_id: string;
-    contact_id: string;
-    message_id: string | null;
-    access_token: string;
-    delivered_at: string;
-    expires_at: string;
-  }> = [];
-
-  // ── 4. Send to each contact ──
-  for (const contact of contacts) {
+  // ── 4. Send to each contact and persist delivery records atomically ──
+  // Records are inserted immediately after each successful email send so that
+  // a later DB failure cannot cause the cron to re-deliver already-sent emails.
+  for (const contact of deliverContacts) {
     const contactEmail = (contact.contact_email as string).toLowerCase();
     const contactMessages = messagesByEmail.get(contactEmail) || [];
 
@@ -147,20 +162,30 @@ export async function POST(request: Request) {
       messageBody: combinedBody,
       accessToken,
       expiresAt: expiresAt.toISOString(),
+      locale: userLocale,
     });
 
     if (result.success) {
       sent++;
-      // Create a delivery record for EVERY message sent to this contact so
-      // the cron's "already delivered" check (which looks up by message_id)
-      // correctly skips all of them on subsequent runs.
+
+      // ── Atomic insert: persist delivery records immediately after send ──
+      // This prevents double delivery if a later step fails.
+      const records: Array<{
+        user_id: string;
+        contact_id: string;
+        message_id: string | null;
+        access_token: string;
+        delivered_at: string;
+        expires_at: string;
+      }> = [];
+
       if (messageIds.length > 0) {
         for (let i = 0; i < messageIds.length; i++) {
           // First record uses the real accessToken (sent in the email).
           // Additional records get unique derived tokens to satisfy the
           // access_token UNIQUE constraint — they exist only for tracking.
           const token = i === 0 ? accessToken : randomBytes(32).toString("hex");
-          deliveryRecords.push({
+          records.push({
             user_id: userId,
             contact_id: contact.id,
             message_id: messageIds[i],
@@ -170,8 +195,7 @@ export async function POST(request: Request) {
           });
         }
       } else {
-        // No specific messages — still record the delivery for this contact
-        deliveryRecords.push({
+        records.push({
           user_id: userId,
           contact_id: contact.id,
           message_id: null,
@@ -180,35 +204,43 @@ export async function POST(request: Request) {
           expires_at: expiresAt.toISOString(),
         });
       }
+
+      const { error: insertError } = await supabase
+        .from("legacy_deliveries")
+        .insert(records);
+
+      if (insertError) {
+        console.error(
+          `[Legacy Deliver] DB insert failed for contact ${contact.id}:`,
+          insertError.message,
+          "— email was already sent, skipping re-delivery."
+        );
+      }
     } else {
       console.error(`[Legacy Deliver] Email failed for ${contactEmail}:`, result.error);
       errors++;
     }
   }
 
-  // ── 5. Batch insert delivery records for all successful sends ──
-  if (deliveryRecords.length > 0) {
-    const { error: batchInsertError } = await supabase
-      .from("legacy_deliveries")
-      .insert(deliveryRecords);
-
-    if (batchInsertError) {
-      console.error(`[Legacy Deliver] Batch DB insert failed:`, batchInsertError.message);
-      // Records failed to persist but emails were already sent
-    }
-  }
-
-  // ── 6. Mark legacy status (only for full delivery, not partial scheduled) ──
+  // ── 5. Mark legacy status ──
   if (!filterMessageIds) {
-    const newStatus = errors === 0 ? "transferred" : "partially_delivered";
-    await supabase
-      .from("legacy_settings")
-      .update({
-        status: newStatus,
-        verification_sent_at: null,
-        verification_token: null,
-      })
-      .eq("id", userId);
+    if (retryMode && errors === 0) {
+      // Retry succeeded for all remaining contacts → upgrade to transferred
+      await supabase
+        .from("legacy_settings")
+        .update({ status: "transferred" })
+        .eq("id", userId);
+    } else if (!retryMode) {
+      const newStatus = errors === 0 ? "transferred" : "partially_delivered";
+      await supabase
+        .from("legacy_settings")
+        .update({
+          status: newStatus,
+          verification_sent_at: null,
+          verification_token: null,
+        })
+        .eq("id", userId);
+    }
   }
 
   return NextResponse.json({

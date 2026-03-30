@@ -12,9 +12,12 @@ import {
   updateLegacyMessage,
   deleteLegacyMessage,
   upsertLegacySettings,
+  fetchUserRooms,
   type LegacyContact,
   type LegacyMessage,
   type LegacySettings,
+  type UserRoom,
+  type UserWing,
 } from "@/lib/auth/legacy-actions";
 
 // ── Constants ──
@@ -40,16 +43,6 @@ const DELIVERY_OPTIONS = [
   { value: "immediately", labelKey: "deliverImmediately" },
 ];
 
-const DEFAULT_WING_SLUGS = ["family", "travel", "childhood", "career", "creativity"] as const;
-
-const WING_LABEL_KEYS: Record<string, string> = {
-  family: "wingFamily",
-  travel: "wingTravel",
-  childhood: "wingChildhood",
-  career: "wingCareer",
-  creativity: "wingCreativity",
-};
-
 // ── Main Page ──
 
 export default function LegacyPage() {
@@ -57,6 +50,7 @@ export default function LegacyPage() {
   const [contacts, setContacts] = useState<LegacyContact[]>([]);
   const [messages, setMessages] = useState<LegacyMessage[]>([]);
   const [settings, setSettings] = useState<LegacySettings | null>(null);
+  const [wings, setWings] = useState<UserWing[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -81,8 +75,9 @@ export default function LegacyPage() {
         setContacts(data.contacts);
         setMessages(data.messages);
         setSettings(data.settings);
+        if (data.wings) setWings(data.wings);
       } catch {
-        // ignore
+        showToast(t("fetchError"), "error");
       }
       setLoading(false);
     }
@@ -198,6 +193,7 @@ export default function LegacyPage() {
         <ContactsSection
           contacts={contacts}
           setContacts={setContacts}
+          wings={wings}
           showToast={showToast}
         />
       )}
@@ -231,10 +227,12 @@ export default function LegacyPage() {
 function ContactsSection({
   contacts,
   setContacts,
+  wings,
   showToast,
 }: {
   contacts: LegacyContact[];
   setContacts: React.Dispatch<React.SetStateAction<LegacyContact[]>>;
+  wings: UserWing[];
   showToast: (msg: string, type: "success" | "error") => void;
 }) {
   const { t } = useTranslation("legacySettings");
@@ -250,6 +248,24 @@ function ContactsSection({
   const [relationship, setRelationship] = useState("partner");
   const [accessLevel, setAccessLevel] = useState("full");
   const [wingAccess, setWingAccess] = useState<string[]>([]);
+  const [roomAccess, setRoomAccess] = useState<string[]>([]);
+
+  // Room picker data
+  const [userRooms, setUserRooms] = useState<UserRoom[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(false);
+  const [roomsFetched, setRoomsFetched] = useState(false);
+
+  // Fetch rooms when access level changes to specific_rooms
+  useEffect(() => {
+    if (accessLevel === "specific_rooms" && !roomsFetched) {
+      setRoomsLoading(true);
+      fetchUserRooms().then((rooms) => {
+        setUserRooms(rooms);
+        setRoomsFetched(true);
+        setRoomsLoading(false);
+      });
+    }
+  }, [accessLevel, roomsFetched]);
 
   const resetForm = () => {
     setName("");
@@ -257,6 +273,7 @@ function ContactsSection({
     setRelationship("partner");
     setAccessLevel("full");
     setWingAccess([]);
+    setRoomAccess([]);
     setShowForm(false);
     setEditingId(null);
   };
@@ -267,6 +284,7 @@ function ContactsSection({
     setRelationship(c.relationship || "other");
     setAccessLevel(c.access_level);
     setWingAccess(c.wing_access || []);
+    setRoomAccess(c.room_access || []);
     setEditingId(c.id);
     setShowForm(true);
   };
@@ -285,6 +303,7 @@ function ContactsSection({
         relationship,
         access_level: accessLevel,
         wing_access: wingAccess,
+        room_access: roomAccess,
       });
       if (result.error) {
         showToast(result.error, "error");
@@ -300,6 +319,7 @@ function ContactsSection({
         relationship,
         access_level: accessLevel,
         wing_access: wingAccess,
+        room_access: roomAccess,
       });
       if (result.error) {
         showToast(result.error, "error");
@@ -313,6 +333,7 @@ function ContactsSection({
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm(t("confirmDeleteContact"))) return;
     const result = await deleteLegacyContact(id);
     if (result.error) {
       showToast(result.error, "error");
@@ -399,7 +420,12 @@ function ContactsSection({
                   {t("access")}: {(() => { const al = ACCESS_LEVELS.find((a) => a.value === c.access_level); return al ? t(al.labelKey) : c.access_level; })()}
                   {c.access_level === "wings_only" && c.wing_access.length > 0 && (
                     <span style={{ marginLeft: "0.375rem", color: T.color.muted }}>
-                      ({c.wing_access.map((w) => WING_LABEL_KEYS[w] ? tp(WING_LABEL_KEYS[w]) : w).join(", ")})
+                      ({c.wing_access.map((w) => { const found = wings.find((wing) => wing.slug === w); return found ? found.name : w; }).join(", ")})
+                    </span>
+                  )}
+                  {c.access_level === "specific_rooms" && c.room_access && c.room_access.length > 0 && (
+                    <span style={{ marginLeft: "0.375rem", color: T.color.muted }}>
+                      ({c.room_access.length} {c.room_access.length === 1 ? "room" : "rooms"})
                     </span>
                   )}
                 </div>
@@ -487,8 +513,8 @@ function ContactsSection({
 
             {/* Relationship */}
             <div>
-              <label style={labelStyle}>{t("relationship")}</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+              <label id="legacy-relationship-label" style={labelStyle}>{t("relationship")}</label>
+              <div role="group" aria-labelledby="legacy-relationship-label" style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                 {RELATIONSHIPS.map((r) => (
                   <button
                     key={r.value}
@@ -512,14 +538,14 @@ function ContactsSection({
 
             {/* Access level */}
             <div>
-              <label style={labelStyle}>{t("accessLevel")}</label>
+              <label id="legacy-access-level-label" style={labelStyle}>{t("accessLevel")}</label>
               <p style={{
                 fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
                 margin: "0 0 0.625rem", lineHeight: 1.5,
               }}>
                 {t("accessLevelDesc")}
               </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <div role="group" aria-labelledby="legacy-access-level-label" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {ACCESS_LEVELS.map((a) => (
                   <button
                     key={a.value}
@@ -554,16 +580,16 @@ function ContactsSection({
               <div>
                 <label style={labelStyle}>{t("selectWings")}</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                  {DEFAULT_WING_SLUGS.map((slug) => {
-                    const selected = wingAccess.includes(slug);
+                  {wings.map((wing) => {
+                    const selected = wingAccess.includes(wing.slug);
                     return (
                       <button
-                        key={slug}
+                        key={wing.slug}
                         onClick={() => {
                           setWingAccess((prev) =>
                             selected
-                              ? prev.filter((s) => s !== slug)
-                              : [...prev, slug]
+                              ? prev.filter((s) => s !== wing.slug)
+                              : [...prev, wing.slug]
                           );
                         }}
                         aria-pressed={selected}
@@ -577,11 +603,74 @@ function ContactsSection({
                           cursor: "pointer", transition: "all .15s",
                         }}
                       >
-                        {selected ? "\u2713 " : ""}{tp(WING_LABEL_KEYS[slug])}
+                        {selected ? "\u2713 " : ""}{wing.name}
                       </button>
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Room selector (shown if specific_rooms) */}
+            {accessLevel === "specific_rooms" && (
+              <div>
+                <label style={labelStyle}>{t("selectRooms")}</label>
+                {roomsLoading ? (
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>
+                    {t("loadingRooms")}
+                  </p>
+                ) : userRooms.length === 0 ? (
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>
+                    {t("noRoomsFound")}
+                  </p>
+                ) : (
+                  <div>
+                    {wings.map((wing) => {
+                      const wingRooms = userRooms.filter((r) => r.wing_id === wing.id);
+                      if (wingRooms.length === 0) return null;
+                      const wingLabel = wing.name || wing.slug;
+                      return (
+                        <div key={wing.id} style={{ marginBottom: "0.75rem" }}>
+                          <div style={{
+                            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                            color: T.color.walnut, marginBottom: "0.375rem",
+                          }}>
+                            {wingLabel}
+                          </div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                            {wingRooms.map((room) => {
+                              const selected = roomAccess.includes(room.id);
+                              return (
+                                <button
+                                  key={room.id}
+                                  onClick={() => {
+                                    setRoomAccess((prev) =>
+                                      selected
+                                        ? prev.filter((rid) => rid !== room.id)
+                                        : [...prev, room.id]
+                                    );
+                                  }}
+                                  aria-pressed={selected}
+                                  style={{
+                                    padding: "0.5rem 0.875rem", borderRadius: "0.5rem",
+                                    border: `1.5px solid ${selected ? T.color.sage : T.color.sandstone}`,
+                                    background: selected ? `${T.color.sage}12` : T.color.white,
+                                    fontFamily: T.font.body, fontSize: "0.8125rem",
+                                    fontWeight: selected ? 600 : 400,
+                                    color: selected ? T.color.sage : T.color.charcoal,
+                                    cursor: "pointer", transition: "all .15s",
+                                  }}
+                                >
+                                  {selected ? "\u2713 " : ""}{room.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -691,6 +780,7 @@ function MessagesSection({
   };
 
   const handleDelete = async (id: string) => {
+    if (!window.confirm(t("confirmDeleteMessage"))) return;
     const result = await deleteLegacyMessage(id);
     if (result.error) {
       showToast(result.error, "error");
@@ -824,7 +914,7 @@ function MessagesSection({
           <div style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}>
             {/* Recipient */}
             <div>
-              <label style={labelStyle}>{t("recipientEmail")}</label>
+              <label htmlFor="legacy-msg-recipient" style={labelStyle}>{t("recipientEmail")}</label>
               {contacts.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem", marginBottom: "0.5rem" }}>
                   {contacts.map((c) => (
@@ -846,6 +936,7 @@ function MessagesSection({
                 </div>
               )}
               <input
+                id="legacy-msg-recipient"
                 type="email" value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
                 placeholder={t("contactEmailPlaceholder")}
@@ -855,8 +946,9 @@ function MessagesSection({
 
             {/* Subject */}
             <div>
-              <label style={labelStyle}>{t("subject")}</label>
+              <label htmlFor="legacy-msg-subject" style={labelStyle}>{t("subject")}</label>
               <input
+                id="legacy-msg-subject"
                 type="text" value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder={t("subjectPlaceholder")}
@@ -866,7 +958,7 @@ function MessagesSection({
 
             {/* Body */}
             <div>
-              <label style={labelStyle}>{t("yourMessage")}</label>
+              <label htmlFor="legacy-msg-body" style={labelStyle}>{t("yourMessage")}</label>
               <p style={{
                 fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
                 margin: "0 0 0.5rem", lineHeight: 1.5,
@@ -874,6 +966,7 @@ function MessagesSection({
                 {t("messagePrompt")}
               </p>
               <textarea
+                id="legacy-msg-body"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder={t("messagePlaceholder")}
@@ -890,8 +983,8 @@ function MessagesSection({
 
             {/* Delivery timing */}
             <div>
-              <label style={labelStyle}>{t("deliveryTiming")}</label>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <label id="legacy-delivery-label" style={labelStyle}>{t("deliveryTiming")}</label>
+              <div role="group" aria-labelledby="legacy-delivery-label" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {DELIVERY_OPTIONS.map((d) => (
                   <button
                     key={d.value}
@@ -1007,7 +1100,7 @@ function SettingsSection({
           background: T.color.linen,
           border: `1px solid ${T.color.cream}`,
         }}>
-          <label style={labelStyle}>{t("inactivityTrigger")}</label>
+          <label htmlFor="legacy-inactivity-range" style={labelStyle}>{t("inactivityTrigger")}</label>
           <p style={{
             fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.charcoal,
             margin: "0 0 0.875rem", lineHeight: 1.6,
@@ -1016,6 +1109,7 @@ function SettingsSection({
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <input
+              id="legacy-inactivity-range"
               type="range"
               min={3}
               max={36}
@@ -1054,8 +1148,9 @@ function SettingsSection({
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
             <div>
-              <label style={{ ...labelStyle, fontSize: "0.75rem" }}>{t("verifierName")}</label>
+              <label htmlFor="legacy-verifier-name" style={{ ...labelStyle, fontSize: "0.75rem" }}>{t("verifierName")}</label>
               <input
+                id="legacy-verifier-name"
                 type="text" value={verifierName}
                 onChange={(e) => setVerifierName(e.target.value)}
                 placeholder={t("verifierNamePlaceholder")}
@@ -1063,8 +1158,9 @@ function SettingsSection({
               />
             </div>
             <div>
-              <label style={{ ...labelStyle, fontSize: "0.75rem" }}>{t("verifierEmail")}</label>
+              <label htmlFor="legacy-verifier-email" style={{ ...labelStyle, fontSize: "0.75rem" }}>{t("verifierEmail")}</label>
               <input
+                id="legacy-verifier-email"
                 type="email" value={verifierEmail}
                 onChange={(e) => setVerifierEmail(e.target.value)}
                 placeholder={t("verifierEmailPlaceholder")}
@@ -1089,13 +1185,39 @@ function SettingsSection({
             fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.walnut,
             margin: 0, lineHeight: 1.5,
           }}>
-            {t("statusLabel")}: <strong>{settings?.status === "triggered" ? t("statusTriggered") : settings?.status === "transferred" ? t("statusTransferred") : t("statusActive")}</strong>
+            {t("statusLabel")}: <strong>{settings?.status === "triggered" ? t("statusTriggered") : settings?.status === "transferred" ? t("statusTransferred") : settings?.status === "partially_delivered" ? t("statusPartial") : t("statusActive")}</strong>
             {(!settings || settings.status === "active") && (
               <span style={{ color: T.color.muted }}>
                 {t("statusSafe")}
               </span>
             )}
           </p>
+          {settings?.status === "partially_delivered" && (
+            <button
+              onClick={async () => {
+                const { retryLegacyDelivery } = await import("@/lib/auth/legacy-actions");
+                const confirmed = window.confirm(t("confirmRetryDelivery"));
+                if (!confirmed) return;
+                setSaving(true);
+                const result = await retryLegacyDelivery();
+                setSaving(false);
+                if (result.success) {
+                  showToast(t("retrySuccess").replace("{count}", String(result.sent || 0)), "success");
+                  window.location.reload();
+                } else {
+                  showToast(result.error || t("retryFailed"), "error");
+                }
+              }}
+              disabled={saving}
+              style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem", padding: "0.375rem 0.75rem",
+                background: T.color.terracotta, color: "#fff", border: "none", borderRadius: "0.375rem",
+                cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1,
+              }}
+            >
+              {t("retryDelivery")}
+            </button>
+          )}
         </div>
 
         {/* Save button */}

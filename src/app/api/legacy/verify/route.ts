@@ -44,35 +44,16 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  // ── Resolve token based on type ──
+  // ── Atomic verify: single UPDATE … WHERE token = X AND not expired ──
+  // This eliminates the TOCTOU race where a concurrent request could also
+  // succeed between a SELECT and a separate UPDATE.
   const tokenColumn = type === "verifier" ? "verifier_confirmation_token" : "verification_token";
-
-  const { data: settings, error: findError } = await supabase
-    .from("legacy_settings")
-    .select("id, verification_token, verifier_confirmation_token, verification_expires_at")
-    .eq(tokenColumn, token)
-    .single();
-
-  if (findError || !settings) {
-    return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=invalid`);
-  }
-
-  // ── Check token expiry ──
-  if (settings.verification_expires_at) {
-    const expiresAt = new Date(settings.verification_expires_at);
-    if (expiresAt < new Date()) {
-      return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=invalid`);
-    }
-  }
-
-  const userId = settings.id;
   const now = new Date().toISOString();
 
   if (type === "verifier") {
-    // Verifier flow: record confirmation AND clear verification state to
-    // prevent the cron from delivering. Does NOT reset last_seen_at — the
-    // user themselves must log in to prove they're alive long-term.
-    await supabase
+    // Verifier flow: atomically claim token + clear verification state.
+    // Does NOT reset last_seen_at — the user themselves must log in.
+    const { data: updated, error: updateError } = await supabase
       .from("legacy_settings")
       .update({
         verifier_confirmed_at: now,
@@ -82,13 +63,31 @@ export async function GET(request: Request) {
         verification_expires_at: null,
         status: "active",
       })
-      .eq("id", userId);
+      .eq("verifier_confirmation_token", token)
+      .gt("verification_expires_at", now)
+      .select("id")
+      .maybeSingle();
 
-    return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=verifier_confirmed`);
+    if (updateError || !updated) {
+      // Check if the token exists but is expired (for a distinct message)
+      const { data: expired } = await supabase
+        .from("legacy_settings")
+        .select("id")
+        .eq("verifier_confirmation_token", token)
+        .lte("verification_expires_at", now)
+        .maybeSingle();
+
+      if (expired) {
+        return NextResponse.redirect(`${siteUrl}/legacy/verified?status=expired`);
+      }
+      return NextResponse.redirect(`${siteUrl}/legacy/verified?status=invalid`);
+    }
+
+    return NextResponse.redirect(`${siteUrl}/legacy/verified`);
   }
 
-  // ── User flow (default): reset inactivity, mark active ──
-  await supabase
+  // ── User flow (default): atomically claim token + reset to active ──
+  const { data: updated, error: updateError } = await supabase
     .from("legacy_settings")
     .update({
       verification_sent_at: null,
@@ -98,13 +97,31 @@ export async function GET(request: Request) {
       verifier_confirmed_at: null,
       status: "active",
     })
-    .eq("id", userId);
+    .eq("verification_token", token)
+    .gt("verification_expires_at", now)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError || !updated) {
+    // Check if expired
+    const { data: expired } = await supabase
+      .from("legacy_settings")
+      .select("id")
+      .eq("verification_token", token)
+      .lte("verification_expires_at", now)
+      .maybeSingle();
+
+    if (expired) {
+      return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=expired`);
+    }
+    return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=invalid`);
+  }
 
   // Update last_seen_at on the profile
   await supabase
     .from("profiles")
     .update({ last_seen_at: now })
-    .eq("id", userId);
+    .eq("id", updated.id);
 
   // Redirect to palace with success indicator
   return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=confirmed`);

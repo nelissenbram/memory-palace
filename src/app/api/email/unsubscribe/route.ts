@@ -4,10 +4,11 @@ import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 /**
- * GET /api/email/unsubscribe?unsubscribe=true&email={email}
+ * GET /api/email/unsubscribe?unsubscribe=true&uid={userId}
+ * GET /api/email/unsubscribe?unsubscribe=true&email={email}  (legacy)
  *
  * One-click unsubscribe endpoint for email digest.
- * Sets email_digest = false for the user matching the given email.
+ * Sets email_digest = false for the user matching the given uid or email.
  * Returns an HTML confirmation page.
  *
  * -- Requires the profiles.email_digest column (see digest route migration) --
@@ -15,9 +16,10 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const unsubscribe = searchParams.get("unsubscribe");
-  const email = searchParams.get("email");
+  const email = searchParams.get("email") || "";
+  const uid = searchParams.get("uid") || "";
 
-  if (unsubscribe !== "true" || !email) {
+  if (unsubscribe !== "true" || (!email && !uid)) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
@@ -33,12 +35,20 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
-  // Find the user by email via auth admin API
-  const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 });
-  const authUser = authUsers?.users?.find((u) => u.email === email);
+  let userId: string | undefined;
 
-  if (!authUser) {
-    // Don't reveal whether the email exists — just show success
+  if (uid) {
+    // Direct user ID lookup (used by digest email links)
+    userId = uid;
+  } else if (email) {
+    // Legacy email-based lookup
+    const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+    const authUser = authUsers?.users?.find((u) => u.email === email);
+    userId = authUser?.id;
+  }
+
+  if (!userId) {
+    // Don't reveal whether the email/uid exists — just show success
     return new NextResponse(renderPage("success", ""), {
       status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8" },
@@ -49,7 +59,7 @@ export async function GET(request: Request) {
   const { error } = await supabase
     .from("profiles")
     .update({ email_digest: false })
-    .eq("id", authUser.id);
+    .eq("id", userId);
 
   if (error) {
     console.error("[Unsubscribe] Failed to update profile:", error);

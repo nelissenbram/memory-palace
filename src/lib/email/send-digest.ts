@@ -20,6 +20,10 @@ export interface TrackProgress {
   trackName: string;
   percentComplete: number;
   icon: string;
+  /** Human-readable description of the next step to complete */
+  nextStepHint: string | null;
+  /** How many more of "something" to reach the next milestone (e.g. "15 more memories") */
+  nextMilestoneLabel: string | null;
 }
 
 export interface MemoryOfTheWeek {
@@ -36,6 +40,7 @@ export interface WeeklyStats {
 
 export interface DigestEmailParams {
   recipientEmail: string;
+  userId: string;
   displayName: string;
   onThisDayMemories: OnThisDayMemory[];
   upcomingCapsules: UpcomingCapsule[];
@@ -43,6 +48,8 @@ export interface DigestEmailParams {
   trackProgress: TrackProgress | null;
   weeklyStats: WeeklyStats;
   memoryOfTheWeek: MemoryOfTheWeek | null;
+  /** Number of consecutive weeks the user has added at least one memory */
+  streakWeeks: number;
 }
 
 /* ── Section renderers ── */
@@ -61,9 +68,9 @@ function sectionHeading(title: string): string {
     </table>`;
 }
 
-function renderStats(stats: WeeklyStats): string {
-  const cell = (value: number, label: string, showBorder: boolean) => `
-    <td class="stat-cell" width="33%" style="text-align:center;padding:22px 8px;${showBorder ? "border-right:1px solid #EEEAE3;" : ""}">
+function renderStats(stats: WeeklyStats, streakWeeks: number): string {
+  const cell = (value: string, label: string, showBorder: boolean) => `
+    <td class="stat-cell" width="${streakWeeks > 0 ? "25" : "33"}%" style="text-align:center;padding:22px 8px;${showBorder ? "border-right:1px solid #EEEAE3;" : ""}">
       <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;font-weight:400;color:#2C2C2A;line-height:1.1;letter-spacing:-1px;">
         ${value}
       </p>
@@ -72,12 +79,17 @@ function renderStats(stats: WeeklyStats): string {
       </p>
     </td>`;
 
+  const streakCell = streakWeeks > 0
+    ? cell(`${streakWeeks}`, streakWeeks === 1 ? "Week Streak" : "Week Streak", false)
+    : "";
+
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
       <tr>
-        ${cell(stats.totalMemories, "Total Memories", true)}
-        ${cell(stats.memoriesThisWeek, "This Week", true)}
-        ${cell(stats.totalRooms, "Rooms", false)}
+        ${cell(`${stats.totalMemories}`, "Total Memories", true)}
+        ${cell(`${stats.memoriesThisWeek}`, "This Week", true)}
+        ${cell(`${stats.totalRooms}`, "Rooms", streakWeeks > 0)}
+        ${streakCell}
       </tr>
     </table>`;
 }
@@ -86,23 +98,60 @@ function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null): string {
   if (!memory) return "";
 
   const thumbnail = memory.thumbnailUrl
-    ? `<img src="${escapeHtml(memory.thumbnailUrl)}" alt="" width="80" height="80" style="display:block;width:80px;height:80px;object-fit:cover;border-radius:2px;" />`
-    : `<div style="width:80px;height:80px;border-radius:2px;background:linear-gradient(145deg,#C17F59 0%,#8B7355 100%);"></div>`;
+    ? `<img src="${escapeHtml(memory.thumbnailUrl)}" alt="${escapeHtml(memory.title)}" width="120" height="120" style="display:block;width:120px;height:120px;object-fit:cover;border-radius:3px;border:1px solid #EEEAE3;" />`
+    : `<div style="width:120px;height:120px;border-radius:3px;background:#C17F59;background:linear-gradient(145deg,#C17F59 0%,#8B7355 100%);text-align:center;line-height:120px;">
+        <span style="font-size:32px;opacity:0.6;">&#x1f3db;</span>
+      </div>`;
 
   return `
     ${sectionHeading("Memory of the Week")}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
       <tr>
-        <td style="padding:20px;width:80px;" valign="top">${thumbnail}</td>
+        <td style="padding:20px;width:120px;" valign="top">${thumbnail}</td>
         <td style="padding:20px 20px 20px 4px;" valign="middle">
-          <p class="text-primary" style="margin:0 0 6px;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;font-weight:500;color:#2C2C2A;line-height:1.3;font-style:italic;">
+          <p class="text-primary" style="margin:0 0 8px;font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:500;color:#2C2C2A;line-height:1.3;font-style:italic;">
             &ldquo;${escapeHtml(memory.title)}&rdquo;
           </p>
-          <p class="text-muted" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:12px;color:#9A9183;letter-spacing:0.3px;">
-            in ${escapeHtml(memory.roomName)}
+          <p class="text-muted" style="margin:0 0 14px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#9A9183;letter-spacing:0.3px;">
+            in <strong style="color:#8B7355;">${escapeHtml(memory.roomName)}</strong>
+          </p>
+          <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#B8A99A;font-style:italic;line-height:1.5;">
+            Revisit this memory and the stories it holds.
           </p>
         </td>
       </tr>
+    </table>`;
+}
+
+function renderStreak(streakWeeks: number): string {
+  if (streakWeeks < 2) return "";
+
+  // Build flame icons based on streak length (max 8 for display)
+  const flames = Math.min(streakWeeks, 8);
+  const flameStr = "&#x1f525;".repeat(flames) + (streakWeeks > 8 ? " ..." : "");
+
+  const encouragement = streakWeeks >= 12
+    ? "Remarkable dedication. Your future self will thank you."
+    : streakWeeks >= 8
+      ? "An incredible run. Your palace grows richer every week."
+      : streakWeeks >= 4
+        ? "A month of consistency. Your memories are building something lasting."
+        : "Keep the momentum going &mdash; every week counts.";
+
+  return `
+    ${sectionHeading("Your Streak")}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;padding:20px 24px;margin:0 0 28px;">
+    <tr><td style="text-align:center;">
+      <p style="margin:0 0 6px;font-size:20px;line-height:1;">
+        ${flameStr}
+      </p>
+      <p class="text-primary" style="margin:0 0 6px;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:400;color:#2C2C2A;line-height:1.3;">
+        <strong>${streakWeeks} weeks</strong> in a row
+      </p>
+      <p class="text-muted" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#8B7355;font-style:italic;line-height:1.5;">
+        ${encouragement}
+      </p>
+    </td></tr>
     </table>`;
 }
 
@@ -177,32 +226,99 @@ function renderTrack(track: TrackProgress | null): string {
   if (!track) return "";
   const pct = Math.round(track.percentComplete);
   const barWidth = Math.max(5, pct);
-  const encouragement = pct >= 80
-    ? "Almost there &mdash; keep going."
-    : pct < 30
-      ? "Every memory counts. Keep building."
+
+  // Build a compelling, specific CTA based on progress
+  let encouragement: string;
+  if (pct >= 90) {
+    encouragement = "You&rsquo;re so close to completing this track. One final push!";
+  } else if (pct >= 75) {
+    encouragement = "The finish line is in sight &mdash; keep going.";
+  } else if (pct >= 50) {
+    encouragement = "You&rsquo;re past the halfway mark. The momentum is yours.";
+  } else if (pct >= 25) {
+    encouragement = "Great progress. Every step deepens your palace.";
+  } else {
+    encouragement = "Every memory counts. Keep building.";
+  }
+
+  // Next step hint with milestone label for a specific CTA
+  const nextStepHtml = track.nextMilestoneLabel
+    ? `<p class="text-primary" style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#2C2C2A;line-height:1.5;">
+        <strong>Next:</strong> ${escapeHtml(track.nextMilestoneLabel)}
+      </p>`
+    : track.nextStepHint
+      ? `<p class="text-primary" style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#2C2C2A;line-height:1.5;">
+          <strong>Next:</strong> ${escapeHtml(track.nextStepHint)}
+        </p>`
       : "";
 
   return `
     ${sectionHeading("Your Progress")}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;padding:20px 24px;margin:0 0 8px;">
-    <tr><td>
-      <p class="text-primary" style="margin:0 0 12px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
-        <strong>${pct}%</strong> through the <strong>${escapeHtml(track.trackName)}</strong> track
-      </p>
-      <div style="background:#E8E2DA;border-radius:2px;height:6px;overflow:hidden;">
-        <div style="background:#4A6741;width:${barWidth}%;height:100%;border-radius:2px;"></div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
+    <tr><td style="padding:20px 24px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
+            <strong class="text-primary">${escapeHtml(track.icon)} ${escapeHtml(track.trackName)}</strong>
+          </td>
+          <td style="text-align:right;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:400;color:#C9A84C;letter-spacing:-0.5px;">
+            ${pct}%
+          </td>
+        </tr>
+      </table>
+      <div style="background:#E8E2DA;border-radius:3px;height:8px;overflow:hidden;margin:12px 0 0;">
+        <div style="background:#4A6741;background:linear-gradient(90deg,#4A6741,#5B8040);width:${barWidth}%;height:100%;border-radius:3px;"></div>
       </div>
-      ${encouragement ? `<p style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:12px;color:#4A6741;font-style:italic;">${encouragement}</p>` : ""}
+      <p class="text-muted" style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:12px;color:#4A6741;font-style:italic;line-height:1.5;">
+        ${encouragement}
+      </p>
+      ${nextStepHtml}
     </td></tr>
     </table>`;
+}
+
+function renderQuickAddButton(siteUrl: string): string {
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+      <tr><td style="text-align:center;padding:8px 0 0;">
+        <!--[if mso]>
+        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${siteUrl}/palace?action=add" style="height:46px;v-text-anchor:middle;width:240px;" arcsize="10%" fillcolor="#C9A84C" stroke="f">
+          <w:anchorlock/>
+          <center style="color:#ffffff;font-family:Georgia,serif;font-size:14px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">+ Add a Memory</center>
+        </v:roundrect>
+        <![endif]-->
+        <!--[if !mso]><!-->
+        <a href="${siteUrl}/palace?action=add" style="display:inline-block;padding:13px 36px;background:#C9A84C;color:#FFFFFF;font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-weight:700;text-decoration:none;border-radius:4px;letter-spacing:1px;text-transform:uppercase;mso-hide:all;">
+          + Add a Memory
+        </a>
+        <!--<![endif]-->
+      </td></tr>
+    </table>`;
+}
+
+/* ── Greeting helper ── */
+
+function getGreeting(displayName: string): string {
+  const hour = new Date().getUTCHours();
+  // Approximate CET (UTC+1/+2) — target audience is European
+  const cetHour = (hour + 1) % 24;
+
+  if (cetHour >= 5 && cetHour < 12) {
+    return `Good morning, ${displayName}`;
+  } else if (cetHour >= 12 && cetHour < 17) {
+    return `Good afternoon, ${displayName}`;
+  } else if (cetHour >= 17 && cetHour < 22) {
+    return `Good evening, ${displayName}`;
+  }
+  return `Hello, ${displayName}`;
 }
 
 /* ── Main generator ── */
 
 export function generateDigestEmailHtml(params: DigestEmailParams): string {
   const displayName = escapeHtml(params.displayName);
-  const unsubscribeUrl = `${getSiteUrl()}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}`;
+  const siteUrl = getSiteUrl();
+  const unsubscribeUrl = `${siteUrl}/api/email/unsubscribe?unsubscribe=true&uid=${encodeURIComponent(params.userId)}`;
 
   const hasContent =
     params.weeklyStats.totalMemories > 0 ||
@@ -212,6 +328,7 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
     params.trackProgress !== null;
 
   const weekday = new Date().toLocaleDateString("en-US", { weekday: "long" });
+  const greeting = getGreeting(displayName);
 
   const headerHtml = `
     <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
@@ -221,31 +338,36 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
       Your ${weekday} Report
     </h1>
     <p class="header-subtitle" style="margin:14px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#8B7355;line-height:1.6;">
-      Hello, ${displayName}. Here is what happened in your palace this week.
+      ${greeting}. Here is what happened in your palace this week.
     </p>`;
 
   const bodyHtml = hasContent
     ? `
-      ${renderStats(params.weeklyStats)}
+      ${renderStats(params.weeklyStats, params.streakWeeks)}
+      ${renderStreak(params.streakWeeks)}
       ${renderMemoryOfTheWeek(params.memoryOfTheWeek)}
+      ${renderTrack(params.trackProgress)}
+      ${renderQuickAddButton(siteUrl)}
       ${renderOnThisDay(params.onThisDayMemories)}
       ${renderCapsules(params.upcomingCapsules)}
-      ${renderSharedActivity(params.sharedRoomActivity)}
-      ${renderTrack(params.trackProgress)}`
+      ${renderSharedActivity(params.sharedRoomActivity)}`
     : `
       ${ornamentalDivider()}
       <p class="text-secondary" style="margin:16px 0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#8B7355;line-height:1.7;text-align:center;font-style:italic;">
         Your palace is quiet this week. Why not visit and add a new memory?
         Every moment you preserve today becomes a treasure tomorrow.
       </p>
-      ${ornamentalDivider()}`;
+      ${ornamentalDivider()}
+      ${renderQuickAddButton(siteUrl)}`;
 
   return emailLayout({
-    preheader: `${params.displayName}, you have ${params.weeklyStats.memoriesThisWeek} new memories this week.`,
+    preheader: params.streakWeeks >= 2
+      ? `${params.displayName}, ${params.streakWeeks}-week streak! ${params.weeklyStats.memoriesThisWeek} new memories this week.`
+      : `${params.displayName}, you have ${params.weeklyStats.memoriesThisWeek} new memories this week.`,
     headerHtml,
     bodyHtml,
     ctaText: "Visit Your Palace",
-    ctaUrl: `${getSiteUrl()}/palace`,
+    ctaUrl: `${siteUrl}/palace`,
     footerExtra: `
       <p style="margin:0 0 6px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
         You receive this digest weekly because email notifications are enabled.
@@ -256,17 +378,21 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
   });
 }
 
-export function generateDigestEmailSubject(displayName: string): string {
+export function generateDigestEmailSubject(displayName: string, streakWeeks: number): string {
   const weekday = new Date().toLocaleDateString("en-US", { weekday: "long" });
-  return `Your ${weekday} Memory Digest, ${escapeHtml(displayName)}`;
+  if (streakWeeks >= 4) {
+    return `${streakWeeks}-week streak! Your ${weekday} Memory Digest`;
+  }
+  return `Your ${weekday} Memory Digest, ${displayName}`;
 }
 
 export async function sendDigestEmail(params: DigestEmailParams): Promise<{ success: boolean; error?: string }> {
-  const unsubscribeUrl = `${getSiteUrl()}/api/email/unsubscribe?unsubscribe=true&email=${encodeURIComponent(params.recipientEmail)}`;
+  const siteUrl = getSiteUrl();
+  const unsubscribeUrl = `${siteUrl}/api/email/unsubscribe?unsubscribe=true&uid=${encodeURIComponent(params.userId)}`;
 
   return sendEmail({
     to: params.recipientEmail,
-    subject: generateDigestEmailSubject(params.displayName),
+    subject: generateDigestEmailSubject(params.displayName, params.streakWeeks),
     html: generateDigestEmailHtml(params),
     tag: "digest",
     headers: {

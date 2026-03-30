@@ -132,7 +132,7 @@ export async function GET(request: Request) {
   // ── 2. Get profiles with last_seen_at ──
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, display_name, last_seen_at")
+    .select("id, display_name, last_seen_at, preferred_locale")
     .in("id", userIds);
 
   if (!profiles || profiles.length === 0) {
@@ -256,12 +256,14 @@ export async function GET(request: Request) {
       const verifierToken = randomBytes(32).toString("hex");
       const verificationExpiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
       const displayName = profile.display_name || email.split("@")[0];
+      const userLocale = profile.preferred_locale || "en";
 
       const result = await sendVerificationEmail({
         recipientEmail: email,
         displayName,
         inactiveDays: daysSinceLastSeen,
         verificationToken: userToken,
+        locale: userLocale,
       });
 
       if (result.success) {
@@ -286,6 +288,7 @@ export async function GET(request: Request) {
               userName: displayName,
               inactiveDays: daysSinceLastSeen,
               verificationToken: verifierToken,
+              locale: userLocale,
             });
           } catch (e) {
             console.error(`[Legacy] Trusted verifier email failed for ${settings.trusted_verifier_email}:`, e);

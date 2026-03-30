@@ -25,6 +25,99 @@ export const maxDuration = 60;
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
 
+/**
+ * Calculate how many consecutive weeks (ending with the current week)
+ * a user has added at least one memory.
+ *
+ * Works backwards from the current week. A "week" is Mon-Sun aligned.
+ * Returns 0 if no memory was added in the current or most recent week,
+ * otherwise the count of consecutive weeks with activity.
+ */
+function calculateStreakWeeks(memoryDates: string[], now: Date): number {
+  if (memoryDates.length === 0) return 0;
+
+  // Find the Monday of the current week (ISO week: Monday = start)
+  const currentMonday = new Date(now);
+  const dayOfWeek = currentMonday.getDay(); // 0=Sun, 1=Mon...
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  currentMonday.setDate(currentMonday.getDate() - daysToMonday);
+  currentMonday.setHours(0, 0, 0, 0);
+
+  // Build a Set of "week indices" where the user has memories
+  // Week index 0 = current week, 1 = last week, etc.
+  const weeksWithActivity = new Set<number>();
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  for (const dateStr of memoryDates) {
+    const d = new Date(dateStr);
+    const diffMs = currentMonday.getTime() - d.getTime();
+    if (diffMs <= 0) {
+      // Current week (the date is on or after this Monday)
+      weeksWithActivity.add(0);
+    } else {
+      // Past weeks: find which Monday this date falls under.
+      // diffMs > 0 means the memory is before currentMonday.
+      // A memory on the previous Monday (diffMs = exactly weekMs) belongs to week 1,
+      // while a memory just before currentMonday (diffMs = 1ms) also belongs to week 1.
+      // Formula: ceil(diffMs / weekMs) gives the correct week index.
+      const weekIndex = Math.ceil(diffMs / weekMs);
+      weeksWithActivity.add(weekIndex);
+    }
+  }
+
+  // Count consecutive weeks starting from week 0 (current week)
+  // If current week has no activity, start from week 1 (allow the current week to be "in progress")
+  const startWeek = weeksWithActivity.has(0) ? 0 : 1;
+  if (!weeksWithActivity.has(startWeek)) return 0;
+
+  let streak = 0;
+  for (let w = startWeek; w < 200; w++) {
+    if (weeksWithActivity.has(w)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+/**
+ * Determine the next incomplete step on the Preserve track and produce
+ * a human-readable milestone label like "Add 15 more memories to reach 50".
+ */
+function getPreserveNextMilestone(
+  totalMemories: number,
+  totalRooms: number,
+): { nextStepHint: string | null; nextMilestoneLabel: string | null } {
+  // Memory count milestones on the Preserve track
+  const milestones: Array<{ threshold: number; stepId: string; label: string }> = [
+    { threshold: 1, stepId: "p_first_photo", label: "Add your first memory" },
+    { threshold: 10, stepId: "p_10_photos", label: "Reach 10 memories" },
+    { threshold: 50, stepId: "p_50_photos", label: "Reach 50 memories" },
+    { threshold: 100, stepId: "p_100_photos", label: "Reach 100 memories" },
+  ];
+
+  for (const m of milestones) {
+    if (totalMemories < m.threshold) {
+      const remaining = m.threshold - totalMemories;
+      const label = remaining === 1
+        ? `Add 1 more memory to ${m.label.toLowerCase().replace("reach ", "reach ")}`
+        : `Add ${remaining} more memories to ${m.label.toLowerCase()}`;
+      return { nextStepHint: m.label, nextMilestoneLabel: label };
+    }
+  }
+
+  // All memory milestones done — check rooms
+  if (totalRooms < 3) {
+    const remaining = 3 - totalRooms;
+    return {
+      nextStepHint: "Create 3 rooms",
+      nextMilestoneLabel: `Create ${remaining} more room${remaining === 1 ? "" : "s"} to continue`,
+    };
+  }
+
+  return { nextStepHint: null, nextMilestoneLabel: null };
+}
+
 export async function POST(request: Request) {
   const startTime = Date.now();
 
@@ -166,7 +259,7 @@ export async function POST(request: Request) {
     if (data) allRooms.push(...data);
   }
 
-  // ── 4. Build per-user data structures (same logic as before) ──
+  // ── 4. Build per-user data structures ──
 
   // On This Day memories
   const otdByUser: Record<string, OnThisDayMemory[]> = {};
@@ -276,14 +369,20 @@ export async function POST(request: Request) {
     }
   }
 
-  // Memory counts and room counts
+  // Memory counts, room counts, creation dates for streak, and recent memories
   const memoryCountByUser: Record<string, number> = {};
   const memoriesThisWeekByUser: Record<string, number> = {};
   const roomIdsByUser: Record<string, Set<string>> = {};
   const recentMemoriesByUser: Record<string, { title: string; thumbnailUrl: string | null; roomId: string }[]> = {};
+  const memoryDatesByUser: Record<string, string[]> = {};
 
   for (const mem of allMemories) {
     memoryCountByUser[mem.user_id] = (memoryCountByUser[mem.user_id] || 0) + 1;
+
+    // Collect all creation dates for streak calculation
+    if (!memoryDatesByUser[mem.user_id]) memoryDatesByUser[mem.user_id] = [];
+    memoryDatesByUser[mem.user_id].push(mem.created_at);
+
     if (mem.created_at >= weekAgoISO) {
       memoriesThisWeekByUser[mem.user_id] = (memoriesThisWeekByUser[mem.user_id] || 0) + 1;
       if (!recentMemoriesByUser[mem.user_id]) recentMemoriesByUser[mem.user_id] = [];
@@ -321,9 +420,14 @@ export async function POST(request: Request) {
     const profile = profileMap.get(userId);
     const displayName = profile?.display_name || email.split("@")[0];
 
+    // Calculate streak
+    const streakWeeks = calculateStreakWeeks(memoryDatesByUser[userId] || [], now);
+
     // Determine best track progress to show
-    let trackProgress: TrackProgress | null = null;
     const totalMemories = memoryCountByUser[userId] || 0;
+    const totalRooms = roomIdsByUser[userId]?.size || 0;
+    let trackProgress: TrackProgress | null = null;
+
     if (totalMemories > 0 && TRACKS.length > 0) {
       const preserveTrack = TRACKS.find((t) => t.id === "preserve");
       if (preserveTrack) {
@@ -336,10 +440,13 @@ export async function POST(request: Request) {
         }).length;
         const pct = Math.round((completedSteps / preserveTrack.steps.length) * 100);
         if (pct > 0 && pct < 100) {
+          const { nextStepHint, nextMilestoneLabel } = getPreserveNextMilestone(totalMemories, totalRooms);
           trackProgress = {
             trackName: (enMessages.tracksPanel as Record<string, string>)[preserveTrack.nameKey] || preserveTrack.nameKey,
             percentComplete: pct,
             icon: preserveTrack.icon,
+            nextStepHint,
+            nextMilestoneLabel,
           };
         }
       }
@@ -348,7 +455,7 @@ export async function POST(request: Request) {
     const weeklyStats: WeeklyStats = {
       totalMemories: memoryCountByUser[userId] || 0,
       memoriesThisWeek: memoriesThisWeekByUser[userId] || 0,
-      totalRooms: roomIdsByUser[userId]?.size || 0,
+      totalRooms,
     };
 
     let memoryOfTheWeek: MemoryOfTheWeek | null = null;
@@ -366,6 +473,7 @@ export async function POST(request: Request) {
 
     const result = await sendDigestEmail({
       recipientEmail: email,
+      userId,
       displayName,
       onThisDayMemories: otdByUser[userId] || [],
       upcomingCapsules: capsulesByUser[userId] || [],
@@ -373,6 +481,7 @@ export async function POST(request: Request) {
       trackProgress,
       weeklyStats,
       memoryOfTheWeek,
+      streakWeeks,
     });
 
     if (result.success) {

@@ -147,6 +147,27 @@ export async function deleteLegacyContact(contactId: string) {
   return { success: true };
 }
 
+// ═══ USER ROOMS (for room picker) ═══
+
+export interface UserRoom {
+  id: string;
+  name: string;
+  wing_id: string;
+}
+
+export async function fetchUserRooms(): Promise<UserRoom[]> {
+  const { supabase, user } = await getAuthUser();
+  if (!supabase || !user) return [];
+
+  const { data } = await supabase
+    .from("rooms")
+    .select("id, name, wing_id")
+    .eq("user_id", user.id)
+    .order("sort_order", { ascending: true });
+
+  return (data as UserRoom[]) || [];
+}
+
 // ═══ LEGACY MESSAGES ═══
 
 export async function fetchLegacyMessages(): Promise<LegacyMessage[]> {
@@ -275,14 +296,74 @@ export async function upsertLegacySettings(updates: {
   return { settings: data as LegacySettings };
 }
 
+// ═══ FETCH USER WINGS ═══
+
+export interface UserWing {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+export async function fetchUserWings(): Promise<UserWing[]> {
+  const { supabase, user } = await getAuthUser();
+  if (!supabase || !user) return [];
+
+  const { data } = await supabase
+    .from("wings")
+    .select("id, slug, name")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: true });
+
+  return (data as UserWing[]) || [];
+}
+
 // ═══ FETCH ALL LEGACY DATA ═══
 
+export async function retryLegacyDelivery(): Promise<{ success: boolean; sent?: number; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Not authenticated" };
+
+  // Verify user has partially_delivered status
+  const { data: settings } = await supabase
+    .from("legacy_settings")
+    .select("status")
+    .eq("id", user.id)
+    .single();
+
+  if (!settings || settings.status !== "partially_delivered") {
+    return { success: false, error: "No partial delivery to retry" };
+  }
+
+  // Call the deliver endpoint internally
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return { success: false, error: "Server not configured" };
+
+  const res = await fetch(`${siteUrl}/api/legacy/deliver`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${cronSecret}`,
+    },
+    body: JSON.stringify({ userId: user.id, retry: true }),
+  });
+
+  if (!res.ok) {
+    return { success: false, error: "Delivery failed" };
+  }
+
+  const data = await res.json();
+  return { success: true, sent: data.sent };
+}
+
 export async function fetchAllLegacyData() {
-  const [contacts, messages, settings] = await Promise.all([
+  const [contacts, messages, settings, wings] = await Promise.all([
     fetchLegacyContacts(),
     fetchLegacyMessages(),
     fetchLegacySettings(),
+    fetchUserWings(),
   ]);
 
-  return { contacts, messages, settings };
+  return { contacts, messages, settings, wings };
 }

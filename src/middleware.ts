@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/api/stripe/webhook", "/api/cron/"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/legacy", "/api/stripe/webhook", "/api/cron/"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -31,7 +31,8 @@ export async function middleware(request: NextRequest) {
   // Exception: invite pages and public share pages should be accessible to authenticated users
   const isInvitePage = path.startsWith("/invite");
   const isPublicSharePage = path.startsWith("/public");
-  if (user && (isPublicRoute || path === "/") && !isInvitePage && !isPublicSharePage) {
+  const isLegacyPage = path.startsWith("/legacy");
+  if (user && (isPublicRoute || path === "/") && !isInvitePage && !isPublicSharePage && !isLegacyPage) {
     return NextResponse.redirect(new URL("/palace", request.url));
   }
 
