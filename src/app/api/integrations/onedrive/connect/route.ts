@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser, getBaseUrl, generateOAuthState } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getBaseUrl, generateOAuthState, generateCodeVerifier, computeCodeChallenge } from "@/lib/integrations/helpers";
 
 export async function GET() {
   try {
@@ -11,6 +11,8 @@ export async function GET() {
     }
 
     const state = generateOAuthState();
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = computeCodeChallenge(codeVerifier);
     const redirectUri = `${getBaseUrl()}/api/integrations/onedrive/callback`;
     const scopes = [
       "Files.Read",
@@ -26,12 +28,23 @@ export async function GET() {
       scope: scopes.join(" "),
       response_mode: "query",
       state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
     });
 
     const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`;
     const response = NextResponse.redirect(authUrl);
 
     response.cookies.set("oauth_state_onedrive", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
+
+    // Store PKCE code_verifier in an HttpOnly cookie for the token exchange
+    response.cookies.set("oauth_pkce_onedrive", codeVerifier, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

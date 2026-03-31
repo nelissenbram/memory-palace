@@ -3,7 +3,18 @@
  * Uses the Google Photos Library API v1 for listing and downloading media items.
  */
 
+import { TokenExpiredError } from "./helpers";
+
 const BASE_URL = "https://photoslibrary.googleapis.com/v1";
+
+function assertNotUnauthorized(res: Response, body: string): void {
+  if (res.status === 401) {
+    throw new TokenExpiredError(
+      `Google Photos token expired or revoked. Please reconnect your account.`,
+      "google_photos"
+    );
+  }
+}
 
 export interface GooglePhotoItem {
   id: string;
@@ -61,6 +72,7 @@ export async function listPhotos(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`Google Photos API error (${res.status}): ${err}`);
   }
 
@@ -85,6 +97,7 @@ export async function getPhotoUrl(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`Google Photos API error (${res.status}): ${err}`);
   }
 
@@ -107,6 +120,7 @@ export async function downloadPhoto(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`Google Photos API error (${res.status}): ${err}`);
   }
 

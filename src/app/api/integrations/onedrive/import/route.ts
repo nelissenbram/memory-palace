@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, getConnectedAccount } from "@/lib/integrations/helpers";
+import {
+  getAuthenticatedUser,
+  getConnectedAccount,
+  isImportable,
+  isImportableByExtension,
+  MAX_IMPORT_FILE_SIZE,
+  MAX_IMPORT_BATCH_SIZE,
+  TokenExpiredError,
+} from "@/lib/integrations/helpers";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { downloadPhoto } from "@/lib/integrations/onedrive";
 import { createClient } from "@/lib/supabase/server";
@@ -13,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "OneDrive not connected" }, { status: 404 });
     }
 
-    const token = await ensureValidToken(account.id, "onedrive", {
+    let token = await ensureValidToken(account.id, "onedrive", {
       accessToken: account.access_token,
       refreshToken: account.refresh_token,
       expiresAt: account.token_expires_at,
@@ -29,12 +37,76 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "roomId required" }, { status: 400 });
     }
 
+    // Batch limit
+    if (itemIds.length > MAX_IMPORT_BATCH_SIZE) {
+      return NextResponse.json(
+        { error: `Too many files. Maximum ${MAX_IMPORT_BATCH_SIZE} per request.` },
+        { status: 400 },
+      );
+    }
+
     const supabase = await createClient();
+
+    // Check for duplicates: find which itemIds are already imported for this user
+    const { data: existingMemories } = await supabase
+      .from("memories")
+      .select("metadata")
+      .eq("user_id", user.id)
+      .in(
+        "metadata->>originalId",
+        itemIds,
+      );
+
+    const alreadyImportedIds = new Set(
+      (existingMemories || [])
+        .map((m) => (m.metadata as Record<string, unknown>)?.originalId as string)
+        .filter(Boolean),
+    );
+
     const results: Array<{ id: string; success: boolean; error?: string; memoryId?: string }> = [];
+    let tokenRefreshed = false;
 
     for (const itemId of itemIds) {
+      // Skip duplicates
+      if (alreadyImportedIds.has(itemId)) {
+        results.push({ id: itemId, success: false, error: "Already imported" });
+        continue;
+      }
+
       try {
-        const { data, mimeType, filename } = await downloadPhoto(token, itemId);
+        const downloaded = await downloadWithRetry(token, itemId, async () => {
+          if (tokenRefreshed) return null;
+          try {
+            token = await ensureValidToken(account.id, "onedrive", {
+              accessToken: token,
+              refreshToken: account.refresh_token,
+              expiresAt: null, // Force refresh
+            });
+            tokenRefreshed = true;
+            return token;
+          } catch {
+            return null;
+          }
+        });
+
+        if (!downloaded) {
+          results.push({ id: itemId, success: false, error: "Authentication expired. Please reconnect." });
+          continue;
+        }
+
+        const { data, mimeType, filename } = downloaded;
+
+        // File type validation
+        if (!isImportable(mimeType) && !isImportableByExtension(filename)) {
+          results.push({ id: itemId, success: false, error: `File type not supported: ${mimeType}` });
+          continue;
+        }
+
+        // File size validation
+        if (data.byteLength > MAX_IMPORT_FILE_SIZE) {
+          results.push({ id: itemId, success: false, error: `File too large (${Math.round(data.byteLength / 1024 / 1024)}MB). Maximum is 50MB.` });
+          continue;
+        }
 
         const ext = filename.split(".").pop() || "bin";
         const storagePath = `${user.id}/${Date.now()}_${itemId}.${ext}`;
@@ -52,6 +124,7 @@ export async function POST(request: NextRequest) {
 
         const isImage = mimeType.startsWith("image/");
         const isVideo = mimeType.startsWith("video/");
+        const isAudio = mimeType.startsWith("audio/");
         const hue = Math.floor(Math.random() * 360);
 
         const { data: memory, error: memErr } = await supabase
@@ -60,7 +133,7 @@ export async function POST(request: NextRequest) {
             room_id: roomId,
             user_id: user.id,
             title: cleanFilename(filename),
-            type: isVideo ? "video" : isImage ? "photo" : "document",
+            type: isVideo ? "video" : isAudio ? "audio" : isImage ? "photo" : "document",
             file_path: storagePath,
             file_url: publicUrl.publicUrl,
             hue,
@@ -77,6 +150,13 @@ export async function POST(request: NextRequest) {
           results.push({ id: itemId, success: true, memoryId: memory.id });
         }
       } catch (err: unknown) {
+        if (err instanceof TokenExpiredError) {
+          results.push({ id: itemId, success: false, error: "Authentication expired. Please reconnect." });
+          for (const remainingId of itemIds.slice(itemIds.indexOf(itemId) + 1)) {
+            results.push({ id: remainingId, success: false, error: "Skipped: authentication expired" });
+          }
+          break;
+        }
         const message = err instanceof Error ? err.message : "Unknown error";
         results.push({ id: itemId, success: false, error: message });
       }
@@ -96,6 +176,29 @@ export async function POST(request: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
+ * Download with a single token-refresh retry on 401.
+ */
+async function downloadWithRetry(
+  token: string,
+  itemId: string,
+  refreshToken: () => Promise<string | null>,
+): Promise<{ data: ArrayBuffer; mimeType: string; filename: string } | null> {
+  try {
+    return await downloadPhoto(token, itemId);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "";
+    if (message.includes("401") || message.includes("Unauthorized")) {
+      const newToken = await refreshToken();
+      if (newToken) {
+        return await downloadPhoto(newToken, itemId);
+      }
+      return null;
+    }
+    throw err;
   }
 }
 

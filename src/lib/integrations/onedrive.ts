@@ -3,7 +3,18 @@
  * Uses the Microsoft Graph API v1.0 for file browsing and downloading.
  */
 
+import { TokenExpiredError } from "./helpers";
+
 const GRAPH_URL = "https://graph.microsoft.com/v1.0";
+
+function assertNotUnauthorized(res: Response, body: string): void {
+  if (res.status === 401) {
+    throw new TokenExpiredError(
+      `OneDrive token expired or revoked. Please reconnect your account.`,
+      "onedrive"
+    );
+  }
+}
 
 export interface OneDriveItem {
   id: string;
@@ -65,6 +76,7 @@ export async function listPhotos(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`OneDrive API error (${res.status}): ${err}`);
   }
 
@@ -88,6 +100,7 @@ export async function getPhotoUrl(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`OneDrive API error (${res.status}): ${err}`);
   }
 
@@ -113,6 +126,7 @@ export async function downloadPhoto(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`OneDrive API error (${res.status}): ${err}`);
   }
 

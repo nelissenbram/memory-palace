@@ -401,7 +401,10 @@
     "today": "today",
     "yesterday": "yesterday",
     "daysAgo": "{count} days ago",
-    "weeksAgo": "{count} weeks ago"
+    "weeksAgo": "{count} weeks ago",
+    "disconnectConfirmTitle": "Disconnect Account",
+    "disconnectConfirmBody": "Are you sure you want to disconnect {provider}? This will revoke access and you will no longer be able to import files from this account.",
+    "connectionFailedGeneric": "Connection failed. Please try again."
   },
   "familySettings": {
     "title": "Family Sharing",
@@ -666,7 +669,8 @@
     "importFile": "Import 1 file to Memory Palace",
     "items": "{count} items",
     "video": "VIDEO",
-    "importFailed": "Import failed"
+    "importFailed": "Import failed",
+    "importItemFailed": "Could not import {name}. Please try again."
   },
   "room": {
     "manageRooms": "Manage Rooms",
@@ -1291,7 +1295,10 @@
     "typeVitrine": "Vitrine",
     "typeAudio": "Audio",
     "typeDocument": "Document",
-    "fileTooLarge": "File too large ({size} MB). Maximum is {max}."
+    "fileTooLarge": "File too large ({size} MB). Maximum is {max}.",
+    "editItem": "Edit item",
+    "acceptItem": "Accept item",
+    "rejectItem": "Reject item"
   },
   "memoryDetail": {
     "description": "Description",

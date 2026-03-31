@@ -5,7 +5,7 @@ import { listPhotos } from "@/lib/integrations/google-photos";
 
 /**
  * GET — Browse Google Photos media items (paginated).
- * Query params: cursor (optional page token)
+ * Query params: cursor (optional page token), pageSize (1-100, default 20)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -23,7 +23,8 @@ export async function GET(request: NextRequest) {
     });
 
     const cursor = request.nextUrl.searchParams.get("cursor") || undefined;
-    const pageSize = parseInt(request.nextUrl.searchParams.get("pageSize") || "50", 10);
+    const rawPageSize = parseInt(request.nextUrl.searchParams.get("pageSize") || "20", 10);
+    const pageSize = Math.max(1, Math.min(100, isNaN(rawPageSize) ? 20 : rawPageSize));
 
     const result = await listPhotos(token, cursor, pageSize);
 

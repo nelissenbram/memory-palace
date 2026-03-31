@@ -13,18 +13,28 @@ export async function GET(request: NextRequest) {
     const state = request.nextUrl.searchParams.get("state");
 
     if (error) {
-      return NextResponse.redirect(`${baseUrl}/settings/connections?error=${encodeURIComponent(error)}`);
+      return NextResponse.redirect(`${baseUrl}/settings/connections?error=auth_failed&provider=dropbox`);
     }
     if (!code) {
-      return NextResponse.redirect(`${baseUrl}/settings/connections?error=no_code`);
+      return NextResponse.redirect(`${baseUrl}/settings/connections?error=auth_failed&provider=dropbox`);
     }
 
     // Verify CSRF state parameter
     const cookieStore = await cookies();
     const storedState = cookieStore.get("oauth_state_dropbox")?.value;
     if (!state || !storedState || state !== storedState) {
-      const resp = NextResponse.redirect(`${baseUrl}/settings/connections?error=invalid_state`);
+      const resp = NextResponse.redirect(`${baseUrl}/settings/connections?error=invalid_state&provider=dropbox`);
       resp.cookies.delete("oauth_state_dropbox");
+      resp.cookies.delete("oauth_pkce_dropbox");
+      return resp;
+    }
+
+    // Retrieve PKCE code_verifier from cookie
+    const codeVerifier = cookieStore.get("oauth_pkce_dropbox")?.value;
+    if (!codeVerifier) {
+      const resp = NextResponse.redirect(`${baseUrl}/settings/connections?error=auth_failed&provider=dropbox`);
+      resp.cookies.delete("oauth_state_dropbox");
+      resp.cookies.delete("oauth_pkce_dropbox");
       return resp;
     }
 
@@ -43,13 +53,17 @@ export async function GET(request: NextRequest) {
         code,
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
+        code_verifier: codeVerifier,
       }),
     });
 
     if (!tokenRes.ok) {
       const errText = await tokenRes.text();
       console.error("Dropbox token exchange failed:", errText);
-      return NextResponse.redirect(`${baseUrl}/settings/connections?error=token_exchange_failed`);
+      const resp = NextResponse.redirect(`${baseUrl}/settings/connections?error=auth_failed&provider=dropbox`);
+      resp.cookies.delete("oauth_state_dropbox");
+      resp.cookies.delete("oauth_pkce_dropbox");
+      return resp;
     }
 
     const tokens = await tokenRes.json();
@@ -76,10 +90,11 @@ export async function GET(request: NextRequest) {
 
     const resp = NextResponse.redirect(`${baseUrl}/settings/connections?connected=dropbox`);
     resp.cookies.delete("oauth_state_dropbox");
+    resp.cookies.delete("oauth_pkce_dropbox");
     return resp;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     console.error("Dropbox OAuth callback error:", message);
-    return NextResponse.redirect(`${getBaseUrl()}/settings/connections?error=${encodeURIComponent(message)}`);
+    return NextResponse.redirect(`${getBaseUrl()}/settings/connections?error=auth_failed&provider=dropbox`);
   }
 }

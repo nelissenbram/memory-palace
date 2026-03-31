@@ -3,7 +3,18 @@
  * Handles file browsing and downloading from Dropbox.
  */
 
+import { TokenExpiredError } from "./helpers";
+
 const API_URL = "https://api.dropboxapi.com/2";
+
+function assertNotUnauthorized(res: Response, body: string): void {
+  if (res.status === 401) {
+    throw new TokenExpiredError(
+      `Dropbox token expired or revoked. Please reconnect your account.`,
+      "dropbox"
+    );
+  }
+}
 const CONTENT_URL = "https://content.dropboxapi.com/2";
 
 export interface DropboxEntry {
@@ -72,6 +83,7 @@ export async function listPhotos(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`Dropbox API error (${res.status}): ${err}`);
   }
 
@@ -101,6 +113,7 @@ export async function getPhotoUrl(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`Dropbox API error (${res.status}): ${err}`);
   }
 
@@ -125,6 +138,7 @@ export async function downloadPhoto(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`Dropbox download error (${res.status}): ${err}`);
   }
 

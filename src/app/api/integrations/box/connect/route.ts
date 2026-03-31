@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser, getBaseUrl, generateOAuthState } from "@/lib/integrations/helpers";
 
+// NOTE: Box OAuth 2.0 does not support PKCE (code_challenge / code_verifier).
+// PKCE is intentionally omitted for this provider.
+
 export async function GET() {
   try {
     await getAuthenticatedUser();

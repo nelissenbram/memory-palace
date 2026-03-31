@@ -243,14 +243,14 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(10px)", zIndex: 60, animation: "fadeIn .2s ease", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
-        width: isMobile ? "100%" : "min(820px, 94vw)",
+        width: isMobile ? "100%" : "min(51.25rem, 94vw)",
         maxHeight: isMobile ? "100%" : "90vh",
         height: isMobile ? "100%" : undefined,
         overflow: "hidden", display: "flex", flexDirection: "column",
         background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",
         borderRadius: isMobile ? 0 : "1.25rem",
         border: isMobile ? "none" : `1px solid ${T.color.cream}`,
-        boxShadow: isMobile ? "none" : "0 24px 80px rgba(44,44,42,.3)",
+        boxShadow: isMobile ? "none" : "0 1.5rem 5rem rgba(44,44,42,.3)",
         animation: isMobile ? "fadeIn .2s ease" : "fadeUp .3s ease",
       }}>
         {/* Header */}
@@ -269,7 +269,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 </p>
               </div>
             </div>
-            <button onClick={onClose} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onClose} aria-label={tc("close")} style={{ width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
           </div>
 
           {/* Source toggle: Local / Cloud */}
@@ -280,7 +280,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 background: !showCloud ? T.color.white : "transparent",
                 color: !showCloud ? T.color.charcoal : T.color.muted,
                 fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: !showCloud ? 600 : 400, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem",
               }}>
                 {"\u{1F4C1}"} {t("localFiles")}
               </button>
@@ -289,7 +289,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 background: showCloud ? T.color.white : "transparent",
                 color: showCloud ? T.color.charcoal : T.color.muted,
                 fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: showCloud ? 600 : 400, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem",
               }}>
                 {"\u2601\uFE0F"} {t("importFromCloud")}
               </button>
@@ -405,7 +405,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#C05050", lineHeight: 1.5, flex: 1 }}>
                   {t("filesSkipped", { count: String(skippedOversized) })}
                 </span>
-                <button onClick={() => setSkippedOversized(0)} aria-label={tc("dismiss")} style={{ background: "none", border: "none", color: "#C05050", fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>{"\u2715"}</button>
+                <button onClick={() => setSkippedOversized(0)} aria-label={tc("dismiss")} style={{ background: "none", border: "none", color: "#C05050", fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem", flexShrink: 0, minWidth: "2.75rem", minHeight: "2.75rem", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
               </div>
             )}
 
@@ -413,7 +413,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             {items.length > 0 && <>
               <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginBottom: "0.5rem", display: "flex", justifyContent: "space-between" }}>
                 <span>{t("fileCount", { count: String(items.length), size: formatBytes(totalSize) })}</span>
-                <button onClick={() => store.reset()} style={{ background: "none", border: "none", color: T.color.terracotta, fontFamily: T.font.body, fontSize: "0.6875rem", cursor: "pointer" }}>{t("clearAll")}</button>
+                <button onClick={() => store.reset()} style={{ background: "none", border: "none", color: T.color.terracotta, fontFamily: T.font.body, fontSize: "0.6875rem", cursor: "pointer", minHeight: "2.75rem", padding: "0.25rem 0.5rem" }}>{t("clearAll")}</button>
               </div>
               <div style={{ maxHeight: "12.5rem", overflowY: "auto", borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`, background: T.color.white }}>
                 {items.map((item) => (
@@ -426,7 +426,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                       <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>{formatBytes(item.fileSizeBytes)}</div>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); store.removeItem(item.localId); }}
-                      style={{ background: "none", border: "none", color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem" }}>{"\u2715"}</button>
+                      aria-label={tc("remove")}
+                      style={{ background: "none", border: "none", color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem", minWidth: "2.75rem", minHeight: "2.75rem", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
                   </div>
                 ))}
               </div>
@@ -484,6 +485,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                   background: tab === key ? T.color.white : "transparent",
                   color: tab === key ? T.color.charcoal : T.color.muted,
                   fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: tab === key ? 600 : 400, cursor: "pointer",
+                  minHeight: "2.75rem",
                 }}>{label}</button>
               ))}
             </div>
@@ -493,6 +495,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               <button onClick={() => store.acceptAll()} style={{
                 padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`,
                 background: T.color.white, fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500, color: "#4A6741", cursor: "pointer",
+                minHeight: "2.75rem",
               }}>{t("acceptAllReady")}</button>
             </div>
 
@@ -633,16 +636,16 @@ function ReviewCard({ item, wings, getWingRooms }: {
 
         {/* Actions */}
         <div style={{ display: "flex", gap: "0.25rem", flexShrink: 0 }}>
-          <button onClick={() => setExpanded(!expanded)} style={{
-            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`,
+          <button onClick={() => setExpanded(!expanded)} aria-label={t("editItem")} style={{
+            width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`,
             background: T.color.warmStone, fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: T.color.muted,
           }}>{"\u270F\uFE0F"}</button>
-          {item.status !== "accepted" && <button onClick={() => store.acceptItem(item.localId)} style={{
-            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem", border: "1px solid #4A674133",
+          {item.status !== "accepted" && <button onClick={() => store.acceptItem(item.localId)} aria-label={t("acceptItem")} style={{
+            width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem", border: "1px solid #4A674133",
             background: "#4A674110", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#4A6741",
           }}>{"\u2713"}</button>}
-          {item.status !== "rejected" && <button onClick={() => store.rejectItem(item.localId)} style={{
-            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem", border: "1px solid #C0505033",
+          {item.status !== "rejected" && <button onClick={() => store.rejectItem(item.localId)} aria-label={t("rejectItem")} style={{
+            width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem", border: "1px solid #C0505033",
             background: "#C0505010", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#C05050",
           }}>{"\u2715"}</button>}
         </div>
@@ -726,7 +729,7 @@ function readFileAsDataUrl(file: File, fileTooLargeMsg?: string): Promise<string
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.onerror = () => reject(new Error(fileTooLargeMsg || "Read error"));
     reader.readAsDataURL(file);
   });
 }

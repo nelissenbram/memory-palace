@@ -401,7 +401,10 @@
     "today": "vandaag",
     "yesterday": "gisteren",
     "daysAgo": "{count} dagen geleden",
-    "weeksAgo": "{count} weken geleden"
+    "weeksAgo": "{count} weken geleden",
+    "disconnectConfirmTitle": "Account ontkoppelen",
+    "disconnectConfirmBody": "Weet je zeker dat je {provider} wilt ontkoppelen? Hiermee wordt de toegang ingetrokken en kun je geen bestanden meer importeren vanuit dit account.",
+    "connectionFailedGeneric": "Koppeling mislukt. Probeer het opnieuw."
   },
   "familySettings": {
     "title": "Familie delen",
@@ -666,7 +669,8 @@
     "importFile": "Importeer 1 bestand naar Memory Palace",
     "video": "VIDEO",
     "items": "{count} onderdelen",
-    "importFailed": "Import mislukt"
+    "importFailed": "Import mislukt",
+    "importItemFailed": "Kon {name} niet importeren. Probeer het opnieuw."
   },
   "room": {
     "manageRooms": "Kamers beheren",
@@ -1291,7 +1295,10 @@
     "typeVitrine": "Vitrine",
     "typeAudio": "Audio",
     "typeDocument": "Document",
-    "fileTooLarge": "Bestand te groot ({size} MB). Maximum is {max}."
+    "fileTooLarge": "Bestand te groot ({size} MB). Maximum is {max}.",
+    "editItem": "Item bewerken",
+    "acceptItem": "Item accepteren",
+    "rejectItem": "Item afwijzen"
   },
   "memoryDetail": {
     "description": "Beschrijving",

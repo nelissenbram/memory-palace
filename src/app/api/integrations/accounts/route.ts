@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { revokeProviderToken } from "@/lib/integrations/helpers";
 
 /**
  * GET — List all connected accounts for the current user.
@@ -43,6 +44,19 @@ export async function DELETE(request: NextRequest) {
     const provider = request.nextUrl.searchParams.get("provider");
     if (!provider) {
       return NextResponse.json({ error: "provider parameter required" }, { status: 400 });
+    }
+
+    // Fetch the account to get the access token for revocation
+    const { data: account } = await supabase
+      .from("connected_accounts")
+      .select("access_token")
+      .eq("user_id", user.id)
+      .eq("provider", provider)
+      .single();
+
+    // Best-effort: revoke the token at the provider before deleting locally
+    if (account?.access_token) {
+      await revokeProviderToken(provider, account.access_token);
     }
 
     const { error } = await supabase

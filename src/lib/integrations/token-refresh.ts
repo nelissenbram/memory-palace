@@ -5,6 +5,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { TokenExpiredError } from "./helpers";
 
 export interface TokenInfo {
   accessToken: string;
@@ -24,9 +25,10 @@ const EXPIRY_BUFFER_MS = 5 * 60 * 1000;
 /**
  * Check if a token is expired (or about to expire).
  */
-export function isTokenExpired(expiresAt: string | null): boolean {
-  if (!expiresAt) return false; // No expiry info — assume valid
+export function isTokenExpired(expiresAt: string | null | undefined): boolean {
+  if (!expiresAt) return true; // No expiry info — treat as expired to force refresh
   const expiryTime = new Date(expiresAt).getTime();
+  if (isNaN(expiryTime)) return true; // Invalid date — treat as expired
   return Date.now() > expiryTime - EXPIRY_BUFFER_MS;
 }
 
@@ -170,7 +172,16 @@ export async function ensureValidToken(
     throw new Error(`Unknown provider: ${provider}`);
   }
 
-  const result = await refreshFn(tokenInfo.refreshToken);
+  let result: RefreshResult;
+  try {
+    result = await refreshFn(tokenInfo.refreshToken);
+  } catch (err) {
+    // Refresh failed — the user needs to re-authenticate
+    throw new TokenExpiredError(
+      `Token refresh failed for ${provider}. Please reconnect your account.`,
+      provider
+    );
+  }
 
   // Persist the refreshed token
   const supabase = await createClient();

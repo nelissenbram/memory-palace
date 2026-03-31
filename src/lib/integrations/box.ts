@@ -3,7 +3,18 @@
  * Uses the Box Content API v2.0 for file browsing and downloading.
  */
 
+import { TokenExpiredError } from "./helpers";
+
 const API_URL = "https://api.box.com/2.0";
+
+function assertNotUnauthorized(res: Response, body: string): void {
+  if (res.status === 401) {
+    throw new TokenExpiredError(
+      `Box token expired or revoked. Please reconnect your account.`,
+      "box"
+    );
+  }
+}
 
 export interface BoxItem {
   type: "file" | "folder" | "web_link";
@@ -59,6 +70,7 @@ export async function listPhotos(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`Box API error (${res.status}): ${err}`);
   }
 
@@ -116,6 +128,7 @@ export async function downloadPhoto(
 
   if (!infoRes.ok) {
     const err = await infoRes.text();
+    assertNotUnauthorized(infoRes, err);
     throw new Error(`Box API error (${infoRes.status}): ${err}`);
   }
 
@@ -128,6 +141,7 @@ export async function downloadPhoto(
 
   if (!res.ok) {
     const err = await res.text();
+    assertNotUnauthorized(res, err);
     throw new Error(`Box download error (${res.status}): ${err}`);
   }
 

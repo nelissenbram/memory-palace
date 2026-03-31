@@ -3,7 +3,23 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
+
+/**
+ * Custom error thrown when a provider token is expired/invalid and re-auth is needed.
+ * Callers can check `instanceof TokenExpiredError` to show "re-authenticate" UI
+ * instead of a generic 500.
+ */
+export class TokenExpiredError extends Error {
+  public readonly provider: string;
+  public readonly code = "TOKEN_EXPIRED";
+
+  constructor(message: string, provider: string) {
+    super(message);
+    this.name = "TokenExpiredError";
+    this.provider = provider;
+  }
+}
 
 /**
  * Get the authenticated user or throw.
@@ -90,6 +106,25 @@ export function generateOAuthState(): string {
 }
 
 /**
+ * Generate a PKCE code_verifier (RFC 7636).
+ * Returns a random 64-character URL-safe string.
+ */
+export function generateCodeVerifier(): string {
+  return randomBytes(48)
+    .toString("base64url")
+    .slice(0, 64);
+}
+
+/**
+ * Compute the S256 code_challenge from a code_verifier (RFC 7636).
+ */
+export function computeCodeChallenge(verifier: string): string {
+  return createHash("sha256")
+    .update(verifier)
+    .digest("base64url");
+}
+
+/**
  * Supported image MIME types for import.
  */
 export const SUPPORTED_IMAGE_TYPES = new Set([
@@ -106,8 +141,147 @@ export const SUPPORTED_VIDEO_TYPES = new Set([
 ]);
 
 /**
- * Check if a file type is importable.
+ * Supported audio MIME types for import.
+ */
+export const SUPPORTED_AUDIO_TYPES = new Set([
+  "audio/mpeg", "audio/wav", "audio/x-wav", "audio/x-m4a", "audio/mp4",
+]);
+
+/**
+ * Supported document MIME types for import.
+ */
+export const SUPPORTED_DOCUMENT_TYPES = new Set([
+  "application/pdf", "text/plain",
+]);
+
+/**
+ * Allowed file extensions for import (used when MIME type is unreliable).
+ */
+export const IMPORTABLE_EXTENSIONS = new Set([
+  "jpg", "jpeg", "png", "gif", "webp", "heic", "heif", "tiff", "bmp",
+  "mp4", "mov", "avi", "webm", "mkv",
+  "mp3", "wav", "m4a",
+  "pdf", "txt",
+]);
+
+/** Maximum file size for import: 50 MB */
+export const MAX_IMPORT_FILE_SIZE = 50 * 1024 * 1024;
+
+/** Maximum number of files per import request */
+export const MAX_IMPORT_BATCH_SIZE = 50;
+
+/**
+ * Check if a file type is importable by MIME type.
  */
 export function isImportable(mimeType: string): boolean {
-  return SUPPORTED_IMAGE_TYPES.has(mimeType) || SUPPORTED_VIDEO_TYPES.has(mimeType);
+  return (
+    SUPPORTED_IMAGE_TYPES.has(mimeType) ||
+    SUPPORTED_VIDEO_TYPES.has(mimeType) ||
+    SUPPORTED_AUDIO_TYPES.has(mimeType) ||
+    SUPPORTED_DOCUMENT_TYPES.has(mimeType)
+  );
+}
+
+/**
+ * Check if a file is importable by extension (fallback when MIME is unknown).
+ */
+export function isImportableByExtension(filename: string): boolean {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  return IMPORTABLE_EXTENSIONS.has(ext);
+}
+
+// ---------------------------------------------------------------------------
+// In-memory rate limiter
+// ---------------------------------------------------------------------------
+
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
+
+const rateLimitMap = new Map<string, RateLimitEntry>();
+
+/**
+ * Simple in-memory fixed-window rate limiter.
+ * Returns `true` if the request is allowed, `false` if rate-limited.
+ *
+ * @param key       Unique key (e.g. `userId:action`)
+ * @param maxRequests  Max number of requests within the window
+ * @param windowMs     Window duration in milliseconds
+ */
+export function checkRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(key);
+
+  if (!entry || now >= entry.resetAt) {
+    // First request in window or window has expired — start fresh
+    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+
+  if (entry.count < maxRequests) {
+    entry.count++;
+    return true;
+  }
+
+  // Rate limit exceeded
+  return false;
+}
+
+/**
+ * Revoke an OAuth token at the provider's revocation endpoint.
+ * Best-effort: logs a warning on failure but never throws.
+ */
+export async function revokeProviderToken(
+  provider: string,
+  accessToken: string,
+): Promise<void> {
+  try {
+    switch (provider) {
+      case "google_photos": {
+        const res = await fetch(
+          `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(accessToken)}`,
+          { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+        );
+        if (!res.ok) {
+          console.warn(`[revoke] Google token revocation returned ${res.status}: ${await res.text()}`);
+        }
+        break;
+      }
+      case "dropbox": {
+        const res = await fetch("https://api.dropboxapi.com/2/auth/token/revoke", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (!res.ok) {
+          console.warn(`[revoke] Dropbox token revocation returned ${res.status}: ${await res.text()}`);
+        }
+        break;
+      }
+      case "onedrive": {
+        // Microsoft/OneDrive does not provide a standard token revocation endpoint.
+        // Deleting from the DB is sufficient.
+        break;
+      }
+      case "box": {
+        const res = await fetch("https://api.box.com/oauth2/revoke", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: process.env.BOX_CLIENT_ID!,
+            client_secret: process.env.BOX_CLIENT_SECRET!,
+            token: accessToken,
+          }),
+        });
+        if (!res.ok) {
+          console.warn(`[revoke] Box token revocation returned ${res.status}: ${await res.text()}`);
+        }
+        break;
+      }
+      default:
+        console.warn(`[revoke] No revocation handler for provider: ${provider}`);
+    }
+  } catch (err) {
+    console.warn(`[revoke] Failed to revoke ${provider} token:`, err);
+  }
 }

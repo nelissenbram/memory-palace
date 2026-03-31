@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser, getBaseUrl, generateOAuthState } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getBaseUrl, generateOAuthState, generateCodeVerifier, computeCodeChallenge } from "@/lib/integrations/helpers";
 
 export async function GET() {
   try {
@@ -11,6 +11,8 @@ export async function GET() {
     }
 
     const state = generateOAuthState();
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = computeCodeChallenge(codeVerifier);
     const redirectUri = `${getBaseUrl()}/api/integrations/google/callback`;
     const scopes = [
       "https://www.googleapis.com/auth/photoslibrary.readonly",
@@ -26,6 +28,8 @@ export async function GET() {
       access_type: "offline",
       prompt: "consent",
       state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
     });
 
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
@@ -37,6 +41,15 @@ export async function GET() {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 600, // 10 minutes
+      path: "/",
+    });
+
+    // Store PKCE code_verifier in an HttpOnly cookie for the token exchange
+    response.cookies.set("oauth_pkce_google", codeVerifier, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
       path: "/",
     });
 

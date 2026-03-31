@@ -246,19 +246,17 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
           results: data.results,
         });
       } else {
-        const err = await res.json();
         setImportProgress((prev) => prev ? {
           ...prev,
           failed: prev.total,
-          results: [{ id: "error", success: false, error: err.error || t("importFailed") }],
+          results: [{ id: "error", success: false, error: t("importFailed") }],
         } : null);
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : t("importFailed");
+    } catch {
       setImportProgress((prev) => prev ? {
         ...prev,
         failed: prev.total,
-        results: [{ id: "error", success: false, error: message }],
+        results: [{ id: "error", success: false, error: t("importFailed") }],
       } : null);
     }
 
@@ -297,8 +295,8 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 </p>
               </div>
             </div>
-            <button onClick={onClose} style={{
-              width: "2rem", height: "2rem", borderRadius: "1rem",
+            <button onClick={onClose} aria-label={tc("close")} style={{
+              width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem",
               border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
               color: T.color.muted, fontSize: "0.875rem", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -323,7 +321,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                     color: isActive ? T.color.charcoal : T.color.muted,
                     fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: isActive ? 600 : 400,
                     cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem",
-                    whiteSpace: "nowrap", transition: "all .15s",
+                    whiteSpace: "nowrap", transition: "all .15s", minHeight: "2.75rem",
                   }}>
                     <span>{meta.icon}</span>
                     {meta.name}
@@ -354,10 +352,11 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 {t("noAccountsDesc")}
               </p>
               <a href="/settings/connections" style={{
-                display: "inline-block", padding: "0.75rem 1.5rem", borderRadius: "0.75rem",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                padding: "0.75rem 1.5rem", borderRadius: "0.75rem",
                 background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                 color: "#FFF", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                textDecoration: "none",
+                textDecoration: "none", minHeight: "2.75rem",
               }}>
                 {t("goToSettings")}
               </a>
@@ -397,7 +396,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                     <p key={i} style={{
                       fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C05050", margin: "0.25rem 0",
                     }}>
-                      {r.id}: {r.error}
+                      {t("importItemFailed", { name: r.id === "error" ? t("importFailed") : r.id })}
                     </p>
                   ))}
                 </div>
@@ -422,7 +421,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             </div>
           )}
 
-          {/* Importing progress */}
+          {/* Importing progress (indeterminate — single batch request) */}
           {importing && importProgress && (
             <div style={{ padding: "2rem 0" }}>
               <div style={{
@@ -430,19 +429,18 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginBottom: "0.5rem",
               }}>
                 <span>{t("importingFrom", { provider: PROVIDER_META[activeProvider!]?.name })}</span>
-                <span>{importProgress.succeeded + importProgress.failed} / {importProgress.total}</span>
+                <span>{t("selected", { count: String(importProgress.total) })}</span>
               </div>
               <div style={{
                 width: "100%", height: "0.5rem", borderRadius: "0.25rem",
                 background: `${T.color.sandstone}33`, overflow: "hidden",
+                position: "relative",
               }}>
                 <div style={{
-                  width: `${importProgress.total > 0
-                    ? ((importProgress.succeeded + importProgress.failed) / importProgress.total) * 100
-                    : 0}%`,
+                  width: "40%",
                   height: "100%", borderRadius: "0.25rem",
                   background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                  transition: "width .3s",
+                  animation: "indeterminate 1.4s ease-in-out infinite",
                 }} />
               </div>
               <p style={{
@@ -451,6 +449,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               }}>
                 {t("importWaitMessage")}
               </p>
+              <style>{`@keyframes indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }`}</style>
             </div>
           )}
 
@@ -467,7 +466,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                   <button onClick={() => navigateBack(0)} style={{
                     background: "none", border: "none", color: T.color.terracotta,
                     fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
-                    padding: "0.125rem 0.25rem",
+                    padding: "0.125rem 0.25rem", minHeight: "2.75rem",
                   }}>
                     {t("root")}
                   </button>
@@ -479,7 +478,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                         color: i === folderPath.length - 1 ? T.color.charcoal : T.color.terracotta,
                         fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
                         fontWeight: i === folderPath.length - 1 ? 600 : 400,
-                        padding: "0.125rem 0.25rem",
+                        padding: "0.125rem 0.25rem", minHeight: "2.75rem",
                       }}>
                         {folder.name}
                       </button>
@@ -496,16 +495,16 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 }}>
                   <div style={{ display: "flex", gap: "0.5rem" }}>
                     <button onClick={selectAll} style={{
-                      padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
+                      padding: "0.5rem 0.75rem", borderRadius: "0.5rem",
                       border: `1px solid ${T.color.cream}`, background: T.color.white,
                       fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal,
-                      cursor: "pointer",
+                      cursor: "pointer", minHeight: "2.75rem",
                     }}>{t("selectAll")}</button>
                     <button onClick={selectNone} style={{
-                      padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
+                      padding: "0.5rem 0.75rem", borderRadius: "0.5rem",
                       border: `1px solid ${T.color.cream}`, background: T.color.white,
                       fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal,
-                      cursor: "pointer",
+                      cursor: "pointer", minHeight: "2.75rem",
                     }}>{t("selectNone")}</button>
                   </div>
                   <span style={{
@@ -561,7 +560,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                         width: "100%", padding: "0.75rem", borderRadius: "0.625rem", marginTop: "0.75rem",
                         border: `1px solid ${T.color.cream}`, background: T.color.white,
                         fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
-                        cursor: "pointer",
+                        cursor: "pointer", minHeight: "2.75rem",
                       }}
                     >
                       {loadingItems ? tc("loading") : t("loadMore")}
@@ -657,7 +656,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
         {content}
         <style>{`
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-          @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes fadeUp { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: translateY(0); } }
         `}</style>
       </div>
     );
@@ -665,18 +664,18 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
 
   // Standalone modal mode
   return (
-    <div onClick={onClose} style={{
+    <div onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} style={{
       position: "fixed", inset: 0,
       background: "rgba(42,34,24,.5)", backdropFilter: "blur(10px)",
       zIndex: 60, animation: "fadeIn .2s ease",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
-        width: "min(900px, 94vw)", maxHeight: "90vh",
+      <div role="dialog" aria-modal="true" aria-label={t("title")} onClick={(e) => e.stopPropagation()} style={{
+        width: "min(56.25rem, 94vw)", maxHeight: "90vh",
         overflow: "hidden", display: "flex", flexDirection: "column",
         background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",
         borderRadius: "1.25rem", border: `1px solid ${T.color.cream}`,
-        boxShadow: "0 24px 80px rgba(44,44,42,.3)",
+        boxShadow: "0 1.5rem 5rem rgba(44,44,42,.3)",
         animation: "fadeUp .3s ease",
       }}>
         {content}
@@ -684,7 +683,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );
@@ -697,10 +696,11 @@ function PhotoGrid({ items, selected, onToggle }: {
   onToggle: (id: string) => void;
 }) {
   const { t } = useTranslation("import");
+  const { t: tc } = useTranslation("common");
   return (
     <div style={{
       display: "grid",
-      gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+      gridTemplateColumns: "repeat(auto-fill, minmax(7.5rem, 1fr))",
       gap: "0.5rem",
       maxHeight: "25rem",
       overflowY: "auto",
@@ -709,10 +709,10 @@ function PhotoGrid({ items, selected, onToggle }: {
       {items.map((item) => {
         const isSelected = selected.has(item.id);
         return (
-          <div key={item.id} role="button" tabIndex={0} onClick={() => onToggle(item.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(item.id); } }} aria-label={`${isSelected ? t("deselect") : t("select")} ${item.filename || item.name}`} style={{
+          <div key={item.id} role="button" tabIndex={0} onClick={() => onToggle(item.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(item.id); } }} aria-label={`${isSelected ? tc("deselect") : tc("select")} ${item.filename || item.name}`} style={{
             position: "relative", aspectRatio: "1",
             borderRadius: "0.625rem", overflow: "hidden", cursor: "pointer",
-            border: isSelected ? `3px solid ${T.color.terracotta}` : `1px solid ${T.color.cream}`,
+            border: isSelected ? `0.1875rem solid ${T.color.terracotta}` : `1px solid ${T.color.cream}`,
             background: T.color.warmStone,
             transition: "border .15s",
           }}>
@@ -742,7 +742,7 @@ function PhotoGrid({ items, selected, onToggle }: {
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: "0.75rem", color: "#FFF", fontWeight: 700,
               transition: "all .15s",
-              boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+              boxShadow: "0 0.0625rem 0.25rem rgba(0,0,0,.15)",
             }}>
               {isSelected && "\u2713"}
             </div>
@@ -789,6 +789,7 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
   onOpenFolder: (item: CloudItem) => void;
 }) {
   const { t, locale } = useTranslation("import");
+  const { t: tc } = useTranslation("common");
   // Sort: folders first, then files
   const sorted = [...items].sort((a, b) => {
     if (a.isFolder && !b.isFolder) return -1;
@@ -798,8 +799,8 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
 
   return (
     <div style={{
-      maxHeight: 400, overflowY: "auto",
-      borderRadius: 12, border: `1px solid ${T.color.cream}`,
+      maxHeight: "25rem", overflowY: "auto",
+      borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`,
       background: T.color.white,
     }}>
       {sorted.map((item) => {
@@ -814,9 +815,9 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
           : "\u{1F4C4}";
 
         return (
-          <div key={item.id} role="button" tabIndex={0} aria-label={isFolder ? `${t("openFolder")} ${item.name}` : `${isSelected ? t("deselect") : t("select")} ${item.name}`} style={{
-            display: "flex", alignItems: "center", gap: 10,
-            padding: "10px 14px",
+          <div key={item.id} role="button" tabIndex={0} aria-label={isFolder ? `${tc("openFolder")} ${item.name}` : `${isSelected ? tc("deselect") : tc("select")} ${item.name}`} style={{
+            display: "flex", alignItems: "center", gap: "0.625rem",
+            padding: "0.625rem 0.875rem", minHeight: "2.75rem",
             borderBottom: `1px solid ${T.color.cream}22`,
             background: isSelected ? `${T.color.terracotta}06` : "transparent",
             cursor: "pointer",

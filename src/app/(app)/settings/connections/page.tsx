@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -84,12 +84,14 @@ export default function ConnectionsPage() {
 
 function ConnectionsContent() {
   const { t, locale } = useTranslation("connections");
+  const { t: tc } = useTranslation("common");
   const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [appleGuide, setAppleGuide] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState<string | null>(null);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -122,7 +124,7 @@ function ConnectionsContent() {
       window.history.replaceState({}, "", "/settings/connections");
     }
     if (error) {
-      setToast({ message: t("connectionFailed", { error }), type: "error" });
+      setToast({ message: t("connectionFailedGeneric"), type: "error" });
       window.history.replaceState({}, "", "/settings/connections");
     }
   }, [searchParams, fetchAccounts]);
@@ -136,6 +138,7 @@ function ConnectionsContent() {
   }, [toast]);
 
   const handleDisconnect = async (provider: string) => {
+    setConfirmDisconnect(null);
     setDisconnecting(provider);
     try {
       const res = await fetch(`/api/integrations/accounts?provider=${provider}`, { method: "DELETE" });
@@ -164,15 +167,17 @@ function ConnectionsContent() {
           background: toast.type === "success" ? "#4A6741" : "#C05050",
           color: "#FFF",
           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-          boxShadow: "0 8px 24px rgba(0,0,0,.15)",
+          boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,.15)",
           animation: "fadeIn .2s ease",
           display: "flex", alignItems: "center", gap: "0.625rem",
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} aria-label="Close"  style={{
+          <button onClick={() => setToast(null)} aria-label={tc("close")} style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: "0.875rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
+            minWidth: "2.75rem", minHeight: "2.75rem",
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}>{"\u2715"}</button>
         </div>
       )}
@@ -215,8 +220,8 @@ function ConnectionsContent() {
                 border: `1px solid ${isConnected ? `${provider.accentColor}30` : T.color.cream}`,
                 padding: "1.25rem 1.5rem",
                 boxShadow: isConnected
-                  ? `0 2px 12px ${provider.accentColor}10`
-                  : "0 2px 8px rgba(44,44,42,.04)",
+                  ? `0 0.125rem 0.75rem ${provider.accentColor}10`
+                  : "0 0.125rem 0.5rem rgba(44,44,42,.04)",
                 transition: "all .2s",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -245,14 +250,11 @@ function ConnectionsContent() {
                       {isConnected && (
                         <span style={{
                           display: "inline-flex", alignItems: "center", gap: "0.25rem",
-                          padding: "3px 0.625rem", borderRadius: "1.25rem",
+                          padding: "0.1875rem 0.625rem", borderRadius: "1.25rem",
                           background: "#4A674115", color: "#4A6741",
                           fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
                         }}>
-                          <span style={{
-                            width: "0.375rem", height: "0.375rem", borderRadius: "0.1875rem",
-                            background: "#4A6741", display: "inline-block",
-                          }} />
+                          <span aria-hidden="true" style={{ fontSize: "0.625rem" }}>{"\u2713"}</span>
                           {t("connected")}
                         </span>
                       )}
@@ -293,14 +295,14 @@ function ConnectionsContent() {
                           background: T.color.warmStone,
                           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
                           color: T.color.charcoal, cursor: "pointer",
-                          transition: "all .15s",
+                          transition: "all .15s", minHeight: "2.75rem",
                         }}
                       >
                         {appleGuide ? t("hideGuide") : t("viewGuide")}
                       </button>
                     ) : isConnected ? (
                       <button
-                        onClick={() => handleDisconnect(provider.id)}
+                        onClick={() => setConfirmDisconnect(provider.id)}
                         disabled={disconnecting === provider.id}
                         style={{
                           padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
@@ -309,7 +311,7 @@ function ConnectionsContent() {
                           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
                           color: "#C05050", cursor: "pointer",
                           opacity: disconnecting === provider.id ? 0.5 : 1,
-                          transition: "all .15s",
+                          transition: "all .15s", minHeight: "2.75rem",
                         }}
                       >
                         {disconnecting === provider.id ? t("disconnecting") : t("disconnect")}
@@ -318,14 +320,14 @@ function ConnectionsContent() {
                       <a
                         href={provider.connectUrl}
                         style={{
-                          display: "inline-block",
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
                           padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
                           border: "none",
                           background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                           color: "#FFF", cursor: "pointer",
                           textDecoration: "none",
-                          transition: "all .15s",
+                          transition: "all .15s", minHeight: "2.75rem",
                         }}
                       >
                         {t("connect")}
@@ -363,8 +365,23 @@ function ConnectionsContent() {
         </p>
       </div>
 
+      {/* Disconnect confirmation dialog */}
+      {confirmDisconnect && (() => {
+        const provider = PROVIDERS.find((p) => p.id === confirmDisconnect);
+        return (
+          <ConfirmModal
+            title={t("disconnectConfirmTitle")}
+            body={t("disconnectConfirmBody", { provider: provider?.name || confirmDisconnect })}
+            confirmLabel={t("disconnect")}
+            cancelLabel={tc("cancel")}
+            onConfirm={() => handleDisconnect(confirmDisconnect)}
+            onCancel={() => setConfirmDisconnect(null)}
+          />
+        );
+      })()}
+
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );
@@ -394,7 +411,7 @@ function ApplePhotosGuide() {
             background: platform === key ? `${T.color.terracotta}10` : T.color.warmStone,
             fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: platform === key ? 600 : 400,
             color: platform === key ? T.color.terracotta : T.color.muted,
-            cursor: "pointer", transition: "all .15s",
+            cursor: "pointer", transition: "all .15s", minHeight: "2.75rem",
           }}>
             {t(guides[key].titleKey)}
           </button>
@@ -410,6 +427,109 @@ function ApplePhotosGuide() {
           <li key={i} style={{ paddingLeft: "0.25rem" }}>{step}</li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+// ── Confirm Modal ──
+function ConfirmModal({
+  title,
+  body,
+  confirmLabel,
+  cancelLabel,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    confirmBtnRef.current?.focus();
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      onCancel();
+      return;
+    }
+    if (e.key === "Tab") {
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+  }, [onCancel]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      ref={dialogRef}
+      onKeyDown={handleKeyDown}
+      style={{
+        position: "fixed", inset: 0, zIndex: 200,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(44,44,42,.35)", backdropFilter: "blur(0.125rem)",
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div style={{
+        background: T.color.linen, borderRadius: "1rem",
+        padding: "1.75rem 2rem", maxWidth: "26rem", width: "90%",
+        boxShadow: "0 1rem 3rem rgba(44,44,42,.18)",
+        border: `1px solid ${T.color.cream}`,
+        animation: "fadeIn .2s ease",
+      }}>
+        <h4 style={{
+          fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 0.75rem",
+        }}>
+          {title}
+        </h4>
+        <p style={{
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+          margin: "0 0 1.5rem", lineHeight: 1.6,
+        }}>
+          {body}
+        </p>
+        <div style={{ display: "flex", gap: "0.625rem", justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={{
+            padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
+            border: `1px solid ${T.color.cream}`, background: "transparent",
+            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
+            color: T.color.muted, cursor: "pointer", transition: "all .15s",
+            minHeight: "2.75rem",
+          }}>
+            {cancelLabel}
+          </button>
+          <button ref={confirmBtnRef} onClick={onConfirm} style={{
+            padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
+            border: "1px solid #C0505033",
+            background: "#C0505010",
+            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+            color: "#C05050", cursor: "pointer", transition: "all .15s",
+            minHeight: "2.75rem",
+          }}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

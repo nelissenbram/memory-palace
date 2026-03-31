@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, getConnectedAccount } from "@/lib/integrations/helpers";
+import {
+  getAuthenticatedUser,
+  getConnectedAccount,
+  isImportable,
+  isImportableByExtension,
+  MAX_IMPORT_FILE_SIZE,
+  MAX_IMPORT_BATCH_SIZE,
+  TokenExpiredError,
+} from "@/lib/integrations/helpers";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { downloadPhoto } from "@/lib/integrations/dropbox";
 import { createClient } from "@/lib/supabase/server";
@@ -13,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Dropbox not connected" }, { status: 404 });
     }
 
-    const token = await ensureValidToken(account.id, "dropbox", {
+    let token = await ensureValidToken(account.id, "dropbox", {
       accessToken: account.access_token,
       refreshToken: account.refresh_token,
       expiresAt: account.token_expires_at,
@@ -29,14 +37,77 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "roomId required" }, { status: 400 });
     }
 
+    // Batch limit
+    if (filePaths.length > MAX_IMPORT_BATCH_SIZE) {
+      return NextResponse.json(
+        { error: `Too many files. Maximum ${MAX_IMPORT_BATCH_SIZE} per request.` },
+        { status: 400 },
+      );
+    }
+
     const supabase = await createClient();
+
+    // Check for duplicates: find which paths are already imported for this user
+    const { data: existingMemories } = await supabase
+      .from("memories")
+      .select("metadata")
+      .eq("user_id", user.id)
+      .in(
+        "metadata->>originalPath",
+        filePaths,
+      );
+
+    const alreadyImportedPaths = new Set(
+      (existingMemories || [])
+        .map((m) => (m.metadata as Record<string, unknown>)?.originalPath as string)
+        .filter(Boolean),
+    );
+
     const results: Array<{ path: string; success: boolean; error?: string; memoryId?: string }> = [];
+    let tokenRefreshed = false;
 
     for (const filePath of filePaths) {
-      try {
-        const { data, mimeType, filename } = await downloadPhoto(token, filePath);
+      // Skip duplicates
+      if (alreadyImportedPaths.has(filePath)) {
+        results.push({ path: filePath, success: false, error: "Already imported" });
+        continue;
+      }
 
-        const ext = filename.split(".").pop() || "bin";
+      try {
+        const downloaded = await downloadWithRetry(token, filePath, async () => {
+          if (tokenRefreshed) return null;
+          try {
+            token = await ensureValidToken(account.id, "dropbox", {
+              accessToken: token,
+              refreshToken: account.refresh_token,
+              expiresAt: null, // Force refresh
+            });
+            tokenRefreshed = true;
+            return token;
+          } catch {
+            return null;
+          }
+        });
+
+        if (!downloaded) {
+          results.push({ path: filePath, success: false, error: "Authentication expired. Please reconnect." });
+          continue;
+        }
+
+        const { data, mimeType, filename } = downloaded;
+
+        // File type validation
+        if (!isImportable(mimeType) && !isImportableByExtension(filename)) {
+          results.push({ path: filePath, success: false, error: `File type not supported: ${mimeType}` });
+          continue;
+        }
+
+        // File size validation
+        if (data.byteLength > MAX_IMPORT_FILE_SIZE) {
+          results.push({ path: filePath, success: false, error: `File too large (${Math.round(data.byteLength / 1024 / 1024)}MB). Maximum is 50MB.` });
+          continue;
+        }
+
         const storagePath = `${user.id}/${Date.now()}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
 
         const { error: uploadErr } = await supabase.storage
@@ -52,6 +123,7 @@ export async function POST(request: NextRequest) {
 
         const isImage = mimeType.startsWith("image/");
         const isVideo = mimeType.startsWith("video/");
+        const isAudio = mimeType.startsWith("audio/");
         const hue = Math.floor(Math.random() * 360);
 
         const { data: memory, error: memErr } = await supabase
@@ -60,7 +132,7 @@ export async function POST(request: NextRequest) {
             room_id: roomId,
             user_id: user.id,
             title: cleanFilename(filename),
-            type: isVideo ? "video" : isImage ? "photo" : "document",
+            type: isVideo ? "video" : isAudio ? "audio" : isImage ? "photo" : "document",
             file_path: storagePath,
             file_url: publicUrl.publicUrl,
             hue,
@@ -77,6 +149,13 @@ export async function POST(request: NextRequest) {
           results.push({ path: filePath, success: true, memoryId: memory.id });
         }
       } catch (err: unknown) {
+        if (err instanceof TokenExpiredError) {
+          results.push({ path: filePath, success: false, error: "Authentication expired. Please reconnect." });
+          for (const remainingPath of filePaths.slice(filePaths.indexOf(filePath) + 1)) {
+            results.push({ path: remainingPath, success: false, error: "Skipped: authentication expired" });
+          }
+          break;
+        }
         const message = err instanceof Error ? err.message : "Unknown error";
         results.push({ path: filePath, success: false, error: message });
       }
@@ -96,6 +175,29 @@ export async function POST(request: NextRequest) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+/**
+ * Download with a single token-refresh retry on 401.
+ */
+async function downloadWithRetry(
+  token: string,
+  filePath: string,
+  refreshToken: () => Promise<string | null>,
+): Promise<{ data: ArrayBuffer; mimeType: string; filename: string } | null> {
+  try {
+    return await downloadPhoto(token, filePath);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "";
+    if (message.includes("401") || message.includes("Unauthorized")) {
+      const newToken = await refreshToken();
+      if (newToken) {
+        return await downloadPhoto(newToken, filePath);
+      }
+      return null;
+    }
+    throw err;
   }
 }
 

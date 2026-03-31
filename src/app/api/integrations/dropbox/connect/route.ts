@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser, getBaseUrl, generateOAuthState } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getBaseUrl, generateOAuthState, generateCodeVerifier, computeCodeChallenge } from "@/lib/integrations/helpers";
 
 export async function GET() {
   try {
@@ -11,6 +11,8 @@ export async function GET() {
     }
 
     const state = generateOAuthState();
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = computeCodeChallenge(codeVerifier);
     const redirectUri = `${getBaseUrl()}/api/integrations/dropbox/callback`;
     const params = new URLSearchParams({
       client_id: appKey,
@@ -18,12 +20,23 @@ export async function GET() {
       response_type: "code",
       token_access_type: "offline",
       state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "S256",
     });
 
     const authUrl = `https://www.dropbox.com/oauth2/authorize?${params}`;
     const response = NextResponse.redirect(authUrl);
 
     response.cookies.set("oauth_state_dropbox", state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 600,
+      path: "/",
+    });
+
+    // Store PKCE code_verifier in an HttpOnly cookie for the token exchange
+    response.cookies.set("oauth_pkce_dropbox", codeVerifier, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
