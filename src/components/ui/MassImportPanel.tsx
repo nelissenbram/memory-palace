@@ -376,6 +376,10 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
             {/* Drop zone */}
             <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
+              aria-label={t("dropOrBrowse")}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
@@ -401,11 +405,11 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
             {/* Oversized files warning */}
             {skippedOversized > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", background: "#C0505010", border: "1px solid #C0505033", marginBottom: "0.75rem" }}>
-                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#C05050", lineHeight: 1.5, flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", background: "#A63D3D10", border: "1px solid #A63D3D33", marginBottom: "0.75rem" }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#A63D3D", lineHeight: 1.5, flex: 1 }}>
                   {t("filesSkipped", { count: String(skippedOversized) })}
                 </span>
-                <button onClick={() => setSkippedOversized(0)} aria-label={tc("dismiss")} style={{ background: "none", border: "none", color: "#C05050", fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem", flexShrink: 0, minWidth: "2.75rem", minHeight: "2.75rem", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+                <button onClick={() => setSkippedOversized(0)} aria-label={tc("dismiss")} style={{ background: "none", border: "none", color: "#A63D3D", fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem", flexShrink: 0, minWidth: "2.75rem", minHeight: "2.75rem", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
               </div>
             )}
 
@@ -455,7 +459,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <span>{t("processingFiles")}</span>
                 <span>{progress.processed}/{progress.total}</span>
               </div>
-              <div style={{ width: "100%", height: "0.5rem", borderRadius: "0.25rem", background: `${T.color.sandstone}33`, overflow: "hidden" }}>
+              <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.total ? Math.round((progress.processed / progress.total) * 100) : 0} aria-label={t("processingFiles")} style={{ width: "100%", height: "0.5rem", borderRadius: "0.25rem", background: `${T.color.sandstone}33`, overflow: "hidden" }}>
                 <div style={{ width: `${progress.total ? (progress.processed / progress.total) * 100 : 0}%`, height: "100%", borderRadius: "0.25rem", background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.walnut})`, transition: "width .3s" }} />
               </div>
             </div>
@@ -464,7 +468,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <div key={item.localId} style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.5rem 0", borderBottom: `1px solid ${T.color.cream}22` }}>
                   <StatusBadge status={item.status} />
                   <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.fileName}</span>
-                  <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>{item.status}</span>
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>{t(`status_${item.status}`) || item.status}</span>
                 </div>
               ))}
             </div>
@@ -530,7 +534,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <span>{t("addingMemories")}</span>
                 <span>{progress.committed}/{progress.total}</span>
               </div>
-              <div style={{ width: "100%", height: "0.5rem", borderRadius: "0.25rem", background: `${T.color.sandstone}33`, overflow: "hidden" }}>
+              <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.total ? Math.round((progress.committed / progress.total) * 100) : 0} aria-label={t("addingMemories")} style={{ width: "100%", height: "0.5rem", borderRadius: "0.25rem", background: `${T.color.sandstone}33`, overflow: "hidden" }}>
                 <div style={{ width: `${progress.total ? (progress.committed / progress.total) * 100 : 0}%`, height: "100%", borderRadius: "0.25rem", background: `linear-gradient(90deg, #4A6741, #6A8848)`, transition: "width .3s" }} />
               </div>
             </div>
@@ -545,17 +549,17 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 {t("memoriesAdded", { count: String(progress.committed) })}
               </p>
               {progress.errors > 0 && (
-                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#C05050" }}>{t("itemsHadErrors", { count: String(progress.errors) })}</p>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#A63D3D" }}>{t("itemsHadErrors", { count: String(progress.errors) })}</p>
               )}
               <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center", marginTop: "1.25rem" }}>
                 <button onClick={() => store.reset()} style={{
                   padding: "0.75rem 1.5rem", borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`,
-                  background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal, cursor: "pointer",
+                  background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal, cursor: "pointer", minHeight: "2.75rem",
                 }}>{t("importMore")}</button>
                 <button onClick={onClose} style={{
                   padding: "0.75rem 1.5rem", borderRadius: "0.75rem", border: "none",
                   background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                  fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#FFF", cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#FFF", cursor: "pointer", minHeight: "2.75rem",
                 }}>{t("close")}</button>
               </div>
             </div>
@@ -573,7 +577,7 @@ function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
     queued: T.color.sandstone, reading: "#5A7898", extracting: "#5A7898",
     tagging: "#9B6B8E", ready: "#C9A84C", accepted: "#4A6741",
-    rejected: "#C05050", committed: "#4A6741", error: "#C05050",
+    rejected: "#A63D3D", committed: "#4A6741", error: "#A63D3D",
   };
   const isSpinning = ["reading", "extracting", "tagging"].includes(status);
   return (
@@ -605,7 +609,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
 
   return (
     <div style={{
-      background: T.color.white, borderRadius: "0.875rem", border: `1px solid ${item.status === "accepted" ? "#4A674133" : item.status === "rejected" ? "#C0505033" : T.color.cream}`,
+      background: T.color.white, borderRadius: "0.875rem", border: `1px solid ${item.status === "accepted" ? "#4A674133" : item.status === "rejected" ? "#A63D3D33" : T.color.cream}`,
       padding: "0.75rem 0.875rem", transition: "all .15s",
       opacity: item.status === "rejected" ? 0.5 : 1,
     }}>
@@ -645,8 +649,8 @@ function ReviewCard({ item, wings, getWingRooms }: {
             background: "#4A674110", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#4A6741",
           }}>{"\u2713"}</button>}
           {item.status !== "rejected" && <button onClick={() => store.rejectItem(item.localId)} aria-label={t("rejectItem")} style={{
-            width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem", border: "1px solid #C0505033",
-            background: "#C0505010", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#C05050",
+            width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem", border: "1px solid #A63D3D33",
+            background: "#A63D3D10", fontSize: "0.6875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#A63D3D",
           }}>{"\u2715"}</button>}
         </div>
       </div>

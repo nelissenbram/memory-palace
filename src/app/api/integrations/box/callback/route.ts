@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getAuthenticatedUser, getBaseUrl, upsertConnectedAccount } from "@/lib/integrations/helpers";
+import { timingSafeEqual } from "crypto";
+import { getAuthenticatedUser, getBaseUrl, checkRateLimit, upsertConnectedAccount } from "@/lib/integrations/helpers";
 import { getUserInfo } from "@/lib/integrations/box";
 
 // NOTE: Box OAuth 2.0 does not support PKCE (code_challenge / code_verifier).
@@ -10,6 +11,10 @@ export async function GET(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser();
     const baseUrl = getBaseUrl();
+
+    if (!checkRateLimit(`${user.id}:oauth-callback`, 10, 60_000)) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
 
     const code = request.nextUrl.searchParams.get("code");
     const error = request.nextUrl.searchParams.get("error");
@@ -25,7 +30,8 @@ export async function GET(request: NextRequest) {
     // Verify CSRF state parameter
     const cookieStore = await cookies();
     const storedState = cookieStore.get("oauth_state_box")?.value;
-    if (!state || !storedState || state !== storedState) {
+    const stateMatch = state && storedState && state.length === storedState.length && timingSafeEqual(Buffer.from(state), Buffer.from(storedState));
+    if (!stateMatch) {
       const resp = NextResponse.redirect(`${baseUrl}/settings/connections?error=invalid_state&provider=box`);
       resp.cookies.delete("oauth_state_box");
       return resp;

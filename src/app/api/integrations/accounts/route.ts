@@ -46,6 +46,11 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "provider parameter required" }, { status: 400 });
     }
 
+    const VALID_PROVIDERS = ["google_photos", "dropbox", "onedrive", "box"];
+    if (!VALID_PROVIDERS.includes(provider)) {
+      return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
+    }
+
     // Fetch the account to get the access token for revocation
     const { data: account } = await supabase
       .from("connected_accounts")

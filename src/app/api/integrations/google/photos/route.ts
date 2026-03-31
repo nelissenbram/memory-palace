@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, getConnectedAccount } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getConnectedAccount, checkRateLimit } from "@/lib/integrations/helpers";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { listPhotos } from "@/lib/integrations/google-photos";
 
@@ -10,6 +10,10 @@ import { listPhotos } from "@/lib/integrations/google-photos";
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser();
+
+    if (!checkRateLimit(`browse:${user.id}`, 30, 60_000)) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
 
     const account = await getConnectedAccount(user.id, "google_photos");
     if (!account) {

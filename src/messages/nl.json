@@ -670,7 +670,10 @@
     "video": "VIDEO",
     "items": "{count} onderdelen",
     "importFailed": "Import mislukt",
-    "importItemFailed": "Kon {name} niet importeren. Probeer het opnieuw."
+    "importItemFailed": "Kon {name} niet importeren. Probeer het opnieuw.",
+    "loadFailed": "Kon bestanden niet laden. Probeer het opnieuw.",
+    "retry": "Opnieuw proberen",
+    "progress": "Voortgang"
   },
   "room": {
     "manageRooms": "Kamers beheren",
@@ -1298,7 +1301,16 @@
     "fileTooLarge": "Bestand te groot ({size} MB). Maximum is {max}.",
     "editItem": "Item bewerken",
     "acceptItem": "Item accepteren",
-    "rejectItem": "Item afwijzen"
+    "rejectItem": "Item afwijzen",
+    "status_queued": "In wachtrij",
+    "status_reading": "Lezen\u2026",
+    "status_extracting": "Verwerken\u2026",
+    "status_tagging": "Labelen\u2026",
+    "status_ready": "Klaar",
+    "status_accepted": "Geaccepteerd",
+    "status_rejected": "Afgewezen",
+    "status_committed": "Opgeslagen",
+    "status_error": "Fout"
   },
   "memoryDetail": {
     "description": "Beschrijving",

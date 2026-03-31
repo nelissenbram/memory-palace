@@ -670,7 +670,10 @@
     "items": "{count} items",
     "video": "VIDEO",
     "importFailed": "Import failed",
-    "importItemFailed": "Could not import {name}. Please try again."
+    "importItemFailed": "Could not import {name}. Please try again.",
+    "loadFailed": "Could not load files. Please try again.",
+    "retry": "Retry",
+    "progress": "Progress"
   },
   "room": {
     "manageRooms": "Manage Rooms",
@@ -1298,7 +1301,16 @@
     "fileTooLarge": "File too large ({size} MB). Maximum is {max}.",
     "editItem": "Edit item",
     "acceptItem": "Accept item",
-    "rejectItem": "Reject item"
+    "rejectItem": "Reject item",
+    "status_queued": "Queued",
+    "status_reading": "Reading\u2026",
+    "status_extracting": "Extracting\u2026",
+    "status_tagging": "Tagging\u2026",
+    "status_ready": "Ready",
+    "status_accepted": "Accepted",
+    "status_rejected": "Rejected",
+    "status_committed": "Saved",
+    "status_error": "Error"
   },
   "memoryDetail": {
     "description": "Description",

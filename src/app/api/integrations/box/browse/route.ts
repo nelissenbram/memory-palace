@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, getConnectedAccount } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getConnectedAccount, checkRateLimit } from "@/lib/integrations/helpers";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { listPhotos } from "@/lib/integrations/box";
 
@@ -10,6 +10,10 @@ import { listPhotos } from "@/lib/integrations/box";
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser();
+
+    if (!checkRateLimit(`browse:${user.id}`, 30, 60_000)) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
 
     const account = await getConnectedAccount(user.id, "box");
     if (!account) {
@@ -33,6 +37,7 @@ export async function GET(request: NextRequest) {
       const mimeType = isFolder ? undefined : guessMimeFromName(item.name);
       const isImage = !!mimeType?.startsWith("image/");
       const isVideo = !!mimeType?.startsWith("video/");
+      const isAudio = !!mimeType?.startsWith("audio/");
 
       return {
         id: item.id,
@@ -41,7 +46,7 @@ export async function GET(request: NextRequest) {
         isFolder,
         isImage: !isFolder && isImage,
         isVideo: !isFolder && isVideo,
-        isMedia: !isFolder && (isImage || isVideo),
+        isMedia: !isFolder && (isImage || isVideo || isAudio),
         size: item.size,
         mimeType,
         modified: item.modified_at,
@@ -70,6 +75,8 @@ function guessMimeFromName(name: string): string {
     heif: "image/heif", tiff: "image/tiff", bmp: "image/bmp",
     mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
     webm: "video/webm", mkv: "video/x-matroska",
+    mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4",
+    pdf: "application/pdf", txt: "text/plain",
   };
   return map[ext || ""] || "application/octet-stream";
 }

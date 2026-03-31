@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import Image from "next/image";
 
 // ── Types ──
@@ -76,6 +77,7 @@ function formatBytes(b: number): string {
 export default function CloudImportPanel({ onClose, embedded }: Props) {
   const { t } = useTranslation("import");
   const { t: tc } = useTranslation("common");
+  const { containerRef, handleKeyDown: handleTrapKeyDown } = useFocusTrap(!embedded);
   const { getWings, getWingRooms } = useRoomStore();
   const wings = getWings();
 
@@ -101,6 +103,9 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
     results: ImportResult[];
   } | null>(null);
 
+  // Error state
+  const [error, setError] = useState<string | null>(null);
+
   // Target room
   const [targetWingId, setTargetWingId] = useState<string>("");
   const [targetRoomId, setTargetRoomId] = useState<string>("");
@@ -119,10 +124,10 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             setActiveProvider(accs[0].provider);
           }
         }
-      } catch { /* ignore */ }
+      } catch { setError(t("loadFailed")); }
       setLoadingAccounts(false);
     })();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch items when provider changes
   const fetchItems = useCallback(async (provider: string, cursor?: string, folderId?: string) => {
@@ -152,9 +157,9 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
         }
         setNextCursor(data.nextCursor || null);
       }
-    } catch { /* ignore */ }
+    } catch { setError(t("loadFailed")); }
     setLoadingItems(false);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (activeProvider) {
@@ -373,6 +378,44 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             </div>
           )}
 
+          {/* Error banner */}
+          {error && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: "0.625rem",
+              padding: "0.75rem 1rem", borderRadius: "0.75rem",
+              background: "#A63D3D10", border: "1px solid #A63D3D33",
+              marginBottom: "0.75rem",
+            }}>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A63D3D", flex: 1 }}>
+                {error}
+              </span>
+              <button onClick={() => {
+                setError(null);
+                if (activeProvider) fetchItems(activeProvider);
+                else {
+                  setLoadingAccounts(true);
+                  (async () => {
+                    try {
+                      const res = await fetch("/api/integrations/accounts");
+                      if (res.ok) {
+                        const data = await res.json();
+                        const accs = (data.accounts || []) as ConnectedAccount[];
+                        setAccounts(accs);
+                        if (accs.length > 0) setActiveProvider(accs[0].provider);
+                      }
+                    } catch { setError(t("loadFailed")); }
+                    setLoadingAccounts(false);
+                  })();
+                }
+              }} style={{
+                padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "1px solid #A63D3D33",
+                background: "#A63D3D10", fontFamily: T.font.body, fontSize: "0.75rem",
+                fontWeight: 600, color: "#A63D3D", cursor: "pointer",
+                minHeight: "2.75rem", flexShrink: 0,
+              }}>{t("retry")}</button>
+            </div>
+          )}
+
           {/* Import complete view */}
           {importProgress && !importing && (
             <div style={{ textAlign: "center", padding: "2rem 0" }}>
@@ -394,7 +437,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 <div style={{ marginTop: "0.75rem", maxHeight: "9.375rem", overflowY: "auto" }}>
                   {importProgress.results.filter((r) => !r.success).map((r, i) => (
                     <p key={i} style={{
-                      fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C05050", margin: "0.25rem 0",
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: "#A63D3D", margin: "0.25rem 0",
                     }}>
                       {t("importItemFailed", { name: r.id === "error" ? t("importFailed") : (r.id.split("/").pop() || r.id) })}
                       {r.error && <span style={{ display: "block", fontSize: "0.625rem", opacity: 0.8 }}>{r.error}</span>}
@@ -410,13 +453,13 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                   padding: "0.75rem 1.5rem", borderRadius: "0.75rem",
                   border: `1px solid ${T.color.cream}`, background: T.color.white,
                   fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-                  color: T.color.charcoal, cursor: "pointer",
+                  color: T.color.charcoal, cursor: "pointer", minHeight: "2.75rem",
                 }}>{t("importMore")}</button>
                 <button onClick={onClose} style={{
                   padding: "0.75rem 1.5rem", borderRadius: "0.75rem", border: "none",
                   background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                   fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                  color: "#FFF", cursor: "pointer",
+                  color: "#FFF", cursor: "pointer", minHeight: "2.75rem",
                 }}>{tc("close")}</button>
               </div>
             </div>
@@ -432,7 +475,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 <span>{t("importingFrom", { provider: PROVIDER_META[activeProvider!]?.name })}</span>
                 <span>{t("selected", { count: String(importProgress.total) })}</span>
               </div>
-              <div style={{
+              <div role="progressbar" aria-label={t("importing")} style={{
                 width: "100%", height: "0.5rem", borderRadius: "0.25rem",
                 background: `${T.color.sandstone}33`, overflow: "hidden",
                 position: "relative",
@@ -665,13 +708,13 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
 
   // Standalone modal mode
   return (
-    <div onClick={onClose} onKeyDown={(e) => { if (e.key === "Escape") onClose(); }} style={{
+    <div onClick={onClose} style={{
       position: "fixed", inset: 0,
       background: "rgba(42,34,24,.5)", backdropFilter: "blur(10px)",
       zIndex: 60, animation: "fadeIn .2s ease",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}>
-      <div role="dialog" aria-modal="true" aria-label={t("title")} onClick={(e) => e.stopPropagation()} style={{
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleTrapKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
         width: "min(56.25rem, 94vw)", maxHeight: "90vh",
         overflow: "hidden", display: "flex", flexDirection: "column",
         background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthenticatedUser, getConnectedAccount } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getConnectedAccount, checkRateLimit } from "@/lib/integrations/helpers";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { listPhotos } from "@/lib/integrations/dropbox";
 
@@ -10,6 +10,10 @@ import { listPhotos } from "@/lib/integrations/dropbox";
 export async function GET(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser();
+
+    if (!checkRateLimit(`browse:${user.id}`, 30, 60_000)) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
 
     const account = await getConnectedAccount(user.id, "dropbox");
     if (!account) {
@@ -33,6 +37,7 @@ export async function GET(request: NextRequest) {
       const mimeType = isFolder ? undefined : guessMimeFromName(entry.name);
       const isImage = !!mimeType?.startsWith("image/");
       const isVideo = !!mimeType?.startsWith("video/");
+      const isAudio = !!mimeType?.startsWith("audio/");
 
       return {
         id: entry.id,
@@ -42,7 +47,7 @@ export async function GET(request: NextRequest) {
         isFolder,
         isImage: !isFolder && isImage,
         isVideo: !isFolder && isVideo,
-        isMedia: !isFolder && (isImage || isVideo || entry.media_info != null),
+        isMedia: !isFolder && (isImage || isVideo || isAudio || entry.media_info != null),
         size: entry.size || 0,
         mimeType,
         modified: entry.server_modified || entry.client_modified,
@@ -69,6 +74,8 @@ function guessMimeFromName(name: string): string {
     heif: "image/heif", tiff: "image/tiff", bmp: "image/bmp",
     mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
     webm: "video/webm", mkv: "video/x-matroska",
+    mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4",
+    pdf: "application/pdf", txt: "text/plain",
   };
   return map[ext || ""] || "application/octet-stream";
 }

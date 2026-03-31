@@ -164,7 +164,7 @@ function ConnectionsContent() {
         <div role={toast.type === "success" ? "status" : "alert"} style={{
           position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? "#4A6741" : "#C05050",
+          background: toast.type === "success" ? "#4A6741" : "#A63D3D",
           color: "#FFF",
           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
           boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,.15)",
@@ -306,10 +306,10 @@ function ConnectionsContent() {
                         disabled={disconnecting === provider.id}
                         style={{
                           padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
-                          border: `1px solid #C0505033`,
-                          background: "#C0505008",
+                          border: `1px solid #A63D3D33`,
+                          background: "#A63D3D08",
                           fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-                          color: "#C05050", cursor: "pointer",
+                          color: "#A63D3D", cursor: "pointer",
                           opacity: disconnecting === provider.id ? 0.5 : 1,
                           transition: "all .15s", minHeight: "2.75rem",
                         }}
@@ -520,10 +520,10 @@ function ConfirmModal({
           </button>
           <button ref={confirmBtnRef} onClick={onConfirm} style={{
             padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
-            border: "1px solid #C0505033",
-            background: "#C0505010",
+            border: "1px solid #A63D3D33",
+            background: "#A63D3D10",
             fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-            color: "#C05050", cursor: "pointer", transition: "all .15s",
+            color: "#A63D3D", cursor: "pointer", transition: "all .15s",
             minHeight: "2.75rem",
           }}>
             {confirmLabel}

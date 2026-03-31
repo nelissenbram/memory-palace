@@ -47,8 +47,7 @@ async function refreshGoogleToken(refreshToken: string): Promise<RefreshResult> 
     }),
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Google token refresh failed: ${err}`);
+    throw new Error(`Google token refresh failed (${res.status})`);
   }
   const data = await res.json();
   return {
@@ -78,8 +77,7 @@ async function refreshDropboxToken(refreshToken: string): Promise<RefreshResult>
     }),
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Dropbox token refresh failed: ${err}`);
+    throw new Error(`Dropbox token refresh failed (${res.status})`);
   }
   const data = await res.json();
   return {
@@ -103,8 +101,7 @@ async function refreshOneDriveToken(refreshToken: string): Promise<RefreshResult
     }),
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OneDrive token refresh failed: ${err}`);
+    throw new Error(`OneDrive token refresh failed (${res.status})`);
   }
   const data = await res.json();
   return {
@@ -129,8 +126,7 @@ async function refreshBoxToken(refreshToken: string): Promise<RefreshResult> {
     }),
   });
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Box token refresh failed: ${err}`);
+    throw new Error(`Box token refresh failed (${res.status})`);
   }
   const data = await res.json();
   return {

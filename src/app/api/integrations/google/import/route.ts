@@ -5,6 +5,7 @@ import {
   isImportable,
   isImportableByExtension,
   resolveRoomId,
+  checkRateLimit,
   MAX_IMPORT_FILE_SIZE,
   MAX_IMPORT_BATCH_SIZE,
   TokenExpiredError,
@@ -16,6 +17,10 @@ import { createClient } from "@/lib/supabase/server";
 export async function POST(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser();
+
+    if (!checkRateLimit(`import:${user.id}`, 10, 60_000)) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
 
     const account = await getConnectedAccount(user.id, "google_photos");
     if (!account) {
@@ -34,7 +39,7 @@ export async function POST(request: NextRequest) {
     if (!photoIds || !Array.isArray(photoIds) || photoIds.length === 0) {
       return NextResponse.json({ error: "photoIds required" }, { status: 400 });
     }
-    if (!roomId) {
+    if (!roomId || typeof roomId !== "string") {
       return NextResponse.json({ error: "roomId required" }, { status: 400 });
     }
 
@@ -129,7 +134,12 @@ export async function POST(request: NextRequest) {
         }
 
         const { data: signedUrlData } = await supabase.storage.from("memories").createSignedUrl(storagePath, 60 * 60 * 24 * 365);
-        const fileUrl = signedUrlData?.signedUrl || "";
+        if (!signedUrlData?.signedUrl) {
+          await supabase.storage.from("memories").remove([storagePath]);
+          results.push({ id: photoId, success: false, error: "Failed to generate file URL" });
+          continue;
+        }
+        const fileUrl = signedUrlData.signedUrl;
 
         // Create memory record
         const isImage = mimeType.startsWith("image/");
@@ -154,6 +164,7 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (memErr) {
+          await supabase.storage.from("memories").remove([storagePath]);
           results.push({ id: photoId, success: false, error: memErr.message });
         } else {
           results.push({ id: photoId, success: true, memoryId: memory.id });
@@ -172,14 +183,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update last_sync_at
-    await supabase
-      .from("connected_accounts")
-      .update({ last_sync_at: new Date().toISOString() })
-      .eq("id", account.id);
-
     const succeeded = results.filter((r) => r.success).length;
     const failed = results.filter((r) => !r.success).length;
+
+    // Only update last_sync_at if at least one file succeeded
+    if (succeeded > 0) {
+      await supabase
+        .from("connected_accounts")
+        .update({ last_sync_at: new Date().toISOString() })
+        .eq("id", account.id);
+    }
 
     return NextResponse.json({ results, summary: { total: photoIds.length, succeeded, failed } }, {
       headers: { "Cache-Control": "no-store" },
