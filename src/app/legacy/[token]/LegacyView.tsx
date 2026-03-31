@@ -59,7 +59,7 @@ export default function LegacyView({ data }: { data: LegacyData }) {
       <div style={styles.container}>
         <main>
           <div style={styles.card}>
-            <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
+            <div style={styles.iconLarge}><span role="img" aria-label={t("memoryPalaceIcon")}>&#x1F3DB;&#xFE0F;</span></div>
             <h1 style={styles.title}>{t("linkNotFound")}</h1>
             <p style={styles.subtitle}>
               {t("linkNotFoundDesc")}
@@ -83,7 +83,7 @@ export default function LegacyView({ data }: { data: LegacyData }) {
       <div style={styles.container}>
         <main>
           <div style={styles.card}>
-            <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
+            <div style={styles.iconLarge}><span role="img" aria-label={t("memoryPalaceIcon")}>&#x1F3DB;&#xFE0F;</span></div>
             <h1 style={styles.title}>{t("linkExpired")}</h1>
             <p style={styles.subtitle}>
               {t("linkExpiredDesc")}
@@ -137,7 +137,7 @@ export default function LegacyView({ data }: { data: LegacyData }) {
     <div style={styles.container}>
       {/* Header */}
       <header style={styles.header}>
-        <div style={styles.iconLarge}>&#x1F3DB;&#xFE0F;</div>
+        <div style={styles.iconLarge}><span role="img" aria-label={t("memoryPalaceIcon")}>&#x1F3DB;&#xFE0F;</span></div>
         <h1 style={styles.headerTitle}>
           {t("memoriesFrom", { name: senderName })}
         </h1>
@@ -286,7 +286,7 @@ export default function LegacyView({ data }: { data: LegacyData }) {
           aria-label={t("backToTop")}
           style={styles.backToTop}
         >
-          &#x25B2;
+          <span aria-hidden="true">&#x25B2;</span>
         </button>
       )}
     </div>
@@ -553,8 +553,8 @@ const styles: Record<string, React.CSSProperties> = {
     height: "2.5rem",
     borderRadius: "50%",
     border: `1px solid ${LT.color.cream}`,
-    backgroundColor: "rgba(255, 255, 255, 0.85)",
-    color: LT.color.walnut,
+    backgroundColor: LT.color.charcoal,
+    color: LT.color.cream,
     fontSize: "0.875rem",
     cursor: "pointer",
     display: "flex",

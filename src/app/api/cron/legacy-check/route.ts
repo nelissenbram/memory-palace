@@ -23,6 +23,7 @@ import { sendVerificationEmail, sendTrustedVerifierEmail } from "@/lib/email/sen
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
 const VERIFICATION_GRACE_DAYS = 30;
+const VERIFICATION_GRACE_MS = VERIFICATION_GRACE_DAYS * 24 * 60 * 60 * 1000;
 const VERIFICATION_LINK_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 const CRON_TIMEOUT_MS = 50_000;
 
@@ -203,16 +204,6 @@ export async function GET(request: Request) {
   }
 
   // ── 5. Process each user for inactivity ──
-  // Collect settings upserts for batch operation at the end
-  const settingsUpserts: Array<{
-    id: string;
-    verification_sent_at: string;
-    verification_token: string;
-    verifier_confirmation_token: string;
-    verification_expires_at: string;
-    status: string;
-  }> = [];
-
   for (const profile of profiles) {
     // ── Timeout detection: bail before Vercel kills us ──
     if (Date.now() - startTime > CRON_TIMEOUT_MS) {
@@ -231,24 +222,25 @@ export async function GET(request: Request) {
 
     // Determine inactivity threshold (default 12 months)
     const inactivityMonths = settings?.inactivity_trigger_months ?? 12;
-    const inactivityDays = inactivityMonths * 30; // approximate
 
-    // Calculate how long the user has been inactive
+    // Calculate how long the user has been inactive using proper month arithmetic
     const lastSeen = profile.last_seen_at ? new Date(profile.last_seen_at) : null;
     if (!lastSeen) continue; // Never seen — skip (they just signed up)
 
-    const daysSinceLastSeen = Math.floor((now.getTime() - lastSeen.getTime()) / (1000 * 60 * 60 * 24));
+    const inactivityDate = new Date(lastSeen);
+    inactivityDate.setMonth(inactivityDate.getMonth() + inactivityMonths);
 
-    if (daysSinceLastSeen < inactivityDays) continue; // Still within threshold
+    if (now <= inactivityDate) continue; // Still within threshold
+
+    const daysSinceLastSeen = Math.floor((now.getTime() - lastSeen.getTime()) / (1000 * 60 * 60 * 24));
 
     // ── User is inactive past their threshold ──
 
     if (settings?.verification_sent_at) {
-      // Verification was already sent — check if grace period expired
+      // Verification was already sent — check if grace period expired (exact timestamp)
       const verificationSent = new Date(settings.verification_sent_at);
-      const daysSinceVerification = Math.floor((now.getTime() - verificationSent.getTime()) / (1000 * 60 * 60 * 24));
 
-      if (daysSinceVerification >= VERIFICATION_GRACE_DAYS) {
+      if (verificationSent.getTime() + VERIFICATION_GRACE_MS <= now.getTime()) {
         // Grace period expired — trigger delivery
         try {
           const deliverUrl = new URL("/api/legacy/deliver", process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
@@ -274,12 +266,30 @@ export async function GET(request: Request) {
       }
       // else: still within grace period, do nothing
     } else {
-      // No verification sent yet — generate TWO tokens and send
+      // No verification sent yet — generate TWO tokens and persist BEFORE sending email
       const userToken = randomBytes(32).toString("hex");
       const verifierToken = randomBytes(32).toString("hex");
       const verificationExpiresAt = new Date(now.getTime() + VERIFICATION_LINK_EXPIRY_MS).toISOString();
       const displayName = profile.display_name || email.split("@")[0];
       const userLocale = profile.preferred_locale || "en";
+
+      // Persist tokens to DB first so they exist when the user clicks the link
+      const { error: upsertError } = await supabase
+        .from("legacy_settings")
+        .upsert({
+          id: userId,
+          verification_sent_at: now.toISOString(),
+          verification_token: userToken,
+          verifier_confirmation_token: verifierToken,
+          verification_expires_at: verificationExpiresAt,
+          status: "triggered",
+        }, { onConflict: "id" });
+
+      if (upsertError) {
+        console.error(`[Legacy] Settings upsert failed for user ${userId}:`, upsertError.message);
+        errors++;
+        continue; // Don't send email if tokens aren't persisted
+      }
 
       const result = await sendVerificationEmail({
         recipientEmail: email,
@@ -290,16 +300,6 @@ export async function GET(request: Request) {
       });
 
       if (result.success) {
-        // Queue settings upsert for batch operation
-        settingsUpserts.push({
-          id: userId,
-          verification_sent_at: now.toISOString(),
-          verification_token: userToken,
-          verifier_confirmation_token: verifierToken,
-          verification_expires_at: verificationExpiresAt,
-          status: "triggered",
-        });
-
         verificationsSent++;
 
         // ── Notify trusted verifier if configured ──
@@ -325,18 +325,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // ── 6. Batch upsert all settings updates ──
-  if (settingsUpserts.length > 0) {
-    const { error: upsertError } = await supabase
-      .from("legacy_settings")
-      .upsert(settingsUpserts, { onConflict: "id" });
-
-    if (upsertError) {
-      console.error(`[Legacy] Batch settings upsert failed:`, upsertError.message);
-      errors++;
-    }
-  }
-
   // ══════════════════════════════════════════════════════
   // PART C: Auto-retry partial deliveries
   // ══════════════════════════════════════════════════════
@@ -344,18 +332,29 @@ export async function GET(request: Request) {
   let partialRetried = 0;
 
   if (!timedOut) {
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const { data: partialUsers } = await supabase
       .from("legacy_settings")
-      .select("id, updated_at")
+      .select("id")
       .eq("status", "partially_delivered")
       .limit(1);
 
     if (partialUsers && partialUsers.length > 0) {
       const candidate = partialUsers[0];
-      // Only retry if last attempt (updated_at) was more than 24 hours ago
-      const lastAttempt = candidate.updated_at ? new Date(candidate.updated_at) : null;
-      if (!lastAttempt || lastAttempt.toISOString() < oneDayAgo) {
+      // Check legacy_deliveries for the most recent delivery attempt
+      const { data: recentDelivery } = await supabase
+        .from("legacy_deliveries")
+        .select("delivered_at")
+        .eq("user_id", candidate.id)
+        .order("delivered_at", { ascending: false })
+        .limit(1);
+
+      const lastDeliveryAt = recentDelivery?.[0]?.delivered_at
+        ? new Date(recentDelivery[0].delivered_at)
+        : null;
+
+      // Only retry if no deliveries exist or the most recent is >24h ago
+      if (!lastDeliveryAt || lastDeliveryAt < oneDayAgo) {
         try {
           const deliverUrl = new URL("/api/legacy/deliver", process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
           const res = await fetch(deliverUrl.toString(), {

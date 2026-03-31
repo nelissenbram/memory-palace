@@ -79,6 +79,28 @@ export async function createLegacyContact(input: {
   const { supabase, user } = await getAuthUser();
   if (!supabase || !user) return { error: "Not authenticated" };
 
+  // Validate wing_access and room_access IDs belong to this user
+  if (input.wing_access && input.wing_access.length > 0) {
+    const { data: wings } = await supabase
+      .from("wings")
+      .select("id")
+      .eq("user_id", user.id)
+      .in("id", input.wing_access);
+    if (!wings || wings.length !== input.wing_access.length) {
+      return { error: "Invalid wing or room access" };
+    }
+  }
+  if (input.room_access && input.room_access.length > 0) {
+    const { data: rooms } = await supabase
+      .from("rooms")
+      .select("id")
+      .eq("user_id", user.id)
+      .in("id", input.room_access);
+    if (!rooms || rooms.length !== input.room_access.length) {
+      return { error: "Invalid wing or room access" };
+    }
+  }
+
   const { data, error } = await supabase
     .from("legacy_contacts")
     .insert({
@@ -111,6 +133,28 @@ export async function updateLegacyContact(
   const { supabase, user } = await getAuthUser();
   if (!supabase || !user) return { error: "Not authenticated" };
 
+  // Validate wing_access and room_access IDs belong to this user
+  if (updates.wing_access && updates.wing_access.length > 0) {
+    const { data: wings } = await supabase
+      .from("wings")
+      .select("id")
+      .eq("user_id", user.id)
+      .in("id", updates.wing_access);
+    if (!wings || wings.length !== updates.wing_access.length) {
+      return { error: "Invalid wing or room access" };
+    }
+  }
+  if (updates.room_access && updates.room_access.length > 0) {
+    const { data: rooms } = await supabase
+      .from("rooms")
+      .select("id")
+      .eq("user_id", user.id)
+      .in("id", updates.room_access);
+    if (!rooms || rooms.length !== updates.room_access.length) {
+      return { error: "Invalid wing or room access" };
+    }
+  }
+
   const payload: Record<string, unknown> = {};
   if (updates.contact_name !== undefined) payload.contact_name = updates.contact_name;
   if (updates.contact_email !== undefined) payload.contact_email = updates.contact_email.toLowerCase();
@@ -136,6 +180,25 @@ export async function updateLegacyContact(
 export async function deleteLegacyContact(contactId: string) {
   const { supabase, user } = await getAuthUser();
   if (!supabase || !user) return { error: "Not authenticated" };
+
+  // Guard: block deletion of last active contact while delivery is pending
+  const { data: settings } = await supabase
+    .from("legacy_settings")
+    .select("status")
+    .eq("id", user.id)
+    .single();
+
+  if (settings?.status === "triggered" || settings?.status === "delivering") {
+    const { count } = await supabase
+      .from("legacy_contacts")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_active", true);
+
+    if ((count ?? 0) <= 1) {
+      return { error: "Cannot delete last contact while legacy delivery is pending" };
+    }
+  }
 
   const { error } = await supabase
     .from("legacy_contacts")
@@ -280,6 +343,10 @@ export async function upsertLegacySettings(updates: {
 }) {
   const { supabase, user } = await getAuthUser();
   if (!supabase || !user) return { error: "Not authenticated" };
+
+  if (updates.inactivity_trigger_months !== undefined && (updates.inactivity_trigger_months < 1 || updates.inactivity_trigger_months > 60)) {
+    return { error: "Inactivity period must be between 1 and 60 months" };
+  }
 
   const payload: Record<string, unknown> = { id: user.id };
   if (updates.inactivity_trigger_months !== undefined) payload.inactivity_trigger_months = updates.inactivity_trigger_months;

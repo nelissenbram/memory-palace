@@ -169,6 +169,7 @@ export async function POST(request: Request) {
   // Records are inserted immediately after each successful email send so that
   // a later DB failure cannot cause the cron to re-deliver already-sent emails.
   let timedOut = false;
+  try {
   for (const contact of deliverContacts) {
     // ── Timeout guard: stop before Vercel kills the function ──
     if (Date.now() - deliveryStart > DELIVERY_TIMEOUT_MS) {
@@ -180,6 +181,17 @@ export async function POST(request: Request) {
     const contactEmail = (contact.contact_email || "").toLowerCase();
     if (!contactEmail) {
       console.error(`[Legacy Deliver] Skipping contact ${contact.id}: no email address`);
+      // Insert a failed delivery record so retry logic knows this contact was attempted
+      const skipToken = randomBytes(32).toString("hex");
+      await supabase.from("legacy_deliveries").insert({
+        user_id: userId,
+        contact_id: contact.id,
+        message_id: null,
+        access_token: skipToken,
+        delivered_at: now.toISOString(),
+        expires_at: expiresAt.toISOString(),
+      });
+      errors++;
       continue;
     }
     const contactName = contact.contact_name || "Friend";
@@ -265,48 +277,73 @@ export async function POST(request: Request) {
         });
       }
 
-      const { error: insertError } = await supabase
-        .from("legacy_deliveries")
-        .insert(records);
+      // Retry insert up to 3 times on unique constraint violation (token collision)
+      let insertSuccess = false;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { error: insertError } = await supabase
+          .from("legacy_deliveries")
+          .insert(records);
 
-      if (insertError) {
+        if (!insertError) {
+          insertSuccess = true;
+          break;
+        }
+
+        // PostgreSQL unique violation code
+        if (insertError.code === "23505" && attempt < 2) {
+          console.warn(
+            `[Legacy Deliver] Token collision for contact ${contact.id} (attempt ${attempt + 1}), regenerating tokens…`
+          );
+          // Regenerate all tokens in the records
+          for (let r = 0; r < records.length; r++) {
+            records[r].access_token = randomBytes(32).toString("hex");
+          }
+          continue;
+        }
+
+        // Non-retryable error or final attempt exhausted
         console.error(
           `[Legacy Deliver] DB insert failed for contact ${contact.id}:`,
           insertError.message,
-          "— email was already sent, skipping re-delivery."
+          insertError.code === "23505"
+            ? "— token collision after 3 attempts, giving up."
+            : "— email was already sent, skipping re-delivery."
         );
+        break;
       }
     } else {
       console.error(`[Legacy Deliver] Email failed for ${contactEmail}:`, result.error);
       errors++;
     }
   }
-
-  // ── 5. Mark legacy status ──
-  if (!filterMessageIds) {
-    const allDone = errors === 0 && !timedOut;
-    if (retryMode && allDone) {
-      // Retry succeeded for all remaining contacts -> upgrade to transferred
-      await supabase
-        .from("legacy_settings")
-        .update({ status: "transferred" })
-        .eq("id", userId);
-    } else if (retryMode && !allDone) {
-      // Retry had errors or timed out -> revert to partially_delivered
-      await supabase
-        .from("legacy_settings")
-        .update({ status: "partially_delivered" })
-        .eq("id", userId);
-    } else if (!retryMode) {
-      const newStatus = allDone ? "transferred" : "partially_delivered";
-      await supabase
-        .from("legacy_settings")
-        .update({
-          status: newStatus,
-          verification_sent_at: null,
-          verification_token: null,
-        })
-        .eq("id", userId);
+  } finally {
+    // ── 5. Mark legacy status ──
+    // Always update status, even if the loop was interrupted by timeout or error.
+    if (!filterMessageIds) {
+      const allDone = errors === 0 && !timedOut;
+      if (retryMode && allDone) {
+        // Retry succeeded for all remaining contacts -> upgrade to transferred
+        await supabase
+          .from("legacy_settings")
+          .update({ status: "transferred" })
+          .eq("id", userId);
+      } else if (retryMode && !allDone) {
+        // Retry had errors or timed out -> revert to partially_delivered
+        await supabase
+          .from("legacy_settings")
+          .update({ status: "partially_delivered" })
+          .eq("id", userId);
+      } else if (!retryMode) {
+        const newStatus = allDone ? "transferred" : "partially_delivered";
+        await supabase
+          .from("legacy_settings")
+          .update({
+            status: newStatus,
+            verification_sent_at: null,
+            verification_token: null,
+          })
+          .eq("id", userId);
+      }
     }
   }
 

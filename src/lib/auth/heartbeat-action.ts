@@ -26,7 +26,7 @@ export async function updateLastSeen(): Promise<void> {
     .from("legacy_settings")
     .select("status")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   if (settings?.status === "triggered") {
     await supabase

@@ -31,6 +31,11 @@ function VerifiedContent() {
     title = t("verifierExpiredTitle");
     description = t("verifierExpiredDesc");
     footer = "";
+  } else if (status === "too_late") {
+    icon = "\u{1F570}\uFE0F";
+    title = t("verifierTooLateTitle");
+    description = t("verifierTooLateDesc");
+    footer = "";
   } else if (status === "invalid") {
     icon = "\u26A0\uFE0F";
     title = t("verifierInvalidTitle");
@@ -62,7 +67,7 @@ function VerifiedContent() {
           textAlign: "center",
         }}
       >
-        <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>
+        <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }} aria-hidden="true">
           {icon}
         </div>
         <h1
@@ -97,6 +102,19 @@ function VerifiedContent() {
             {footer}
           </p>
         )}
+        <a
+          href="https://thememorypalace.ai"
+          style={{
+            display: "inline-block",
+            marginTop: "1rem",
+            fontSize: "0.8125rem",
+            color: T.color.walnut,
+            textDecoration: "underline",
+            textUnderlineOffset: "0.1875rem",
+          }}
+        >
+          {t("visitMemoryPalace")}
+        </a>
       </div>
     </div>
   );

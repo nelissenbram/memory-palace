@@ -55,6 +55,7 @@ export async function GET(request: Request) {
   if (type === "verifier") {
     // Verifier flow: atomically claim token + clear verification state.
     // Does NOT reset last_seen_at — the user themselves must log in.
+    // Only allow cancellation if delivery hasn't already started.
     const { data: updated, error: updateError } = await supabase
       .from("legacy_settings")
       .update({
@@ -67,6 +68,7 @@ export async function GET(request: Request) {
       })
       .eq("verifier_confirmation_token", token)
       .gt("verification_expires_at", now)
+      .not("status", "in", "(delivering,transferred,partially_delivered)")
       .select("id")
       .maybeSingle();
 
@@ -82,6 +84,20 @@ export async function GET(request: Request) {
       if (expired) {
         return NextResponse.redirect(`${siteUrl}/legacy/verified?status=expired`);
       }
+
+      // Check if token was valid but delivery already started
+      const { data: inProgress } = await supabase
+        .from("legacy_settings")
+        .select("id, status")
+        .eq("verifier_confirmation_token", token)
+        .gt("verification_expires_at", now)
+        .in("status", ["delivering", "transferred", "partially_delivered"])
+        .maybeSingle();
+
+      if (inProgress) {
+        return NextResponse.redirect(`${siteUrl}/legacy/verified?status=too_late`);
+      }
+
       return NextResponse.redirect(`${siteUrl}/legacy/verified?status=invalid`);
     }
 
@@ -119,11 +135,15 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=invalid`);
   }
 
-  // Update last_seen_at on the profile
-  await supabase
+  // Update last_seen_at on the profile (best-effort, don't break the flow)
+  const { error: profileError } = await supabase
     .from("profiles")
     .update({ last_seen_at: now })
     .eq("id", updated.id);
+
+  if (profileError) {
+    console.error("[legacy/verify] Failed to update last_seen_at for profile:", updated.id, profileError);
+  }
 
   // Redirect to palace with success indicator
   return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=confirmed`);

@@ -37,11 +37,50 @@ function ConfirmModal({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const cancelBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Focus the confirm button on mount
+  useEffect(() => {
+    confirmBtnRef.current?.focus();
+  }, []);
+
+  // Focus trap + Escape handler
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      onCancel();
+      return;
+    }
+    if (e.key === "Tab") {
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+  }, [onCancel]);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      ref={dialogRef}
+      onKeyDown={handleKeyDown}
       style={{
         position: "fixed", inset: 0, zIndex: 200,
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -69,7 +108,7 @@ function ConfirmModal({
           {body}
         </p>
         <div style={{ display: "flex", gap: "0.625rem", justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{
+          <button ref={cancelBtnRef} onClick={onCancel} style={{
             padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
             border: `1px solid ${T.color.cream}`, background: "transparent",
             fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
@@ -77,7 +116,7 @@ function ConfirmModal({
           }}>
             {cancelLabel}
           </button>
-          <button onClick={onConfirm} style={{
+          <button ref={confirmBtnRef} onClick={onConfirm} style={{
             padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
             border: "none",
             background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
@@ -323,8 +362,8 @@ export default function LegacyPage() {
         <ConfirmModal
           title={t("unsavedChangesTitle")}
           body={t("unsavedChangesBody")}
-          confirmLabel={t("modalSwitch")}
-          cancelLabel={t("modalStay")}
+          confirmLabel={t("modalDiscardChanges")}
+          cancelLabel={t("modalKeepEditing")}
           onConfirm={() => {
             dirtyRef.current = false;
             setActiveSection(pendingTab);
@@ -350,6 +389,7 @@ export default function LegacyPage() {
             role="tab"
             aria-selected={activeSection === tab.key}
             aria-controls={`tabpanel-${tab.key}`}
+            className="legacy-focus-ring"
             style={{
               padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
               border: `1.5px solid ${activeSection === tab.key ? T.color.terracotta : T.color.cream}`,
@@ -512,6 +552,10 @@ function ContactsSection({
       showToast(t("fillNameEmail"), "error");
       return;
     }
+    if (!isValidEmail(email.trim())) {
+      showToast(t("invalidEmail"), "error");
+      return;
+    }
     setSaving(true);
 
     if (editingId) {
@@ -568,8 +612,8 @@ function ContactsSection({
       <ConfirmModal
         title={t("editContact")}
         body={t("confirmDeleteContactSoft", { name: confirmDeleteContact.contact_name })}
-        confirmLabel={t("modalConfirm")}
-        cancelLabel={t("modalCancel")}
+        confirmLabel={t("modalRemoveContact")}
+        cancelLabel={t("modalKeepContact")}
         onConfirm={() => handleDelete(confirmDeleteId)}
         onCancel={() => setConfirmDeleteId(null)}
       />
@@ -725,25 +769,33 @@ function ContactsSection({
           <div style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}>
             {/* Name */}
             <div>
-              <label htmlFor="legacy-contact-name" style={labelStyle}>{t("contactName")}</label>
+              <label htmlFor="legacy-contact-name" style={labelStyle}>{t("contactName")}<RequiredMark /></label>
               <input
                 id="legacy-contact-name"
                 type="text" value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t("contactNamePlaceholder")}
-                style={inputStyle}
+                className="legacy-focus-ring"
+                required
+                aria-required="true"
+                disabled={saving}
+                style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
             </div>
 
             {/* Email */}
             <div>
-              <label htmlFor="legacy-contact-email" style={labelStyle}>{t("contactEmail")}</label>
+              <label htmlFor="legacy-contact-email" style={labelStyle}>{t("contactEmail")}<RequiredMark /></label>
               <input
                 id="legacy-contact-email"
                 type="email" value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t("contactEmailPlaceholder")}
-                style={inputStyle}
+                className="legacy-focus-ring"
+                required
+                aria-required="true"
+                disabled={saving}
+                style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
             </div>
 
@@ -756,6 +808,7 @@ function ContactsSection({
                     key={r.value}
                     onClick={() => setRelationship(r.value)}
                     aria-pressed={relationship === r.value}
+                    disabled={saving}
                     style={{
                       padding: "0.625rem 1rem", borderRadius: "0.625rem",
                       border: `1.5px solid ${relationship === r.value ? T.color.terracotta : T.color.sandstone}`,
@@ -763,7 +816,8 @@ function ContactsSection({
                       fontFamily: T.font.body, fontSize: "0.875rem",
                       fontWeight: relationship === r.value ? 600 : 400,
                       color: relationship === r.value ? T.color.terracotta : T.color.charcoal,
-                      cursor: "pointer", transition: "all .15s",
+                      cursor: saving ? "not-allowed" : "pointer", transition: "all .15s",
+                      ...(saving ? { opacity: 0.6 } : {}),
                     }}
                   >
                     {t(r.labelKey)}
@@ -787,11 +841,13 @@ function ContactsSection({
                     key={a.value}
                     onClick={() => setAccessLevel(a.value)}
                     aria-pressed={accessLevel === a.value}
+                    disabled={saving}
                     style={{
                       padding: "0.875rem 1.125rem", borderRadius: "0.75rem", textAlign: "left",
                       border: `1.5px solid ${accessLevel === a.value ? T.color.terracotta : T.color.sandstone}`,
                       background: accessLevel === a.value ? `${T.color.terracotta}10` : T.color.white,
-                      cursor: "pointer", transition: "all .15s",
+                      cursor: saving ? "not-allowed" : "pointer", transition: "all .15s",
+                      ...(saving ? { opacity: 0.6 } : {}),
                     }}
                   >
                     <div style={{
@@ -993,6 +1049,10 @@ function MessagesSection({
       showToast(t("fillRecipientSubject"), "error");
       return;
     }
+    if (!isValidEmail(recipientEmail.trim())) {
+      showToast(t("invalidEmail"), "error");
+      return;
+    }
     // Empty body warning (#11)
     if (!body.trim()) {
       showToast(t("emptyBodyWarning"), "success");
@@ -1051,8 +1111,8 @@ function MessagesSection({
       <ConfirmModal
         title={t("editMessage")}
         body={t("confirmDeleteMessageSoft")}
-        confirmLabel={t("modalConfirm")}
-        cancelLabel={t("modalCancel")}
+        confirmLabel={t("modalRemoveMessage")}
+        cancelLabel={t("modalKeepMessage")}
         onConfirm={() => handleDelete(confirmDeleteId)}
         onCancel={() => setConfirmDeleteId(null)}
       />
@@ -1180,7 +1240,7 @@ function MessagesSection({
           <div style={{ display: "flex", flexDirection: "column", gap: "1.125rem" }}>
             {/* Recipient */}
             <div>
-              <label htmlFor="legacy-msg-recipient" style={labelStyle}>{t("recipientEmail")}</label>
+              <label htmlFor="legacy-msg-recipient" style={labelStyle}>{t("recipientEmail")}<RequiredMark /></label>
               {contacts.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem", marginBottom: "0.5rem" }}>
                   {contacts.map((c) => (
@@ -1206,19 +1266,27 @@ function MessagesSection({
                 type="email" value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
                 placeholder={t("contactEmailPlaceholder")}
-                style={inputStyle}
+                className="legacy-focus-ring"
+                required
+                aria-required="true"
+                disabled={saving}
+                style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
             </div>
 
             {/* Subject */}
             <div>
-              <label htmlFor="legacy-msg-subject" style={labelStyle}>{t("subject")}</label>
+              <label htmlFor="legacy-msg-subject" style={labelStyle}>{t("subject")}<RequiredMark /></label>
               <input
                 id="legacy-msg-subject"
                 type="text" value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder={t("subjectPlaceholder")}
-                style={inputStyle}
+                className="legacy-focus-ring"
+                required
+                aria-required="true"
+                disabled={saving}
+                style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
             </div>
 
@@ -1237,12 +1305,15 @@ function MessagesSection({
                 onChange={(e) => setBody(e.target.value)}
                 placeholder={t("messagePlaceholder")}
                 rows={10}
+                className="legacy-focus-ring"
+                disabled={saving}
                 style={{
                   ...inputStyle,
                   resize: "vertical",
                   minHeight: "12.5rem",
                   lineHeight: 1.7,
                   fontSize: "0.9375rem",
+                  ...(saving ? { pointerEvents: "none" as const, opacity: 0.6 } : {}),
                 }}
               />
             </div>
@@ -1255,6 +1326,7 @@ function MessagesSection({
                   <button
                     key={d.value}
                     onClick={() => setDeliverOn(d.value)}
+                    disabled={saving}
                     style={{
                       padding: "0.75rem 1.125rem", borderRadius: "0.625rem", textAlign: "left",
                       border: `1.5px solid ${deliverOn === d.value ? T.color.terracotta : T.color.sandstone}`,
@@ -1262,7 +1334,8 @@ function MessagesSection({
                       fontFamily: T.font.body, fontSize: "0.9375rem",
                       fontWeight: deliverOn === d.value ? 600 : 400,
                       color: deliverOn === d.value ? T.color.terracotta : T.color.charcoal,
-                      cursor: "pointer", transition: "all .15s",
+                      cursor: saving ? "not-allowed" : "pointer", transition: "all .15s",
+                      ...(saving ? { opacity: 0.6 } : {}),
                     }}
                   >
                     {t(d.labelKey)}
@@ -1282,7 +1355,10 @@ function MessagesSection({
                   <input
                     type="date" value={deliverDate}
                     onChange={(e) => setDeliverDate(e.target.value)}
-                    style={inputStyle}
+                    min={new Date().toISOString().slice(0, 10)}
+                    className="legacy-focus-ring"
+                    disabled={saving}
+                    style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
                   />
                 </div>
               )}
@@ -1342,6 +1418,10 @@ function SettingsSection({
   }, [hasChanges, setDirty]);
 
   const handleSave = async () => {
+    if (verifierEmail.trim() && !isValidEmail(verifierEmail.trim())) {
+      showToast(t("invalidVerifierEmail"), "error");
+      return;
+    }
     setSaving(true);
     const result = await upsertLegacySettings({
       inactivity_trigger_months: months,
@@ -1426,7 +1506,10 @@ function SettingsSection({
               step={1}
               value={months}
               onChange={(e) => setMonths(Number(e.target.value))}
-              style={{ flex: 1, accentColor: T.color.terracotta }}
+              aria-label={t("inactivitySliderLabel")}
+              aria-valuetext={months === 1 ? t("monthLabel", { count: String(months) }) : t("monthsLabel", { count: String(months) })}
+              disabled={saving}
+              style={{ flex: 1, accentColor: T.color.terracotta, ...(saving ? { pointerEvents: "none" as const, opacity: 0.6 } : {}) }}
             />
             <div style={{
               fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600,
@@ -1464,7 +1547,9 @@ function SettingsSection({
                 type="text" value={verifierName}
                 onChange={(e) => setVerifierName(e.target.value)}
                 placeholder={t("verifierNamePlaceholder")}
-                style={inputStyle}
+                className="legacy-focus-ring"
+                disabled={saving}
+                style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
             </div>
             <div>
@@ -1474,7 +1559,9 @@ function SettingsSection({
                 type="email" value={verifierEmail}
                 onChange={(e) => setVerifierEmail(e.target.value)}
                 placeholder={t("verifierEmailPlaceholder")}
-                style={inputStyle}
+                className="legacy-focus-ring"
+                disabled={saving}
+                style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
             </div>
           </div>
@@ -1549,6 +1636,15 @@ function SettingsSection({
   );
 }
 
+// ═══ Helpers ═══
+
+const isValidEmail = (email: string): boolean =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+const RequiredMark = () => (
+  <span aria-hidden="true" style={{ color: T.color.terracotta, marginLeft: "0.25rem" }}>*</span>
+);
+
 // ═══ Shared Styles ═══
 
 const labelStyle: React.CSSProperties = {
@@ -1573,7 +1669,7 @@ const inputStyle: React.CSSProperties = {
   color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box" as const,
-  transition: "border-color .2s",
+  transition: "border-color .2s, box-shadow .2s",
 };
 
 const primaryBtnStyle: React.CSSProperties = {
@@ -1603,7 +1699,8 @@ const secondaryBtnStyle: React.CSSProperties = {
 };
 
 const smallBtnStyle: React.CSSProperties = {
-  padding: "0.5rem 1rem",
+  padding: "0.625rem 1.25rem",
+  minHeight: "2.75rem",
   borderRadius: "0.5rem",
   border: `1px solid ${T.color.cream}`,
   background: T.color.white,
