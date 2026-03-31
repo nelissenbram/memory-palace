@@ -35,9 +35,12 @@ export async function getAuthenticatedUser() {
  * Get the base URL for OAuth redirect URIs.
  */
 export function getBaseUrl(): string {
-  // In production, use the deployed URL. In dev, use localhost.
+  // Use the canonical site URL for stable OAuth redirect URIs.
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  }
   if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL;
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
@@ -188,6 +191,68 @@ export function isImportable(mimeType: string): boolean {
 export function isImportableByExtension(filename: string): boolean {
   const ext = filename.split(".").pop()?.toLowerCase() || "";
   return IMPORTABLE_EXTENSIONS.has(ext);
+}
+
+// ---------------------------------------------------------------------------
+// Room ID resolution — map local room IDs (e.g. "tr4") to database UUIDs
+// ---------------------------------------------------------------------------
+
+/**
+ * Map a local room ID prefix to a wing slug.
+ * E.g. "tr4" → prefix "tr" → "travel".
+ */
+export function wingSlugFromRoomId(localRoomId: string): string {
+  const prefix = localRoomId.slice(0, 2);
+  const map: Record<string, string> = {
+    fr: "family",
+    tr: "travel",
+    cr: "childhood",
+    kr: "career",
+    rr: "creativity",
+  };
+  return map[prefix] || "family";
+}
+
+/**
+ * Resolve a local room ID (e.g. "tr4") to a database UUID.
+ * Looks up an existing room by name, or creates one in the correct wing.
+ * Works with any Supabase client that has the `from()` method.
+ */
+export async function resolveRoomId(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (...args: any[]) => any; },
+  userId: string,
+  localRoomId: string,
+): Promise<string | null> {
+  // Check for existing room with this name
+  const { data: existing } = await supabase
+    .from("rooms")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("name", localRoomId)
+    .single();
+
+  if (existing) return existing.id;
+
+  // Find the wing for this room
+  const wingSlug = wingSlugFromRoomId(localRoomId);
+  const { data: wing } = await supabase
+    .from("wings")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("slug", wingSlug)
+    .single();
+
+  if (!wing) return null;
+
+  // Create the room
+  const { data: room } = await supabase
+    .from("rooms")
+    .insert({ wing_id: wing.id, user_id: userId, name: localRoomId })
+    .select("id")
+    .single();
+
+  return room?.id || null;
 }
 
 // ---------------------------------------------------------------------------

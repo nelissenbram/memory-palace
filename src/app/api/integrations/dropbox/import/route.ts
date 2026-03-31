@@ -4,6 +4,7 @@ import {
   getConnectedAccount,
   isImportable,
   isImportableByExtension,
+  resolveRoomId,
   MAX_IMPORT_FILE_SIZE,
   MAX_IMPORT_BATCH_SIZE,
   TokenExpiredError,
@@ -46,6 +47,12 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient();
+
+    // Resolve local room ID to database UUID
+    const dbRoomId = await resolveRoomId(supabase, user.id, roomId);
+    if (!dbRoomId) {
+      return NextResponse.json({ error: "Could not resolve room" }, { status: 400 });
+    }
 
     // Check for duplicates: find which paths are already imported for this user
     const { data: existingMemories } = await supabase
@@ -134,7 +141,7 @@ export async function POST(request: NextRequest) {
         const { data: memory, error: memErr } = await supabase
           .from("memories")
           .insert({
-            room_id: roomId,
+            room_id: dbRoomId,
             user_id: user.id,
             title: cleanFilename(filename),
             type: isVideo ? "video" : isAudio ? "audio" : isImage ? "photo" : "document",
