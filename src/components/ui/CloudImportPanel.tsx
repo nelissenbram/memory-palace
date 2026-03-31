@@ -397,6 +397,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                       fontFamily: T.font.body, fontSize: "0.6875rem", color: "#C05050", margin: "0.25rem 0",
                     }}>
                       {t("importItemFailed", { name: r.id === "error" ? t("importFailed") : (r.id.split("/").pop() || r.id) })}
+                      {r.error && <span style={{ display: "block", fontSize: "0.625rem", opacity: 0.8 }}>{r.error}</span>}
                     </p>
                   ))}
                 </div>
