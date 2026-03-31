@@ -19,7 +19,6 @@ import type { Job, JobType } from "@/lib/queue/types";
 
 export const maxDuration = 60;
 
-const CRON_SECRET = process.env.CRON_SECRET || "";
 const BATCH_SIZE = 10;
 const RETRY_DELAY_MS = 60_000; // 1 minute backoff for failed jobs
 
@@ -54,9 +53,13 @@ const handlers: Record<JobType, JobHandler> = {
 // ── Route handler ──────────────────────────────────────────
 
 export async function GET(request: Request) {
-  // Verify cron secret
+  // Verify cron secret — fail-closed if not configured
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+  }
   const authHeader = request.headers.get("authorization");
-  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -169,7 +172,7 @@ export async function GET(request: Request) {
   );
 }
 
-// Support POST as well (Vercel cron can use either)
+// Support POST as well — intentional for Vercel Cron compatibility (cron sends GET)
 export async function POST(request: Request) {
   return GET(request);
 }

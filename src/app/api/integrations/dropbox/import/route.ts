@@ -34,7 +34,12 @@ export async function POST(request: NextRequest) {
       expiresAt: account.token_expires_at,
     });
 
-    const body = await request.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
     const { filePaths, roomId } = body as { filePaths: string[]; roomId: string };
 
     if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) {
@@ -61,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for duplicates: find which paths are already imported for this user
-    const { data: existingMemories } = await supabase
+    const { data: existingMemories, error: dupCheckError } = await supabase
       .from("memories")
       .select("metadata")
       .eq("user_id", user.id)
@@ -69,6 +74,11 @@ export async function POST(request: NextRequest) {
         "metadata->>originalPath",
         filePaths,
       );
+
+    if (dupCheckError) {
+      console.error("Duplicate check failed:", dupCheckError.message);
+      // Continue without duplicate detection rather than failing the whole import
+    }
 
     const alreadyImportedPaths = new Set(
       (existingMemories || [])

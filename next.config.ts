@@ -118,15 +118,37 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  // Security headers
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(self), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
+
   // Ensure Three.js works properly
   transpilePackages: ["three"],
 
-  // Allow loading images from external sources (for memory URLs)
+  // Allow loading images from specific trusted origins only
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "*.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
       },
     ],
     // Static export doesn't support Next.js Image optimization

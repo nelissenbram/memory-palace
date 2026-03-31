@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 const DEFAULT_WINGS = [
   { slug: "family", accent_color: "#C17F59" },
@@ -186,10 +186,7 @@ export async function deleteAccount() {
     return { error: "Not authenticated" };
   }
 
-  // Delete the profile (cascades via FK on delete cascade from auth.users)
-  // We delete from profiles first, then sign the user out.
-  // Note: full user deletion from auth.users requires a service-role key
-  // or Supabase Edge Function. For now we clear profile data and sign out.
+  // 1. Delete the profile row (cascades to wings, rooms, memories, etc.)
   const { error: deleteError } = await supabase
     .from("profiles")
     .delete()
@@ -199,6 +196,35 @@ export async function deleteAccount() {
     return { error: deleteError.message };
   }
 
+  // 2. Delete user's storage files (uploaded memories/media)
+  try {
+    const { data: files } = await supabase.storage
+      .from("memories")
+      .list(user.id);
+
+    if (files && files.length > 0) {
+      const paths = files.map((f) => `${user.id}/${f.name}`);
+      await supabase.storage.from("memories").remove(paths);
+    }
+  } catch {
+    // Storage cleanup is best-effort; profile data is already deleted
+  }
+
+  // 3. Delete auth.users record using admin client (requires service role key)
+  try {
+    const adminClient = createAdminClient();
+    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(
+      user.id
+    );
+    if (deleteAuthError) {
+      console.error("Failed to delete auth user:", deleteAuthError.message);
+      // Profile data is already deleted via cascade, so we proceed with sign-out
+    }
+  } catch (err) {
+    console.error("Admin client error during account deletion:", err);
+  }
+
+  // 4. Sign out the current session
   await supabase.auth.signOut();
   return { success: true, redirect: "/login" };
 }

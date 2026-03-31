@@ -23,8 +23,6 @@ import enMessages from "@/messages/en.json";
 
 export const maxDuration = 60;
 
-const CRON_SECRET = process.env.CRON_SECRET || "";
-
 /**
  * Calculate how many consecutive weeks (ending with the current week)
  * a user has added at least one memory.
@@ -121,9 +119,13 @@ function getPreserveNextMilestone(
 export async function POST(request: Request) {
   const startTime = Date.now();
 
-  // Verify cron secret
+  // Verify cron secret — fail-closed if not configured
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+  }
   const authHeader = request.headers.get("authorization");
-  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -530,7 +532,7 @@ export async function POST(request: Request) {
   });
 }
 
-// Also support GET for Vercel cron (which sends GET requests)
+// Also support GET — intentional for Vercel Cron compatibility (cron sends GET)
 export async function GET(request: Request) {
   return POST(request);
 }

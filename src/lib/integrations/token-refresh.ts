@@ -192,10 +192,15 @@ export async function ensureValidToken(
     updates.token_expires_at = new Date(Date.now() + result.expiresIn * 1000).toISOString();
   }
 
-  await supabase
+  const { error: updateError } = await supabase
     .from("connected_accounts")
     .update(updates)
     .eq("id", accountId);
+
+  if (updateError) {
+    console.error("Failed to persist refreshed token:", updateError.message);
+    // Token still works for this request, but next request may fail
+  }
 
   return result.accessToken;
 }

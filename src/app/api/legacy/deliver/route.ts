@@ -13,7 +13,6 @@ import { sendDeliveryEmail } from "@/lib/email/send-legacy";
  * Secured via CRON_SECRET header.
  */
 
-const CRON_SECRET = process.env.CRON_SECRET || "";
 const ACCESS_TOKEN_EXPIRY_DAYS = 90;
 const DELIVERY_TIMEOUT_MS = 50_000;
 
@@ -21,9 +20,13 @@ const DELIVERY_TIMEOUT_MS = 50_000;
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  // Verify cron secret
+  // Verify cron secret — fail-closed if not configured
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+  }
   const authHeader = request.headers.get("authorization");
-  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

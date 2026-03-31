@@ -12,10 +12,9 @@ export async function GET(
     return NextResponse.json({ error: "Not configured" }, { status: 500 });
   }
 
-  // Use service role key if available for bypassing RLS, otherwise anon key
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll() { return []; },

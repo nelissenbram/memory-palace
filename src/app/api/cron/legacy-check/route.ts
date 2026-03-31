@@ -21,16 +21,19 @@ import { sendVerificationEmail, sendTrustedVerifierEmail } from "@/lib/email/sen
  * Vercel cron: daily at 9:00 AM — "0 9 * * *"
  */
 
-const CRON_SECRET = process.env.CRON_SECRET || "";
 const VERIFICATION_GRACE_DAYS = 30;
 const VERIFICATION_GRACE_MS = VERIFICATION_GRACE_DAYS * 24 * 60 * 60 * 1000;
 const VERIFICATION_LINK_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 const CRON_TIMEOUT_MS = 50_000;
 
 export async function GET(request: Request) {
-  // Verify cron secret
+  // Verify cron secret — fail-closed if not configured
+  const CRON_SECRET = process.env.CRON_SECRET;
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+  }
   const authHeader = request.headers.get("authorization");
-  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+  if (authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -393,7 +396,7 @@ export async function GET(request: Request) {
   });
 }
 
-// Support POST as well (Vercel cron can use either)
+// Support POST as well — intentional for Vercel Cron compatibility (cron sends GET)
 export async function POST(request: Request) {
   return GET(request);
 }
