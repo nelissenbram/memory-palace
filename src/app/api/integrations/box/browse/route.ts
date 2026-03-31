@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
     }
     const folderId = request.nextUrl.searchParams.get("folderId") || "0";
+    if (!/^\d+$/.test(folderId)) {
+      return NextResponse.json({ error: "Invalid folderId" }, { status: 400 });
+    }
 
     const result = await listPhotos(token, cursor, folderId);
 

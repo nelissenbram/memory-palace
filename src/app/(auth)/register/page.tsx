@@ -30,7 +30,7 @@ function RegisterContent() {
     const password = formData.get("password") as string;
     const confirm = formData.get("confirmPassword") as string;
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       setError(t("passwordTooShort"));
       setLoading(false);
       return;

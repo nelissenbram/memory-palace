@@ -65,6 +65,17 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
     if (initialWingId) store.setTarget(initialWingId, initialRoomId || null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Revoke blob object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      for (const item of useImportStore.getState().items) {
+        if (item.previewUrl?.startsWith("blob:")) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+      }
+    };
+  }, []);
+
   const handleFiles = useCallback((files: FileList | File[]) => {
     const supported = Array.from(files).filter(
       (f) => f.type.startsWith("image/") || f.type.startsWith("video/") || f.type.startsWith("audio/") ||

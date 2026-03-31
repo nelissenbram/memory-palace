@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
     }
     const path = request.nextUrl.searchParams.get("path") || "";
+    if (path.includes("..")) {
+      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+    }
 
     const result = await listPhotos(token, cursor, path);
 

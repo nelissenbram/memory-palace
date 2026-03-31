@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -168,6 +168,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
       setFolderPath([]);
       setNextCursor(null);
       setImportProgress(null);
+      setError(null);
       fetchItems(activeProvider);
     }
   }, [activeProvider, fetchItems]);

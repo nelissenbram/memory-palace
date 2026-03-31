@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     });
 
     const cursor = request.nextUrl.searchParams.get("cursor") || undefined;
-    if (cursor && cursor.length > 2048) {
+    if (cursor && cursor.length > 4096) {
       return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
     }
     const folderId = request.nextUrl.searchParams.get("folderId") || "root";

@@ -133,7 +133,8 @@ export async function POST(request: NextRequest) {
 
         // Upload to Supabase Storage
         const ext = filename.split(".").pop() || "jpg";
-        const safeExt = /^[a-zA-Z0-9]{1,10}$/.test(ext) ? ext : "bin";
+        const BLOCKED_EXTS = new Set(["exe", "sh", "bat", "cmd", "ps1", "msi", "dll", "com", "scr", "vbs"]);
+        const safeExt = /^[a-zA-Z0-9]{1,10}$/.test(ext) && !BLOCKED_EXTS.has(ext.toLowerCase()) ? ext : "bin";
         const sanitizedId = photoId.replace(/[^a-zA-Z0-9._-]/g, "_");
         const storagePath = `${user.id}/${Date.now()}_${randomBytes(4).toString("hex")}_${sanitizedId}.${safeExt}`;
 
@@ -178,7 +179,8 @@ export async function POST(request: NextRequest) {
 
         if (memErr) {
           await supabase.storage.from("memories").remove([storagePath]);
-          results.push({ id: photoId, success: false, error: memErr.message });
+          const isDuplicate = memErr.code === "23505" || memErr.message?.includes("duplicate");
+          results.push({ id: photoId, success: false, error: isDuplicate ? "Already imported" : memErr.message });
         } else {
           results.push({ id: photoId, success: true, memoryId: memory.id });
         }

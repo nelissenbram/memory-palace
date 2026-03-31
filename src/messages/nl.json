@@ -108,7 +108,7 @@
     "email": "E-mail",
     "emailPlaceholder": "jij@voorbeeld.nl",
     "password": "Wachtwoord",
-    "passwordPlaceholder": "Minimaal 6 tekens",
+    "passwordPlaceholder": "Minimaal 8 tekens",
     "confirmPassword": "Bevestig wachtwoord",
     "confirmPasswordPlaceholder": "Herhaal je wachtwoord",
     "creating": "Account aanmaken...",
@@ -122,7 +122,7 @@
     "confirmationSent": "We hebben een bevestigingslink naar je e-mailadres gestuurd. Klik op de link om je Memory Palace te activeren.",
     "afterConfirming": "Na bevestiging word je naar de gedeelde kamer gebracht.",
     "backToSignIn": "Terug naar inloggen",
-    "passwordTooShort": "Wachtwoord moet minimaal 6 tekens zijn",
+    "passwordTooShort": "Wachtwoord moet minimaal 8 tekens zijn",
     "passwordsMismatch": "Wachtwoorden komen niet overeen",
     "agreeTerms": "Door een account aan te maken ga je akkoord met onze",
     "and": "en"

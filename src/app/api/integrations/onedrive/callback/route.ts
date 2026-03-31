@@ -59,8 +59,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!tokenRes.ok) {
-      const errText = await tokenRes.text();
-      console.error("OneDrive token exchange failed:", errText);
+      console.error(`OneDrive token exchange failed (HTTP ${tokenRes.status})`);
       const resp = NextResponse.redirect(`${baseUrl}/settings/connections?error=auth_failed&provider=onedrive`);
       resp.cookies.delete("oauth_state_onedrive");
       resp.cookies.delete("oauth_pkce_onedrive");
