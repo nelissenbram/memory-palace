@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
 
         // File size validation
         if (data.byteLength > MAX_IMPORT_FILE_SIZE) {
-          results.push({ id: filePath, success: false, error: `File too large (${Math.round(data.byteLength / 1024 / 1024)}MB). Maximum is 50MB.` });
+          results.push({ id: filePath, success: false, error: `File too large (${Math.round(data.byteLength / 1024 / 1024)}MB). Maximum is ${MAX_IMPORT_FILE_SIZE / (1024 * 1024)}MB.` });
           continue;
         }
 

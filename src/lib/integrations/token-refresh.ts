@@ -180,7 +180,10 @@ export async function ensureValidToken(
     );
   }
 
-  // Persist the refreshed token
+  // Persist the refreshed token.
+  // Security: createClient() returns an RLS-scoped Supabase client (anon key + user cookies),
+  // so the UPDATE is already restricted to rows where user_id = auth.uid(). No extra
+  // .eq("user_id", ...) is needed — RLS on connected_accounts enforces ownership.
   const supabase = await createClient();
   const updates: Record<string, unknown> = {
     access_token: result.accessToken,

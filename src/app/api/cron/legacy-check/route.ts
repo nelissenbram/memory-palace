@@ -396,7 +396,7 @@ export async function GET(request: Request) {
   });
 }
 
-// Support POST as well — intentional for Vercel Cron compatibility (cron sends GET)
+/** Vercel Cron sends GET requests. POST delegates to GET for manual/testing use. */
 export async function POST(request: Request) {
   return GET(request);
 }

@@ -117,7 +117,12 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const { data, mimeType, filename } = downloaded;
+        const { data, mimeType: rawMimeType, filename } = downloaded;
+
+        // Google Photos may return application/octet-stream — infer from extension
+        const mimeType = rawMimeType === "application/octet-stream"
+          ? mimeFromExtension(filename) || rawMimeType
+          : rawMimeType;
 
         // File type validation
         if (!isImportable(mimeType) && !isImportableByExtension(filename)) {
@@ -127,7 +132,7 @@ export async function POST(request: NextRequest) {
 
         // File size validation
         if (data.byteLength > MAX_IMPORT_FILE_SIZE) {
-          results.push({ id: photoId, success: false, error: `File too large (${Math.round(data.byteLength / 1024 / 1024)}MB). Maximum is 50MB.` });
+          results.push({ id: photoId, success: false, error: `File too large (${Math.round(data.byteLength / 1024 / 1024)}MB). Maximum is ${MAX_IMPORT_FILE_SIZE / (1024 * 1024)}MB.` });
           continue;
         }
 
@@ -247,4 +252,26 @@ function cleanFilename(name: string): string {
     .replace(/[_-]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase())
     .trim() || "Imported Photo";
+}
+
+/** Infer MIME type from file extension (provider may return application/octet-stream). */
+function mimeFromExtension(filename: string): string | null {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+    gif: "image/gif", webp: "image/webp", heic: "image/heic",
+    heif: "image/heif", tiff: "image/tiff", bmp: "image/bmp",
+    mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
+    webm: "video/webm", mkv: "video/x-matroska",
+    mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4",
+    flac: "audio/flac", ogg: "audio/ogg", aac: "audio/aac",
+    pdf: "application/pdf", txt: "text/plain",
+    svg: "image/svg+xml", ico: "image/x-icon",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  };
+  return map[ext || ""] || null;
 }
