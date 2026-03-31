@@ -14,7 +14,7 @@ export async function GET() {
 
     const clientId = process.env.BOX_CLIENT_ID;
     if (!clientId) {
-      return NextResponse.json({ error: "Box OAuth not configured" }, { status: 500 });
+      return NextResponse.json({ error: "Box OAuth not configured" }, { status: 503 });
     }
 
     const state = generateOAuthState();

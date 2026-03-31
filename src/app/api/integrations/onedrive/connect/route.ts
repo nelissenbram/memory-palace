@@ -11,7 +11,7 @@ export async function GET() {
 
     const clientId = process.env.ONEDRIVE_CLIENT_ID;
     if (!clientId) {
-      return NextResponse.json({ error: "OneDrive OAuth not configured" }, { status: 500 });
+      return NextResponse.json({ error: "OneDrive OAuth not configured" }, { status: 503 });
     }
 
     const state = generateOAuthState();

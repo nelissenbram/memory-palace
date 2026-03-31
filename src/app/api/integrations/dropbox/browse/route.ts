@@ -27,6 +27,9 @@ export async function GET(request: NextRequest) {
     });
 
     const cursor = request.nextUrl.searchParams.get("cursor") || undefined;
+    if (cursor && cursor.length > 2048) {
+      return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+    }
     const path = request.nextUrl.searchParams.get("path") || "";
 
     const result = await listPhotos(token, cursor, path);
@@ -75,7 +78,14 @@ function guessMimeFromName(name: string): string {
     mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
     webm: "video/webm", mkv: "video/x-matroska",
     mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4",
+    flac: "audio/flac", ogg: "audio/ogg", aac: "audio/aac",
     pdf: "application/pdf", txt: "text/plain",
+    svg: "image/svg+xml", ico: "image/x-icon",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   };
   return map[ext || ""] || "application/octet-stream";
 }

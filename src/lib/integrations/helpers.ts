@@ -201,7 +201,7 @@ export function isImportableByExtension(filename: string): boolean {
  * Map a local room ID prefix to a wing slug.
  * E.g. "tr4" → prefix "tr" → "travel".
  */
-export function wingSlugFromRoomId(localRoomId: string): string {
+export function wingSlugFromRoomId(localRoomId: string): string | null {
   const prefix = localRoomId.slice(0, 2);
   const map: Record<string, string> = {
     fr: "family",
@@ -210,7 +210,7 @@ export function wingSlugFromRoomId(localRoomId: string): string {
     kr: "career",
     rr: "creativity",
   };
-  return map[prefix] || "family";
+  return map[prefix] || null;
 }
 
 /**
@@ -236,6 +236,7 @@ export async function resolveRoomId(
 
   // Find the wing for this room
   const wingSlug = wingSlugFromRoomId(localRoomId);
+  if (!wingSlug) return null;
   const { data: wing } = await supabase
     .from("wings")
     .select("id")

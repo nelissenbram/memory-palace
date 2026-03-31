@@ -380,7 +380,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
 
           {/* Error banner */}
           {error && (
-            <div style={{
+            <div role="alert" style={{
               display: "flex", alignItems: "center", gap: "0.625rem",
               padding: "0.75rem 1rem", borderRadius: "0.75rem",
               background: "#A63D3D10", border: "1px solid #A63D3D33",
@@ -418,7 +418,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
 
           {/* Import complete view */}
           {importProgress && !importing && (
-            <div style={{ textAlign: "center", padding: "2rem 0" }}>
+            <div aria-live="polite" style={{ textAlign: "center", padding: "2rem 0" }}>
               <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>
                 {importProgress.failed === 0 ? "\u{1F389}" : "\u26A0\uFE0F"}
               </div>
@@ -475,7 +475,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 <span>{t("importingFrom", { provider: PROVIDER_META[activeProvider!]?.name })}</span>
                 <span>{t("selected", { count: String(importProgress.total) })}</span>
               </div>
-              <div role="progressbar" aria-label={t("importing")} style={{
+              <div role="progressbar" aria-label={t("importing")} aria-busy="true" style={{
                 width: "100%", height: "0.5rem", borderRadius: "0.25rem",
                 background: `${T.color.sandstone}33`, overflow: "hidden",
                 position: "relative",
@@ -493,7 +493,8 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
               }}>
                 {t("importWaitMessage")}
               </p>
-              <style>{`@keyframes indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }`}</style>
+              <style>{`@keyframes indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+@media (prefers-reduced-motion: reduce) { .indeterminate-bar, [style*="animation"] { animation: none !important; } }`}</style>
             </div>
           )}
 
@@ -701,6 +702,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
         <style>{`
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           @keyframes fadeUp { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: translateY(0); } }
+          @media (prefers-reduced-motion: reduce) { .indeterminate-bar, [style*="animation"] { animation: none !important; } }
         `}</style>
       </div>
     );
@@ -728,6 +730,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { .indeterminate-bar, [style*="animation"] { animation: none !important; } }
       `}</style>
     </div>
   );

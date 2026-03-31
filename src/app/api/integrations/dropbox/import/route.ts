@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAuthenticatedUser,
@@ -125,7 +126,10 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const storagePath = `${user.id}/${Date.now()}_${filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const ext = filename.split(".").pop() || "bin";
+        const safeExt = /^[a-zA-Z0-9]{1,10}$/.test(ext) ? ext : "bin";
+        const sanitizedName = filename.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `${user.id}/${Date.now()}_${randomBytes(4).toString("hex")}_${sanitizedName}.${safeExt}`;
 
         const { error: uploadErr } = await supabase.storage
           .from("memories")
@@ -216,7 +220,7 @@ async function downloadWithRetry(
     return await downloadPhoto(token, filePath);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "";
-    if (message.includes("401") || message.includes("Unauthorized")) {
+    if (message.includes("401") || message.toLowerCase().includes("unauthorized")) {
       const newToken = await refreshToken();
       if (newToken) {
         return await downloadPhoto(newToken, filePath);
@@ -245,7 +249,14 @@ function mimeFromExtension(filename: string): string | null {
     mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
     webm: "video/webm", mkv: "video/x-matroska",
     mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4",
+    flac: "audio/flac", ogg: "audio/ogg", aac: "audio/aac",
     pdf: "application/pdf", txt: "text/plain",
+    svg: "image/svg+xml", ico: "image/x-icon",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   };
   return map[ext || ""] || null;
 }

@@ -274,8 +274,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 
           {/* Source toggle: Local / Cloud */}
           {step === "drop" && (
-            <div style={{ display: "flex", gap: "0.25rem", marginBottom: "0.75rem", background: T.color.warmStone, borderRadius: "0.625rem", padding: "0.1875rem" }}>
-              <button onClick={() => setShowCloud(false)} style={{
+            <div role="tablist" style={{ display: "flex", gap: "0.25rem", marginBottom: "0.75rem", background: T.color.warmStone, borderRadius: "0.625rem", padding: "0.1875rem" }}>
+              <button role="tab" aria-selected={!showCloud} onClick={() => setShowCloud(false)} style={{
                 flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
                 background: !showCloud ? T.color.white : "transparent",
                 color: !showCloud ? T.color.charcoal : T.color.muted,
@@ -284,7 +284,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               }}>
                 {"\u{1F4C1}"} {t("localFiles")}
               </button>
-              <button onClick={() => setShowCloud(true)} style={{
+              <button role="tab" aria-selected={showCloud} onClick={() => setShowCloud(true)} style={{
                 flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
                 background: showCloud ? T.color.white : "transparent",
                 color: showCloud ? T.color.charcoal : T.color.muted,
@@ -422,7 +422,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               <div style={{ maxHeight: "12.5rem", overflowY: "auto", borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`, background: T.color.white }}>
                 {items.map((item) => (
                   <div key={item.localId} style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.5rem 0.75rem", borderBottom: `1px solid ${T.color.cream}22` }}>
-                    <div style={{ width: "2rem", height: "2rem", borderRadius: "0.375rem", background: T.color.warmStone, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0 }}>
+                    <div style={{ width: "2rem", height: "2rem", borderRadius: "0.375rem", background: T.color.warmStone, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0, minWidth: "2.75rem", minHeight: "2.75rem" }}>
                       {TYPE_ICONS[item.confirmed.type] || "\u{1F4C4}"}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -477,14 +477,14 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           {/* ════ STEP: REVIEW ════ */}
           {step === "review" && <>
             {/* Tabs */}
-            <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1rem", background: T.color.warmStone, borderRadius: "0.625rem", padding: "0.1875rem" }}>
+            <div role="tablist" style={{ display: "flex", gap: "0.25rem", marginBottom: "1rem", background: T.color.warmStone, borderRadius: "0.625rem", padding: "0.1875rem" }}>
               {([
                 ["review", t("tabReview", { count: String(items.filter((i) => i.status === "ready" && i.needsReview).length) })],
                 ["accepted", t("tabAccepted", { count: String(items.filter((i) => i.status === "accepted").length) })],
                 ["rejected", t("tabRejected", { count: String(items.filter((i) => i.status === "rejected").length) })],
                 ["all", t("tabAll", { count: String(items.filter((i) => !["error", "committed"].includes(i.status)).length) })],
               ] as [typeof tab, string][]).map(([key, label]) => (
-                <button key={key} onClick={() => setTab(key)} style={{
+                <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)} style={{
                   flex: 1, padding: "0.4375rem 0.5rem", borderRadius: "0.5rem", border: "none",
                   background: tab === key ? T.color.white : "transparent",
                   color: tab === key ? T.color.charcoal : T.color.muted,
@@ -574,6 +574,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
 // ═══ Sub-components ═══
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation("massImport");
   const colors: Record<string, string> = {
     queued: T.color.sandstone, reading: "#5A7898", extracting: "#5A7898",
     tagging: "#9B6B8E", ready: "#C9A84C", accepted: "#4A6741",
@@ -581,7 +582,7 @@ function StatusBadge({ status }: { status: string }) {
   };
   const isSpinning = ["reading", "extracting", "tagging"].includes(status);
   return (
-    <div style={{
+    <div aria-label={t(`status_${status}`)} style={{
       width: "1.25rem", height: "1.25rem", borderRadius: "0.625rem", flexShrink: 0,
       display: "flex", alignItems: "center", justifyContent: "center",
       border: isSpinning ? `2px solid ${colors[status] || T.color.muted}` : "none",
@@ -590,7 +591,8 @@ function StatusBadge({ status }: { status: string }) {
       background: isSpinning ? "transparent" : (colors[status] || T.color.sandstone) + "30",
       color: colors[status] || T.color.muted, fontSize: "0.625rem",
     }}>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce) { .indeterminate-bar, [style*="animation"] { animation: none !important; } }`}</style>
       {!isSpinning && (status === "accepted" || status === "committed" ? "\u2713" : status === "rejected" ? "\u2715" : status === "error" ? "!" : "\u2022")}
     </div>
   );

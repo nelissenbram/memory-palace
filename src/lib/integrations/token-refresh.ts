@@ -83,6 +83,7 @@ async function refreshDropboxToken(refreshToken: string): Promise<RefreshResult>
   return {
     accessToken: data.access_token,
     expiresIn: data.expires_in,
+    refreshToken: data.refresh_token || undefined,
   };
 }
 

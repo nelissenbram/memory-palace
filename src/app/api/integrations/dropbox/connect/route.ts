@@ -11,7 +11,7 @@ export async function GET() {
 
     const appKey = process.env.DROPBOX_APP_KEY;
     if (!appKey) {
-      return NextResponse.json({ error: "Dropbox OAuth not configured" }, { status: 500 });
+      return NextResponse.json({ error: "Dropbox OAuth not configured" }, { status: 503 });
     }
 
     const state = generateOAuthState();

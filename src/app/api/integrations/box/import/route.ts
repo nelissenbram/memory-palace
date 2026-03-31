@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAuthenticatedUser,
@@ -121,7 +122,9 @@ export async function POST(request: NextRequest) {
         }
 
         const ext = filename.split(".").pop() || "bin";
-        const storagePath = `${user.id}/${Date.now()}_${fileId}.${ext}`;
+        const safeExt = /^[a-zA-Z0-9]{1,10}$/.test(ext) ? ext : "bin";
+        const sanitizedId = fileId.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `${user.id}/${Date.now()}_${randomBytes(4).toString("hex")}_${sanitizedId}.${safeExt}`;
 
         const { error: uploadErr } = await supabase.storage
           .from("memories")
@@ -212,7 +215,7 @@ async function downloadWithRetry(
     return await downloadPhoto(token, fileId);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "";
-    if (message.includes("401") || message.includes("Unauthorized")) {
+    if (message.includes("401") || message.toLowerCase().includes("unauthorized")) {
       const newToken = await refreshToken();
       if (newToken) {
         return await downloadPhoto(newToken, fileId);
