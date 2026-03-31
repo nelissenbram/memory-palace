@@ -27,7 +27,9 @@ const VERIFICATION_LINK_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 const CRON_TIMEOUT_MS = 50_000;
 
 export async function GET(request: Request) {
-  // Verify cron secret — fail-closed if not configured
+  // Verify cron secret — fail-closed if not configured.
+  // Security: if CRON_SECRET env var is missing, reject with 500 rather than
+  // skipping auth, so a misconfigured deploy never allows unauthenticated access.
   const CRON_SECRET = process.env.CRON_SECRET;
   if (!CRON_SECRET) {
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });

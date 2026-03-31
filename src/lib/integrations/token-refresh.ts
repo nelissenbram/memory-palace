@@ -2,6 +2,10 @@
  * Token refresh utility for connected cloud accounts.
  * Checks if an access token is expired and refreshes it using the provider's
  * refresh endpoint before making API calls.
+ *
+ * Note: OAuth client secrets (GOOGLE_CLIENT_SECRET, DROPBOX_APP_SECRET, etc.)
+ * should be rotated periodically per provider guidelines. Access tokens are
+ * rotated automatically by ensureValidToken() on every expiry cycle.
  */
 
 import { createClient } from "@/lib/supabase/server";

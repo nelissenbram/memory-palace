@@ -39,6 +39,9 @@ function formatBytes(b: number): string {
 const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
 
+// WCAG AA compliant muted color (≥4.5:1 on #FAFAF7 linen bg)
+const MUTED_AA = "#746B60";
+
 function isFileTooLarge(file: File): boolean {
   const maxSize = file.type.startsWith("video/") ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
   return file.size > maxSize;
@@ -324,8 +327,16 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         {/* Cloud Import Panel (replaces entire content area) */}
         {showCloud && step === "drop" ? (
           <Suspense fallback={
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "3rem", fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "3rem", fontFamily: T.font.body, fontSize: "0.875rem", color: MUTED_AA, gap: "0.75rem" }}>
+              <div aria-hidden="true" style={{
+                width: "2rem", height: "2rem", borderRadius: "50%",
+                border: `0.1875rem solid ${T.color.sandstone}33`,
+                borderTopColor: T.color.terracotta,
+                animation: "massCloudSpin .7s linear infinite",
+              }} />
               {t("loadingCloudImport")}
+              <style>{`@keyframes massCloudSpin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){[style*="massCloudSpin"]{animation:none!important}}`}</style>
             </div>
           }>
             <CloudImportPanel onClose={onClose} embedded />
@@ -378,7 +389,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 </label>
                 <select value={targetRoomId || ""} onChange={(e) => store.setTarget(targetWingId, e.target.value || null)}
                   disabled={!targetWingId}
-                  style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: !targetWingId ? `${T.color.warmStone}` : T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, cursor: targetWingId ? "pointer" : "default", outline: "none" }}>
+                  style={{ width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: !targetWingId ? `${T.color.warmStone}` : T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, cursor: targetWingId ? "pointer" : "not-allowed", outline: "none", opacity: !targetWingId ? 0.6 : 1 }}>
                   <option value="">{t("selectRoom")}</option>
                   {targetWingId && getWingRooms(targetWingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
                 </select>
@@ -556,12 +567,31 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             <div style={{ textAlign: "center", padding: "2rem 0" }}>
               <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>{"\u{1F389}"}</div>
               <h3 style={{ fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.5rem" }}>{t("importCompleteHeading")}</h3>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, margin: "0 0 0.25rem" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: MUTED_AA, margin: "0 0 0.25rem" }}>
                 {t("memoriesAdded", { count: String(progress.committed) })}
               </p>
-              {progress.errors > 0 && (
-                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#A63D3D" }}>{t("itemsHadErrors", { count: String(progress.errors) })}</p>
-              )}
+              {progress.errors > 0 && (() => {
+                const errorItems = items.filter((i) => i.status === "error");
+                const skippedItems = errorItems.filter((i) => {
+                  const lower = (i.error || "").toLowerCase();
+                  return lower.includes("already") || lower.includes("duplicate") || lower.includes("skipped");
+                });
+                const realErrors = errorItems.filter((i) => !skippedItems.includes(i));
+                return (
+                  <>
+                    {skippedItems.length > 0 && (
+                      <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#3B6E8F" }}>
+                        {t("itemsSkipped", { count: String(skippedItems.length) })}
+                      </p>
+                    )}
+                    {realErrors.length > 0 && (
+                      <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#A63D3D" }}>
+                        {t("itemsHadErrors", { count: String(realErrors.length) })}
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
               <div style={{ display: "flex", gap: "0.625rem", justifyContent: "center", marginTop: "1.25rem" }}>
                 <button onClick={() => store.reset()} style={{
                   padding: "0.75rem 1.5rem", borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`,
@@ -711,7 +741,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
               <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("room")}</label>
               <select value={item.confirmed.roomId} onChange={(e) => store.updateConfirmed(item.localId, { roomId: e.target.value })}
                 disabled={!item.confirmed.wingId}
-                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: !item.confirmed.wingId ? T.color.warmStone : T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, cursor: item.confirmed.wingId ? "pointer" : "default", outline: "none" }}>
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: !item.confirmed.wingId ? T.color.warmStone : T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, cursor: item.confirmed.wingId ? "pointer" : "not-allowed", outline: "none", opacity: !item.confirmed.wingId ? 0.6 : 1 }}>
                 <option value="">—</option>
                 {item.confirmed.wingId && getWingRooms(item.confirmed.wingId).map((r) => <option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
               </select>

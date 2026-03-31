@@ -671,6 +671,7 @@
     "items": "{count} onderdelen",
     "importFailed": "Import mislukt",
     "importItemFailed": "Kon {name} niet importeren. Probeer het opnieuw.",
+    "importItemSkipped": "{name} is overgeslagen (al geïmporteerd).",
     "loadFailed": "Kon bestanden niet laden. Probeer het opnieuw.",
     "retry": "Opnieuw proberen",
     "progress": "Voortgang"
@@ -1271,6 +1272,7 @@
     "importCompleteHeading": "Import voltooid!",
     "memoriesAdded": "{count} herinneringen toegevoegd aan je paleis",
     "itemsHadErrors": "{count} onderdelen hadden fouten",
+    "itemsSkipped": "{count} onderdelen zijn overgeslagen (al geïmporteerd)",
     "importMore": "Meer importeren",
     "close": "Sluiten",
     "acceptAllReady": "Alle gereedstaande accepteren",

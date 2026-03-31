@@ -140,6 +140,9 @@ export async function POST(request: NextRequest) {
         const BLOCKED_EXTS = new Set(["exe", "sh", "bat", "cmd", "ps1", "msi", "dll", "com", "scr", "vbs"]);
         const safeExt = /^[a-zA-Z0-9]{1,10}$/.test(ext) && !BLOCKED_EXTS.has(ext.toLowerCase()) ? ext : "bin";
         const sanitizedId = fileId.replace(/[^a-zA-Z0-9._-]/g, "_");
+        // Storage path safety: randomBytes prevents filename collision, sanitizedId strips
+        // path-traversal chars (../ etc.), BLOCKED_EXTS rejects executables, safeExt regex
+        // limits extensions to alphanumeric (max 10 chars) — anything else falls back to ".bin".
         const storagePath = `${user.id}/${Date.now()}_${randomBytes(4).toString("hex")}_${sanitizedId}.${safeExt}`;
 
         const { error: uploadErr } = await supabase.storage

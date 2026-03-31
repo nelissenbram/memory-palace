@@ -671,6 +671,7 @@
     "video": "VIDEO",
     "importFailed": "Import failed",
     "importItemFailed": "Could not import {name}. Please try again.",
+    "importItemSkipped": "{name} was skipped (already imported).",
     "loadFailed": "Could not load files. Please try again.",
     "retry": "Retry",
     "progress": "Progress"
@@ -1271,6 +1272,7 @@
     "importCompleteHeading": "Import Complete!",
     "memoriesAdded": "{count} memories added to your palace",
     "itemsHadErrors": "{count} items had errors",
+    "itemsSkipped": "{count} items were skipped (already imported)",
     "importMore": "Import more",
     "close": "Close",
     "acceptAllReady": "Accept all ready",

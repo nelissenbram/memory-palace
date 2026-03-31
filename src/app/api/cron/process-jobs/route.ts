@@ -53,7 +53,9 @@ const handlers: Record<JobType, JobHandler> = {
 // ── Route handler ──────────────────────────────────────────
 
 export async function GET(request: Request) {
-  // Verify cron secret — fail-closed if not configured
+  // Verify cron secret — fail-closed if not configured.
+  // Security: if CRON_SECRET env var is missing, reject with 500 rather than
+  // skipping auth, so a misconfigured deploy never allows unauthenticated access.
   const CRON_SECRET = process.env.CRON_SECRET;
   if (!CRON_SECRET) {
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
