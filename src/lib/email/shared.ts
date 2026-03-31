@@ -52,16 +52,12 @@ function ornamentalDivider(): string {
 
 export { ornamentalDivider };
 
-/**
- * Wrap email body content in the shared layout.
- *
- * @param preheader  - Hidden text shown in inbox preview (40-90 chars ideal)
- * @param headerHtml - Content for the header area
- * @param bodyHtml   - Main body content
- * @param ctaText    - CTA button label
- * @param ctaUrl     - CTA button URL
- * @param footerExtra - Extra footer lines (e.g. unsubscribe link)
- */
+/** Footer tagline translations. */
+const footerTaglines: Record<string, string> = {
+  en: "Preserve what matters. Share what connects. Leave what lasts.",
+  nl: "Bewaar wat ertoe doet. Deel wat verbindt. Laat na wat blijft.",
+};
+
 export function emailLayout(opts: {
   preheader: string;
   headerHtml: string;
@@ -69,8 +65,11 @@ export function emailLayout(opts: {
   ctaText?: string;
   ctaUrl?: string;
   footerExtra?: string;
+  locale?: string;
 }): string {
-  const { preheader, headerHtml, bodyHtml, ctaText, ctaUrl, footerExtra } = opts;
+  const { preheader, headerHtml, bodyHtml, ctaText, ctaUrl, footerExtra, locale } = opts;
+  const lang = locale || "en";
+  const tagline = footerTaglines[lang] || footerTaglines.en;
 
   const ctaBlock = ctaText && ctaUrl
     ? `
@@ -91,7 +90,7 @@ export function emailLayout(opts: {
     : "";
 
   return `<!DOCTYPE html>
-<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<html lang="${lang}" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -199,7 +198,7 @@ export function emailLayout(opts: {
               The Memory Palace
             </p>
             <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;color:#B8A99A;line-height:1.6;font-style:italic;letter-spacing:0.3px;">
-              Preserve what matters. Share what connects. Leave what lasts.
+              ${tagline}
             </p>
             ${footerExtra || ""}
             <p style="margin:16px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;line-height:1.5;">

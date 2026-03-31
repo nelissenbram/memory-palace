@@ -16,6 +16,9 @@ import { rateLimit } from "@/lib/rate-limit";
  * Token expiry: if verification_expires_at < now(), the link is invalid.
  */
 
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token");
@@ -26,7 +29,7 @@ export async function GET(request: Request) {
   // ── Rate limiting: 10 req/min per IP ──
   const forwarded = request.headers.get("x-forwarded-for");
   const ip = forwarded?.split(",")[0]?.trim() || "unknown";
-  const { success: rateLimitOk } = rateLimit(`legacy-verify:${ip}`, 10, 60_000);
+  const { success: rateLimitOk } = rateLimit(`legacy-verify:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
   if (!rateLimitOk) {
     return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=rate_limited`);
   }
@@ -47,7 +50,6 @@ export async function GET(request: Request) {
   // ── Atomic verify: single UPDATE … WHERE token = X AND not expired ──
   // This eliminates the TOCTOU race where a concurrent request could also
   // succeed between a SELECT and a separate UPDATE.
-  const tokenColumn = type === "verifier" ? "verifier_confirmation_token" : "verification_token";
   const now = new Date().toISOString();
 
   if (type === "verifier") {

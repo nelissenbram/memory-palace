@@ -18,4 +18,26 @@ export async function updateLastSeen(): Promise<void> {
     .from("profiles")
     .update({ last_seen_at: new Date().toISOString() })
     .eq("id", user.id);
+
+  // Auto-reset "triggered" status when user comes back online.
+  // If the user was marked as inactive but has now returned, clear the
+  // verification state so the inactivity timer restarts from scratch.
+  const { data: settings } = await supabase
+    .from("legacy_settings")
+    .select("status")
+    .eq("id", user.id)
+    .single();
+
+  if (settings?.status === "triggered") {
+    await supabase
+      .from("legacy_settings")
+      .update({
+        status: "active",
+        verification_sent_at: null,
+        verification_token: null,
+        verification_expires_at: null,
+        verifier_confirmation_token: null,
+      })
+      .eq("id", user.id);
+  }
 }

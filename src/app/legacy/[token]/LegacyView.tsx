@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import Image from "next/image";
 
@@ -39,6 +40,19 @@ interface LegacyData {
 
 export default function LegacyView({ data }: { data: LegacyData }) {
   const { t, locale } = useTranslation("legacyView");
+
+  // Back-to-top button visibility
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 500);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   if (data.error === "not_found" || data.error === "not_configured") {
     return (
@@ -132,6 +146,14 @@ export default function LegacyView({ data }: { data: LegacyData }) {
         </p>
       </header>
 
+      {/* Expiry banner */}
+      {expiresDate && (
+        <div style={styles.expiryBanner}>
+          <span style={styles.expiryBannerIcon} aria-hidden="true">&#x1F552;</span>
+          <span>{t("expiryBanner", { date: expiresDate })}</span>
+        </div>
+      )}
+
       <main>
         {/* Intro explanation for outsiders */}
         <div style={styles.card}>
@@ -198,6 +220,16 @@ export default function LegacyView({ data }: { data: LegacyData }) {
                               />
                             </div>
                           )}
+                          {memory.media_url && memory.media_type?.startsWith("audio") && (
+                            <div style={styles.audioContainer}>
+                              <audio
+                                src={memory.media_url}
+                                controls
+                                aria-label={t("audioMemory", { title: memory.title })}
+                                style={styles.audioElement}
+                              />
+                            </div>
+                          )}
                           <div style={styles.memoryContent}>
                             <h4 style={styles.memoryTitle}>{memory.title}</h4>
                             {memory.description && (
@@ -246,21 +278,53 @@ export default function LegacyView({ data }: { data: LegacyData }) {
           </p>
         )}
       </footer>
+
+      {/* Back to top */}
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          aria-label={t("backToTop")}
+          style={styles.backToTop}
+        >
+          &#x25B2;
+        </button>
+      )}
     </div>
   );
 }
+
+// ── Local theme tokens (public page — no ThemeProvider) ──
+
+const LT = {
+  color: {
+    linen: "#FAFAF7",
+    white: "#FFFFFF",
+    cream: "#EEEAE3",
+    sand: "#F5F0EA",
+    sandstone: "#F0EDE8",
+    charcoal: "#2C2C2A",
+    walnut: "#8B7355",
+    terracotta: "#C17F59",
+    muted: "#9A9183",
+    faded: "#D4C5B2",
+  },
+  font: {
+    display: "'Cormorant Garamond', Georgia, serif",
+    body: "'Source Sans 3', 'Segoe UI', system-ui, sans-serif",
+  },
+} as const;
 
 // ── Inline styles matching the app's design system ──
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
     minHeight: "100vh",
-    backgroundColor: "#FAFAF7",
-    fontFamily: "'Georgia', serif",
+    backgroundColor: LT.color.linen,
+    fontFamily: LT.font.body,
     padding: "0 0 3.75rem",
   },
   header: {
-    background: "linear-gradient(135deg, #C17F59 0%, #8B7355 100%)",
+    background: `linear-gradient(135deg, ${LT.color.terracotta} 0%, ${LT.color.walnut} 100%)`,
     padding: "3.75rem 1.5rem 3rem",
     textAlign: "center",
   },
@@ -272,14 +336,15 @@ const styles: Record<string, React.CSSProperties> = {
   headerTitle: {
     margin: "0 0 0.5rem",
     fontSize: "1.75rem",
+    fontFamily: LT.font.display,
     fontWeight: 400,
-    color: "#FFFFFF",
+    color: LT.color.white,
     lineHeight: 1.3,
   },
   headerSubtitle: {
     margin: 0,
     fontSize: "1rem",
-    color: "#FFFFFF",
+    color: LT.color.white,
     opacity: 0.85,
     lineHeight: 1.5,
   },
@@ -287,28 +352,29 @@ const styles: Record<string, React.CSSProperties> = {
     maxWidth: "40rem",
     margin: "2rem auto",
     padding: "2rem",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: LT.color.white,
     borderRadius: "1.25rem",
-    border: "1px solid #EEEAE3",
+    border: `1px solid ${LT.color.cream}`,
     boxShadow: "0 4px 24px rgba(44,44,42,0.08)",
     textAlign: "center" as const,
   },
   title: {
     margin: "1rem 0 0.5rem",
     fontSize: "1.5rem",
+    fontFamily: LT.font.display,
     fontWeight: 600,
-    color: "#2C2C2A",
+    color: LT.color.charcoal,
   },
   subtitle: {
     margin: "0.5rem 0 0",
     fontSize: "0.9375rem",
-    color: "#8B7355",
+    color: LT.color.walnut,
     lineHeight: 1.7,
   },
   introText: {
     margin: 0,
     fontSize: "0.9375rem",
-    color: "#8B7355",
+    color: LT.color.walnut,
     lineHeight: 1.7,
     fontStyle: "italic",
   },
@@ -323,8 +389,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: "inline-block",
     padding: "0.75rem 1.5rem",
     borderRadius: "0.75rem",
-    background: "linear-gradient(135deg, #C17F59, #8B7355)",
-    color: "#FFFFFF",
+    background: `linear-gradient(135deg, ${LT.color.terracotta}, ${LT.color.walnut})`,
+    color: LT.color.white,
     fontSize: "0.9375rem",
     fontWeight: 600,
     textDecoration: "none",
@@ -333,21 +399,22 @@ const styles: Record<string, React.CSSProperties> = {
   actionLinkSecondary: {
     display: "inline-block",
     fontSize: "0.875rem",
-    color: "#8B7355",
+    color: LT.color.walnut,
     textDecoration: "underline",
     textUnderlineOffset: "0.1875rem",
   },
   messageSubject: {
     margin: "0 0 0.75rem",
     fontSize: "1.25rem",
+    fontFamily: LT.font.display,
     fontWeight: 600,
-    color: "#2C2C2A",
+    color: LT.color.charcoal,
     textAlign: "left" as const,
   },
   messageBody: {
     margin: 0,
     fontSize: "1rem",
-    color: "#2C2C2A",
+    color: LT.color.charcoal,
     lineHeight: 1.7,
     textAlign: "left" as const,
     whiteSpace: "pre-wrap" as const,
@@ -360,13 +427,14 @@ const styles: Record<string, React.CSSProperties> = {
   wingTitle: {
     margin: "0 0 0.25rem",
     fontSize: "1.375rem",
+    fontFamily: LT.font.display,
     fontWeight: 600,
-    color: "#2C2C2A",
+    color: LT.color.charcoal,
   },
   wingDescription: {
     margin: "0 0 1.25rem",
     fontSize: "0.875rem",
-    color: "#9A9183",
+    color: LT.color.muted,
     lineHeight: 1.5,
   },
   roomSection: {
@@ -375,13 +443,14 @@ const styles: Record<string, React.CSSProperties> = {
   roomTitle: {
     margin: "0 0 0.25rem",
     fontSize: "1.125rem",
+    fontFamily: LT.font.display,
     fontWeight: 600,
-    color: "#8B7355",
+    color: LT.color.walnut,
   },
   roomDescription: {
     margin: "0 0 1rem",
     fontSize: "0.875rem",
-    color: "#9A9183",
+    color: LT.color.muted,
     lineHeight: 1.5,
   },
   memoriesGrid: {
@@ -390,9 +459,9 @@ const styles: Record<string, React.CSSProperties> = {
     gap: "1.25rem",
   },
   memoryCard: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: LT.color.white,
     borderRadius: "1rem",
-    border: "1px solid #EEEAE3",
+    border: `1px solid ${LT.color.cream}`,
     overflow: "hidden",
     boxShadow: "0 2px 12px rgba(44,44,42,0.06)",
   },
@@ -400,7 +469,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: "100%",
     aspectRatio: "4/3",
     overflow: "hidden",
-    backgroundColor: "#F0EDE8",
+    backgroundColor: LT.color.sandstone,
     position: "relative" as const,
   },
   mediaImage: {
@@ -416,35 +485,83 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 0 0.25rem",
     fontSize: "1rem",
     fontWeight: 600,
-    color: "#2C2C2A",
+    color: LT.color.charcoal,
     lineHeight: 1.4,
   },
   memoryDescription: {
     margin: "0 0 0.5rem",
     fontSize: "0.875rem",
-    color: "#8B7355",
+    color: LT.color.walnut,
     lineHeight: 1.5,
   },
   memoryDate: {
     margin: 0,
     fontSize: "0.75rem",
-    color: "#D4C5B2",
+    color: LT.color.faded,
   },
   footer: {
     maxWidth: "40rem",
     margin: "3rem auto 0",
     padding: "1.5rem",
     textAlign: "center" as const,
-    borderTop: "1px solid #EEEAE3",
+    borderTop: `1px solid ${LT.color.cream}`,
   },
   footerText: {
     margin: "0 0 0.25rem",
     fontSize: "0.8125rem",
-    color: "#9A9183",
+    color: LT.color.muted,
   },
   footerExpiry: {
     margin: 0,
     fontSize: "0.6875rem",
-    color: "#D4C5B2",
+    color: LT.color.faded,
+  },
+  expiryBanner: {
+    maxWidth: "40rem",
+    margin: "0 auto",
+    padding: "0.625rem 1.5rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "0.5rem",
+    backgroundColor: LT.color.sand,
+    borderBottom: `1px solid ${LT.color.cream}`,
+    fontSize: "0.8125rem",
+    color: LT.color.walnut,
+    lineHeight: 1.5,
+  },
+  expiryBannerIcon: {
+    fontSize: "0.875rem",
+  },
+  audioContainer: {
+    width: "100%",
+    padding: "1.25rem 1rem",
+    backgroundColor: LT.color.charcoal,
+    borderRadius: "0.5rem 0.5rem 0 0",
+    boxSizing: "border-box" as const,
+  },
+  audioElement: {
+    width: "100%",
+    display: "block",
+    borderRadius: "0.25rem",
+  },
+  backToTop: {
+    position: "fixed" as const,
+    bottom: "1.5rem",
+    right: "1.5rem",
+    width: "2.5rem",
+    height: "2.5rem",
+    borderRadius: "50%",
+    border: `1px solid ${LT.color.cream}`,
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    color: LT.color.walnut,
+    fontSize: "0.875rem",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 2px 8px rgba(44,44,42,0.12)",
+    transition: "opacity 0.2s",
+    zIndex: 50,
   },
 };

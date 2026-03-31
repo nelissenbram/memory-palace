@@ -191,6 +191,7 @@ export function generateVerificationEmailHtml(params: VerificationEmailParams): 
       </table>`,
     ctaText: t.verification.ctaText[locale],
     ctaUrl: verifyUrl,
+    locale,
     footerExtra: `
       <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
         ${t.verification.footerNote[locale]}
@@ -262,6 +263,7 @@ export function generateTrustedVerifierEmailHtml(params: TrustedVerifierEmailPar
       </table>`,
     ctaText: t.verifier.ctaText[locale](userName),
     ctaUrl: verifyUrl,
+    locale,
     footerExtra: `
       <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
         ${t.verifier.footerNote[locale](userName)}
@@ -352,6 +354,7 @@ export function generateDeliveryEmailHtml(params: LegacyDeliveryEmailParams): st
       </p>`,
     ctaText: t.delivery.ctaText[locale],
     ctaUrl: accessUrl,
+    locale,
     footerExtra: `
       <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
         ${t.delivery.footerNote[locale]}

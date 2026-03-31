@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import LegacyView from "./LegacyView";
@@ -170,9 +171,11 @@ async function getDeliveryData(token: string) {
   };
 }
 
+const getCachedDeliveryData = cache(getDeliveryData);
+
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { token } = await params;
-  const data = await getDeliveryData(token);
+  const data = await getCachedDeliveryData(token);
 
   if (data.error) {
     return {
@@ -191,7 +194,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function LegacyPage({ params }: PageProps) {
   const { token } = await params;
-  const data = await getDeliveryData(token);
+  const data = await getCachedDeliveryData(token);
 
   return <LegacyView data={data} />;
 }

@@ -23,6 +23,8 @@ import { sendVerificationEmail, sendTrustedVerifierEmail } from "@/lib/email/sen
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
 const VERIFICATION_GRACE_DAYS = 30;
+const VERIFICATION_LINK_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+const CRON_TIMEOUT_MS = 50_000;
 
 export async function GET(request: Request) {
   // Verify cron secret
@@ -54,10 +56,14 @@ export async function GET(request: Request) {
   // ══════════════════════════════════════════════════════
 
   // Get messages with deliver_on = "immediately" or "specific_date" where date has arrived
-  const { data: scheduledMessages } = await supabase
+  const { data: scheduledMessages, error: scheduledError } = await supabase
     .from("legacy_messages")
     .select("id, user_id, recipient_email, subject, message_body, deliver_on, deliver_date")
     .or(`deliver_on.eq.immediately,and(deliver_on.eq.specific_date,deliver_date.lte.${todayISO})`);
+
+  if (scheduledError) {
+    console.error("[Legacy Cron] Failed to fetch scheduled messages:", scheduledError.message);
+  }
 
   if (scheduledMessages && scheduledMessages.length > 0) {
     // Check which messages have already been delivered (via legacy_deliveries)
@@ -109,10 +115,18 @@ export async function GET(request: Request) {
   // ══════════════════════════════════════════════════════
 
   // ── 1. Get all users who have legacy contacts configured ──
-  const { data: legacyUsers } = await supabase
+  const { data: legacyUsers, error: legacyUsersError } = await supabase
     .from("legacy_contacts")
     .select("user_id")
     .eq("is_active", true);
+
+  if (legacyUsersError) {
+    console.error("[Legacy Cron] Failed to fetch legacy users:", legacyUsersError.message);
+    return NextResponse.json({
+      error: "Failed to fetch legacy users",
+      scheduledDeliveries,
+    }, { status: 500, headers: { "Cache-Control": "no-store" } });
+  }
 
   if (!legacyUsers || legacyUsers.length === 0) {
     return NextResponse.json({
@@ -130,10 +144,18 @@ export async function GET(request: Request) {
   const userIds = [...new Set(legacyUsers.map((c: { user_id: string }) => c.user_id))];
 
   // ── 2. Get profiles with last_seen_at ──
-  const { data: profiles } = await supabase
+  const { data: profiles, error: profilesError } = await supabase
     .from("profiles")
     .select("id, display_name, last_seen_at, preferred_locale")
     .in("id", userIds);
+
+  if (profilesError) {
+    console.error("[Legacy Cron] Failed to fetch profiles:", profilesError.message);
+    return NextResponse.json({
+      error: "Failed to fetch profiles",
+      scheduledDeliveries,
+    }, { status: 500, headers: { "Cache-Control": "no-store" } });
+  }
 
   if (!profiles || profiles.length === 0) {
     return NextResponse.json({
@@ -148,10 +170,14 @@ export async function GET(request: Request) {
   }
 
   // ── 3. Get legacy settings for these users ──
-  const { data: settingsRows } = await supabase
+  const { data: settingsRows, error: settingsError } = await supabase
     .from("legacy_settings")
     .select("id, inactivity_trigger_months, status, verification_sent_at, verification_token, trusted_verifier_email, trusted_verifier_name")
     .in("id", userIds);
+
+  if (settingsError) {
+    console.error("[Legacy Cron] Failed to fetch legacy settings:", settingsError.message);
+  }
 
   const settingsMap = new Map(
     (settingsRows || []).map((s: {
@@ -165,18 +191,15 @@ export async function GET(request: Request) {
     }) => [s.id, s])
   );
 
-  // ── 4. Get auth user emails (paginated) ──
+  // ── 4. Get auth user emails (only for users that need processing) ──
   const emailMap = new Map<string, string | undefined>();
-  let page = 1;
-  const perPage = 1000;
-  while (true) {
-    const { data: authPage } = await supabase.auth.admin.listUsers({ page, perPage });
-    const users = authPage?.users || [];
-    for (const u of users) {
-      emailMap.set(u.id, u.email);
+  for (const userId of userIds) {
+    const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
+    if (authError) {
+      console.error("[Legacy Cron] Failed to fetch auth user", userId, ":", authError.message);
+      continue;
     }
-    if (users.length < perPage) break;
-    page++;
+    emailMap.set(userId, authData?.user?.email);
   }
 
   // ── 5. Process each user for inactivity ──
@@ -192,7 +215,7 @@ export async function GET(request: Request) {
 
   for (const profile of profiles) {
     // ── Timeout detection: bail before Vercel kills us ──
-    if (Date.now() - startTime > 50000) {
+    if (Date.now() - startTime > CRON_TIMEOUT_MS) {
       timedOut = true;
       break;
     }
@@ -254,7 +277,7 @@ export async function GET(request: Request) {
       // No verification sent yet — generate TWO tokens and send
       const userToken = randomBytes(32).toString("hex");
       const verifierToken = randomBytes(32).toString("hex");
-      const verificationExpiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(); // 7 days
+      const verificationExpiresAt = new Date(now.getTime() + VERIFICATION_LINK_EXPIRY_MS).toISOString();
       const displayName = profile.display_name || email.split("@")[0];
       const userLocale = profile.preferred_locale || "en";
 
@@ -314,10 +337,55 @@ export async function GET(request: Request) {
     }
   }
 
+  // ══════════════════════════════════════════════════════
+  // PART C: Auto-retry partial deliveries
+  // ══════════════════════════════════════════════════════
+  // Find users stuck in "partially_delivered" and retry once per day (max 1 per cron run).
+  let partialRetried = 0;
+
+  if (!timedOut) {
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: partialUsers } = await supabase
+      .from("legacy_settings")
+      .select("id, updated_at")
+      .eq("status", "partially_delivered")
+      .limit(1);
+
+    if (partialUsers && partialUsers.length > 0) {
+      const candidate = partialUsers[0];
+      // Only retry if last attempt (updated_at) was more than 24 hours ago
+      const lastAttempt = candidate.updated_at ? new Date(candidate.updated_at) : null;
+      if (!lastAttempt || lastAttempt.toISOString() < oneDayAgo) {
+        try {
+          const deliverUrl = new URL("/api/legacy/deliver", process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
+          const res = await fetch(deliverUrl.toString(), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${CRON_SECRET}`,
+            },
+            body: JSON.stringify({ userId: candidate.id, retry: true }),
+          });
+
+          if (res.ok) {
+            partialRetried++;
+          } else {
+            console.error(`[Legacy] Partial retry failed for user ${candidate.id}:`, await res.text());
+            errors++;
+          }
+        } catch (e) {
+          console.error(`[Legacy] Partial retry error for user ${candidate.id}:`, e);
+          errors++;
+        }
+      }
+    }
+  }
+
   return NextResponse.json({
     verificationsSent,
     deliveriesTriggered,
     scheduledDeliveries,
+    partialRetried,
     errors,
     usersChecked: profiles.length,
     timedOut,

@@ -61,7 +61,7 @@ export async function fetchLegacyContacts(): Promise<LegacyContact[]> {
 
   const { data } = await supabase
     .from("legacy_contacts")
-    .select("*")
+    .select("id, user_id, contact_name, contact_email, relationship, access_level, wing_access, room_access, is_active, created_at, updated_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
@@ -176,7 +176,7 @@ export async function fetchLegacyMessages(): Promise<LegacyMessage[]> {
 
   const { data } = await supabase
     .from("legacy_messages")
-    .select("*")
+    .select("id, user_id, recipient_email, subject, message_body, deliver_on, deliver_date, created_at, updated_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
@@ -266,7 +266,7 @@ export async function fetchLegacySettings(): Promise<LegacySettings | null> {
 
   const { data } = await supabase
     .from("legacy_settings")
-    .select("*")
+    .select("id, inactivity_trigger_months, trusted_verifier_email, trusted_verifier_name, status, verification_sent_at, verification_token, created_at, updated_at")
     .eq("id", user.id)
     .single();
 
@@ -285,6 +285,25 @@ export async function upsertLegacySettings(updates: {
   if (updates.inactivity_trigger_months !== undefined) payload.inactivity_trigger_months = updates.inactivity_trigger_months;
   if (updates.trusted_verifier_email !== undefined) payload.trusted_verifier_email = updates.trusted_verifier_email;
   if (updates.trusted_verifier_name !== undefined) payload.trusted_verifier_name = updates.trusted_verifier_name;
+
+  // When inactivity_trigger_months changes, clear any triggered state so the
+  // inactivity timer restarts with the new threshold. Don't clear if already
+  // transferred (delivery already happened).
+  if (updates.inactivity_trigger_months !== undefined) {
+    const { data: current } = await supabase
+      .from("legacy_settings")
+      .select("status")
+      .eq("id", user.id)
+      .single();
+
+    if (current?.status === "triggered") {
+      payload.status = "active";
+      payload.verification_sent_at = null;
+      payload.verification_token = null;
+      payload.verification_expires_at = null;
+      payload.verifier_confirmation_token = null;
+    }
+  }
 
   const { data, error } = await supabase
     .from("legacy_settings")

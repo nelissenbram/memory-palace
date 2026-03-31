@@ -1,5 +1,7 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 
@@ -9,9 +11,32 @@ import { T } from "@/lib/theme";
  * Standalone thank-you page for verifiers who confirmed that the account
  * holder is still alive. Verifiers do not have accounts, so they cannot
  * be redirected into the app.
+ *
+ * Also handles ?status=expired and ?status=invalid from the verify route.
  */
-export default function VerifiedPage() {
+
+function VerifiedContent() {
   const { t } = useTranslation("legacySettings");
+  const searchParams = useSearchParams();
+  const status = searchParams.get("status");
+
+  // Determine which content to show based on status
+  let icon = "\u{1F3DB}\uFE0F";
+  let title = t("verifierConfirmedTitle");
+  let description = t("verifierConfirmedDesc");
+  let footer = t("verifierConfirmedClose");
+
+  if (status === "expired") {
+    icon = "\u23F3";
+    title = t("verifierExpiredTitle");
+    description = t("verifierExpiredDesc");
+    footer = "";
+  } else if (status === "invalid") {
+    icon = "\u26A0\uFE0F";
+    title = t("verifierInvalidTitle");
+    description = t("verifierInvalidDesc");
+    footer = "";
+  }
 
   return (
     <div
@@ -38,7 +63,7 @@ export default function VerifiedPage() {
         }}
       >
         <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>
-          🏛️
+          {icon}
         </div>
         <h1
           style={{
@@ -49,7 +74,7 @@ export default function VerifiedPage() {
             margin: "0 0 0.75rem",
           }}
         >
-          {t("verifierConfirmedTitle")}
+          {title}
         </h1>
         <p
           style={{
@@ -59,18 +84,28 @@ export default function VerifiedPage() {
             margin: "0 0 1.25rem",
           }}
         >
-          {t("verifierConfirmedDesc")}
+          {description}
         </p>
-        <p
-          style={{
-            fontSize: "0.875rem",
-            color: T.color.muted,
-            margin: 0,
-          }}
-        >
-          {t("verifierConfirmedClose")}
-        </p>
+        {footer && (
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: T.color.muted,
+              margin: 0,
+            }}
+          >
+            {footer}
+          </p>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function VerifiedPage() {
+  return (
+    <Suspense>
+      <VerifiedContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import {
@@ -19,6 +19,78 @@ import {
   type UserRoom,
   type UserWing,
 } from "@/lib/auth/legacy-actions";
+
+// ── Confirm Modal (inline component for #2, #5, #10) ──
+
+function ConfirmModal({
+  title,
+  body,
+  confirmLabel,
+  cancelLabel,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      style={{
+        position: "fixed", inset: 0, zIndex: 200,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(44,44,42,.35)", backdropFilter: "blur(0.125rem)",
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div style={{
+        background: T.color.linen, borderRadius: "1rem",
+        padding: "1.75rem 2rem", maxWidth: "26rem", width: "90%",
+        boxShadow: "0 1rem 3rem rgba(44,44,42,.18)",
+        border: `1px solid ${T.color.cream}`,
+        animation: "fadeIn .2s ease",
+      }}>
+        <h4 style={{
+          fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 0.75rem",
+        }}>
+          {title}
+        </h4>
+        <p style={{
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+          margin: "0 0 1.5rem", lineHeight: 1.6,
+        }}>
+          {body}
+        </p>
+        <div style={{ display: "flex", gap: "0.625rem", justifyContent: "flex-end" }}>
+          <button onClick={onCancel} style={{
+            padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
+            border: `1px solid ${T.color.cream}`, background: "transparent",
+            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
+            color: T.color.muted, cursor: "pointer", transition: "all .15s",
+          }}>
+            {cancelLabel}
+          </button>
+          <button onClick={onConfirm} style={{
+            padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
+            border: "none",
+            background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+            color: "#FFF", cursor: "pointer", transition: "all .15s",
+          }}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Constants ──
 
@@ -56,10 +128,24 @@ export default function LegacyPage() {
 
   // Section expand state
   const [activeSection, setActiveSection] = useState<"contacts" | "messages" | "settings">("contacts");
+  const [showOnboarding, setShowOnboarding] = useState(true);
+  const dirtyRef = useRef(false);
+  const [pendingTab, setPendingTab] = useState<"contacts" | "messages" | "settings" | null>(null);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
   }, []);
+
+  const setDirty = useCallback((v: boolean) => { dirtyRef.current = v; }, []);
+
+  const handleTabSwitch = useCallback((tab: "contacts" | "messages" | "settings") => {
+    if (tab === activeSection) return;
+    if (dirtyRef.current) {
+      setPendingTab(tab);
+    } else {
+      setActiveSection(tab);
+    }
+  }, [activeSection]);
 
   useEffect(() => {
     if (toast) {
@@ -89,8 +175,16 @@ export default function LegacyPage() {
       <div style={{
         padding: "3rem", textAlign: "center",
         fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted,
+        display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem",
       }}>
+        <div style={{
+          width: "1.5rem", height: "1.5rem", borderRadius: "50%",
+          border: `0.1875rem solid ${T.color.sandstone}`,
+          borderTopColor: T.color.terracotta,
+          animation: "legacySpin 0.7s linear infinite",
+        }} />
         {t("loading")}
+        <style>{`@keyframes legacySpin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
@@ -148,20 +242,114 @@ export default function LegacyPage() {
         </p>
       </div>
 
-      {/* Section tabs */}
+      {/* Progress summary bar (#1) */}
       <div style={{
-        display: "flex", gap: "0.5rem", marginBottom: "1.5rem",
+        display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem",
+      }}>
+        {[
+          {
+            done: contacts.length > 0,
+            label: contacts.length === 1
+              ? t("progressContactsSingular")
+              : t("progressContacts", { count: String(contacts.length) }),
+          },
+          {
+            done: messages.length > 0,
+            label: messages.length === 1
+              ? t("progressMessagesSingular")
+              : t("progressMessages", { count: String(messages.length) }),
+          },
+          {
+            done: settings !== null,
+            label: settings !== null
+              ? t("progressSettingsConfigured")
+              : t("progressSettingsNotConfigured"),
+          },
+        ].map((item) => (
+          <span key={item.label} style={{
+            display: "inline-flex", alignItems: "center", gap: "0.375rem",
+            padding: "0.3125rem 0.75rem", borderRadius: "1rem",
+            background: item.done ? `${T.color.sage}14` : `${T.color.sandstone}30`,
+            border: `1px solid ${item.done ? T.color.sage : T.color.sandstone}25`,
+            fontFamily: T.font.body, fontSize: "0.8125rem",
+            color: item.done ? T.color.sage : T.color.muted,
+            fontWeight: 500,
+          }}>
+            <span aria-hidden="true">{item.done ? "\u2713" : "\u25CB"}</span>
+            {item.label}
+          </span>
+        ))}
+      </div>
+
+      {/* Onboarding card (#4) */}
+      {showOnboarding && contacts.length === 0 && messages.length === 0 && settings === null && (
+        <div style={{
+          padding: "1.25rem 1.5rem", borderRadius: "0.875rem", marginBottom: "1.25rem",
+          background: `linear-gradient(135deg, ${T.color.sage}08, ${T.color.terracotta}06)`,
+          border: `1px solid ${T.color.sage}20`,
+        }}>
+          <h4 style={{
+            fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 500,
+            color: T.color.charcoal, margin: "0 0 0.75rem",
+          }}>
+            {t("onboardingTitle")}
+          </h4>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", marginBottom: "1rem" }}>
+            {[t("onboardingStep1"), t("onboardingStep2"), t("onboardingStep3")].map((step) => (
+              <p key={step} style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+                margin: 0, lineHeight: 1.6,
+              }}>
+                {step}
+              </p>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowOnboarding(false)}
+            style={{
+              padding: "0.5rem 1rem", borderRadius: "0.5rem",
+              border: `1px solid ${T.color.cream}`, background: T.color.white,
+              fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
+              color: T.color.charcoal, cursor: "pointer", transition: "all .15s",
+            }}
+          >
+            {t("onboardingDismiss")}
+          </button>
+        </div>
+      )}
+
+      {/* Unsaved changes modal (#5) */}
+      {pendingTab && (
+        <ConfirmModal
+          title={t("unsavedChangesTitle")}
+          body={t("unsavedChangesBody")}
+          confirmLabel={t("modalSwitch")}
+          cancelLabel={t("modalStay")}
+          onConfirm={() => {
+            dirtyRef.current = false;
+            setActiveSection(pendingTab);
+            setPendingTab(null);
+          }}
+          onCancel={() => setPendingTab(null)}
+        />
+      )}
+
+      {/* Section tabs */}
+      <div role="tablist" aria-label={t("title")} style={{
+        display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.5rem",
       }}>
         {([
-          { key: "contacts" as const, label: t("contactsTab"), count: contacts.length },
-          { key: "messages" as const, label: t("messagesTab"), count: messages.length },
-          { key: "settings" as const, label: t("settingsTab"), count: null },
+          { key: "contacts" as const, label: t("contactsTab"), shortLabel: t("contactsTabShort"), count: contacts.length },
+          { key: "messages" as const, label: t("messagesTab"), shortLabel: t("messagesTabShort"), count: messages.length },
+          { key: "settings" as const, label: t("settingsTab"), shortLabel: t("settingsTabShort"), count: null },
         ]).map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveSection(tab.key)}
+            id={`tab-${tab.key}`}
+            onClick={() => handleTabSwitch(tab.key)}
             role="tab"
             aria-selected={activeSection === tab.key}
+            aria-controls={`tabpanel-${tab.key}`}
             style={{
               padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
               border: `1.5px solid ${activeSection === tab.key ? T.color.terracotta : T.color.cream}`,
@@ -173,12 +361,13 @@ export default function LegacyPage() {
               display: "flex", alignItems: "center", gap: "0.5rem",
             }}
           >
-            {tab.label}
+            <span className="legacy-tab-full">{tab.label}</span>
+            <span className="legacy-tab-short">{tab.shortLabel}</span>
             {tab.count !== null && (
               <span style={{
                 background: activeSection === tab.key ? T.color.terracotta : T.color.sandstone,
                 color: activeSection === tab.key ? "#FFF" : T.color.walnut,
-                borderRadius: "0.5rem", padding: "2px 0.5rem",
+                borderRadius: "0.5rem", padding: "0.125rem 0.5rem",
                 fontSize: "0.75rem", fontWeight: 600,
               }}>
                 {tab.count}
@@ -190,31 +379,50 @@ export default function LegacyPage() {
 
       {/* Active section content */}
       {activeSection === "contacts" && (
-        <ContactsSection
-          contacts={contacts}
-          setContacts={setContacts}
-          wings={wings}
-          showToast={showToast}
-        />
+        <div role="tabpanel" id="tabpanel-contacts" aria-labelledby="tab-contacts">
+          <ContactsSection
+            contacts={contacts}
+            setContacts={setContacts}
+            wings={wings}
+            showToast={showToast}
+            setDirty={setDirty}
+          />
+        </div>
       )}
       {activeSection === "messages" && (
-        <MessagesSection
-          messages={messages}
-          setMessages={setMessages}
-          contacts={contacts}
-          showToast={showToast}
-        />
+        <div role="tabpanel" id="tabpanel-messages" aria-labelledby="tab-messages">
+          <MessagesSection
+            messages={messages}
+            setMessages={setMessages}
+            contacts={contacts}
+            showToast={showToast}
+            setDirty={setDirty}
+          />
+        </div>
       )}
       {activeSection === "settings" && (
-        <SettingsSection
-          settings={settings}
-          setSettings={setSettings}
-          showToast={showToast}
-        />
+        <div role="tabpanel" id="tabpanel-settings" aria-labelledby="tab-settings">
+          <SettingsSection
+            settings={settings}
+            setSettings={setSettings}
+            showToast={showToast}
+            setDirty={setDirty}
+          />
+        </div>
       )}
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        .legacy-tab-short { display: none; }
+        @media (max-width: 600px) {
+          .legacy-tab-full { display: none; }
+          .legacy-tab-short { display: inline; }
+        }
+        .legacy-focus-ring:focus {
+          border-color: ${T.color.terracotta} !important;
+          box-shadow: 0 0 0 0.1875rem ${T.color.terracotta}25 !important;
+          outline: none !important;
+        }
       `}</style>
     </div>
   );
@@ -229,16 +437,20 @@ function ContactsSection({
   setContacts,
   wings,
   showToast,
+  setDirty,
 }: {
   contacts: LegacyContact[];
   setContacts: React.Dispatch<React.SetStateAction<LegacyContact[]>>;
   wings: UserWing[];
   showToast: (msg: string, type: "success" | "error") => void;
+  setDirty: (v: boolean) => void;
 }) {
   const { t } = useTranslation("legacySettings");
   const { t: tc } = useTranslation("common");
   const { t: tp } = useTranslation("palace");
   const [showForm, setShowForm] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const confirmDeleteContact = contacts.find((c) => c.id === confirmDeleteId);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -276,7 +488,13 @@ function ContactsSection({
     setRoomAccess([]);
     setShowForm(false);
     setEditingId(null);
+    setDirty(false);
   };
+
+  // Track dirty state when form fields change
+  useEffect(() => {
+    if (showForm) setDirty(true);
+  }, [name, email, relationship, accessLevel, wingAccess, roomAccess, showForm, setDirty]);
 
   const startEdit = (c: LegacyContact) => {
     setName(c.contact_name);
@@ -333,7 +551,6 @@ function ContactsSection({
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(t("confirmDeleteContact"))) return;
     const result = await deleteLegacyContact(id);
     if (result.error) {
       showToast(result.error, "error");
@@ -341,9 +558,22 @@ function ContactsSection({
       setContacts((prev) => prev.filter((c) => c.id !== id));
       showToast(t("contactRemoved"), "success");
     }
+    setConfirmDeleteId(null);
   };
 
   return (
+    <>
+    {/* Delete contact confirmation modal (#2, #10) */}
+    {confirmDeleteId && confirmDeleteContact && (
+      <ConfirmModal
+        title={t("editContact")}
+        body={t("confirmDeleteContactSoft", { name: confirmDeleteContact.contact_name })}
+        confirmLabel={t("modalConfirm")}
+        cancelLabel={t("modalCancel")}
+        onConfirm={() => handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+    )}
     <div style={{
       background: T.color.white,
       borderRadius: "1rem",
@@ -420,12 +650,12 @@ function ContactsSection({
                   {t("access")}: {(() => { const al = ACCESS_LEVELS.find((a) => a.value === c.access_level); return al ? t(al.labelKey) : c.access_level; })()}
                   {c.access_level === "wings_only" && c.wing_access.length > 0 && (
                     <span style={{ marginLeft: "0.375rem", color: T.color.muted }}>
-                      ({c.wing_access.map((w) => { const found = wings.find((wing) => wing.slug === w); return found ? found.name : w; }).join(", ")})
+                      ({c.wing_access.map((w) => { const found = wings.find((wing) => wing.id === w); return found ? found.name : w; }).join(", ")})
                     </span>
                   )}
                   {c.access_level === "specific_rooms" && c.room_access && c.room_access.length > 0 && (
                     <span style={{ marginLeft: "0.375rem", color: T.color.muted }}>
-                      ({c.room_access.length} {c.room_access.length === 1 ? "room" : "rooms"})
+                      ({c.room_access.length === 1 ? t("roomCountLabel", { count: "1" }) : t("roomCountLabelPlural", { count: String(c.room_access.length) })})
                     </span>
                   )}
                 </div>
@@ -439,7 +669,7 @@ function ContactsSection({
                   {tc("edit")}
                 </button>
                 <button
-                  onClick={() => handleDelete(c.id)}
+                  onClick={() => setConfirmDeleteId(c.id)}
                   style={{ ...smallBtnStyle, color: T.color.error, borderColor: `${T.color.error}30` }}
                 >
                   {tc("remove")}
@@ -464,10 +694,16 @@ function ContactsSection({
           </p>
           <p style={{
             fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
-            margin: 0, lineHeight: 1.6,
+            margin: "0 0 1rem", lineHeight: 1.6,
           }}>
             {t("noContactsDesc")}
           </p>
+          <button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            style={primaryBtnStyle}
+          >
+            {t("addFirstContact")}
+          </button>
         </div>
       )}
 
@@ -581,15 +817,15 @@ function ContactsSection({
                 <label style={labelStyle}>{t("selectWings")}</label>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                   {wings.map((wing) => {
-                    const selected = wingAccess.includes(wing.slug);
+                    const selected = wingAccess.includes(wing.id);
                     return (
                       <button
-                        key={wing.slug}
+                        key={wing.id}
                         onClick={() => {
                           setWingAccess((prev) =>
                             selected
-                              ? prev.filter((s) => s !== wing.slug)
-                              : [...prev, wing.slug]
+                              ? prev.filter((s) => s !== wing.id)
+                              : [...prev, wing.id]
                           );
                         }}
                         aria-pressed={selected}
@@ -676,7 +912,10 @@ function ContactsSection({
 
             {/* Actions */}
             <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.375rem" }}>
-              <button onClick={handleSave} disabled={saving} style={primaryBtnStyle}>
+              <button onClick={handleSave} disabled={saving} style={{
+                ...primaryBtnStyle,
+                ...(saving ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+              }}>
                 {saving ? tc("saving") : editingId ? tc("save") : t("addContact")}
               </button>
               <button onClick={resetForm} style={secondaryBtnStyle}>
@@ -687,6 +926,7 @@ function ContactsSection({
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -699,11 +939,13 @@ function MessagesSection({
   setMessages,
   contacts,
   showToast,
+  setDirty,
 }: {
   messages: LegacyMessage[];
   setMessages: React.Dispatch<React.SetStateAction<LegacyMessage[]>>;
   contacts: LegacyContact[];
   showToast: (msg: string, type: "success" | "error") => void;
+  setDirty: (v: boolean) => void;
 }) {
   const { t } = useTranslation("legacySettings");
   const { t: tc } = useTranslation("common");
@@ -711,6 +953,8 @@ function MessagesSection({
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const confirmDeleteMessage = messages.find((m) => m.id === confirmDeleteId);
 
   const [recipientEmail, setRecipientEmail] = useState("");
   const [subject, setSubject] = useState("");
@@ -726,7 +970,13 @@ function MessagesSection({
     setDeliverDate("");
     setShowForm(false);
     setEditingId(null);
+    setDirty(false);
   };
+
+  // Track dirty state when form fields change
+  useEffect(() => {
+    if (showForm) setDirty(true);
+  }, [recipientEmail, subject, body, deliverOn, deliverDate, showForm, setDirty]);
 
   const startEdit = (m: LegacyMessage) => {
     setRecipientEmail(m.recipient_email);
@@ -742,6 +992,10 @@ function MessagesSection({
     if (!recipientEmail.trim() || !subject.trim()) {
       showToast(t("fillRecipientSubject"), "error");
       return;
+    }
+    // Empty body warning (#11)
+    if (!body.trim()) {
+      showToast(t("emptyBodyWarning"), "success");
     }
     setSaving(true);
 
@@ -780,7 +1034,6 @@ function MessagesSection({
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(t("confirmDeleteMessage"))) return;
     const result = await deleteLegacyMessage(id);
     if (result.error) {
       showToast(result.error, "error");
@@ -788,9 +1041,22 @@ function MessagesSection({
       setMessages((prev) => prev.filter((m) => m.id !== id));
       showToast(t("messageRemoved"), "success");
     }
+    setConfirmDeleteId(null);
   };
 
   return (
+    <>
+    {/* Delete message confirmation modal (#2, #10) */}
+    {confirmDeleteId && confirmDeleteMessage && (
+      <ConfirmModal
+        title={t("editMessage")}
+        body={t("confirmDeleteMessageSoft")}
+        confirmLabel={t("modalConfirm")}
+        cancelLabel={t("modalCancel")}
+        onConfirm={() => handleDelete(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+    )}
     <div style={{
       background: T.color.white,
       borderRadius: "1rem",
@@ -863,7 +1129,7 @@ function MessagesSection({
                 <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
                   <button onClick={() => startEdit(m)} style={smallBtnStyle}>{tc("edit")}</button>
                   <button
-                    onClick={() => handleDelete(m.id)}
+                    onClick={() => setConfirmDeleteId(m.id)}
                     style={{ ...smallBtnStyle, color: T.color.error, borderColor: `${T.color.error}30` }}
                   >
                     {tc("remove")}
@@ -1003,6 +1269,14 @@ function MessagesSection({
                   </button>
                 ))}
               </div>
+              {deliverOn === "immediately" && (
+                <p style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                  margin: "0.5rem 0 0", lineHeight: 1.5, fontStyle: "italic",
+                }}>
+                  {t("deliverImmediatelyNote")}
+                </p>
+              )}
               {deliverOn === "specific_date" && (
                 <div style={{ marginTop: "0.75rem" }}>
                   <input
@@ -1016,7 +1290,10 @@ function MessagesSection({
 
             {/* Actions */}
             <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.375rem" }}>
-              <button onClick={handleSave} disabled={saving} style={primaryBtnStyle}>
+              <button onClick={handleSave} disabled={saving} style={{
+                ...primaryBtnStyle,
+                ...(saving ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+              }}>
                 {saving ? tc("saving") : editingId ? tc("save") : t("saveMessage")}
               </button>
               <button onClick={resetForm} style={secondaryBtnStyle}>
@@ -1027,6 +1304,7 @@ function MessagesSection({
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -1038,10 +1316,12 @@ function SettingsSection({
   settings,
   setSettings,
   showToast,
+  setDirty,
 }: {
   settings: LegacySettings | null;
   setSettings: React.Dispatch<React.SetStateAction<LegacySettings | null>>;
   showToast: (msg: string, type: "success" | "error") => void;
+  setDirty: (v: boolean) => void;
 }) {
   const { t } = useTranslation("legacySettings");
   const { t: tc } = useTranslation("common");
@@ -1049,11 +1329,17 @@ function SettingsSection({
   const [verifierName, setVerifierName] = useState(settings?.trusted_verifier_name ?? "");
   const [verifierEmail, setVerifierEmail] = useState(settings?.trusted_verifier_email ?? "");
   const [saving, setSaving] = useState(false);
+  const [showRetryModal, setShowRetryModal] = useState(false);
 
   const hasChanges =
     months !== (settings?.inactivity_trigger_months ?? 12) ||
     verifierName !== (settings?.trusted_verifier_name ?? "") ||
     verifierEmail !== (settings?.trusted_verifier_email ?? "");
+
+  // Track dirty state
+  useEffect(() => {
+    setDirty(hasChanges);
+  }, [hasChanges, setDirty]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -1073,6 +1359,30 @@ function SettingsSection({
   };
 
   return (
+    <>
+    {/* Retry delivery confirmation modal (#2) */}
+    {showRetryModal && (
+      <ConfirmModal
+        title={t("retryDelivery")}
+        body={t("confirmRetryDeliverySoft")}
+        confirmLabel={t("modalConfirm")}
+        cancelLabel={t("modalCancel")}
+        onConfirm={async () => {
+          setShowRetryModal(false);
+          const { retryLegacyDelivery } = await import("@/lib/auth/legacy-actions");
+          setSaving(true);
+          const result = await retryLegacyDelivery();
+          setSaving(false);
+          if (result.success) {
+            showToast(t("retrySuccess").replace("{count}", String(result.sent || 0)), "success");
+            window.location.reload();
+          } else {
+            showToast(result.error || t("retryFailed"), "error");
+          }
+        }}
+        onCancel={() => setShowRetryModal(false)}
+      />
+    )}
     <div style={{
       background: T.color.white,
       borderRadius: "1rem",
@@ -1194,20 +1504,7 @@ function SettingsSection({
           </p>
           {settings?.status === "partially_delivered" && (
             <button
-              onClick={async () => {
-                const { retryLegacyDelivery } = await import("@/lib/auth/legacy-actions");
-                const confirmed = window.confirm(t("confirmRetryDelivery"));
-                if (!confirmed) return;
-                setSaving(true);
-                const result = await retryLegacyDelivery();
-                setSaving(false);
-                if (result.success) {
-                  showToast(t("retrySuccess").replace("{count}", String(result.sent || 0)), "success");
-                  window.location.reload();
-                } else {
-                  showToast(result.error || t("retryFailed"), "error");
-                }
-              }}
+              onClick={() => setShowRetryModal(true)}
               disabled={saving}
               style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem", padding: "0.375rem 0.75rem",
@@ -1248,6 +1545,7 @@ function SettingsSection({
         </div>
       </div>
     </div>
+    </>
   );
 }
 

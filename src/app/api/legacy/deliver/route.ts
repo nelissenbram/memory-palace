@@ -15,6 +15,10 @@ import { sendDeliveryEmail } from "@/lib/email/send-legacy";
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
 const ACCESS_TOKEN_EXPIRY_DAYS = 90;
+const DELIVERY_TIMEOUT_MS = 50_000;
+
+/** Vercel serverless max execution time (seconds). */
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   // Verify cron secret
@@ -43,12 +47,42 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 
+  const deliveryStart = Date.now();
+
+  // ── Idempotency lock: atomically claim this delivery ──
+  // Only proceed if we can transition from 'triggered' or 'partially_delivered'
+  // to 'delivering'. If another process is already delivering, return early.
+  if (!filterMessageIds) {
+    const { data: locked, error: lockError } = await supabase
+      .from("legacy_settings")
+      .update({ status: "delivering" })
+      .eq("id", userId)
+      .in("status", ["triggered", "partially_delivered"])
+      .select("id");
+
+    if (lockError) {
+      console.error(`[Legacy Deliver] Failed to acquire delivery lock for user ${userId}:`, lockError.message);
+      return NextResponse.json({ error: "Failed to acquire delivery lock" }, { status: 500 });
+    }
+
+    if (!locked || locked.length === 0) {
+      return NextResponse.json(
+        { error: "Delivery already in progress or not in deliverable state" },
+        { status: 409 }
+      );
+    }
+  }
+
   // ── 1. Get user profile + auth email ──
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("id, display_name, preferred_locale")
     .eq("id", userId)
     .single();
+
+  if (profileError) {
+    console.error(`[Legacy Deliver] Failed to fetch profile for user ${userId}:`, profileError.message);
+  }
 
   if (!profile) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -60,11 +94,16 @@ export async function POST(request: Request) {
   const userLocale = profile.preferred_locale || "en";
 
   // ── 2. Get active legacy contacts ──
-  const { data: contacts } = await supabase
+  const { data: contacts, error: contactsError } = await supabase
     .from("legacy_contacts")
-    .select("*")
+    .select("id, contact_name, contact_email, access_level, wing_access, room_access")
     .eq("user_id", userId)
     .eq("is_active", true);
+
+  if (contactsError) {
+    console.error(`[Legacy Deliver] Failed to fetch contacts for user ${userId}:`, contactsError.message);
+    return NextResponse.json({ error: "Failed to fetch contacts" }, { status: 500 });
+  }
 
   if (!contacts || contacts.length === 0) {
     return NextResponse.json({ error: "No active legacy contacts" }, { status: 404 });
@@ -93,7 +132,7 @@ export async function POST(request: Request) {
   // ── 3. Get legacy messages ──
   let messagesQuery = supabase
     .from("legacy_messages")
-    .select("*")
+    .select("id, recipient_email, subject, message_body")
     .eq("user_id", userId);
 
   // If specific message IDs provided, only fetch those (scheduled/immediate delivery)
@@ -101,13 +140,17 @@ export async function POST(request: Request) {
     messagesQuery = messagesQuery.in("id", filterMessageIds);
   }
 
-  const { data: messages } = await messagesQuery;
+  const { data: messages, error: messagesError } = await messagesQuery;
+
+  if (messagesError) {
+    console.error(`[Legacy Deliver] Failed to fetch messages for user ${userId}:`, messagesError.message);
+  }
 
   // Build a map of messages by recipient email
   const messagesByEmail = new Map<string, Array<{ id: string; subject: string; message_body: string }>>();
   if (messages) {
     for (const msg of messages) {
-      const email = (msg.recipient_email as string).toLowerCase();
+      const email = (msg.recipient_email || "").toLowerCase();
       if (!messagesByEmail.has(email)) messagesByEmail.set(email, []);
       messagesByEmail.get(email)!.push({
         id: msg.id,
@@ -125,8 +168,21 @@ export async function POST(request: Request) {
   // ── 4. Send to each contact and persist delivery records atomically ──
   // Records are inserted immediately after each successful email send so that
   // a later DB failure cannot cause the cron to re-deliver already-sent emails.
+  let timedOut = false;
   for (const contact of deliverContacts) {
-    const contactEmail = (contact.contact_email as string).toLowerCase();
+    // ── Timeout guard: stop before Vercel kills the function ──
+    if (Date.now() - deliveryStart > DELIVERY_TIMEOUT_MS) {
+      timedOut = true;
+      console.warn(`[Legacy Deliver] Approaching timeout after ${sent} sends, stopping early.`);
+      break;
+    }
+
+    const contactEmail = (contact.contact_email || "").toLowerCase();
+    if (!contactEmail) {
+      console.error(`[Legacy Deliver] Skipping contact ${contact.id}: no email address`);
+      continue;
+    }
+    const contactName = contact.contact_name || "Friend";
     const contactMessages = messagesByEmail.get(contactEmail) || [];
 
     // Generate a unique access token for this contact (for palace access)
@@ -148,7 +204,11 @@ export async function POST(request: Request) {
         }
       }
     } else {
-      allBodies.push(`${senderName} wanted you to have access to their Memory Palace.`);
+      const fallbackMessages: Record<string, string> = {
+        en: `${senderName} wanted you to have access to their Memory Palace.`,
+        nl: `${senderName} wilde dat je toegang hebt tot hun Memory Palace.`,
+      };
+      allBodies.push(fallbackMessages[userLocale] || fallbackMessages.en);
     }
 
     const combinedBody = allBodies.join("\n\n─────\n\n");
@@ -156,7 +216,7 @@ export async function POST(request: Request) {
     // Send the email with all messages combined
     const result = await sendDeliveryEmail({
       recipientEmail: contactEmail,
-      recipientName: contact.contact_name as string,
+      recipientName: contactName,
       senderName,
       messageSubject: combinedSubject,
       messageBody: combinedBody,
@@ -224,14 +284,21 @@ export async function POST(request: Request) {
 
   // ── 5. Mark legacy status ──
   if (!filterMessageIds) {
-    if (retryMode && errors === 0) {
-      // Retry succeeded for all remaining contacts → upgrade to transferred
+    const allDone = errors === 0 && !timedOut;
+    if (retryMode && allDone) {
+      // Retry succeeded for all remaining contacts -> upgrade to transferred
       await supabase
         .from("legacy_settings")
         .update({ status: "transferred" })
         .eq("id", userId);
+    } else if (retryMode && !allDone) {
+      // Retry had errors or timed out -> revert to partially_delivered
+      await supabase
+        .from("legacy_settings")
+        .update({ status: "partially_delivered" })
+        .eq("id", userId);
     } else if (!retryMode) {
-      const newStatus = errors === 0 ? "transferred" : "partially_delivered";
+      const newStatus = allDone ? "transferred" : "partially_delivered";
       await supabase
         .from("legacy_settings")
         .update({
@@ -247,7 +314,8 @@ export async function POST(request: Request) {
     sent,
     errors,
     totalContacts: contacts.length,
-    status: filterMessageIds ? "partial" : (errors === 0 ? "transferred" : "partially_delivered"),
+    timedOut,
+    status: filterMessageIds ? "partial" : (errors === 0 && !timedOut ? "transferred" : "partially_delivered"),
   }, {
     headers: { "Cache-Control": "no-store" },
   });
