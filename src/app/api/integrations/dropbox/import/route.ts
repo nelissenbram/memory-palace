@@ -63,13 +63,13 @@ export async function POST(request: NextRequest) {
         .filter(Boolean),
     );
 
-    const results: Array<{ path: string; success: boolean; error?: string; memoryId?: string }> = [];
+    const results: Array<{ id: string; success: boolean; error?: string; memoryId?: string }> = [];
     let tokenRefreshed = false;
 
     for (const filePath of filePaths) {
       // Skip duplicates
       if (alreadyImportedPaths.has(filePath)) {
-        results.push({ path: filePath, success: false, error: "Already imported" });
+        results.push({ id: filePath, success: false, error: "Already imported" });
         continue;
       }
 
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         });
 
         if (!downloaded) {
-          results.push({ path: filePath, success: false, error: "Authentication expired. Please reconnect." });
+          results.push({ id: filePath, success: false, error: "Authentication expired. Please reconnect." });
           continue;
         }
 
@@ -98,13 +98,13 @@ export async function POST(request: NextRequest) {
 
         // File type validation
         if (!isImportable(mimeType) && !isImportableByExtension(filename)) {
-          results.push({ path: filePath, success: false, error: `File type not supported: ${mimeType}` });
+          results.push({ id: filePath, success: false, error: `File type not supported: ${mimeType}` });
           continue;
         }
 
         // File size validation
         if (data.byteLength > MAX_IMPORT_FILE_SIZE) {
-          results.push({ path: filePath, success: false, error: `File too large (${Math.round(data.byteLength / 1024 / 1024)}MB). Maximum is 50MB.` });
+          results.push({ id: filePath, success: false, error: `File too large (${Math.round(data.byteLength / 1024 / 1024)}MB). Maximum is 50MB.` });
           continue;
         }
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
           .upload(storagePath, data, { contentType: mimeType, upsert: false });
 
         if (uploadErr) {
-          results.push({ path: filePath, success: false, error: uploadErr.message });
+          results.push({ id: filePath, success: false, error: uploadErr.message });
           continue;
         }
 
@@ -144,20 +144,20 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (memErr) {
-          results.push({ path: filePath, success: false, error: memErr.message });
+          results.push({ id: filePath, success: false, error: memErr.message });
         } else {
-          results.push({ path: filePath, success: true, memoryId: memory.id });
+          results.push({ id: filePath, success: true, memoryId: memory.id });
         }
       } catch (err: unknown) {
         if (err instanceof TokenExpiredError) {
-          results.push({ path: filePath, success: false, error: "Authentication expired. Please reconnect." });
+          results.push({ id: filePath, success: false, error: "Authentication expired. Please reconnect." });
           for (const remainingPath of filePaths.slice(filePaths.indexOf(filePath) + 1)) {
-            results.push({ path: remainingPath, success: false, error: "Skipped: authentication expired" });
+            results.push({ id: remainingPath, success: false, error: "Skipped: authentication expired" });
           }
           break;
         }
         const message = err instanceof Error ? err.message : "Unknown error";
-        results.push({ path: filePath, success: false, error: message });
+        results.push({ id: filePath, success: false, error: message });
       }
     }
 
