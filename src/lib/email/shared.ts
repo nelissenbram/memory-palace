@@ -1,4 +1,40 @@
+import crypto from "crypto";
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+/* ── HMAC helpers for unsubscribe tokens ── */
+const UNSUBSCRIBE_SECRET =
+  process.env.CRON_SECRET || process.env.UNSUBSCRIBE_SECRET || "fallback-dev-secret";
+
+/** Sign a userId into a tamper-proof unsubscribe token: `userId.hmacHex` */
+export function signUnsubscribeToken(userId: string): string {
+  const hmac = crypto.createHmac("sha256", UNSUBSCRIBE_SECRET).update(userId).digest("hex");
+  return `${userId}.${hmac}`;
+}
+
+/** Verify an unsubscribe token. Returns the userId if valid, null otherwise. */
+export function verifyUnsubscribeToken(token: string): string | null {
+  const dotIndex = token.indexOf(".");
+  if (dotIndex === -1) return null;
+
+  const userId = token.slice(0, dotIndex);
+  const providedHmac = token.slice(dotIndex + 1);
+
+  const expectedHmac = crypto
+    .createHmac("sha256", UNSUBSCRIBE_SECRET)
+    .update(userId)
+    .digest("hex");
+
+  // Timing-safe comparison — both buffers must be the same length
+  if (providedHmac.length !== expectedHmac.length) return null;
+
+  const isValid = crypto.timingSafeEqual(
+    Buffer.from(providedHmac, "utf8"),
+    Buffer.from(expectedHmac, "utf8"),
+  );
+
+  return isValid ? userId : null;
+}
 
 /** Escape user-provided strings before inserting into HTML templates. */
 export function escapeHtml(str: string): string {
@@ -33,7 +69,7 @@ export function htmlToPlainText(html: string): string {
     .replace(/&ldquo;/g, "\u201C")
     .replace(/&rdquo;/g, "\u201D")
     .replace(/&mdash;/g, "\u2014")
-    .replace(/&#x[\dA-Fa-f]+;/g, "")
+    .replace(/&#x([\dA-Fa-f]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

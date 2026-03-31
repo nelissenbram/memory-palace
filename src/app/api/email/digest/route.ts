@@ -174,20 +174,28 @@ export async function POST(request: Request) {
   // ── 2. Get eligible profiles (digest enabled) ──
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, display_name, email_digest, last_seen_at");
+    .select("id, display_name, email_digest, last_seen_at, preferred_locale, created_at");
 
   const profileMap = new Map(
-    (profiles || []).map((p: { id: string; display_name: string | null; email_digest: boolean | null; last_seen_at: string | null }) => [
+    (profiles || []).map((p: { id: string; display_name: string | null; email_digest: boolean | null; last_seen_at: string | null; preferred_locale: string | null; created_at: string | null }) => [
       p.id,
       p,
     ])
   );
 
-  // Filter to eligible user IDs (digest not explicitly disabled, not active today)
+  // Filter to eligible user IDs (digest not explicitly disabled, not active today, account > 7 days old)
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
   const eligibleUserIds = allAuthUsers
     .filter((u) => {
       const profile = profileMap.get(u.id);
       if (profile?.email_digest === false) return false;
+      // Skip users whose account is less than 7 days old
+      if (profile?.created_at) {
+        const createdAt = new Date(profile.created_at);
+        if (createdAt > sevenDaysAgo) return false;
+      }
       if (profile?.last_seen_at) {
         const lastSeen = new Date(profile.last_seen_at);
         if (lastSeen.toISOString().slice(0, 10) === todayISO) return false;
@@ -222,15 +230,25 @@ export async function POST(request: Request) {
   }
 
   // Fetch upcoming time capsules (already filtered by date, just scope to eligible users)
+  // Wrapped in try/catch because reveal_date column may not exist yet
   const capsuleMemories: Array<{ id: string; title: string; user_id: string; reveal_date: string }> = [];
-  for (const batch of idBatches) {
-    const { data } = await supabase
-      .from("memories")
-      .select("id, title, user_id, reveal_date")
-      .in("user_id", batch)
-      .gte("reveal_date", todayISO)
-      .lte("reveal_date", weekAheadISO);
-    if (data) capsuleMemories.push(...data);
+  try {
+    for (const batch of idBatches) {
+      const { data, error } = await supabase
+        .from("memories")
+        .select("id, title, user_id, reveal_date")
+        .in("user_id", batch)
+        .gte("reveal_date", todayISO)
+        .lte("reveal_date", weekAheadISO);
+      if (error) {
+        console.warn("[Digest] Time capsules query failed (reveal_date column may not exist yet):", error.message);
+        break;
+      }
+      if (data) capsuleMemories.push(...data);
+    }
+  } catch (err) {
+    console.warn("[Digest] Time capsules query threw unexpectedly:", err);
+    // capsuleMemories stays empty — upcoming_capsules will be [] for all users
   }
 
   // Fetch shared rooms for eligible users only
@@ -406,10 +424,15 @@ export async function POST(request: Request) {
   const skippedFromAuth = allAuthUsers.length - eligibleUserIds.length;
   skipped += skippedFromAuth;
 
-  for (const userId of eligibleUserIds) {
+  let usersSkipped = 0;
+
+  for (let i = 0; i < eligibleUserIds.length; i++) {
+    const userId = eligibleUserIds[i];
     // Timeout check (50s of 60s limit)
     if (Date.now() - startTime > 50000) {
       timedOut = true;
+      usersSkipped = eligibleUserIds.length - i;
+      console.warn(`[Digest] Timed out with ${usersSkipped} users remaining unprocessed`);
       break;
     }
 
@@ -419,6 +442,7 @@ export async function POST(request: Request) {
 
     const profile = profileMap.get(userId);
     const displayName = profile?.display_name || email.split("@")[0];
+    const locale = profile?.preferred_locale || "en";
 
     // Calculate streak
     const streakWeeks = calculateStreakWeeks(memoryDatesByUser[userId] || [], now);
@@ -482,6 +506,7 @@ export async function POST(request: Request) {
       weeklyStats,
       memoryOfTheWeek,
       streakWeeks,
+      locale,
     });
 
     if (result.success) {
@@ -499,6 +524,7 @@ export async function POST(request: Request) {
     totalUsers: allAuthUsers.length,
     eligibleUsers: eligibleUserIds.length,
     timedOut,
+    usersSkipped,
   }, {
     headers: { "Cache-Control": "no-store" },
   });

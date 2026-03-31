@@ -306,6 +306,8 @@
     "weeklyDigestDesc": "Receive a weekly email with memory anniversaries, upcoming time capsules, and shared room activity",
     "weeklyDigestEnabled": "Weekly digest enabled",
     "weeklyDigestDisabled": "Weekly digest disabled",
+    "digestLanguageLabel": "Digest language",
+    "digestLanguageDesc": "Choose the language for your weekly digest email",
     "saveFailed": "Failed to save preference",
     "infoNote": "Push notifications are sent once daily around 9:00 AM. The weekly email digest is sent every Monday morning. Your data is stored securely and only used to deliver the notifications you opt into. You can disable any notification at any time."
   },
@@ -514,6 +516,9 @@
     "deliverDeath": "When the time comes",
     "deliverDate": "On a specific date",
     "deliverImmediately": "Deliver immediately",
+    "deliverDeathAria": "Deliver message when the time comes",
+    "deliverDateAria": "Deliver message on a specific date",
+    "deliverImmediatelyAria": "Deliver message immediately",
     "delivery": "Delivery",
     "to": "To",
     "messageSaved": "Your message has been saved. It will be kept safe.",

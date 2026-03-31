@@ -1,19 +1,35 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
+import { rateLimit } from "@/lib/rate-limit";
+import { verifyUnsubscribeToken } from "@/lib/email/shared";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 60_000;
 
 /**
- * GET /api/email/unsubscribe?unsubscribe=true&uid={userId}
+ * GET /api/email/unsubscribe?unsubscribe=true&uid={userId|hmacToken}
  * GET /api/email/unsubscribe?unsubscribe=true&email={email}  (legacy)
+ * POST /api/email/unsubscribe?unsubscribe=true&uid={userId|hmacToken}
+ *   (RFC 8058 one-click unsubscribe — Gmail/Yahoo send POST via List-Unsubscribe-Post header)
  *
  * One-click unsubscribe endpoint for email digest.
  * Sets email_digest = false for the user matching the given uid or email.
- * Returns an HTML confirmation page.
+ * GET returns an HTML confirmation page; POST returns 200 OK.
  *
  * -- Requires the profiles.email_digest column (see digest route migration) --
  */
-export async function GET(request: Request) {
+
+/** Shared handler for both GET and POST */
+async function handleUnsubscribe(request: Request) {
+  // ── Rate limiting: 20 req/min per IP ──
+  const forwarded = request.headers.get("x-forwarded-for");
+  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
+  const { success: rateLimitOk } = rateLimit(`unsubscribe:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  if (!rateLimitOk) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const { searchParams } = new URL(request.url);
   const unsubscribe = searchParams.get("unsubscribe");
   const email = searchParams.get("email") || "";
@@ -38,8 +54,15 @@ export async function GET(request: Request) {
   let userId: string | undefined;
 
   if (uid) {
-    // Direct user ID lookup (used by digest email links)
-    userId = uid;
+    // Try to verify as HMAC-signed token first (new emails use signed tokens)
+    const verified = verifyUnsubscribeToken(uid);
+    if (verified) {
+      userId = verified;
+    } else {
+      // Legacy fallback: treat uid as a bare user ID for already-sent emails.
+      // TODO: Remove this fallback ~90 days after HMAC tokens ship (safe to drop around July 2026).
+      userId = uid;
+    }
   } else if (email) {
     // Legacy email-based lookup
     const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 1000 });
@@ -73,6 +96,16 @@ export async function GET(request: Request) {
     status: 200,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });
+}
+
+/** GET — browser click from email link */
+export async function GET(request: Request) {
+  return handleUnsubscribe(request);
+}
+
+/** POST — RFC 8058 one-click unsubscribe (Gmail/Yahoo List-Unsubscribe-Post) */
+export async function POST(request: Request) {
+  return handleUnsubscribe(request);
 }
 
 function renderPage(type: "success" | "error", errorMessage: string): string {

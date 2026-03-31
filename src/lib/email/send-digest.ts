@@ -1,4 +1,4 @@
-import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider } from "./shared";
+import { escapeHtml, emailLayout, sendEmail, getSiteUrl, ornamentalDivider, signUnsubscribeToken } from "./shared";
 
 export interface OnThisDayMemory {
   title: string;
@@ -50,7 +50,104 @@ export interface DigestEmailParams {
   memoryOfTheWeek: MemoryOfTheWeek | null;
   /** Number of consecutive weeks the user has added at least one memory */
   streakWeeks: number;
+  /** User's preferred locale (default "en") */
+  locale?: string;
 }
+
+/* ── Translations ── */
+
+const t: Record<string, Record<string, string>> = {
+  en: {
+    weeklyDigest: "Weekly Digest",
+    yourReport: "Your {weekday} Report",
+    goodMorning: "Good morning, {name}",
+    goodAfternoon: "Good afternoon, {name}",
+    goodEvening: "Good evening, {name}",
+    hello: "Hello, {name}",
+    hereIsWhatHappened: "Here is what happened in your palace this week.",
+    memoryOfTheWeek: "Memory of the Week",
+    revisitMemory: "Revisit this memory and the stories it holds.",
+    inRoom: "in",
+    onThisWeek: "This Week in History",
+    yearAgo: "year ago",
+    yearsAgo: "years ago",
+    timeCapsules: "Time Capsules Opening Soon",
+    sharedRoomActivity: "Shared Room Activity",
+    addedMemories: "added {count} memory to",
+    addedMemoriesPlural: "added {count} memories to",
+    yourStreak: "Your Streak",
+    weeksInARow: "weeks in a row",
+    weekStreak: "Week Streak",
+    yourProgress: "Your Progress",
+    next: "Next:",
+    addAMemory: "+ Add a Memory",
+    visitYourPalace: "Visit Your Palace",
+    totalMemories: "Total Memories",
+    thisWeek: "This Week",
+    rooms: "Rooms",
+    quietWeek: "Your palace is quiet this week. Why not visit and add a new memory? Every moment you preserve today becomes a treasure tomorrow.",
+    preheaderStreak: "{name}, {streak}-week streak! {count} new memories this week.",
+    preheaderNormal: "{name}, you have {count} new memories this week.",
+    footerNotice: "You receive this digest weekly because email notifications are enabled.",
+    unsubscribe: "Unsubscribe from weekly digest",
+    streakSubject: "{streak}-week streak! Your {weekday} Memory Digest",
+    normalSubject: "Your {weekday} Memory Digest, {name}",
+    encourageStreak12: "Remarkable dedication. Your future self will thank you.",
+    encourageStreak8: "An incredible run. Your palace grows richer every week.",
+    encourageStreak4: "A month of consistency. Your memories are building something lasting.",
+    encourageStreakDefault: "Keep the momentum going &mdash; every week counts.",
+    trackClose: "You&rsquo;re so close to completing this track. One final push!",
+    trackFinish: "The finish line is in sight &mdash; keep going.",
+    trackHalfway: "You&rsquo;re past the halfway mark. The momentum is yours.",
+    trackQuarter: "Great progress. Every step deepens your palace.",
+    trackStart: "Every memory counts. Keep building.",
+  },
+  nl: {
+    weeklyDigest: "Weekoverzicht",
+    yourReport: "Je {weekday}-rapport",
+    goodMorning: "Goedemorgen, {name}",
+    goodAfternoon: "Goedemiddag, {name}",
+    goodEvening: "Goedenavond, {name}",
+    hello: "Hallo, {name}",
+    hereIsWhatHappened: "Dit is wat er deze week in je paleis is gebeurd.",
+    memoryOfTheWeek: "Herinnering van de Week",
+    revisitMemory: "Herleef deze herinnering en de verhalen die erbij horen.",
+    inRoom: "in",
+    onThisWeek: "Deze Week in de Geschiedenis",
+    yearAgo: "jaar geleden",
+    yearsAgo: "jaar geleden",
+    timeCapsules: "Tijdcapsules die Binnenkort Opengaan",
+    sharedRoomActivity: "Gedeelde Kamer-activiteit",
+    addedMemories: "heeft {count} herinnering toegevoegd aan",
+    addedMemoriesPlural: "heeft {count} herinneringen toegevoegd aan",
+    yourStreak: "Jouw Reeks",
+    weeksInARow: "weken op rij",
+    weekStreak: "Weken Reeks",
+    yourProgress: "Jouw Voortgang",
+    next: "Volgende:",
+    addAMemory: "+ Herinnering Toevoegen",
+    visitYourPalace: "Bezoek je Paleis",
+    totalMemories: "Totaal Herinneringen",
+    thisWeek: "Deze Week",
+    rooms: "Kamers",
+    quietWeek: "Het is rustig in je paleis deze week. Waarom voeg je niet een nieuwe herinnering toe? Elk moment dat je vandaag bewaart, wordt morgen een schat.",
+    preheaderStreak: "{name}, {streak} weken op rij! {count} nieuwe herinneringen deze week.",
+    preheaderNormal: "{name}, je hebt {count} nieuwe herinneringen deze week.",
+    footerNotice: "Je ontvangt dit weekoverzicht omdat e-mailmeldingen zijn ingeschakeld.",
+    unsubscribe: "Uitschrijven van weekoverzicht",
+    streakSubject: "{streak} weken op rij! Je {weekday} Herinneringoverzicht",
+    normalSubject: "Je {weekday} Herinneringoverzicht, {name}",
+    encourageStreak12: "Opmerkelijke toewijding. Je toekomstige zelf zal je dankbaar zijn.",
+    encourageStreak8: "Een ongelooflijke reeks. Je paleis wordt elke week rijker.",
+    encourageStreak4: "Een maand van consistentie. Je herinneringen bouwen iets blijvends.",
+    encourageStreakDefault: "Houd het momentum vast &mdash; elke week telt.",
+    trackClose: "Je bent er zo dichtbij. Nog een laatste zetje!",
+    trackFinish: "De eindstreep is in zicht &mdash; ga zo door.",
+    trackHalfway: "Je bent voorbij het halverwegepunt. Het momentum is van jou.",
+    trackQuarter: "Geweldige vooruitgang. Elke stap verdiept je paleis.",
+    trackStart: "Elke herinnering telt. Blijf bouwen.",
+  },
+};
 
 /* ── Section renderers ── */
 
@@ -68,10 +165,10 @@ function sectionHeading(title: string): string {
     </table>`;
 }
 
-function renderStats(stats: WeeklyStats, streakWeeks: number): string {
+function renderStats(stats: WeeklyStats, streakWeeks: number, l: Record<string, string>): string {
   const cell = (value: string, label: string, showBorder: boolean) => `
     <td class="stat-cell" width="${streakWeeks > 0 ? "25" : "33"}%" style="text-align:center;padding:22px 8px;${showBorder ? "border-right:1px solid #EEEAE3;" : ""}">
-      <p style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;font-weight:400;color:#2C2C2A;line-height:1.1;letter-spacing:-1px;">
+      <p class="text-primary" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;font-weight:400;color:#2C2C2A;line-height:1.1;letter-spacing:-1px;">
         ${value}
       </p>
       <p style="margin:6px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:10px;color:#8B7355;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">
@@ -80,21 +177,21 @@ function renderStats(stats: WeeklyStats, streakWeeks: number): string {
     </td>`;
 
   const streakCell = streakWeeks > 0
-    ? cell(`${streakWeeks}`, streakWeeks === 1 ? "Week Streak" : "Week Streak", false)
+    ? cell(`${streakWeeks}`, l.weekStreak, false)
     : "";
 
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
       <tr>
-        ${cell(`${stats.totalMemories}`, "Total Memories", true)}
-        ${cell(`${stats.memoriesThisWeek}`, "This Week", true)}
-        ${cell(`${stats.totalRooms}`, "Rooms", streakWeeks > 0)}
+        ${cell(`${stats.totalMemories}`, l.totalMemories, true)}
+        ${cell(`${stats.memoriesThisWeek}`, l.thisWeek, true)}
+        ${cell(`${stats.totalRooms}`, l.rooms, streakWeeks > 0)}
         ${streakCell}
       </tr>
     </table>`;
 }
 
-function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null): string {
+function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null, l: Record<string, string>): string {
   if (!memory) return "";
 
   const thumbnail = memory.thumbnailUrl
@@ -104,26 +201,26 @@ function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null): string {
       </div>`;
 
   return `
-    ${sectionHeading("Memory of the Week")}
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
+    ${sectionHeading(l.memoryOfTheWeek)}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg motw-table" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
       <tr>
-        <td style="padding:20px;width:120px;" valign="top">${thumbnail}</td>
-        <td style="padding:20px 20px 20px 4px;" valign="middle">
+        <td class="motw-image" style="padding:20px;width:120px;" valign="top">${thumbnail}</td>
+        <td class="motw-text" style="padding:20px 20px 20px 4px;" valign="middle">
           <p class="text-primary" style="margin:0 0 8px;font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:500;color:#2C2C2A;line-height:1.3;font-style:italic;">
             &ldquo;${escapeHtml(memory.title)}&rdquo;
           </p>
           <p class="text-muted" style="margin:0 0 14px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#9A9183;letter-spacing:0.3px;">
-            in <strong style="color:#8B7355;">${escapeHtml(memory.roomName)}</strong>
+            ${l.inRoom} <strong style="color:#8B7355;">${escapeHtml(memory.roomName)}</strong>
           </p>
           <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#B8A99A;font-style:italic;line-height:1.5;">
-            Revisit this memory and the stories it holds.
+            ${l.revisitMemory}
           </p>
         </td>
       </tr>
     </table>`;
 }
 
-function renderStreak(streakWeeks: number): string {
+function renderStreak(streakWeeks: number, l: Record<string, string>): string {
   if (streakWeeks < 2) return "";
 
   // Build flame icons based on streak length (max 8 for display)
@@ -131,22 +228,22 @@ function renderStreak(streakWeeks: number): string {
   const flameStr = "&#x1f525;".repeat(flames) + (streakWeeks > 8 ? " ..." : "");
 
   const encouragement = streakWeeks >= 12
-    ? "Remarkable dedication. Your future self will thank you."
+    ? l.encourageStreak12
     : streakWeeks >= 8
-      ? "An incredible run. Your palace grows richer every week."
+      ? l.encourageStreak8
       : streakWeeks >= 4
-        ? "A month of consistency. Your memories are building something lasting."
-        : "Keep the momentum going &mdash; every week counts.";
+        ? l.encourageStreak4
+        : l.encourageStreakDefault;
 
   return `
-    ${sectionHeading("Your Streak")}
+    ${sectionHeading(l.yourStreak)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;padding:20px 24px;margin:0 0 28px;">
     <tr><td style="text-align:center;">
       <p style="margin:0 0 6px;font-size:20px;line-height:1;">
         ${flameStr}
       </p>
       <p class="text-primary" style="margin:0 0 6px;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:400;color:#2C2C2A;line-height:1.3;">
-        <strong>${streakWeeks} weeks</strong> in a row
+        <strong>${streakWeeks} ${l.weeksInARow}</strong>
       </p>
       <p class="text-muted" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#8B7355;font-style:italic;line-height:1.5;">
         ${encouragement}
@@ -155,7 +252,7 @@ function renderStreak(streakWeeks: number): string {
     </table>`;
 }
 
-function renderOnThisDay(memories: OnThisDayMemory[]): string {
+function renderOnThisDay(memories: OnThisDayMemory[], l: Record<string, string>): string {
   if (memories.length === 0) return "";
 
   const items = memories.slice(0, 5).map((m, i) => `
@@ -165,23 +262,24 @@ function renderOnThisDay(memories: OnThisDayMemory[]): string {
           &ldquo;${escapeHtml(m.title)}&rdquo;
         </td>
         <td width="80" style="text-align:right;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#B8A99A;white-space:nowrap;">
-          ${m.yearsAgo} ${m.yearsAgo === 1 ? "year" : "years"} ago
+          ${m.yearsAgo} ${m.yearsAgo === 1 ? l.yearAgo : l.yearsAgo}
         </td>
       </tr></table>
     </td></tr>`).join("");
 
   return `
-    ${sectionHeading("On This Day")}
+    ${sectionHeading(l.onThisWeek)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;overflow:hidden;margin:0 0 28px;">
       ${items}
     </table>`;
 }
 
-function renderCapsules(capsules: UpcomingCapsule[]): string {
+function renderCapsules(capsules: UpcomingCapsule[], locale: string, l: Record<string, string>): string {
   if (capsules.length === 0) return "";
 
+  const dateLocale = locale === "nl" ? "nl-NL" : "en-US";
   const items = capsules.slice(0, 5).map((c, i) => {
-    const dateStr = new Date(c.revealDate).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const dateStr = new Date(c.revealDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric" });
     return `
     <tr><td style="padding:13px 20px;${i < capsules.slice(0, 5).length - 1 ? "border-bottom:1px solid #F0EBE5;" : ""}">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
@@ -198,31 +296,36 @@ function renderCapsules(capsules: UpcomingCapsule[]): string {
   }).join("");
 
   return `
-    ${sectionHeading("Time Capsules Opening Soon")}
+    ${sectionHeading(l.timeCapsules)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;overflow:hidden;margin:0 0 28px;">
       ${items}
     </table>`;
 }
 
-function renderSharedActivity(activities: SharedRoomActivity[]): string {
+function renderSharedActivity(activities: SharedRoomActivity[], l: Record<string, string>): string {
   if (activities.length === 0) return "";
 
-  const items = activities.slice(0, 5).map((a, i) => `
+  const items = activities.slice(0, 5).map((a, i) => {
+    const addedText = a.memoryCount === 1
+      ? l.addedMemories.replace("{count}", `${a.memoryCount}`)
+      : l.addedMemoriesPlural.replace("{count}", `${a.memoryCount}`);
+    return `
     <tr><td style="padding:13px 20px;${i < activities.slice(0, 5).length - 1 ? "border-bottom:1px solid #F0EBE5;" : ""}">
       <p class="text-primary" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
-        <strong>${escapeHtml(a.contributorName)}</strong> added ${a.memoryCount} ${a.memoryCount === 1 ? "memory" : "memories"} to
+        <strong>${escapeHtml(a.contributorName)}</strong> ${addedText}
         <em>&ldquo;${escapeHtml(a.roomName)}&rdquo;</em>
       </p>
-    </td></tr>`).join("");
+    </td></tr>`;
+  }).join("");
 
   return `
-    ${sectionHeading("Shared Room Activity")}
+    ${sectionHeading(l.sharedRoomActivity)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;overflow:hidden;margin:0 0 28px;">
       ${items}
     </table>`;
 }
 
-function renderTrack(track: TrackProgress | null): string {
+function renderTrack(track: TrackProgress | null, l: Record<string, string>): string {
   if (!track) return "";
   const pct = Math.round(track.percentComplete);
   const barWidth = Math.max(5, pct);
@@ -230,30 +333,30 @@ function renderTrack(track: TrackProgress | null): string {
   // Build a compelling, specific CTA based on progress
   let encouragement: string;
   if (pct >= 90) {
-    encouragement = "You&rsquo;re so close to completing this track. One final push!";
+    encouragement = l.trackClose;
   } else if (pct >= 75) {
-    encouragement = "The finish line is in sight &mdash; keep going.";
+    encouragement = l.trackFinish;
   } else if (pct >= 50) {
-    encouragement = "You&rsquo;re past the halfway mark. The momentum is yours.";
+    encouragement = l.trackHalfway;
   } else if (pct >= 25) {
-    encouragement = "Great progress. Every step deepens your palace.";
+    encouragement = l.trackQuarter;
   } else {
-    encouragement = "Every memory counts. Keep building.";
+    encouragement = l.trackStart;
   }
 
   // Next step hint with milestone label for a specific CTA
   const nextStepHtml = track.nextMilestoneLabel
     ? `<p class="text-primary" style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#2C2C2A;line-height:1.5;">
-        <strong>Next:</strong> ${escapeHtml(track.nextMilestoneLabel)}
+        <strong>${l.next}</strong> ${escapeHtml(track.nextMilestoneLabel)}
       </p>`
     : track.nextStepHint
       ? `<p class="text-primary" style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#2C2C2A;line-height:1.5;">
-          <strong>Next:</strong> ${escapeHtml(track.nextStepHint)}
+          <strong>${l.next}</strong> ${escapeHtml(track.nextStepHint)}
         </p>`
       : "";
 
   return `
-    ${sectionHeading("Your Progress")}
+    ${sectionHeading(l.yourProgress)}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
     <tr><td style="padding:20px 24px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -277,19 +380,19 @@ function renderTrack(track: TrackProgress | null): string {
     </table>`;
 }
 
-function renderQuickAddButton(siteUrl: string): string {
+function renderQuickAddButton(siteUrl: string, l: Record<string, string>): string {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
-      <tr><td style="text-align:center;padding:8px 0 0;">
+      <tr><td class="cta-cell" style="text-align:center;padding:8px 0 0;">
         <!--[if mso]>
         <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${siteUrl}/palace?action=add" style="height:46px;v-text-anchor:middle;width:240px;" arcsize="10%" fillcolor="#C9A84C" stroke="f">
           <w:anchorlock/>
-          <center style="color:#ffffff;font-family:Georgia,serif;font-size:14px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">+ Add a Memory</center>
+          <center style="color:#ffffff;font-family:Georgia,serif;font-size:14px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">${l.addAMemory}</center>
         </v:roundrect>
         <![endif]-->
         <!--[if !mso]><!-->
         <a href="${siteUrl}/palace?action=add" style="display:inline-block;padding:13px 36px;background:#C9A84C;color:#FFFFFF;font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-weight:700;text-decoration:none;border-radius:4px;letter-spacing:1px;text-transform:uppercase;mso-hide:all;">
-          + Add a Memory
+          ${l.addAMemory}
         </a>
         <!--<![endif]-->
       </td></tr>
@@ -298,27 +401,38 @@ function renderQuickAddButton(siteUrl: string): string {
 
 /* ── Greeting helper ── */
 
-function getGreeting(displayName: string): string {
+function getGreeting(displayName: string, l: Record<string, string>): string {
   const hour = new Date().getUTCHours();
-  // Approximate CET (UTC+1/+2) — target audience is European
-  const cetHour = (hour + 1) % 24;
 
-  if (cetHour >= 5 && cetHour < 12) {
-    return `Good morning, ${displayName}`;
-  } else if (cetHour >= 12 && cetHour < 17) {
-    return `Good afternoon, ${displayName}`;
-  } else if (cetHour >= 17 && cetHour < 22) {
-    return `Good evening, ${displayName}`;
+  if (hour >= 5 && hour < 12) {
+    return l.goodMorning.replace("{name}", displayName);
+  } else if (hour >= 12 && hour < 18) {
+    return l.goodAfternoon.replace("{name}", displayName);
+  } else {
+    return l.goodEvening.replace("{name}", displayName);
   }
-  return `Hello, ${displayName}`;
 }
+
+/* ── Mobile CSS for memory-of-the-week stacking ── */
+
+const motwMobileStyle = `
+  @media only screen and (max-width: 480px) {
+    .motw-table tr { display: block !important; }
+    .motw-image { display: block !important; width: 100% !important; text-align: center !important; padding: 20px 20px 8px !important; }
+    .motw-image img, .motw-image div { margin: 0 auto !important; }
+    .motw-text { display: block !important; width: 100% !important; padding: 8px 20px 20px !important; }
+  }
+`;
 
 /* ── Main generator ── */
 
 export function generateDigestEmailHtml(params: DigestEmailParams): string {
+  const locale = params.locale || "en";
+  const l = t[locale] || t.en;
   const displayName = escapeHtml(params.displayName);
   const siteUrl = getSiteUrl();
-  const unsubscribeUrl = `${siteUrl}/api/email/unsubscribe?unsubscribe=true&uid=${encodeURIComponent(params.userId)}`;
+  const unsubToken = signUnsubscribeToken(params.userId);
+  const unsubscribeUrl = `${siteUrl}/api/email/unsubscribe?unsubscribe=true&uid=${unsubToken}`;
 
   const hasContent =
     params.weeklyStats.totalMemories > 0 ||
@@ -327,72 +441,79 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
     params.sharedRoomActivity.length > 0 ||
     params.trackProgress !== null;
 
-  const weekday = new Date().toLocaleDateString("en-US", { weekday: "long" });
-  const greeting = getGreeting(displayName);
+  const dateLocale = locale === "nl" ? "nl-NL" : "en-US";
+  const weekday = new Date().toLocaleDateString(dateLocale, { weekday: "long" });
+  const greeting = getGreeting(displayName, l);
 
   const headerHtml = `
     <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
-      Weekly Digest
+      ${l.weeklyDigest}
     </p>
     <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
-      Your ${weekday} Report
+      ${l.yourReport.replace("{weekday}", weekday)}
     </h1>
     <p class="header-subtitle" style="margin:14px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#8B7355;line-height:1.6;">
-      ${greeting}. Here is what happened in your palace this week.
+      ${greeting}. ${l.hereIsWhatHappened}
     </p>`;
 
   const bodyHtml = hasContent
     ? `
-      ${renderStats(params.weeklyStats, params.streakWeeks)}
-      ${renderStreak(params.streakWeeks)}
-      ${renderMemoryOfTheWeek(params.memoryOfTheWeek)}
-      ${renderTrack(params.trackProgress)}
-      ${renderQuickAddButton(siteUrl)}
-      ${renderOnThisDay(params.onThisDayMemories)}
-      ${renderCapsules(params.upcomingCapsules)}
-      ${renderSharedActivity(params.sharedRoomActivity)}`
+      ${renderStats(params.weeklyStats, params.streakWeeks, l)}
+      ${renderStreak(params.streakWeeks, l)}
+      ${renderMemoryOfTheWeek(params.memoryOfTheWeek, l)}
+      ${renderTrack(params.trackProgress, l)}
+      ${renderQuickAddButton(siteUrl, l)}
+      ${renderOnThisDay(params.onThisDayMemories, l)}
+      ${renderCapsules(params.upcomingCapsules, locale, l)}
+      ${renderSharedActivity(params.sharedRoomActivity, l)}`
     : `
       ${ornamentalDivider()}
       <p class="text-secondary" style="margin:16px 0;font-family:'Cormorant Garamond',Georgia,serif;font-size:18px;color:#8B7355;line-height:1.7;text-align:center;font-style:italic;">
-        Your palace is quiet this week. Why not visit and add a new memory?
-        Every moment you preserve today becomes a treasure tomorrow.
+        ${l.quietWeek}
       </p>
       ${ornamentalDivider()}
-      ${renderQuickAddButton(siteUrl)}`;
+      ${renderQuickAddButton(siteUrl, l)}`;
 
   return emailLayout({
     preheader: params.streakWeeks >= 2
-      ? `${params.displayName}, ${params.streakWeeks}-week streak! ${params.weeklyStats.memoriesThisWeek} new memories this week.`
-      : `${params.displayName}, you have ${params.weeklyStats.memoriesThisWeek} new memories this week.`,
+      ? l.preheaderStreak.replace("{name}", params.displayName).replace("{streak}", `${params.streakWeeks}`).replace("{count}", `${params.weeklyStats.memoriesThisWeek}`)
+      : l.preheaderNormal.replace("{name}", params.displayName).replace("{count}", `${params.weeklyStats.memoriesThisWeek}`),
     headerHtml,
     bodyHtml,
-    ctaText: "Visit Your Palace",
+    ctaText: l.visitYourPalace,
     ctaUrl: `${siteUrl}/palace`,
     footerExtra: `
+      <style>${motwMobileStyle}</style>
       <p style="margin:0 0 6px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
-        You receive this digest weekly because email notifications are enabled.
+        ${l.footerNotice}
       </p>
       <a href="${unsubscribeUrl}" style="font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#9A9183;text-decoration:underline;">
-        Unsubscribe from weekly digest
+        ${l.unsubscribe}
       </a>`,
+    locale,
   });
 }
 
-export function generateDigestEmailSubject(displayName: string, streakWeeks: number): string {
-  const weekday = new Date().toLocaleDateString("en-US", { weekday: "long" });
+export function generateDigestEmailSubject(displayName: string, streakWeeks: number, locale?: string): string {
+  const loc = locale || "en";
+  const l = t[loc] || t.en;
+  const dateLocale = loc === "nl" ? "nl-NL" : "en-US";
+  const weekday = new Date().toLocaleDateString(dateLocale, { weekday: "long" });
   if (streakWeeks >= 4) {
-    return `${streakWeeks}-week streak! Your ${weekday} Memory Digest`;
+    return l.streakSubject.replace("{streak}", `${streakWeeks}`).replace("{weekday}", weekday);
   }
-  return `Your ${weekday} Memory Digest, ${displayName}`;
+  return l.normalSubject.replace("{weekday}", weekday).replace("{name}", displayName);
 }
 
 export async function sendDigestEmail(params: DigestEmailParams): Promise<{ success: boolean; error?: string }> {
+  const locale = params.locale || "en";
   const siteUrl = getSiteUrl();
-  const unsubscribeUrl = `${siteUrl}/api/email/unsubscribe?unsubscribe=true&uid=${encodeURIComponent(params.userId)}`;
+  const unsubToken = signUnsubscribeToken(params.userId);
+  const unsubscribeUrl = `${siteUrl}/api/email/unsubscribe?unsubscribe=true&uid=${unsubToken}`;
 
   return sendEmail({
     to: params.recipientEmail,
-    subject: generateDigestEmailSubject(params.displayName, params.streakWeeks),
+    subject: generateDigestEmailSubject(params.displayName, params.streakWeeks, locale),
     html: generateDigestEmailHtml(params),
     tag: "digest",
     headers: {

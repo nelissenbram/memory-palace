@@ -306,6 +306,8 @@
     "weeklyDigestDesc": "Ontvang een wekelijkse e-mail met herinneringsjubilea, aankomende tijdcapsules en gedeelde kamer-activiteit",
     "weeklyDigestEnabled": "Wekelijks overzicht ingeschakeld",
     "weeklyDigestDisabled": "Wekelijks overzicht uitgeschakeld",
+    "digestLanguageLabel": "Taal weekoverzicht",
+    "digestLanguageDesc": "Kies de taal voor je wekelijkse overzichtsmail",
     "saveFailed": "Voorkeur opslaan mislukt",
     "infoNote": "Pushmeldingen worden dagelijks rond 9:00 uur verstuurd. De wekelijkse e-mail wordt elke maandagochtend verzonden. Je gegevens worden veilig bewaard en alleen gebruikt voor de meldingen die je hebt gekozen. Je kunt elke melding op elk moment uitschakelen."
   },
@@ -514,6 +516,9 @@
     "deliverDeath": "Wanneer het moment daar is",
     "deliverDate": "Op een specifieke datum",
     "deliverImmediately": "Direct bezorgen",
+    "deliverDeathAria": "Bericht bezorgen wanneer het moment daar is",
+    "deliverDateAria": "Bericht bezorgen op een specifieke datum",
+    "deliverImmediatelyAria": "Bericht direct bezorgen",
     "delivery": "Bezorging",
     "to": "Aan",
     "messageSaved": "Je bericht is opgeslagen. Het wordt veilig bewaard.",

@@ -122,7 +122,24 @@ function VerifiedContent() {
 
 export default function VerifiedPage() {
   return (
-    <Suspense>
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.cream} 100%)`,
+            fontFamily: T.font.body,
+          }}
+        >
+          <p style={{ fontSize: "0.9375rem", color: T.color.muted }}>
+            Loading...
+          </p>
+        </div>
+      }
+    >
       <VerifiedContent />
     </Suspense>
   );

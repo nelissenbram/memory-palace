@@ -149,9 +149,9 @@ const ACCESS_LEVELS = [
 ];
 
 const DELIVERY_OPTIONS = [
-  { value: "death", labelKey: "deliverDeath" },
-  { value: "specific_date", labelKey: "deliverDate" },
-  { value: "immediately", labelKey: "deliverImmediately" },
+  { value: "death", labelKey: "deliverDeath", ariaKey: "deliverDeathAria" },
+  { value: "specific_date", labelKey: "deliverDate", ariaKey: "deliverDateAria" },
+  { value: "immediately", labelKey: "deliverImmediately", ariaKey: "deliverImmediatelyAria" },
 ];
 
 // ── Main Page ──
@@ -374,7 +374,21 @@ export default function LegacyPage() {
       )}
 
       {/* Section tabs */}
-      <div role="tablist" aria-label={t("title")} style={{
+      <div role="tablist" aria-label={t("title")} onKeyDown={(e) => {
+        const tabs: ("contacts" | "messages" | "settings")[] = ["contacts", "messages", "settings"];
+        const idx = tabs.indexOf(activeSection);
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          const next = tabs[(idx + 1) % tabs.length];
+          handleTabSwitch(next);
+          document.getElementById(`tab-${next}`)?.focus();
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          const prev = tabs[(idx - 1 + tabs.length) % tabs.length];
+          handleTabSwitch(prev);
+          document.getElementById(`tab-${prev}`)?.focus();
+        }
+      }} style={{
         display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1.5rem",
       }}>
         {([
@@ -389,6 +403,7 @@ export default function LegacyPage() {
             role="tab"
             aria-selected={activeSection === tab.key}
             aria-controls={`tabpanel-${tab.key}`}
+            tabIndex={activeSection === tab.key ? 0 : -1}
             className="legacy-focus-ring"
             style={{
               padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
@@ -778,6 +793,7 @@ function ContactsSection({
                 className="legacy-focus-ring"
                 required
                 aria-required="true"
+                maxLength={100}
                 disabled={saving}
                 style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
@@ -794,6 +810,7 @@ function ContactsSection({
                 className="legacy-focus-ring"
                 required
                 aria-required="true"
+                maxLength={254}
                 disabled={saving}
                 style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
@@ -886,7 +903,8 @@ function ContactsSection({
                         }}
                         aria-pressed={selected}
                         style={{
-                          padding: "0.625rem 1.125rem", borderRadius: "0.625rem",
+                          padding: "0.625rem 1rem", borderRadius: "0.625rem",
+                          minHeight: "2.75rem",
                           border: `1.5px solid ${selected ? T.color.sage : T.color.sandstone}`,
                           background: selected ? `${T.color.sage}12` : T.color.white,
                           fontFamily: T.font.body, fontSize: "0.875rem",
@@ -944,7 +962,8 @@ function ContactsSection({
                                   }}
                                   aria-pressed={selected}
                                   style={{
-                                    padding: "0.5rem 0.875rem", borderRadius: "0.5rem",
+                                    padding: "0.625rem 1rem", borderRadius: "0.5rem",
+                                    minHeight: "2.75rem",
                                     border: `1.5px solid ${selected ? T.color.sage : T.color.sandstone}`,
                                     background: selected ? `${T.color.sage}12` : T.color.white,
                                     fontFamily: T.font.body, fontSize: "0.8125rem",
@@ -1248,7 +1267,8 @@ function MessagesSection({
                       key={c.id}
                       onClick={() => setRecipientEmail(c.contact_email)}
                       style={{
-                        padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
+                        padding: "0.625rem 1rem", borderRadius: "0.5rem",
+                        minHeight: "2.75rem",
                         border: `1px solid ${recipientEmail === c.contact_email ? T.color.terracotta : T.color.sandstone}`,
                         background: recipientEmail === c.contact_email ? `${T.color.terracotta}12` : T.color.white,
                         fontFamily: T.font.body, fontSize: "0.8125rem",
@@ -1269,6 +1289,7 @@ function MessagesSection({
                 className="legacy-focus-ring"
                 required
                 aria-required="true"
+                maxLength={254}
                 disabled={saving}
                 style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
@@ -1285,6 +1306,7 @@ function MessagesSection({
                 className="legacy-focus-ring"
                 required
                 aria-required="true"
+                maxLength={200}
                 disabled={saving}
                 style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
               />
@@ -1305,6 +1327,7 @@ function MessagesSection({
                 onChange={(e) => setBody(e.target.value)}
                 placeholder={t("messagePlaceholder")}
                 rows={10}
+                maxLength={10000}
                 className="legacy-focus-ring"
                 disabled={saving}
                 style={{
@@ -1326,6 +1349,8 @@ function MessagesSection({
                   <button
                     key={d.value}
                     onClick={() => setDeliverOn(d.value)}
+                    aria-pressed={deliverOn === d.value}
+                    aria-label={t(d.ariaKey)}
                     disabled={saving}
                     style={{
                       padding: "0.75rem 1.125rem", borderRadius: "0.625rem", textAlign: "left",
@@ -1454,7 +1479,7 @@ function SettingsSection({
           const result = await retryLegacyDelivery();
           setSaving(false);
           if (result.success) {
-            showToast(t("retrySuccess").replace("{count}", String(result.sent || 0)), "success");
+            showToast(t("retrySuccess", { count: String(result.sent || 0) }), "success");
             window.location.reload();
           } else {
             showToast(result.error || t("retryFailed"), "error");
@@ -1559,6 +1584,7 @@ function SettingsSection({
                 type="email" value={verifierEmail}
                 onChange={(e) => setVerifierEmail(e.target.value)}
                 placeholder={t("verifierEmailPlaceholder")}
+                maxLength={254}
                 className="legacy-focus-ring"
                 disabled={saving}
                 style={saving ? { ...inputStyle, pointerEvents: "none" as const, opacity: 0.6 } : inputStyle}
