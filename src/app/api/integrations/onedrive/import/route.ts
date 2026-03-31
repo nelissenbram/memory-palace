@@ -120,14 +120,15 @@ export async function POST(request: NextRequest) {
 
         const { error: uploadErr } = await supabase.storage
           .from("memories")
-          .upload(storagePath, data, { contentType: mimeType, upsert: false });
+          .upload(storagePath, Buffer.from(data), { contentType: mimeType, upsert: false });
 
         if (uploadErr) {
           results.push({ id: itemId, success: false, error: uploadErr.message });
           continue;
         }
 
-        const { data: publicUrl } = supabase.storage.from("memories").getPublicUrl(storagePath);
+        const { data: signedUrlData } = await supabase.storage.from("memories").createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+        const fileUrl = signedUrlData?.signedUrl || "";
 
         const isImage = mimeType.startsWith("image/");
         const isVideo = mimeType.startsWith("video/");
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest) {
             title: cleanFilename(filename),
             type: isVideo ? "video" : isAudio ? "audio" : isImage ? "photo" : "document",
             file_path: storagePath,
-            file_url: publicUrl.publicUrl,
+            file_url: fileUrl,
             hue,
             saturation: 45 + Math.floor(Math.random() * 15),
             lightness: 55 + Math.floor(Math.random() * 15),
