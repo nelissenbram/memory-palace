@@ -94,7 +94,12 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const { data, mimeType, filename } = downloaded;
+        const { data, mimeType: rawMimeType, filename } = downloaded;
+
+        // Dropbox often returns application/octet-stream — infer from extension
+        const mimeType = rawMimeType === "application/octet-stream"
+          ? mimeFromExtension(filename) || rawMimeType
+          : rawMimeType;
 
         // File type validation
         if (!isImportable(mimeType) && !isImportableByExtension(filename)) {
@@ -207,4 +212,19 @@ function cleanFilename(name: string): string {
     .replace(/[_-]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase())
     .trim() || "Imported File";
+}
+
+/** Infer MIME type from file extension (Dropbox often returns application/octet-stream). */
+function mimeFromExtension(filename: string): string | null {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png",
+    gif: "image/gif", webp: "image/webp", heic: "image/heic",
+    heif: "image/heif", tiff: "image/tiff", bmp: "image/bmp",
+    mp4: "video/mp4", mov: "video/quicktime", avi: "video/x-msvideo",
+    webm: "video/webm", mkv: "video/x-matroska",
+    mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4",
+    pdf: "application/pdf", txt: "text/plain",
+  };
+  return map[ext || ""] || null;
 }
