@@ -52,6 +52,16 @@ export default function LibraryView({ onOpenUpload, onSelectMemory, onOpenGaller
     }
   }, [wingRoomIds, fetchRoomMemories]);
 
+  // Prefetch all wings on mount for cross-wing search
+  useEffect(() => {
+    for (const w of wings) {
+      for (const r of getWingRooms(w.id)) {
+        fetchRoomMemories(r.id);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Get memories for a room
   const getMemsForRoom = useCallback((roomId: string): Mem[] => {
     return userMems[roomId] || ROOM_MEMS[roomId] || [];
@@ -108,6 +118,19 @@ export default function LibraryView({ onOpenUpload, onSelectMemory, onOpenGaller
     setQuery("");
     setFilterType(null);
   };
+
+  // Keyboard: Escape to go back
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (detailMem) setDetailMem(null);
+        else if (showUploadFor) setShowUploadFor(null);
+        else if (selectedRoom) handleBackToRooms();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [detailMem, showUploadFor, selectedRoom]);
 
   const handleAddMemory = useCallback((mem: Mem) => {
     if (showUploadFor) {
