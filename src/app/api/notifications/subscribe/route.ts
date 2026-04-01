@@ -23,15 +23,13 @@ import { createClient } from "@/lib/supabase/server";
  *
  * ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
  *
- * CREATE POLICY "Users can manage own subscriptions"
+ * CREATE POLICY "Users can manage own push subscriptions"
  *   ON push_subscriptions FOR ALL
  *   USING (auth.uid() = user_id)
  *   WITH CHECK (auth.uid() = user_id);
  *
- * -- Allow the service role to read all subscriptions for sending notifications --
- * CREATE POLICY "Service role can read all subscriptions"
- *   ON push_subscriptions FOR SELECT
- *   USING (true);
+ * -- The service role bypasses RLS and can read all rows for sending
+ * -- notifications. No broad USING(true) SELECT policy is needed.
  * ---
  */
 
@@ -69,7 +67,7 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error("[subscribe] Upsert failed:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true }, {
@@ -148,7 +146,8 @@ export async function PATCH(request: Request) {
       .eq("user_id", user.id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[subscribe] Push update failed:", error);
+      return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
   }
 
@@ -160,7 +159,8 @@ export async function PATCH(request: Request) {
       .eq("id", user.id);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[subscribe] Email digest update failed:", error);
+      return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
   }
 

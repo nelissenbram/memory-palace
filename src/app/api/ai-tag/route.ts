@@ -42,6 +42,19 @@ export async function POST(req: NextRequest) {
     const body: TagRequest = await req.json();
     const { items, wings } = body;
 
+    // Batch size limit
+    if (!items || items.length > 50) {
+      return NextResponse.json({ error: "Too many items (max 50)" }, { status: 400 });
+    }
+
+    // Total payload size limit (~7.5 MB decoded)
+    const totalBase64Size = items.reduce(
+      (sum, item) => sum + (item.thumbnailBase64?.length ?? 0), 0
+    );
+    if (totalBase64Size > 10_000_000) {
+      return NextResponse.json({ error: "Total thumbnail payload too large (max ~7.5 MB)" }, { status: 400 });
+    }
+
     // Input size limits
     for (const item of items ?? []) {
       if (item.fileName && item.fileName.length > 500) {
@@ -148,7 +161,8 @@ Respond ONLY with a JSON array, no other text.`,
     return NextResponse.json({ suggestions }, {
       headers: { "Cache-Control": "no-store" },
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("[ai-tag] Unexpected error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

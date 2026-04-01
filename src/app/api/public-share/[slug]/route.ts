@@ -62,7 +62,7 @@ export async function GET(
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase
-      .from("profiles")
+      .from("public_profiles")
       .select("display_name")
       .eq("id", share.created_by)
       .single(),

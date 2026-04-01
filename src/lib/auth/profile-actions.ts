@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { revokeProviderToken } from "@/lib/integrations/helpers";
 
 const DEFAULT_WINGS = [
   { slug: "family", accent_color: "#C17F59" },
@@ -188,6 +189,24 @@ export async function deleteAccount() {
 
   if (userError || !user) {
     return { error: "Not authenticated" };
+  }
+
+  // 0. Revoke OAuth tokens for all connected accounts (best-effort)
+  try {
+    const { data: connectedAccounts } = await supabase
+      .from("connected_accounts")
+      .select("provider, access_token")
+      .eq("user_id", user.id);
+
+    if (connectedAccounts && connectedAccounts.length > 0) {
+      await Promise.allSettled(
+        connectedAccounts.map((account) =>
+          revokeProviderToken(account.provider, account.access_token)
+        )
+      );
+    }
+  } catch (err) {
+    console.warn("Failed to revoke OAuth tokens during account deletion:", err);
   }
 
   // 1. Delete the profile row (cascades to wings, rooms, memories, etc.)

@@ -72,7 +72,8 @@ export async function POST(request: Request) {
   });
 
   if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
+    console.error("[send-invite] Email send failed:", result.error);
+    return NextResponse.json({ error: "Failed to send invite email" }, { status: 500 });
   }
 
   // Mark as sent

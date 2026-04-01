@@ -124,6 +124,72 @@ export async function GET() {
 
     diag.push(`photos:${filesProcessed}ok_${failedFiles.length}fail${truncated ? "_truncated" : ""}`);
 
+    // Download bust files from Supabase Storage
+    const bustsFolder = zip.folder("busts");
+    if (bustsFolder) {
+      try {
+        const { data: bustFileList } = await supabase.storage
+          .from("busts")
+          .list(user.id);
+
+        if (bustFileList && bustFileList.length > 0) {
+          const bustFiles = bustFileList.slice(0, MAX_EXPORT_FILES);
+          const bustUsedNames = new Set<string>();
+          let bustsProcessed = 0;
+          const failedBusts: string[] = [];
+
+          for (let i = 0; i < bustFiles.length; i += BATCH_SIZE) {
+            const elapsed = Date.now() - startTime;
+            if (elapsed >= TIMEOUT_THRESHOLD_MS) {
+              truncated = true;
+              diag.push(`bust_timeout_at_batch:${i}`);
+              break;
+            }
+
+            const batch = bustFiles.slice(i, i + BATCH_SIZE);
+            await Promise.allSettled(
+              batch.map(async (file) => {
+                const filePath = `${user.id}/${file.name}`;
+                try {
+                  const { data, error } = await supabase.storage
+                    .from("busts")
+                    .download(filePath);
+
+                  if (error || !data) {
+                    failedBusts.push(filePath);
+                    return;
+                  }
+
+                  let fileName = file.name;
+                  if (bustUsedNames.has(fileName)) {
+                    const ext = fileName.includes(".")
+                      ? "." + fileName.split(".").pop()
+                      : "";
+                    const base = fileName.replace(/\.[^.]+$/, "");
+                    let counter = 2;
+                    while (bustUsedNames.has(`${base}_${counter}${ext}`)) counter++;
+                    fileName = `${base}_${counter}${ext}`;
+                  }
+                  bustUsedNames.add(fileName);
+
+                  const buffer = await data.arrayBuffer();
+                  bustsFolder.file(fileName, buffer);
+                  bustsProcessed++;
+                } catch {
+                  failedBusts.push(filePath);
+                }
+              })
+            );
+          }
+          diag.push(`busts:${bustsProcessed}ok_${failedBusts.length}fail`);
+        } else {
+          diag.push("busts:0");
+        }
+      } catch {
+        diag.push("busts:error");
+      }
+    }
+
     // If truncated, add a notice file to the zip
     if (truncated) {
       const remaining = files.length - filesProcessed - failedFiles.length;

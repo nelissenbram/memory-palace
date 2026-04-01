@@ -50,7 +50,7 @@ async function getShareData(slug: string) {
   }
 
   const { data: owner } = await supabase
-    .from("profiles")
+    .from("public_profiles")
     .select("display_name")
     .eq("id", share.created_by)
     .single();

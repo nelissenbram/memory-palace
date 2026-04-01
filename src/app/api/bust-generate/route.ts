@@ -46,6 +46,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No image provided" }, { status: 400 });
   }
 
+  if (image.length > 10_000_000) {
+    return NextResponse.json({ error: "Image too large" }, { status: 400 });
+  }
+
   // Strip data URL prefix if present
   const base64 = image.replace(/^data:image\/\w+;base64,/, "");
   const mediaType = image.startsWith("data:image/png") ? "image/png" : "image/jpeg";
@@ -185,7 +189,7 @@ Return ONLY the JSON, no explanation.`,
   if (uploadError) {
     console.error("[bust-generate] Storage upload failed:", uploadError);
     return NextResponse.json(
-      { error: uploadError.message },
+      { error: "Internal error" },
       { status: 500 }
     );
   }

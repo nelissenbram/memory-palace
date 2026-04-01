@@ -121,7 +121,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://*.supabase.
 
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
   `img-src 'self' data: blob: ${supabaseUrl} https://*.supabase.co https://lh3.googleusercontent.com`,
   `font-src 'self' https://fonts.gstatic.com`,

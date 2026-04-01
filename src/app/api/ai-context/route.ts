@@ -127,7 +127,8 @@ Keep it warm, personal, and under 300 words. No markdown formatting.`;
     return NextResponse.json({ context: context.trim() }, {
       headers: { "Cache-Control": "no-store" },
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("[ai-context] Unexpected error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -211,8 +211,18 @@ function RegisterContent() {
 
       <button
         type="button"
-        onClick={() => signInWithGoogle()}
-        style={googleButtonStyle}
+        onClick={() => {
+          if (!ageConfirmed) {
+            setError(t("ageRequiredForSocial"));
+            return;
+          }
+          signInWithGoogle();
+        }}
+        style={{
+          ...googleButtonStyle,
+          ...(!ageConfirmed ? { opacity: 0.5, pointerEvents: "none" as const } : {}),
+        }}
+        aria-disabled={!ageConfirmed}
       >
         <GoogleIcon />
         {t("signUpWithGoogle")}
@@ -220,8 +230,18 @@ function RegisterContent() {
 
       <button
         type="button"
-        onClick={() => signInWithApple()}
-        style={appleButtonStyle}
+        onClick={() => {
+          if (!ageConfirmed) {
+            setError(t("ageRequiredForSocial"));
+            return;
+          }
+          signInWithApple();
+        }}
+        style={{
+          ...appleButtonStyle,
+          ...(!ageConfirmed ? { opacity: 0.5, pointerEvents: "none" as const } : {}),
+        }}
+        aria-disabled={!ageConfirmed}
       >
         <AppleIcon />
         {t("signUpWithApple")}

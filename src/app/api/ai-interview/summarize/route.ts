@@ -139,7 +139,8 @@ Please write a beautiful narrative summary that weaves these stories together.`;
     return NextResponse.json({ narrative: narrative.trim() }, {
       headers: { "Cache-Control": "no-store" },
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("[ai-interview/summarize] Unexpected error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

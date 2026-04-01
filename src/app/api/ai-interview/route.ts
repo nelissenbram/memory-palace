@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No response provided" }, { status: 400 });
     }
 
+    if (previousResponses && previousResponses.length > 50) {
+      return NextResponse.json({ error: "Too many previous responses (max 50)" }, { status: 400 });
+    }
+
     // Input size limits
     if (userResponse.length > 10_000) {
       return NextResponse.json({ error: "Response exceeds 10,000 characters" }, { status: 400 });
@@ -122,7 +126,8 @@ Respond with a JSON object containing:
     return NextResponse.json(result, {
       headers: { "Cache-Control": "no-store" },
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("[ai-interview] Unexpected error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

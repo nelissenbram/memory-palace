@@ -21,15 +21,16 @@ export async function GET() {
       .order("connected_at", { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[integrations/accounts] GET failed:", error);
+      return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
 
     return NextResponse.json({ accounts: accounts || [] }, {
       headers: { "Cache-Control": "private, no-cache" },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[integrations/accounts] GET unexpected error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
 
@@ -71,14 +72,15 @@ export async function DELETE(request: NextRequest) {
       .eq("provider", provider);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("[integrations/accounts] DELETE failed:", error);
+      return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, disconnected: provider }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[integrations/accounts] DELETE unexpected error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

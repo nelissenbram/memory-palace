@@ -307,6 +307,8 @@ export async function sendEmail(opts: {
   }
 
   // Fallback: log (email delivery not configured)
-  console.log(`[Email] Would send to ${to}: ${subject}`);
+  // Redact email PII — only show domain part
+  const redacted = to.includes("@") ? `***@${to.split("@")[1]}` : "***";
+  console.log(`[Email] Would send to ${redacted}: ${subject}`);
   return { success: true };
 }
