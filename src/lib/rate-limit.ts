@@ -14,7 +14,7 @@ function getLimiter(prefix: string, limit: number, windowMs: number): Ratelimit 
     limiter = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(limit, `${windowSec} s`),
-      prefix: `ratelimit:${prefix}`,
+      prefix: `ratelimit:${prefix}:${limit}:${windowSec}`,
     });
     limiters.set(cacheKey, limiter);
   }

@@ -12,11 +12,11 @@ export function getClientIp(request: Request): string {
     if (ip && !isPrivateIp(ip)) return ip;
   }
 
-  return ips[0]?.trim() || "unknown";
+  return ips[0]?.trim() || `unknown-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function isPrivateIp(ip: string): boolean {
-  return (
+  if (
     ip.startsWith("10.") ||
     ip.startsWith("172.16.") ||
     ip.startsWith("172.17.") ||
@@ -37,5 +37,16 @@ function isPrivateIp(ip: string): boolean {
     ip.startsWith("192.168.") ||
     ip === "127.0.0.1" ||
     ip === "::1"
-  );
+  ) return true;
+
+  // IPv6 checks
+  const ipLower = ip.toLowerCase();
+  if (
+    ipLower.startsWith("fc") ||
+    ipLower.startsWith("fd") ||
+    ipLower.startsWith("fe80:") ||
+    ipLower.startsWith("ff")
+  ) return true;
+
+  return false;
 }

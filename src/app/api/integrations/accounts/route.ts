@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { revokeProviderToken } from "@/lib/integrations/helpers";
+import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 
 /**
  * GET — List all connected accounts for the current user.
@@ -12,6 +13,11 @@ export async function GET() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const rl = await rateLimit(`accounts-list:${user.id}`, 100, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
     }
 
     const { data: accounts, error } = await supabase
@@ -40,6 +46,11 @@ export async function DELETE(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    const rl = await rateLimit(`accounts-disconnect:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
     }
 
     const provider = request.nextUrl.searchParams.get("provider");
