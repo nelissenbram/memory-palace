@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiConsent } from "@/lib/ai/check-consent";
-import { checkRateLimit } from "@/lib/integrations/helpers";
+import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
 
 // TODO: Add a first-use consent dialog in the client UI to improve UX
 // instead of relying solely on the settings page toggles.
@@ -23,8 +23,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    if (!checkRateLimit(`ai:${user.id}`, 20, 60_000)) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    const rl = await rateLimitStrict(`ai:${user.id}`, 20, 60_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
     }
 
     const consent = await checkAiConsent(supabase, user.id);

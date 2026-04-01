@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser, getBaseUrl, checkRateLimit, generateOAuthState, generateCodeVerifier, computeCodeChallenge } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getBaseUrl, generateOAuthState, generateCodeVerifier, computeCodeChallenge } from "@/lib/integrations/helpers";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   try {
     const { user } = await getAuthenticatedUser();
 
-    if (!checkRateLimit(`${user.id}:oauth-connect`, 5, 60_000)) {
+    if (!(await checkRateLimit(`${user.id}:oauth-connect`, 5, 60_000))) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 

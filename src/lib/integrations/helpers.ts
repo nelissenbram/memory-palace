@@ -256,44 +256,6 @@ export async function resolveRoomId(
   return room?.id || null;
 }
 
-// ---------------------------------------------------------------------------
-// In-memory rate limiter
-// ---------------------------------------------------------------------------
-
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
-
-const rateLimitMap = new Map<string, RateLimitEntry>();
-
-/**
- * Simple in-memory fixed-window rate limiter.
- * Returns `true` if the request is allowed, `false` if rate-limited.
- *
- * @param key       Unique key (e.g. `userId:action`)
- * @param maxRequests  Max number of requests within the window
- * @param windowMs     Window duration in milliseconds
- */
-export function checkRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(key);
-
-  if (!entry || now >= entry.resetAt) {
-    // First request in window or window has expired — start fresh
-    rateLimitMap.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-
-  if (entry.count < maxRequests) {
-    entry.count++;
-    return true;
-  }
-
-  // Rate limit exceeded
-  return false;
-}
-
 /**
  * Revoke an OAuth token at the provider's revocation endpoint.
  * Best-effort: logs a warning on failure but never throws.

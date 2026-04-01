@@ -6,11 +6,11 @@ import {
   isImportable,
   isImportableByExtension,
   resolveRoomId,
-  checkRateLimit,
   MAX_IMPORT_FILE_SIZE,
   MAX_IMPORT_BATCH_SIZE,
   TokenExpiredError,
 } from "@/lib/integrations/helpers";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { downloadPhoto } from "@/lib/integrations/onedrive";
 import { createClient } from "@/lib/supabase/server";
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     const { user } = await getAuthenticatedUser();
 
-    if (!checkRateLimit(`import:${user.id}`, 10, 60_000)) {
+    if (!(await checkRateLimit(`import:${user.id}`, 10, 60_000))) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { timingSafeEqual } from "crypto";
-import { getAuthenticatedUser, getBaseUrl, checkRateLimit, upsertConnectedAccount } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getBaseUrl, upsertConnectedAccount } from "@/lib/integrations/helpers";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { getUserInfo } from "@/lib/integrations/onedrive";
 
 export async function GET(request: NextRequest) {
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
     const { user } = await getAuthenticatedUser();
     const baseUrl = getBaseUrl();
 
-    if (!checkRateLimit(`${user.id}:oauth-callback`, 10, 60_000)) {
+    if (!(await checkRateLimit(`${user.id}:oauth-callback`, 10, 60_000))) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 

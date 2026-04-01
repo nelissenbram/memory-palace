@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/ip";
 
 /**
  * GET /api/legacy/verify?token=xxx&type=user|verifier
@@ -27,11 +28,10 @@ export async function GET(request: Request) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
   // ── Rate limiting: 10 req/min per IP ──
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
-  const { success: rateLimitOk } = rateLimit(`legacy-verify:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
-  if (!rateLimitOk) {
-    return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=rate_limited`);
+  const ip = getClientIp(request);
+  const rl = await rateLimit(`legacy-verify:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  if (!rl.success) {
+    return NextResponse.redirect(`${siteUrl}/palace?legacy_verify=rate_limited`, { headers: rateLimitHeaders(rl) });
   }
 
   if (!token) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/ip";
 import { verifyUnsubscribeToken } from "@/lib/email/shared";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -23,11 +24,10 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 /** Shared handler for both GET and POST */
 async function handleUnsubscribe(request: Request) {
   // ── Rate limiting: 20 req/min per IP ──
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
-  const { success: rateLimitOk } = rateLimit(`unsubscribe:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
-  if (!rateLimitOk) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  const ip = getClientIp(request);
+  const rl = await rateLimit(`unsubscribe:${ip}`, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
   }
 
   const { searchParams } = new URL(request.url);

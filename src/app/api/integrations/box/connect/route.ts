@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser, getBaseUrl, checkRateLimit, generateOAuthState } from "@/lib/integrations/helpers";
+import { getAuthenticatedUser, getBaseUrl, generateOAuthState } from "@/lib/integrations/helpers";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // NOTE: Box OAuth 2.0 does not support PKCE (code_challenge / code_verifier).
 // PKCE is intentionally omitted for this provider.
@@ -8,7 +9,7 @@ export async function GET() {
   try {
     const { user } = await getAuthenticatedUser();
 
-    if (!checkRateLimit(`${user.id}:oauth-connect`, 5, 60_000)) {
+    if (!(await checkRateLimit(`${user.id}:oauth-connect`, 5, 60_000))) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { exportUserData } from "@/lib/auth/export-actions";
+import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -17,6 +18,11 @@ export async function GET() {
         { error: "NOT_AUTHENTICATED" },
         { status: 401 }
       );
+    }
+
+    const rl = await rateLimit(`export:${user.id}`, 3, 3_600_000);
+    if (!rl.success) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
     }
 
     const result = await exportUserData(supabase, user.id);
