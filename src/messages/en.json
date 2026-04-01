@@ -978,7 +978,8 @@
     "optionalLabel": "Optional",
     "back": "Back",
     "rejectAll": "Essential only",
-    "acceptAll": "Accept all"
+    "acceptAll": "Accept all",
+    "cookieSettings": "Cookie Settings"
   },
   "notificationPrompt": {
     "title": "Stay connected to your memories",
@@ -2157,7 +2158,9 @@
     "ctaTitle": "Ready to start preserving?",
     "ctaDescription": "Your memories deserve a safe, beautiful home. Get started for free — no credit card required.",
     "ctaButton": "Create Your Memory Palace",
-    "footerCopyright": "The Memory Palace. Preserve your memories for eternity."
+    "footerCopyright": "The Memory Palace. Preserve your memories for eternity.",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service"
   },
   "privacy": {
     "legal": "Legal",
@@ -2219,6 +2222,8 @@
     "whoWeShareItem8Text": " — optional integration for importing photos and files. Data is only transferred when you explicitly connect your Microsoft account and initiate an import.",
     "whoWeShareItem9Label": "Box",
     "whoWeShareItem9Text": " — optional integration for importing files. Data is only transferred when you explicitly connect your Box account and initiate an import.",
+    "whoWeShareItem10Label": "Apple",
+    "whoWeShareItem10Text": " — authentication provider for Sign in with Apple. Only used when you choose to sign in with your Apple ID. Apple receives your authentication request but does not access your Memory Palace data.",
     "whoWeShareOutro": "All these providers are bound by data processing agreements and comply with GDPR. The cloud storage integrations (Google, Dropbox, Microsoft, Box) are entirely optional and only process your data when you explicitly connect them. Beyond these providers, your data is only shared when:",
     "whoWeShareCondition1Label": "You choose to share:",
     "whoWeShareCondition1Text": " when you invite family members to view rooms or memories, the shared content becomes accessible to those people.",
@@ -2242,6 +2247,8 @@
     "yourRightsItem7Text": " change your mind about optional processing at any time.",
     "yourRightsOutroPre": "To exercise any of these rights, email us at ",
     "yourRightsOutroPost": ". We will respond within 30 days, as required by law.",
+    "dataBreachNotificationTitle": "Data Breach Notification",
+    "dataBreachNotificationText": "In the event of a data breach that poses a risk to your rights, we will notify the relevant supervisory authority within 72 hours and inform affected users without undue delay, as required by GDPR Articles 33 and 34.",
     "retentionTitle": "7. Data Retention",
     "retentionIntro": "Your data is kept for as long as your account is active. You are in control:",
     "retentionItem1Label": "Active account:",
@@ -2326,6 +2333,7 @@
     "section11Li1Email": "Email: {email}",
     "section11Li2Company": "Company: The Memory Palace, Belgium",
     "privacyPolicy": "Privacy Policy",
+    "securityPolicy": "Security",
     "backToHome": "Back to home"
   },
   "hoverTooltip": {

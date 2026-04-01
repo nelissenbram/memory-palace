@@ -200,6 +200,26 @@ export default function PrivacyPolicyPage() {
               <strong>{t("whoWeShareItem5Label")}</strong>
               {t("whoWeShareItem5Text")}
             </Li>
+            <Li>
+              <strong>{t("whoWeShareItem6Label")}</strong>
+              {t("whoWeShareItem6Text")}
+            </Li>
+            <Li>
+              <strong>{t("whoWeShareItem7Label")}</strong>
+              {t("whoWeShareItem7Text")}
+            </Li>
+            <Li>
+              <strong>{t("whoWeShareItem8Label")}</strong>
+              {t("whoWeShareItem8Text")}
+            </Li>
+            <Li>
+              <strong>{t("whoWeShareItem9Label")}</strong>
+              {t("whoWeShareItem9Text")}
+            </Li>
+            <Li>
+              <strong>{t("whoWeShareItem10Label")}</strong>
+              {t("whoWeShareItem10Text")}
+            </Li>
           </Ul>
           <P>
             {t("whoWeShareOutro")}
@@ -256,6 +276,22 @@ export default function PrivacyPolicyPage() {
               privacy@thememorypalace.ai
             </a>
             {t("yourRightsOutroPost")}
+          </P>
+          <h3
+            style={{
+              fontFamily: F.display,
+              fontSize: "1.125rem",
+              fontWeight: 500,
+              color: C.charcoal,
+              marginBottom: "0.5rem",
+              marginTop: "1.5rem",
+              lineHeight: 1.3,
+            }}
+          >
+            {t("dataBreachNotificationTitle")}
+          </h3>
+          <P>
+            {t("dataBreachNotificationText")}
           </P>
         </Section>
 

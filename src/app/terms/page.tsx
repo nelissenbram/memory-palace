@@ -228,6 +228,12 @@ export default function TermsOfServicePage() {
           >
             {t("privacyPolicy")}
           </Link>
+          <Link
+            href="/security"
+            style={{ ...linkStyle, fontSize: 14, marginRight: 24 }}
+          >
+            {t("securityPolicy")}
+          </Link>
           <Link href="/" style={{ ...linkStyle, fontSize: 14 }}>
             {t("backToHome")}
           </Link>

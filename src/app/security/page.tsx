@@ -372,6 +372,14 @@ export default function SecurityPage() {
           textAlign: "center",
         }}
       >
+        <div style={{ marginBottom: 12, display: "flex", justifyContent: "center", gap: 24 }}>
+          <Link href="/privacy" style={{ fontSize: 13, color: C.muted, textDecoration: "none" }}>
+            {t("privacyPolicy")}
+          </Link>
+          <Link href="/terms" style={{ fontSize: 13, color: C.muted, textDecoration: "none" }}>
+            {t("termsOfService")}
+          </Link>
+        </div>
         <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
           &copy; {new Date().getFullYear()} {t("footerCopyright")}
         </p>

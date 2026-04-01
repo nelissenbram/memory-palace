@@ -54,8 +54,11 @@ export function useTranslation<S extends Section>(section: S) {
 
   const setLocale = useCallback((newLocale: Locale) => {
     localStorage.setItem("mp_locale", newLocale);
-    // Also set cookie so server-side can read it
-    document.cookie = `mp_locale=${newLocale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+    // Only set cookie if user accepted cookie consent (preference cookie)
+    const consent = localStorage.getItem("mp_cookie_consent");
+    if (consent !== "rejected") {
+      document.cookie = `mp_locale=${newLocale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+    }
     // Sync the lang attribute on <html> for accessibility
     document.documentElement.lang = newLocale;
     setLocaleState(newLocale);

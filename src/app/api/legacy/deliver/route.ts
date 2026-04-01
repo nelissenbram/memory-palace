@@ -315,7 +315,8 @@ export async function POST(request: Request) {
         break;
       }
     } else {
-      console.error(`[Legacy Deliver] Email failed for ${contactEmail}:`, result.error);
+      const redactedEmail = `***@${contactEmail.split("@")[1]}`;
+      console.error(`[Legacy Deliver] Email failed for ${redactedEmail}:`, result.error);
       errors++;
     }
   }

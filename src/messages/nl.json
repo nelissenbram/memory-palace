@@ -978,7 +978,8 @@
     "optionalLabel": "Optioneel",
     "back": "Terug",
     "rejectAll": "Alleen essentieel",
-    "acceptAll": "Alles accepteren"
+    "acceptAll": "Alles accepteren",
+    "cookieSettings": "Cookie-instellingen"
   },
   "notificationPrompt": {
     "title": "Blijf verbonden met je herinneringen",
@@ -2157,7 +2158,9 @@
     "ctaTitle": "Klaar om te beginnen met bewaren?",
     "ctaDescription": "Uw herinneringen verdienen een veilig, mooi thuis. Begin gratis — geen creditcard nodig.",
     "ctaButton": "Maak uw Memory Palace",
-    "footerCopyright": "The Memory Palace. Bewaar uw herinneringen voor de eeuwigheid."
+    "footerCopyright": "The Memory Palace. Bewaar uw herinneringen voor de eeuwigheid.",
+    "privacyPolicy": "Privacybeleid",
+    "termsOfService": "Algemene Voorwaarden"
   },
   "privacy": {
     "legal": "Juridisch",
@@ -2219,6 +2222,8 @@
     "whoWeShareItem8Text": " — optionele integratie voor het importeren van foto's en bestanden. Gegevens worden alleen overgedragen wanneer u uw Microsoft-account expliciet koppelt en een import start.",
     "whoWeShareItem9Label": "Box",
     "whoWeShareItem9Text": " — optionele integratie voor het importeren van bestanden. Gegevens worden alleen overgedragen wanneer u uw Box-account expliciet koppelt en een import start.",
+    "whoWeShareItem10Label": "Apple",
+    "whoWeShareItem10Text": " — authenticatieprovider voor Inloggen met Apple. Wordt alleen gebruikt wanneer u ervoor kiest in te loggen met uw Apple ID. Apple ontvangt uw authenticatieverzoek maar heeft geen toegang tot uw Memory Palace-gegevens.",
     "whoWeShareOutro": "Al deze dienstverleners zijn gebonden aan verwerkingsovereenkomsten en voldoen aan de AVG. De cloudopslag-integraties (Google, Dropbox, Microsoft, Box) zijn volledig optioneel en verwerken uw gegevens alleen wanneer u ze expliciet koppelt. Buiten deze dienstverleners worden uw gegevens alleen gedeeld wanneer:",
     "whoWeShareCondition1Label": "U ervoor kiest te delen:",
     "whoWeShareCondition1Text": " wanneer u familieleden uitnodigt om kamers of herinneringen te bekijken, wordt de gedeelde inhoud toegankelijk voor die personen.",
@@ -2242,6 +2247,8 @@
     "yourRightsItem7Text": " wijzig op elk moment uw keuze over optionele verwerking.",
     "yourRightsOutroPre": "Om een van deze rechten uit te oefenen, stuurt u een e-mail naar ",
     "yourRightsOutroPost": ". Wij antwoorden binnen 30 dagen, zoals wettelijk vereist.",
+    "dataBreachNotificationTitle": "Melding van datalekken",
+    "dataBreachNotificationText": "In het geval van een datalek dat een risico vormt voor uw rechten, zullen wij de bevoegde toezichthoudende autoriteit binnen 72 uur op de hoogte stellen en getroffen gebruikers zonder onredelijke vertraging informeren, zoals vereist door AVG-artikelen 33 en 34.",
     "retentionTitle": "7. Gegevensbewaring",
     "retentionIntro": "Uw gegevens worden bewaard zolang uw account actief is. U heeft de controle:",
     "retentionItem1Label": "Actief account:",
@@ -2326,6 +2333,7 @@
     "section11Li1Email": "E-mail: {email}",
     "section11Li2Company": "Bedrijf: The Memory Palace, België",
     "privacyPolicy": "Privacybeleid",
+    "securityPolicy": "Beveiliging",
     "backToHome": "Terug naar startpagina"
   },
   "hoverTooltip": {

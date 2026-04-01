@@ -514,7 +514,8 @@ export async function POST(request: Request) {
     if (result.success) {
       sent++;
     } else {
-      console.error(`[Digest] Failed for ${email}:`, result.error);
+      const redactedEmail = `***@${email.split("@")[1]}`;
+      console.error(`[Digest] Failed for ${redactedEmail}:`, result.error);
       errors++;
     }
   }

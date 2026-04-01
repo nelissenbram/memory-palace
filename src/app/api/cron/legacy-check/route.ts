@@ -319,12 +319,14 @@ export async function GET(request: Request) {
               locale: userLocale,
             });
           } catch (e) {
-            console.error(`[Legacy] Trusted verifier email failed for ${settings.trusted_verifier_email}:`, e);
+            const redactedVerifier = `***@${settings.trusted_verifier_email.split("@")[1]}`;
+            console.error(`[Legacy] Trusted verifier email failed for ${redactedVerifier}:`, e);
             // Don't increment errors — verifier notification is best-effort
           }
         }
       } else {
-        console.error(`[Legacy] Verification email failed for ${email}:`, result.error);
+        const redactedEmail = `***@${email.split("@")[1]}`;
+        console.error(`[Legacy] Verification email failed for ${redactedEmail}:`, result.error);
         errors++;
       }
     }

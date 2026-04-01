@@ -30,22 +30,22 @@ type JobHandler = (job: Job) => Promise<void>;
 
 const handlers: Record<JobType, JobHandler> = {
   legacy_delivery: async (job) => {
-    console.log(`[JobQueue] Processing legacy_delivery ${job.id}`, job.payload);
+    console.log(`[JobQueue] Processing legacy_delivery ${job.id} type=${job.type}`);
     // TODO: migrate logic from /api/legacy/deliver
   },
 
   digest_email: async (job) => {
-    console.log(`[JobQueue] Processing digest_email ${job.id}`, job.payload);
+    console.log(`[JobQueue] Processing digest_email ${job.id} type=${job.type}`);
     // TODO: migrate logic from /api/email/digest
   },
 
   export_zip: async (job) => {
-    console.log(`[JobQueue] Processing export_zip ${job.id}`, job.payload);
+    console.log(`[JobQueue] Processing export_zip ${job.id} type=${job.type}`);
     // TODO: implement zip export
   },
 
   notification: async (job) => {
-    console.log(`[JobQueue] Processing notification ${job.id}`, job.payload);
+    console.log(`[JobQueue] Processing notification ${job.id} type=${job.type}`);
     // TODO: migrate logic from /api/notifications/send
   },
 };

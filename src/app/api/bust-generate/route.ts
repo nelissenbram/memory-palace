@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiConsent } from "@/lib/ai/check-consent";
+import { checkRateLimit } from "@/lib/integrations/helpers";
 import Anthropic from "@anthropic-ai/sdk";
 
 // TODO: Add a first-use consent dialog in the client UI to improve UX
@@ -27,6 +28,10 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  if (!checkRateLimit(`ai:${user.id}`, 5, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   // ── AI Consent check (requires both general + biometric) ──
@@ -145,6 +150,14 @@ Return ONLY the JSON, no explanation.`,
     }, {
       headers: { "Cache-Control": "no-store" },
     });
+  }
+
+  if (!BLENDER_SERVICE_URL.startsWith("https://")) {
+    console.error("[bust-generate] BLENDER_SERVICE_URL must start with https://");
+    return NextResponse.json(
+      { error: "Service misconfigured" },
+      { status: 500 }
+    );
   }
 
   let glbBuffer: ArrayBuffer;

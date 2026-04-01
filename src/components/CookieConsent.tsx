@@ -29,7 +29,49 @@ export default function CookieConsent() {
     }
   }, []);
 
-  if (consent !== "undecided") return null;
+  // Listen for custom event to reopen preferences
+  useEffect(() => {
+    function handleReopen() {
+      setConsent("undecided");
+      setShowManage(true);
+    }
+    window.addEventListener("reopen-cookie-consent", handleReopen);
+    return () => window.removeEventListener("reopen-cookie-consent", handleReopen);
+  }, []);
+
+  if (consent !== "undecided") {
+    // Show a small "Cookie Settings" button so users can change preferences
+    return (
+      <button
+        onClick={() => {
+          try { localStorage.removeItem(STORAGE_KEY); } catch { /* noop */ }
+          setConsent("undecided");
+          setShowManage(true);
+        }}
+        aria-label={t("cookieSettings")}
+        style={{
+          position: "fixed",
+          bottom: "1rem",
+          left: "1rem",
+          zIndex: 9998,
+          background: C.linen,
+          border: `1px solid ${C.sandstone}`,
+          borderRadius: "0.5rem",
+          padding: "0.375rem 0.75rem",
+          fontFamily: F.body,
+          fontSize: "0.6875rem",
+          color: C.muted,
+          cursor: "pointer",
+          opacity: 0.7,
+          transition: "opacity 0.2s",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.7"; }}
+      >
+        🍪 {t("cookieSettings")}
+      </button>
+    );
+  }
 
   function handleAccept() {
     try {
