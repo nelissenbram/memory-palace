@@ -66,6 +66,7 @@ import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import BustBuilderPanel from "@/components/ui/BustBuilderPanel";
 import LibraryView from "@/components/ui/LibraryView";
+import HomeView from "@/components/ui/HomeView";
 import { getWingsSharedWithMe, getSharedWingData, getSharedRoomMemories } from "@/lib/auth/sharing-actions";
 import type { SharedWingDoor } from "@/components/3d/EntranceHallScene";
 
@@ -347,6 +348,11 @@ export default function MemoryPalace(){
   // ── Mobile bottom bar configuration ──
   const bottomBarHeight = isMobile ? 64 : 0;
   const safeBottom = isMobile ? bottomBarHeight + 8 : 70;
+
+  // ── Home mode: render Home dashboard ──
+  if (navMode === "home" && !walkthroughActive) {
+    return <HomeView />;
+  }
 
   // ── Library mode: render Library view instead of 3D (skip during walkthrough) ──
   if (navMode === "library" && !walkthroughActive) {

@@ -9,16 +9,13 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
-import Image from "next/image";
 import MemoryDetail from "@/components/ui/MemoryDetail";
 import UploadPanel from "@/components/ui/UploadPanel";
 import NotificationBell from "@/components/ui/NotificationBell";
-
-const TYPE_ICONS: Record<string, string> = {
-  photo: "\u{1F5BC}\uFE0F", video: "\u{1F3AC}", album: "\u{1F4D6}",
-  orb: "\u{1F52E}", case: "\u{1F3FA}", voice: "\u{1F399}\uFE0F",
-  document: "\u{1F4DC}", audio: "\u{1F3B5}", painting: "\u{1F3A8}",
-};
+import { LibraryRoomCard, LibraryMemoryCard } from "@/components/ui/LibraryCards";
+import LibrarySidebar from "@/components/ui/LibrarySidebar";
+import { LibrarySearch, LibraryFilterBar } from "@/components/ui/LibrarySearch";
+import { LibraryStyles, LibraryHeader, LibraryEmptyState } from "@/components/ui/LibraryAnimations";
 
 export default function LibraryView() {
   const isMobile = useIsMobile();
@@ -94,12 +91,28 @@ export default function LibraryView() {
     return results.length > 0 ? results : null;
   }, [q, selectedRoom, wings, getWingRooms, getMemsForRoom]);
 
-  // Get unique types in room for filter chips
+  // Get unique types in room for filter chips + counts
   const roomTypes = useMemo(() => {
     if (!selectedRoom) return [];
     const mems = getMemsForRoom(selectedRoom);
     return [...new Set(mems.map(m => m.type))];
   }, [selectedRoom, getMemsForRoom]);
+
+  const roomTypeCounts = useMemo(() => {
+    if (!selectedRoom) return {};
+    const mems = getMemsForRoom(selectedRoom);
+    const counts: Record<string, number> = {};
+    for (const m of mems) { counts[m.type] = (counts[m.type] || 0) + 1; }
+    return counts;
+  }, [selectedRoom, getMemsForRoom]);
+
+  // Result count for search badge
+  const searchResultCount = useMemo(() => {
+    if (!query) return undefined;
+    if (selectedRoom) return filteredRoomMems.length;
+    if (crossWingResults) return crossWingResults.length;
+    return 0;
+  }, [query, selectedRoom, filteredRoomMems, crossWingResults]);
 
   // Wing memory count
   const wingMemCount = useCallback((wingId: string) => {
@@ -161,6 +174,7 @@ export default function LibraryView() {
       width: "100vw", height: "100dvh", display: "flex", flexDirection: isMobile ? "column" : "row",
       background: T.color.linen, fontFamily: T.font.body, overflow: "hidden",
     }}>
+      <LibraryStyles />
       {/* ═══ WING SIDEBAR ═══ */}
       <nav style={{
         width: isMobile ? "100%" : 240,
@@ -271,133 +285,71 @@ export default function LibraryView() {
         flex: 1, display: "flex", flexDirection: "column",
         overflow: "hidden", minWidth: 0,
       }}>
-        {/* Header bar */}
-        <header style={{
-          padding: isMobile ? "0.75rem 1rem" : "1rem 1.5rem",
-          borderBottom: `1px solid ${T.color.cream}`,
-          display: "flex", alignItems: "center", gap: "0.75rem",
-          background: T.color.white, flexShrink: 0,
-        }}>
-          {selectedRoom && (
-            <button
-              onClick={handleBackToRooms}
-              style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.walnut,
-                padding: "0.25rem 0.5rem", borderRadius: "0.25rem",
-                display: "flex", alignItems: "center", gap: "0.25rem",
-              }}
-            >
-              {"\u2190"} {tc("back")}
-            </button>
-          )}
+        {/* Header bar — LibraryHeader + search/actions */}
+        <div style={{ display: "flex", alignItems: "stretch", flexShrink: 0 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <LibraryHeader
+              wingIcon={currentWing.icon}
+              wingName={currentWing.name}
+              wingDesc={currentWing.desc}
+              roomName={selectedRoom ? (wingRooms.find(r => r.id === selectedRoom)?.name || undefined) : undefined}
+              accent={currentWing.accent}
+              onBack={selectedRoom ? handleBackToRooms : undefined}
+              onAdd={selectedRoom ? () => setShowUploadFor({ wingId: selectedWing, roomId: selectedRoom }) : undefined}
+              isMobile={isMobile}
+            />
+          </div>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0.5rem",
+            padding: isMobile ? "0.75rem 0.75rem 0.75rem 0" : "1rem 1.5rem 1rem 0",
+            background: "rgba(255, 255, 255, 0.85)",
+            backdropFilter: "blur(0.75rem)",
+            WebkitBackdropFilter: "blur(0.75rem)",
+          }}>
+            <LibrarySearch
+              query={query}
+              onQueryChange={setQuery}
+              accent={currentWing.accent}
+              resultCount={searchResultCount}
+              isMobile={isMobile}
+            />
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: "1.25rem" }}>{currentWing.icon}</span>
-            <div style={{ minWidth: 0 }}>
-              <h2 style={{
-                fontFamily: T.font.display, fontSize: isMobile ? "1rem" : "1.125rem",
-                fontWeight: 600, color: T.color.charcoal, margin: 0,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {selectedRoom
-                  ? wingRooms.find(r => r.id === selectedRoom)?.name || ""
-                  : currentWing.name}
-              </h2>
-              {!selectedRoom && (
-                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: 0 }}>
-                  {currentWing.desc}
-                </p>
-              )}
-            </div>
-            {selectedRoom && (
+            <NotificationBell />
+
+            {/* Settings — mobile */}
+            {isMobile && (
+              <a href="/settings" style={{ fontSize: "1.125rem", lineHeight: 1, color: T.color.walnut, textDecoration: "none" }}>
+                {"\u2699\uFE0F"}
+              </a>
+            )}
+
+            {/* 3D toggle — mobile */}
+            {isMobile && (
               <button
-                onClick={() => setShowUploadFor({ wingId: selectedWing, roomId: selectedRoom })}
+                onClick={handleEnter3D}
                 style={{
-                  width: "1.75rem", height: "1.75rem", borderRadius: "50%",
-                  background: currentWing.accent, color: T.color.white, border: "none",
-                  cursor: "pointer", fontSize: "1rem", lineHeight: 1,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  flexShrink: 0,
+                  padding: "0.375rem 0.625rem", borderRadius: "0.375rem",
+                  background: T.color.charcoal, color: T.color.linen,
+                  border: "none", cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
+                  whiteSpace: "nowrap",
                 }}
-                title={t("addMemory")}
               >
-                +
+                3D
               </button>
             )}
           </div>
-
-          {/* Search */}
-          <div style={{ position: "relative", width: isMobile ? 160 : 220 }}>
-            <input
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder={t("searchPlaceholder")}
-              style={{
-                width: "100%", padding: "0.4375rem 0.75rem 0.4375rem 2rem",
-                border: `1px solid ${T.color.cream}`, borderRadius: "0.5rem",
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
-                background: T.color.linen, outline: "none",
-              }}
-            />
-            <span style={{
-              position: "absolute", left: "0.625rem", top: "50%", transform: "translateY(-50%)",
-              fontSize: "0.75rem", color: T.color.muted, pointerEvents: "none",
-            }}>
-              {"\u{1F50D}"}
-            </span>
-          </div>
-
-          <NotificationBell />
-
-          {/* Settings — mobile */}
-          {isMobile && (
-            <a href="/settings" style={{ fontSize: "1.125rem", lineHeight: 1, color: T.color.walnut, textDecoration: "none" }}>
-              {"\u2699\uFE0F"}
-            </a>
-          )}
-
-          {/* 3D toggle — mobile */}
-          {isMobile && (
-            <button
-              onClick={handleEnter3D}
-              style={{
-                padding: "0.375rem 0.625rem", borderRadius: "0.375rem",
-                background: T.color.charcoal, color: T.color.linen,
-                border: "none", cursor: "pointer",
-                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
-                whiteSpace: "nowrap",
-              }}
-            >
-              3D
-            </button>
-          )}
-        </header>
+        </div>
 
         {/* Filter chips — only when inside a room */}
         {selectedRoom && roomTypes.length > 1 && (
-          <div style={{
-            padding: "0.5rem 1rem", display: "flex", gap: "0.375rem",
-            overflowX: "auto", flexShrink: 0, borderBottom: `1px solid ${T.color.cream}`,
-            background: T.color.white,
-          }}>
-            <FilterChip
-              label={t("all")}
-              active={!filterType}
-              accent={currentWing.accent}
-              onClick={() => setFilterType(null)}
-            />
-            {roomTypes.map(type => (
-              <FilterChip
-                key={type}
-                label={`${TYPE_ICONS[type] || ""} ${type}`}
-                active={filterType === type}
-                accent={currentWing.accent}
-                onClick={() => setFilterType(filterType === type ? null : type)}
-              />
-            ))}
-          </div>
+          <LibraryFilterBar
+            types={roomTypes}
+            activeType={filterType}
+            onFilterChange={setFilterType}
+            accent={currentWing.accent}
+            typeCounts={roomTypeCounts}
+          />
         )}
 
         {/* Content area */}
@@ -414,7 +366,7 @@ export default function LibraryView() {
                 gap: "0.75rem",
               }}>
                 {crossWingResults.slice(0, 50).map(({ wing, room, mem }) => (
-                  <MemoryCard
+                  <LibraryMemoryCard
                     key={mem.id}
                     mem={mem}
                     subtitle={`${wing.icon} ${wing.name} / ${room.icon} ${room.name}`}
@@ -437,13 +389,12 @@ export default function LibraryView() {
                 const mems = getMemsForRoom(room.id);
                 const thumbMem = mems.find(m => m.dataUrl && m.type === "photo") || mems.find(m => m.dataUrl);
                 return (
-                  <RoomCard
+                  <LibraryRoomCard
                     key={room.id}
                     room={room}
                     memCount={mems.length}
                     thumbUrl={thumbMem?.dataUrl || null}
                     accent={currentWing.accent}
-                    t={t}
                     onClick={() => {
                       setSelectedRoom(room.id);
                       fetchRoomMemories(room.id);
@@ -465,7 +416,7 @@ export default function LibraryView() {
                   gap: "0.75rem",
                 }}>
                   {filteredRoomMems.map(mem => (
-                    <MemoryCard
+                    <LibraryMemoryCard
                       key={mem.id}
                       mem={mem}
                       accent={currentWing.accent}
@@ -474,11 +425,11 @@ export default function LibraryView() {
                   ))}
                 </div>
               ) : (
-                <EmptyState
-                  hasQuery={!!q || !!filterType}
-                  t={t}
+                <LibraryEmptyState
+                  type={(!!q || !!filterType) ? "search" : "room"}
                   accent={currentWing.accent}
                   onAdd={() => setShowUploadFor({ wingId: selectedWing, roomId: selectedRoom })}
+                  query={query || undefined}
                 />
               )}
 
@@ -546,209 +497,6 @@ export default function LibraryView() {
           roomMemories={getMemsForRoom(showUploadFor.roomId)}
           onUpdateMemory={(memId: string, updates: Partial<Mem>) => updateMemory(showUploadFor.roomId, memId, updates)}
         />
-      )}
-    </div>
-  );
-}
-
-/* ── Sub-components ── */
-
-function RoomCard({ room, memCount, thumbUrl, accent, t, onClick, onAdd }: {
-  room: WingRoom; memCount: number; thumbUrl: string | null; accent: string;
-  t: (key: string, params?: Record<string, string>) => string;
-  onClick: () => void; onAdd: () => void;
-}) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        borderRadius: "0.75rem", border: `1px solid ${T.color.cream}`,
-        background: T.color.white, cursor: "pointer", overflow: "hidden",
-        transition: "box-shadow 0.15s ease, transform 0.15s ease",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 4px 20px rgba(44,44,42,.08)`; e.currentTarget.style.transform = "translateY(-1px)"; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "none"; }}
-    >
-      {/* Cover */}
-      <div style={{
-        height: "6.5rem", background: `hsl(${room.coverHue}, 25%, 88%)`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        position: "relative", overflow: "hidden",
-      }}>
-        {thumbUrl ? (
-          <Image
-            src={thumbUrl}
-            alt=""
-            fill
-            style={{ objectFit: "cover" }}
-            sizes="260px"
-            unoptimized={thumbUrl.startsWith("data:")}
-          />
-        ) : (
-          <span style={{ fontSize: "2rem", opacity: 0.5 }}>{room.icon}</span>
-        )}
-        {room.shared && (
-          <span style={{
-            position: "absolute", top: "0.375rem", right: "0.375rem",
-            background: `${T.color.white}cc`, borderRadius: "0.25rem",
-            padding: "0.125rem 0.375rem", fontSize: "0.625rem",
-            fontFamily: T.font.body, color: T.color.sage,
-          }}>
-            {t("shared")}
-          </span>
-        )}
-      </div>
-
-      {/* Info */}
-      <div style={{ padding: "0.625rem 0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <span style={{ fontSize: "1rem" }}>{room.icon}</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{
-            fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 600,
-            color: T.color.charcoal, margin: 0,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {room.name}
-          </p>
-          <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, margin: 0 }}>
-            {t("memoryCount", { count: String(memCount) })}
-          </p>
-        </div>
-        <button
-          onClick={e => { e.stopPropagation(); onAdd(); }}
-          title={t("addMemory")}
-          style={{
-            width: "1.75rem", height: "1.75rem", borderRadius: "50%",
-            background: accent, color: T.color.white, border: "none",
-            cursor: "pointer", fontSize: "1rem", lineHeight: 1,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          +
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function MemoryCard({ mem, subtitle, accent, onClick }: {
-  mem: Mem; subtitle?: string; accent: string; onClick: () => void;
-}) {
-  const hasImage = mem.dataUrl && !mem.dataUrl.startsWith("data:audio") && !mem.videoBlob;
-
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`,
-        background: T.color.white, cursor: "pointer", overflow: "hidden",
-        transition: "box-shadow 0.15s ease",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 2px 12px rgba(44,44,42,.07)`; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; }}
-    >
-      {/* Thumbnail */}
-      <div style={{
-        height: "7rem", position: "relative", overflow: "hidden",
-        background: hasImage ? "transparent" : `hsl(${mem.hue}, ${mem.s}%, ${mem.l}%)`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        {hasImage ? (
-          <Image
-            src={mem.dataUrl!}
-            alt={mem.title}
-            fill
-            style={{ objectFit: "cover" }}
-            sizes="240px"
-            unoptimized={mem.dataUrl!.startsWith("data:")}
-          />
-        ) : (
-          <span style={{ fontSize: "1.5rem", opacity: 0.7 }}>{TYPE_ICONS[mem.type] || "\u{1F4C4}"}</span>
-        )}
-        {/* Type badge */}
-        <span style={{
-          position: "absolute", bottom: "0.25rem", right: "0.25rem",
-          background: `${T.color.charcoal}aa`, color: T.color.white,
-          borderRadius: "0.25rem", padding: "0.0625rem 0.375rem",
-          fontSize: "0.625rem", fontFamily: T.font.body,
-        }}>
-          {TYPE_ICONS[mem.type] || ""} {mem.type}
-        </span>
-      </div>
-
-      {/* Info */}
-      <div style={{ padding: "0.5rem 0.625rem" }}>
-        <p style={{
-          fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 600,
-          color: T.color.charcoal, margin: 0,
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>
-          {mem.title}
-        </p>
-        {subtitle && (
-          <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, margin: "0.125rem 0 0" }}>
-            {subtitle}
-          </p>
-        )}
-        {mem.desc && !subtitle && (
-          <p style={{
-            fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
-            margin: "0.125rem 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {mem.desc}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function FilterChip({ label, active, accent, onClick }: {
-  label: string; active: boolean; accent: string; onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "0.25rem 0.625rem", borderRadius: "1rem",
-        border: `1px solid ${active ? accent : T.color.cream}`,
-        background: active ? accent : T.color.white,
-        color: active ? T.color.white : T.color.walnut,
-        cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem",
-        whiteSpace: "nowrap", flexShrink: 0,
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
-function EmptyState({ hasQuery, t, accent, onAdd }: {
-  hasQuery: boolean; t: (key: string) => string; accent: string; onAdd: () => void;
-}) {
-  return (
-    <div style={{
-      display: "flex", flexDirection: "column", alignItems: "center",
-      justifyContent: "center", padding: "3rem 1rem", gap: "0.75rem",
-    }}>
-      <span style={{ fontSize: "2.5rem", opacity: 0.4 }}>
-        {hasQuery ? "\u{1F50D}" : "\u{1F4F7}"}
-      </span>
-      <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, textAlign: "center" }}>
-        {hasQuery ? t("noResults") : t("emptyRoom")}
-      </p>
-      {!hasQuery && (
-        <button
-          onClick={onAdd}
-          style={{
-            padding: "0.5rem 1.25rem", borderRadius: "0.5rem",
-            background: accent, color: T.color.white, border: "none",
-            cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem",
-          }}
-        >
-          {t("addFirst")}
-        </button>
       )}
     </div>
   );
