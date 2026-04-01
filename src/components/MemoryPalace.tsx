@@ -348,41 +348,9 @@ export default function MemoryPalace(){
   const bottomBarHeight = isMobile ? 64 : 0;
   const safeBottom = isMobile ? bottomBarHeight + 8 : 70;
 
-  // ── Library mode callbacks ──
-  const handleLibraryUpload = useCallback((wingId: string, roomId: string) => {
-    setNavMode("3d");
-    enterCorridor(wingId);
-    setTimeout(() => {
-      enterRoom(roomId);
-      setTimeout(() => setShowUpload(true), 600);
-    }, 600);
-  }, [setNavMode, enterCorridor, enterRoom, setShowUpload]);
-
-  const handleLibrarySelectMemory = useCallback((mem: any, wingId: string, roomId: string) => {
-    setNavMode("3d");
-    enterCorridor(wingId);
-    setTimeout(() => {
-      enterRoom(roomId);
-      setTimeout(() => setSelMem(mem), 600);
-    }, 600);
-  }, [setNavMode, enterCorridor, enterRoom, setSelMem]);
-
-  const handleLibraryOpenGallery = useCallback((wingId: string, roomId: string) => {
-    setNavMode("3d");
-    enterCorridor(wingId);
-    setTimeout(() => {
-      enterRoom(roomId);
-      setTimeout(() => setShowGallery(true), 600);
-    }, 600);
-  }, [setNavMode, enterCorridor, enterRoom]);
-
   // ── Library mode: render Library view instead of 3D (skip during walkthrough) ──
   if (navMode === "library" && !walkthroughActive) {
-    return <LibraryView
-      onOpenUpload={handleLibraryUpload}
-      onSelectMemory={handleLibrarySelectMemory}
-      onOpenGallery={handleLibraryOpenGallery}
-    />;
+    return <LibraryView />;
   }
 
   return(

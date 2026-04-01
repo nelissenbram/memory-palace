@@ -19,13 +19,7 @@ const TYPE_ICONS: Record<string, string> = {
   document: "\u{1F4DC}", audio: "\u{1F3B5}", painting: "\u{1F3A8}",
 };
 
-interface LibraryViewProps {
-  onOpenUpload: (wingId: string, roomId: string) => void;
-  onSelectMemory: (mem: Mem, wingId: string, roomId: string) => void;
-  onOpenGallery: (wingId: string, roomId: string) => void;
-}
-
-export default function LibraryView({ onOpenUpload, onSelectMemory, onOpenGallery }: LibraryViewProps) {
+export default function LibraryView() {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
@@ -467,7 +461,11 @@ export default function LibraryView({ onOpenUpload, onSelectMemory, onOpenGaller
               {getMemsForRoom(selectedRoom).length > 0 && (
                 <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
                   <button
-                    onClick={() => onOpenGallery(selectedWing, selectedRoom)}
+                    onClick={() => {
+                      setNavMode("3d");
+                      enterCorridor(selectedWing);
+                      setTimeout(() => enterRoom(selectedRoom), 600);
+                    }}
                     style={{
                       padding: "0.5rem 1rem", borderRadius: "0.5rem",
                       background: T.color.white, border: `1px solid ${T.color.cream}`,
