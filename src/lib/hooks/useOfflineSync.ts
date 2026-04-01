@@ -139,6 +139,7 @@ export function useOfflineSync() {
 async function syncSingleMemory(item: QueuedMemory): Promise<void> {
   let fileUrl: string | null = item.fileData;
   let filePath: string | null = null;
+  let fileSize: number | null = null;
   let storageBackend: string | null = null;
 
   // Upload file via server-side upload endpoint
@@ -147,6 +148,7 @@ async function syncSingleMemory(item: QueuedMemory): Promise<void> {
       const ext = item.fileData.match(/data:image\/(\w+)/)?.[1] || "jpg";
       const res = await fetch(item.fileData);
       const blob = await res.blob();
+      fileSize = blob.size;
       const formData = new FormData();
       formData.append("file", new File([blob], `memory.${ext}`, { type: blob.type }));
       formData.append("bucket", "memories");
@@ -172,6 +174,7 @@ async function syncSingleMemory(item: QueuedMemory): Promise<void> {
     lightness: item.lightness,
     fileUrl,
     filePath,
+    fileSize,
     storageBackend,
   });
 

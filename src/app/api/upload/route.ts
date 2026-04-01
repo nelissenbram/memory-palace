@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { r2Upload, isR2Configured } from "@/lib/storage/r2";
@@ -6,6 +7,15 @@ import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+const ALLOWED_TYPES = new Set([
+  "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic",
+  "image/heif", "image/tiff", "image/bmp", "image/svg+xml",
+  "video/mp4", "video/quicktime", "video/webm", "video/x-msvideo", "video/x-matroska",
+  "audio/mpeg", "audio/wav", "audio/mp4", "audio/flac", "audio/ogg", "audio/aac",
+  "application/pdf", "text/plain",
+  "model/gltf-binary", // bust .glb files
+]);
 
 /**
  * POST /api/upload
@@ -16,7 +26,6 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
  * Body: FormData with fields:
  *   - file: Blob
  *   - bucket: "memories" | "busts" (default: "memories")
- *   - filename: optional desired filename (sanitized server-side)
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -38,15 +47,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
+  if (file.size === 0) {
+    return NextResponse.json({ error: "Empty file" }, { status: 400 });
+  }
+
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json({ error: "File too large" }, { status: 400 });
+  }
+
+  const contentType = file.type || "application/octet-stream";
+  if (!ALLOWED_TYPES.has(contentType)) {
+    return NextResponse.json({ error: "File type not allowed" }, { status: 400 });
   }
 
   const bucket = (formData.get("bucket") as string) === "busts" ? "busts" : "memories";
   const ext = file.name?.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") || "bin";
   const safeExt = ext.slice(0, 10);
-  const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${safeExt}`;
-  const contentType = file.type || "application/octet-stream";
+  const path = `${user.id}/${Date.now()}_${randomUUID().slice(0, 8)}.${safeExt}`;
 
   let storageBackend: "r2" | "supabase";
 

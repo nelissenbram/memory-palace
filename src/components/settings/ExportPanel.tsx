@@ -298,6 +298,11 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
             batch.map(async (filePath) => {
               try {
                 // Use media proxy for dual-backend support (R2 + Supabase)
+                // Skip legacy full URLs (signed Supabase URLs) — only proxy file_path style paths
+                if (filePath.startsWith("http://") || filePath.startsWith("https://")) {
+                  failedCount++;
+                  return;
+                }
                 const proxyUrl = filePath.startsWith("/api/media/")
                   ? filePath
                   : `/api/media/memories/${filePath}`;

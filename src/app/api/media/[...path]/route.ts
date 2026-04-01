@@ -6,6 +6,20 @@ import { getClientIp } from "@/lib/ip";
 
 export const dynamic = "force-dynamic";
 
+/** Reject path segments that could cause traversal or injection. */
+function isPathSafe(segments: string[]): boolean {
+  for (const seg of segments) {
+    if (
+      seg === "" ||
+      seg === "." ||
+      seg === ".." ||
+      seg.includes("\0") ||
+      seg.includes("\\")
+    ) return false;
+  }
+  return true;
+}
+
 /**
  * Media proxy endpoint. Authenticates the user, checks file ownership
  * or shared access, then streams the file from R2 or Supabase Storage.
@@ -21,6 +35,11 @@ export async function GET(
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
+  // Fix #1: Path traversal protection
+  if (!isPathSafe(segments)) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+  }
+
   const bucket = segments[0] as "memories" | "busts";
   const filePath = segments.slice(1).join("/");
 
@@ -31,7 +50,9 @@ export async function GET(
     if (!rl.success) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
     }
-    return streamFile(bucket, filePath, null);
+    // Fix #3: For busts, try R2 first when configured (no DB tracking for busts)
+    const bustBackend = isR2Configured() ? "r2" : "supabase";
+    return streamFile(bucket, filePath, bustBackend);
   }
 
   // Memories are private — authenticate
@@ -63,13 +84,13 @@ export async function GET(
 
   let authorized = memory.user_id === user.id;
 
-  // Check shared access if not the owner
+  // Check shared access if not the owner — Fix #2: correct column name
   if (!authorized) {
     const { data: share } = await supabase
       .from("room_shares")
       .select("id")
       .eq("room_id", memory.room_id)
-      .eq("shared_with_user_id", user.id)
+      .eq("shared_with_id", user.id)
       .eq("status", "accepted")
       .limit(1)
       .single();
@@ -82,6 +103,10 @@ export async function GET(
 
   return streamFile(bucket, filePath, memory.storage_backend);
 }
+
+const SECURITY_HEADERS = {
+  "X-Content-Type-Options": "nosniff",
+};
 
 async function streamFile(
   bucket: "memories" | "busts",
@@ -98,7 +123,7 @@ async function streamFile(
         headers: {
           "Content-Type": contentType,
           "Cache-Control": "private, max-age=86400, immutable",
-          "X-Storage-Backend": "r2",
+          ...SECURITY_HEADERS,
         },
       });
     }
@@ -117,7 +142,7 @@ async function streamFile(
       headers: {
         "Content-Type": data.type || "application/octet-stream",
         "Cache-Control": "private, max-age=86400",
-        "X-Storage-Backend": "supabase",
+        ...SECURITY_HEADERS,
       },
     });
   } catch (err) {

@@ -173,6 +173,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     // If dataUrl changed (image was edited), upload the new version
     let fileUrl = updates.dataUrl;
     let filePath: string | null = null;
+    let editStorageBackend: string | null = null;
     if (updates.dataUrl && updates.dataUrl.startsWith("data:")) {
       try {
         const ext = updates.dataUrl.match(/data:image\/(\w+)/)?.[1] || "jpg";
@@ -183,9 +184,10 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         formData.append("bucket", "memories");
         const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
         if (uploadRes.ok) {
-          const { path, url } = await uploadRes.json();
-          filePath = path;
-          fileUrl = url;
+          const uploadData = await uploadRes.json();
+          filePath = uploadData.path;
+          fileUrl = uploadData.url;
+          editStorageBackend = uploadData.storageBackend;
           set((s) => {
             const cur = s.userMems[roomId] || [];
             const updated = cur.map((m) => m.id === memId ? { ...m, dataUrl: fileUrl } : m);
@@ -202,6 +204,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       type: updates.type,
       ...(fileUrl && fileUrl !== updates.dataUrl ? { file_url: fileUrl } : {}),
       ...(filePath ? { file_path: filePath } : {}),
+      ...(editStorageBackend ? { storage_backend: editStorageBackend } : {}),
     });
   },
 

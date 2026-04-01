@@ -164,14 +164,17 @@ export async function GET() {
           } catch { /* R2 list failed, fall through to Supabase */ }
         }
 
-        // Also check Supabase Storage for legacy busts
-        if (bustFilePaths.length === 0) {
+        // Also check Supabase Storage for legacy busts (always, not just when R2 is empty)
+        {
+          const r2Paths = new Set(bustFilePaths.map((f) => f.name));
           const { data: bustFileList } = await supabase.storage
             .from("busts")
             .list(user.id);
           if (bustFileList) {
             for (const f of bustFileList) {
-              bustFilePaths.push({ path: `${user.id}/${f.name}`, name: f.name });
+              if (!r2Paths.has(f.name)) {
+                bustFilePaths.push({ path: `${user.id}/${f.name}`, name: f.name });
+              }
             }
           }
         }

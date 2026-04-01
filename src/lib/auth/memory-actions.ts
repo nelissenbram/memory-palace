@@ -103,7 +103,19 @@ export async function createMemory(data: {
     .select()
     .single();
 
-  if (error) return { error: error.message };
+  if (error) {
+    // Cleanup orphaned storage file on DB insert failure
+    if (data.filePath) {
+      try {
+        if (data.storageBackend === "r2" && isR2Configured()) {
+          await r2Remove("memories", [data.filePath]);
+        } else {
+          await supabase.storage.from("memories").remove([data.filePath]);
+        }
+      } catch { /* best-effort cleanup */ }
+    }
+    return { error: error.message };
+  }
 
   // ── Notify room owner if this is a shared room contribution ──
   try {
@@ -136,7 +148,7 @@ export async function createMemory(data: {
 
 export async function updateMemoryAction(
   memoryId: string,
-  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string }
+  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string; storage_backend?: string }
 ) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
