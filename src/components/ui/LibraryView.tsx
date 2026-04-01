@@ -175,115 +175,22 @@ export default function LibraryView() {
       background: T.color.linen, fontFamily: T.font.body, overflow: "hidden",
     }}>
       <LibraryStyles />
+
       {/* ═══ WING SIDEBAR ═══ */}
-      <nav style={{
-        width: isMobile ? "100%" : 240,
-        minWidth: isMobile ? undefined : 240,
-        height: isMobile ? "auto" : "100%",
-        background: T.color.warmStone,
-        borderRight: isMobile ? "none" : `1px solid ${T.color.cream}`,
-        borderBottom: isMobile ? `1px solid ${T.color.cream}` : "none",
-        display: "flex",
-        flexDirection: isMobile ? "row" : "column",
-        overflowX: isMobile ? "auto" : "hidden",
-        overflowY: isMobile ? "hidden" : "auto",
-        flexShrink: 0,
-      }}>
-        {/* Header */}
-        {!isMobile && (
-          <div style={{ padding: "1.25rem 1rem 0.75rem", borderBottom: `1px solid ${T.color.cream}` }}>
-            <h1 style={{
-              fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600,
-              color: T.color.charcoal, margin: 0, letterSpacing: "0.02em",
-            }}>
-              {t("title")}
-            </h1>
-            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
-              {t("subtitle", { count: String(wings.reduce((s, w) => s + wingMemCount(w.id), 0)) })}
-            </p>
-          </div>
-        )}
-
-        {/* Wing list */}
-        <div style={{
-          display: "flex",
-          flexDirection: isMobile ? "row" : "column",
-          padding: isMobile ? "0.5rem" : "0.5rem 0",
-          gap: isMobile ? "0.25rem" : 0,
-        }}>
-          {wings.filter(w => w.id !== "attic").map(w => {
-            const active = w.id === selectedWing;
-            const count = wingMemCount(w.id);
-            return (
-              <button
-                key={w.id}
-                onClick={() => { setSelectedWing(w.id); setSelectedRoom(null); setQuery(""); setFilterType(null); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: "0.5rem",
-                  padding: isMobile ? "0.5rem 0.75rem" : "0.625rem 1rem",
-                  background: active ? `${T.color.white}` : "transparent",
-                  border: "none", borderRadius: isMobile ? "0.5rem" : 0,
-                  borderLeft: !isMobile && active ? `3px solid ${w.accent}` : !isMobile ? "3px solid transparent" : "none",
-                  cursor: "pointer", width: isMobile ? "auto" : "100%", textAlign: "left",
-                  transition: "background 0.15s ease",
-                  whiteSpace: "nowrap", flexShrink: 0,
-                }}
-              >
-                <span style={{ fontSize: isMobile ? "1rem" : "1.125rem" }}>{w.icon}</span>
-                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                  <span style={{
-                    fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: active ? 600 : 500,
-                    color: active ? T.color.charcoal : T.color.walnut,
-                  }}>
-                    {w.name}
-                  </span>
-                  {!isMobile && (
-                    <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
-                      {t("wingCount", { rooms: String(getWingRooms(w.id).length), memories: String(count) })}
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Bottom actions — desktop only */}
-        {!isMobile && (
-          <div style={{ marginTop: "auto", padding: "0.75rem 1rem", borderTop: `1px solid ${T.color.cream}`, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <a
-              href="/settings"
-              style={{
-                display: "flex", alignItems: "center", gap: "0.5rem",
-                padding: "0.5rem 0.75rem", borderRadius: "0.375rem",
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
-                textDecoration: "none",
-              }}
-            >
-              {"\u2699\uFE0F"} {tc("settings")}
-            </a>
-            <button
-              onClick={handleEnter3D}
-              style={{
-                width: "100%", padding: "0.625rem", borderRadius: "0.5rem",
-                background: T.color.charcoal, color: T.color.linen,
-                border: "none", cursor: "pointer",
-                fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 500,
-                letterSpacing: "0.03em",
-                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
-              }}
-            >
-              <span style={{ fontSize: "0.875rem" }}>{"\u{1F3DB}\uFE0F"}</span>
-              {t("enterPalace")}
-            </button>
-          </div>
-        )}
-      </nav>
+      <LibrarySidebar
+        wings={wings}
+        selectedWing={selectedWing}
+        onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); setQuery(""); setFilterType(null); }}
+        wingMemCount={wingMemCount}
+        onEnter3D={handleEnter3D}
+        isMobile={isMobile}
+      />
 
       {/* ═══ MAIN CONTENT ═══ */}
       <main style={{
         flex: 1, display: "flex", flexDirection: "column",
         overflow: "hidden", minWidth: 0,
+        animation: "libFadeIn 0.4s ease both",
       }}>
         {/* Header bar — LibraryHeader + search/actions */}
         <div style={{ display: "flex", alignItems: "stretch", flexShrink: 0 }}>
@@ -328,11 +235,14 @@ export default function LibraryView() {
               <button
                 onClick={handleEnter3D}
                 style={{
-                  padding: "0.375rem 0.625rem", borderRadius: "0.375rem",
-                  background: T.color.charcoal, color: T.color.linen,
+                  padding: "0.375rem 0.75rem", borderRadius: "1.25rem",
+                  background: `linear-gradient(135deg, ${T.color.charcoal}, #3D3D3A)`,
+                  color: T.color.linen,
                   border: "none", cursor: "pointer",
-                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
-                  whiteSpace: "nowrap",
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                  whiteSpace: "nowrap", letterSpacing: "0.06em",
+                  flexShrink: 0,
+                  boxShadow: "0 0.0625rem 0.25rem rgba(44,44,42,0.15)",
                 }}
               >
                 3D
@@ -353,26 +263,36 @@ export default function LibraryView() {
         )}
 
         {/* Content area */}
-        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "0.75rem" : "1.25rem 1.5rem" }}>
+        <div style={{
+          flex: 1, overflow: "auto",
+          padding: isMobile ? "1.25rem 1rem" : "2rem 2.5rem",
+          animation: "libFadeIn 0.35s ease both",
+        }}>
           {/* Cross-wing search results */}
           {crossWingResults && (
-            <div>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginBottom: "0.75rem" }}>
+            <div style={{ animation: "libSlideUp 0.35s ease both" }}>
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                marginBottom: "1.25rem", letterSpacing: "0.02em",
+              }}>
                 {t("searchResults", { count: String(crossWingResults.length), query })}
               </p>
               <div style={{
                 display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(16rem, 1fr))",
-                gap: "0.75rem",
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(17rem, 1fr))",
+                gap: "1.25rem",
               }}>
-                {crossWingResults.slice(0, 50).map(({ wing, room, mem }) => (
-                  <LibraryMemoryCard
-                    key={mem.id}
-                    mem={mem}
-                    subtitle={`${wing.icon} ${wing.name} / ${room.icon} ${room.name}`}
-                    accent={wing.accent}
-                    onClick={() => setDetailMem({ mem, wingId: wing.id, roomId: room.id })}
-                  />
+                {crossWingResults.slice(0, 50).map(({ wing, room, mem }, i) => (
+                  <div key={mem.id} style={{
+                    animation: `libCardEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${0.05 + i * 0.035}s both`,
+                  }}>
+                    <LibraryMemoryCard
+                      mem={mem}
+                      subtitle={`${wing.icon} ${wing.name} / ${room.icon} ${room.name}`}
+                      accent={wing.accent}
+                      onClick={() => setDetailMem({ mem, wingId: wing.id, roomId: room.id })}
+                    />
+                  </div>
                 ))}
               </div>
             </div>
@@ -380,48 +300,91 @@ export default function LibraryView() {
 
           {/* Room list (when no room selected and no cross-wing search) */}
           {!selectedRoom && !crossWingResults && (
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(16rem, 1fr))",
-              gap: "0.75rem",
-            }}>
-              {wingRooms.map(room => {
-                const mems = getMemsForRoom(room.id);
-                const thumbMem = mems.find(m => m.dataUrl && m.type === "photo") || mems.find(m => m.dataUrl);
-                return (
-                  <LibraryRoomCard
-                    key={room.id}
-                    room={room}
-                    memCount={mems.length}
-                    thumbUrl={thumbMem?.dataUrl || null}
-                    accent={currentWing.accent}
-                    onClick={() => {
-                      setSelectedRoom(room.id);
-                      fetchRoomMemories(room.id);
-                    }}
-                    onAdd={() => setShowUploadFor({ wingId: selectedWing, roomId: room.id })}
-                  />
-                );
-              })}
+            <div style={{ animation: "libFadeIn 0.35s ease both" }}>
+              {/* Section header with decorative accent */}
+              <div style={{ marginBottom: "1.75rem" }}>
+                <div style={{
+                  display: "flex", alignItems: "baseline", gap: "0.625rem",
+                  marginBottom: "0.5rem",
+                }}>
+                  <h3 style={{
+                    fontFamily: T.font.display, fontSize: "1rem",
+                    fontWeight: 400, color: T.color.muted,
+                    margin: 0, letterSpacing: "0.1em", textTransform: "uppercase",
+                  }}>
+                    {t("roomsIn")}
+                  </h3>
+                  <span style={{
+                    fontFamily: T.font.display, fontSize: "1rem",
+                    fontWeight: 600, color: T.color.charcoal,
+                    letterSpacing: "0.03em",
+                  }}>
+                    {currentWing.name}
+                  </span>
+                </div>
+                <div style={{
+                  height: "0.0625rem", maxWidth: "10rem",
+                  background: `linear-gradient(90deg, ${currentWing.accent}55, ${T.color.cream}33, transparent)`,
+                  animation: "libFadeIn 0.6s ease 0.2s both",
+                }} />
+              </div>
+
+              {wingRooms.length > 0 ? (
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(17rem, 1fr))",
+                  gap: "1.25rem",
+                }}>
+                  {wingRooms.map((room, i) => {
+                    const mems = getMemsForRoom(room.id);
+                    const thumbMem = mems.find(m => m.dataUrl && m.type === "photo") || mems.find(m => m.dataUrl);
+                    return (
+                      <div key={room.id} style={{
+                        animation: `libCardEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${0.1 + i * 0.06}s both`,
+                      }}>
+                        <LibraryRoomCard
+                          room={room}
+                          memCount={mems.length}
+                          thumbUrl={thumbMem?.dataUrl || null}
+                          accent={currentWing.accent}
+                          onClick={() => {
+                            setSelectedRoom(room.id);
+                            fetchRoomMemories(room.id);
+                          }}
+                          onAdd={() => setShowUploadFor({ wingId: selectedWing, roomId: room.id })}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <LibraryEmptyState
+                  type="wing"
+                  accent={currentWing.accent}
+                />
+              )}
             </div>
           )}
 
           {/* Memory grid (when room selected) */}
           {selectedRoom && !crossWingResults && (
-            <>
+            <div style={{ animation: "libSlideRight 0.35s cubic-bezier(0.22, 1, 0.36, 1) both" }}>
               {filteredRoomMems.length > 0 ? (
                 <div style={{
                   display: "grid",
-                  gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(14rem, 1fr))",
-                  gap: "0.75rem",
+                  gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(15rem, 1fr))",
+                  gap: "1.25rem",
                 }}>
-                  {filteredRoomMems.map(mem => (
-                    <LibraryMemoryCard
-                      key={mem.id}
-                      mem={mem}
-                      accent={currentWing.accent}
-                      onClick={() => setDetailMem({ mem, wingId: selectedWing, roomId: selectedRoom })}
-                    />
+                  {filteredRoomMems.map((mem, i) => (
+                    <div key={mem.id} style={{
+                      animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${0.03 + i * 0.03}s both`,
+                    }}>
+                      <LibraryMemoryCard
+                        mem={mem}
+                        accent={currentWing.accent}
+                        onClick={() => setDetailMem({ mem, wingId: selectedWing, roomId: selectedRoom })}
+                      />
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -433,9 +396,12 @@ export default function LibraryView() {
                 />
               )}
 
-              {/* Gallery button */}
+              {/* Gallery / 3D action buttons */}
               {getMemsForRoom(selectedRoom).length > 0 && (
-                <div style={{ marginTop: "1rem", display: "flex", gap: "0.5rem" }}>
+                <div style={{
+                  marginTop: "2.5rem", display: "flex", gap: "0.75rem",
+                  animation: "libSlideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both",
+                }}>
                   <button
                     onClick={() => {
                       setNavMode("3d");
@@ -443,13 +409,34 @@ export default function LibraryView() {
                       setTimeout(() => enterRoom(selectedRoom), 600);
                     }}
                     style={{
-                      padding: "0.5rem 1rem", borderRadius: "0.5rem",
-                      background: T.color.white, border: `1px solid ${T.color.cream}`,
+                      padding: "0.625rem 1.375rem", borderRadius: "0.75rem",
+                      background: "rgba(255, 255, 255, 0.85)",
+                      backdropFilter: "blur(0.625rem)",
+                      WebkitBackdropFilter: "blur(0.625rem)",
+                      border: `0.0625rem solid ${T.color.cream}`,
                       cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem",
-                      color: T.color.walnut, display: "flex", alignItems: "center", gap: "0.375rem",
+                      fontWeight: 500, letterSpacing: "0.015em",
+                      color: T.color.walnut, display: "flex", alignItems: "center", gap: "0.5rem",
+                      transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
+                      boxShadow: "0 0.0625rem 0.25rem rgba(44,44,42,0.04)",
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = T.color.white;
+                      e.currentTarget.style.borderColor = `${currentWing.accent}44`;
+                      e.currentTarget.style.transform = "translateY(-0.125rem)";
+                      e.currentTarget.style.boxShadow = `0 0.375rem 1rem rgba(44,44,42,0.08)`;
+                      e.currentTarget.style.color = T.color.charcoal;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.85)";
+                      e.currentTarget.style.borderColor = T.color.cream;
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 0.0625rem 0.25rem rgba(44,44,42,0.04)";
+                      e.currentTarget.style.color = T.color.walnut;
                     }}
                   >
-                    {"\u{1F5BC}\uFE0F"} {t("openGallery")}
+                    <span style={{ fontSize: "0.9375rem", lineHeight: 1 }}>{"\u{1F5BC}\uFE0F"}</span>
+                    {t("openGallery")}
                   </button>
                   <button
                     onClick={() => {
@@ -458,17 +445,38 @@ export default function LibraryView() {
                       setTimeout(() => enterRoom(selectedRoom), 600);
                     }}
                     style={{
-                      padding: "0.5rem 1rem", borderRadius: "0.5rem",
-                      background: T.color.white, border: `1px solid ${T.color.cream}`,
+                      padding: "0.625rem 1.375rem", borderRadius: "0.75rem",
+                      background: "rgba(255, 255, 255, 0.85)",
+                      backdropFilter: "blur(0.625rem)",
+                      WebkitBackdropFilter: "blur(0.625rem)",
+                      border: `0.0625rem solid ${T.color.cream}`,
                       cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem",
-                      color: T.color.walnut, display: "flex", alignItems: "center", gap: "0.375rem",
+                      fontWeight: 500, letterSpacing: "0.015em",
+                      color: T.color.walnut, display: "flex", alignItems: "center", gap: "0.5rem",
+                      transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
+                      boxShadow: "0 0.0625rem 0.25rem rgba(44,44,42,0.04)",
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = T.color.white;
+                      e.currentTarget.style.borderColor = `${currentWing.accent}44`;
+                      e.currentTarget.style.transform = "translateY(-0.125rem)";
+                      e.currentTarget.style.boxShadow = `0 0.375rem 1rem rgba(44,44,42,0.08)`;
+                      e.currentTarget.style.color = T.color.charcoal;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.85)";
+                      e.currentTarget.style.borderColor = T.color.cream;
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 0.0625rem 0.25rem rgba(44,44,42,0.04)";
+                      e.currentTarget.style.color = T.color.walnut;
                     }}
                   >
-                    {"\u{1F3DB}\uFE0F"} {t("viewIn3D")}
+                    <span style={{ fontSize: "0.9375rem", lineHeight: 1 }}>{"\u{1F3DB}\uFE0F"}</span>
+                    {t("viewIn3D")}
                   </button>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </main>

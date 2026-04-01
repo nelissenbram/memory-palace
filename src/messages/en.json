@@ -2553,7 +2553,15 @@
     "sidebarTitle": "Your Palace",
     "sidebarSubtitle": "{count} memories across {wings} wings",
     "foundCount": "{count} found",
-    "clearSearch": "Clear search"
+    "clearSearch": "Clear search",
+    "roomsIn": "Rooms in",
+    "emptyRoomTitle": "A blank canvas awaits",
+    "emptyRoomDesc": "Every great collection starts with a single memory. Add a photo, voice note, or document to bring this room to life.",
+    "noResultsHint": "Try adjusting your search or filters to find what you're looking for.",
+    "wingEmptyTitle": "This wing awaits your story",
+    "wingEmptyDesc": "The {wing} wing is ready to hold your most precious memories. Enter the 3D palace to explore and start preserving.",
+    "wingEmptyHint": "Every memory you add becomes part of your palace forever.",
+    "wingsLabel": "Collections"
   },
   "home": {
     "goodMorning": "Good morning",

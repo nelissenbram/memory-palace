@@ -2553,7 +2553,15 @@
     "sidebarTitle": "Jouw Paleis",
     "sidebarSubtitle": "{count} herinneringen in {wings} vleugels",
     "foundCount": "{count} gevonden",
-    "clearSearch": "Zoekopdracht wissen"
+    "clearSearch": "Zoekopdracht wissen",
+    "roomsIn": "Kamers in",
+    "emptyRoomTitle": "Een leeg canvas wacht",
+    "emptyRoomDesc": "Elke geweldige collectie begint met een enkele herinnering. Voeg een foto, spraaknotitie of document toe om deze kamer tot leven te brengen.",
+    "noResultsHint": "Probeer je zoekopdracht of filters aan te passen om te vinden wat je zoekt.",
+    "wingEmptyTitle": "Deze vleugel wacht op jouw verhaal",
+    "wingEmptyDesc": "De {wing} vleugel is klaar om je meest kostbare herinneringen te bewaren. Betreed het 3D-paleis om te verkennen en te beginnen met bewaren.",
+    "wingEmptyHint": "Elke herinnering die je toevoegt wordt voor altijd onderdeel van je paleis.",
+    "wingsLabel": "Collecties"
   },
   "home": {
     "goodMorning": "Goedemorgen",
