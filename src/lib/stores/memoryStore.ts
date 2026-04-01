@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { createClient } from "@/lib/supabase/client";
 import { createMemory, updateMemoryAction, deleteMemoryAction, moveMemoryAction, fetchMemories } from "@/lib/auth/memory-actions";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem, SharingInfo } from "@/lib/constants/defaults";
@@ -122,26 +121,26 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       return;
     }
 
-    // Upload file to Storage if it's a data URL
+    // Upload file via server-side upload endpoint
     let fileUrl = mem.dataUrl;
     let filePath: string | null = null;
     let fileSize: number | null = null;
+    let storageBackend: string | null = null;
     if (mem.dataUrl && mem.dataUrl.startsWith("data:")) {
       try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const ext = mem.dataUrl.match(/data:image\/(\w+)/)?.[1] || "jpg";
-          const path = `${user.id}/${Date.now()}.${ext}`;
-          const res = await fetch(mem.dataUrl);
-          const blob = await res.blob();
-          fileSize = blob.size;
-          const { error: upErr } = await supabase.storage.from("memories").upload(path, blob, { contentType: blob.type });
-          if (!upErr) {
-            filePath = path;
-            const { data: urlData } = await supabase.storage.from("memories").createSignedUrl(path, 60 * 60 * 24 * 7);
-            fileUrl = urlData?.signedUrl || mem.dataUrl;
-          }
+        const res = await fetch(mem.dataUrl);
+        const blob = await res.blob();
+        fileSize = blob.size;
+        const ext = mem.dataUrl.match(/data:image\/(\w+)/)?.[1] || "jpg";
+        const formData = new FormData();
+        formData.append("file", new File([blob], `memory.${ext}`, { type: blob.type }));
+        formData.append("bucket", "memories");
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          filePath = uploadData.path;
+          fileUrl = uploadData.url;
+          storageBackend = uploadData.storageBackend;
         }
       } catch (e) { console.error("Upload error:", e); }
     }
@@ -149,7 +148,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     // Save to DB
     const result = await createMemory({
       roomId, title: mem.title, description: mem.desc || "", type: mem.type,
-      hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl, filePath, fileSize,
+      hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl, filePath, fileSize, storageBackend,
     });
     if (result.memory) {
       set((s) => {
@@ -176,26 +175,23 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     let filePath: string | null = null;
     if (updates.dataUrl && updates.dataUrl.startsWith("data:")) {
       try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const ext = updates.dataUrl.match(/data:image\/(\w+)/)?.[1] || "jpg";
-          const path = `${user.id}/${Date.now()}_edited.${ext}`;
-          const res = await fetch(updates.dataUrl);
-          const blob = await res.blob();
-          const { error: upErr } = await supabase.storage.from("memories").upload(path, blob, { contentType: blob.type });
-          if (!upErr) {
-            filePath = path;
-            const { data: urlData } = await supabase.storage.from("memories").createSignedUrl(path, 60 * 60 * 24 * 7);
-            fileUrl = urlData?.signedUrl || updates.dataUrl;
-            // Update local state with the signed URL
-            set((s) => {
-              const cur = s.userMems[roomId] || [];
-              const updated = cur.map((m) => m.id === memId ? { ...m, dataUrl: fileUrl } : m);
-              const selMem = s.selMem?.id === memId ? { ...s.selMem, dataUrl: fileUrl } : s.selMem;
-              return { userMems: { ...s.userMems, [roomId]: updated }, selMem };
-            });
-          }
+        const ext = updates.dataUrl.match(/data:image\/(\w+)/)?.[1] || "jpg";
+        const res = await fetch(updates.dataUrl);
+        const blob = await res.blob();
+        const formData = new FormData();
+        formData.append("file", new File([blob], `memory_edited.${ext}`, { type: blob.type }));
+        formData.append("bucket", "memories");
+        const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+        if (uploadRes.ok) {
+          const { path, url } = await uploadRes.json();
+          filePath = path;
+          fileUrl = url;
+          set((s) => {
+            const cur = s.userMems[roomId] || [];
+            const updated = cur.map((m) => m.id === memId ? { ...m, dataUrl: fileUrl } : m);
+            const selMem = s.selMem?.id === memId ? { ...s.selMem, dataUrl: fileUrl } : s.selMem;
+            return { userMems: { ...s.userMems, [roomId]: updated }, selMem };
+          });
         }
       } catch (e) { console.error("Edit upload error:", e); }
     }

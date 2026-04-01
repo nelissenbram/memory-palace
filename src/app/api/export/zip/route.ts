@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { exportUserData } from "@/lib/auth/export-actions";
 import JSZip from "jszip";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
+import { r2Download, isR2Configured } from "@/lib/storage/r2";
 
 export const maxDuration = 60;
 
@@ -57,18 +58,28 @@ export async function GET() {
     zip.file("data.json", json);
     diag.push("json_added");
 
-    // Download photos from Supabase Storage in batches (avoid OOM)
+    // Build a map of file_path → storage_backend from memories data
+    const fileBackendMap = new Map<string, string>();
+    if (result.data.memories) {
+      for (const mem of result.data.memories as Record<string, unknown>[]) {
+        if (mem.file_path) {
+          fileBackendMap.set(mem.file_path as string, (mem.storage_backend as string) || "supabase");
+        }
+      }
+    }
+
+    // Download photos from storage in batches (avoid OOM)
     const photosFolder = zip.folder("photos");
     const files = result.data.storage_files.slice(0, MAX_EXPORT_FILES);
     const failedFiles: string[] = [];
     let truncated = false;
     let filesProcessed = 0;
+    const useR2 = isR2Configured();
 
     if (photosFolder && files.length > 0) {
       const usedNames = new Set<string>();
 
       for (let i = 0; i < files.length; i += BATCH_SIZE) {
-        // Check if we're approaching the timeout before starting next batch
         const elapsed = Date.now() - startTime;
         if (elapsed >= TIMEOUT_THRESHOLD_MS) {
           truncated = true;
@@ -80,46 +91,51 @@ export async function GET() {
         await Promise.allSettled(
           batch.map(async (filePath) => {
             try {
-              // Create an AbortController with per-file timeout
-              const controller = new AbortController();
-              const timeoutId = setTimeout(() => controller.abort(), PER_FILE_TIMEOUT_MS);
+              const backend = fileBackendMap.get(filePath) || "supabase";
+              let buffer: ArrayBuffer;
 
-              try {
-                const { data, error } = await supabase.storage
-                  .from("memories")
-                  .download(filePath);
-
-                clearTimeout(timeoutId);
-
-                if (error || !data) {
+              if (backend === "r2" && useR2) {
+                try {
+                  const { data: stream } = await r2Download("memories", filePath);
+                  const response = new Response(stream);
+                  buffer = await response.arrayBuffer();
+                } catch {
                   failedFiles.push(filePath);
                   return;
                 }
-
-                let fileName = filePath.split("/").pop() || filePath;
-                if (usedNames.has(fileName)) {
-                  const ext = fileName.includes(".")
-                    ? "." + fileName.split(".").pop()
-                    : "";
-                  const base = fileName.replace(/\.[^.]+$/, "");
-                  let counter = 2;
-                  while (usedNames.has(`${base}_${counter}${ext}`)) counter++;
-                  fileName = `${base}_${counter}${ext}`;
-                }
-                usedNames.add(fileName);
-
-                const buffer = await data.arrayBuffer();
-                photosFolder.file(fileName, buffer);
-                filesProcessed++;
-              } catch (innerErr) {
-                clearTimeout(timeoutId);
-                // Check if it was an abort
-                if (innerErr instanceof DOMException && innerErr.name === "AbortError") {
-                  failedFiles.push(`${filePath} (timeout)`);
-                } else {
+              } else {
+                const timeoutId = setTimeout(() => {}, PER_FILE_TIMEOUT_MS);
+                try {
+                  const { data, error } = await supabase.storage
+                    .from("memories")
+                    .download(filePath);
+                  clearTimeout(timeoutId);
+                  if (error || !data) {
+                    failedFiles.push(filePath);
+                    return;
+                  }
+                  buffer = await data.arrayBuffer();
+                } catch (innerErr) {
+                  clearTimeout(timeoutId);
                   failedFiles.push(filePath);
+                  return;
                 }
               }
+
+              let fileName = filePath.split("/").pop() || filePath;
+              if (usedNames.has(fileName)) {
+                const ext = fileName.includes(".")
+                  ? "." + fileName.split(".").pop()
+                  : "";
+                const base = fileName.replace(/\.[^.]+$/, "");
+                let counter = 2;
+                while (usedNames.has(`${base}_${counter}${ext}`)) counter++;
+                fileName = `${base}_${counter}${ext}`;
+              }
+              usedNames.add(fileName);
+
+              photosFolder.file(fileName, buffer);
+              filesProcessed++;
             } catch {
               failedFiles.push(filePath);
             }
@@ -130,16 +146,38 @@ export async function GET() {
 
     diag.push(`photos:${filesProcessed}ok_${failedFiles.length}fail${truncated ? "_truncated" : ""}`);
 
-    // Download bust files from Supabase Storage
+    // Download bust files from storage (R2 first, then Supabase fallback)
     const bustsFolder = zip.folder("busts");
     if (bustsFolder) {
       try {
-        const { data: bustFileList } = await supabase.storage
-          .from("busts")
-          .list(user.id);
+        // Collect bust files from both backends
+        const bustFilePaths: { path: string; name: string }[] = [];
 
-        if (bustFileList && bustFileList.length > 0) {
-          const bustFiles = bustFileList.slice(0, MAX_EXPORT_FILES);
+        // Try R2 first
+        if (useR2) {
+          try {
+            const { r2List } = await import("@/lib/storage/r2");
+            const r2Busts = await r2List("busts", `${user.id}/`);
+            for (const f of r2Busts) {
+              bustFilePaths.push({ path: f.name, name: f.name.split("/").pop() || f.name });
+            }
+          } catch { /* R2 list failed, fall through to Supabase */ }
+        }
+
+        // Also check Supabase Storage for legacy busts
+        if (bustFilePaths.length === 0) {
+          const { data: bustFileList } = await supabase.storage
+            .from("busts")
+            .list(user.id);
+          if (bustFileList) {
+            for (const f of bustFileList) {
+              bustFilePaths.push({ path: `${user.id}/${f.name}`, name: f.name });
+            }
+          }
+        }
+
+        if (bustFilePaths.length > 0) {
+          const bustFiles = bustFilePaths.slice(0, MAX_EXPORT_FILES);
           const bustUsedNames = new Set<string>();
           let bustsProcessed = 0;
           const failedBusts: string[] = [];
@@ -154,19 +192,29 @@ export async function GET() {
 
             const batch = bustFiles.slice(i, i + BATCH_SIZE);
             await Promise.allSettled(
-              batch.map(async (file) => {
-                const filePath = `${user.id}/${file.name}`;
+              batch.map(async ({ path: filePath, name }) => {
                 try {
-                  const { data, error } = await supabase.storage
-                    .from("busts")
-                    .download(filePath);
+                  let buffer: ArrayBuffer;
 
-                  if (error || !data) {
-                    failedBusts.push(filePath);
-                    return;
+                  // Try R2 first, fall back to Supabase
+                  if (useR2) {
+                    try {
+                      const { data: stream } = await r2Download("busts", filePath);
+                      const response = new Response(stream);
+                      buffer = await response.arrayBuffer();
+                    } catch {
+                      // Fall back to Supabase
+                      const { data, error } = await supabase.storage.from("busts").download(filePath);
+                      if (error || !data) { failedBusts.push(filePath); return; }
+                      buffer = await data.arrayBuffer();
+                    }
+                  } else {
+                    const { data, error } = await supabase.storage.from("busts").download(filePath);
+                    if (error || !data) { failedBusts.push(filePath); return; }
+                    buffer = await data.arrayBuffer();
                   }
 
-                  let fileName = file.name;
+                  let fileName = name;
                   if (bustUsedNames.has(fileName)) {
                     const ext = fileName.includes(".")
                       ? "." + fileName.split(".").pop()
@@ -178,7 +226,6 @@ export async function GET() {
                   }
                   bustUsedNames.add(fileName);
 
-                  const buffer = await data.arrayBuffer();
                   bustsFolder.file(fileName, buffer);
                   bustsProcessed++;
                 } catch {

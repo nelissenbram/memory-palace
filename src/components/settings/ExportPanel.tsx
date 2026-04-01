@@ -297,8 +297,14 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
           await Promise.allSettled(
             batch.map(async (filePath) => {
               try {
-                const { data, error } = await supabase.storage.from("memories").download(filePath);
-                if (error || !data) { failedCount++; return; }
+                // Use media proxy for dual-backend support (R2 + Supabase)
+                const proxyUrl = filePath.startsWith("/api/media/")
+                  ? filePath
+                  : `/api/media/memories/${filePath}`;
+                const response = await fetch(proxyUrl);
+                if (!response.ok) { failedCount++; return; }
+                const data = await response.blob();
+                if (!data) { failedCount++; return; }
                 let name = filePath.split("/").pop() || filePath;
                 if (usedNames.has(name)) {
                   const ext = name.includes(".") ? "." + name.split(".").pop() : "";

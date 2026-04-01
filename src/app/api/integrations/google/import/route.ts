@@ -15,6 +15,7 @@ import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { downloadPhoto } from "@/lib/integrations/google-photos";
 import { createClient } from "@/lib/supabase/server";
 import { checkLimit } from "@/lib/auth/plan-limits";
+import { r2Upload, r2Remove, isR2Configured } from "@/lib/storage/r2";
 
 export async function POST(request: NextRequest) {
   try {
@@ -142,32 +143,42 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Upload to Supabase Storage
+        // Upload to storage (R2 if configured, otherwise Supabase)
         const ext = filename.split(".").pop() || "jpg";
         const BLOCKED_EXTS = new Set(["exe", "sh", "bat", "cmd", "ps1", "msi", "dll", "com", "scr", "vbs"]);
         const safeExt = /^[a-zA-Z0-9]{1,10}$/.test(ext) && !BLOCKED_EXTS.has(ext.toLowerCase()) ? ext : "bin";
         const sanitizedId = photoId.replace(/[^a-zA-Z0-9._-]/g, "_");
-        // Storage path safety: randomBytes prevents filename collision, sanitizedId strips
-        // path-traversal chars (../ etc.), BLOCKED_EXTS rejects executables, safeExt regex
-        // limits extensions to alphanumeric (max 10 chars) — anything else falls back to ".bin".
         const storagePath = `${user.id}/${Date.now()}_${randomBytes(4).toString("hex")}_${sanitizedId}.${safeExt}`;
 
-        const { error: uploadErr } = await supabase.storage
-          .from("memories")
-          .upload(storagePath, Buffer.from(data), { contentType: mimeType, upsert: false });
+        let fileUrl: string;
+        let storageBackend: string;
 
-        if (uploadErr) {
-          results.push({ id: photoId, success: false, error: uploadErr.message });
-          continue;
+        if (isR2Configured()) {
+          try {
+            await r2Upload("memories", storagePath, new Uint8Array(data), mimeType);
+            fileUrl = `/api/media/memories/${storagePath}`;
+            storageBackend = "r2";
+          } catch (uploadErr) {
+            results.push({ id: photoId, success: false, error: "Upload failed" });
+            continue;
+          }
+        } else {
+          const { error: uploadErr } = await supabase.storage
+            .from("memories")
+            .upload(storagePath, Buffer.from(data), { contentType: mimeType, upsert: false });
+          if (uploadErr) {
+            results.push({ id: photoId, success: false, error: uploadErr.message });
+            continue;
+          }
+          const { data: signedUrlData } = await supabase.storage.from("memories").createSignedUrl(storagePath, 60 * 60 * 24 * 7);
+          if (!signedUrlData?.signedUrl) {
+            await supabase.storage.from("memories").remove([storagePath]);
+            results.push({ id: photoId, success: false, error: "Failed to generate file URL" });
+            continue;
+          }
+          fileUrl = signedUrlData.signedUrl;
+          storageBackend = "supabase";
         }
-
-        const { data: signedUrlData } = await supabase.storage.from("memories").createSignedUrl(storagePath, 60 * 60 * 24 * 7);
-        if (!signedUrlData?.signedUrl) {
-          await supabase.storage.from("memories").remove([storagePath]);
-          results.push({ id: photoId, success: false, error: "Failed to generate file URL" });
-          continue;
-        }
-        const fileUrl = signedUrlData.signedUrl;
 
         // Create memory record
         const isImage = mimeType.startsWith("image/");
@@ -184,6 +195,7 @@ export async function POST(request: NextRequest) {
             file_path: storagePath,
             file_url: fileUrl,
             file_size: data.byteLength,
+            storage_backend: storageBackend,
             hue,
             saturation: 45 + Math.floor(Math.random() * 15),
             lightness: 55 + Math.floor(Math.random() * 15),
@@ -193,7 +205,12 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (memErr) {
-          await supabase.storage.from("memories").remove([storagePath]);
+          // Rollback: remove uploaded file from the correct backend
+          if (storageBackend === "r2" && isR2Configured()) {
+            try { await r2Remove("memories", [storagePath]); } catch { /* best-effort */ }
+          } else {
+            await supabase.storage.from("memories").remove([storagePath]);
+          }
           const isDuplicate = memErr.code === "23505" || memErr.message?.includes("duplicate");
           results.push({ id: photoId, success: false, error: isDuplicate ? "Already imported" : memErr.message });
         } else {

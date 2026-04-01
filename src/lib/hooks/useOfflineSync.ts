@@ -8,7 +8,6 @@ import {
   type QueuedMemory,
 } from "@/lib/offline/db";
 import { createMemory } from "@/lib/auth/memory-actions";
-import { createClient } from "@/lib/supabase/client";
 
 const supabaseReady = !!(
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -140,29 +139,23 @@ export function useOfflineSync() {
 async function syncSingleMemory(item: QueuedMemory): Promise<void> {
   let fileUrl: string | null = item.fileData;
   let filePath: string | null = null;
+  let storageBackend: string | null = null;
 
-  // Upload file if it's a data URL
+  // Upload file via server-side upload endpoint
   if (item.fileData && item.fileData.startsWith("data:")) {
     try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const ext = item.fileData.match(/data:image\/(\w+)/)?.[1] || "jpg";
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        const res = await fetch(item.fileData);
-        const blob = await res.blob();
-        const { error: upErr } = await supabase.storage
-          .from("memories")
-          .upload(path, blob, { contentType: blob.type });
-        if (!upErr) {
-          filePath = path;
-          const { data: urlData } = await supabase.storage
-            .from("memories")
-            .createSignedUrl(path, 60 * 60 * 24 * 7);
-          fileUrl = urlData?.signedUrl || item.fileData;
-        }
+      const ext = item.fileData.match(/data:image\/(\w+)/)?.[1] || "jpg";
+      const res = await fetch(item.fileData);
+      const blob = await res.blob();
+      const formData = new FormData();
+      formData.append("file", new File([blob], `memory.${ext}`, { type: blob.type }));
+      formData.append("bucket", "memories");
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+      if (uploadRes.ok) {
+        const uploadData = await uploadRes.json();
+        filePath = uploadData.path;
+        fileUrl = uploadData.url;
+        storageBackend = uploadData.storageBackend;
       }
     } catch (e) {
       console.error("[Offline sync] File upload error:", e);
@@ -179,6 +172,7 @@ async function syncSingleMemory(item: QueuedMemory): Promise<void> {
     lightness: item.lightness,
     fileUrl,
     filePath,
+    storageBackend,
   });
 
   if (result.error) {

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { r2Remove, isR2Configured } from "@/lib/storage/r2";
 
 // Ensure a room exists in the DB, creating it if needed.
 // Maps local room IDs (like "fr1") to Supabase UUIDs.
@@ -64,6 +65,7 @@ export async function createMemory(data: {
   fileUrl?: string | null;
   filePath?: string | null;
   fileSize?: number | null;
+  storageBackend?: string | null;
 }) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -96,6 +98,7 @@ export async function createMemory(data: {
       file_url: data.fileUrl || null,
       file_path: data.filePath || null,
       file_size: data.fileSize || 0,
+      storage_backend: data.storageBackend || "supabase",
     })
     .select()
     .single();
@@ -172,17 +175,21 @@ export async function deleteMemoryAction(memoryId: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  // Get memory to find file_path for storage cleanup
+  // Get memory to find file_path and storage_backend for cleanup
   const { data: memory } = await supabase
     .from("memories")
-    .select("file_path")
+    .select("file_path, storage_backend")
     .eq("id", memoryId)
     .eq("user_id", user.id)
     .single();
 
-  // Delete from storage if there's an uploaded file
+  // Delete from the correct storage backend
   if (memory?.file_path) {
-    await supabase.storage.from("memories").remove([memory.file_path]);
+    if (memory.storage_backend === "r2" && isR2Configured()) {
+      try { await r2Remove("memories", [memory.file_path]); } catch { /* best-effort */ }
+    } else {
+      await supabase.storage.from("memories").remove([memory.file_path]);
+    }
   }
 
   const { error } = await supabase

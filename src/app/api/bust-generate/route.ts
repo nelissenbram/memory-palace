@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiConsent } from "@/lib/ai/check-consent";
 import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
+import { r2Upload, r2PublicUrl, isR2Configured } from "@/lib/storage/r2";
 import Anthropic from "@anthropic-ai/sdk";
 
 // TODO: Add a first-use consent dialog in the client UI to improve UX
@@ -191,29 +192,32 @@ Return ONLY the JSON, no explanation.`,
     );
   }
 
-  // ── Step 3: Store .glb in Supabase Storage ──
+  // ── Step 3: Store .glb in storage ──
   const path = `${user.id}/bust_${Date.now()}.glb`;
-  const { error: uploadError } = await supabase.storage
-    .from("busts")
-    .upload(path, Buffer.from(glbBuffer), {
-      contentType: "model/gltf-binary",
-      upsert: true,
-    });
+  let bustUrl: string;
 
-  if (uploadError) {
-    console.error("[bust-generate] Storage upload failed:", uploadError);
-    return NextResponse.json(
-      { error: "Internal error" },
-      { status: 500 }
-    );
+  try {
+    if (isR2Configured()) {
+      await r2Upload("busts", path, new Uint8Array(glbBuffer), "model/gltf-binary");
+      bustUrl = r2PublicUrl(path);
+    } else {
+      const { error: uploadError } = await supabase.storage
+        .from("busts")
+        .upload(path, Buffer.from(glbBuffer), {
+          contentType: "model/gltf-binary",
+          upsert: true,
+        });
+      if (uploadError) {
+        console.error("[bust-generate] Storage upload failed:", uploadError);
+        return NextResponse.json({ error: "Internal error" }, { status: 500 });
+      }
+      const { data: urlData } = supabase.storage.from("busts").getPublicUrl(path);
+      bustUrl = urlData?.publicUrl || `/api/media/busts/${path}`;
+    }
+  } catch (err) {
+    console.error("[bust-generate] Upload failed:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
-
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from("busts")
-    .getPublicUrl(path);
-
-  const bustUrl = urlData?.publicUrl;
 
   // ── Step 4: Update profile ──
   const { error: profileError } = await supabase

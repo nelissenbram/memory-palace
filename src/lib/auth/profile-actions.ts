@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revokeProviderToken } from "@/lib/integrations/helpers";
+import { r2Remove, r2List, isR2Configured } from "@/lib/storage/r2";
 
 const DEFAULT_WINGS = [
   { slug: "family", accent_color: "#C17F59" },
@@ -219,7 +220,7 @@ export async function deleteAccount() {
     return { error: deleteError.message };
   }
 
-  // 2. Delete user's storage files (uploaded memories/media)
+  // 2. Delete user's storage files from Supabase Storage (legacy)
   try {
     const { data: files } = await supabase.storage
       .from("memories")
@@ -233,7 +234,7 @@ export async function deleteAccount() {
     // Storage cleanup is best-effort; profile data is already deleted
   }
 
-  // 2b. Delete user's bust storage files
+  // 2b. Delete user's bust storage files from Supabase Storage (legacy)
   try {
     const { data: bustFiles } = await supabase.storage
       .from("busts")
@@ -244,7 +245,23 @@ export async function deleteAccount() {
       await supabase.storage.from("busts").remove(bustPaths);
     }
   } catch {
-    // Storage cleanup is best-effort; profile data is already deleted
+    // Storage cleanup is best-effort
+  }
+
+  // 2c. Delete user's files from R2 (new storage backend)
+  if (isR2Configured()) {
+    try {
+      const r2Memories = await r2List("memories", `${user.id}/`);
+      if (r2Memories.length > 0) {
+        await r2Remove("memories", r2Memories.map((f) => f.name));
+      }
+      const r2Busts = await r2List("busts", `${user.id}/`);
+      if (r2Busts.length > 0) {
+        await r2Remove("busts", r2Busts.map((f) => f.name));
+      }
+    } catch {
+      // Storage cleanup is best-effort
+    }
   }
 
   // 3. Delete auth.users record using admin client (requires service role key)
