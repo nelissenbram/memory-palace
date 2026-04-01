@@ -26,7 +26,7 @@ export async function GET() {
 
     if (authError || !user) {
       return NextResponse.json(
-        { error: "NOT_AUTHENTICATED", diag },
+        { error: "NOT_AUTHENTICATED", ...(process.env.NODE_ENV === "development" ? { diag } : {}) },
         { status: 401 }
       );
     }
@@ -35,7 +35,7 @@ export async function GET() {
     diag.push(`export:${"error" in result ? result.error : "ok"}`);
 
     if ("error" in result) {
-      return NextResponse.json({ error: result.error, diag }, { status: 500 });
+      return NextResponse.json({ error: result.error, ...(process.env.NODE_ENV === "development" ? { diag } : {}) }, { status: 500 });
     }
 
     diag.push(`files:${result.data.storage_files.length}`);

@@ -3,12 +3,17 @@ import crypto from "crypto";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 /* ── HMAC helpers for unsubscribe tokens ── */
-const UNSUBSCRIBE_SECRET =
-  process.env.CRON_SECRET || process.env.UNSUBSCRIBE_SECRET || "fallback-dev-secret";
+function getUnsubscribeSecret(): string {
+  const secret = process.env.CRON_SECRET || process.env.UNSUBSCRIBE_SECRET || "";
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("Missing CRON_SECRET or UNSUBSCRIBE_SECRET environment variable");
+  }
+  return secret;
+}
 
 /** Sign a userId into a tamper-proof unsubscribe token: `userId.hmacHex` */
 export function signUnsubscribeToken(userId: string): string {
-  const hmac = crypto.createHmac("sha256", UNSUBSCRIBE_SECRET).update(userId).digest("hex");
+  const hmac = crypto.createHmac("sha256", getUnsubscribeSecret()).update(userId).digest("hex");
   return `${userId}.${hmac}`;
 }
 
@@ -21,7 +26,7 @@ export function verifyUnsubscribeToken(token: string): string | null {
   const providedHmac = token.slice(dotIndex + 1);
 
   const expectedHmac = crypto
-    .createHmac("sha256", UNSUBSCRIBE_SECRET)
+    .createHmac("sha256", getUnsubscribeSecret())
     .update(userId)
     .digest("hex");
 

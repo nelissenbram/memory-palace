@@ -142,6 +142,38 @@ export default function PrivacyPolicyPage() {
             <strong>{t("howWeUseNeverBold")}</strong>
             {t("howWeUseNeverPost")}
           </P>
+          <h3
+            style={{
+              fontFamily: F.display,
+              fontSize: "1.125rem",
+              fontWeight: 500,
+              color: C.charcoal,
+              marginBottom: "0.5rem",
+              marginTop: "1.5rem",
+              lineHeight: 1.3,
+            }}
+          >
+            {t("howWeUseLegalBasisTitle")}
+          </h3>
+          <P>{t("howWeUseLegalBasisIntro")}</P>
+          <Ul>
+            <Li>
+              <strong>{t("howWeUseLegalBasisItem1Label")}</strong>
+              {t("howWeUseLegalBasisItem1Text")}
+            </Li>
+            <Li>
+              <strong>{t("howWeUseLegalBasisItem2Label")}</strong>
+              {t("howWeUseLegalBasisItem2Text")}
+            </Li>
+            <Li>
+              <strong>{t("howWeUseLegalBasisItem3Label")}</strong>
+              {t("howWeUseLegalBasisItem3Text")}
+            </Li>
+            <Li>
+              <strong>{t("howWeUseLegalBasisItem4Label")}</strong>
+              {t("howWeUseLegalBasisItem4Text")}
+            </Li>
+          </Ul>
         </Section>
 
         <Section title={t("whereStoredTitle")}>
@@ -269,6 +301,10 @@ export default function PrivacyPolicyPage() {
               <strong>{t("yourRightsItem7Label")}</strong>
               {t("yourRightsItem7Text")}
             </Li>
+            <Li>
+              <strong>{t("yourRightsItem8Label")}</strong>
+              {t("yourRightsItem8Text")}
+            </Li>
           </Ul>
           <P>
             {t("yourRightsOutroPre")}
@@ -292,6 +328,22 @@ export default function PrivacyPolicyPage() {
           </h3>
           <P>
             {t("dataBreachNotificationText")}
+          </P>
+          <h3
+            style={{
+              fontFamily: F.display,
+              fontSize: "1.125rem",
+              fontWeight: 500,
+              color: C.charcoal,
+              marginBottom: "0.5rem",
+              marginTop: "1.5rem",
+              lineHeight: 1.3,
+            }}
+          >
+            {t("automatedDecisionTitle")}
+          </h3>
+          <P>
+            {t("automatedDecisionText")}
           </P>
         </Section>
 
