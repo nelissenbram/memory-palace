@@ -160,7 +160,7 @@ async function syncSingleMemory(item: QueuedMemory): Promise<void> {
           filePath = path;
           const { data: urlData } = await supabase.storage
             .from("memories")
-            .createSignedUrl(path, 60 * 60 * 24 * 365);
+            .createSignedUrl(path, 60 * 60 * 24 * 7);
           fileUrl = urlData?.signedUrl || item.fileData;
         }
       }

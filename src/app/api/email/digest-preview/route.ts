@@ -4,6 +4,10 @@ import { generateDigestEmailHtml } from "@/lib/email/send-digest";
 import type { DigestEmailParams } from "@/lib/email/send-digest";
 
 export async function GET() {
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const params: DigestEmailParams = {
     recipientEmail: "bram@elyphont.com",
     userId: "preview-user-bram",

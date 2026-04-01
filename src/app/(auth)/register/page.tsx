@@ -18,6 +18,7 @@ function RegisterContent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
 
@@ -176,7 +177,29 @@ function RegisterContent() {
         style={inputStyle}
       />
 
-      <button type="submit" disabled={loading} style={buttonStyle(loading)}>
+      <label
+        htmlFor="register-age"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          marginTop: "1rem",
+          fontSize: "0.8125rem",
+          color: T.color.muted,
+          cursor: "pointer",
+        }}
+      >
+        <input
+          id="register-age"
+          type="checkbox"
+          checked={ageConfirmed}
+          onChange={(e) => setAgeConfirmed(e.target.checked)}
+          style={{ width: "1rem", height: "1rem", accentColor: T.color.terracotta }}
+        />
+        {t("ageConfirm")}
+      </label>
+
+      <button type="submit" disabled={loading || !ageConfirmed} style={buttonStyle(loading || !ageConfirmed)}>
         {loading ? t("creating") : t("createAccount")}
       </button>
 
@@ -270,19 +293,19 @@ const inputStyle: React.CSSProperties = {
   transition: "border-color 0.2s",
 };
 
-const buttonStyle = (loading: boolean): React.CSSProperties => ({
+const buttonStyle = (disabled: boolean): React.CSSProperties => ({
   width: "100%",
   padding: "0.875rem",
   borderRadius: "0.75rem",
   border: "none",
-  background: loading
+  background: disabled
     ? "#D4C5B240"
     : "linear-gradient(135deg, #C17F59, #8B7355)",
-  color: loading ? "#9A9183" : "#FFFFFF",
+  color: disabled ? "#9A9183" : "#FFFFFF",
   fontFamily: "'Source Sans 3', system-ui, sans-serif",
   fontSize: "0.9375rem",
   fontWeight: 600,
-  cursor: loading ? "default" : "pointer",
+  cursor: disabled ? "default" : "pointer",
   marginTop: "1.25rem",
   transition: "all 0.2s",
 });

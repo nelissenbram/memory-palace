@@ -165,7 +165,7 @@ export async function GET() {
     diag.push(`ERROR:${err instanceof Error ? err.message : String(err)}`);
     console.error("ZIP export error:", err, "diag:", diag);
     return NextResponse.json(
-      { error: "ZIP_EXPORT_FAILED", diag },
+      { error: "ZIP_EXPORT_FAILED", ...(process.env.NODE_ENV === "development" ? { diag } : {}) },
       { status: 500 }
     );
   }

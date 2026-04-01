@@ -125,7 +125,8 @@
     "passwordTooShort": "Password must be at least 8 characters",
     "passwordsMismatch": "Passwords do not match",
     "agreeTerms": "By creating an account, you agree to our",
-    "and": "and"
+    "and": "and",
+    "ageConfirm": "I confirm I am at least 16 years old"
   },
   "forgotPassword": {
     "title": "Reset Password",

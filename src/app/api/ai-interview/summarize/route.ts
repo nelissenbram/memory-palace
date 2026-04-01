@@ -125,7 +125,8 @@ Please write a beautiful narrative summary that weaves these stories together.`;
 
     if (!response.ok) {
       const errText = await response.text();
-      return NextResponse.json({ error: `AI API error: ${response.status} ${errText}` }, { status: response.status });
+      console.error(`[ai-interview/summarize] API error ${response.status}:`, errText);
+      return NextResponse.json({ error: "AI processing failed" }, { status: 502 });
     }
 
     const data = await response.json();

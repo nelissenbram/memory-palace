@@ -7,7 +7,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 const F = T.font;
 const C = T.color;
 
-const EMAIL = "support@memorypalace.app";
+const EMAIL = "privacy@thememorypalace.ai";
 const ODR_URL = "https://ec.europa.eu/consumers/odr";
 const MARKER = "@@LINK@@";
 

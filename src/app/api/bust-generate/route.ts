@@ -155,7 +155,7 @@ Return ONLY the JSON, no explanation.`,
       const errText = await blenderResponse.text();
       console.error("[bust-generate] Blender service error:", errText);
       return NextResponse.json(
-        { error: "Bust generation failed", detail: errText },
+        { error: "Bust generation failed" },
         { status: 502 }
       );
     }

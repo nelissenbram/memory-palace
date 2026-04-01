@@ -125,7 +125,8 @@
     "passwordTooShort": "Wachtwoord moet minimaal 8 tekens zijn",
     "passwordsMismatch": "Wachtwoorden komen niet overeen",
     "agreeTerms": "Door een account aan te maken ga je akkoord met onze",
-    "and": "en"
+    "and": "en",
+    "ageConfirm": "Ik bevestig dat ik minstens 16 jaar oud ben"
   },
   "forgotPassword": {
     "title": "Wachtwoord resetten",

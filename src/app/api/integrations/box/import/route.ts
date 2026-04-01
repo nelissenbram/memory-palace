@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        const { data: signedUrlData } = await supabase.storage.from("memories").createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+        const { data: signedUrlData } = await supabase.storage.from("memories").createSignedUrl(storagePath, 60 * 60 * 24 * 7);
         if (!signedUrlData?.signedUrl) {
           await supabase.storage.from("memories").remove([storagePath]);
           results.push({ id: fileId, success: false, error: "Failed to generate file URL" });

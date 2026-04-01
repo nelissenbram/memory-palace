@@ -60,7 +60,7 @@ async function handleUnsubscribe(request: Request) {
       userId = verified;
     } else {
       // Legacy fallback: treat uid as a bare user ID for already-sent emails.
-      // TODO: Remove this fallback ~90 days after HMAC tokens ship (safe to drop around July 2026).
+      // TODO: Remove this legacy fallback by July 2026 — after all pre-HMAC emails have expired.
       userId = uid;
     }
   } else if (email) {

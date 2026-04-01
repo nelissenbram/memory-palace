@@ -110,9 +110,10 @@ Keep it warm, personal, and under 300 words. No markdown formatting.`;
 
     if (!response.ok) {
       const errText = await response.text();
+      console.error(`[ai-context] API error ${response.status}:`, errText);
       return NextResponse.json(
-        { error: `AI API error: ${response.status} ${errText}` },
-        { status: response.status }
+        { error: "AI processing failed" },
+        { status: 502 }
       );
     }
 

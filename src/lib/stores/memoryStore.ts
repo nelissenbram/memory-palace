@@ -137,7 +137,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
           const { error: upErr } = await supabase.storage.from("memories").upload(path, blob, { contentType: blob.type });
           if (!upErr) {
             filePath = path;
-            const { data: urlData } = await supabase.storage.from("memories").createSignedUrl(path, 60 * 60 * 24 * 365);
+            const { data: urlData } = await supabase.storage.from("memories").createSignedUrl(path, 60 * 60 * 24 * 7);
             fileUrl = urlData?.signedUrl || mem.dataUrl;
           }
         }
@@ -184,7 +184,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
           const { error: upErr } = await supabase.storage.from("memories").upload(path, blob, { contentType: blob.type });
           if (!upErr) {
             filePath = path;
-            const { data: urlData } = await supabase.storage.from("memories").createSignedUrl(path, 60 * 60 * 24 * 365);
+            const { data: urlData } = await supabase.storage.from("memories").createSignedUrl(path, 60 * 60 * 24 * 7);
             fileUrl = urlData?.signedUrl || updates.dataUrl;
             // Update local state with the signed URL
             set((s) => {
