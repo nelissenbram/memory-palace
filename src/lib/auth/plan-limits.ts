@@ -55,7 +55,7 @@ export async function getUserPlan(userId?: string): Promise<UserSubscription> {
   };
 }
 
-export function getPlanLimits(plan: PlanId): PlanLimits {
+export async function getPlanLimits(plan: PlanId): Promise<PlanLimits> {
   return PLANS[plan].limits;
 }
 
@@ -74,7 +74,7 @@ export async function checkLimit(
 ): Promise<LimitCheckResult> {
   const supabase = await createClient();
   const subscription = await getUserPlan(userId);
-  const limits = getPlanLimits(subscription.plan);
+  const limits = await getPlanLimits(subscription.plan);
   const limit = limits[resource];
 
   // Unlimited

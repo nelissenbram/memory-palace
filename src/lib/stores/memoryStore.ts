@@ -125,6 +125,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     // Upload file to Storage if it's a data URL
     let fileUrl = mem.dataUrl;
     let filePath: string | null = null;
+    let fileSize: number | null = null;
     if (mem.dataUrl && mem.dataUrl.startsWith("data:")) {
       try {
         const supabase = createClient();
@@ -134,6 +135,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
           const path = `${user.id}/${Date.now()}.${ext}`;
           const res = await fetch(mem.dataUrl);
           const blob = await res.blob();
+          fileSize = blob.size;
           const { error: upErr } = await supabase.storage.from("memories").upload(path, blob, { contentType: blob.type });
           if (!upErr) {
             filePath = path;
@@ -147,7 +149,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     // Save to DB
     const result = await createMemory({
       roomId, title: mem.title, description: mem.desc || "", type: mem.type,
-      hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl, filePath,
+      hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl, filePath, fileSize,
     });
     if (result.memory) {
       set((s) => {

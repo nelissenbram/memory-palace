@@ -22,6 +22,7 @@ interface UsageData {
   wings: number;
   rooms: number;
   memories: number;
+  storageMb: number;
 }
 
 export default function SubscriptionPage() {
@@ -82,10 +83,20 @@ export default function SubscriptionPage() {
           supabase.from("memories").select("*", { count: "exact", head: true }).eq("user_id", user.id),
         ]);
 
+        // Load storage usage
+        const { data: storageData } = await supabase
+          .from("memories")
+          .select("file_size")
+          .eq("user_id", user.id);
+        const totalStorageMb = storageData
+          ? Math.round(storageData.reduce((sum: number, m: { file_size: number }) => sum + (m.file_size || 0), 0) / (1024 * 1024))
+          : 0;
+
         setUsage({
           wings: wingsRes.count || 0,
           rooms: roomsRes.count || 0,
           memories: memoriesRes.count || 0,
+          storageMb: totalStorageMb,
         });
       } catch {
         // ignore
@@ -380,6 +391,51 @@ export default function SubscriptionPage() {
               </div>
             );
           })}
+
+          {/* Storage usage bar */}
+          {usage && (
+            <div>
+              <div style={{
+                display: "flex", justifyContent: "space-between",
+                marginBottom: "0.375rem",
+              }}>
+                <span style={{ fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500, color: C.charcoal }}>
+                  {t("storageUsed")}
+                </span>
+                <span style={{
+                  fontFamily: F.body, fontSize: "0.8125rem",
+                  color: !limits.storageMb || limits.storageMb === -1 ? C.muted : (usage.storageMb / limits.storageMb > 0.8 ? C.terracotta : C.muted),
+                  fontWeight: !limits.storageMb || limits.storageMb === -1 ? 400 : (usage.storageMb / limits.storageMb > 0.8 ? 600 : 400),
+                }}>
+                  {usage.storageMb >= 1024
+                    ? `${(usage.storageMb / 1024).toFixed(1)} ${t("storageGb")}`
+                    : `${usage.storageMb} ${t("storageMb")}`}
+                  {" "}{t("storageOf")}{" "}
+                  {limits.storageMb === -1
+                    ? "\u221E"
+                    : limits.storageMb >= 1024
+                      ? `${(limits.storageMb / 1024).toFixed(0)} ${t("storageGb")}`
+                      : `${limits.storageMb} ${t("storageMb")}`}
+                </span>
+              </div>
+              <div style={{
+                height: "0.375rem",
+                borderRadius: 3,
+                background: `${C.sandstone}30`,
+                overflow: "hidden",
+              }}>
+                <div style={{
+                  height: "100%",
+                  borderRadius: 3,
+                  width: limits.storageMb === -1 ? "0%" : `${Math.min(100, limits.storageMb > 0 ? (usage.storageMb / limits.storageMb) * 100 : 0)}%`,
+                  background: limits.storageMb !== -1 && usage.storageMb / limits.storageMb > 0.8
+                    ? `linear-gradient(90deg, ${C.terracotta}, ${C.error})`
+                    : `linear-gradient(90deg, ${C.sage}, ${C.sage}cc)`,
+                  transition: "width 0.5s ease",
+                }} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Near-limit upgrade prompt — hidden in native app */}

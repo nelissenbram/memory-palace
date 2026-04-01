@@ -63,6 +63,7 @@ export async function createMemory(data: {
   lightness: number;
   fileUrl?: string | null;
   filePath?: string | null;
+  fileSize?: number | null;
 }) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -94,6 +95,7 @@ export async function createMemory(data: {
       lightness: data.lightness,
       file_url: data.fileUrl || null,
       file_path: data.filePath || null,
+      file_size: data.fileSize || 0,
     })
     .select()
     .single();

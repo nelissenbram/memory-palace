@@ -381,7 +381,12 @@
     "featureAiFeatures": "AI-functies",
     "featureLegacy": "Nalatenschapsfuncties",
     "featurePrioritySupport": "Prioritaire ondersteuning",
-    "featureFamilySharing": "Familie delen"
+    "featureFamilySharing": "Familie delen",
+    "storageUsed": "Opslag gebruikt",
+    "storageOf": "van",
+    "storageGb": "GB",
+    "storageMb": "MB",
+    "storageQuotaWarning": "Je opslag raakt vol. Overweeg om je abonnement te upgraden."
   },
   "connections": {
     "title": "Gekoppelde accounts",
@@ -2440,7 +2445,11 @@
     "featLegacy": "Nalatenschapsplanning",
     "featTimeCapsules": "Tijdcapsules",
     "featPrioritySupport": "Prioritaire ondersteuning",
-    "featAdvancedExport": "Geavanceerde export"
+    "featAdvancedExport": "Geavanceerde export",
+    "feat100Memories": "100 herinneringen",
+    "feat2gbStorage": "2 GB opslag",
+    "feat20gbStorage": "20 GB opslag",
+    "feat100gbStorage": "100 GB opslag"
   },
   "wings": {
     "family": "Familie",

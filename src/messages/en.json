@@ -381,7 +381,12 @@
     "featureAiFeatures": "AI features",
     "featureLegacy": "Legacy features",
     "featurePrioritySupport": "Priority support",
-    "featureFamilySharing": "Family sharing"
+    "featureFamilySharing": "Family sharing",
+    "storageUsed": "Storage used",
+    "storageOf": "of",
+    "storageGb": "GB",
+    "storageMb": "MB",
+    "storageQuotaWarning": "You're running low on storage. Consider upgrading your plan."
   },
   "connections": {
     "title": "Connected Accounts",
@@ -2440,7 +2445,11 @@
     "featLegacy": "Legacy planning",
     "featTimeCapsules": "Time capsules",
     "featPrioritySupport": "Priority support",
-    "featAdvancedExport": "Advanced export"
+    "featAdvancedExport": "Advanced export",
+    "feat100Memories": "100 memories",
+    "feat2gbStorage": "2 GB storage",
+    "feat20gbStorage": "20 GB storage",
+    "feat100gbStorage": "100 GB storage"
   },
   "wings": {
     "family": "Family",

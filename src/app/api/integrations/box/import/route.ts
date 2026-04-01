@@ -14,6 +14,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { downloadPhoto } from "@/lib/integrations/box";
 import { createClient } from "@/lib/supabase/server";
+import { checkLimit } from "@/lib/auth/plan-limits";
 
 export async function POST(request: NextRequest) {
   try {
@@ -63,6 +64,11 @@ export async function POST(request: NextRequest) {
     const dbRoomId = await resolveRoomId(supabase, user.id, roomId);
     if (!dbRoomId) {
       return NextResponse.json({ error: "Could not resolve room" }, { status: 400 });
+    }
+
+    const storageCheck = await checkLimit(user.id, "storageMb");
+    if (!storageCheck.allowed) {
+      return NextResponse.json({ error: "Storage quota exceeded", limit: storageCheck.limit, current: storageCheck.current }, { status: 403 });
     }
 
     // Check for duplicates: find which fileIds are already imported for this user
@@ -176,6 +182,7 @@ export async function POST(request: NextRequest) {
             type: isVideo ? "video" : isAudio ? "audio" : isImage ? "photo" : "document",
             file_path: storagePath,
             file_url: fileUrl,
+            file_size: data.byteLength,
             hue,
             saturation: 45 + Math.floor(Math.random() * 15),
             lightness: 55 + Math.floor(Math.random() * 15),
