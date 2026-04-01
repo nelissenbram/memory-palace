@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkAiConsent } from "@/lib/ai/check-consent";
+
+// TODO: Add a first-use consent dialog in the client UI to improve UX
+// instead of relying solely on the settings page toggles.
 
 interface ContextRequest {
   title: string;
@@ -16,6 +20,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    const consent = await checkAiConsent(supabase, user.id);
+    if (!consent.ok) {
+      return NextResponse.json({ error: consent.error }, { status: 403 });
+    }
+
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
@@ -29,6 +38,17 @@ export async function POST(req: NextRequest) {
 
     if (!title?.trim()) {
       return NextResponse.json({ error: "Memory title is required" }, { status: 400 });
+    }
+
+    // Input size limits
+    if (title.length > 500) {
+      return NextResponse.json({ error: "Title exceeds 500 characters" }, { status: 400 });
+    }
+    if (description && description.length > 5_000) {
+      return NextResponse.json({ error: "Description exceeds 5,000 characters" }, { status: 400 });
+    }
+    if (location && location.length > 500) {
+      return NextResponse.json({ error: "Location exceeds 500 characters" }, { status: 400 });
     }
 
     // Extract year from date

@@ -6,8 +6,12 @@ export async function POST(request: Request) {
   const authHeader = request.headers.get("x-internal-secret");
   const internalSecret = process.env.INTERNAL_API_SECRET;
 
-  // If an internal secret is configured, enforce it
-  if (internalSecret && authHeader !== internalSecret) {
+  // Fail-closed: if the secret is not configured, refuse all requests
+  if (!internalSecret) {
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+  }
+
+  if (authHeader !== internalSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -122,10 +122,6 @@ export default function PrivacyPolicyPage() {
               <strong>{t("whatWeCollectItem3Label")}</strong>
               {t("whatWeCollectItem3Text")}
             </Li>
-            <Li>
-              <strong>{t("whatWeCollectItem4Label")}</strong>
-              {t("whatWeCollectItem4Text")}
-            </Li>
           </Ul>
         </Section>
 
@@ -166,6 +162,10 @@ export default function PrivacyPolicyPage() {
             <Li>
               <strong>{t("whereStoredItem3Label")}</strong>
               {t("whereStoredItem3Text")}
+            </Li>
+            <Li>
+              <strong>{t("whereStoredCrossBorderTitle")}</strong>
+              {t("whereStoredCrossBorderText")}
             </Li>
           </Ul>
           <P>

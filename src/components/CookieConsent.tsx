@@ -15,7 +15,6 @@ export default function CookieConsent() {
   const { t } = useTranslation("cookieConsent");
   const [consent, setConsent] = useState<ConsentState>("accepted"); // default to hide flash
   const [showManage, setShowManage] = useState(false);
-  const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
 
   useEffect(() => {
     try {
@@ -39,12 +38,11 @@ export default function CookieConsent() {
     setConsent("accepted");
   }
 
-  function handleSavePreferences() {
-    const value = analyticsEnabled ? "accepted" : "rejected";
+  function handleReject() {
     try {
-      localStorage.setItem(STORAGE_KEY, value);
+      localStorage.setItem(STORAGE_KEY, "rejected");
     } catch { /* noop */ }
-    setConsent(value);
+    setConsent("rejected");
   }
 
   return (
@@ -57,13 +55,13 @@ export default function CookieConsent() {
         zIndex: 9999,
         background: C.charcoal,
         borderTop: `1px solid ${C.sandstone}30`,
-        padding: "0 clamp(16px, 4vw, 40px)",
-        boxShadow: "0 -4px 24px rgba(0,0,0,0.15)",
+        padding: "0 clamp(1rem, 4vw, 2.5rem)",
+        boxShadow: "0 -0.25rem 1.5rem rgba(0,0,0,0.15)",
       }}
     >
       <div
         style={{
-          maxWidth: 1100,
+          maxWidth: "68.75rem",
           margin: "0 auto",
           padding: showManage ? "1.25rem 0 1.5rem" : "1rem 0",
         }}
@@ -85,7 +83,7 @@ export default function CookieConsent() {
                 color: C.cream,
                 lineHeight: 1.5,
                 margin: 0,
-                flex: "1 1 400px",
+                flex: "1 1 25rem",
               }}
             >
               {t("message")}{" "}
@@ -94,7 +92,7 @@ export default function CookieConsent() {
                 style={{
                   color: C.terracotta,
                   textDecoration: "underline",
-                  textUnderlineOffset: "2px",
+                  textUnderlineOffset: "0.125rem",
                 }}
               >
                 {t("privacyPolicy")}
@@ -117,6 +115,23 @@ export default function CookieConsent() {
                 }}
               >
                 {t("manage")}
+              </button>
+              <button
+                onClick={handleReject}
+                style={{
+                  fontFamily: F.body,
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  color: C.white,
+                  background: "transparent",
+                  border: `1px solid ${C.sandstone}80`,
+                  borderRadius: "0.5rem",
+                  padding: "0.5rem 1.25rem",
+                  cursor: "pointer",
+                  transition: "opacity 0.2s",
+                }}
+              >
+                {t("reject")}
               </button>
               <button
                 onClick={handleAccept}
@@ -149,10 +164,10 @@ export default function CookieConsent() {
                 marginBottom: "1rem",
               }}
             >
-              {t("preferences")}
+              {t("preferencesTitle")}
             </h3>
 
-            {/* Essential */}
+            {/* Essential cookies */}
             <div
               style={{
                 display: "flex",
@@ -168,13 +183,13 @@ export default function CookieConsent() {
                     fontSize: "0.875rem",
                     fontWeight: 600,
                     color: C.cream,
-                    margin: "0 0 2px",
+                    margin: "0 0 0.125rem",
                   }}
                 >
-                  {t("essentialCookies")}
+                  {t("essentialTitle")}
                 </p>
                 <p style={{ fontSize: "0.75rem", color: C.muted, margin: 0 }}>
-                  {t("essentialDescription")}
+                  {t("essentialDesc")}
                 </p>
               </div>
               <span
@@ -188,7 +203,7 @@ export default function CookieConsent() {
               </span>
             </div>
 
-            {/* Analytics */}
+            {/* Preference cookies (locale) */}
             <div
               style={{
                 display: "flex",
@@ -203,44 +218,24 @@ export default function CookieConsent() {
                     fontSize: "0.875rem",
                     fontWeight: 600,
                     color: C.cream,
-                    margin: "0 0 2px",
+                    margin: "0 0 0.125rem",
                   }}
                 >
-                  {t("analyticsCookies")}
+                  {t("preferenceTitle")}
                 </p>
                 <p style={{ fontSize: "0.75rem", color: C.muted, margin: 0 }}>
-                  {t("analyticsDescription")}
+                  {t("preferenceDesc")}
                 </p>
               </div>
-              <button
-                onClick={() => setAnalyticsEnabled(!analyticsEnabled)}
+              <span
                 style={{
-                  width: "2.75rem",
-                  height: "1.5rem",
-                  borderRadius: "0.75rem",
-                  border: "none",
-                  background: analyticsEnabled ? C.sage : `${C.sandstone}60`,
-                  position: "relative",
-                  cursor: "pointer",
-                  transition: "background 0.2s",
-                  flexShrink: 0,
+                  fontSize: "0.75rem",
+                  color: C.muted,
+                  fontStyle: "italic",
                 }}
-                aria-label={analyticsEnabled ? t("analyticsEnabled") : t("analyticsDisabled")}
               >
-                <div
-                  style={{
-                    width: "1.125rem",
-                    height: "1.125rem",
-                    borderRadius: "50%",
-                    background: C.white,
-                    position: "absolute",
-                    top: 3,
-                    left: analyticsEnabled ? 23 : 3,
-                    transition: "left 0.2s",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                  }}
-                />
-              </button>
+                {t("optionalLabel")}
+              </span>
             </div>
 
             <div
@@ -266,7 +261,23 @@ export default function CookieConsent() {
                 {t("back")}
               </button>
               <button
-                onClick={handleSavePreferences}
+                onClick={handleReject}
+                style={{
+                  fontFamily: F.body,
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  color: C.white,
+                  background: "transparent",
+                  border: `1px solid ${C.sandstone}80`,
+                  borderRadius: "0.5rem",
+                  padding: "0.5rem 1.25rem",
+                  cursor: "pointer",
+                }}
+              >
+                {t("rejectAll")}
+              </button>
+              <button
+                onClick={handleAccept}
                 style={{
                   fontFamily: F.body,
                   fontSize: "0.8125rem",
@@ -279,7 +290,7 @@ export default function CookieConsent() {
                   cursor: "pointer",
                 }}
               >
-                {t("savePreferences")}
+                {t("acceptAll")}
               </button>
             </div>
           </div>

@@ -61,6 +61,9 @@ export default function ProfilePage() {
   const [bio, setBio] = useState("");
   const [goal, setGoal] = useState("");
   const [styleEra, setStyleEra] = useState("");
+  const [aiConsent, setAiConsent] = useState(false);
+  const [aiBiometricConsent, setAiBiometricConsent] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -101,6 +104,8 @@ export default function ProfilePage() {
           setBio(p.bio);
           setGoal(p.goal);
           setStyleEra(data.style_era || "roman");
+          setAiConsent(!!data.ai_consent);
+          setAiBiometricConsent(!!data.ai_biometric_consent);
         }
       } catch {
         // ignore
@@ -545,6 +550,159 @@ export default function ProfilePage() {
 
           {/* Download My Data */}
           <ExportPanel showToast={showToast} />
+        </div>
+      </div>
+
+      {/* ── AI Features Consent ── */}
+      <div style={{
+        background: T.color.white,
+        borderRadius: "1rem",
+        border: `1px solid ${T.color.cream}`,
+        padding: "1.75rem 2rem",
+        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        marginBottom: "1.5rem",
+      }}>
+        <h3 style={{
+          fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+          color: T.color.charcoal, margin: "0 0 0.375rem",
+        }}>
+          {t("aiFeatures")}
+        </h3>
+        <p style={{
+          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+          margin: "0 0 1.375rem", lineHeight: 1.5,
+        }}>
+          {t("aiFeaturesDesc")}
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* General AI consent toggle */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
+            background: T.color.linen,
+            border: `1px solid ${T.color.cream}`,
+          }}>
+            <div style={{ marginRight: "1rem" }}>
+              <div style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+                color: T.color.charcoal,
+              }}>
+                {t("aiConsent")}
+              </div>
+              <div style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                marginTop: "0.25rem", lineHeight: 1.4,
+              }}>
+                {t("aiConsentDesc")}
+              </div>
+            </div>
+            <button
+              role="switch"
+              aria-checked={aiConsent}
+              disabled={aiSaving}
+              onClick={async () => {
+                const newVal = !aiConsent;
+                setAiSaving(true);
+                setAiConsent(newVal);
+                // If disabling general AI, also disable biometric
+                if (!newVal && aiBiometricConsent) {
+                  setAiBiometricConsent(false);
+                  await updateProfile({ aiConsent: newVal, aiBiometricConsent: false });
+                } else {
+                  await updateProfile({ aiConsent: newVal });
+                }
+                showToast(newVal ? t("aiConsentOn") : t("aiConsentOff"), "success");
+                setAiSaving(false);
+              }}
+              style={{
+                width: "3.25rem",
+                height: "1.75rem",
+                borderRadius: "0.875rem",
+                border: "none",
+                background: aiConsent ? T.color.sage : T.color.sandstone,
+                cursor: aiSaving ? "wait" : "pointer",
+                position: "relative",
+                transition: "background .2s",
+                flexShrink: 0,
+                opacity: aiSaving ? 0.6 : 1,
+              }}
+            >
+              <span style={{
+                position: "absolute",
+                top: "0.1875rem",
+                left: aiConsent ? "1.6875rem" : "0.1875rem",
+                width: "1.375rem",
+                height: "1.375rem",
+                borderRadius: "0.6875rem",
+                background: T.color.white,
+                boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+                transition: "left .2s",
+              }} />
+            </button>
+          </div>
+
+          {/* Biometric AI consent toggle */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
+            background: T.color.linen,
+            border: `1px solid ${T.color.cream}`,
+            opacity: aiConsent ? 1 : 0.5,
+            pointerEvents: aiConsent ? "auto" : "none",
+          }}>
+            <div style={{ marginRight: "1rem" }}>
+              <div style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+                color: T.color.charcoal,
+              }}>
+                {t("aiBiometricConsent")}
+              </div>
+              <div style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                marginTop: "0.25rem", lineHeight: 1.4,
+              }}>
+                {t("aiBiometricConsentDesc")}
+              </div>
+            </div>
+            <button
+              role="switch"
+              aria-checked={aiBiometricConsent}
+              disabled={aiSaving || !aiConsent}
+              onClick={async () => {
+                const newVal = !aiBiometricConsent;
+                setAiSaving(true);
+                setAiBiometricConsent(newVal);
+                await updateProfile({ aiBiometricConsent: newVal });
+                showToast(newVal ? t("aiBiometricOn") : t("aiBiometricOff"), "success");
+                setAiSaving(false);
+              }}
+              style={{
+                width: "3.25rem",
+                height: "1.75rem",
+                borderRadius: "0.875rem",
+                border: "none",
+                background: aiBiometricConsent ? T.color.sage : T.color.sandstone,
+                cursor: aiSaving || !aiConsent ? "default" : "pointer",
+                position: "relative",
+                transition: "background .2s",
+                flexShrink: 0,
+                opacity: aiSaving ? 0.6 : 1,
+              }}
+            >
+              <span style={{
+                position: "absolute",
+                top: "0.1875rem",
+                left: aiBiometricConsent ? "1.6875rem" : "0.1875rem",
+                width: "1.375rem",
+                height: "1.375rem",
+                borderRadius: "0.6875rem",
+                background: T.color.white,
+                boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+                transition: "left .2s",
+              }} />
+            </button>
+          </div>
         </div>
       </div>
 

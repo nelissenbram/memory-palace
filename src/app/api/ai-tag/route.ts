@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkAiConsent } from "@/lib/ai/check-consent";
+
+// TODO: Add a first-use consent dialog in the client UI to improve UX
+// instead of relying solely on the settings page toggles.
 
 interface TagRequest {
   items: Array<{
@@ -25,6 +29,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    const consent = await checkAiConsent(supabase, user.id);
+    if (!consent.ok) {
+      return NextResponse.json({ error: consent.error }, { status: 403 });
+    }
+
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "AI tagging is not configured. Add ANTHROPIC_API_KEY to .env.local." }, { status: 503 });
@@ -32,6 +41,21 @@ export async function POST(req: NextRequest) {
 
     const body: TagRequest = await req.json();
     const { items, wings } = body;
+
+    // Input size limits
+    for (const item of items ?? []) {
+      if (item.fileName && item.fileName.length > 500) {
+        return NextResponse.json({ error: "File name exceeds 500 characters" }, { status: 400 });
+      }
+    }
+    for (const w of wings ?? []) {
+      if (w.name && w.name.length > 500) {
+        return NextResponse.json({ error: "Wing name exceeds 500 characters" }, { status: 400 });
+      }
+      if (w.desc && w.desc.length > 5_000) {
+        return NextResponse.json({ error: "Wing description exceeds 5,000 characters" }, { status: 400 });
+      }
+    }
 
     // Build the prompt
     const wingList = wings

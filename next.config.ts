@@ -117,6 +117,22 @@ const withPWA = withPWAInit({
   },
 });
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://*.supabase.co";
+
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self'",
+  `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
+  `img-src 'self' data: blob: ${supabaseUrl} https://*.supabase.co https://lh3.googleusercontent.com`,
+  `font-src 'self' https://fonts.gstatic.com`,
+  `connect-src 'self' ${supabaseUrl} https://*.supabase.co https://api.anthropic.com`,
+  "media-src 'self' blob:",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
 const nextConfig: NextConfig = {
   // Security headers
   async headers() {
@@ -130,6 +146,14 @@ const nextConfig: NextConfig = {
           {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(self), geolocation=()",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: cspDirectives,
           },
         ],
       },

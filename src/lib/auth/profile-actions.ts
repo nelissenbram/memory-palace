@@ -100,6 +100,8 @@ export async function updateProfile(data: {
   bustName?: string;
   bustGender?: string;
   bustPedestals?: Record<number, { faceUrl: string; name: string; gender: string }>;
+  aiConsent?: boolean;
+  aiBiometricConsent?: boolean;
 }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { success: true };
@@ -125,6 +127,8 @@ export async function updateProfile(data: {
   if (data.bustName !== undefined) updates.bust_name = data.bustName;
   if (data.bustGender !== undefined) updates.bust_gender = data.bustGender;
   if (data.bustPedestals !== undefined) updates.bust_pedestals = JSON.stringify(data.bustPedestals);
+  if (data.aiConsent !== undefined) updates.ai_consent = data.aiConsent;
+  if (data.aiBiometricConsent !== undefined) updates.ai_biometric_consent = data.aiBiometricConsent;
 
   if (Object.keys(updates).length === 0) {
     return { error: "No fields to update" };
@@ -205,6 +209,20 @@ export async function deleteAccount() {
     if (files && files.length > 0) {
       const paths = files.map((f) => `${user.id}/${f.name}`);
       await supabase.storage.from("memories").remove(paths);
+    }
+  } catch {
+    // Storage cleanup is best-effort; profile data is already deleted
+  }
+
+  // 2b. Delete user's bust storage files
+  try {
+    const { data: bustFiles } = await supabase.storage
+      .from("busts")
+      .list(user.id);
+
+    if (bustFiles && bustFiles.length > 0) {
+      const bustPaths = bustFiles.map((f) => `${user.id}/${f.name}`);
+      await supabase.storage.from("busts").remove(bustPaths);
     }
   } catch {
     // Storage cleanup is best-effort; profile data is already deleted

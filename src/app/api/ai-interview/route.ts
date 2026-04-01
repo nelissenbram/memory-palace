@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkAiConsent } from "@/lib/ai/check-consent";
+
+// TODO: Add a first-use consent dialog in the client UI to improve UX
+// instead of relying solely on the settings page toggles.
 
 interface InterviewRequest {
   interviewId: string;
@@ -18,6 +22,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    const consent = await checkAiConsent(supabase, user.id);
+    if (!consent.ok) {
+      return NextResponse.json({ error: consent.error }, { status: 403 });
+    }
+
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "Interview AI is not configured. Add ANTHROPIC_API_KEY to .env.local." }, { status: 503 });
@@ -28,6 +37,22 @@ export async function POST(req: NextRequest) {
 
     if (!userResponse.trim()) {
       return NextResponse.json({ error: "No response provided" }, { status: 400 });
+    }
+
+    // Input size limits
+    if (userResponse.length > 10_000) {
+      return NextResponse.json({ error: "Response exceeds 10,000 characters" }, { status: 400 });
+    }
+    if (questionText && questionText.length > 500) {
+      return NextResponse.json({ error: "Question text exceeds 500 characters" }, { status: 400 });
+    }
+    if (userName && userName.length > 500) {
+      return NextResponse.json({ error: "User name exceeds 500 characters" }, { status: 400 });
+    }
+    for (const r of previousResponses ?? []) {
+      if (r.response && r.response.length > 10_000) {
+        return NextResponse.json({ error: "A previous response exceeds 10,000 characters" }, { status: 400 });
+      }
     }
 
     const prevContext = previousResponses

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { checkAiConsent } from "@/lib/ai/check-consent";
 import Anthropic from "@anthropic-ai/sdk";
+
+// TODO: Add a first-use consent dialog in the client UI to improve UX
+// instead of relying solely on the settings page toggles.
 
 /**
  * POST /api/bust-generate
@@ -23,6 +27,12 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  // ── AI Consent check (requires both general + biometric) ──
+  const consent = await checkAiConsent(supabase, user.id, { requireBiometric: true });
+  if (!consent.ok) {
+    return NextResponse.json({ error: consent.error }, { status: 403 });
   }
 
   // ── Parse body ──
