@@ -32,6 +32,10 @@ import {
 import ModeTransition, {
   useModeTransition,
 } from "@/components/ui/ModeTransition";
+import LifeStoryWidget from "./LifeStoryWidget";
+import PalacePreview from "./PalacePreview";
+import { LIFE_AREAS } from "./LifeCompleteness";
+import AtriumStyles, { AtriumDivider } from "./AtriumStyles";
 
 /* ═══════════════════════════════════════════════════════════
    CSS KEYFRAMES — injected once via <style>
@@ -211,6 +215,25 @@ export default function HomeView() {
     return result;
   }, [wings, getWingRooms, userMems]);
 
+  /* ─── LIFE AREA & PALACE DATA ─── */
+
+  const lifeAreaData = useMemo(() => {
+    return LIFE_AREAS.map(area => {
+      const wingMems = allMemories.filter(({ wing }) => wing.id.includes(area.id) || area.id === "daily").length;
+      return { ...area, memoriesCount: wingMems, suggestedCount: area.target };
+    });
+  }, [allMemories]);
+
+  const overallCompleteness = useMemo(() => {
+    const total = lifeAreaData.reduce((sum, a) => sum + Math.min(a.memoriesCount / a.suggestedCount, 1), 0);
+    return Math.round((total / lifeAreaData.length) * 100);
+  }, [lifeAreaData]);
+
+  const palaceWings = useMemo(() => wings.map(w => ({
+    id: w.id, name: w.name, icon: w.icon, accent: w.accent,
+    memoryCount: (allMemories.filter(m => m.wing.id === w.id)).length,
+  })), [wings, allMemories]);
+
   /* ─── MODE SWITCHING ─── */
 
   const handleNavigateLibrary = useCallback(() => {
@@ -255,6 +278,7 @@ export default function HomeView() {
       }}
     >
       <style>{KEYFRAMES}</style>
+      <AtriumStyles />
 
       {/* ── 1. NAVIGATION BAR — always visible at top ── */}
       <NavigationBar
@@ -292,14 +316,55 @@ export default function HomeView() {
               onNavigateLibrary={handleNavigateLibrary}
               onNavigatePalace={handleNavigatePalace}
               isMobile={isMobile}
+              lifeCompleteness={overallCompleteness}
             />
           </div>
 
-          {/* ── 4. QUICK STATS ── */}
+          {/* ── 3b. DIVIDER ── */}
+          <AtriumDivider />
+
+          {/* ── 4. LIFE STORY WIDGET ── */}
           <div
             style={{
               marginTop: "2.5rem",
               ...sectionStyle(1),
+            }}
+          >
+            <LifeStoryWidget
+              lifeAreas={lifeAreaData}
+              overallCompleteness={overallCompleteness}
+              totalMemories={totalMemories}
+              onExploreArea={handleNavigateLibrary}
+              onStartInterview={() => setShowInterview(true)}
+              isMobile={isMobile}
+            />
+          </div>
+
+          {/* ── 4b. DIVIDER ── */}
+          <AtriumDivider />
+
+          {/* ── 5. PALACE PREVIEW ── */}
+          <div
+            style={{
+              marginTop: "2.5rem",
+              ...sectionStyle(2),
+            }}
+          >
+            <PalacePreview
+              wings={palaceWings}
+              totalRooms={totalRooms}
+              onEnterPalace={handleNavigatePalace}
+              onSelectWing={() => handleNavigateLibrary()}
+              isMobile={isMobile}
+              hour={new Date().getHours()}
+            />
+          </div>
+
+          {/* ── 6. QUICK STATS ── */}
+          <div
+            style={{
+              marginTop: "2.5rem",
+              ...sectionStyle(3),
             }}
           >
             <QuickStats
@@ -311,12 +376,12 @@ export default function HomeView() {
             />
           </div>
 
-          {/* ── 5. RECENT MEMORIES ── */}
+          {/* ── 7. RECENT MEMORIES ── */}
           {recentMemories.length > 0 && (
             <div
               style={{
                 marginTop: "2.5rem",
-                ...sectionStyle(2),
+                ...sectionStyle(4),
               }}
             >
               <RecentMemories
@@ -332,7 +397,7 @@ export default function HomeView() {
             </div>
           )}
 
-          {/* ── 6 & 7. TRACK PROGRESS + ACHIEVEMENT SHOWCASE ── */}
+          {/* ── 8 & 9. TRACK PROGRESS + ACHIEVEMENT SHOWCASE ── */}
           <div
             style={{
               marginTop: "2.5rem",
@@ -340,7 +405,7 @@ export default function HomeView() {
               flexDirection: isMobile ? "column" : undefined,
               gridTemplateColumns: isMobile ? undefined : "1fr 1fr",
               gap: "1.5rem",
-              ...sectionStyle(3),
+              ...sectionStyle(5),
             }}
           >
             <TrackProgress
@@ -357,12 +422,12 @@ export default function HomeView() {
             />
           </div>
 
-          {/* ── 8. ON THIS DAY ── */}
+          {/* ── 10. ON THIS DAY ── */}
           {onThisDayMemories.length > 0 && (
             <div
               style={{
                 marginTop: "2.5rem",
-                ...sectionStyle(4),
+                ...sectionStyle(6),
               }}
             >
               <OnThisDayCard
@@ -377,12 +442,12 @@ export default function HomeView() {
             </div>
           )}
 
-          {/* ── 9. SHARED ROOMS PREVIEW ── */}
+          {/* ── 11. SHARED ROOMS PREVIEW ── */}
           {sharedRoomsList.length > 0 && (
             <div
               style={{
                 marginTop: "2.5rem",
-                ...sectionStyle(5),
+                ...sectionStyle(7),
               }}
             >
               <SharedRoomsPreview
@@ -400,11 +465,11 @@ export default function HomeView() {
             </div>
           )}
 
-          {/* ── 10. INTERVIEW PROMPT ── */}
+          {/* ── 12. INTERVIEW PROMPT ── */}
           <div
             style={{
               marginTop: "2.5rem",
-              ...sectionStyle(6),
+              ...sectionStyle(8),
             }}
           >
             <InterviewPrompt

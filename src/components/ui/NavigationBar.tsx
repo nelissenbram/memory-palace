@@ -32,49 +32,63 @@ const MODE_META: Record<ModeKey, { icon: string; labelKey: string }> = {
 };
 
 const EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
+const EASE_OUT = "cubic-bezier(0.0, 0, 0.2, 1)";
+const EASE_SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 
 /* ------------------------------------------------------------------ */
 /*  Keyframe styles (injected once)                                    */
 /* ------------------------------------------------------------------ */
 
 const KEYFRAMES = `
-@keyframes navBarFadeIn {
-  from { opacity: 0; transform: translateY(-0.5rem); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes navSlideDown {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-1.5rem) scale(0.96); }
+  60%  { opacity: 1; transform: translateX(-50%) translateY(0.1rem) scale(1.005); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
-@keyframes navBarFadeInMobile {
-  from { opacity: 0; transform: translateY(0.5rem); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes navIndicatorSlide {
-  from { opacity: 0.6; }
-  to   { opacity: 1; }
+@keyframes navSlideUp {
+  0%   { opacity: 0; transform: translateY(2rem); }
+  60%  { opacity: 1; transform: translateY(-0.1rem); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 @keyframes navPulse {
   0%   { transform: scale(1); }
-  40%  { transform: scale(1.06); }
+  40%  { transform: scale(1.08); }
   100% { transform: scale(1); }
+}
+@keyframes navMobileIconPop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.2); }
+  100% { transform: scale(1.1); }
+}
+@keyframes navGlowPulse {
+  0%   { box-shadow: 0 0.25rem 1.5rem rgba(209,175,55,0.08); }
+  50%  { box-shadow: 0 0.25rem 2rem rgba(209,175,55,0.14); }
+  100% { box-shadow: 0 0.25rem 1.5rem rgba(209,175,55,0.08); }
+}
+@keyframes navAvatarShine {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
 }
 `;
 
 /* ------------------------------------------------------------------ */
-/*  Active-mode background helpers                                     */
+/*  Active-mode styling helpers                                        */
 /* ------------------------------------------------------------------ */
 
-function activeBackground(mode: ModeKey): string {
+function activeIndicatorBg(mode: ModeKey): string {
   switch (mode) {
     case "atrium":
-      return `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`;
+      return `linear-gradient(135deg, ${T.color.gold} 0%, ${T.color.terracotta} 100%)`;
     case "library":
-      return T.color.warmStone;
+      return `linear-gradient(135deg, ${T.color.warmStone} 0%, ${T.color.cream} 100%)`;
     case "3d":
-      return T.color.charcoal;
+      return `linear-gradient(135deg, ${T.color.charcoal} 0%, #3D3D3A 100%)`;
     default:
       return "transparent";
   }
 }
 
-function activeColor(mode: ModeKey): string {
+function activeTextColor(mode: ModeKey): string {
   switch (mode) {
     case "atrium":
       return T.color.white;
@@ -87,9 +101,17 @@ function activeColor(mode: ModeKey): string {
   }
 }
 
-function activeBorder(mode: ModeKey): string {
-  if (mode === "library") return `2px solid ${T.color.terracotta}`;
-  return "2px solid transparent";
+function activeIndicatorShadow(mode: ModeKey): string {
+  switch (mode) {
+    case "atrium":
+      return "0 0.125rem 0.75rem rgba(209,175,55,0.3), 0 0.0625rem 0.25rem rgba(193,127,89,0.2)";
+    case "library":
+      return "0 0.125rem 0.5rem rgba(139,115,85,0.12)";
+    case "3d":
+      return "0 0.125rem 0.75rem rgba(44,44,42,0.3)";
+    default:
+      return "none";
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -117,12 +139,30 @@ export default function NavigationBar({
   const [mounted, setMounted] = useState(false);
   const [pulsingMode, setPulsingMode] = useState<ModeKey | null>(null);
   const [hoveringMode, setHoveringMode] = useState<ModeKey | null>(null);
+  const [scrollShrunk, setScrollShrunk] = useState(false);
 
-  /* ---- mount fade-in ---- */
+  /* ---- mount entrance ---- */
   useEffect(() => {
     const raf = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(raf);
   }, []);
+
+  /* ---- scroll-based shrink for desktop ---- */
+  useEffect(() => {
+    if (isMobile) return;
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          setScrollShrunk(window.scrollY > 40);
+          ticking = false;
+        });
+      }
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isMobile]);
 
   /* ---- sliding indicator position ---- */
   const updateIndicator = useCallback(() => {
@@ -131,7 +171,6 @@ export default function NavigationBar({
     if (!btn || !container) return;
 
     if (isMobile) {
-      /* top-border style indicator for mobile */
       const cRect = container.getBoundingClientRect();
       const bRect = btn.getBoundingClientRect();
       setIndicatorStyle({
@@ -139,13 +178,13 @@ export default function NavigationBar({
         top: 0,
         left: `${bRect.left - cRect.left}px`,
         width: `${bRect.width}px`,
-        height: "0.125rem",
-        background: T.color.terracotta,
-        borderRadius: "0 0 0.125rem 0.125rem",
-        transition: `left 0.3s ${EASE}, width 0.3s ${EASE}`,
+        height: "0.1875rem",
+        background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
+        borderRadius: "0 0 0.1875rem 0.1875rem",
+        transition: `left 0.35s ${EASE_SPRING}, width 0.35s ${EASE}`,
+        boxShadow: `0 0.125rem 0.5rem rgba(193,127,89,0.35)`,
       });
     } else {
-      /* pill highlight behind the active desktop button */
       const cRect = container.getBoundingClientRect();
       const bRect = btn.getBoundingClientRect();
       setIndicatorStyle({
@@ -154,11 +193,10 @@ export default function NavigationBar({
         left: `${bRect.left - cRect.left}px`,
         width: `${bRect.width}px`,
         height: `${bRect.height}px`,
-        background: activeBackground(currentMode),
-        borderRadius: "1.75rem",
-        borderLeft: activeBorder(currentMode),
-        transition: `all 0.3s ${EASE}`,
-        animation: "navIndicatorSlide 0.3s ease",
+        background: activeIndicatorBg(currentMode),
+        borderRadius: "1.5rem",
+        boxShadow: activeIndicatorShadow(currentMode),
+        transition: `all 0.35s ${EASE_SPRING}`,
         pointerEvents: "none" as const,
       });
     }
@@ -176,7 +214,7 @@ export default function NavigationBar({
       if (mode === currentMode) return;
       setPulsingMode(mode);
       onModeChange(mode);
-      setTimeout(() => setPulsingMode(null), 350);
+      setTimeout(() => setPulsingMode(null), 400);
     },
     [currentMode, onModeChange],
   );
@@ -208,10 +246,10 @@ export default function NavigationBar({
             left: 0,
             right: 0,
             zIndex: 50,
-            background: "rgba(250,250,247,0.92)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            borderTop: `1px solid ${T.color.cream}`,
+            background: "rgba(250,250,247,0.88)",
+            backdropFilter: "blur(1.5rem) saturate(180%)",
+            WebkitBackdropFilter: "blur(1.5rem) saturate(180%)",
+            borderTop: `0.0625rem solid rgba(238,234,227,0.6)`,
             display: "flex",
             alignItems: "stretch",
             justifyContent: "space-around",
@@ -219,12 +257,12 @@ export default function NavigationBar({
             transform: hidden ? "translateY(100%)" : "translateY(0)",
             opacity: hidden ? 0 : 1,
             transition: `transform 0.3s ${EASE}, opacity 0.25s ${EASE}`,
-            animation: mounted ? "navBarFadeInMobile 0.3s ease both" : "none",
+            animation: mounted ? `navSlideUp 0.5s ${EASE_OUT} both` : "none",
             fontFamily: T.font.body,
           }}
         >
           {/* sliding top indicator */}
-          <div style={indicatorStyle} />
+          <div style={indicatorStyle} aria-hidden />
 
           {mobileTabs.map(({ mode, icon, labelKey }) => {
             const isMe = mode === "me";
@@ -252,7 +290,7 @@ export default function NavigationBar({
                   alignItems: "center",
                   justifyContent: "center",
                   gap: "0.125rem",
-                  padding: "0.5rem 0",
+                  padding: "0.5rem 0 0.375rem",
                   background: "none",
                   border: "none",
                   cursor: "pointer",
@@ -260,23 +298,39 @@ export default function NavigationBar({
                   fontFamily: T.font.body,
                   fontSize: "0.625rem",
                   fontWeight: isActive ? 600 : 400,
-                  letterSpacing: "0.02em",
-                  transition: `color 0.25s ${EASE}`,
+                  letterSpacing: "0.03em",
+                  textTransform: "uppercase" as const,
+                  transition: `color 0.3s ${EASE}, opacity 0.3s ${EASE}`,
+                  opacity: isActive ? 1 : 0.7,
                   WebkitTapHighlightColor: "transparent",
-                  animation:
-                    pulsingMode === mode ? "navPulse 0.35s ease" : "none",
                 }}
               >
                 <span
                   style={{
-                    fontSize: "1.25rem",
+                    fontSize: "1.375rem",
                     lineHeight: 1,
+                    transition: `transform 0.3s ${EASE_SPRING}`,
+                    transform: isActive ? "scale(1.1)" : "scale(1)",
+                    animation:
+                      pulsingMode === mode
+                        ? `navMobileIconPop 0.4s ${EASE_SPRING}`
+                        : "none",
                   }}
                   aria-hidden
                 >
                   {icon}
                 </span>
-                <span>{t(labelKey)}</span>
+                <span
+                  style={{
+                    maxHeight: isActive ? "1rem" : "0",
+                    overflow: "hidden",
+                    opacity: isActive ? 1 : 0,
+                    transform: isActive ? "translateY(0)" : "translateY(-0.125rem)",
+                    transition: `all 0.3s ${EASE}`,
+                  }}
+                >
+                  {t(labelKey)}
+                </span>
               </button>
             );
           })}
@@ -289,6 +343,9 @@ export default function NavigationBar({
   /*  DESKTOP                                                          */
   /* ================================================================ */
 
+  const desktopScale = scrollShrunk ? 0.95 : 1;
+  const desktopY = hidden ? "-120%" : "0";
+
   return (
     <>
       <style>{KEYFRAMES}</style>
@@ -296,26 +353,26 @@ export default function NavigationBar({
         aria-label={t("nav_label")}
         style={{
           position: "fixed",
-          top: "1rem",
+          top: "0.875rem",
           left: "50%",
-          transform: hidden
-            ? "translateX(-50%) translateY(-120%)"
-            : "translateX(-50%) translateY(0)",
+          transform: `translateX(-50%) translateY(${desktopY}) scale(${desktopScale})`,
           zIndex: 50,
           display: "flex",
           alignItems: "center",
-          background: "rgba(250,250,247,0.85)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          border: `1px solid ${T.color.cream}`,
-          boxShadow: "0 4px 24px rgba(44,44,42,0.08)",
-          borderRadius: "2rem",
+          background: "rgba(250,250,247,0.78)",
+          backdropFilter: "blur(1.5rem) saturate(180%)",
+          WebkitBackdropFilter: "blur(1.5rem) saturate(180%)",
+          border: `0.0625rem solid rgba(238,234,227,0.5)`,
+          boxShadow: scrollShrunk
+            ? "0 0.25rem 2rem rgba(44,44,42,0.1), 0 0.0625rem 0.25rem rgba(44,44,42,0.04)"
+            : "0 0.25rem 1.5rem rgba(44,44,42,0.07), 0 0.0625rem 0.125rem rgba(44,44,42,0.03)",
+          borderRadius: "2.25rem",
           padding: "0.25rem",
-          height: "3rem",
+          height: "3.25rem",
           fontFamily: T.font.body,
           opacity: hidden ? 0 : 1,
-          transition: `transform 0.3s ${EASE}, opacity 0.25s ${EASE}`,
-          animation: mounted ? "navBarFadeIn 0.3s ease both" : "none",
+          transition: `transform 0.4s ${EASE}, opacity 0.3s ${EASE}, box-shadow 0.4s ${EASE}`,
+          animation: mounted ? `navSlideDown 0.55s ${EASE_OUT} both` : "none",
         }}
       >
         {/* ---- mode button group with sliding indicator ---- */}
@@ -334,6 +391,7 @@ export default function NavigationBar({
           {MODES.map((mode) => {
             const meta = MODE_META[mode];
             const isActive = mode === currentMode;
+            const isHovered = hoveringMode === mode;
 
             return (
               <button
@@ -351,25 +409,35 @@ export default function NavigationBar({
                   display: "flex",
                   alignItems: "center",
                   gap: "0.375rem",
-                  padding: "0.5rem 1.25rem",
-                  borderRadius: "1.75rem",
+                  padding: "0.5rem 1.375rem",
+                  borderRadius: "1.5rem",
                   border: "none",
                   background:
-                    !isActive && hoveringMode === mode
-                      ? "rgba(44,44,42,0.05)"
+                    !isActive && isHovered
+                      ? "rgba(44,44,42,0.06)"
                       : "transparent",
-                  color: isActive ? activeColor(mode) : T.color.walnut,
+                  color: isActive ? activeTextColor(mode) : T.color.walnut,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
-                  fontWeight: 500,
+                  fontWeight: isActive ? 600 : 500,
+                  letterSpacing: "0.01em",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
-                  transition: `color 0.25s ${EASE}, background 0.25s ${EASE}`,
+                  transition: `color 0.3s ${EASE}, background 0.3s ${EASE}, font-weight 0.3s ${EASE}`,
                   animation:
-                    pulsingMode === mode ? "navPulse 0.35s ease" : "none",
+                    pulsingMode === mode ? `navPulse 0.35s ${EASE_SPRING}` : "none",
+                  opacity: !isActive && !isHovered ? 0.75 : 1,
                 }}
               >
-                <span aria-hidden style={{ fontSize: "0.9375rem", lineHeight: 1 }}>
+                <span
+                  aria-hidden
+                  style={{
+                    fontSize: "0.9375rem",
+                    lineHeight: 1,
+                    transition: `transform 0.3s ${EASE_SPRING}`,
+                    transform: isActive ? "scale(1.1)" : "scale(1)",
+                  }}
+                >
                   {meta.icon}
                 </span>
                 <span>{t(meta.labelKey)}</span>
@@ -382,101 +450,67 @@ export default function NavigationBar({
         <div
           aria-hidden
           style={{
-            width: "1px",
-            height: "1.5rem",
-            background: T.color.cream,
-            margin: "0 0.5rem",
+            width: "0.0625rem",
+            height: "1.25rem",
+            background: `linear-gradient(180deg, transparent, ${T.color.sandstone}44, transparent)`,
+            margin: "0 0.625rem",
             flexShrink: 0,
           }}
         />
 
-        {/* ---- right actions ---- */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          {/* user avatar */}
-          <button
-            onClick={() => { window.location.href = "/settings"; }}
-            aria-label={t("user_settings")}
-            onMouseEnter={(e) => {
-              (e.currentTarget.style.background = `rgba(44,44,42,0.08)`);
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget.style.background = "none");
-            }}
-            style={{
-              width: "2rem",
-              height: "2rem",
-              borderRadius: "50%",
-              border: `1px solid ${T.color.cream}`,
-              background: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              fontFamily: T.font.body,
-              fontSize: "0.75rem",
-              fontWeight: 600,
-              color: T.color.walnut,
-              transition: `background 0.2s ${EASE}`,
-            }}
-          >
-            {userInitial ?? (
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            )}
-          </button>
-
-          {/* settings gear */}
-          <button
-            onClick={() => { window.location.href = "/settings"; }}
-            aria-label={t("settings")}
-            onMouseEnter={(e) => {
-              (e.currentTarget.style.background = `rgba(44,44,42,0.08)`);
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget.style.background = "none");
-            }}
-            style={{
-              width: "2rem",
-              height: "2rem",
-              borderRadius: "50%",
-              border: "none",
-              background: "none",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              color: T.color.walnut,
-              transition: `background 0.2s ${EASE}`,
-            }}
-          >
+        {/* ---- user avatar ---- */}
+        <button
+          onClick={() => {
+            window.location.href = "/settings";
+          }}
+          aria-label={t("user_settings")}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.08)";
+            e.currentTarget.style.boxShadow =
+              "0 0.125rem 0.75rem rgba(209,175,55,0.2)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = "none";
+          }}
+          style={{
+            width: "2.25rem",
+            height: "2.25rem",
+            borderRadius: "50%",
+            border: `0.0625rem solid ${T.color.cream}`,
+            background: userInitial
+              ? `linear-gradient(135deg, ${T.color.gold}40, ${T.color.terracotta}50)`
+              : "rgba(242,237,231,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            fontFamily: T.font.display,
+            fontSize: "0.8125rem",
+            fontWeight: 700,
+            color: T.color.walnut,
+            transition: `transform 0.25s ${EASE_SPRING}, box-shadow 0.25s ${EASE}, border-color 0.25s ${EASE}`,
+            marginRight: "0.1875rem",
+            flexShrink: 0,
+          }}
+        >
+          {userInitial ?? (
             <svg
-              width="15"
-              height="15"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden
             >
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
             </svg>
-          </button>
-        </div>
+          )}
+        </button>
       </nav>
     </>
   );
