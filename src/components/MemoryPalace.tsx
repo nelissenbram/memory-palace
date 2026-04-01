@@ -18,7 +18,7 @@ import SearchBar from "@/components/ui/SearchBar";
 import UploadPanel from "@/components/ui/UploadPanel";
 import SharingPanel from "@/components/ui/SharingPanel";
 import MemoryDetail from "@/components/ui/MemoryDetail";
-import DirectoryPanel from "@/components/ui/DirectoryPanel";
+import NavigationBar from "@/components/ui/NavigationBar";
 import RoomManagerPanel from "@/components/ui/RoomManagerPanel";
 import WingManagerPanel from "@/components/ui/WingManagerPanel";
 import AchievementsPanel from "@/components/ui/AchievementsPanel";
@@ -350,7 +350,7 @@ export default function MemoryPalace(){
   const safeBottom = isMobile ? bottomBarHeight + 8 : 70;
 
   // ── Home mode: render Home dashboard ──
-  if (navMode === "home" && !walkthroughActive) {
+  if (navMode === "atrium" && !walkthroughActive) {
     return <HomeView />;
   }
 
@@ -380,24 +380,14 @@ export default function MemoryPalace(){
         }
       }} onSharingSettings={() => setShowSharingSettings(true)} />}
 
-      {/* Library mode toggle — visible in 3D mode */}
-      {!walkthroughActive && (view === "exterior" || view === "entrance") && (
-        <button
-          onClick={() => setNavMode("library")}
-          style={{
-            position: "absolute", top: isMobile ? 12 : 14, left: isMobile ? 12 : 14, zIndex: 35,
-            padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
-            background: `${T.color.white}e6`, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-            border: `1px solid ${T.color.cream}`, cursor: "pointer",
-            fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500, color: T.color.walnut,
-            display: "flex", alignItems: "center", gap: "0.375rem",
-            boxShadow: "0 2px 8px rgba(44,44,42,.06)",
-            animation: "fadeIn .5s ease .5s both",
-          }}
-        >
-          {"\u{1F4DA}"} {tAction("directory")}
-        </button>
-      )}
+      {/* NavigationBar — mode switcher (atrium / library / 3D) */}
+      <NavigationBar
+        currentMode="3d"
+        onModeChange={(mode) => setNavMode(mode as any)}
+        isMobile={isMobile}
+        userName={userName}
+        hidden={!!selMem || showUpload || showSharing || walkthroughActive}
+      />
 
       {/* Portal transition overlay */}
       {portalAnim&&<div style={{position:"absolute",inset:0,zIndex:45,pointerEvents:"none",animation:"portalFlash .5s ease both",background:"radial-gradient(ellipse at center,rgba(200,168,104,.6) 0%,rgba(200,168,104,.15) 40%,transparent 70%)"}}/>}
@@ -522,7 +512,6 @@ export default function MemoryPalace(){
         onToggleMore={() => setMoreMenuOpen(!moreMenuOpen)}
         onCloseMore={closeMore}
         onUpload={() => { closeMore(); setShowUpload(true); }}
-        onDirectory={() => { closeMore(); setShowDirectory(true); }}
         onAchievements={() => { closeMore(); setShowAchievements(true); }}
         onMassImport={() => { closeMore(); setShowMassImport(true); }}
         onTimeline={() => { closeMore(); setShowTimeline(true); }}
@@ -553,13 +542,6 @@ export default function MemoryPalace(){
         }
       }} roomMemories={allRoomMems} onUpdateMemory={handleUpdateMemory}/>}
       {showSharing&&activeRoomId&&<SharingPanel wing={wingData} room={activeRoomData} roomId={activeRoomId} sharing={currentSharing(activeRoomId)} onUpdate={(u: any)=>{updateSharing(activeRoomId,u);markChecklistItem("share_room");}} onClose={()=>setShowSharing(false)}/>}
-      {showDirectory&&<DirectoryPanel onClose={()=>setShowDirectory(false)} onNavigateSharedWing={(shareId, wingSlug, roomId) => {
-        const shareInfo = sharedWings.find(sw => sw.shareId === shareId);
-        if (shareInfo) {
-          setSharedContext({ shareId, wingSlug, ownerId: shareInfo.ownerId, ownerName: shareInfo.ownerName, canAdd: (shareInfo as any).canAdd ?? false, canEdit: (shareInfo as any).canEdit ?? false, canDelete: (shareInfo as any).canDelete ?? false });
-          getSharedWingData(shareId).then(result => { if (result.wing && result.rooms) { setSharedWingData(result); enterCorridor(`shared:${wingSlug}:${shareId}`); if (roomId) setTimeout(() => enterRoom(roomId), 600); } });
-        }
-      }}/>}
       {showRoomManager&&activeWing&&wingData&&<RoomManagerPanel wing={wingData} onClose={()=>{setShowRoomManager(false);markChecklistItem("customize_room");}} onEnterRoom={enterRoom}/>}
       {showWingManager&&<WingManagerPanel onClose={()=>setShowWingManager(false)}/>}
       {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory}/>}
@@ -738,7 +720,6 @@ interface MobileBottomBarProps {
   onToggleMore: () => void;
   onCloseMore: () => void;
   onUpload: () => void;
-  onDirectory: () => void;
   onAchievements: () => void;
   onMassImport: () => void;
   onTimeline: () => void;
@@ -811,7 +792,6 @@ function MobileBottomBar(props: MobileBottomBarProps) {
           display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10,
         }}>
           {[
-            { icon: "\u{1F4C2}", label: tAction("directory"), action: props.onDirectory },
             { icon: "\u2699\uFE0F", label: tAction("palaceMap"), action: props.onWingManager },
             { icon: "\uD83C\uDF99\uFE0F", label: tAction("interviews"), action: props.onInterviews },
             { icon: "\u{1F4E6}", label: tAction("import"), action: props.onMassImport },

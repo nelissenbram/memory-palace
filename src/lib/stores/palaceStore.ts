@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-type NavMode = "home" | "library" | "3d";
+type NavMode = "atrium" | "library" | "3d";
 
 interface PalaceState {
   navMode: NavMode;
@@ -30,12 +30,14 @@ interface PalaceState {
 }
 
 function loadNavMode(): NavMode {
-  if (typeof window === "undefined") return "home";
+  if (typeof window === "undefined") return "atrium";
   try {
     const stored = localStorage.getItem("mp_nav_mode");
-    if (stored === "home" || stored === "3d" || stored === "library") return stored;
+    if (stored === "atrium" || stored === "3d" || stored === "library") return stored;
+    // Migrate legacy "home" value
+    if (stored === "home") return "atrium";
   } catch {}
-  return "home";
+  return "atrium";
 }
 
 export const usePalaceStore = create<PalaceState>((set, get) => ({
