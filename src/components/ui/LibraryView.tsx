@@ -12,6 +12,7 @@ import type { Wing, WingRoom } from "@/lib/constants/wings";
 import Image from "next/image";
 import MemoryDetail from "@/components/ui/MemoryDetail";
 import UploadPanel from "@/components/ui/UploadPanel";
+import NotificationBell from "@/components/ui/NotificationBell";
 
 const TYPE_ICONS: Record<string, string> = {
   photo: "\u{1F5BC}\uFE0F", video: "\u{1F3AC}", album: "\u{1F4D6}",
@@ -309,6 +310,21 @@ export default function LibraryView() {
                 </p>
               )}
             </div>
+            {selectedRoom && (
+              <button
+                onClick={() => setShowUploadFor({ wingId: selectedWing, roomId: selectedRoom })}
+                style={{
+                  width: "1.75rem", height: "1.75rem", borderRadius: "50%",
+                  background: currentWing.accent, color: T.color.white, border: "none",
+                  cursor: "pointer", fontSize: "1rem", lineHeight: 1,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}
+                title={t("addMemory")}
+              >
+                +
+              </button>
+            )}
           </div>
 
           {/* Search */}
@@ -332,6 +348,15 @@ export default function LibraryView() {
               {"\u{1F50D}"}
             </span>
           </div>
+
+          <NotificationBell />
+
+          {/* Settings — mobile */}
+          {isMobile && (
+            <a href="/settings" style={{ fontSize: "1.125rem", lineHeight: 1, color: T.color.walnut, textDecoration: "none" }}>
+              {"\u2699\uFE0F"}
+            </a>
+          )}
 
           {/* 3D toggle — mobile */}
           {isMobile && (
