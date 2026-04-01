@@ -65,6 +65,7 @@ import DiscoveryMenu from "@/components/ui/DiscoveryMenu";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import BustBuilderPanel from "@/components/ui/BustBuilderPanel";
+import LibraryView from "@/components/ui/LibraryView";
 import { getWingsSharedWithMe, getSharedWingData, getSharedRoomMemories } from "@/lib/auth/sharing-actions";
 import type { SharedWingDoor } from "@/components/3d/EntranceHallScene";
 
@@ -81,8 +82,8 @@ export default function MemoryPalace(){
   // ── Stores ──
   const { profileLoading, onboarded, firstWing, styleEra, bustTextureUrl, bustModelUrl, bustProportions, userName, bustName, bustGender, bustPedestals,
     loadProfile, finishOnboarding, setStyleEra } = useUserStore();
-  const { view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim, roomLayouts,
-    setHovWing, setHovDoor, enterWing, enterEntrance, enterCorridor, enterRoom, setRoomLayout, exitToPalace, exitToCorridor, exitToEntrance } = usePalaceStore();
+  const { navMode, view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim, roomLayouts,
+    setNavMode, setHovWing, setHovDoor, enterWing, enterEntrance, enterCorridor, enterRoom, setRoomLayout, exitToPalace, exitToCorridor, exitToEntrance } = usePalaceStore();
   const { selMem, showUpload, showSharing, showDirectory, searchQuery, filterType,
     setSelMem, setShowUpload, setShowSharing, setShowDirectory, setSearchQuery, setFilterType } = useMemoryStore();
   const { getWingRooms, customRooms } = useRoomStore();
@@ -347,6 +348,43 @@ export default function MemoryPalace(){
   const bottomBarHeight = isMobile ? 64 : 0;
   const safeBottom = isMobile ? bottomBarHeight + 8 : 70;
 
+  // ── Library mode callbacks ──
+  const handleLibraryUpload = useCallback((wingId: string, roomId: string) => {
+    setNavMode("3d");
+    enterCorridor(wingId);
+    setTimeout(() => {
+      enterRoom(roomId);
+      setTimeout(() => setShowUpload(true), 600);
+    }, 600);
+  }, [setNavMode, enterCorridor, enterRoom, setShowUpload]);
+
+  const handleLibrarySelectMemory = useCallback((mem: any, wingId: string, roomId: string) => {
+    setNavMode("3d");
+    enterCorridor(wingId);
+    setTimeout(() => {
+      enterRoom(roomId);
+      setTimeout(() => setSelMem(mem), 600);
+    }, 600);
+  }, [setNavMode, enterCorridor, enterRoom, setSelMem]);
+
+  const handleLibraryOpenGallery = useCallback((wingId: string, roomId: string) => {
+    setNavMode("3d");
+    enterCorridor(wingId);
+    setTimeout(() => {
+      enterRoom(roomId);
+      setTimeout(() => setShowGallery(true), 600);
+    }, 600);
+  }, [setNavMode, enterCorridor, enterRoom]);
+
+  // ── Library mode: render Library view instead of 3D (skip during walkthrough) ──
+  if (navMode === "library" && !walkthroughActive) {
+    return <LibraryView
+      onOpenUpload={handleLibraryUpload}
+      onSelectMemory={handleLibrarySelectMemory}
+      onOpenGallery={handleLibraryOpenGallery}
+    />;
+  }
+
   return(
     <div style={{width:"100vw",height:"100dvh",background:T.color.sandstone,position:"relative",overflow:"hidden"}}>
       <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}`}</style>
@@ -367,6 +405,25 @@ export default function MemoryPalace(){
           getSharedWingData(shareId).then(result => { if (result.wing && result.rooms) { setSharedWingData(result); enterCorridor(`shared:${wingSlug}:${shareId}`); } });
         }
       }} onSharingSettings={() => setShowSharingSettings(true)} />}
+
+      {/* Library mode toggle — visible in 3D mode */}
+      {!walkthroughActive && (view === "exterior" || view === "entrance") && (
+        <button
+          onClick={() => setNavMode("library")}
+          style={{
+            position: "absolute", top: isMobile ? 12 : 14, left: isMobile ? 12 : 14, zIndex: 35,
+            padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
+            background: `${T.color.white}e6`, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+            border: `1px solid ${T.color.cream}`, cursor: "pointer",
+            fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500, color: T.color.walnut,
+            display: "flex", alignItems: "center", gap: "0.375rem",
+            boxShadow: "0 2px 8px rgba(44,44,42,.06)",
+            animation: "fadeIn .5s ease .5s both",
+          }}
+        >
+          {"\u{1F4DA}"} {tAction("directory")}
+        </button>
+      )}
 
       {/* Portal transition overlay */}
       {portalAnim&&<div style={{position:"absolute",inset:0,zIndex:45,pointerEvents:"none",animation:"portalFlash .5s ease both",background:"radial-gradient(ellipse at center,rgba(200,168,104,.6) 0%,rgba(200,168,104,.15) 40%,transparent 70%)"}}/>}

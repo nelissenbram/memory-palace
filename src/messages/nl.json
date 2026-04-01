@@ -2518,5 +2518,24 @@
     "confirm": "Hier plaatsen",
     "placing": "Plaatsen...",
     "placed": "Kamer geplaatst in {wing}!"
+  },
+  "library": {
+    "title": "Bibliotheek",
+    "subtitle": "{count} herinneringen in alle vleugels",
+    "wingCount": "{rooms} kamers · {memories} herinneringen",
+    "searchPlaceholder": "Herinneringen zoeken...",
+    "searchResults": "{count} resultaten voor \"{query}\"",
+    "memoryCount": "{count} herinneringen",
+    "shared": "Gedeeld",
+    "all": "Alles",
+    "addMemory": "Herinnering toevoegen",
+    "addFirst": "Voeg je eerste herinnering toe",
+    "emptyRoom": "Deze kamer is leeg",
+    "noResults": "Geen herinneringen gevonden",
+    "openGallery": "Galerij weergave",
+    "viewIn3D": "Bekijk in 3D",
+    "enterPalace": "Betreed 3D Paleis",
+    "libraryMode": "Bibliotheek",
+    "palaceMode": "3D Paleis"
   }
 }

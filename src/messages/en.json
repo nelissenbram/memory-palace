@@ -2518,5 +2518,24 @@
     "confirm": "Place here",
     "placing": "Placing...",
     "placed": "Room placed in {wing}!"
+  },
+  "library": {
+    "title": "Library",
+    "subtitle": "{count} memories across all wings",
+    "wingCount": "{rooms} rooms · {memories} memories",
+    "searchPlaceholder": "Search memories...",
+    "searchResults": "{count} results for \"{query}\"",
+    "memoryCount": "{count} memories",
+    "shared": "Shared",
+    "all": "All",
+    "addMemory": "Add memory",
+    "addFirst": "Add your first memory",
+    "emptyRoom": "This room is empty",
+    "noResults": "No memories found",
+    "openGallery": "Gallery view",
+    "viewIn3D": "View in 3D",
+    "enterPalace": "Enter 3D Palace",
+    "libraryMode": "Library",
+    "palaceMode": "3D Palace"
   }
 }

@@ -1,6 +1,9 @@
 import { create } from "zustand";
 
+type NavMode = "library" | "3d";
+
 interface PalaceState {
+  navMode: NavMode;
   view: string; // "exterior" | "entrance" | "corridor" | "room"
   activeWing: string | null;
   activeRoomId: string | null;
@@ -11,6 +14,7 @@ interface PalaceState {
   _timer: ReturnType<typeof setTimeout> | null;
   roomLayouts: Record<string, string>; // roomId → layout override id
 
+  setNavMode: (mode: NavMode) => void;
   setHovWing: (v: string | null) => void;
   setHovDoor: (v: string | null) => void;
   fade: (cb: () => void) => void;
@@ -25,7 +29,17 @@ interface PalaceState {
   setRoomLayout: (roomId: string, layoutId: string) => void;
 }
 
+function loadNavMode(): NavMode {
+  if (typeof window === "undefined") return "library";
+  try {
+    const stored = localStorage.getItem("mp_nav_mode");
+    if (stored === "3d" || stored === "library") return stored;
+  } catch {}
+  return "library";
+}
+
 export const usePalaceStore = create<PalaceState>((set, get) => ({
+  navMode: loadNavMode(),
   view: "exterior",
   activeWing: null,
   activeRoomId: null,
@@ -36,6 +50,10 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
   _timer: null,
   roomLayouts: {},
 
+  setNavMode: (mode) => {
+    set({ navMode: mode });
+    try { localStorage.setItem("mp_nav_mode", mode); } catch {}
+  },
   setHovWing: (v) => set({ hovWing: v }),
   setHovDoor: (v) => set({ hovDoor: v }),
 
