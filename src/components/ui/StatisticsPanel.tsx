@@ -636,6 +636,29 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
               </div>
             </div>
           </div>
+
+          {/* 7. Weekly Digest Link */}
+          <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
+            <button
+              onClick={() => { window.location.href = "/digest"; }}
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                color: T.color.terracotta,
+                background: `${T.color.terracotta}10`,
+                border: `1px solid ${T.color.terracotta}30`,
+                borderRadius: "0.5rem",
+                padding: "0.625rem 1.25rem",
+                cursor: "pointer",
+                transition: "background 0.2s ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = `${T.color.terracotta}20`; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = `${T.color.terracotta}10`; }}
+            >
+              {t("weeklyDigestLink")}
+            </button>
+          </div>
         </div>
       </div>
     </div>

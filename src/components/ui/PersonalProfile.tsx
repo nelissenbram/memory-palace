@@ -4,6 +4,7 @@ import React, { useMemo } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TuscanCard from "./TuscanCard";
+import { WingIcon } from "./WingRoomIcons";
 
 /* ═══════════════════════════════════════════════════════════════════
    i18n keys (namespace: "atrium")
@@ -21,6 +22,8 @@ import TuscanCard from "./TuscanCard";
    profile.visualStoryteller  → "Visual storyteller"
    profile.mixedStoryteller   → "Mixed storyteller"
    profile.writtenStoryteller → "Written storyteller"
+   profile.portraitTitle       → "{name}'s Portrait"
+   profile.wikiSummary        → "Based on your {count} memories across ..."
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -205,8 +208,8 @@ function LifeChaptersCard({
       <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
         {sorted.map((w, i) => (
           <div key={w.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span style={{ fontSize: "0.875rem", width: "1.25rem", textAlign: "center" }}>
-              {w.icon}
+            <span style={{ fontSize: "0.875rem", width: "1.25rem", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <WingIcon wingId={w.id} size={14} color={T.color.gold} />
             </span>
             <div style={{ flex: 1, position: "relative", height: "0.5rem", borderRadius: "0.25rem", background: "rgba(255,255,255,0.08)" }}>
               <div
@@ -238,7 +241,7 @@ function LifeChaptersCard({
       {sorted[0] && (
         <p style={insightSummaryStyle}>
           <span style={{ color: T.color.gold, fontWeight: 600 }}>{sorted[0].name}</span>{" "}
-          {sorted[0].icon}{" "}
+          <WingIcon wingId={sorted[0].id} size={12} color={T.color.gold} />{" "}
           <span style={{ color: T.color.linen, opacity: 0.7 }}>
             — {sorted[0].memoryCount} memories
           </span>
@@ -417,7 +420,7 @@ function CoverageMapCard({
                 transition: "background 0.3s ease",
               }}
             >
-              {w.icon}
+              <WingIcon wingId={w.id} size={12} color={filled ? T.color.gold : "rgba(255,255,255,0.3)"} />
             </div>
           );
         })}
@@ -595,7 +598,9 @@ export default function PersonalProfile({
               letterSpacing: "0.015em",
             }}
           >
-            {t("profile.title")}
+            {userName
+              ? t("profile.portraitTitle", { name: userName })
+              : t("profile.title")}
           </h3>
         </div>
       </div>
@@ -657,6 +662,28 @@ export default function PersonalProfile({
         />
       </div>
 
+      {/* ── Wiki Summary ────────────────────────────────────────── */}
+      {totalMemories > 0 && (
+        <p
+          style={{
+            position: "relative",
+            fontFamily: T.font.body,
+            fontSize: "0.8125rem",
+            color: "rgba(255,255,255,0.65)",
+            margin: "0 0 1.25rem",
+            lineHeight: 1.6,
+            fontStyle: "italic",
+            animation: "pp-fadeIn 0.5s ease-out 0.45s both",
+          }}
+        >
+          {t("profile.wikiSummary", {
+            count: String(totalMemories),
+            wings: String(totalWings),
+            topWing: mostActive?.name ?? "",
+          })}
+        </p>
+      )}
+
       {/* ── Key Stats Row ──────────────────────────────────────── */}
       <div
         style={{
@@ -678,7 +705,7 @@ export default function PersonalProfile({
         {/* Most active wing */}
         {mostActive && (
           <StatCell
-            value={`${mostActive.icon} ${mostActive.name}`}
+            value={mostActive.name}
             label={t("profile.mostActive")}
             isText
           />

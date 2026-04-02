@@ -933,7 +933,8 @@
     "days": "days",
     "memories": "memories",
     "noData": "Add memories to see your insights",
-    "close": "Close"
+    "close": "Close",
+    "weeklyDigestLink": "View Latest Weekly Digest"
   },
   "walkthrough": {
     "phase0": "Welcome to your Memory Palace, {name}. Click the entrance to step inside.",
@@ -1799,7 +1800,9 @@
     "allWings": "All wings",
     "more": "+{count} more",
     "noLocations": "No locations yet",
-    "noLocationsDesc": "Add GPS coordinates to your memories to see them on the map",
+    "noLocationsDesc": "Add locations to your memories to see them on the map",
+    "mapTutorial": "Add locations to your memories when uploading photos, or edit any memory to set its place. Memories with locations will appear on your map.",
+    "mapGoToLibrary": "Go to Library",
     "location": "location",
     "memory": "memory",
     "memories": "memories",
@@ -2793,9 +2796,9 @@
     "interview.enhanceTitle": "Enrich Your Memories",
     "interview.enhanceSubtitle": "Every story deserves to be told in full",
     "interview.headline": "Your Voice Matters",
-    "interview.pitch": "Our AI interviewer asks the questions your grandchildren would ask — and turns your answers into beautifully written stories. Just talk, we do the rest.",
+    "interview.pitch": "Our AI interviewer helps you relive and deepen your most precious memories — for yourself, your partner, your children, your friends, and generations to come. Just talk, we do the rest.",
     "interview.beginFirstSession": "Start My First Interview",
-    "interview.socialProof": "Join thousands preserving their family stories",
+    "interview.socialProof": "Join thousands preserving life stories for themselves and their loved ones",
     "interview.browseAll": "Browse all 18 interviews",
     "interview.minutesShort": "min",
     "interview.example1Title": "Love Story",
@@ -2821,18 +2824,20 @@
     "profile.coverageMap": "Coverage Map",
     "profile.mostActive": "Most Active",
     "profile.daysSinceFirst": "Days Since First",
-    "profile.exploreProfile": "Explore Full Profile"
+    "profile.exploreProfile": "Explore Full Profile",
+    "profile.portraitTitle": "{name}'s Portrait",
+    "profile.wikiSummary": "Based on your {count} memories across {wings} life chapters, your story is rich in {topWing} memories. Every photo, recording and story adds another chapter to your personal portrait."
   },
   "enhance": {
     "sectionTitle": "Enrich Your Memories",
     "uploadTitle": "Add Photos & Videos",
-    "uploadDesc": "Import your visual memories",
+    "uploadDesc": "Add photos, videos and audio — or browse and organize in your Library",
     "aiTitle": "AI Enhancement",
-    "aiDesc": "Auto-tag, describe & organize",
+    "aiDesc": "Auto-tag and describe your memories with AI — labels, dates, locations, and stories added in seconds",
     "writeTitle": "Write Stories",
-    "writeDesc": "Add context to your memories",
+    "writeDesc": "Add written stories to your photos, rooms or wings — with optional AI writing assistance",
     "organizeTitle": "Organize Wings",
-    "organizeDesc": "Arrange your palace rooms"
+    "organizeDesc": "Customize your wings, add or rename rooms, and reorganize your memory palace"
   },
   "discover": {
     "sectionTitle": "Explore Your Palace",

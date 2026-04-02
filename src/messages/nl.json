@@ -933,7 +933,8 @@
     "days": "dagen",
     "memories": "herinneringen",
     "noData": "Voeg herinneringen toe om je inzichten te zien",
-    "close": "Sluiten"
+    "close": "Sluiten",
+    "weeklyDigestLink": "Bekijk laatste weekoverzicht"
   },
   "walkthrough": {
     "phase0": "Welkom in je Memory Palace, {name}. Klik op de ingang om naar binnen te gaan.",
@@ -1799,7 +1800,9 @@
     "allWings": "Alle vleugels",
     "more": "+{count} meer",
     "noLocations": "Nog geen locaties",
-    "noLocationsDesc": "Voeg GPS-coördinaten toe aan je herinneringen om ze op de kaart te zien",
+    "noLocationsDesc": "Voeg locaties toe aan je herinneringen om ze op de kaart te zien",
+    "mapTutorial": "Voeg locaties toe aan je herinneringen bij het uploaden, of bewerk een herinnering om de plek in te stellen. Herinneringen met locaties verschijnen op je kaart.",
+    "mapGoToLibrary": "Ga naar Bibliotheek",
     "location": "locatie",
     "memory": "herinnering",
     "memories": "herinneringen",
@@ -2793,9 +2796,9 @@
     "interview.enhanceTitle": "Verrijk je herinneringen",
     "interview.enhanceSubtitle": "Elk verhaal verdient om volledig verteld te worden",
     "interview.headline": "Jouw Stem Telt",
-    "interview.pitch": "Onze AI-interviewer stelt de vragen die je kleinkinderen zouden stellen — en maakt er prachtig geschreven verhalen van. Gewoon praten, wij doen de rest.",
+    "interview.pitch": "Onze AI-interviewer helpt je je mooiste herinneringen te herbeleven en te verdiepen — voor jezelf, je partner, je kinderen, je vrienden, en toekomstige generaties. Gewoon praten, wij doen de rest.",
     "interview.beginFirstSession": "Start mijn eerste interview",
-    "interview.socialProof": "Sluit je aan bij duizenden die hun familieverhalen bewaren",
+    "interview.socialProof": "Sluit je aan bij duizenden die levensverhalen bewaren voor zichzelf en hun dierbaren",
     "interview.browseAll": "Bekijk alle 18 interviews",
     "interview.minutesShort": "min",
     "interview.example1Title": "Liefdesverhaal",
@@ -2821,18 +2824,20 @@
     "profile.coverageMap": "Dekkingskaart",
     "profile.mostActive": "Meest actief",
     "profile.daysSinceFirst": "Dagen sinds eerste herinnering",
-    "profile.exploreProfile": "Verken volledig profiel"
+    "profile.exploreProfile": "Verken volledig profiel",
+    "profile.portraitTitle": "Portret van {name}",
+    "profile.wikiSummary": "Op basis van je {count} herinneringen verdeeld over {wings} levenshoofdstukken is je verhaal rijk aan {topWing}-herinneringen. Elke foto, opname en elk verhaal voegt een nieuw hoofdstuk toe aan je persoonlijke portret."
   },
   "enhance": {
     "sectionTitle": "Verrijk je herinneringen",
     "uploadTitle": "Foto's & video's toevoegen",
-    "uploadDesc": "Importeer je visuele herinneringen",
+    "uploadDesc": "Voeg foto's, video's en audio toe — of bekijk en organiseer in je Bibliotheek",
     "aiTitle": "AI-verbetering",
-    "aiDesc": "Auto-tag, beschrijf & organiseer",
-    "writeTitle": "Verhalen schrijven",
-    "writeDesc": "Voeg context toe aan je herinneringen",
+    "aiDesc": "Tag en beschrijf je herinneringen automatisch met AI — labels, datums, locaties en verhalen in seconden toegevoegd",
+    "writeTitle": "Schrijf verhalen",
+    "writeDesc": "Voeg geschreven verhalen toe aan je foto's, kamers of vleugels — met optionele AI-schrijfhulp",
     "organizeTitle": "Vleugels ordenen",
-    "organizeDesc": "Rangschik je paleiskamers"
+    "organizeDesc": "Pas je vleugels aan, voeg kamers toe of hernoem ze, en reorganiseer je geheugenpaleis"
   },
   "discover": {
     "sectionTitle": "Ontdek je paleis",

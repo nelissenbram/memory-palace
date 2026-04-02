@@ -53,6 +53,7 @@ export default function HomeView() {
   const isMobile = useIsMobile();
   const { t } = useTranslation("atrium");
   const { t: tTracks } = useTranslation("tracksPanel");
+  const { t: tAch } = useTranslation("achievementsPanel");
   const { userName } = useUserStore();
   const { navMode, setNavMode } = usePalaceStore();
   const { getWings, getWingRooms } = useRoomStore();
@@ -189,7 +190,7 @@ export default function HomeView() {
       const ach = ACHIEVEMENTS.find((a) => a.id === id);
       return {
         id,
-        name: ach?.titleKey ?? id,
+        name: ach?.titleKey ? tAch(ach.titleKey) : id,
         descKey: ach?.descKey,
         icon: ach?.icon ?? "🏆",
         earnedAt: earnedDates[id],
@@ -346,7 +347,7 @@ export default function HomeView() {
           >
             <EnhanceMemories
               onUploadPhotos={() => setShowMassImport(true)}
-              onAIEnhance={() => setShowMassImport(true)}
+              onAIEnhance={() => handleNavigateLibrary()}
               onAddDescription={() => handleNavigateLibrary()}
               onOrganize={() => handleNavigateLibrary()}
               isMobile={isMobile}
@@ -365,7 +366,7 @@ export default function HomeView() {
               totalWings={totalWings}
               wingsData={wingsData}
               userName={userName}
-              onViewFullProfile={() => handleNavigateLibrary()}
+              onViewFullProfile={() => { window.location.href = "/settings/profile"; }}
               onStartInterview={() => setShowInterview(true)}
               isMobile={isMobile}
             />

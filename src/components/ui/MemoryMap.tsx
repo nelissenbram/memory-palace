@@ -8,6 +8,56 @@ import { WINGS } from "@/lib/constants/wings";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import Image from "next/image";
+import { WingIcon } from "./WingRoomIcons";
+
+/* ── Inline SVG icons to replace emoji ── */
+
+function GlobeIcon({ size = 20, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
+
+function MapPinIcon({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
+    </svg>
+  );
+}
+
+function CameraIcon({ size = 20, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
+function MicIcon({ size = 20, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+      <line x1="12" y1="19" x2="12" y2="23" />
+      <line x1="8" y1="23" x2="16" y2="23" />
+    </svg>
+  );
+}
+
+function PenIcon({ size = 20, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", verticalAlign: "middle" }}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
+}
 
 interface MemoryMapProps {
   userMems: Record<string, Mem[]>;
@@ -235,7 +285,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
         }}>
           <div>
             <h2 style={{ fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
-              {"\uD83C\uDF0D"} {t("title")}
+              <GlobeIcon size={22} color={T.color.charcoal} /> {t("title")}
             </h2>
             <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
               {t("memoriesAcross", { memCount: String(allLocMems.length), locCount: String(uniqueLocations) })}
@@ -272,10 +322,37 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
               color: filterWing === w.id ? w.accent : T.color.muted, cursor: "pointer",
               whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.25rem",
             }}>
-              <span style={{ fontSize: "0.8125rem" }}>{w.icon}</span> {w.name}
+              <WingIcon wingId={w.id} size={13} color={filterWing === w.id ? w.accent : T.color.muted} /> {w.name}
             </button>
           ))}
         </div>
+
+        {/* Tutorial card */}
+        {clusters.length === 0 && (
+          <div style={{
+            padding: "0.75rem 1.5rem", display: "flex", alignItems: "center", gap: "0.75rem",
+            background: `${T.color.gold}08`, borderBottom: `1px solid ${T.color.cream}`,
+          }}>
+            <MapPinIcon size={18} color={T.color.walnut} />
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut,
+              margin: 0, lineHeight: 1.5, flex: 1,
+            }}>
+              {t("mapTutorial")}
+            </p>
+            <button
+              onClick={() => { onClose(); window.location.href = "/"; }}
+              style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                color: T.color.walnut, background: `${T.color.gold}20`,
+                border: `1px solid ${T.color.gold}40`, borderRadius: "0.375rem",
+                padding: "0.375rem 0.75rem", cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              {t("mapGoToLibrary")}
+            </button>
+          </div>
+        )}
 
         {/* Map area */}
         <div ref={containerRef} style={{ flex: 1, position: "relative", overflow: "hidden", margin: "1rem", borderRadius: "0.75rem", border: `1px solid ${T.color.sandstone}40` }}>
@@ -326,7 +403,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                     boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
                     pointerEvents: "none",
                   }}>
-                    <div style={{ fontWeight: 600, marginBottom: "0.125rem" }}>{"\uD83D\uDCCD"} {pin.locationName}</div>
+                    <div style={{ fontWeight: 600, marginBottom: "0.125rem", display: "flex", alignItems: "center", gap: "0.25rem" }}><MapPinIcon size={14} color="#FFF" /> {pin.locationName}</div>
                     {pin.mems.slice(0, 4).map((m, j) => (
                       <div key={j} style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.625rem" }}>
                         {m.mem.title}
@@ -357,7 +434,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                 background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)",
                 padding: "1.5rem 2.25rem", borderRadius: "1rem", textAlign: "center",
               }}>
-                <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{"\uD83C\uDF10"}</div>
+                <div style={{ marginBottom: "0.5rem" }}><GlobeIcon size={36} color="rgba(255,255,255,0.7)" /></div>
                 <p style={{ fontFamily: T.font.display, fontSize: "1.125rem", color: "#FFF", margin: "0 0 0.25rem" }}>{t("noLocations")}</p>
                 <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "rgba(255,255,255,0.6)", margin: 0 }}>
                   {t("noLocationsDesc")}
@@ -379,8 +456,8 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                 <div>
-                  <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
-                    {"\uD83D\uDCCD"} {selectedPin.locationName}
+                  <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0, display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                    <MapPinIcon size={18} color={T.color.terracotta} /> {selectedPin.locationName}
                   </h3>
                   <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.125rem 0 0" }}>
                     {selectedPin.mems.length} {selectedPin.mems.length === 1 ? t("memory") : t("memories")}
@@ -421,7 +498,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                           background: `linear-gradient(135deg, ${selectedPin.accent}30, ${selectedPin.accent}10)`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: "1.25rem",
-                        }}>{m.mem.type === "photo" ? "\uD83D\uDCF7" : m.mem.type === "voice" ? "\uD83C\uDF99\uFE0F" : "\uD83D\uDCDD"}</div>
+                        }}>{m.mem.type === "photo" ? <CameraIcon size={20} color={selectedPin.accent} /> : m.mem.type === "voice" ? <MicIcon size={20} color={selectedPin.accent} /> : <PenIcon size={20} color={selectedPin.accent} />}</div>
                       )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
@@ -438,7 +515,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate }: MemoryMapPr
                           fontFamily: T.font.body, fontSize: "0.625rem", color: wing?.accent || T.color.muted,
                           marginTop: "0.1875rem", display: "flex", alignItems: "center", gap: "0.25rem",
                         }}>
-                          <span>{wing?.icon}</span> {wing?.name}
+                          {wing && <WingIcon wingId={wing.id} size={12} color={wing.accent} />} {wing?.name}
                           {m.mem.createdAt && <span style={{ color: T.color.muted }}> &middot; {new Date(m.mem.createdAt).toLocaleDateString()}</span>}
                         </div>
                       </div>
