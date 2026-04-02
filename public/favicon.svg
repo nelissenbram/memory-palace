@@ -1,52 +1,41 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Classical palace silhouette — terracotta #C17F59 -->
+  <!-- Classical temple with missing 2nd column — terracotta #C17F59 -->
 
   <!-- Pediment (triangular roof) -->
-  <polygon points="32,4 6,22 58,22" fill="#C17F59"/>
+  <polygon points="32,5 8,22 56,22" fill="#C17F59"/>
 
-  <!-- Peak ornament -->
-  <circle cx="32" cy="6" r="1.6" fill="#C17F59"/>
+  <!-- Peak acroterion -->
+  <circle cx="32" cy="7" r="1.5" fill="#C17F59"/>
 
-  <!-- Entablature -->
-  <rect x="5" y="22" width="54" height="3.5" rx="0.5" fill="#C17F59"/>
+  <!-- Entablature beam -->
+  <rect x="7" y="22" width="50" height="3.5" rx="0.5" fill="#C17F59"/>
 
-  <!-- Columns (6 Ionic-style) -->
-  <!-- Col 1 -->
-  <rect x="7" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
-  <rect x="7.8" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
-  <rect x="6.8" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
-  <!-- Col 2 -->
-  <rect x="15.8" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
-  <rect x="16.6" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
-  <rect x="15.6" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
-  <!-- Col 3 -->
-  <rect x="24.6" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
-  <rect x="25.4" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
-  <rect x="24.4" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
-  <!-- Col 4 -->
-  <rect x="33.4" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
-  <rect x="34.2" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
-  <rect x="33.2" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
-  <!-- Col 5 -->
-  <rect x="42.2" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
-  <rect x="43" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
-  <rect x="42" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
-  <!-- Col 6 -->
-  <rect x="51" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
-  <rect x="51.8" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
-  <rect x="50.8" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
+  <!-- Column 1 (leftmost) -->
+  <rect x="9" y="25.5" width="5.4" height="1.6" rx="0.8" fill="#C17F59"/>
+  <rect x="9.8" y="27.1" width="3.8" height="22.4" rx="1.2" fill="#C17F59"/>
+  <rect x="8.8" y="49.5" width="5.8" height="1.6" rx="0.8" fill="#C17F59"/>
 
-  <!-- Central arch -->
-  <path d="M26 51.3 L26 38 Q32 30 38 38 L38 51.3" fill="#C17F59"/>
-  <!-- Arch opening -->
-  <path d="M28.4 51.3 L28.4 39.6 Q32 33.2 35.6 39.6 L35.6 51.3" fill="#1A1A18" opacity="0.85"/>
+  <!-- Column 2 — MISSING — subtle warm glow placeholder -->
+  <ellipse cx="22.5" cy="38" rx="2.2" ry="8" fill="#E8A74E" opacity="0.18"/>
+  <ellipse cx="22.5" cy="38" rx="1.2" ry="5" fill="#E8A74E" opacity="0.12"/>
 
-  <!-- Flame / memory light -->
-  <path d="M32 44.5 Q30.2 41.5 32 37.8 Q33.8 41.5 32 44.5Z" fill="#E8A74E" opacity="0.9"/>
-  <ellipse cx="32" cy="44.8" rx="1.1" ry="0.6" fill="#E8A74E" opacity="0.5"/>
+  <!-- Column 3 (center) -->
+  <rect x="30" y="25.5" width="5.4" height="1.6" rx="0.8" fill="#C17F59"/>
+  <rect x="30.8" y="27.1" width="3.8" height="22.4" rx="1.2" fill="#C17F59"/>
+  <rect x="29.8" y="49.5" width="5.8" height="1.6" rx="0.8" fill="#C17F59"/>
 
-  <!-- Steps / stylobate -->
-  <rect x="4" y="51.3" width="56" height="3" rx="0.5" fill="#C17F59"/>
-  <rect x="2" y="54.3" width="60" height="3.2" rx="0.5" fill="#C17F59"/>
-  <rect x="0" y="57.5" width="64" height="3" rx="0.5" fill="#C17F59"/>
+  <!-- Column 4 -->
+  <rect x="40.5" y="25.5" width="5.4" height="1.6" rx="0.8" fill="#C17F59"/>
+  <rect x="41.3" y="27.1" width="3.8" height="22.4" rx="1.2" fill="#C17F59"/>
+  <rect x="40.3" y="49.5" width="5.8" height="1.6" rx="0.8" fill="#C17F59"/>
+
+  <!-- Column 5 (rightmost) -->
+  <rect x="51" y="25.5" width="5.4" height="1.6" rx="0.8" fill="#C17F59"/>
+  <rect x="51.8" y="27.1" width="3.8" height="22.4" rx="1.2" fill="#C17F59"/>
+  <rect x="50.8" y="49.5" width="5.8" height="1.6" rx="0.8" fill="#C17F59"/>
+
+  <!-- Stylobate / steps -->
+  <rect x="5" y="51.1" width="54" height="3" rx="0.5" fill="#C17F59"/>
+  <rect x="3" y="54.1" width="58" height="3" rx="0.5" fill="#C17F59"/>
+  <rect x="1" y="57.1" width="62" height="3.2" rx="0.5" fill="#C17F59"/>
 </svg>

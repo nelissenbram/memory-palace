@@ -729,10 +729,10 @@
       "getStarted": "Aan de slag"
     },
     "hero": {
-      "headline": "Bewaar je herinneringen voor de eeuwigheid",
-      "storyDeserves": "Je levensverhaal verdient",
-      "moreThanFolder": "meer dan een map",
-      "description": "Bouw een prachtig 3D-paleis voor je foto's, video's en verhalen. Loop door je herinneringen in een meeslepende virtuele ruimte — en deel ze met de mensen die het meest betekenen.",
+      "headline": "Elk leven vertelt een verhaal. Maak het jouwe onvergetelijk.",
+      "storyDeserves": "Je herinneringen verdienen een paleis,",
+      "moreThanFolder": "geen map",
+      "description": "Maak van een leven vol foto's, video's en verhalen een meeslepend 3D-paleis waar je familie samen doorheen kan wandelen — vandaag, en voor generaties die komen.",
       "cta": "Gratis beginnen",
       "secondaryCta": "Bekijk hoe het werkt",
       "securityLink": "Meer over onze beveiliging",
@@ -777,27 +777,27 @@
       "title": "Wat het bijzonder maakt",
       "subtitle": "Meer dan opslag. Een levende nalatenschap.",
       "palace3d": "3D Memory Palace",
-      "palace3dDesc": "Loop door een adembenemende virtuele villa met vleugels voor Familie, Reizen, Jeugd, Carrière en Creativiteit. Je herinneringen als kunst in een meeslepende 3D-wereld.",
+      "palace3dDesc": "Je herinneringen als kunst in een prachtige virtuele villa — wandel door vleugels voor Familie, Reizen, Jeugd en meer.",
       "aiInterviews": "AI-gestuurde interviews",
-      "aiInterviewsDesc": "Onze vriendelijke AI-interviewer begeleidt je door je levensverhaal en stelt de juiste vragen om herinneringen vast te leggen die je misschien vergeten was. Als een gesprek met een goede vriend.",
+      "aiInterviewsDesc": "Een vriendelijke AI-interviewer haalt de verhalen achter je foto's naar boven — de verhalen die je bijna vergeten was, en die alleen jij kunt vertellen.",
       "cloudImport": "Cloud-import",
-      "cloudImportDesc": "Koppel Google Foto's, Dropbox, OneDrive of Box en laat AI duizenden foto's in de juiste kamers sorteren — automatisch georganiseerd met slimme titels en datums.",
+      "cloudImportDesc": "Koppel Google Foto's, Dropbox of OneDrive. AI sorteert duizenden foto's in de juiste kamers in minuten, niet maanden.",
       "timeCapsules": "Tijdcapsules",
-      "timeCapsuleDesc": "Verzegel herinneringen om op een toekomstige datum onthuld te worden. Laat een verjaardagsbericht achter voor je kleinkind, of een brief die in 2050 geopend wordt. De toekomst zal je dankbaar zijn.",
+      "timeCapsuleDesc": "Verzegel een bericht voor de trouwdag van je kleinkind, of een brief die in 2050 geopend wordt. De toekomst zal je dankbaar zijn.",
       "sharingTitle": "Delen & Co-creatie",
       "sharingDesc": "Nodig familieleden uit om hun eigen herinneringen bij te dragen aan gedeelde kamers. Bouw samen jullie verhaal, over generaties en continenten heen.",
       "legacyTitle": "Nalatenschapsplanning",
-      "legacyDesc": "Wijs erfgenamen aan voor je paleis. Neem videoboodschappen op, schrijf brieven en zorg dat je verhaal voortleeft — met zorg bewaard, voor degenen die het meest betekenen."
+      "legacyDesc": "Wijs erfgenamen aan, neem videoboodschappen op en schrijf brieven. Je verhaal leeft voort — met waardigheid bewaard, voor degenen die het meest betekenen."
     },
     "howItWorks": {
       "title": "Aan de slag",
       "subtitle": "Drie simpele stappen",
       "step1Title": "Maak je Paleis",
-      "step1Desc": "Meld je gratis aan en kies je paleisstijl. Vertel ons over de hoofdstukken van je leven — wij maken gepersonaliseerde vleugels en kamers.",
+      "step1Desc": "Meld je gratis aan en vertel over de hoofdstukken van je leven. Wij maken gepersonaliseerde vleugels en kamers — jouw verhaal, jouw structuur.",
       "step2Title": "Vul kamers met herinneringen",
-      "step2Desc": "Upload foto's en video's, neem verhalen op, of importeer rechtstreeks vanuit Google Foto's of Dropbox. AI helpt alles mooi te organiseren.",
+      "step2Desc": "Upload foto's en video's, neem verhalen op of importeer vanuit de cloud. AI organiseert alles prachtig — zodat jij je kunt richten op herinneren.",
       "step3Title": "Deel met dierbaren",
-      "step3Desc": "Nodig familie uit om je paleis te verkennen, hun eigen herinneringen bij te dragen en je levensverhaal in meeslepende 3D te ervaren."
+      "step3Desc": "Nodig familie uit om je paleis te verkennen, hun eigen herinneringen toe te voegen en samen je levensverhaal te beleven in meeslepende 3D."
     },
     "preview": {
       "title": "Bekijk het in actie",
@@ -822,13 +822,13 @@
     },
     "audience": {
       "title": "Voor wie het is",
-      "subtitle": "Gebouwd voor wie geeft om nalatenschap",
+      "subtitle": "Gebouwd voor wie gelooft dat herinneringen ertoe doen",
       "keepersTitle": "Erfgoedbewaarders",
-      "keepersDesc": "Mensen van 60+ die een leven aan herinneringen willen ordenen in een visuele nalatenschap voor toekomstige generaties.",
+      "keepersDesc": "Je hebt een leven vol herinneringen die het waard zijn om te bewaren. Maak er een visuele nalatenschap van waar je kleinkinderen van zullen genieten.",
       "guardiansTitle": "Nalatenschapsbeschermers",
-      "guardiansDesc": "Ouders en grootouders die willen dat hun verhalen, boodschappen en herinneringen voortleven — wat er ook gebeurt.",
+      "guardiansDesc": "Je wilt dat je verhalen, boodschappen en wijsheid voortleven — wat er ook gebeurt. Een paleis zorgt daarvoor.",
       "archivistsTitle": "Digitale Archivarissen",
-      "archivistsDesc": "Iedereen die verdrinkt in 50.000 foto's op verschillende apparaten en AI-gestuurde organisatie wil in een betekenisvolle ruimte."
+      "archivistsDesc": "Je hebt 50.000 foto's verspreid over apparaten. Laat AI ze ordenen tot iets betekenisvols."
     },
     "testimonials": {
       "title": "Wat mensen zeggen",
@@ -847,12 +847,12 @@
       "role4": "Nalatenschapsbeschermer"
     },
     "cta": {
-      "title": "Klaar om je nalatenschap te bewaren?",
-      "description": "Begin gratis. Geen creditcard nodig. Je herinneringen wachten op een thuis.",
+      "title": "Je herinneringen verdienen meer dan een harde schijf",
+      "description": "Begin gratis. Geen creditcard nodig. Bouw een paleis waar je familie generaties lang doorheen wandelt.",
       "button": "Maak je Memory Palace"
     },
     "footer": {
-      "about": "Wij geloven dat elk levensverhaal het verdient om met schoonheid en waardigheid bewaard te worden. The Memory Palace transformeert je foto's, video's en verhalen in een meeslepende 3D-ervaring die je familie voor altijd kan koesteren.",
+      "about": "Elk levensverhaal verdient het om met schoonheid en waardigheid bewaard te worden. The Memory Palace transformeert je foto's, video's en verhalen in een meeslepende 3D-ervaring die je familie voor altijd kan koesteren.",
       "quickLinks": "Snelkoppelingen",
       "features": "Functies",
       "howItWorks": "Hoe het werkt",

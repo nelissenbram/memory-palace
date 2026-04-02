@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/legacy", "/api/stripe/webhook", "/api/cron/", "/api/email/", "/api/notifications/send"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/flythrough", "/api/stripe/webhook", "/api/cron/", "/api/email/", "/api/notifications/send"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {

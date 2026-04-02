@@ -21,12 +21,18 @@ const COLORS = {
 } as const;
 
 const TERRACOTTA = "#C17F59";
+const GLOW = "#E8A74E";
+
+/* Column x-centers for 5 evenly spaced columns */
+const COLUMNS = [11.7, 22.5, 32.7, 43.2, 53.7];
+const MISSING_INDEX = 1; // 2nd column is absent
 
 /**
- * Palace icon — classical Roman villa silhouette with a subtle flame
- * in the central arch representing preserved memories.
+ * Palace icon — classical temple with 5 columns, one missing.
+ * The absent 2nd pillar symbolises memories yet to be built.
+ * A faint warm glow marks the gap.
  *
- * viewBox 0 0 64 64, designed to work at any size.
+ * viewBox 0 0 64 64, designed to work at any size down to 16px.
  */
 function PalaceIcon({ size, color }: { size: string; color: string }) {
   return (
@@ -40,60 +46,51 @@ function PalaceIcon({ size, color }: { size: string; color: string }) {
       style={{ display: "block", flexShrink: 0 }}
     >
       {/* ---------- pediment (triangular roof) ---------- */}
-      <polygon points="32,4 6,22 58,22" fill={TERRACOTTA} />
+      <polygon points="32,5 8,22 56,22" fill={TERRACOTTA} />
 
-      {/* small acroterion / peak ornament */}
-      <circle cx="32" cy="6" r="1.6" fill={TERRACOTTA} />
+      {/* peak acroterion */}
+      <circle cx="32" cy="7" r="1.5" fill={TERRACOTTA} />
 
-      {/* cornice line across pediment base */}
-      <rect x="6" y="15" width="52" height="0.7" rx="0.35" fill={color} opacity="0.10" />
+      {/* subtle cornice line */}
+      <rect x="8" y="15.5" width="48" height="0.6" rx="0.3" fill={color} opacity="0.08" />
 
       {/* ---------- entablature ---------- */}
-      <rect x="5" y="22" width="54" height="3.5" rx="0.5" fill={TERRACOTTA} />
-      <rect x="5" y="22" width="54" height="1" rx="0.5" fill={color} opacity="0.08" />
+      <rect x="7" y="22" width="50" height="3.5" rx="0.5" fill={TERRACOTTA} />
+      <rect x="7" y="22" width="50" height="0.8" rx="0.4" fill={color} opacity="0.07" />
 
-      {/* ---------- columns (6 Ionic-style) ---------- */}
-      {[10, 18.8, 27.6, 36.4, 45.2, 54].map((cx, i) => (
-        <g key={i}>
-          {/* capital */}
-          <rect x={cx - 3} y="25.5" width={6} height="1.8" rx="0.9" fill={TERRACOTTA} />
-          {/* shaft — slight entasis via rx */}
-          <rect x={cx - 2.2} y="27.3" width={4.4} height="22.2" rx="1.4" fill={TERRACOTTA} />
-          {/* fluting highlight */}
-          <rect x={cx - 0.4} y="27.3" width={0.8} height="22.2" rx="0.4" fill={color} opacity="0.07" />
-          {/* base */}
-          <rect x={cx - 3.2} y="49.5" width={6.4} height="1.8" rx="0.9" fill={TERRACOTTA} />
-        </g>
-      ))}
-
-      {/* ---------- central arch ---------- */}
-      <path
-        d="M26 51.3 L26 38 Q32 30 38 38 L38 51.3"
-        fill={TERRACOTTA}
-      />
-      {/* arch opening (cut-out effect) */}
-      <path
-        d="M28.4 51.3 L28.4 39.6 Q32 33.2 35.6 39.6 L35.6 51.3"
-        fill="#1A1A18"
-        opacity="0.85"
-      />
-
-      {/* ---------- flame / memory light ---------- */}
-      <path
-        d="M32 44.5 Q30.2 41.5 32 37.8 Q33.8 41.5 32 44.5Z"
-        fill="#E8A74E"
-        opacity="0.9"
-      />
-      <ellipse cx="32" cy="44.8" rx="1.1" ry="0.6" fill="#E8A74E" opacity="0.5" />
+      {/* ---------- columns ---------- */}
+      {COLUMNS.map((cx, i) => {
+        if (i === MISSING_INDEX) {
+          /* Missing column — warm glow placeholder */
+          return (
+            <g key={i}>
+              <ellipse cx={cx} cy="38" rx="2.2" ry="8" fill={GLOW} opacity="0.18" />
+              <ellipse cx={cx} cy="38" rx="1.2" ry="5" fill={GLOW} opacity="0.12" />
+            </g>
+          );
+        }
+        return (
+          <g key={i}>
+            {/* capital */}
+            <rect x={cx - 2.7} y="25.5" width={5.4} height="1.6" rx="0.8" fill={TERRACOTTA} />
+            {/* shaft with slight entasis */}
+            <rect x={cx - 1.9} y="27.1" width={3.8} height="22.4" rx="1.2" fill={TERRACOTTA} />
+            {/* fluting highlight */}
+            <rect x={cx - 0.35} y="27.1" width={0.7} height="22.4" rx="0.35" fill={color} opacity="0.06" />
+            {/* base */}
+            <rect x={cx - 2.9} y="49.5" width={5.8} height="1.6" rx="0.8" fill={TERRACOTTA} />
+          </g>
+        );
+      })}
 
       {/* ---------- stylobate / steps ---------- */}
-      <rect x="4" y="51.3" width="56" height="3" rx="0.5" fill={TERRACOTTA} />
-      <rect x="2" y="54.3" width="60" height="3.2" rx="0.5" fill={TERRACOTTA} />
-      <rect x="0" y="57.5" width="64" height="3" rx="0.5" fill={TERRACOTTA} />
+      <rect x="5" y="51.1" width="54" height="3" rx="0.5" fill={TERRACOTTA} />
+      <rect x="3" y="54.1" width="58" height="3" rx="0.5" fill={TERRACOTTA} />
+      <rect x="1" y="57.1" width="62" height="3.2" rx="0.5" fill={TERRACOTTA} />
 
-      {/* step highlight */}
-      <rect x="4" y="51.3" width="56" height="0.6" rx="0.3" fill={color} opacity="0.06" />
-      <rect x="2" y="54.3" width="60" height="0.6" rx="0.3" fill={color} opacity="0.06" />
+      {/* step highlights */}
+      <rect x="5" y="51.1" width="54" height="0.5" rx="0.25" fill={color} opacity="0.05" />
+      <rect x="3" y="54.1" width="58" height="0.5" rx="0.25" fill={color} opacity="0.05" />
     </svg>
   );
 }

@@ -82,7 +82,9 @@ export default function LandingPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
   const [scrollY, setScrollY] = useState(0);
-  const { locale } = useTranslation("landing");
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoUrl = process.env.NEXT_PUBLIC_PALACE_VIDEO_URL || "/palace-flythrough.webm";
+  const { locale, setLocale } = useTranslation("landing");
   const landing = (locale === "nl" ? nlMessages : enMessages).landing;
 
   /* ─── Data arrays ─── */
@@ -187,6 +189,65 @@ export default function LandingPage() {
         color: C.charcoal,
       }}
     >
+      {/* Scoped hover / interaction styles */}
+      <style>{`
+        .lp-card {
+          transition: box-shadow 0.35s cubic-bezier(.25,.8,.25,1), transform 0.35s cubic-bezier(.25,.8,.25,1) !important;
+        }
+        .lp-card:hover {
+          transform: translateY(-0.25rem);
+          box-shadow: 0 0.5rem 2rem rgba(44,44,42,0.08), 0 0.125rem 0.5rem rgba(44,44,42,0.04);
+        }
+        .lp-testimonial-card {
+          transition: box-shadow 0.35s cubic-bezier(.25,.8,.25,1), transform 0.35s cubic-bezier(.25,.8,.25,1), border-color 0.35s !important;
+        }
+        .lp-testimonial-card:hover {
+          transform: translateY(-0.1875rem);
+          box-shadow: 0 0.5rem 1.5rem rgba(0,0,0,0.15);
+          border-color: rgba(255,255,255,0.15) !important;
+        }
+        .lp-nav-link {
+          position: relative;
+          transition: color 0.2s !important;
+        }
+        .lp-nav-link:hover {
+          color: ${C.terracotta} !important;
+        }
+        .lp-nav-cta {
+          transition: transform 0.2s, box-shadow 0.2s, filter 0.2s !important;
+        }
+        .lp-nav-cta:hover {
+          transform: translateY(-0.0625rem);
+          box-shadow: 0 0.25rem 1rem rgba(193,127,89,0.25);
+          filter: brightness(1.05);
+        }
+        .lp-hero-cta {
+          transition: transform 0.25s cubic-bezier(.25,.8,.25,1), box-shadow 0.25s, filter 0.25s !important;
+        }
+        .lp-hero-cta:hover {
+          transform: translateY(-0.125rem) scale(1.02);
+          box-shadow: 0 0.5rem 1.75rem rgba(193,127,89,0.35);
+          filter: brightness(1.05);
+        }
+        .lp-hero-secondary {
+          transition: border-color 0.25s, background 0.25s, color 0.25s !important;
+        }
+        .lp-hero-secondary:hover {
+          border-color: ${C.terracotta} !important;
+          color: ${C.terracotta} !important;
+          background: ${C.terracotta}08;
+        }
+        .lp-footer-link {
+          transition: color 0.2s !important;
+        }
+        .lp-footer-link:hover {
+          color: ${C.cream} !important;
+        }
+        .lp-footer-accent:hover {
+          color: ${C.gold} !important;
+          text-decoration: underline !important;
+        }
+      `}</style>
       {/* ═══════════════════════════════════════════════════
           1. STICKY NAVIGATION
           ═══════════════════════════════════════════════════ */}
@@ -214,17 +275,38 @@ export default function LandingPage() {
 
         <div style={{ display: "flex", gap: isMobile ? "0.5rem" : "0.75rem", alignItems: "center" }}>
           {!isSmall && (
-            <Link href="/pricing" style={navLink}>
+            <Link href="/pricing" className="lp-nav-link" style={navLink}>
               {landing.nav.pricing}
             </Link>
           )}
           {!isSmall && (
-            <Link href="/login" style={navLink}>
+            <Link href="/login" className="lp-nav-link" style={navLink}>
               {landing.nav.signIn}
             </Link>
           )}
+          <button
+            onClick={() => setLocale(locale === "en" ? "nl" : "en")}
+            aria-label="Switch language"
+            style={{
+              background: "none",
+              border: `1px solid ${C.sandstone}60`,
+              borderRadius: "0.375rem",
+              padding: "0.25rem 0.5rem",
+              fontSize: "0.75rem",
+              fontFamily: F.body,
+              fontWeight: 600,
+              color: C.walnut,
+              cursor: "pointer",
+              letterSpacing: "0.5px",
+              textTransform: "uppercase",
+              transition: "border-color 0.2s, color 0.2s",
+            }}
+          >
+            {locale === "en" ? "NL" : "EN"}
+          </button>
           <Link
             href="/register"
+            className="lp-nav-cta"
             style={{
               ...navCta,
               padding: isMobile ? "0.625rem 1.125rem" : "0.5rem 1.25rem",
@@ -260,12 +342,12 @@ export default function LandingPage() {
             style={{
               fontFamily: F.body,
               fontSize: "0.8125rem",
-              letterSpacing: "2.5px",
+              letterSpacing: "3px",
               textTransform: "uppercase",
               color: C.terracotta,
               fontWeight: 600,
-              marginBottom: "1.25rem",
-              animation: "fadeUp 0.8s ease both",
+              marginBottom: "1.5rem",
+              animation: "fadeUp 0.7s ease both",
             }}
           >
             {lAny.hero?.label || landing.hero.headline}
@@ -275,13 +357,14 @@ export default function LandingPage() {
           <h1
             style={{
               fontFamily: F.display,
-              fontSize: "clamp(2.25rem, 6vw, 4.5rem)",
+              fontSize: "clamp(2.5rem, 6.5vw, 4.75rem)",
               fontWeight: 300,
-              lineHeight: 1.1,
+              lineHeight: 1.08,
+              letterSpacing: "-0.02em",
               maxWidth: "53.125rem",
-              margin: "0 auto 1.5rem",
+              margin: "0 auto 1.75rem",
               color: C.charcoal,
-              animation: "fadeUp 0.8s ease 0.1s both",
+              animation: "fadeUp 0.7s ease 0.1s both",
             }}
           >
             {landing.hero.storyDeserves}
@@ -298,8 +381,8 @@ export default function LandingPage() {
               color: C.walnut,
               maxWidth: "37.5rem",
               lineHeight: 1.7,
-              marginBottom: "2.5rem",
-              animation: "fadeUp 0.8s ease 0.2s both",
+              marginBottom: "2.75rem",
+              animation: "fadeUp 0.7s ease 0.2s both",
             }}
           >
             {landing.hero.description}
@@ -314,12 +397,13 @@ export default function LandingPage() {
               flexDirection: isSmall ? "column" : "row",
               justifyContent: "center",
               alignItems: "center",
-              animation: "fadeUp 0.8s ease 0.3s both",
+              animation: "fadeUp 0.7s ease 0.35s both",
               width: isSmall ? "100%" : undefined,
             }}
           >
             <Link
               href="/register"
+              className="lp-hero-cta"
               style={{
                 ...heroCta,
                 width: isSmall ? "100%" : undefined,
@@ -334,6 +418,7 @@ export default function LandingPage() {
             </Link>
             <a
               href="#how-it-works"
+              className="lp-hero-secondary"
               style={{
                 ...heroSecondary,
                 width: isSmall ? "100%" : undefined,
@@ -359,7 +444,7 @@ export default function LandingPage() {
               fontSize: "0.875rem",
               color: C.muted,
               textDecoration: "none",
-              animation: "fadeUp 0.8s ease 0.4s both",
+              animation: "fadeUp 0.7s ease 0.45s both",
               transition: "color 0.2s",
             }}
           >
@@ -367,18 +452,41 @@ export default function LandingPage() {
             {landing.hero.securityLink}
           </Link>
 
-          {/* Hero illustration with parallax */}
+          {/* Hero illustration / cinematic video with parallax */}
           <div
             style={{
               marginTop: isMobile ? "2rem" : "3rem",
-              maxWidth: "50rem",
+              maxWidth: "56rem",
               width: "100%",
-              animation: "fadeUp 0.8s ease 0.5s both",
-              transform: `translateY(${scrollY * 0.08}px)`,
+              animation: "fadeUp 0.7s ease 0.55s both",
+              transform: `translateY(${scrollY * 0.03}px)`,
               transition: "transform 0.1s linear",
+              border: `1px solid ${C.sandstone}40`,
+              borderRadius: "1.25rem",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+              overflow: "hidden",
             }}
           >
-            <HeroIllustration />
+            {!videoFailed ? (
+              <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                poster="/palace-hero.jpg"
+                onError={() => setVideoFailed(true)}
+                style={{
+                  width: "100%",
+                  display: "block",
+                  borderRadius: "1.25rem",
+                }}
+              >
+                <source src={videoUrl} type="video/webm" />
+                <source src={videoUrl.replace(".webm", ".mp4")} type="video/mp4" />
+              </video>
+            ) : (
+              <HeroIllustration />
+            )}
           </div>
 
           {/* Scroll hint */}
@@ -465,7 +573,7 @@ export default function LandingPage() {
           id="features"
           style={{
             padding: isMobile
-              ? "4rem 1.25rem"
+              ? "4.5rem 1.25rem"
               : "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
             maxWidth: "68.75rem",
             margin: "0 auto",
@@ -486,9 +594,16 @@ export default function LandingPage() {
               marginTop: isMobile ? "2.25rem" : "3.5rem",
             }}
           >
-            {FEATURES.map((f) => (
-              <div key={f.title} style={featureCard}>
-                <div style={{ marginBottom: "1rem" }}>
+            {FEATURES.map((f, i) => (
+              <div
+                key={f.title}
+                className="lp-card"
+                style={{
+                  ...featureCard,
+                  animation: `fadeUp 0.6s ease ${0.1 + i * 0.08}s both`,
+                }}
+              >
+                <div style={{ marginBottom: "1.125rem" }}>
                   <f.Icon size={48} />
                 </div>
                 <h3 style={featureTitle}>{f.title}</h3>
@@ -547,9 +662,10 @@ export default function LandingPage() {
                       fontSize: "3rem",
                       fontWeight: 300,
                       color: C.terracotta,
-                      opacity: 0.5,
+                      opacity: 0.35,
                       marginBottom: "0.75rem",
                       lineHeight: 1,
+                      letterSpacing: "-0.02em",
                     }}
                   >
                     {s.num}
@@ -599,6 +715,9 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Section divider */}
+        <div style={{ maxWidth: "6rem", margin: "0 auto", height: "0.0625rem", background: `linear-gradient(to right, transparent, ${C.sandstone}, transparent)` }} />
+
         {/* ═══════════════════════════════════════════════════
             6. COMPARISON SECTION
             ═══════════════════════════════════════════════════ */}
@@ -622,9 +741,10 @@ export default function LandingPage() {
             <div
               style={{
                 marginTop: isMobile ? "2rem" : "3.5rem",
-                borderRadius: "1.25rem",
+                borderRadius: "1rem",
                 overflow: "hidden",
-                border: `1px solid ${C.sandstone}50`,
+                border: `1px solid ${C.sandstone}40`,
+                boxShadow: "0 0.125rem 0.75rem rgba(44,44,42,0.04)",
               }}
             >
               {/* Header row */}
@@ -793,6 +913,9 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Section divider */}
+        <div style={{ maxWidth: "6rem", margin: "0 auto", height: "0.0625rem", background: `linear-gradient(to right, transparent, ${C.sandstone}, transparent)` }} />
+
         {/* ═══════════════════════════════════════════════════
             7. AUDIENCE SECTION
             ═══════════════════════════════════════════════════ */}
@@ -816,9 +939,10 @@ export default function LandingPage() {
               marginTop: "3.5rem",
             }}
           >
-            {AUDIENCES.map((a) => (
+            {AUDIENCES.map((a, i) => (
               <div
                 key={a.title}
+                className="lp-card"
                 style={{
                   background: C.white,
                   borderRadius: "1rem",
@@ -829,6 +953,7 @@ export default function LandingPage() {
                   flexDirection: "column",
                   alignItems: "center",
                   textAlign: "center",
+                  animation: `fadeUp 0.6s ease ${0.1 + i * 0.1}s both`,
                 }}
               >
                 <div
@@ -878,7 +1003,7 @@ export default function LandingPage() {
             padding: isMobile
               ? "4rem 1.25rem"
               : "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
-            background: `linear-gradient(135deg, ${C.charcoal}, #3D3D3A)`,
+            background: `linear-gradient(160deg, ${C.charcoal} 0%, #3D3D3A 50%, ${C.charcoal} 100%)`,
           }}
         >
           <div style={{ maxWidth: "68.75rem", margin: "0 auto" }}>
@@ -897,17 +1022,19 @@ export default function LandingPage() {
                 marginTop: "3.5rem",
               }}
             >
-              {TESTIMONIALS.map((tm) => (
+              {TESTIMONIALS.map((tm, i) => (
                 <div
                   key={tm.name}
+                  className="lp-testimonial-card"
                   style={{
                     background: "rgba(255,255,255,0.06)",
                     borderRadius: "1rem",
-                    padding: isMobile ? "1.75rem 1.5rem" : "2rem 1.75rem",
+                    padding: isMobile ? "1.75rem 1.5rem" : "2.25rem 2rem",
                     border: "1px solid rgba(255,255,255,0.08)",
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "space-between",
+                    animation: `fadeUp 0.6s ease ${0.15 + i * 0.1}s both`,
                   }}
                 >
                   <div>
@@ -928,10 +1055,11 @@ export default function LandingPage() {
                     </svg>
                     <p
                       style={{
-                        fontSize: "1rem",
+                        fontSize: "1.0625rem",
                         color: C.cream,
-                        lineHeight: 1.7,
-                        marginBottom: "1.5rem",
+                        lineHeight: 1.75,
+                        marginBottom: "1.75rem",
+                        fontStyle: "italic",
                       }}
                     >
                       {tm.quote}
@@ -1022,11 +1150,12 @@ export default function LandingPage() {
             <h2
               style={{
                 fontFamily: F.display,
-                fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
+                fontSize: "clamp(2rem, 4.5vw, 3rem)",
                 fontWeight: 300,
                 color: C.charcoal,
-                marginBottom: "1rem",
-                lineHeight: 1.2,
+                marginBottom: "1.25rem",
+                lineHeight: 1.15,
+                letterSpacing: "-0.01em",
               }}
             >
               {landing.cta.title}
@@ -1036,13 +1165,13 @@ export default function LandingPage() {
                 fontSize: "1.0625rem",
                 color: C.walnut,
                 maxWidth: "30rem",
-                margin: "0 auto 2.5rem",
-                lineHeight: 1.6,
+                margin: "0 auto 2.75rem",
+                lineHeight: 1.7,
               }}
             >
               {landing.cta.description}
             </p>
-            <Link href="/register" style={heroCta}>
+            <Link href="/register" className="lp-hero-cta" style={heroCta}>
               {landing.cta.button}
             </Link>
           </div>
@@ -1111,6 +1240,7 @@ export default function LandingPage() {
             >
               <a
                 href="#features"
+                className="lp-footer-link"
                 style={{
                   fontSize: "0.875rem",
                   color: C.muted,
@@ -1121,6 +1251,7 @@ export default function LandingPage() {
               </a>
               <a
                 href="#how-it-works"
+                className="lp-footer-link"
                 style={{
                   fontSize: "0.875rem",
                   color: C.muted,
@@ -1131,6 +1262,7 @@ export default function LandingPage() {
               </a>
               <Link
                 href="/pricing"
+                className="lp-footer-link"
                 style={{
                   fontSize: "0.875rem",
                   color: C.muted,
@@ -1141,6 +1273,7 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/login"
+                className="lp-footer-link"
                 style={{
                   fontSize: "0.875rem",
                   color: C.muted,
@@ -1151,10 +1284,12 @@ export default function LandingPage() {
               </Link>
               <Link
                 href="/register"
+                className="lp-footer-accent"
                 style={{
                   fontSize: "0.875rem",
                   color: C.terracotta,
                   textDecoration: "none",
+                  transition: "color 0.2s",
                 }}
               >
                 {landing.footer.getStartedFree}
@@ -1224,11 +1359,13 @@ export default function LandingPage() {
               </p>
               <Link
                 href="/security"
+                className="lp-footer-accent"
                 style={{
                   fontSize: "0.875rem",
                   color: C.terracotta,
                   textDecoration: "none",
                   marginTop: "0.25rem",
+                  transition: "color 0.2s",
                 }}
               >
                 {landing.footer.learnSecurity} &rarr;
@@ -1255,6 +1392,7 @@ export default function LandingPage() {
           <div style={{ display: "flex", gap: "1.25rem" }}>
             <Link
               href="/privacy"
+              className="lp-footer-link"
               style={{
                 fontSize: "0.75rem",
                 color: C.muted,
@@ -1265,6 +1403,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/terms"
+              className="lp-footer-link"
               style={{
                 fontSize: "0.75rem",
                 color: C.muted,
@@ -1275,6 +1414,7 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/login"
+              className="lp-footer-link"
               style={{
                 fontSize: "0.75rem",
                 color: C.muted,
@@ -1285,10 +1425,12 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/register"
+              className="lp-footer-accent"
               style={{
                 fontSize: "0.75rem",
                 color: C.terracotta,
                 textDecoration: "none",
+                transition: "color 0.2s",
               }}
             >
               {landing.nav.getStarted}
@@ -1323,6 +1465,7 @@ const navCta: React.CSSProperties = {
   padding: "0.5rem 1.25rem",
   borderRadius: "0.625rem",
   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+  boxShadow: "0 0.125rem 0.5rem rgba(193,127,89,0.2)",
 };
 
 const heroCta: React.CSSProperties = {
@@ -1354,42 +1497,43 @@ const heroSecondary: React.CSSProperties = {
 
 const sectionLabel: React.CSSProperties = {
   fontFamily: F.body,
-  fontSize: "0.75rem",
-  letterSpacing: "2px",
+  fontSize: "0.8125rem",
+  letterSpacing: "2.5px",
   textTransform: "uppercase",
   color: C.terracotta,
   fontWeight: 600,
   textAlign: "center",
-  marginBottom: "0.75rem",
+  marginBottom: "1rem",
 };
 
 const sectionTitle: React.CSSProperties = {
   fontFamily: F.display,
-  fontSize: "clamp(1.625rem, 3.5vw, 2.5rem)",
+  fontSize: "clamp(1.75rem, 4vw, 2.75rem)",
   fontWeight: 300,
   textAlign: "center",
   color: C.charcoal,
   lineHeight: 1.2,
+  marginBottom: "0.5rem",
 };
 
 const featureCard: React.CSSProperties = {
   background: C.white,
   borderRadius: "1rem",
-  padding: "2rem 1.75rem",
-  border: `1px solid ${C.sandstone}50`,
-  transition: "box-shadow 0.3s, transform 0.3s",
+  padding: "2.25rem 1.75rem",
+  border: `1px solid ${C.sandstone}40`,
+  boxShadow: "0 0.0625rem 0.25rem rgba(44,44,42,0.03)",
 };
 
 const featureTitle: React.CSSProperties = {
   fontFamily: F.display,
-  fontSize: "1.25rem",
+  fontSize: "1.3125rem",
   fontWeight: 500,
   color: C.charcoal,
-  marginBottom: "0.5rem",
+  marginBottom: "0.625rem",
 };
 
 const featureDesc: React.CSSProperties = {
-  fontSize: "0.875rem",
+  fontSize: "0.9375rem",
   color: C.walnut,
-  lineHeight: 1.6,
+  lineHeight: 1.65,
 };
