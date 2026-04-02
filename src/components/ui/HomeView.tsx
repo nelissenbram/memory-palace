@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -78,7 +79,8 @@ export default function HomeView() {
     setShowLibrary: setShowInterviewLibrary,
     setShowInterview: setShowInterview,
   } = useInterviewStore();
-  const { setShowMemoryMap, setShowTimeline, setShowStatistics } = useUIPanelStore();
+  const { setShowMemoryMap, setShowTimeline, setShowStatistics, setShowMassImport, setShowSharedWithMe } = useUIPanelStore();
+  const router = useRouter();
 
   const { startTransition, transitionProps } = useModeTransition();
 
@@ -189,6 +191,7 @@ export default function HomeView() {
       return {
         id,
         name: ach?.titleKey ?? id,
+        descKey: ach?.descKey,
         icon: ach?.icon ?? "🏆",
         earnedAt: earnedDates[id],
       };
@@ -221,6 +224,28 @@ export default function HomeView() {
   const handleNavigateLibrary = useCallback(() => {
     startTransition("library", () => setNavMode("library"));
   }, [startTransition, setNavMode]);
+
+  /**
+   * Navigate to Library with a specific wing pre-selected.
+   * Sets activeWing in palaceStore as a hint for LibraryView.
+   * NOTE: LibraryView currently initialises selectedWing from wings[0],
+   * not from palaceStore.activeWing. A future enhancement should sync
+   * LibraryView's selectedWing with palaceStore.activeWing on mount.
+   */
+  const handleNavigateToWing = useCallback((wingId: string) => {
+    usePalaceStore.setState({ activeWing: wingId });
+    startTransition("library", () => setNavMode("library"));
+  }, [startTransition, setNavMode]);
+
+  /** Look up enriched memory and navigate to its wing in library */
+  const handleMemoryClick = useCallback((mem: Mem) => {
+    const found = allMemories.find((e) => e.mem.id === mem.id);
+    if (found) {
+      handleNavigateToWing(found.wing.id);
+    } else {
+      handleNavigateLibrary();
+    }
+  }, [allMemories, handleNavigateToWing, handleNavigateLibrary]);
 
   const handleNavigatePalace = useCallback(() => {
     startTransition("3d", () => setNavMode("3d"));
@@ -322,7 +347,7 @@ export default function HomeView() {
           >
             <EnhanceMemories
               onUploadPhotos={() => setShowUpload(true)}
-              onAIEnhance={() => handleNavigateLibrary()}
+              onAIEnhance={() => setShowMassImport(true)}
               onAddDescription={() => handleNavigateLibrary()}
               onOrganize={() => handleNavigateLibrary()}
               isMobile={isMobile}
@@ -358,7 +383,7 @@ export default function HomeView() {
               onMemoryMap={() => setShowMemoryMap(true)}
               onTimeline={() => setShowTimeline(true)}
               onStatistics={() => setShowStatistics(true)}
-              onFamilyTree={() => { window.location.href = '/family-tree'; }}
+              onFamilyTree={() => { router.push('/family-tree'); }}
               isMobile={isMobile}
             />
           </div>
@@ -378,7 +403,7 @@ export default function HomeView() {
                   roomName: room.name,
                   wingIcon: wing.icon,
                 }))}
-                onMemoryClick={() => handleNavigateLibrary()}
+                onMemoryClick={(mem) => handleMemoryClick(mem)}
                 isMobile={isMobile}
               />
             </div>
@@ -414,7 +439,7 @@ export default function HomeView() {
                   wingName: wing.name,
                   year: mem.createdAt ? new Date(mem.createdAt).getFullYear() : 0,
                 }))}
-                onMemoryClick={() => handleNavigateLibrary()}
+                onMemoryClick={(mem) => handleMemoryClick(mem)}
                 isMobile={isMobile}
               />
             </div>
@@ -436,8 +461,8 @@ export default function HomeView() {
                   ownerName: wing.name,
                   memoryCount: memCount,
                 }))}
-                onRoomClick={() => handleNavigateLibrary()}
-                onViewAll={handleNavigateLibrary}
+                onRoomClick={() => setShowSharedWithMe(true)}
+                onViewAll={() => setShowSharedWithMe(true)}
                 isMobile={isMobile}
               />
             </div>

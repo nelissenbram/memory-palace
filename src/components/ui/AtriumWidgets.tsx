@@ -720,6 +720,7 @@ export interface AchievementShowcaseProps {
   achievements: {
     id: string;
     name: string;
+    descKey?: string;
     icon: string;
     earnedAt?: string;
   }[];
@@ -912,6 +913,7 @@ function AchievementBadge({
   isMobile: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
+  const { t: tAch } = useTranslation("achievementsPanel" as "common");
   const size = isMobile ? "3rem" : "3.5rem";
 
   return (
@@ -1028,6 +1030,27 @@ function AchievementBadge({
       >
         {achievement.name}
       </div>
+      {/* Achievement description subtitle */}
+      {achievement.descKey && (
+        <div
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.6875rem",
+            color: T.color.muted,
+            lineHeight: 1.3,
+            marginTop: "0.25rem",
+            textAlign: "center",
+            maxWidth: "5.5rem",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+          }}
+        >
+          {tAch(achievement.descKey)}
+        </div>
+      )}
     </div>
   );
 }

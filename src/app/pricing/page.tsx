@@ -18,7 +18,7 @@ export default function PricingPage() {
   const isSmall = useIsSmall();
   const [loading, setLoading] = useState<PlanId | null>(null);
   const router = useRouter();
-  const { t } = useTranslation("pricing");
+  const { t, locale, setLocale } = useTranslation("pricing");
   const { t: ts } = useTranslation("subscription");
   const { t: tp } = useTranslation("plans");
 
@@ -88,29 +88,50 @@ export default function PricingPage() {
           borderBottom: `1px solid ${C.sandstone}40`,
         }}
       >
-        <Link
-          href="/"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            textDecoration: "none",
-          }}
-        >
-          <PalaceLogo variant="mark" color="dark" size="sm" />
-          <span
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Link href="/" aria-label="Back to home" style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: 32, height: 32, borderRadius: 8,
+            border: `1px solid ${C.sandstone}50`,
+            background: "none", color: C.walnut, textDecoration: "none",
+            transition: "border-color 0.2s",
+          }}>
+            <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
+          <Link
+            href="/"
             style={{
-              fontFamily: F.display,
-              fontSize: 20,
-              fontWeight: 500,
-              color: C.charcoal,
-              letterSpacing: "-0.3px",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              textDecoration: "none",
             }}
           >
-            {t("title")}
-          </span>
-        </Link>
+            <PalaceLogo variant="mark" color="dark" size="sm" />
+            <span
+              style={{
+                fontFamily: F.display,
+                fontSize: 20,
+                fontWeight: 500,
+                color: C.charcoal,
+                letterSpacing: "-0.3px",
+              }}
+            >
+              {t("title")}
+            </span>
+          </Link>
+        </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <button onClick={() => setLocale(locale === "en" ? "nl" : "en")} aria-label="Switch language" style={{
+            background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
+            padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
+            fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
+            textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
+          }}>
+            {locale === "en" ? "NL" : "EN"}
+          </button>
           {!isSmall && (
             <Link
               href="/login"
