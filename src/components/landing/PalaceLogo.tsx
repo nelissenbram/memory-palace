@@ -25,11 +25,11 @@ const GLOW = "#E8A74E";
 
 /* Column x-centers for 5 evenly spaced columns */
 const COLUMNS = [11.7, 22.5, 32.7, 43.2, 53.7];
-const MISSING_INDEX = 1; // 2nd column is absent
+const MISSING_INDEX = 4; // rightmost column is absent — memories yet to be built
 
 /**
- * Palace icon — classical temple with 5 columns, one missing.
- * The absent 2nd pillar symbolises memories yet to be built.
+ * Palace icon — classical temple with 5 columns, rightmost missing.
+ * The absent far-right pillar symbolises memories yet to be built.
  * A faint warm glow marks the gap.
  *
  * viewBox 0 0 64 64, designed to work at any size down to 16px.

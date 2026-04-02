@@ -2,12 +2,21 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
+import { ROOM_MEMS } from "@/lib/constants/defaults";
+import type { Mem } from "@/lib/constants/defaults";
 
 // Lazy-load scene components to avoid SSR issues with Three.js
 const ExteriorScene = dynamic(() => import("@/components/3d/ExteriorScene"), { ssr: false });
 const EntranceHallScene = dynamic(() => import("@/components/3d/EntranceHallScene"), { ssr: false });
 const CorridorScene = dynamic(() => import("@/components/3d/CorridorScene"), { ssr: false });
 const InteriorScene = dynamic(() => import("@/components/3d/InteriorScene"), { ssr: false });
+
+// Sample memories for the room scene — combine all family room defaults
+const SAMPLE_MEMORIES: Mem[] = [
+  ...(ROOM_MEMS["fr1"] || []),
+  ...(ROOM_MEMS["fr2"] || []),
+  ...(ROOM_MEMS["fr3"] || []),
+].map(m => ({ ...m, displayed: true }));
 
 // ═══ DEV TOOL — Cinematic flythrough recorder ═══
 // Sequences through 4 palace scenes and records the canvas as .webm
@@ -185,8 +194,8 @@ export default function FlythroughPage() {
         return (
           <InteriorScene
             roomId="family"
-            actualRoomId="family-general"
-            memories={[]}
+            actualRoomId="fr1"
+            memories={SAMPLE_MEMORIES}
             onMemoryClick={noop}
             styleEra="roman"
           />

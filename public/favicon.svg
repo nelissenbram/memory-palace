@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Classical temple with missing 2nd column — terracotta #C17F59 -->
+  <!-- Classical temple — 5 columns, rightmost missing — terracotta #C17F59 -->
 
   <!-- Pediment (triangular roof) -->
   <polygon points="32,5 8,22 56,22" fill="#C17F59"/>
 
-  <!-- Peak acroterion -->
+  <!-- Peak acroterion ornament -->
   <circle cx="32" cy="7" r="1.5" fill="#C17F59"/>
 
   <!-- Entablature beam -->
@@ -15,9 +15,10 @@
   <rect x="9.8" y="27.1" width="3.8" height="22.4" rx="1.2" fill="#C17F59"/>
   <rect x="8.8" y="49.5" width="5.8" height="1.6" rx="0.8" fill="#C17F59"/>
 
-  <!-- Column 2 — MISSING — subtle warm glow placeholder -->
-  <ellipse cx="22.5" cy="38" rx="2.2" ry="8" fill="#E8A74E" opacity="0.18"/>
-  <ellipse cx="22.5" cy="38" rx="1.2" ry="5" fill="#E8A74E" opacity="0.12"/>
+  <!-- Column 2 -->
+  <rect x="19.5" y="25.5" width="5.4" height="1.6" rx="0.8" fill="#C17F59"/>
+  <rect x="20.3" y="27.1" width="3.8" height="22.4" rx="1.2" fill="#C17F59"/>
+  <rect x="19.3" y="49.5" width="5.8" height="1.6" rx="0.8" fill="#C17F59"/>
 
   <!-- Column 3 (center) -->
   <rect x="30" y="25.5" width="5.4" height="1.6" rx="0.8" fill="#C17F59"/>
@@ -29,10 +30,9 @@
   <rect x="41.3" y="27.1" width="3.8" height="22.4" rx="1.2" fill="#C17F59"/>
   <rect x="40.3" y="49.5" width="5.8" height="1.6" rx="0.8" fill="#C17F59"/>
 
-  <!-- Column 5 (rightmost) -->
-  <rect x="51" y="25.5" width="5.4" height="1.6" rx="0.8" fill="#C17F59"/>
-  <rect x="51.8" y="27.1" width="3.8" height="22.4" rx="1.2" fill="#C17F59"/>
-  <rect x="50.8" y="49.5" width="5.8" height="1.6" rx="0.8" fill="#C17F59"/>
+  <!-- Column 5 (rightmost) — MISSING — warm glow placeholder -->
+  <ellipse cx="53.7" cy="38" rx="2.2" ry="8" fill="#E8A74E" opacity="0.18"/>
+  <ellipse cx="53.7" cy="38" rx="1.2" ry="5" fill="#E8A74E" opacity="0.12"/>
 
   <!-- Stylobate / steps -->
   <rect x="5" y="51.1" width="54" height="3" rx="0.5" fill="#C17F59"/>
