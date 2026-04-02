@@ -1,27 +1,52 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- Classical building / palace silhouette in terracotta -->
-  <g fill="#C17F59">
-    <!-- Pediment (triangle roof) -->
-    <polygon points="32,6 8,22 56,22"/>
-    <!-- Entablature (beam below pediment) -->
-    <rect x="6" y="22" width="52" height="4" rx="0.5"/>
-    <!-- Columns -->
-    <rect x="10" y="26" width="5" height="26" rx="1"/>
-    <rect x="21" y="26" width="5" height="26" rx="1"/>
-    <rect x="32" y="26" width="5" height="26" rx="1"/>
-    <rect x="43" y="26" width="5" height="26" rx="1"/>
-    <!-- Column bases -->
-    <rect x="9" y="50" width="7" height="2" rx="0.5"/>
-    <rect x="20" y="50" width="7" height="2" rx="0.5"/>
-    <rect x="31" y="50" width="7" height="2" rx="0.5"/>
-    <rect x="42" y="50" width="7" height="2" rx="0.5"/>
-    <!-- Column capitals -->
-    <rect x="9" y="25" width="7" height="2" rx="0.5"/>
-    <rect x="20" y="25" width="7" height="2" rx="0.5"/>
-    <rect x="31" y="25" width="7" height="2" rx="0.5"/>
-    <rect x="42" y="25" width="7" height="2" rx="0.5"/>
-    <!-- Base/steps -->
-    <rect x="4" y="52" width="56" height="3" rx="0.5"/>
-    <rect x="2" y="55" width="60" height="3" rx="0.5"/>
-  </g>
+  <!-- Classical palace silhouette — terracotta #C17F59 -->
+
+  <!-- Pediment (triangular roof) -->
+  <polygon points="32,4 6,22 58,22" fill="#C17F59"/>
+
+  <!-- Peak ornament -->
+  <circle cx="32" cy="6" r="1.6" fill="#C17F59"/>
+
+  <!-- Entablature -->
+  <rect x="5" y="22" width="54" height="3.5" rx="0.5" fill="#C17F59"/>
+
+  <!-- Columns (6 Ionic-style) -->
+  <!-- Col 1 -->
+  <rect x="7" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
+  <rect x="7.8" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
+  <rect x="6.8" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
+  <!-- Col 2 -->
+  <rect x="15.8" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
+  <rect x="16.6" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
+  <rect x="15.6" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
+  <!-- Col 3 -->
+  <rect x="24.6" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
+  <rect x="25.4" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
+  <rect x="24.4" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
+  <!-- Col 4 -->
+  <rect x="33.4" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
+  <rect x="34.2" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
+  <rect x="33.2" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
+  <!-- Col 5 -->
+  <rect x="42.2" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
+  <rect x="43" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
+  <rect x="42" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
+  <!-- Col 6 -->
+  <rect x="51" y="25.5" width="6" height="1.8" rx="0.9" fill="#C17F59"/>
+  <rect x="51.8" y="27.3" width="4.4" height="22.2" rx="1.4" fill="#C17F59"/>
+  <rect x="50.8" y="49.5" width="6.4" height="1.8" rx="0.9" fill="#C17F59"/>
+
+  <!-- Central arch -->
+  <path d="M26 51.3 L26 38 Q32 30 38 38 L38 51.3" fill="#C17F59"/>
+  <!-- Arch opening -->
+  <path d="M28.4 51.3 L28.4 39.6 Q32 33.2 35.6 39.6 L35.6 51.3" fill="#1A1A18" opacity="0.85"/>
+
+  <!-- Flame / memory light -->
+  <path d="M32 44.5 Q30.2 41.5 32 37.8 Q33.8 41.5 32 44.5Z" fill="#E8A74E" opacity="0.9"/>
+  <ellipse cx="32" cy="44.8" rx="1.1" ry="0.6" fill="#E8A74E" opacity="0.5"/>
+
+  <!-- Steps / stylobate -->
+  <rect x="4" y="51.3" width="56" height="3" rx="0.5" fill="#C17F59"/>
+  <rect x="2" y="54.3" width="60" height="3.2" rx="0.5" fill="#C17F59"/>
+  <rect x="0" y="57.5" width="64" height="3" rx="0.5" fill="#C17F59"/>
 </svg>

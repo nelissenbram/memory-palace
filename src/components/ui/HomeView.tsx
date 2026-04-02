@@ -10,6 +10,7 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useAchievementStore, ACHIEVEMENTS } from "@/lib/stores/achievementStore";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
+import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import { TRACKS } from "@/lib/constants/tracks";
@@ -55,7 +56,7 @@ export default function HomeView() {
   const { userName } = useUserStore();
   const { navMode, setNavMode } = usePalaceStore();
   const { getWings, getWingRooms } = useRoomStore();
-  const { userMems, fetchRoomMemories } = useMemoryStore();
+  const { userMems, fetchRoomMemories, setShowUpload } = useMemoryStore();
   const {
     tracks: trackProgressMap,
     totalPoints,
@@ -77,6 +78,7 @@ export default function HomeView() {
     setShowLibrary: setShowInterviewLibrary,
     setShowInterview: setShowInterview,
   } = useInterviewStore();
+  const { setShowMemoryMap, setShowTimeline, setShowStatistics } = useUIPanelStore();
 
   const { startTransition, transitionProps } = useModeTransition();
 
@@ -319,8 +321,8 @@ export default function HomeView() {
             }}
           >
             <EnhanceMemories
-              onUploadPhotos={() => {/* TODO: open upload panel */}}
-              onAIEnhance={() => {/* TODO: open AI enhance */}}
+              onUploadPhotos={() => setShowUpload(true)}
+              onAIEnhance={() => handleNavigateLibrary()}
               onAddDescription={() => handleNavigateLibrary()}
               onOrganize={() => handleNavigateLibrary()}
               isMobile={isMobile}
@@ -339,7 +341,7 @@ export default function HomeView() {
               totalWings={totalWings}
               wingsData={wingsData}
               userName={userName}
-              onViewFullProfile={() => {/* TODO */}}
+              onViewFullProfile={() => handleNavigateLibrary()}
               onStartInterview={() => setShowInterview(true)}
               isMobile={isMobile}
             />
@@ -353,9 +355,9 @@ export default function HomeView() {
             }}
           >
             <FeatureDiscovery
-              onMemoryMap={() => {/* TODO */}}
-              onTimeline={() => {/* TODO */}}
-              onStatistics={() => {/* TODO */}}
+              onMemoryMap={() => setShowMemoryMap(true)}
+              onTimeline={() => setShowTimeline(true)}
+              onStatistics={() => setShowStatistics(true)}
               onFamilyTree={() => { window.location.href = '/family-tree'; }}
               isMobile={isMobile}
             />

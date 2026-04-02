@@ -37,6 +37,7 @@ import MemoryMap from "@/components/ui/MemoryMap";
 import OnThisDay from "@/components/ui/OnThisDay";
 import TimeCapsuleReveal from "@/components/ui/TimeCapsuleReveal";
 import MemoryTimeline from "@/components/ui/MemoryTimeline";
+import StatisticsPanel from "@/components/ui/StatisticsPanel";
 import MassImportPanel from "@/components/ui/MassImportPanel";
 import RoomGallery from "@/components/ui/RoomGallery";
 import StoragePlayerPanel from "@/components/ui/StoragePlayerPanel";
@@ -63,6 +64,7 @@ import FirstMemoryPrompt from "@/components/ui/FirstMemoryPrompt";
 import CinematicWalkthrough from "@/components/ui/CinematicWalkthrough";
 import DiscoveryMenu from "@/components/ui/DiscoveryMenu";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
+import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { updateProfile } from "@/lib/auth/profile-actions";
 import BustBuilderPanel from "@/components/ui/BustBuilderPanel";
 import LibraryView from "@/components/ui/LibraryView";
@@ -98,21 +100,24 @@ export default function MemoryPalace(){
     setShowTracksPanel, setSelectedTrackId, setShowLegacyPanel,
     dismissToast: dismissTrackToast, dismissCelebration,
     loadProgress: loadTrackProgress, runProgressCheck, hasUsedMassImport, legacyReviewed } = useTrackStore();
-  const [showRoomManager, setShowRoomManager] = useState(false);
-  const [showRoomShare, setShowRoomShare] = useState(false);
-  const [showStoragePlayer, setShowStoragePlayer] = useState(false);
-  const [showWingManager, setShowWingManager] = useState(false);
-  const [showMemoryMap, setShowMemoryMap] = useState(false);
-  const [showTimeline, setShowTimeline] = useState(false);
-  const [showMassImport, setShowMassImport] = useState(false);
-  const [showGallery, setShowGallery] = useState(false);
-  const [showInvites, setShowInvites] = useState(false);
-  const [showSharedWithMe, setShowSharedWithMe] = useState(false);
-  const [showSharingSettings, setShowSharingSettings] = useState(false);
-  const [showCorridorGallery, setShowCorridorGallery] = useState(false);
-  const [showEraPicker, setShowEraPicker] = useState(false);
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
-  const [showBustBuilder, setShowBustBuilder] = useState(false);
+  const {
+    showMemoryMap, setShowMemoryMap,
+    showTimeline, setShowTimeline,
+    showMassImport, setShowMassImport,
+    showGallery, setShowGallery,
+    showBustBuilder, setShowBustBuilder,
+    showInvites, setShowInvites,
+    showSharedWithMe, setShowSharedWithMe,
+    showSharingSettings, setShowSharingSettings,
+    showCorridorGallery, setShowCorridorGallery,
+    showEraPicker, setShowEraPicker,
+    showUpgradePrompt, setShowUpgradePrompt,
+    showRoomManager, setShowRoomManager,
+    showRoomShare, setShowRoomShare,
+    showStoragePlayer, setShowStoragePlayer,
+    showWingManager, setShowWingManager,
+    showStatistics, setShowStatistics,
+  } = useUIPanelStore();
   const [bustBuilderIndex, setBustBuilderIndex] = useState(0);
   const [sharedWings, setSharedWings] = useState<SharedWingDoor[]>([]);
   const [sharedContext, setSharedContext] = useState<{
@@ -575,6 +580,7 @@ export default function MemoryPalace(){
       {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory}/>}
       {showRoomShare&&activeRoomData&&wingData&&<ShareCard roomName={activeRoomData.name} roomIcon={activeRoomData.icon} wingName={wingData.name} wingIcon={wingData.icon} memCount={allRoomMems.length} accent={wingData.accent} onClose={()=>setShowRoomShare(false)}/>}
       {showTimeline&&<MemoryTimeline onClose={()=>setShowTimeline(false)}/>}
+      {showStatistics&&<StatisticsPanel onClose={()=>setShowStatistics(false)}/>}
       {showMemoryMap&&<MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";enterWing(wingId);setTimeout(()=>enterRoom(roomId),300);}}/>}
       {showMassImport&&<MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/>}
       {showGallery&&activeRoomId&&<RoomGallery mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>setShowGallery(false)} onUpdate={handleUpdateMemory} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}}/>}
