@@ -8,6 +8,7 @@ import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { isNative } from "@/lib/native/platform";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import PalaceLogo from "@/components/landing/PalaceLogo";
 
 const F = T.font;
 const C = T.color;
@@ -96,7 +97,7 @@ export default function PricingPage() {
             textDecoration: "none",
           }}
         >
-          <span style={{ fontSize: 22 }}>🏛️</span>
+          <PalaceLogo variant="mark" color="dark" size="sm" />
           <span
             style={{
               fontFamily: F.display,

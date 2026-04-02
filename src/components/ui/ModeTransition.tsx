@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { T } from "@/lib/theme";
+import PalaceLogo from "@/components/landing/PalaceLogo";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -326,7 +327,7 @@ export default function ModeTransition({
                 textShadow: `0 0 1.5rem ${T.color.gold}`,
               }}
             >
-              🏛️
+              <PalaceLogo variant="mark" color="light" size="lg" />
             </div>
           </>
         );
@@ -503,7 +504,7 @@ export default function ModeTransition({
                 opacity: 0,
               }}
             >
-              🏛️
+              <PalaceLogo variant="mark" color="light" size="lg" />
             </div>
           </>
         );

@@ -750,7 +750,7 @@
       "label4": "Basisplan voor altijd"
     },
     "comparison": {
-      "title": "Waarom niet gewoon Google Foto's gebruiken?",
+      "title": "Waarom niet gewoon Google Foto's of Apple Foto's gebruiken?",
       "subtitle": "Omdat herinneringen meer verdienen dan een fotodump",
       "columnLeft": "Verspreide foto's",
       "columnRight": "Memory Palace",
@@ -2689,7 +2689,7 @@
     "onThisDay": "Op Deze Dag",
     "sharedWithYou": "Gedeeld Met Jou",
     "viewAllShared": "Bekijk alle gedeelde kamers",
-    "from": "van {name}",
+    "from": "gedeeld door {name}",
     "preserveStories": "Bewaar Je Verhalen",
     "interviewDescription": "Neem interviews op om je levensverhalen vast te leggen met je eigen stem",
     "startInterview": "Start Interview",
@@ -2774,14 +2774,14 @@
     "interview.viewLibrary": "Bekijk bibliotheek",
     "interview.continue": "Ga verder met opnemen",
     "profile.title": "Jouw persoonlijk profiel",
-    "profile.subtitle": "AI-gestuurde inzichten uit je herinneringen",
+    "profile.subtitle": "AI-inzichten uit je herinneringen",
     "profile.emptyState": "Voeg herinneringen toe om je profiel te ontgrendelen",
     "profile.helpAiLearn": "Help AI meer te leren",
     "profile.lifeChapters": "Levenshoofdstukken",
     "profile.memoryStyle": "Herinneringsstijl",
     "profile.coverageMap": "Dekkingskaart",
     "profile.mostActive": "Meest actief",
-    "profile.daysSinceFirst": "Dagen sinds eerste",
+    "profile.daysSinceFirst": "Dagen sinds eerste herinnering",
     "profile.exploreProfile": "Verken volledig profiel"
   },
   "enhance": {

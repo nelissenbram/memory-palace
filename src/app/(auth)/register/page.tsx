@@ -7,6 +7,7 @@ import { signUp } from "@/lib/auth/actions";
 import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
+import PalaceLogo from "@/components/landing/PalaceLogo";
 
 export default function RegisterPage() {
   return <Suspense><RegisterContent /></Suspense>;
@@ -95,7 +96,7 @@ function RegisterContent() {
   return (
     <form onSubmit={handleSubmit}>
       <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-        <div style={{ fontSize: "2.25rem", marginBottom: "0.5rem" }}>🏛️</div>
+        <div style={{ marginBottom: "0.5rem" }}><PalaceLogo variant="mark" color="dark" size="lg" /></div>
         <h1
           style={{
             fontFamily: T.font.display,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import PalaceLogo from "@/components/landing/PalaceLogo";
 
 const F = T.font;
 const C = T.color;
@@ -105,7 +106,7 @@ export default function SecurityPage() {
             textDecoration: "none",
           }}
         >
-          <span style={{ fontSize: 22 }}>{"\u{1F3DB}\uFE0F"}</span>
+          <PalaceLogo variant="mark" color="dark" size="sm" />
           <span
             style={{
               fontFamily: F.display,

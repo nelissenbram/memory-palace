@@ -734,7 +734,7 @@ export default function LandingPage() {
               {comparison?.title || "The difference"}
             </p>
             <h2 style={sectionTitle}>
-              {comparison?.subtitle || "Why not just use Google Photos?"}
+              {comparison?.subtitle || "Why not just use Google Photos & Apple Photos?"}
             </h2>
 
             {/* Comparison table */}

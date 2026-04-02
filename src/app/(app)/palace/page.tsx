@@ -1,6 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import PalaceLogo from "@/components/landing/PalaceLogo";
 
 function PalaceLoading() {
   const { t } = useTranslation("palace");
@@ -19,7 +20,7 @@ function PalaceLoading() {
         fontFamily: "'Cormorant Garamond', Georgia, serif",
       }}
     >
-      <div style={{ fontSize: "3rem", marginBottom: "1.25rem" }}>🏛️</div>
+      <div style={{ marginBottom: "1.25rem" }}><PalaceLogo variant="mark" color="dark" size="lg" /></div>
       <div style={{ fontSize: "1.75rem", fontWeight: 300, color: "#2C2C2A" }}>
         {tLanding("title")}
       </div>

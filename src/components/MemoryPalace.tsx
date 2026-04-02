@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
+import PalaceLogo from "@/components/landing/PalaceLogo";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useUserStore } from "@/lib/stores/userStore";
@@ -354,7 +355,7 @@ export default function MemoryPalace(){
 
   if(profileLoading){
     return(<div style={{width:"100vw",height:"100dvh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone} 100%)`,fontFamily:T.font.display}}>
-      <div style={{fontSize:48,marginBottom:20}}>🏛️</div>
+      <div style={{marginBottom:20}}><PalaceLogo variant="mark" color="dark" size="lg" /></div>
       <div style={{fontSize:isMobile?22:28,fontWeight:300,color:T.color.charcoal}}>The Memory Palace</div>
       <div style={{fontSize:14,color:T.color.muted,marginTop:12,fontFamily:T.font.body}}>Loading your palace...</div>
     </div>);
@@ -371,12 +372,33 @@ export default function MemoryPalace(){
   const bottomBarHeight = isMobile ? 64 : 0;
   const safeBottom = isMobile ? bottomBarHeight + 8 : 70;
 
+  /* ── Shared panel overlays — rendered in ALL modes (atrium, library, 3D) ── */
+  const sharedPanelOverlays = (<>
+    {showTimeline&&<MemoryTimeline onClose={()=>setShowTimeline(false)}/>}
+    {showStatistics&&<StatisticsPanel onClose={()=>setShowStatistics(false)}/>}
+    {showMemoryMap&&<MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";enterWing(wingId);setTimeout(()=>enterRoom(roomId),300);}}/>}
+    {showMassImport&&<MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/>}
+    {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)}/>}
+    {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
+    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);}}/>}
+    {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
+    {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
+    {showInterview&&<InterviewPanel onClose={()=>{setShowInterviewPanel(false);markChecklistItem("complete_interview");}} onCreateMemory={(mem, wingId)=>{
+      const targetWing = wingId === "general" ? "family" : wingId;
+      const prefix = {family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"}[targetWing]||"fr";
+      const roomId = `${prefix}1`;
+      addMemoryToRoom(roomId, mem);
+    }}/>}
+    {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
+  </>);
+
   // ── Home mode: render Home dashboard ──
   if (navMode === "atrium" && !walkthroughActive) {
     return (<>
       <NavigationBar currentMode="atrium" onModeChange={(mode) => setNavMode(mode as any)} isMobile={isMobile} userName={userName} onToolsClick={() => setShowTools(!showTools)} toolsOpen={showTools} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <HomeView />
+      {sharedPanelOverlays}
     </>);
   }
 
@@ -386,6 +408,7 @@ export default function MemoryPalace(){
       <NavigationBar currentMode="library" onModeChange={(mode) => setNavMode(mode as any)} isMobile={isMobile} userName={userName} onToolsClick={() => setShowTools(!showTools)} toolsOpen={showTools} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <LibraryView />
+      {sharedPanelOverlays}
     </>);
   }
 

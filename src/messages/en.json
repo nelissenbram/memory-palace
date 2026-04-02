@@ -797,8 +797,8 @@
       "interactiveWalkthrough": "Interactive 3D walkthrough — explore every room"
     },
     "comparison": {
-      "title": "You already have Google Photos. So why this?",
-      "subtitle": "Because no one inherits a Google account",
+      "title": "You already have Google Photos & Apple Photos. So why this?",
+      "subtitle": "Because no one inherits a cloud account",
       "columnLeft": "Photo Apps",
       "columnRight": "Memory Palace",
       "row1Label": "Organization",

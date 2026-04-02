@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import PalaceLogo from "@/components/landing/PalaceLogo";
 
 const F = T.font;
 const C = T.color;
@@ -73,7 +74,7 @@ export default function TermsOfServicePage() {
             textDecoration: "none",
           }}
         >
-          <span style={{ fontSize: 22 }}>🏛️</span>
+          <PalaceLogo variant="mark" color="dark" size="sm" />
           <span
             style={{
               fontFamily: F.display,
