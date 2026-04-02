@@ -4,73 +4,8 @@ import React, { useEffect, useState, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Mem } from "@/lib/constants/defaults";
-
-/* ═══════════════════════════════════════════════════════════════════
-   CSS keyframes & global styles (injected once)
-   ═══════════════════════════════════════════════════════════════════ */
-
-const STYLE_ID = "atrium-widgets-keyframes";
-
-function ensureKeyframes() {
-  if (typeof document === "undefined") return;
-  if (document.getElementById(STYLE_ID)) return;
-  const style = document.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = `
-    @keyframes aw-fadeSlideUp {
-      from { opacity: 0; transform: translateY(1.25rem); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes aw-countUp {
-      from { opacity: 0; transform: scale(0.7) translateY(0.5rem); }
-      to   { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    @keyframes aw-barFill {
-      from { width: 0; }
-    }
-    @keyframes aw-cardStagger {
-      from { opacity: 0; transform: translateX(1.5rem); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    @keyframes aw-float {
-      0%, 100% { transform: translateY(0); }
-      50%      { transform: translateY(-0.25rem); }
-    }
-    @keyframes aw-shimmer {
-      0%   { background-position: -12.5rem 0; }
-      100% { background-position: 12.5rem 0; }
-    }
-    @keyframes aw-arcDraw {
-      from { stroke-dashoffset: var(--aw-arc-total); }
-      to   { stroke-dashoffset: var(--aw-arc-offset); }
-    }
-    @keyframes aw-pulseGlow {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.25); }
-      50%      { box-shadow: 0 0 0.75rem 0.125rem rgba(212,175,55,0.18); }
-    }
-    @keyframes aw-goldLine {
-      from { width: 0; }
-      to   { width: 100%; }
-    }
-    @keyframes aw-fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-    @keyframes aw-scaleIn {
-      from { opacity: 0; transform: scale(0.5); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-    .aw-scroll-strip::-webkit-scrollbar { display: none; }
-    .aw-viewall-arrow {
-      display: inline-block;
-      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .aw-viewall:hover .aw-viewall-arrow {
-      transform: translateX(0.375rem);
-    }
-  `;
-  document.head.appendChild(style);
-}
+import TuscanCard from "./TuscanCard";
+import { TuscanSectionHeader } from "./TuscanCard";
 
 /* ═══════════════════════════════════════════════════════════════════
    Shared helpers
@@ -78,20 +13,6 @@ function ensureKeyframes() {
 
 function useAtriumT() {
   return useTranslation("atrium" as "common");
-}
-
-/** Frosted glass card base */
-function glassCard(extra?: React.CSSProperties): React.CSSProperties {
-  return {
-    background: "rgba(255,255,255,0.55)",
-    backdropFilter: "blur(1rem)",
-    WebkitBackdropFilter: "blur(1rem)",
-    border: `0.0625rem solid rgba(238,234,227,0.7)`,
-    borderRadius: "1rem",
-    position: "relative",
-    overflow: "hidden",
-    ...extra,
-  };
 }
 
 /** Animated golden accent line at top of cards */
@@ -113,49 +34,6 @@ function GoldAccentLine({ delay = 0 }: { delay?: number }) {
           background: `linear-gradient(90deg, transparent, ${T.color.gold}, ${T.color.goldLight}, transparent)`,
           animation: `aw-goldLine 0.8s ease-out ${delay}s both`,
           borderRadius: "0 0 0.125rem 0.125rem",
-        }}
-      />
-    </div>
-  );
-}
-
-function SectionHeader({
-  children,
-  badge,
-}: {
-  children: React.ReactNode;
-  badge?: React.ReactNode;
-}) {
-  return (
-    <div style={{ marginBottom: "1.125rem" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.625rem",
-          marginBottom: "0.5rem",
-        }}
-      >
-        <h3
-          style={{
-            fontFamily: T.font.display,
-            fontSize: "1.25rem",
-            fontWeight: 600,
-            color: T.color.charcoal,
-            margin: 0,
-            letterSpacing: "0.015em",
-          }}
-        >
-          {children}
-        </h3>
-        {badge}
-      </div>
-      <div
-        style={{
-          height: "0.125rem",
-          width: "3.5rem",
-          background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight}, transparent)`,
-          borderRadius: "0.125rem",
         }}
       />
     </div>
@@ -298,7 +176,7 @@ export function QuickStats({
   isMobile,
 }: QuickStatsProps) {
   const { t } = useAtriumT();
-  useEffect(ensureKeyframes, []);
+
 
   const cards = [
     { value: totalMemories, label: t("stat.memories"), icon: STAT_ICONS[0] },
@@ -375,7 +253,13 @@ function QuickStatCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        ...glassCard(),
+        background: "rgba(255,255,255,0.55)",
+        backdropFilter: "blur(1rem)",
+        WebkitBackdropFilter: "blur(1rem)",
+        border: "0.0625rem solid rgba(238,234,227,0.7)",
+        borderRadius: "1rem",
+        position: "relative",
+        overflow: "hidden",
         padding: "1.25rem 1rem 1rem",
         textAlign: "center",
         animation: `aw-countUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}s both`,
@@ -450,172 +334,68 @@ export interface TrackProgressProps {
     icon: string;
     progress: number;
     total: number;
+    description?: string;
+    color?: string;
   }[];
   onViewAll: () => void;
+  onTrackAction?: (trackId: string) => void;
   isMobile: boolean;
-}
-
-/** SVG arc for overall progress */
-function ProgressArc({
-  progress,
-  total,
-  size = 72,
-}: {
-  progress: number;
-  total: number;
-  size?: number;
-}) {
-  const pct = total > 0 ? progress / total : 0;
-  const r = (size - 8) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - pct);
-  const displayPct = useAnimatedNumber(Math.round(pct * 100), 1200);
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        width: `${size / 16}rem`,
-        height: `${size / 16}rem`,
-        flexShrink: 0,
-      }}
-    >
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        style={{
-          transform: "rotate(-90deg)",
-          // @ts-expect-error CSS custom property
-          "--aw-arc-total": circ,
-          "--aw-arc-offset": offset,
-        }}
-      >
-        {/* Background track */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={T.color.cream}
-          strokeWidth="4"
-        />
-        {/* Progress arc */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={`url(#aw-arc-gradient)`}
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={circ}
-          strokeDashoffset={offset}
-          style={{
-            animation: `aw-arcDraw 1.2s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both`,
-          }}
-        />
-        <defs>
-          <linearGradient id="aw-arc-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={T.color.gold} />
-            <stop offset="100%" stopColor={T.color.terracotta} />
-          </linearGradient>
-        </defs>
-      </svg>
-      {/* Center text */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: T.font.display,
-            fontSize: "1.125rem",
-            fontWeight: 700,
-            color: T.color.charcoal,
-            lineHeight: 1,
-          }}
-        >
-          {displayPct}%
-        </span>
-      </div>
-    </div>
-  );
 }
 
 export function TrackProgress({
   tracks,
   onViewAll,
+  onTrackAction,
   isMobile,
 }: TrackProgressProps) {
   const { t } = useAtriumT();
-  useEffect(ensureKeyframes, []);
-
-  const displayed = tracks.slice(0, 3);
-  const totalProgress = tracks.reduce((sum, tr) => sum + tr.progress, 0);
-  const totalSteps = tracks.reduce((sum, tr) => sum + tr.total, 0);
 
   return (
-    <div
-      style={{
-        ...glassCard({ padding: "1.5rem" }),
-        animation: "aw-fadeSlideUp 0.5s ease-out 0.15s both",
-      }}
-    >
-      <GoldAccentLine delay={0.15} />
-
-      {/* Header row with arc */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "1.25rem",
-          marginBottom: "1.25rem",
-        }}
-      >
-        <ProgressArc progress={totalProgress} total={totalSteps} size={isMobile ? 64 : 72} />
-        <div>
-          <h3
-            style={{
-              fontFamily: T.font.display,
-              fontSize: "1.25rem",
-              fontWeight: 600,
-              color: T.color.charcoal,
-              margin: 0,
-              letterSpacing: "0.015em",
-            }}
-          >
-            {t("tracks.title")}
-          </h3>
-          <p
-            style={{
-              fontFamily: T.font.body,
-              fontSize: "0.8125rem",
-              color: T.color.muted,
-              margin: "0.25rem 0 0",
-            }}
-          >
-            {totalProgress} / {totalSteps} steps
-          </p>
-        </div>
+    <div style={{ animation: "aw-fadeSlideUp 0.5s ease-out 0.15s both" }}>
+      {/* Section header */}
+      <div style={{ marginBottom: "1rem" }}>
+        <h3
+          style={{
+            fontFamily: T.font.display,
+            fontSize: "1.375rem",
+            fontWeight: 600,
+            color: T.color.charcoal,
+            margin: 0,
+            letterSpacing: "0.015em",
+          }}
+        >
+          {t("yourJourney")}
+        </h3>
+        <p
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.8125rem",
+            color: T.color.muted,
+            margin: "0.25rem 0 0",
+            lineHeight: 1.4,
+          }}
+        >
+          {t("tracks.description")}
+        </p>
       </div>
 
-      {/* Track bars */}
+      {/* Track cards grid — 2 columns on desktop, 1 on mobile */}
       <div
         style={{
-          display: "flex",
-          flexDirection: "column",
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
           gap: "1rem",
         }}
       >
-        {displayed.map((track, i) => (
-          <TrackBar key={track.id} track={track} index={i} isMobile={isMobile} />
+        {tracks.map((track, i) => (
+          <TrackCard
+            key={track.id}
+            track={track}
+            index={i}
+            isMobile={isMobile}
+            onAction={onTrackAction}
+            t={t}
+          />
         ))}
       </div>
 
@@ -624,114 +404,311 @@ export function TrackProgress({
   );
 }
 
-/** Track color palette - each track gets a distinct gradient */
-const TRACK_GRADIENTS = [
-  `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight})`,
-  `linear-gradient(90deg, ${T.color.terracotta}, #D4956A)`,
-  `linear-gradient(90deg, ${T.color.sage}, #6B8B63)`,
-];
+/* ── Track SVG Icons ── */
+const TRACK_SVG_ICONS: Record<string, (color: string, size: number) => React.ReactElement> = {
+  preserve: (color, size) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Open chest */}
+      <rect x="2" y="9" width="16" height="9" rx="1.5" stroke={color} strokeWidth="1.3" />
+      <path d="M2 12h16" stroke={color} strokeWidth="1.2" />
+      {/* Lid open */}
+      <path d="M3 9V5.5a1.5 1.5 0 011.5-1.5h11A1.5 1.5 0 0117 5.5V9" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
+      {/* Photo rectangle peeking out */}
+      <rect x="7" y="6" width="6" height="4.5" rx="0.5" stroke={color} strokeWidth="1.2" fill={`${color}15`} />
+      <circle cx="9" cy="8" r="0.7" fill={color} opacity="0.5" />
+    </svg>
+  ),
+  visualize: (color, size) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Palette */}
+      <path d="M10 2C5.58 2 2 5.58 2 10c0 4.42 3.58 8 8 8 .78 0 1.42-.64 1.42-1.42 0-.36-.14-.68-.38-.94-.22-.24-.36-.56-.36-.92 0-.78.64-1.42 1.42-1.42H14c3.31 0 4-2.69 4-6 0-3.87-3.58-5.3-8-5.3z" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Color dots */}
+      <circle cx="6.5" cy="9" r="1.2" fill={color} opacity="0.7" />
+      <circle cx="9" cy="5.8" r="1.2" fill={color} opacity="0.5" />
+      <circle cx="13" cy="6.5" r="1.2" fill={color} opacity="0.35" />
+    </svg>
+  ),
+  enhance: (color, size) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Magnifying glass */}
+      <circle cx="8.5" cy="8.5" r="5" stroke={color} strokeWidth="1.3" />
+      <line x1="12" y1="12" x2="17" y2="17" stroke={color} strokeWidth="1.4" strokeLinecap="round" />
+      {/* Sparkles */}
+      <path d="M15 3l.5 1.5L17 5l-1.5.5L15 7l-.5-1.5L13 5l1.5-.5z" fill={color} opacity="0.6" />
+      <path d="M3 14l.35 1 1 .35-1 .35L3 16.7l-.35-1-1-.35 1-.35z" fill={color} opacity="0.45" />
+      <path d="M16.5 10l.3.8.8.3-.8.3-.3.8-.3-.8-.8-.3.8-.3z" fill={color} opacity="0.35" />
+    </svg>
+  ),
+  resolutions: (color, size) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Hourglass */}
+      <path d="M5 2h10M5 18h10" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M6 2v4c0 1.5 4 3 4 4s-4 2.5-4 4v4" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 2v4c0 1.5-4 3-4 4s4 2.5 4 4v4" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Forward arrow */}
+      <path d="M16 8l2 2-2 2" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+    </svg>
+  ),
+  legacy: (color, size) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Pediment */}
+      <path d="M3 7l7-4 7 4" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="3" y1="7" x2="3" y2="8" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
+      <line x1="17" y1="7" x2="17" y2="8" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
+      {/* Columns */}
+      <line x1="5.5" y1="8" x2="5.5" y2="16" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
+      <line x1="14.5" y1="8" x2="14.5" y2="16" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
+      {/* Base */}
+      <line x1="2" y1="16.5" x2="18" y2="16.5" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
+      {/* Heart */}
+      <path d="M10 14.5c-.8-1.2-3-2.5-3-4a1.7 1.7 0 013-1.1 1.7 1.7 0 013 1.1c0 1.5-2.2 2.8-3 4z" fill={color} opacity="0.4" stroke={color} strokeWidth="1" strokeLinejoin="round" />
+    </svg>
+  ),
+  cocreate: (color, size) => (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Two overlapping circles (Venn) */}
+      <circle cx="7.5" cy="10" r="5" stroke={color} strokeWidth="1.3" />
+      <circle cx="12.5" cy="10" r="5" stroke={color} strokeWidth="1.3" />
+      {/* Connecting dots in overlap */}
+      <circle cx="10" cy="8.5" r="0.6" fill={color} opacity="0.5" />
+      <circle cx="10" cy="10" r="0.6" fill={color} opacity="0.7" />
+      <circle cx="10" cy="11.5" r="0.6" fill={color} opacity="0.5" />
+    </svg>
+  ),
+};
 
-function TrackBar({
+function TrackCard({
   track,
   index,
   isMobile,
+  onAction,
+  t,
 }: {
   track: TrackProgressProps["tracks"][number];
   index: number;
   isMobile: boolean;
+  onAction?: (trackId: string) => void;
+  t: (key: string) => string;
 }) {
+  const [hovered, setHovered] = useState(false);
   const pct = track.total > 0 ? (track.progress / track.total) * 100 : 0;
+  const trackColor = track.color || T.color.gold;
+  const isStarted = track.progress > 0;
+  const isComplete = track.progress >= track.total;
 
   return (
-    <div
+    <TuscanCard
+      variant="elevated"
+      padding="1.25rem"
       style={{
-        display: "grid",
-        gridTemplateColumns: isMobile ? "2rem 1fr 3.25rem" : "2.25rem 1fr 3.5rem",
-        alignItems: "center",
-        gap: "0.625rem",
-        animation: `aw-fadeSlideUp 0.4s ease-out ${0.3 + index * 0.1}s both`,
+        animation: `aw-fadeSlideUp 0.4s ease-out ${0.2 + index * 0.08}s both`,
+        position: "relative",
+        overflow: "hidden",
+        transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+        transform: hovered ? "translateY(-0.125rem)" : "translateY(0)",
+        boxShadow: hovered
+          ? `0 0.5rem 1.5rem rgba(0,0,0,0.08), 0 0 0 0.0625rem ${trackColor}30`
+          : undefined,
+        cursor: onAction ? "pointer" : "default",
       }}
     >
-      {/* Icon in a subtle circle */}
       <div
-        style={{
-          width: "2.25rem",
-          height: "2.25rem",
-          borderRadius: "50%",
-          background: `${T.color.gold}10`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "1rem",
-        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        {track.icon}
-      </div>
+        {/* Colored accent line at top */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "0.1875rem",
+            background: `linear-gradient(90deg, ${trackColor}, ${trackColor}80, transparent)`,
+            borderRadius: "0 0 0.125rem 0.125rem",
+          }}
+        />
 
-      <div>
+        {/* Icon row + name */}
         <div
           style={{
-            fontFamily: T.font.body,
-            fontSize: "0.8125rem",
-            fontWeight: 600,
-            color: T.color.charcoal,
-            marginBottom: "0.375rem",
-            letterSpacing: "0.01em",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            marginBottom: "0.625rem",
           }}
         >
-          {track.name}
-        </div>
-        {/* Bar background */}
-        <div
-          style={{
-            height: "0.4375rem",
-            borderRadius: "0.25rem",
-            background: T.color.cream,
-            overflow: "hidden",
-            position: "relative",
-          }}
-        >
-          {/* Fill with gradient */}
+          {/* Icon in colored circle */}
           <div
             style={{
-              height: "100%",
+              width: "2.75rem",
+              height: "2.75rem",
+              borderRadius: "50%",
+              background: `${trackColor}18`,
+              border: `0.0625rem solid ${trackColor}30`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.375rem",
+              flexShrink: 0,
+              transition: "transform 0.3s ease, background 0.3s ease",
+              transform: hovered ? "scale(1.08)" : "scale(1)",
+            }}
+          >
+            {TRACK_SVG_ICONS[track.id]?.(trackColor, 20) || <span>{track.icon}</span>}
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontFamily: T.font.display,
+                fontSize: "0.9375rem",
+                fontWeight: 600,
+                color: T.color.charcoal,
+                letterSpacing: "0.01em",
+                lineHeight: 1.2,
+              }}
+            >
+              {track.name}
+            </div>
+          </div>
+        </div>
+
+        {/* Description */}
+        {track.description && (
+          <p
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.75rem",
+              color: T.color.muted,
+              margin: "0 0 0.75rem",
+              lineHeight: 1.45,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {track.description}
+          </p>
+        )}
+
+        {/* Progress bar */}
+        <div style={{ marginBottom: "0.625rem" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "0.375rem",
+            }}
+          >
+            <span
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.6875rem",
+                fontWeight: 600,
+                color: T.color.walnut,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {track.progress} {t("tracks.stepsOf")} {track.total} {t("tracks.steps")}
+            </span>
+            <span
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.6875rem",
+                fontWeight: 700,
+                color: trackColor,
+              }}
+            >
+              {Math.round(pct)}%
+            </span>
+          </div>
+          {/* Bar background */}
+          <div
+            style={{
+              height: "0.375rem",
               borderRadius: "0.25rem",
-              width: `${pct}%`,
-              background: TRACK_GRADIENTS[index % TRACK_GRADIENTS.length],
-              animation: `aw-barFill 1s cubic-bezier(0.4, 0, 0.2, 1) ${0.4 + index * 0.15}s both`,
+              background: T.color.cream,
+              overflow: "hidden",
               position: "relative",
             }}
           >
-            {/* Shimmer overlay */}
+            {/* Fill */}
             <div
               style={{
-                position: "absolute",
-                inset: 0,
-                background:
-                  "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)",
-                backgroundSize: "12.5rem 100%",
-                animation: "aw-shimmer 2s linear infinite",
+                height: "100%",
                 borderRadius: "0.25rem",
+                width: `${pct}%`,
+                background: `linear-gradient(90deg, ${trackColor}, ${trackColor}BB)`,
+                animation: `aw-barFill 1s cubic-bezier(0.4, 0, 0.2, 1) ${0.4 + index * 0.1}s both`,
+                position: "relative",
               }}
-            />
+            >
+              {/* Shimmer overlay */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)",
+                  backgroundSize: "12.5rem 100%",
+                  animation: "aw-shimmer 2s linear infinite",
+                  borderRadius: "0.25rem",
+                }}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Count */}
-      <span
-        style={{
-          fontFamily: T.font.body,
-          fontSize: "0.75rem",
-          fontWeight: 600,
-          color: T.color.walnut,
-          textAlign: "right",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {track.progress}/{track.total}
-      </span>
-    </div>
+        {/* CTA button */}
+        {!isComplete && onAction && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onAction(track.id);
+            }}
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              color: "#fff",
+              background: trackColor,
+              border: "none",
+              borderRadius: "0.5rem",
+              padding: "0.4375rem 1rem",
+              cursor: "pointer",
+              letterSpacing: "0.03em",
+              transition: "opacity 0.2s ease, transform 0.2s ease",
+              opacity: hovered ? 1 : 0.9,
+              transform: hovered ? "scale(1.02)" : "scale(1)",
+              width: "100%",
+              textAlign: "center",
+            }}
+          >
+            {isStarted ? t("tracks.continue") : t("tracks.start")}
+          </button>
+        )}
+
+        {/* Complete state */}
+        {isComplete && (
+          <div
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              color: trackColor,
+              textAlign: "center",
+              padding: "0.4375rem 0",
+              letterSpacing: "0.03em",
+            }}
+          >
+            {t("tracks.complete")}
+          </div>
+        )}
+      </div>
+    </TuscanCard>
   );
 }
 
@@ -760,7 +737,6 @@ export function AchievementShowcase({
   isMobile,
 }: AchievementShowcaseProps) {
   const { t } = useAtriumT();
-  useEffect(ensureKeyframes, []);
 
   const slots = isMobile ? 4 : 6;
   const earned = achievements.filter((a) => a.earnedAt).slice(0, slots);
@@ -769,9 +745,10 @@ export function AchievementShowcase({
   const earnedDisplay = useAnimatedNumber(totalEarned, 800);
 
   return (
-    <div
+    <TuscanCard
+      variant="glass"
+      padding="1.5rem"
       style={{
-        ...glassCard({ padding: "1.5rem" }),
         animation: "aw-fadeSlideUp 0.5s ease-out 0.25s both",
         boxShadow: `0 0.25rem 1rem rgba(0,0,0,0.04), inset 0 0.0625rem 0 rgba(255,255,255,0.6)`,
         borderImage: `linear-gradient(135deg, ${T.color.gold}40, transparent 40%, transparent 60%, ${T.color.gold}40) 1`,
@@ -788,7 +765,7 @@ export function AchievementShowcase({
           display: "flex",
           alignItems: "center",
           gap: "0.625rem",
-          marginBottom: "0.5rem",
+          marginBottom: "0.25rem",
         }}
       >
         <h3
@@ -819,6 +796,20 @@ export function AchievementShowcase({
           {earnedDisplay} / {totalAvailable}
         </span>
       </div>
+
+      {/* Description line */}
+      <p
+        style={{
+          fontFamily: T.font.body,
+          fontSize: "0.75rem",
+          color: T.color.muted,
+          margin: "0 0 0.75rem",
+          lineHeight: 1.4,
+        }}
+      >
+        {t("achievements.description")}
+      </p>
+
       <div
         style={{
           height: "0.125rem",
@@ -867,13 +858,15 @@ export function AchievementShowcase({
           </p>
         </div>
       ) : (
-        /* Badge grid */
+        /* Badge grid — larger, more striking */
         <div
           style={{
-            display: "flex",
-            gap: "0.875rem",
-            alignItems: "center",
-            flexWrap: "wrap",
+            display: "grid",
+            gridTemplateColumns: isMobile
+              ? "repeat(4, 1fr)"
+              : "repeat(6, 1fr)",
+            gap: "0.75rem",
+            justifyItems: "center",
           }}
         >
           {earned.map((a, i) => (
@@ -883,26 +876,29 @@ export function AchievementShowcase({
             <div
               key={`empty-${i}`}
               style={{
-                width: isMobile ? "2.75rem" : "3.25rem",
-                height: isMobile ? "2.75rem" : "3.25rem",
+                width: isMobile ? "3rem" : "3.5rem",
+                height: isMobile ? "3rem" : "3.5rem",
                 borderRadius: "50%",
-                border: `0.125rem dashed ${T.color.sandstone}50`,
-                background: "transparent",
+                border: `0.125rem dashed ${T.color.gold}30`,
+                background: `radial-gradient(circle at 50% 50%, ${T.color.gold}06, transparent)`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: 0.4,
                 animation: `aw-fadeIn 0.4s ease-out ${0.5 + (earned.length + i) * 0.05}s both`,
+                transition: "border-color 0.3s ease, background 0.3s ease",
               }}
             >
-              <span style={{ fontSize: "0.75rem", color: T.color.sandstone }}>?</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" opacity="0.35">
+                <circle cx="12" cy="12" r="10" strokeDasharray="3 3" />
+                <path d="M12 8v8M8 12h8" />
+              </svg>
             </div>
           ))}
         </div>
       )}
 
       <ViewAllButton onClick={onViewAll} label={t("achievements.viewAll")} />
-    </div>
+    </TuscanCard>
   );
 }
 
@@ -916,80 +912,122 @@ function AchievementBadge({
   isMobile: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
-  const size = isMobile ? "2.75rem" : "3.25rem";
+  const size = isMobile ? "3rem" : "3.5rem";
 
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      title={achievement.name}
       style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        border: `0.125rem solid ${T.color.gold}`,
-        background: `radial-gradient(circle at 30% 30%, ${T.color.gold}20, ${T.color.gold}08)`,
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        fontSize: isMobile ? "1.25rem" : "1.5rem",
-        flexShrink: 0,
-        position: "relative",
+        gap: "0.375rem",
         animation: `aw-scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${0.3 + index * 0.08}s both`,
-        transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
-        transform: hovered ? "scale(1.15)" : "scale(1)",
-        boxShadow: hovered
-          ? `0 0 1rem 0.125rem ${T.color.gold}35`
-          : `0 0 0.5rem ${T.color.gold}15`,
-        cursor: "default",
       }}
     >
-      <span
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        title={achievement.name}
         style={{
-          animation: hovered ? "aw-float 2s ease-in-out infinite" : "none",
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          border: `0.125rem solid ${T.color.gold}`,
+          background: `radial-gradient(circle at 30% 30%, ${T.color.gold}25, ${T.color.gold}0A)`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: isMobile ? "1.375rem" : "1.625rem",
+          flexShrink: 0,
+          position: "relative",
+          transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+          transform: hovered ? "scale(1.15)" : "scale(1)",
+          boxShadow: hovered
+            ? `0 0 1.25rem 0.25rem ${T.color.gold}40, inset 0 0 0.5rem ${T.color.gold}15`
+            : `0 0 0.75rem ${T.color.gold}20, inset 0 0 0.25rem ${T.color.gold}08`,
+          cursor: "default",
+          overflow: "hidden",
         }}
       >
-        {achievement.icon}
-      </span>
-
-      {/* Tooltip on hover */}
-      {hovered && (
+        {/* Gold shimmer/particle effect on earned badges */}
         <div
           style={{
             position: "absolute",
-            bottom: "calc(100% + 0.5rem)",
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: T.color.charcoal,
-            color: T.color.white,
-            fontFamily: T.font.body,
-            fontSize: "0.6875rem",
-            fontWeight: 600,
-            padding: "0.25rem 0.625rem",
-            borderRadius: "0.375rem",
-            whiteSpace: "nowrap",
+            inset: 0,
+            borderRadius: "50%",
+            background: `conic-gradient(from 0deg, transparent, ${T.color.gold}15, transparent, ${T.color.gold}10, transparent)`,
+            animation: "aw-shimmer 3s linear infinite",
             pointerEvents: "none",
-            animation: "aw-fadeIn 0.15s ease-out",
-            zIndex: 10,
+          }}
+        />
+
+        <span
+          style={{
+            position: "relative",
+            zIndex: 1,
+            animation: hovered ? "aw-float 2s ease-in-out infinite" : "none",
+            filter: `drop-shadow(0 0 0.25rem ${T.color.gold}40)`,
           }}
         >
-          {achievement.name}
-          {/* Arrow */}
+          {achievement.icon}
+        </span>
+
+        {/* Tooltip on hover */}
+        {hovered && (
           <div
             style={{
               position: "absolute",
-              top: "100%",
+              bottom: "calc(100% + 0.5rem)",
               left: "50%",
               transform: "translateX(-50%)",
-              width: 0,
-              height: 0,
-              borderLeft: "0.3125rem solid transparent",
-              borderRight: "0.3125rem solid transparent",
-              borderTop: `0.3125rem solid ${T.color.charcoal}`,
+              background: T.color.charcoal,
+              color: T.color.white,
+              fontFamily: T.font.body,
+              fontSize: "0.6875rem",
+              fontWeight: 600,
+              padding: "0.25rem 0.625rem",
+              borderRadius: "0.375rem",
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+              animation: "aw-fadeIn 0.15s ease-out",
+              zIndex: 10,
             }}
-          />
-        </div>
-      )}
+          >
+            {achievement.name}
+            {/* Arrow */}
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 0,
+                height: 0,
+                borderLeft: "0.3125rem solid transparent",
+                borderRight: "0.3125rem solid transparent",
+                borderTop: `0.3125rem solid ${T.color.charcoal}`,
+              }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Always-visible badge name */}
+      <div
+        style={{
+          fontFamily: T.font.body,
+          fontSize: "0.5625rem",
+          color: T.color.muted,
+          textAlign: "center",
+          maxWidth: "4.5rem",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          lineHeight: 1.2,
+        }}
+      >
+        {achievement.name}
+      </div>
     </div>
   );
 }
@@ -1028,7 +1066,6 @@ export function RecentMemories({
   isMobile,
 }: RecentMemoriesProps) {
   const { t } = useAtriumT();
-  useEffect(ensureKeyframes, []);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -1043,7 +1080,7 @@ export function RecentMemories({
 
   return (
     <div style={{ animation: "aw-fadeSlideUp 0.5s ease-out 0.35s both" }}>
-      <SectionHeader>{t("recent.title")}</SectionHeader>
+      <TuscanSectionHeader>{t("recent.title")}</TuscanSectionHeader>
 
       <div
         ref={scrollRef}
@@ -1107,11 +1144,11 @@ function MemoryCard({
       style={{
         scrollSnapAlign: "start",
         flexShrink: 0,
-        width: "11rem",
+        width: "12rem",
         cursor: "pointer",
         animation: `aw-cardStagger 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) ${index * 0.06}s both`,
         transition:
-          "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+          "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease",
         transform: hovered
           ? "translateY(-0.375rem) scale(1.02)"
           : "translateY(0) scale(1)",
@@ -1123,13 +1160,27 @@ function MemoryCard({
         boxShadow: hovered
           ? `0 0.75rem 2rem rgba(0,0,0,0.1), 0 0 0 0.0625rem ${T.color.gold}20`
           : "0 0.125rem 0.5rem rgba(0,0,0,0.06)",
+        position: "relative",
       }}
     >
+      {/* Gold top accent line */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "0.125rem",
+          background: `linear-gradient(90deg, ${T.color.gold}60, ${T.color.goldLight}40, transparent)`,
+          zIndex: 2,
+        }}
+      />
+
       {/* Thumbnail */}
       <div
         style={{
           width: "100%",
-          height: "7rem",
+          height: "8rem",
           overflow: "hidden",
           position: "relative",
           background: mem.dataUrl ? undefined : bg,

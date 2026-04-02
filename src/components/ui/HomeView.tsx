@@ -16,10 +16,8 @@ import { TRACKS } from "@/lib/constants/tracks";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 
-import NavigationBar from "@/components/ui/NavigationBar";
 import AtriumHero from "@/components/ui/AtriumHero";
 import {
-  QuickStats,
   TrackProgress,
   AchievementShowcase,
   RecentMemories,
@@ -32,20 +30,11 @@ import {
 import ModeTransition, {
   useModeTransition,
 } from "@/components/ui/ModeTransition";
-import LifeStoryWidget from "./LifeStoryWidget";
-import PalacePreview from "./PalacePreview";
-import { LIFE_AREAS } from "./LifeCompleteness";
-import AtriumStyles, { AtriumDivider } from "./AtriumStyles";
+import PersonalProfile from "./PersonalProfile";
+import EnhanceMemories from "./EnhanceMemories";
+import FeatureDiscovery from "./FeatureDiscovery";
 
-/* ═══════════════════════════════════════════════════════════
-   CSS KEYFRAMES — injected once via <style>
-   ═══════════════════════════════════════════════════════════ */
-const KEYFRAMES = `
-@keyframes atriumFadeSlideIn {
-  from { opacity: 0; transform: translateY(1.25rem); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-`;
+import TuscanStyles from "./TuscanStyles";
 
 /* ═══════════════════════════════════════════════════════════
    ENRICHED MEMORY — memory + wing/room context
@@ -62,6 +51,7 @@ export interface EnrichedMemory {
 export default function HomeView() {
   const isMobile = useIsMobile();
   const { t } = useTranslation("atrium");
+  const { t: tTracks } = useTranslation("tracksPanel");
   const { userName } = useUserStore();
   const { navMode, setNavMode } = usePalaceStore();
   const { getWings, getWingRooms } = useRoomStore();
@@ -173,16 +163,18 @@ export default function HomeView() {
     });
   }, [allMemories]);
 
-  // Track data for TrackProgress widget — mapped to expected {id, name, icon, progress, total}
+  // Track data for TrackProgress widget — mapped to expected {id, name, icon, progress, total, description, color}
   const trackData = useMemo(() => {
     return TRACKS.map((track) => {
       const progress = getTrackProgress(track.id);
       return {
         id: track.id,
-        name: track.nameKey, // nameKey serves as display name
+        name: tTracks(track.nameKey),
         icon: track.icon,
         progress: progress.stepsCompleted.length,
         total: track.steps.length,
+        description: tTracks(track.descriptionKey),
+        color: track.color,
       };
     });
   }, [trackProgressMap, getTrackProgress]);
@@ -215,23 +207,11 @@ export default function HomeView() {
     return result;
   }, [wings, getWingRooms, userMems]);
 
-  /* ─── LIFE AREA & PALACE DATA ─── */
+  /* ─── WINGS DATA FOR PERSONAL PROFILE ─── */
 
-  const lifeAreaData = useMemo(() => {
-    return LIFE_AREAS.map(area => {
-      const wingMems = allMemories.filter(({ wing }) => wing.id.includes(area.id) || area.id === "daily").length;
-      return { ...area, memoriesCount: wingMems, suggestedCount: area.target };
-    });
-  }, [allMemories]);
-
-  const overallCompleteness = useMemo(() => {
-    const total = lifeAreaData.reduce((sum, a) => sum + Math.min(a.memoriesCount / a.suggestedCount, 1), 0);
-    return Math.round((total / lifeAreaData.length) * 100);
-  }, [lifeAreaData]);
-
-  const palaceWings = useMemo(() => wings.map(w => ({
-    id: w.id, name: w.name, icon: w.icon, accent: w.accent,
-    memoryCount: (allMemories.filter(m => m.wing.id === w.id)).length,
+  const wingsData = useMemo(() => wings.map(w => ({
+    id: w.id, name: w.name, icon: w.icon,
+    memoryCount: allMemories.filter(m => m.wing.id === w.id).length,
   })), [wings, allMemories]);
 
   /* ─── MODE SWITCHING ─── */
@@ -243,19 +223,6 @@ export default function HomeView() {
   const handleNavigatePalace = useCallback(() => {
     startTransition("3d", () => setNavMode("3d"));
   }, [startTransition, setNavMode]);
-
-  const handleModeChange = useCallback(
-    (mode: "atrium" | "library" | "3d") => {
-      if (mode === "library") {
-        startTransition("library", () => setNavMode("library"));
-      } else if (mode === "3d") {
-        startTransition("3d", () => setNavMode("3d"));
-      } else {
-        setNavMode("atrium");
-      }
-    },
-    [startTransition, setNavMode],
-  );
 
   /* ─── STAGGER ANIMATION HELPER ─── */
   const sectionStyle = (index: number): React.CSSProperties => ({
@@ -277,18 +244,9 @@ export default function HomeView() {
         overflow: "hidden",
       }}
     >
-      <style>{KEYFRAMES}</style>
-      <AtriumStyles />
+      <TuscanStyles />
 
-      {/* ── 1. NAVIGATION BAR — always visible at top ── */}
-      <NavigationBar
-        currentMode={navMode}
-        onModeChange={handleModeChange}
-        isMobile={isMobile}
-        userName={userName}
-      />
-
-      {/* ── 2. SCROLLABLE CONTENT AREA ── */}
+      {/* ── SCROLLABLE CONTENT AREA ── */}
       <div
         style={{
           flex: 1,
@@ -306,7 +264,7 @@ export default function HomeView() {
               : "2.5rem 2.5rem 4rem",
           }}
         >
-          {/* ── 3. ATRIUM HERO ── */}
+          {/* ── 1. ATRIUM HERO ── */}
           <div style={sectionStyle(0)}>
             <AtriumHero
               userName={userName}
@@ -316,62 +274,89 @@ export default function HomeView() {
               onNavigateLibrary={handleNavigateLibrary}
               onNavigatePalace={handleNavigatePalace}
               isMobile={isMobile}
-              lifeCompleteness={overallCompleteness}
             />
           </div>
 
-          {/* ── 3b. DIVIDER ── */}
-          <AtriumDivider />
-
-          {/* ── 4. LIFE STORY WIDGET ── */}
+          {/* ── 2. YOUR JOURNEY (TRACK PROGRESS) ── */}
           <div
             style={{
               marginTop: "2.5rem",
               ...sectionStyle(1),
             }}
           >
-            <LifeStoryWidget
-              lifeAreas={lifeAreaData}
-              overallCompleteness={overallCompleteness}
-              totalMemories={totalMemories}
-              onExploreArea={handleNavigateLibrary}
-              onStartInterview={() => setShowInterview(true)}
+            <TrackProgress
+              tracks={trackData}
+              onViewAll={() => setShowTracksPanel(true)}
+              onTrackAction={(trackId) => {
+                setSelectedTrackId(trackId);
+                setShowTracksPanel(true);
+              }}
               isMobile={isMobile}
             />
           </div>
 
-          {/* ── 4b. DIVIDER ── */}
-          <AtriumDivider />
-
-          {/* ── 5. PALACE PREVIEW ── */}
+          {/* ── 3. INTERVIEW PROMPT ── */}
           <div
             style={{
               marginTop: "2.5rem",
               ...sectionStyle(2),
             }}
           >
-            <PalacePreview
-              wings={palaceWings}
-              totalRooms={totalRooms}
-              onEnterPalace={handleNavigatePalace}
-              onSelectWing={() => handleNavigateLibrary()}
+            <InterviewPrompt
+              hasInterviews={interviewSessions.length > 0}
+              interviewCount={interviewSessions.length}
+              onStartInterview={() => setShowInterview(true)}
+              onViewInterviews={() => setShowInterviewLibrary(true)}
               isMobile={isMobile}
-              hour={new Date().getHours()}
             />
           </div>
 
-          {/* ── 6. QUICK STATS ── */}
+          {/* ── 4. ENHANCE MEMORIES ── */}
           <div
             style={{
               marginTop: "2.5rem",
               ...sectionStyle(3),
             }}
           >
-            <QuickStats
+            <EnhanceMemories
+              onUploadPhotos={() => {/* TODO: open upload panel */}}
+              onAIEnhance={() => {/* TODO: open AI enhance */}}
+              onAddDescription={() => handleNavigateLibrary()}
+              onOrganize={() => handleNavigateLibrary()}
+              isMobile={isMobile}
+            />
+          </div>
+
+          {/* ── 5. PERSONAL PROFILE ── */}
+          <div
+            style={{
+              marginTop: "2.5rem",
+              ...sectionStyle(4),
+            }}
+          >
+            <PersonalProfile
               totalMemories={totalMemories}
-              wingsUsed={totalWings}
-              roomsCreated={totalRooms}
-              sharedRooms={sharedRooms}
+              totalWings={totalWings}
+              wingsData={wingsData}
+              userName={userName}
+              onViewFullProfile={() => {/* TODO */}}
+              onStartInterview={() => setShowInterview(true)}
+              isMobile={isMobile}
+            />
+          </div>
+
+          {/* ── 6. FEATURE DISCOVERY ── */}
+          <div
+            style={{
+              marginTop: "2.5rem",
+              ...sectionStyle(5),
+            }}
+          >
+            <FeatureDiscovery
+              onMemoryMap={() => {/* TODO */}}
+              onTimeline={() => {/* TODO */}}
+              onStatistics={() => {/* TODO */}}
+              onFamilyTree={() => { window.location.href = '/family-tree'; }}
               isMobile={isMobile}
             />
           </div>
@@ -381,7 +366,7 @@ export default function HomeView() {
             <div
               style={{
                 marginTop: "2.5rem",
-                ...sectionStyle(4),
+                ...sectionStyle(6),
               }}
             >
               <RecentMemories
@@ -397,22 +382,13 @@ export default function HomeView() {
             </div>
           )}
 
-          {/* ── 8 & 9. TRACK PROGRESS + ACHIEVEMENT SHOWCASE ── */}
+          {/* ── 8. ACHIEVEMENT SHOWCASE ── */}
           <div
             style={{
               marginTop: "2.5rem",
-              display: isMobile ? "flex" : "grid",
-              flexDirection: isMobile ? "column" : undefined,
-              gridTemplateColumns: isMobile ? undefined : "1fr 1fr",
-              gap: "1.5rem",
-              ...sectionStyle(5),
+              ...sectionStyle(7),
             }}
           >
-            <TrackProgress
-              tracks={trackData}
-              onViewAll={() => setShowTracksPanel(true)}
-              isMobile={isMobile}
-            />
             <AchievementShowcase
               achievements={achievementsList}
               totalEarned={achievementProgress.earned}
@@ -422,12 +398,12 @@ export default function HomeView() {
             />
           </div>
 
-          {/* ── 10. ON THIS DAY ── */}
+          {/* ── 9. ON THIS DAY ── */}
           {onThisDayMemories.length > 0 && (
             <div
               style={{
                 marginTop: "2.5rem",
-                ...sectionStyle(6),
+                ...sectionStyle(8),
               }}
             >
               <OnThisDayCard
@@ -442,12 +418,12 @@ export default function HomeView() {
             </div>
           )}
 
-          {/* ── 11. SHARED ROOMS PREVIEW ── */}
+          {/* ── 10. SHARED ROOMS PREVIEW ── */}
           {sharedRoomsList.length > 0 && (
             <div
               style={{
                 marginTop: "2.5rem",
-                ...sectionStyle(7),
+                ...sectionStyle(9),
               }}
             >
               <SharedRoomsPreview
@@ -464,26 +440,10 @@ export default function HomeView() {
               />
             </div>
           )}
-
-          {/* ── 12. INTERVIEW PROMPT ── */}
-          <div
-            style={{
-              marginTop: "2.5rem",
-              ...sectionStyle(8),
-            }}
-          >
-            <InterviewPrompt
-              hasInterviews={interviewSessions.length > 0}
-              interviewCount={interviewSessions.length}
-              onStartInterview={() => setShowInterview(true)}
-              onViewInterviews={() => setShowInterviewLibrary(true)}
-              isMobile={isMobile}
-            />
-          </div>
         </div>
       </div>
 
-      {/* ── 11. MODE TRANSITION OVERLAY ── */}
+      {/* ── MODE TRANSITION OVERLAY ── */}
       <ModeTransition {...transitionProps} />
     </div>
   );

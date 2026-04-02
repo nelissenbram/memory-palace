@@ -67,6 +67,8 @@ import { updateProfile } from "@/lib/auth/profile-actions";
 import BustBuilderPanel from "@/components/ui/BustBuilderPanel";
 import LibraryView from "@/components/ui/LibraryView";
 import HomeView from "@/components/ui/HomeView";
+import UniversalActions from "@/components/ui/UniversalActions";
+import { useActions } from "@/lib/hooks/useActions";
 import { getWingsSharedWithMe, getSharedWingData, getSharedRoomMemories } from "@/lib/auth/sharing-actions";
 import type { SharedWingDoor } from "@/components/3d/EntranceHallScene";
 
@@ -126,6 +128,7 @@ export default function MemoryPalace(){
   const [corridorPaintings, setCorridorPaintings] = useState<CorridorPaintings>({});
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [showTools, setShowTools] = useState(false);
   const { isActive: walkthroughActive, showDiscoveryMenu, setShowDiscoveryMenu } = useWalkthroughStore();
   const walkthroughStart = useWalkthroughStore((s) => s.start);
   const walkthroughCompleted = useWalkthroughStore((s) => s.completed);
@@ -157,6 +160,20 @@ export default function MemoryPalace(){
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings } = useNavigation();
   const { roomMems, allRoomMems, roomMemsKey, handleAddMemory, addMemoryToRoom, handleUpdateMemory, handleDeleteMemory, currentSharing, updateSharing } = useRoomMemories();
+
+  // ── Universal Actions (available in all modes) ──
+  const actionGroups = useActions({
+    onTimeline: () => { setShowTools(false); setShowTimeline(true); },
+    onMemoryMap: () => { setShowTools(false); setShowMemoryMap(true); },
+    onInterviews: () => { setShowTools(false); setShowInterviewLibrary(true); },
+    onMassImport: () => { setShowTools(false); setShowMassImport(true); },
+    onTracks: () => { setShowTools(false); setShowTracksPanel(true); },
+    onAchievements: () => { setShowTools(false); setShowAchievements(true); },
+    onSharingSettings: () => { setShowTools(false); setShowSharingSettings(true); },
+    onWingManager: () => { setShowTools(false); setShowWingManager(true); },
+    onInvites: () => { setShowTools(false); setShowInvites(true); },
+    onSharedWithMe: () => { setShowTools(false); setShowSharedWithMe(true); },
+  });
 
   // Load profile on mount + heartbeat for legacy inactivity detection
   useEffect(()=>{
@@ -351,12 +368,20 @@ export default function MemoryPalace(){
 
   // ── Home mode: render Home dashboard ──
   if (navMode === "atrium" && !walkthroughActive) {
-    return <HomeView />;
+    return (<>
+      <NavigationBar currentMode="atrium" onModeChange={(mode) => setNavMode(mode as any)} isMobile={isMobile} userName={userName} onToolsClick={() => setShowTools(!showTools)} toolsOpen={showTools} />
+      <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
+      <HomeView />
+    </>);
   }
 
   // ── Library mode: render Library view instead of 3D (skip during walkthrough) ──
   if (navMode === "library" && !walkthroughActive) {
-    return <LibraryView />;
+    return (<>
+      <NavigationBar currentMode="library" onModeChange={(mode) => setNavMode(mode as any)} isMobile={isMobile} userName={userName} onToolsClick={() => setShowTools(!showTools)} toolsOpen={showTools} />
+      <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
+      <LibraryView />
+    </>);
   }
 
   return(
@@ -387,7 +412,10 @@ export default function MemoryPalace(){
         isMobile={isMobile}
         userName={userName}
         hidden={!!selMem || showUpload || showSharing || walkthroughActive}
+        onToolsClick={() => setShowTools(!showTools)}
+        toolsOpen={showTools}
       />
+      <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
 
       {/* Portal transition overlay */}
       {portalAnim&&<div style={{position:"absolute",inset:0,zIndex:45,pointerEvents:"none",animation:"portalFlash .5s ease both",background:"radial-gradient(ellipse at center,rgba(200,168,104,.6) 0%,rgba(200,168,104,.15) 40%,transparent 70%)"}}/>}

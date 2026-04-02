@@ -5,6 +5,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Mem } from "@/lib/constants/defaults";
 import type { WingRoom } from "@/lib/constants/wings";
 import Image from "next/image";
+import { TuscanSectionHeader } from "./TuscanCard";
 
 /* ── Shared constants ── */
 

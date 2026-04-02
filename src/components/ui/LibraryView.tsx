@@ -16,6 +16,8 @@ import { LibraryRoomCard, LibraryMemoryCard } from "@/components/ui/LibraryCards
 import LibrarySidebar from "@/components/ui/LibrarySidebar";
 import { LibrarySearch, LibraryFilterBar } from "@/components/ui/LibrarySearch";
 import { LibraryStyles, LibraryHeader, LibraryEmptyState } from "@/components/ui/LibraryAnimations";
+import TuscanStyles from "./TuscanStyles";
+import TuscanCard from "./TuscanCard";
 
 export default function LibraryView() {
   const isMobile = useIsMobile();
@@ -172,9 +174,10 @@ export default function LibraryView() {
   return (
     <div style={{
       width: "100vw", height: "100dvh", display: "flex", flexDirection: isMobile ? "column" : "row",
-      background: T.color.linen, fontFamily: T.font.body, overflow: "hidden",
+      background: `linear-gradient(175deg, ${T.color.linen} 0%, ${T.color.warmStone} 55%, ${T.color.cream} 100%)`, fontFamily: T.font.body, overflow: "hidden",
     }}>
       <LibraryStyles />
+      <TuscanStyles />
 
       {/* ═══ WING SIDEBAR ═══ */}
       <LibrarySidebar

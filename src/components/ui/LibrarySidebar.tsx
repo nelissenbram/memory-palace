@@ -4,6 +4,7 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import type { Wing } from "@/lib/constants/wings";
+import TuscanCard from "./TuscanCard";
 
 interface LibrarySidebarProps {
   wings: Wing[];
@@ -367,7 +368,7 @@ export default function LibrarySidebar({
                     style={{
                       height: "100%",
                       width: `${progressRatio * 100}%`,
-                      background: `linear-gradient(90deg, ${w.accent}55, ${w.accent}99)`,
+                      background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight})`,
                       borderRadius: "0.0625rem",
                       animation: mounted
                         ? `lsb-progress-fill 0.7s ${EASE_OUT_EXPO} ${index * 0.05 + 0.4}s both`
@@ -445,6 +446,7 @@ export default function LibrarySidebar({
             textDecoration: "none",
             transition: `all 0.25s ${EASE_OUT_EXPO}`,
             background: settingsHovered ? "rgba(255,255,255,0.45)" : "transparent",
+            borderLeft: settingsHovered ? `0.125rem solid ${T.color.gold}` : "0.125rem solid transparent",
             boxShadow: settingsHovered
               ? `0 0 0.5rem ${T.color.gold}15`
               : "none",
@@ -484,7 +486,7 @@ export default function LibrarySidebar({
                 ? "rgba(255,255,255,0.85)"
                 : "rgba(255,255,255,0.65)",
               color: T.color.charcoal,
-              border: `0.0625rem solid ${atriumHovered ? T.color.sandstone : T.color.cream}`,
+              border: `0.0625rem solid ${atriumHovered ? T.color.gold : T.color.cream}`,
               cursor: "pointer",
               fontFamily: T.font.display,
               fontSize: "0.875rem",
@@ -520,9 +522,7 @@ export default function LibrarySidebar({
             background: `linear-gradient(135deg, ${T.color.charcoal}, #3a3a38)`,
             color: T.color.linen,
             border: "0.0625rem solid transparent",
-            borderImage: enterHovered
-              ? `linear-gradient(135deg, ${T.color.gold}88, ${T.color.goldLight}44, ${T.color.gold}88) 1`
-              : "none",
+            borderImage: `linear-gradient(135deg, ${T.color.gold}88, ${T.color.goldLight}44, ${T.color.gold}88) 1`,
             cursor: "pointer",
             fontFamily: T.font.display,
             fontSize: "0.9375rem",

@@ -15,9 +15,157 @@ interface NavigationBarProps {
   userName?: string | null;
   /** Hide on mobile during certain interactions (upload panel open, etc.) */
   hidden?: boolean;
+  /** Toggle universal actions popover */
+  onToolsClick?: () => void;
+  /** Whether the tools popover is currently open */
+  toolsOpen?: boolean;
 }
 
 type ModeKey = "atrium" | "library" | "3d";
+
+/* ------------------------------------------------------------------ */
+/*  SVG Icon Components                                                */
+/* ------------------------------------------------------------------ */
+
+/** Atrium — bird's-eye open courtyard with central fountain & colonnade */
+function AtriumIcon({ color = "currentColor", size = 16 }: { color?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke={color}
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {/* central fountain basin */}
+      <circle cx="8" cy="8" r="2" />
+      {/* fountain spout dot */}
+      <circle cx="8" cy="8" r="0.5" fill={color} stroke="none" />
+      {/* four colonnade arcs around the courtyard */}
+      <path d="M3.5 3.5 A1.5 1.5 0 0 1 5 2.5" />
+      <path d="M12.5 3.5 A1.5 1.5 0 0 0 11 2.5" />
+      <path d="M3.5 12.5 A1.5 1.5 0 0 0 5 13.5" />
+      <path d="M12.5 12.5 A1.5 1.5 0 0 1 11 13.5" />
+      {/* corner column dots */}
+      <circle cx="3" cy="3" r="0.7" fill={color} stroke="none" />
+      <circle cx="13" cy="3" r="0.7" fill={color} stroke="none" />
+      <circle cx="3" cy="13" r="0.7" fill={color} stroke="none" />
+      <circle cx="13" cy="13" r="0.7" fill={color} stroke="none" />
+      {/* outer courtyard boundary — open/airy dashed feel */}
+      <rect x="1.5" y="1.5" width="13" height="13" rx="1.5" strokeDasharray="2 1.5" strokeWidth="1" />
+    </svg>
+  );
+}
+
+/** Library — open book with radiating knowledge lines */
+function LibraryIcon({ color = "currentColor", size = 16 }: { color?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke={color}
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {/* book spine / center fold */}
+      <path d="M8 3.5 V13" />
+      {/* left page */}
+      <path d="M8 3.5 C7 3 4.5 2.5 2 3 V12.5 C4.5 12 7 12.5 8 13" />
+      {/* right page */}
+      <path d="M8 3.5 C9 3 11.5 2.5 14 3 V12.5 C11.5 12 9 12.5 8 13" />
+      {/* left page text lines */}
+      <line x1="4" y1="5.5" x2="6.5" y2="5.5" strokeWidth="0.8" />
+      <line x1="4" y1="7.2" x2="6.2" y2="7.2" strokeWidth="0.8" />
+      <line x1="4.2" y1="8.9" x2="6.5" y2="8.9" strokeWidth="0.8" />
+      {/* right page text lines */}
+      <line x1="9.5" y1="5.5" x2="12" y2="5.5" strokeWidth="0.8" />
+      <line x1="9.5" y1="7.2" x2="11.8" y2="7.2" strokeWidth="0.8" />
+      <line x1="9.5" y1="8.9" x2="12" y2="8.9" strokeWidth="0.8" />
+    </svg>
+  );
+}
+
+/** Palace — front-facing temple with columns in perspective, grand & immersive */
+function PalaceIcon({ color = "currentColor", size = 16 }: { color?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke={color}
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {/* pediment / roof triangle */}
+      <path d="M2.5 5.5 L8 1.5 L13.5 5.5" />
+      {/* architrave / horizontal beam */}
+      <line x1="2.5" y1="5.5" x2="13.5" y2="5.5" />
+      {/* base / steps */}
+      <line x1="2" y1="13" x2="14" y2="13" />
+      <line x1="2.5" y1="12" x2="13.5" y2="12" strokeWidth="1" />
+      {/* columns — outer pair wider, inner pair narrower for perspective depth */}
+      <line x1="3.5" y1="5.5" x2="3.5" y2="12" />
+      <line x1="12.5" y1="5.5" x2="12.5" y2="12" />
+      {/* inner columns — slightly inset for depth */}
+      <line x1="6" y1="5.5" x2="6" y2="12" strokeWidth="1" />
+      <line x1="10" y1="5.5" x2="10" y2="12" strokeWidth="1" />
+      {/* center column accent */}
+      <line x1="8" y1="5.5" x2="8" y2="12" strokeWidth="0.8" strokeDasharray="1.5 1" />
+    </svg>
+  );
+}
+
+/** Me — user silhouette (kept from existing) */
+function MeIcon({ color = "currentColor", size = 16 }: { color?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mode icon renderer                                                 */
+/* ------------------------------------------------------------------ */
+
+function ModeIcon({ mode, active, size = 16 }: { mode: ModeKey | "me"; active: boolean; size?: number }) {
+  const activeColor = T.color.gold;
+  const inactiveColor = "currentColor";
+  const color = active ? activeColor : inactiveColor;
+
+  switch (mode) {
+    case "atrium":
+      return <AtriumIcon color={color} size={size} />;
+    case "library":
+      return <LibraryIcon color={color} size={size} />;
+    case "3d":
+      return <PalaceIcon color={color} size={size} />;
+    case "me":
+      return <MeIcon color={color} size={size} />;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                          */
@@ -25,10 +173,10 @@ type ModeKey = "atrium" | "library" | "3d";
 
 const MODES: ModeKey[] = ["atrium", "library", "3d"];
 
-const MODE_META: Record<ModeKey, { icon: string; labelKey: string }> = {
-  atrium:  { icon: "\u{1F3DB}\uFE0F", labelKey: "mode_atrium" },
-  library: { icon: "\u{1F4DA}",       labelKey: "mode_library" },
-  "3d":    { icon: "\u{1F3DB}\uFE0F", labelKey: "mode_palace" },
+const MODE_LABEL: Record<ModeKey, string> = {
+  atrium: "mode_atrium",
+  library: "mode_library",
+  "3d": "mode_palace",
 };
 
 const EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
@@ -124,6 +272,8 @@ export default function NavigationBar({
   isMobile,
   userName,
   hidden = false,
+  onToolsClick,
+  toolsOpen = false,
 }: NavigationBarProps) {
   const { t } = useTranslation("navigation" as any);
 
@@ -227,11 +377,11 @@ export default function NavigationBar({
   /* ================================================================ */
 
   if (isMobile) {
-    const mobileTabs: { mode: ModeKey | "me"; icon: string; labelKey: string }[] = [
-      { mode: "atrium",  icon: "\u{1F3DB}\uFE0F", labelKey: "mode_atrium" },
-      { mode: "library", icon: "\u{1F4DA}",       labelKey: "mode_library" },
-      { mode: "3d",      icon: "\u{1F3DB}\uFE0F", labelKey: "mode_palace" },
-      { mode: "me",      icon: "\u{1F464}",       labelKey: "tab_me" },
+    const mobileTabs: { mode: ModeKey | "me"; labelKey: string }[] = [
+      { mode: "atrium",  labelKey: "mode_atrium" },
+      { mode: "library", labelKey: "mode_library" },
+      { mode: "3d",      labelKey: "mode_palace" },
+      { mode: "me",      labelKey: "tab_me" },
     ];
 
     return (
@@ -264,7 +414,7 @@ export default function NavigationBar({
           {/* sliding top indicator */}
           <div style={indicatorStyle} aria-hidden />
 
-          {mobileTabs.map(({ mode, icon, labelKey }) => {
+          {mobileTabs.map(({ mode, labelKey }) => {
             const isMe = mode === "me";
             const isActive = !isMe && mode === currentMode;
             const color = isActive ? T.color.terracotta : T.color.muted;
@@ -307,7 +457,9 @@ export default function NavigationBar({
               >
                 <span
                   style={{
-                    fontSize: "1.375rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     lineHeight: 1,
                     transition: `transform 0.3s ${EASE_SPRING}`,
                     transform: isActive ? "scale(1.1)" : "scale(1)",
@@ -318,7 +470,7 @@ export default function NavigationBar({
                   }}
                   aria-hidden
                 >
-                  {icon}
+                  <ModeIcon mode={mode} active={isActive} size={20} />
                 </span>
                 <span
                   style={{
@@ -389,7 +541,7 @@ export default function NavigationBar({
           <div style={indicatorStyle} aria-hidden />
 
           {MODES.map((mode) => {
-            const meta = MODE_META[mode];
+            const labelKey = MODE_LABEL[mode];
             const isActive = mode === currentMode;
             const isHovered = hoveringMode === mode;
 
@@ -432,15 +584,17 @@ export default function NavigationBar({
                 <span
                   aria-hidden
                   style={{
-                    fontSize: "0.9375rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     lineHeight: 1,
                     transition: `transform 0.3s ${EASE_SPRING}`,
                     transform: isActive ? "scale(1.1)" : "scale(1)",
                   }}
                 >
-                  {meta.icon}
+                  <ModeIcon mode={mode} active={isActive} size={16} />
                 </span>
-                <span>{t(meta.labelKey)}</span>
+                <span>{t(labelKey)}</span>
               </button>
             );
           })}
@@ -457,6 +611,34 @@ export default function NavigationBar({
             flexShrink: 0,
           }}
         />
+
+        {/* ---- tools button ---- */}
+        {onToolsClick && (
+          <button
+            onClick={onToolsClick}
+            aria-label={t("tools")}
+            style={{
+              width: "2.25rem",
+              height: "2.25rem",
+              borderRadius: "50%",
+              border: `0.0625rem solid ${toolsOpen ? T.color.gold : T.color.cream}`,
+              background: toolsOpen ? `${T.color.gold}15` : "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: `all 0.25s ${EASE}`,
+              marginRight: "0.375rem",
+              flexShrink: 0,
+              fontSize: "0.875rem",
+              color: toolsOpen ? T.color.gold : T.color.walnut,
+            }}
+            onMouseEnter={e => { if (!toolsOpen) { e.currentTarget.style.background = `${T.color.gold}08`; e.currentTarget.style.borderColor = T.color.goldLight; }}}
+            onMouseLeave={e => { if (!toolsOpen) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = T.color.cream; }}}
+          >
+            {toolsOpen ? "\u00D7" : "+"}
+          </button>
+        )}
 
         {/* ---- user avatar ---- */}
         <button

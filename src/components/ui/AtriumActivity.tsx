@@ -4,60 +4,8 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Mem } from "@/lib/constants/defaults";
 import Image from "next/image";
-
-/* ═══════════════════════════════════════════════════════════
-   CSS KEYFRAMES — World-class animations
-   ═══════════════════════════════════════════════════════════ */
-const ATRIUM_KEYFRAMES = `
-@keyframes atriumPageTurn {
-  0%   { opacity: 0; transform: perspective(60rem) rotateY(-4deg) translateY(0.75rem); }
-  60%  { opacity: 1; transform: perspective(60rem) rotateY(1deg) translateY(-0.125rem); }
-  100% { opacity: 1; transform: perspective(60rem) rotateY(0deg) translateY(0); }
-}
-@keyframes atriumSlideUp {
-  from { opacity: 0; transform: translateY(1rem); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes atriumFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes atriumGoldShimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-@keyframes atriumBorderGlow {
-  0%, 100% { border-left-color: ${T.color.gold}; box-shadow: -0.125rem 0 1.5rem -0.25rem rgba(212,175,55,0.06); }
-  50%      { border-left-color: ${T.color.goldLight}; box-shadow: -0.125rem 0 2rem -0.125rem rgba(212,175,55,0.14); }
-}
-@keyframes atriumSoundWave {
-  0%, 100% { transform: scaleY(0.3); }
-  50%      { transform: scaleY(1); }
-}
-@keyframes atriumPulseGlow {
-  0%, 100% { opacity: 0.4; transform: scale(1); }
-  50%      { opacity: 0.7; transform: scale(1.05); }
-}
-@keyframes atriumArrowSlide {
-  0%, 100% { transform: translateX(0); }
-  50%      { transform: translateX(0.25rem); }
-}
-@keyframes atriumThumbEnter {
-  from { opacity: 0; transform: translateX(0.5rem) scale(0.95); }
-  to   { opacity: 1; transform: translateX(0) scale(1); }
-}
-@keyframes atriumCardRise {
-  from { opacity: 0; transform: translateY(0.5rem) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes atriumProgressFill {
-  from { width: 0; }
-}
-@keyframes atriumStorageFade {
-  from { opacity: 0; transform: scaleX(0.6); }
-  to   { opacity: 1; transform: scaleX(1); }
-}
-`;
+import TuscanCard from "./TuscanCard";
+import { TuscanSectionHeader } from "./TuscanCard";
 
 /* ═══════════════════════════════════════════════════════════
    TYPE ICONS
@@ -89,7 +37,6 @@ export function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCa
 
   return (
     <>
-      <style>{ATRIUM_KEYFRAMES}</style>
       <div
         style={{
           position: "relative",
@@ -127,17 +74,17 @@ export function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCa
         }}>
           {/* Calendar icon with gold accent */}
           <div style={{
-            width: "2.125rem",
-            height: "2.125rem",
+            width: "2.375rem",
+            height: "2.375rem",
             borderRadius: "0.5rem",
-            background: `linear-gradient(135deg, ${T.color.gold}14 0%, ${T.color.gold}08 100%)`,
+            background: `linear-gradient(135deg, ${T.color.gold}18 0%, ${T.color.gold}0C 100%)`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
-            border: `0.0625rem solid ${T.color.gold}18`,
+            border: `0.0625rem solid ${T.color.gold}20`,
           }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.85 }}>
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" style={{ opacity: 0.9 }}>
               <rect x="1.5" y="3" width="13" height="11" rx="1.5" stroke={T.color.gold} strokeWidth="1.2" fill="none" />
               <line x1="1.5" y1="6.5" x2="14.5" y2="6.5" stroke={T.color.gold} strokeWidth="1" opacity="0.4" />
               <line x1="5" y1="1.5" x2="5" y2="4.5" stroke={T.color.gold} strokeWidth="1.2" strokeLinecap="round" />
@@ -149,8 +96,8 @@ export function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCa
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{
               fontFamily: T.font.display,
-              fontWeight: 600,
-              fontSize: isMobile ? "1.125rem" : "1.3125rem",
+              fontWeight: 700,
+              fontSize: isMobile ? "1.1875rem" : "1.4375rem",
               color: T.color.charcoal,
               margin: 0,
               letterSpacing: "-0.01em",
@@ -263,7 +210,7 @@ export function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCa
                     e.currentTarget.style.boxShadow = "0 0.125rem 0.625rem rgba(44,44,42,0.04)";
                   }}
                 >
-                  {/* Thumbnail with sepia overlay */}
+                  {/* Thumbnail with warm nostalgic tint */}
                   <div
                     style={{
                       height: isMobile ? "5rem" : "5.5rem",
@@ -281,15 +228,15 @@ export function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCa
                           src={mem.dataUrl!}
                           alt={mem.title}
                           fill
-                          style={{ objectFit: "cover", filter: "saturate(0.85) contrast(1.03)" }}
+                          style={{ objectFit: "cover", filter: "saturate(0.75) contrast(1.04) sepia(0.12) brightness(1.02)" }}
                           sizes="144px"
                           unoptimized={mem.dataUrl!.startsWith("data:")}
                         />
-                        {/* Sepia vignette overlay on image */}
+                        {/* Warm nostalgic vignette overlay on image */}
                         <div style={{
                           position: "absolute",
                           inset: 0,
-                          background: "linear-gradient(180deg, transparent 50%, rgba(139,115,85,0.15) 100%)",
+                          background: "linear-gradient(180deg, rgba(193,127,89,0.06) 0%, transparent 40%, rgba(139,115,85,0.18) 100%)",
                           pointerEvents: "none",
                         }} />
                       </>
@@ -453,29 +400,29 @@ export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobi
               tabIndex={0}
               onKeyDown={e => { if (e.key === "Enter") onRoomClick(room.id); }}
               style={{
-                background: "rgba(255,255,255,0.6)",
+                background: "rgba(255,255,255,0.65)",
                 backdropFilter: "blur(1rem)",
                 WebkitBackdropFilter: "blur(1rem)",
                 borderRadius: "1rem",
-                border: `0.0625rem solid ${T.color.sage}12`,
+                border: `0.0625rem solid ${T.color.sage}15`,
                 borderLeft: `0.1875rem solid ${T.color.sage}`,
                 padding: isMobile ? "1rem" : "1.125rem 1.25rem",
                 cursor: "pointer",
-                transition: "transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s ease, border-color 0.25s ease",
+                transition: "transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.3s ease, border-color 0.25s ease",
                 animation: `atriumCardRise 0.5s cubic-bezier(0.23, 1, 0.32, 1) ${0.2 + i * 0.1}s both`,
-                boxShadow: "0 0.125rem 0.75rem rgba(44,44,42,0.03)",
+                boxShadow: "0 0.125rem 0.75rem rgba(44,44,42,0.04)",
                 position: "relative",
                 overflow: "hidden",
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = "translateY(-0.25rem)";
-                e.currentTarget.style.boxShadow = `0 0.5rem 1.75rem rgba(74,103,65,0.1), 0 0.125rem 0.5rem rgba(44,44,42,0.03)`;
-                e.currentTarget.style.borderColor = `${T.color.sage}25`;
+                e.currentTarget.style.boxShadow = `0 0.5rem 2rem rgba(74,103,65,0.12), 0 0 0.75rem rgba(74,103,65,0.06), 0 0.125rem 0.5rem rgba(44,44,42,0.03)`;
+                e.currentTarget.style.borderColor = `${T.color.sage}30`;
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 0.125rem 0.75rem rgba(44,44,42,0.03)";
-                e.currentTarget.style.borderColor = `${T.color.sage}12`;
+                e.currentTarget.style.boxShadow = "0 0.125rem 0.75rem rgba(44,44,42,0.04)";
+                e.currentTarget.style.borderColor = `${T.color.sage}15`;
               }}
             >
               {/* Subtle green gradient background accent */}
@@ -483,10 +430,10 @@ export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobi
                 position: "absolute",
                 top: "-1rem",
                 right: "-1rem",
-                width: "4rem",
-                height: "4rem",
+                width: "5rem",
+                height: "5rem",
                 borderRadius: "50%",
-                background: `radial-gradient(circle, ${T.color.sage}08 0%, transparent 70%)`,
+                background: `radial-gradient(circle, ${T.color.sage}0A 0%, transparent 70%)`,
                 pointerEvents: "none",
               }} />
 
@@ -494,36 +441,37 @@ export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobi
                 {/* Owner initial avatar with room icon overlay */}
                 <div style={{ position: "relative", flexShrink: 0 }}>
                   <div style={{
-                    width: "2.5rem",
-                    height: "2.5rem",
+                    width: "2.75rem",
+                    height: "2.75rem",
                     borderRadius: "0.75rem",
-                    background: `linear-gradient(135deg, ${T.color.sage}18 0%, ${T.color.sage}0C 100%)`,
+                    background: `linear-gradient(135deg, ${T.color.sage}1A 0%, ${T.color.sage}0C 100%)`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "1.25rem",
-                    border: `0.0625rem solid ${T.color.sage}15`,
+                    fontSize: "1.375rem",
+                    border: `0.0625rem solid ${T.color.sage}18`,
+                    boxShadow: `0 0.125rem 0.5rem ${T.color.sage}0A`,
                   }}>
                     {room.icon}
                   </div>
-                  {/* Owner initial badge */}
+                  {/* Owner initial badge — refined ring */}
                   <div style={{
                     position: "absolute",
-                    bottom: "-0.1875rem",
-                    right: "-0.1875rem",
-                    width: "1.125rem",
-                    height: "1.125rem",
+                    bottom: "-0.25rem",
+                    right: "-0.25rem",
+                    width: "1.25rem",
+                    height: "1.25rem",
                     borderRadius: "50%",
-                    background: T.color.sage,
+                    background: `linear-gradient(135deg, ${T.color.sage} 0%, ${T.color.sage}DD 100%)`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: `0.125rem solid rgba(255,255,255,0.9)`,
-                    boxShadow: "0 0.0625rem 0.25rem rgba(44,44,42,0.1)",
+                    border: `0.125rem solid rgba(255,255,255,0.95)`,
+                    boxShadow: `0 0.0625rem 0.375rem rgba(74,103,65,0.2)`,
                   }}>
                     <span style={{
                       fontFamily: T.font.body,
-                      fontSize: "0.5rem",
+                      fontSize: "0.5625rem",
                       fontWeight: 700,
                       color: T.color.white,
                       lineHeight: 1,
@@ -584,7 +532,7 @@ export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobi
 }
 
 /* ═══════════════════════════════════════════════════════════
-   3. InterviewPrompt — "Preserve Your Voice" emotional CTA
+   3. InterviewPrompt — "Your Voice Matters" premium CTA
    ═══════════════════════════════════════════════════════════ */
 export interface InterviewPromptProps {
   hasInterviews: boolean;
@@ -594,35 +542,40 @@ export interface InterviewPromptProps {
   isMobile: boolean;
 }
 
-/** CSS sound-wave bars (decorative) */
-function SoundWaveBars({ color, count = 5 }: { color: string; count?: number }) {
+/** CSS sound-wave bars (decorative, cinematic) */
+function SoundWaveBars({ color, count = 9 }: { color: string; count?: number }) {
   return (
     <div style={{
       display: "flex",
       alignItems: "center",
-      gap: "0.1875rem",
-      height: "1.5rem",
+      gap: "0.25rem",
+      height: "2.25rem",
     }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          style={{
-            width: "0.1875rem",
-            height: "100%",
-            borderRadius: "0.125rem",
-            background: color,
-            opacity: 0.5,
-            animation: `atriumSoundWave ${0.8 + i * 0.15}s ease-in-out ${i * 0.1}s infinite`,
-            transformOrigin: "center",
-          }}
-        />
-      ))}
+      {Array.from({ length: count }).map((_, i) => {
+        const center = (count - 1) / 2;
+        const dist = Math.abs(i - center) / center;
+        const maxH = 1 - dist * 0.55;
+        return (
+          <div
+            key={i}
+            style={{
+              width: "0.1875rem",
+              height: `${maxH * 100}%`,
+              borderRadius: "0.125rem",
+              background: color,
+              opacity: 0.45 + (1 - dist) * 0.35,
+              animation: `atriumSoundWave ${0.7 + i * 0.12}s ease-in-out ${i * 0.08}s infinite`,
+              transformOrigin: "center",
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
 
-/** CSS microphone illustration */
-function MicrophoneIllustration({ size = "3.5rem" }: { size?: string }) {
+/** Expanded CSS microphone illustration with radiant rings */
+function MicrophoneIllustration({ size = "5rem" }: { size?: string }) {
   return (
     <div style={{
       width: size,
@@ -632,16 +585,31 @@ function MicrophoneIllustration({ size = "3.5rem" }: { size?: string }) {
       alignItems: "center",
       justifyContent: "center",
     }}>
-      {/* Outer glow ring */}
+      {/* Outer pulsing glow ring */}
       <div style={{
         position: "absolute",
         inset: 0,
         borderRadius: "50%",
-        background: `radial-gradient(circle, ${T.color.terracotta}12 0%, transparent 70%)`,
+        background: `radial-gradient(circle, ${T.color.terracotta}14 0%, ${T.color.terracotta}06 50%, transparent 70%)`,
         animation: "atriumPulseGlow 3s ease-in-out infinite",
       }} />
+      {/* Middle ring */}
+      <div style={{
+        position: "absolute",
+        inset: "0.5rem",
+        borderRadius: "50%",
+        border: `0.0625rem solid ${T.color.terracotta}18`,
+        animation: "atriumPulseGlow 3s ease-in-out 0.5s infinite",
+      }} />
+      {/* Inner warm circle */}
+      <div style={{
+        position: "absolute",
+        inset: "1rem",
+        borderRadius: "50%",
+        background: `linear-gradient(135deg, ${T.color.terracotta}12 0%, ${T.color.gold}08 100%)`,
+      }} />
       {/* Mic SVG */}
-      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ position: "relative", zIndex: 1 }}>
+      <svg width="32" height="32" viewBox="0 0 28 28" fill="none" style={{ position: "relative", zIndex: 1 }}>
         {/* Mic body */}
         <rect x="10" y="4" width="8" height="13" rx="4" fill={`${T.color.terracotta}30`} stroke={T.color.terracotta} strokeWidth="1.2" />
         {/* Mic stand arc */}
@@ -653,6 +621,9 @@ function MicrophoneIllustration({ size = "3.5rem" }: { size?: string }) {
         <line x1="11.5" y1="8" x2="16.5" y2="8" stroke={T.color.terracotta} strokeWidth="0.6" opacity="0.25" />
         <line x1="11.5" y1="10" x2="16.5" y2="10" stroke={T.color.terracotta} strokeWidth="0.6" opacity="0.25" />
         <line x1="11.5" y1="12" x2="16.5" y2="12" stroke={T.color.terracotta} strokeWidth="0.6" opacity="0.25" />
+        {/* Sound wave arcs emanating from mic */}
+        <path d="M21 8C22.5 9.5 22.5 13 21 14.5" stroke={T.color.terracotta} strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.2" />
+        <path d="M23 6.5C25.5 9 25.5 14 23 16.5" stroke={T.color.terracotta} strokeWidth="0.6" strokeLinecap="round" fill="none" opacity="0.12" />
       </svg>
     </div>
   );
@@ -668,124 +639,170 @@ export function InterviewPrompt({
   const { t } = useTranslation("atrium");
 
   if (!hasInterviews) {
-    /* ── No interviews: stunning emotional CTA ── */
+    /* ── No interviews: premium, emotional invitation ── */
     return (
       <div
         style={{
-          borderRadius: "1.125rem",
+          borderRadius: "1.25rem",
           overflow: "hidden",
-          background: `linear-gradient(145deg, rgba(255,252,245,0.9) 0%, rgba(193,127,89,0.07) 40%, rgba(212,175,55,0.04) 70%, ${T.color.warmStone} 100%)`,
-          border: `0.0625rem solid rgba(193,127,89,0.1)`,
-          padding: isMobile ? "1.5rem 1.25rem" : "2rem 2.25rem",
-          animation: "atriumSlideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both",
+          background: `linear-gradient(145deg, rgba(255,250,240,0.95) 0%, rgba(193,127,89,0.1) 30%, rgba(212,175,55,0.06) 60%, rgba(193,127,89,0.08) 85%, ${T.color.warmStone} 100%)`,
+          border: `0.0625rem solid rgba(193,127,89,0.15)`,
+          padding: isMobile ? "2rem 1.5rem" : "2.75rem 3rem",
+          animation: "atriumSlideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both, atriumBorderGlow 6s ease-in-out 3s infinite",
           position: "relative",
-          boxShadow: "0 0.25rem 1.5rem rgba(44,44,42,0.04), inset 0 0.0625rem 0 rgba(255,255,255,0.6)",
+          boxShadow: `0 0.5rem 2.5rem rgba(193,127,89,0.08), 0 0.25rem 1rem rgba(44,44,42,0.04), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
         }}
       >
-        {/* Decorative top-right accent gradient */}
+        {/* Decorative radial glow top-right */}
         <div style={{
           position: "absolute",
-          top: 0,
-          right: 0,
-          width: "40%",
-          height: "100%",
-          background: `radial-gradient(ellipse at 80% 20%, ${T.color.terracotta}06 0%, transparent 60%)`,
+          top: "-2rem",
+          right: "-2rem",
+          width: "14rem",
+          height: "14rem",
+          background: `radial-gradient(ellipse at center, ${T.color.terracotta}08 0%, ${T.color.gold}04 40%, transparent 70%)`,
+          pointerEvents: "none",
+        }} />
+        {/* Decorative radial glow bottom-left */}
+        <div style={{
+          position: "absolute",
+          bottom: "-3rem",
+          left: "-2rem",
+          width: "10rem",
+          height: "10rem",
+          background: `radial-gradient(ellipse at center, ${T.color.gold}06 0%, transparent 70%)`,
           pointerEvents: "none",
         }} />
 
+        {/* Decorative quotation mark — top-left warm accent */}
+        <div style={{
+          position: "absolute",
+          top: isMobile ? "0.75rem" : "1rem",
+          left: isMobile ? "1rem" : "1.5rem",
+          fontFamily: T.font.display,
+          fontSize: isMobile ? "4rem" : "5.5rem",
+          lineHeight: 1,
+          color: `${T.color.terracotta}10`,
+          pointerEvents: "none",
+          userSelect: "none",
+        }}>
+          {"\u201C"}
+        </div>
+
         <div style={{
           display: "flex",
-          alignItems: isMobile ? "flex-start" : "center",
-          gap: isMobile ? "1rem" : "1.5rem",
+          alignItems: isMobile ? "center" : "center",
+          gap: isMobile ? "1.5rem" : "2.25rem",
           flexDirection: isMobile ? "column" : "row",
           position: "relative",
         }}>
-          {/* Left: Mic illustration + sound waves */}
+          {/* Left: Mic illustration + cinematic sound waves */}
           <div style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: "0.5rem",
+            gap: "0.625rem",
             flexShrink: 0,
           }}>
-            <MicrophoneIllustration size={isMobile ? "3rem" : "3.75rem"} />
-            <SoundWaveBars color={T.color.terracotta} count={5} />
+            <MicrophoneIllustration size={isMobile ? "5rem" : "6rem"} />
+            <SoundWaveBars color={T.color.terracotta} count={11} />
           </div>
 
-          {/* Right: Copy + CTA */}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Right: Emotional copy + single CTA */}
+          <div style={{ flex: 1, minWidth: 0, textAlign: isMobile ? "center" : "left" }}>
+            {/* i18n key: interview.headline */}
             <h3 style={{
               fontFamily: T.font.display,
-              fontWeight: 600,
-              fontSize: isMobile ? "1.1875rem" : "1.4375rem",
+              fontWeight: 700,
+              fontSize: isMobile ? "1.5rem" : "1.875rem",
               color: T.color.charcoal,
-              margin: "0 0 0.5rem",
-              letterSpacing: "-0.01em",
-              lineHeight: 1.25,
+              margin: "0 0 0.625rem",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.15,
             }}>
-              {t("preserveStories")}
+              {t("interview.headline")}
             </h3>
+
+            {/* i18n key: interview.pitch */}
             <p style={{
               fontFamily: T.font.body,
-              fontSize: "0.875rem",
+              fontSize: isMobile ? "0.9375rem" : "1rem",
               color: T.color.walnut,
-              margin: "0 0 1.25rem",
-              maxWidth: "26rem",
-              lineHeight: 1.6,
+              margin: "0 0 1.75rem",
+              maxWidth: "30rem",
+              lineHeight: 1.7,
               letterSpacing: "0.005em",
             }}>
-              {t("interviewDescription")}
+              {t("interview.pitch")}
             </p>
+
+            {/* Single CTA: Begin Your First Session */}
             <button
               onClick={onStartInterview}
               style={{
                 fontFamily: T.font.display,
-                fontSize: "0.9375rem",
+                fontSize: isMobile ? "1rem" : "1.0625rem",
                 fontWeight: 600,
                 color: T.color.white,
                 background: `linear-gradient(135deg, ${T.color.terracotta} 0%, ${T.color.walnut} 100%)`,
                 border: "none",
-                borderRadius: "0.625rem",
-                padding: "0.75rem 1.5rem",
+                borderRadius: "0.875rem",
+                padding: isMobile ? "0.9375rem 2.25rem" : "1rem 2.75rem",
                 cursor: "pointer",
                 transition: "transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s ease",
-                boxShadow: `0 0.25rem 1.25rem ${T.color.terracotta}25, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`,
-                letterSpacing: "0.01em",
+                boxShadow: `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`,
+                letterSpacing: "0.015em",
                 lineHeight: 1,
+                display: "inline-block",
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.transform = "translateY(-0.125rem)";
-                e.currentTarget.style.boxShadow = `0 0.5rem 1.75rem ${T.color.terracotta}35, 0 0.125rem 0.375rem rgba(44,44,42,0.08)`;
+                e.currentTarget.style.transform = "translateY(-0.1875rem)";
+                e.currentTarget.style.boxShadow = `0 0.75rem 2.5rem ${T.color.terracotta}40, 0 0.125rem 0.375rem rgba(44,44,42,0.08)`;
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = `0 0.25rem 1.25rem ${T.color.terracotta}25, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`;
+                e.currentTarget.style.boxShadow = `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`;
               }}
             >
-              {t("startInterview")}
+              {t("interview.beginFirstSession")}
             </button>
+
+            {/* i18n key: interview.socialProof */}
+            <p style={{
+              fontFamily: T.font.body,
+              fontSize: "0.8125rem",
+              color: T.color.muted,
+              margin: "1rem 0 0",
+              fontStyle: "italic",
+              letterSpacing: "0.005em",
+              lineHeight: 1.5,
+              opacity: 0.8,
+            }}>
+              {t("interview.socialProof")}
+            </p>
           </div>
         </div>
       </div>
     );
   }
 
-  /* ── Has interviews: elegant compact card ── */
+  /* ── Has interviews: warm, compact card with encouragement ── */
   return (
     <div
       style={{
-        background: "rgba(255,255,255,0.6)",
+        background: `linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(193,127,89,0.07) 50%, rgba(212,175,55,0.04) 100%)`,
         backdropFilter: "blur(1.5rem)",
         WebkitBackdropFilter: "blur(1.5rem)",
-        borderRadius: "1rem",
-        border: `0.0625rem solid ${T.color.cream}`,
-        padding: isMobile ? "1rem 1.125rem" : "1.125rem 1.5rem",
-        animation: "atriumSlideUp 0.6s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both",
+        borderRadius: "1.125rem",
+        border: `0.0625rem solid rgba(193,127,89,0.12)`,
+        borderLeft: `0.1875rem solid ${T.color.terracotta}`,
+        padding: isMobile ? "1.25rem 1.25rem" : "1.5rem 1.75rem",
+        animation: "atriumSlideUp 0.6s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both, atriumBorderGlow 6s ease-in-out 3s infinite",
         display: "flex",
         alignItems: "center",
-        gap: "0.875rem",
+        gap: "1rem",
         flexWrap: "wrap",
-        boxShadow: "0 0.125rem 0.75rem rgba(44,44,42,0.03), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
+        boxShadow: `0 0.25rem 1.25rem rgba(193,127,89,0.06), 0 0.125rem 0.5rem rgba(44,44,42,0.03), inset 0 0.0625rem 0 rgba(255,255,255,0.6)`,
         position: "relative",
         overflow: "hidden",
       }}
@@ -795,9 +812,9 @@ export function InterviewPrompt({
         position: "absolute",
         top: 0,
         right: 0,
-        width: "8rem",
+        width: "10rem",
         height: "100%",
-        background: `linear-gradient(90deg, transparent, ${T.color.terracotta}04)`,
+        background: `linear-gradient(90deg, transparent, ${T.color.terracotta}06)`,
         pointerEvents: "none",
       }} />
 
@@ -810,16 +827,17 @@ export function InterviewPrompt({
         position: "relative",
       }}>
         <div style={{
-          width: "2.5rem",
-          height: "2.5rem",
+          width: "2.75rem",
+          height: "2.75rem",
           borderRadius: "0.75rem",
-          background: `linear-gradient(135deg, ${T.color.terracotta}14 0%, ${T.color.terracotta}08 100%)`,
+          background: `linear-gradient(135deg, ${T.color.terracotta}18 0%, ${T.color.terracotta}0A 100%)`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          border: `0.0625rem solid ${T.color.terracotta}15`,
+          border: `0.0625rem solid ${T.color.terracotta}18`,
+          boxShadow: `0 0.125rem 0.5rem ${T.color.terracotta}08`,
         }}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
             <rect x="5.5" y="2" width="5" height="8" rx="2.5" fill={`${T.color.terracotta}25`} stroke={T.color.terracotta} strokeWidth="1" />
             <path d="M4 8.5C4 10.7 5.8 12.5 8 12.5C10.2 12.5 12 10.7 12 8.5" stroke={T.color.terracotta} strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.5" />
             <line x1="8" y1="12.5" x2="8" y2="14" stroke={T.color.terracotta} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
@@ -828,39 +846,29 @@ export function InterviewPrompt({
       </div>
 
       <div style={{ flex: 1, minWidth: "8rem", position: "relative" }}>
+        {/* Session count */}
+        <p style={{
+          fontFamily: T.font.body,
+          fontSize: "0.75rem",
+          fontWeight: 600,
+          color: T.color.terracotta,
+          margin: "0 0 0.25rem",
+          letterSpacing: "0.02em",
+        }}>
+          {interviewCount} {interviewCount === 1 ? t("interview.sessionSingular") : t("interview.sessionPlural")}
+        </p>
+        {/* Warm encouragement */}
         <h3 style={{
           fontFamily: T.font.display,
           fontWeight: 600,
-          fontSize: isMobile ? "1rem" : "1.125rem",
+          fontSize: isMobile ? "1.0625rem" : "1.1875rem",
           color: T.color.charcoal,
           margin: 0,
           letterSpacing: "-0.01em",
           lineHeight: 1.3,
         }}>
-          {t("continueStory")}
+          {t("interview.continueEncouragement")}
         </h3>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.25rem" }}>
-          <p style={{
-            fontFamily: T.font.body,
-            fontSize: "0.75rem",
-            color: T.color.muted,
-            margin: 0,
-          }}>
-            {interviewCount} {interviewCount === 1 ? t("interviewSingular") : t("interviewPlural")}
-          </p>
-          {/* Mini progress dots */}
-          <div style={{ display: "flex", gap: "0.1875rem" }}>
-            {Array.from({ length: Math.min(interviewCount, 5) }).map((_, i) => (
-              <div key={i} style={{
-                width: "0.3125rem",
-                height: "0.3125rem",
-                borderRadius: "50%",
-                background: T.color.terracotta,
-                opacity: 0.25 + (i * 0.15),
-              }} />
-            ))}
-          </div>
-        </div>
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0, position: "relative" }}>
@@ -871,7 +879,7 @@ export function InterviewPrompt({
             fontSize: "0.8125rem",
             fontWeight: 500,
             color: T.color.walnut,
-            background: "rgba(255,255,255,0.5)",
+            background: "rgba(255,255,255,0.55)",
             border: `0.0625rem solid ${T.color.cream}`,
             borderRadius: "0.5rem",
             padding: "0.4375rem 0.9375rem",
@@ -884,11 +892,11 @@ export function InterviewPrompt({
             e.currentTarget.style.borderColor = T.color.sandstone;
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.5)";
+            e.currentTarget.style.background = "rgba(255,255,255,0.55)";
             e.currentTarget.style.borderColor = T.color.cream;
           }}
         >
-          {t("viewInterviews")}
+          {t("interview.viewLibrary")}
         </button>
         <button
           onClick={onStartInterview}
@@ -915,7 +923,7 @@ export function InterviewPrompt({
             e.currentTarget.style.boxShadow = `0 0.125rem 0.5rem ${T.color.terracotta}20`;
           }}
         >
-          {t("continueInterview")}
+          {t("interview.continue")}
         </button>
       </div>
     </div>

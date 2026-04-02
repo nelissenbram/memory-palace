@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import TuscanCard from "./TuscanCard";
+import { TuscanSectionHeader } from "./TuscanCard";
 
 /* ═══════════════════════════════════════════════════════════════════
    Types
@@ -26,47 +28,18 @@ interface LifeStoryWidgetProps {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CSS keyframes (injected once)
-   ═══════════════════════════════════════════════════════════════════ */
-
-const STYLE_ID = "life-story-widget-keyframes";
-
-function ensureKeyframes() {
-  if (typeof document === "undefined") return;
-  if (document.getElementById(STYLE_ID)) return;
-  const style = document.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = `
-    @keyframes lsw-ringDraw {
-      from { stroke-dashoffset: var(--lsw-circumference); }
-      to   { stroke-dashoffset: var(--lsw-target-offset); }
-    }
-    @keyframes lsw-fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-    @keyframes lsw-fadeSlideUp {
-      from { opacity: 0; transform: translateY(0.75rem); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes lsw-pulse {
-      0%, 100% { opacity: 0.4; transform: scale(1); }
-      50%      { opacity: 0.7; transform: scale(1.06); }
-    }
-    @keyframes lsw-ctaGlow {
-      0%, 100% { box-shadow: 0 0 0.5rem rgba(212, 175, 55, 0.15); }
-      50%      { box-shadow: 0 0 1rem rgba(212, 175, 55, 0.35); }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
    Helpers
    ═══════════════════════════════════════════════════════════════════ */
 
 function useAtriumT() {
   return useTranslation("atrium" as "common");
+}
+
+/** Color-coded ring based on completeness tier */
+function getRingColor(pct: number): { start: string; end: string } {
+  if (pct < 25) return { start: T.color.terracotta, end: T.color.gold };
+  if (pct < 75) return { start: T.color.gold, end: T.color.goldLight };
+  return { start: T.color.sage, end: T.color.goldLight };
 }
 
 function getMotivationKey(pct: number): string {
@@ -77,17 +50,19 @@ function getMotivationKey(pct: number): string {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Completeness Ring (SVG)
+   Completeness Ring (SVG) — now with contextual labels
    ═══════════════════════════════════════════════════════════════════ */
 
 function CompletenessRing({
   percentage,
   isMobile,
-  label,
+  capturedLabel,
+  statsLabel,
 }: {
   percentage: number;
   isMobile: boolean;
-  label: string;
+  capturedLabel: string;
+  statsLabel: string;
 }) {
   const size = isMobile ? 160 : 200;
   const strokeWidth = isMobile ? 8 : 10;
@@ -95,119 +70,146 @@ function CompletenessRing({
   const circumference = 2 * Math.PI * radius;
   const clamped = Math.max(0, Math.min(100, percentage));
   const targetOffset = circumference - (clamped / 100) * circumference;
+  const ringColor = getRingColor(clamped);
 
   return (
     <div
       style={{
-        position: "relative",
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        width: `${size / 16}rem`,
-        height: `${size / 16}rem`,
-        margin: "0 auto",
+        gap: "0.5rem",
       }}
     >
-      {/* Pulsing glow behind ring */}
-      <div
-        style={{
-          position: "absolute",
-          inset: "0.5rem",
-          borderRadius: "50%",
-          background: `radial-gradient(circle, ${T.color.gold}22 0%, transparent 70%)`,
-          animation: "lsw-pulse 3s ease-in-out infinite",
-        }}
-      />
-
-      <svg
-        width={size}
-        height={size}
-        viewBox={`0 0 ${size} ${size}`}
-        style={{ position: "absolute", transform: "rotate(-90deg)" }}
-      >
-        {/* Track */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={T.color.cream}
-          strokeWidth={strokeWidth}
-        />
-        {/* Gradient definition */}
-        <defs>
-          <linearGradient id="lsw-ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={T.color.gold} />
-            <stop offset="100%" stopColor={T.color.goldLight} />
-          </linearGradient>
-        </defs>
-        {/* Filled arc */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="url(#lsw-ring-grad)"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={targetOffset}
-          style={{
-            "--lsw-circumference": circumference,
-            "--lsw-target-offset": targetOffset,
-            animation: "lsw-ringDraw 1.2s ease-out both",
-          } as React.CSSProperties}
-        />
-      </svg>
-
-      {/* Center text */}
+      {/* Ring */}
       <div
         style={{
           position: "relative",
-          textAlign: "center",
-          animation: "lsw-fadeIn 0.8s ease-out 0.6s both",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: `${size / 16}rem`,
+          height: `${size / 16}rem`,
         }}
       >
+        {/* Pulsing glow behind ring */}
         <div
           style={{
-            fontFamily: T.font.display,
-            fontWeight: 300,
-            fontSize: isMobile ? "2.5rem" : "3rem",
-            lineHeight: 1,
-            color: T.color.charcoal,
+            position: "absolute",
+            inset: "0.5rem",
+            borderRadius: "50%",
+            background: `radial-gradient(circle, ${ringColor.start}22 0%, transparent 70%)`,
+            animation: "lsw-pulse 3s ease-in-out infinite",
           }}
+        />
+
+        <svg
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          style={{ position: "absolute", transform: "rotate(-90deg)" }}
         >
-          {Math.round(clamped)}%
-        </div>
+          {/* Track */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={T.color.cream}
+            strokeWidth={strokeWidth}
+          />
+          {/* Gradient definition — color-coded by tier */}
+          <defs>
+            <linearGradient id="lsw-ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor={ringColor.start} />
+              <stop offset="100%" stopColor={ringColor.end} />
+            </linearGradient>
+          </defs>
+          {/* Filled arc */}
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke="url(#lsw-ring-grad)"
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={targetOffset}
+            style={{
+              "--lsw-circumference": circumference,
+              "--lsw-target-offset": targetOffset,
+              animation: "lsw-ringDraw 1.2s ease-out both",
+            } as React.CSSProperties}
+          />
+        </svg>
+
+        {/* Center text */}
         <div
           style={{
-            fontFamily: T.font.body,
-            fontSize: "0.6875rem",
-            color: T.color.muted,
-            marginTop: "0.125rem",
-            maxWidth: "6rem",
-            lineHeight: 1.3,
+            position: "relative",
+            textAlign: "center",
+            animation: "lsw-fadeIn 0.8s ease-out 0.6s both",
           }}
         >
-          {label}
+          <div
+            style={{
+              fontFamily: T.font.display,
+              fontWeight: 300,
+              fontSize: isMobile ? "2.5rem" : "3rem",
+              lineHeight: 1,
+              color: T.color.charcoal,
+            }}
+          >
+            {Math.round(clamped)}%
+          </div>
+          <div
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.6875rem",
+              color: T.color.muted,
+              marginTop: "0.125rem",
+              maxWidth: "6rem",
+              lineHeight: 1.3,
+            }}
+          >
+            {capturedLabel}
+          </div>
         </div>
+      </div>
+
+      {/* Stats line below ring */}
+      <div
+        style={{
+          fontFamily: T.font.body,
+          fontSize: "0.75rem",
+          color: T.color.muted,
+          textAlign: "center",
+          animation: "lsw-fadeIn 0.6s ease-out 0.8s both",
+        }}
+      >
+        {statsLabel}
       </div>
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Life Area Card
+   Life Area Card — with improved empty state + CTA text
    ═══════════════════════════════════════════════════════════════════ */
 
 function LifeAreaCard({
   area,
   index,
   onExplore,
+  emptyCtaLabel,
+  ofLabel,
 }: {
   area: LifeArea;
   index: number;
   onExplore: () => void;
+  emptyCtaLabel: string;
+  ofLabel: string;
 }) {
   const [hovered, setHovered] = useState(false);
   const pct =
@@ -228,7 +230,9 @@ function LifeAreaCard({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: "rgba(255,255,255,0.55)",
+        background: isEmpty
+          ? `linear-gradient(135deg, rgba(255,255,255,0.55), ${T.color.gold}08)`
+          : "rgba(255,255,255,0.55)",
         backdropFilter: "blur(0.5rem)",
         WebkitBackdropFilter: "blur(0.5rem)",
         border: `1px solid ${isEmpty ? `${T.color.gold}40` : T.color.cream}`,
@@ -240,11 +244,10 @@ function LifeAreaCard({
         boxShadow: hovered
           ? "0 0.25rem 0.75rem rgba(0,0,0,0.08)"
           : "0 0.0625rem 0.1875rem rgba(0,0,0,0.04)",
-        animation: `lsw-fadeSlideUp 0.4s ease-out ${0.8 + index * 0.06}s both`,
+        animation: isEmpty
+          ? `lsw-fadeSlideUp 0.4s ease-out ${0.8 + index * 0.06}s both, lsw-ctaGlow 2.5s ease-in-out infinite`
+          : `lsw-fadeSlideUp 0.4s ease-out ${0.8 + index * 0.06}s both`,
         position: "relative",
-        ...(isEmpty
-          ? { animation: `lsw-fadeSlideUp 0.4s ease-out ${0.8 + index * 0.06}s both, lsw-ctaGlow 2.5s ease-in-out infinite` }
-          : {}),
       }}
     >
       {/* Golden checkmark badge for complete areas */}
@@ -318,15 +321,18 @@ function LifeAreaCard({
         />
       </div>
 
-      {/* Count */}
+      {/* Count or CTA label */}
       <div
         style={{
           fontFamily: T.font.body,
           fontSize: "0.6875rem",
-          color: T.color.muted,
+          color: isEmpty ? T.color.terracotta : T.color.muted,
+          fontWeight: isEmpty ? 600 : 400,
         }}
       >
-        {area.memoriesCount} / {area.suggestedCount}
+        {isEmpty
+          ? emptyCtaLabel
+          : `${area.memoriesCount} ${ofLabel} ${area.suggestedCount}`}
       </div>
     </div>
   );
@@ -346,68 +352,46 @@ export default function LifeStoryWidget({
 }: LifeStoryWidgetProps) {
   const { t } = useAtriumT();
 
-  useEffect(ensureKeyframes, []);
-
   const motivationKey = getMotivationKey(overallCompleteness);
 
-  const cardStyle: React.CSSProperties = {
-    background: "rgba(255,255,255,0.45)",
-    backdropFilter: "blur(1rem)",
-    WebkitBackdropFilter: "blur(1rem)",
-    borderRadius: "1rem",
-    border: `1px solid ${T.color.cream}`,
-    borderTop: `2px solid ${T.color.gold}`,
-    padding: isMobile ? "1.25rem 1rem" : "1.5rem 1.75rem",
-    animation: "lsw-fadeSlideUp 0.5s ease-out both",
-  };
-
   return (
-    <div style={cardStyle}>
+    <TuscanCard variant="glass" padding={isMobile ? "1.25rem 1rem" : "1.5rem 1.75rem"}>
       {/* Title */}
-      <h3
+      <TuscanSectionHeader>{t("lifeStory.title")}</TuscanSectionHeader>
+
+      {/* NEW i18n key: lifeStory.subtitle
+          Explanatory subtitle so users understand the widget's purpose.
+          Example value: "Map your life's chapters. Each area represents a
+          part of your story — add memories to build a complete portrait." */}
+      <p
         style={{
-          fontFamily: T.font.display,
-          fontSize: "1.125rem",
-          fontWeight: 600,
-          color: T.color.charcoal,
-          margin: 0,
-          textAlign: "center",
-          marginBottom: "0.25rem",
+          fontFamily: T.font.body,
+          fontSize: "0.8125rem",
+          color: T.color.walnut,
+          lineHeight: 1.55,
+          margin: "0 0 1.25rem",
+          animation: "lsw-fadeIn 0.5s ease-out 0.2s both",
         }}
       >
-        {t("lifeStory.title")}
-      </h3>
-      <div
-        style={{
-          height: "0.125rem",
-          width: "3rem",
-          background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight})`,
-          borderRadius: "0.125rem",
-          margin: "0 auto 1.25rem",
-        }}
-      />
+        {t("lifeStory.subtitle")}
+      </p>
 
-      {/* Completeness Ring */}
+      {/* Completeness Ring — now with contextual labels */}
       <CompletenessRing
         percentage={overallCompleteness}
         isMobile={isMobile}
-        label={t("lifeStory.completeness")}
+        /* NEW i18n key: lifeStory.captured
+           Short label inside the ring. Example: "captured" */
+        capturedLabel={t("lifeStory.captured")}
+        /* Stats line uses existing keys + interpolation.
+           NEW i18n key: lifeStory.ringStats
+           Example: "{areas} life areas \u2022 {memories} memories recorded"
+           We build the string from parts for flexibility. */
+        statsLabel={`${lifeAreas.length} ${t("lifeStory.areasCount")} \u2022 ${totalMemories} ${t("lifeStory.memoriesRecorded")}`}
       />
 
-      {/* Total memories note */}
-      <div
-        style={{
-          fontFamily: T.font.body,
-          fontSize: "0.75rem",
-          color: T.color.muted,
-          textAlign: "center",
-          marginTop: "0.5rem",
-          marginBottom: "1.25rem",
-          animation: "lsw-fadeIn 0.6s ease-out 0.8s both",
-        }}
-      >
-        {totalMemories} {t("lifeStory.memoriesRecorded")}
-      </div>
+      {/* Spacer before grid */}
+      <div style={{ height: "1.25rem" }} />
 
       {/* Life Area Grid */}
       <div
@@ -424,11 +408,17 @@ export default function LifeStoryWidget({
             area={area}
             index={i}
             onExplore={() => onExploreArea(area.id)}
+            /* NEW i18n key: lifeStory.startAdding
+               CTA shown on empty area cards. Example: "Start adding" */
+            emptyCtaLabel={t("lifeStory.startAdding")}
+            /* NEW i18n key: lifeStory.of
+               Separator for "3 of 5". Example: "of" */
+            ofLabel={t("lifeStory.of")}
           />
         ))}
       </div>
 
-      {/* Motivational prompt */}
+      {/* Motivational prompt — contextual based on progress tier */}
       <p
         style={{
           fontFamily: T.font.display,
@@ -445,8 +435,18 @@ export default function LifeStoryWidget({
         {t(motivationKey)}
       </p>
 
-      {/* CTA Button */}
-      <div style={{ textAlign: "center" }}>
+      {/* Dual CTA Buttons */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "0.75rem",
+          animation: "lsw-fadeSlideUp 0.5s ease-out 1.4s both",
+        }}
+      >
+        {/* Primary: Start an Interview */}
         <button
           onClick={onStartInterview}
           style={{
@@ -461,7 +461,7 @@ export default function LifeStoryWidget({
             cursor: "pointer",
             transition: "transform 0.2s ease, box-shadow 0.2s ease",
             boxShadow: `0 0.125rem 0.5rem ${T.color.terracotta}40`,
-            animation: "lsw-fadeSlideUp 0.5s ease-out 1.4s both",
+            width: isMobile ? "100%" : "auto",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "translateY(-0.0625rem)";
@@ -474,7 +474,37 @@ export default function LifeStoryWidget({
         >
           {t("lifeStory.recordCta")}
         </button>
+
+        {/* Secondary: Add a Memory */}
+        {/* NEW i18n key: lifeStory.addMemory
+            Secondary CTA label. Example: "Add a Memory" */}
+        <button
+          onClick={() => onExploreArea("_manual")}
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            color: T.color.terracotta,
+            background: "transparent",
+            border: `1.5px solid ${T.color.terracotta}`,
+            borderRadius: "0.5rem",
+            padding: "0.6875rem 1.75rem",
+            cursor: "pointer",
+            transition: "transform 0.2s ease, background 0.2s ease",
+            width: isMobile ? "100%" : "auto",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-0.0625rem)";
+            e.currentTarget.style.background = `${T.color.terracotta}0A`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.background = "transparent";
+          }}
+        >
+          {t("lifeStory.addMemory")}
+        </button>
       </div>
-    </div>
+    </TuscanCard>
   );
 }
