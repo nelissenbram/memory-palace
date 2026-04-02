@@ -6,6 +6,7 @@ import type { Mem } from "@/lib/constants/defaults";
 import type { WingRoom } from "@/lib/constants/wings";
 import Image from "next/image";
 import { TuscanSectionHeader } from "./TuscanCard";
+import { RoomIcon } from "./WingRoomIcons";
 
 /* ── Shared constants ── */
 
@@ -87,6 +88,7 @@ export function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onA
   const { t } = useTranslation("library");
   const [hovered, setHovered] = useState(false);
   const [addHovered, setAddHovered] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
 
   const coverGradient = useMemo(() => {
     const h = room.coverHue;
@@ -143,9 +145,9 @@ export function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onA
           position: "relative",
           overflow: "hidden",
           borderRadius: "1rem 1rem 0 0",
-          ...(thumbUrl ? { background: T.color.cream } : patternBg),
+          ...(thumbUrl && !imgFailed ? { background: T.color.cream } : patternBg),
         }}>
-          {thumbUrl ? (
+          {thumbUrl && !imgFailed ? (
             <>
               <Image
                 src={thumbUrl}
@@ -157,7 +159,8 @@ export function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onA
                   transition: `transform 0.6s ${EASE}`,
                 }}
                 sizes="320px"
-                unoptimized={thumbUrl.startsWith("data:")}
+                unoptimized={thumbUrl.startsWith("data:") || thumbUrl.startsWith("/api/")}
+                onError={() => setImgFailed(true)}
               />
               {/* Warm overlay gradient */}
               <div style={{
@@ -179,13 +182,13 @@ export function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onA
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               <span style={{
-                fontSize: "3.5rem",
                 filter: "drop-shadow(0 0.375rem 0.75rem rgba(0,0,0,.15))",
                 transform: hovered ? "scale(1.08) translateY(-0.125rem)" : "scale(1)",
                 transition: `transform 0.5s ${EASE}`,
                 lineHeight: 1,
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                {room.icon}
+                <RoomIcon roomId={room.id} size={56} color={`hsl(${room.coverHue}, 30%, 40%)`} />
               </span>
             </div>
           )}
@@ -270,13 +273,11 @@ export function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onA
           alignItems: "center",
           justifyContent: "center",
           boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.12), 0 0 0 0.0625rem rgba(255,255,255,.6)`,
-          fontSize: "1.125rem",
-          lineHeight: 1,
           zIndex: 3,
           transition: `transform 0.3s ${EASE}`,
           transform: hovered ? "scale(1.08)" : "scale(1)",
         }}>
-          {room.icon}
+          <RoomIcon roomId={room.id} size={18} color={accent} />
         </div>
 
         {/* ── Info area ── */}
@@ -327,16 +328,19 @@ export interface LibraryMemoryCardProps {
   accent: string;
   onClick: () => void;
   subtitle?: string;
+  onMove?: (mem: Mem) => void;
 }
 
-export function LibraryMemoryCard({ mem, accent, onClick, subtitle }: LibraryMemoryCardProps) {
+export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: LibraryMemoryCardProps) {
   const { t } = useTranslation("library");
   const [hovered, setHovered] = useState(false);
+  const [moveHovered, setMoveHovered] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
   const waveId = useId();
 
-  const hasImage = mem.dataUrl && !mem.dataUrl.startsWith("data:audio") && !mem.videoBlob;
-  const isVideo = mem.type === "video" || mem.videoBlob;
-  const isAudio = mem.type === "audio" || mem.type === "voice" || mem.voiceBlob;
+  const isAudio = mem.type === "audio" || mem.type === "voice" || !!mem.voiceBlob;
+  const isVideo = mem.type === "video" || !!mem.videoBlob;
+  const hasImage = mem.dataUrl && !isAudio && !isVideo && !mem.dataUrl.startsWith("data:audio");
   const isDocument = mem.type === "document" || mem.documentBlob;
   const isText = mem.type === "orb" || mem.type === "case";
   const locked = isTimeCapsuleLocked(mem);
@@ -411,11 +415,11 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle }: LibraryMem
           position: "relative",
           overflow: "hidden",
           borderRadius: "1rem 1rem 0 0",
-          background: hasImage ? T.color.cream : bgGradient,
-          minHeight: hasImage ? "8rem" : "7rem",
+          background: hasImage && !imgFailed ? T.color.cream : bgGradient,
+          minHeight: hasImage && !imgFailed ? "8rem" : "7rem",
         }}>
           {/* --- Photo / Image --- */}
-          {hasImage ? (
+          {hasImage && !imgFailed ? (
             <>
               <Image
                 src={mem.dataUrl!}
@@ -428,7 +432,8 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle }: LibraryMem
                   position: "absolute",
                 }}
                 sizes="280px"
-                unoptimized={mem.dataUrl!.startsWith("data:")}
+                unoptimized={mem.dataUrl!.startsWith("data:") || mem.dataUrl!.startsWith("/api/")}
+                onError={() => setImgFailed(true)}
               />
               {/* Warm corner vignette */}
               <div style={{
@@ -603,6 +608,46 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle }: LibraryMem
           }}>
             {typeLabel}
           </span>
+
+          {/* Move button — top left, appears on hover */}
+          {onMove && !locked && (
+            <button
+              onClick={e => { e.stopPropagation(); onMove(mem); }}
+              onMouseEnter={() => setMoveHovered(true)}
+              onMouseLeave={() => setMoveHovered(false)}
+              title={t("moveMemory")}
+              style={{
+                position: "absolute",
+                top: "0.5rem",
+                left: "0.5rem",
+                width: "1.75rem",
+                height: "1.75rem",
+                borderRadius: "50%",
+                background: moveHovered ? "rgba(255,255,255,.95)" : "rgba(255,255,255,.72)",
+                backdropFilter: "blur(0.5rem)",
+                WebkitBackdropFilter: "blur(0.5rem)",
+                border: moveHovered ? `0.0625rem solid ${accent}66` : "0.0625rem solid rgba(255,255,255,.4)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 4,
+                opacity: hovered ? 1 : 0,
+                transform: hovered ? "scale(1)" : "scale(0.8)",
+                transition: `all 0.25s ${EASE}`,
+                boxShadow: moveHovered
+                  ? `0 0.25rem 0.75rem rgba(44,44,42,.15)`
+                  : `0 0.0625rem 0.25rem rgba(0,0,0,.1)`,
+                padding: 0,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke={moveHovered ? accent : "rgba(44,44,42,.7)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 10L1 13l3 3" />
+                <path d="M1 13h10a4 4 0 000-8H4" />
+                <path d="M4 5L1 2l3-3" />
+              </svg>
+            </button>
+          )}
 
           {/* Time capsule locked overlay */}
           {locked && (

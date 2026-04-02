@@ -5,6 +5,8 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import type { Wing } from "@/lib/constants/wings";
 import TuscanCard from "./TuscanCard";
+import PalaceLogo from "@/components/landing/PalaceLogo";
+import { WingIcon } from "./WingRoomIcons";
 
 interface LibrarySidebarProps {
   wings: Wing[];
@@ -14,7 +16,10 @@ interface LibrarySidebarProps {
   onEnter3D: () => void;
   isMobile: boolean;
   onGoAtrium?: () => void;
+  onAddWing?: () => void;
 }
+
+const PLAN_LIMIT = 500;
 
 const PROGRESS_BASELINE = 20;
 const EASE_OUT_EXPO = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -27,6 +32,7 @@ export default function LibrarySidebar({
   onEnter3D,
   isMobile,
   onGoAtrium,
+  onAddWing,
 }: LibrarySidebarProps) {
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
@@ -36,6 +42,7 @@ export default function LibrarySidebar({
   const [enterHovered, setEnterHovered] = useState(false);
   const [atriumHovered, setAtriumHovered] = useState(false);
   const [settingsHovered, setSettingsHovered] = useState(false);
+  const [addWingHovered, setAddWingHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -48,7 +55,17 @@ export default function LibrarySidebar({
     [wings, wingMemCount],
   );
 
-  const visibleWings = wings.filter((w) => w.id !== "attic");
+  // Show all wings, but keep attic at the bottom
+  const visibleWings = useMemo(() => {
+    const regular = wings.filter((w) => w.id !== "attic");
+    const attic = wings.filter((w) => w.id === "attic");
+    return [...regular, ...attic];
+  }, [wings]);
+
+  const totalRooms = useMemo(
+    () => wings.reduce((sum, w) => sum + getWingRooms(w.id).length, 0),
+    [wings, getWingRooms],
+  );
 
   // ── Shared keyframe styles ──
   const keyframes = `
@@ -151,10 +168,8 @@ export default function LibrarySidebar({
                   : "none",
               }}
             >
-              <span style={{ fontSize: "0.875rem", lineHeight: 1 }}>
-                {w.icon}
-              </span>
-              {w.name}
+              <WingIcon wingId={w.id} size={18} color={active ? "#FFF" : w.accent} />
+              {w.id === "attic" ? t("unsorted") : w.name}
             </button>
           );
         })}
@@ -316,7 +331,7 @@ export default function LibrarySidebar({
                       : "none",
                 }}
               >
-                {w.icon}
+                <WingIcon wingId={w.id} size={20} color={w.accent} />
               </div>
 
               {/* Name + subtitle + progress */}
@@ -335,7 +350,7 @@ export default function LibrarySidebar({
                     transition: `color 0.2s ${EASE_OUT_EXPO}`,
                   }}
                 >
-                  {w.name}
+                  {w.id === "attic" ? t("unsorted") : w.name}
                 </span>
                 <span
                   style={{
@@ -397,6 +412,109 @@ export default function LibrarySidebar({
             </button>
           );
         })}
+      </div>
+
+      {/* ── Add Wing button ── */}
+      {onAddWing && (
+        <div style={{ padding: "0.25rem 0.5rem 0" }}>
+          <button
+            onClick={onAddWing}
+            onMouseEnter={() => setAddWingHovered(true)}
+            onMouseLeave={() => setAddWingHovered(false)}
+            style={{
+              width: "100%",
+              padding: "0.5rem 1rem",
+              borderRadius: "0.625rem",
+              border: `0.0625rem dashed ${addWingHovered ? T.color.terracotta : T.color.cream}`,
+              background: addWingHovered ? "rgba(255,255,255,0.55)" : "transparent",
+              cursor: "pointer",
+              fontFamily: T.font.body,
+              fontSize: "0.75rem",
+              fontWeight: 500,
+              color: addWingHovered ? T.color.terracotta : T.color.muted,
+              letterSpacing: "0.02em",
+              transition: `all 0.25s ${EASE_OUT_EXPO}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.375rem",
+            }}
+          >
+            <span style={{ fontSize: "0.875rem", lineHeight: 1 }}>+</span>
+            {t("addWingLabel")}
+          </button>
+        </div>
+      )}
+
+      {/* ── Storage stats ── */}
+      <div
+        style={{
+          padding: "0.625rem 1rem 0",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.25rem",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.6875rem",
+            color: T.color.muted,
+            letterSpacing: "0.01em",
+          }}
+        >
+          {t("storageUsed", { count: String(totalMemories) })}
+        </span>
+        <span
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.6875rem",
+            color: T.color.muted,
+            letterSpacing: "0.01em",
+          }}
+        >
+          {t("wingsRooms", {
+            wings: String(visibleWings.length),
+            rooms: String(totalRooms),
+          })}
+        </span>
+        {/* Progress bar */}
+        <div
+          style={{
+            height: "0.1875rem",
+            width: "100%",
+            background: T.color.cream,
+            borderRadius: "0.125rem",
+            overflow: "hidden",
+            marginTop: "0.125rem",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${Math.min((totalMemories / PLAN_LIMIT) * 100, 100)}%`,
+              background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.terracotta}CC)`,
+              borderRadius: "0.125rem",
+              transition: "width 0.4s ease",
+            }}
+          />
+        </div>
+        <a
+          href="/settings/subscription"
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.625rem",
+            color: T.color.terracotta,
+            textDecoration: "none",
+            letterSpacing: "0.02em",
+            opacity: 0.85,
+            transition: `opacity 0.2s ${EASE_OUT_EXPO}`,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.85"; }}
+        >
+          {t("upgradeStorage")}
+        </a>
       </div>
 
       {/* ── Bottom section ── */}
@@ -543,9 +661,7 @@ export default function LibrarySidebar({
             outlineOffset: "0.0625rem",
           }}
         >
-          <span style={{ fontSize: "1rem", lineHeight: 1, filter: "brightness(1.1)" }}>
-            {"\u{1F3DB}\uFE0F"}
-          </span>
+          <PalaceLogo variant="mark" color="light" size="sm" style={{ width: "1rem", height: "1rem" }} />
           {t("enterPalace")}
         </button>
       </div>

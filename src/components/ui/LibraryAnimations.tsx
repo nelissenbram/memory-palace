@@ -1,6 +1,7 @@
 "use client";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { WingIcon } from "./WingRoomIcons";
 
 /* ═══════════════════════════════════════════════════════════════════════
    LibraryStyles — CSS keyframes + utility classes injected via <style>
@@ -124,6 +125,7 @@ export function LibraryStyles() {
 
 export interface LibraryHeaderProps {
   wingIcon: string;
+  wingId?: string;
   wingName: string;
   wingDesc?: string;
   roomName?: string;
@@ -135,6 +137,7 @@ export interface LibraryHeaderProps {
 
 export function LibraryHeader({
   wingIcon,
+  wingId,
   wingName,
   wingDesc,
   roomName,
@@ -219,13 +222,15 @@ export function LibraryHeader({
         >
           <span
             style={{
-              fontSize: "1.5rem",
               lineHeight: 1,
               flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               animation: "libScaleIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both",
             }}
           >
-            {wingIcon}
+            {wingId ? <WingIcon wingId={wingId} size={24} color={accent} /> : wingIcon}
           </span>
 
           <div style={{ minWidth: 0, overflow: "hidden" }}>
@@ -260,7 +265,12 @@ export function LibraryHeader({
               }}
             >
               {roomName
-                ? `${wingIcon} ${wingName} \u203A ${roomName}`
+                ? (
+                  <>
+                    {wingId ? <WingIcon wingId={wingId} size={12} color={accent} /> : wingIcon}
+                    {" "}{wingName} {"\u203A"} {roomName}
+                  </>
+                )
                 : wingDesc || ""}
             </p>
           </div>

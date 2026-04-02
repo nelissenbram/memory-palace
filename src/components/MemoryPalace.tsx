@@ -380,7 +380,7 @@ export default function MemoryPalace(){
     {showMassImport&&<MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/>}
     {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)}/>}
     {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);}}/>}
+    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "upload":setShowMassImport(true);break;case "room":if(activeWing){setNavMode("3d");enterCorridor(activeWing);}break;case "corridor":if(activeWing){setNavMode("3d");enterCorridor(activeWing);}break;case "share":if(activeRoomId)setShowSharing(true);break;case "wings":setNavMode("3d");break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
     {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
     {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
     {showInterview&&<InterviewPanel onClose={()=>{setShowInterviewPanel(false);markChecklistItem("complete_interview");}} onCreateMemory={(mem, wingId)=>{
@@ -718,7 +718,7 @@ export default function MemoryPalace(){
 
       {/* Invite & shared panels */}
       {showInvites&&<InviteNotificationsPanel onClose={()=>setShowInvites(false)}/>}
-      {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)}/>}
+      {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";setNavMode("3d");enterCorridor(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
       {showSharingSettings&&<SharingSettingsPanel open={showSharingSettings} onClose={()=>setShowSharingSettings(false)}/>}
 
       {/* Interview panels */}
@@ -734,7 +734,7 @@ export default function MemoryPalace(){
 
       {/* Track panels */}
       {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);}}/>}
+      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "upload":setShowMassImport(true);break;case "room":if(activeWing){setNavMode("3d");enterCorridor(activeWing);}break;case "corridor":if(activeWing){setNavMode("3d");enterCorridor(activeWing);}break;case "share":if(activeRoomId)setShowSharing(true);break;case "wings":setNavMode("3d");break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
       {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
 
       {/* Track step completion toast */}

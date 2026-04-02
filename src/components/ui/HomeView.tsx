@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -57,7 +56,7 @@ export default function HomeView() {
   const { userName } = useUserStore();
   const { navMode, setNavMode } = usePalaceStore();
   const { getWings, getWingRooms } = useRoomStore();
-  const { userMems, fetchRoomMemories, setShowUpload } = useMemoryStore();
+  const { userMems, fetchRoomMemories } = useMemoryStore();
   const {
     tracks: trackProgressMap,
     totalPoints,
@@ -80,7 +79,7 @@ export default function HomeView() {
     setShowInterview: setShowInterview,
   } = useInterviewStore();
   const { setShowMemoryMap, setShowTimeline, setShowStatistics, setShowMassImport, setShowSharedWithMe } = useUIPanelStore();
-  const router = useRouter();
+
 
   const { startTransition, transitionProps } = useModeTransition();
 
@@ -346,7 +345,7 @@ export default function HomeView() {
             }}
           >
             <EnhanceMemories
-              onUploadPhotos={() => setShowUpload(true)}
+              onUploadPhotos={() => setShowMassImport(true)}
               onAIEnhance={() => setShowMassImport(true)}
               onAddDescription={() => handleNavigateLibrary()}
               onOrganize={() => handleNavigateLibrary()}
@@ -383,7 +382,7 @@ export default function HomeView() {
               onMemoryMap={() => setShowMemoryMap(true)}
               onTimeline={() => setShowTimeline(true)}
               onStatistics={() => setShowStatistics(true)}
-              onFamilyTree={() => { router.push('/family-tree'); }}
+              onFamilyTree={() => { alert("Coming soon!"); }}
               isMobile={isMobile}
             />
           </div>
