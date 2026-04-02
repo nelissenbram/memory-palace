@@ -708,9 +708,8 @@ export function InterviewPrompt({
             <SoundWaveBars color={T.color.terracotta} count={11} />
           </div>
 
-          {/* Right: Emotional copy + single CTA */}
+          {/* Right: Compelling copy + example cards + CTA */}
           <div style={{ flex: 1, minWidth: 0, textAlign: isMobile ? "center" : "left" }}>
-            {/* i18n key: interview.headline */}
             <h3 style={{
               fontFamily: T.font.display,
               fontWeight: 700,
@@ -723,51 +722,144 @@ export function InterviewPrompt({
               {t("interview.headline")}
             </h3>
 
-            {/* i18n key: interview.pitch */}
             <p style={{
               fontFamily: T.font.body,
               fontSize: isMobile ? "0.9375rem" : "1rem",
               color: T.color.walnut,
-              margin: "0 0 1.75rem",
-              maxWidth: "30rem",
+              margin: "0 0 1.25rem",
+              maxWidth: "32rem",
               lineHeight: 1.7,
               letterSpacing: "0.005em",
             }}>
               {t("interview.pitch")}
             </p>
 
-            {/* Single CTA: Begin Your First Session */}
-            <button
-              onClick={onStartInterview}
-              style={{
-                fontFamily: T.font.display,
-                fontSize: isMobile ? "1rem" : "1.0625rem",
-                fontWeight: 600,
-                color: T.color.white,
-                background: `linear-gradient(135deg, ${T.color.terracotta} 0%, ${T.color.walnut} 100%)`,
-                border: "none",
-                borderRadius: "0.875rem",
-                padding: isMobile ? "0.9375rem 2.25rem" : "1rem 2.75rem",
-                cursor: "pointer",
-                transition: "transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s ease",
-                boxShadow: `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`,
-                letterSpacing: "0.015em",
-                lineHeight: 1,
-                display: "inline-block",
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = "translateY(-0.1875rem)";
-                e.currentTarget.style.boxShadow = `0 0.75rem 2.5rem ${T.color.terracotta}40, 0 0.125rem 0.375rem rgba(44,44,42,0.08)`;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`;
-              }}
-            >
-              {t("interview.beginFirstSession")}
-            </button>
+            {/* Example interview cards */}
+            <div style={{
+              display: "flex",
+              gap: "0.625rem",
+              marginBottom: "1.5rem",
+              flexWrap: "wrap",
+            }}>
+              {([1, 2, 3] as const).map((n) => (
+                <button
+                  key={n}
+                  onClick={onStartInterview}
+                  style={{
+                    flex: isMobile ? "1 1 100%" : "1 1 0",
+                    minWidth: isMobile ? "auto" : "8rem",
+                    background: `rgba(255,255,255,0.7)`,
+                    border: `0.0625rem solid ${T.color.sandstone}60`,
+                    borderRadius: "0.75rem",
+                    padding: "0.75rem 0.875rem",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "border-color 0.2s, box-shadow 0.2s",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = T.color.terracotta;
+                    e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}15`;
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = `${T.color.sandstone}60`;
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "0.25rem",
+                  }}>
+                    <span style={{
+                      fontFamily: T.font.display,
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      color: T.color.charcoal,
+                    }}>
+                      {t(`interview.example${n}Title`)}
+                    </span>
+                    <span style={{
+                      fontFamily: T.font.body,
+                      fontSize: "0.6875rem",
+                      color: T.color.terracotta,
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                    }}>
+                      {t(`interview.example${n}Time`)} {t("interview.minutesShort")}
+                    </span>
+                  </div>
+                  <span style={{
+                    fontFamily: T.font.body,
+                    fontSize: "0.75rem",
+                    color: T.color.muted,
+                    lineHeight: 1.4,
+                  }}>
+                    {t(`interview.example${n}Desc`)}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-            {/* i18n key: interview.socialProof */}
+            {/* CTA row */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+              flexWrap: "wrap",
+              justifyContent: isMobile ? "center" : "flex-start",
+            }}>
+              <button
+                onClick={onStartInterview}
+                style={{
+                  fontFamily: T.font.display,
+                  fontSize: isMobile ? "1rem" : "1.0625rem",
+                  fontWeight: 600,
+                  color: T.color.white,
+                  background: `linear-gradient(135deg, ${T.color.terracotta} 0%, ${T.color.walnut} 100%)`,
+                  border: "none",
+                  borderRadius: "0.875rem",
+                  padding: isMobile ? "0.9375rem 2.25rem" : "1rem 2.75rem",
+                  cursor: "pointer",
+                  transition: "transform 0.25s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.25s ease",
+                  boxShadow: `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`,
+                  letterSpacing: "0.015em",
+                  lineHeight: 1,
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = "translateY(-0.1875rem)";
+                  e.currentTarget.style.boxShadow = `0 0.75rem 2.5rem ${T.color.terracotta}40, 0 0.125rem 0.375rem rgba(44,44,42,0.08)`;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = `0 0.5rem 2rem ${T.color.terracotta}30, 0 0.0625rem 0.25rem rgba(44,44,42,0.08)`;
+                }}
+              >
+                {t("interview.beginFirstSession")}
+              </button>
+              <button
+                onClick={onViewInterviews}
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  color: T.color.terracotta,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "0.5rem 0",
+                  textDecoration: "underline",
+                  textUnderlineOffset: "0.1875rem",
+                  opacity: 0.85,
+                  transition: "opacity 0.2s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = "0.85"; }}
+              >
+                {t("interview.browseAll")}
+              </button>
+            </div>
+
             <p style={{
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
