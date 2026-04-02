@@ -2622,6 +2622,11 @@
     "openGallery": "Galerij weergave",
     "viewIn3D": "Bekijk in 3D",
     "enterPalace": "Betreed 3D Paleis",
+    "enter3DRoom": "Bekijk {room} in 3D",
+    "enter3DWing": "Bekijk {wing} in 3D",
+    "listView": "Lijstweergave",
+    "gridView": "Rasterweergave",
+    "storageRoom": "Opslagruimte",
     "libraryMode": "Bibliotheek",
     "palaceMode": "3D Paleis",
     "justNow": "Zojuist",
@@ -2664,8 +2669,8 @@
     "storageUsed": "{count} herinneringen opgeslagen",
     "upgradeStorage": "Upgrade abonnement",
     "wingsRooms": "{wings} vleugels \u00b7 {rooms} kamers",
-    "addWingLabel": "+ Vleugel toevoegen",
-    "addRoomLabel": "+ Kamer toevoegen"
+    "addWingLabel": "Voeg vleugel toe",
+    "addRoomLabel": "Kamer toevoegen"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",

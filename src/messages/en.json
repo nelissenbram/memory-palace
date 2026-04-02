@@ -2622,6 +2622,11 @@
     "openGallery": "Gallery view",
     "viewIn3D": "View in 3D",
     "enterPalace": "Enter 3D Palace",
+    "enter3DRoom": "Enter {room} in 3D",
+    "enter3DWing": "Enter {wing} in 3D",
+    "listView": "List view",
+    "gridView": "Grid view",
+    "storageRoom": "Storage Room",
     "libraryMode": "Library",
     "palaceMode": "3D Palace",
     "justNow": "Just now",
@@ -2664,8 +2669,8 @@
     "storageUsed": "{count} memories stored",
     "upgradeStorage": "Upgrade plan",
     "wingsRooms": "{wings} wings \u00b7 {rooms} rooms",
-    "addWingLabel": "+ Add Wing",
-    "addRoomLabel": "+ Add Room"
+    "addWingLabel": "Add Wing",
+    "addRoomLabel": "Add Room"
   },
   "atrium": {
     "goodMorning": "Good morning",

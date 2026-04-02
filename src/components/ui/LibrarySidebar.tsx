@@ -17,6 +17,9 @@ interface LibrarySidebarProps {
   isMobile: boolean;
   onGoAtrium?: () => void;
   onAddWing?: () => void;
+  onAddRoom?: () => void;
+  selectedWingName?: string;
+  selectedRoomName?: string;
 }
 
 const PLAN_LIMIT = 500;
@@ -33,6 +36,9 @@ export default function LibrarySidebar({
   isMobile,
   onGoAtrium,
   onAddWing,
+  onAddRoom,
+  selectedWingName,
+  selectedRoomName,
 }: LibrarySidebarProps) {
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
@@ -43,6 +49,7 @@ export default function LibrarySidebar({
   const [atriumHovered, setAtriumHovered] = useState(false);
   const [settingsHovered, setSettingsHovered] = useState(false);
   const [addWingHovered, setAddWingHovered] = useState(false);
+  const [addRoomHovered, setAddRoomHovered] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -169,7 +176,7 @@ export default function LibrarySidebar({
               }}
             >
               <WingIcon wingId={w.id} size={18} color={active ? "#FFF" : w.accent} />
-              {w.id === "attic" ? t("unsorted") : w.name}
+              {w.id === "attic" ? t("storageRoom") : w.name}
             </button>
           );
         })}
@@ -350,7 +357,7 @@ export default function LibrarySidebar({
                     transition: `color 0.2s ${EASE_OUT_EXPO}`,
                   }}
                 >
-                  {w.id === "attic" ? t("unsorted") : w.name}
+                  {w.id === "attic" ? t("storageRoom") : w.name}
                 </span>
                 <span
                   style={{
@@ -425,23 +432,69 @@ export default function LibrarySidebar({
               width: "100%",
               padding: "0.5rem 1rem",
               borderRadius: "0.625rem",
-              border: `0.0625rem dashed ${addWingHovered ? T.color.terracotta : T.color.cream}`,
-              background: addWingHovered ? "rgba(255,255,255,0.55)" : "transparent",
+              border: `0.0625rem solid ${addWingHovered ? `${T.color.gold}66` : `${T.color.cream}88`}`,
+              background: addWingHovered
+                ? "linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6))"
+                : "rgba(255,255,255,0.35)",
+              backdropFilter: "blur(0.5rem)",
+              WebkitBackdropFilter: "blur(0.5rem)",
               cursor: "pointer",
               fontFamily: T.font.body,
               fontSize: "0.75rem",
               fontWeight: 500,
-              color: addWingHovered ? T.color.terracotta : T.color.muted,
+              color: addWingHovered ? T.color.charcoal : T.color.muted,
               letterSpacing: "0.02em",
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: "0.375rem",
+              boxShadow: addWingHovered
+                ? `0 0.125rem 0.5rem rgba(44,44,42,0.06), 0 0 0.5rem ${T.color.gold}15`
+                : "none",
             }}
           >
-            <span style={{ fontSize: "0.875rem", lineHeight: 1 }}>+</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addWingHovered ? T.color.gold : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
             {t("addWingLabel")}
+          </button>
+        </div>
+      )}
+
+      {/* ── Add Room button ── */}
+      {onAddRoom && selectedWing && (
+        <div style={{ padding: "0.25rem 0.5rem 0" }}>
+          <button
+            onClick={onAddRoom}
+            onMouseEnter={() => setAddRoomHovered(true)}
+            onMouseLeave={() => setAddRoomHovered(false)}
+            style={{
+              width: "100%",
+              padding: "0.5rem 1rem",
+              borderRadius: "0.625rem",
+              border: `0.0625rem solid ${addRoomHovered ? `${T.color.gold}66` : `${T.color.cream}88`}`,
+              background: addRoomHovered
+                ? "linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6))"
+                : "rgba(255,255,255,0.35)",
+              backdropFilter: "blur(0.5rem)",
+              WebkitBackdropFilter: "blur(0.5rem)",
+              cursor: "pointer",
+              fontFamily: T.font.body,
+              fontSize: "0.75rem",
+              fontWeight: 500,
+              color: addRoomHovered ? T.color.charcoal : T.color.muted,
+              letterSpacing: "0.02em",
+              transition: `all 0.25s ${EASE_OUT_EXPO}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.375rem",
+              boxShadow: addRoomHovered
+                ? `0 0.125rem 0.5rem rgba(44,44,42,0.06), 0 0 0.5rem ${T.color.gold}15`
+                : "none",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addRoomHovered ? T.color.gold : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            {t("addRoomLabel")}
           </button>
         </div>
       )}
@@ -585,7 +638,7 @@ export default function LibrarySidebar({
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
             }}
           >
-            {"\u2699\uFE0F"}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
           </div>
           {tc("settings")}
         </a>
@@ -662,7 +715,11 @@ export default function LibrarySidebar({
           }}
         >
           <PalaceLogo variant="mark" color="light" size="sm" style={{ width: "1rem", height: "1rem" }} />
-          {t("enterPalace")}
+          {selectedRoomName
+            ? t("enter3DRoom", { room: selectedRoomName })
+            : selectedWingName && selectedWing !== wings[0]?.id
+              ? t("enter3DWing", { wing: selectedWingName })
+              : t("enterPalace")}
         </button>
       </div>
     </nav>

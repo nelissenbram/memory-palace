@@ -6,6 +6,23 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { EASE } from "./TuscanStyles";
 import type { ActionGroup } from "@/lib/hooks/useActions";
 
+function ActionIcon({ name, size = 16 }: { name: string; size?: number }) {
+  const s = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  switch (name) {
+    case "timeline": return <svg {...s}><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="4" x2="9" y2="10"/></svg>;
+    case "map": return <svg {...s}><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/><path d="M12 3c3 3 4.5 6 4.5 9s-1.5 6-4.5 9M12 3c-3 3-4.5 6-4.5 9s1.5 6 4.5 9"/></svg>;
+    case "mic": return <svg {...s}><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="9" y1="22" x2="15" y2="22"/></svg>;
+    case "scroll": return <svg {...s}><path d="M6 2h12a2 2 0 012 2v16a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/></svg>;
+    case "trophy": return <svg {...s}><path d="M6 9V4h12v5a6 6 0 01-12 0z"/><path d="M6 4H4a1 1 0 00-1 1v2a3 3 0 003 3"/><path d="M18 4h2a1 1 0 011 1v2a3 3 0 01-3 3"/><line x1="12" y1="15" x2="12" y2="18"/><path d="M8 22h8l-1-4H9l-1 4z"/></svg>;
+    case "upload": return <svg {...s}><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>;
+    case "mail": return <svg {...s}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 4L12 13 2 4"/></svg>;
+    case "users": return <svg {...s}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
+    case "settings": return <svg {...s}><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>;
+    case "columns": return <svg {...s}><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>;
+    default: return <span>{name}</span>;
+  }
+}
+
 interface UniversalActionsProps {
   groups: ActionGroup[];
   open: boolean;
@@ -125,7 +142,7 @@ export default function UniversalActions({ groups, open, onClose, isMobile }: Un
                     onTouchStart={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.95)"; }}
                     onTouchEnd={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
                   >
-                    <span style={{ fontSize: "1.25rem", lineHeight: 1 }}>{item.icon}</span>
+                    <ActionIcon name={item.icon} size={20} />
                     <span style={{
                       fontFamily: T.font.body,
                       fontSize: "0.6875rem",
@@ -203,7 +220,7 @@ export default function UniversalActions({ groups, open, onClose, isMobile }: Un
               onMouseEnter={e => { e.currentTarget.style.background = `${T.color.cream}`; }}
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
             >
-              <span style={{ fontSize: "1rem", lineHeight: 1, width: "1.5rem", textAlign: "center" }}>{item.icon}</span>
+              <span style={{ lineHeight: 1, width: "1.5rem", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" }}><ActionIcon name={item.icon} size={16} /></span>
               <span>{t(item.labelKey.replace("actionMenu.", ""))}</span>
             </button>
           ))}

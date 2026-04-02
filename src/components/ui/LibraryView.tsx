@@ -51,6 +51,7 @@ export default function LibraryView() {
     return false;
   });
   const [cloudImportExpanded, setCloudImportExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const dismissCloudImport = useCallback(() => {
     setCloudImportDismissed(true);
@@ -64,8 +65,17 @@ export default function LibraryView() {
   }, [t]);
 
   const handleCloudProvider = useCallback((provider: string) => {
-    alert(`${provider} — ${t("comingSoon")}`);
-  }, [t]);
+    const connectUrls: Record<string, string> = {
+      googlePhotos: "/api/integrations/google/connect",
+      applePhotos: "/settings/connections",
+      dropbox: "/api/integrations/dropbox/connect",
+      onedrive: "/api/integrations/onedrive/connect",
+    };
+    const url = connectUrls[provider];
+    if (url) {
+      window.location.href = url;
+    }
+  }, []);
 
   const wingRooms = getWingRooms(selectedWing);
   // Fetch memories for all rooms of selected wing on mount/change
@@ -228,6 +238,9 @@ export default function LibraryView() {
         onEnter3D={handleEnter3D}
         isMobile={isMobile}
         onAddWing={() => setShowWingManager(true)}
+        onAddRoom={() => setShowRoomManager(true)}
+        selectedWingName={currentWing.id === "attic" ? t("storageRoom") : currentWing.name}
+        selectedRoomName={selectedRoom ? (wingRooms.find(r => r.id === selectedRoom)?.name || undefined) : undefined}
       />
 
       {/* ═══ MAIN CONTENT ═══ */}
@@ -270,8 +283,8 @@ export default function LibraryView() {
 
             {/* Settings — mobile */}
             {isMobile && (
-              <a href="/settings" style={{ fontSize: "1.125rem", lineHeight: 1, color: T.color.walnut, textDecoration: "none" }}>
-                {"\u2699\uFE0F"}
+              <a href="/settings" style={{ display: "flex", alignItems: "center", lineHeight: 1, color: T.color.walnut, textDecoration: "none" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
               </a>
             )}
 
@@ -397,7 +410,7 @@ export default function LibraryView() {
                   ] as { key: string; icon: React.ReactNode }[]).map(({ key, icon }) => (
                     <button
                       key={key}
-                      onClick={() => handleCloudProvider(t(key as any))}
+                      onClick={() => handleCloudProvider(key)}
                       style={{
                         display: "flex", alignItems: "center", gap: "0.5rem",
                         padding: "0.5rem 1rem", borderRadius: "0.625rem",
@@ -673,7 +686,57 @@ export default function LibraryView() {
           {/* Memory grid (when room selected) */}
           {selectedRoom && !crossWingResults && (
             <div style={{ animation: "libSlideRight 0.35s cubic-bezier(0.22, 1, 0.36, 1) both" }}>
+              {/* View mode toggle */}
+              {filteredRoomMems.length > 0 && (
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.75rem" }}>
+                  <div style={{
+                    display: "flex", gap: "0.125rem",
+                    background: "rgba(255,255,255,0.6)",
+                    borderRadius: "0.5rem",
+                    padding: "0.1875rem",
+                    border: `0.0625rem solid ${T.color.cream}`,
+                  }}>
+                    <button
+                      onClick={() => setViewMode("grid")}
+                      aria-label={t("gridView")}
+                      style={{
+                        padding: "0.375rem",
+                        borderRadius: "0.375rem",
+                        border: "none",
+                        background: viewMode === "grid" ? T.color.white : "transparent",
+                        boxShadow: viewMode === "grid" ? "0 0.0625rem 0.25rem rgba(44,44,42,0.08)" : "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "grid" ? T.color.charcoal : T.color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    </button>
+                    <button
+                      onClick={() => setViewMode("list")}
+                      aria-label={t("listView")}
+                      style={{
+                        padding: "0.375rem",
+                        borderRadius: "0.375rem",
+                        border: "none",
+                        background: viewMode === "list" ? T.color.white : "transparent",
+                        boxShadow: viewMode === "list" ? "0 0.0625rem 0.25rem rgba(44,44,42,0.08)" : "none",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "list" ? T.color.charcoal : T.color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    </button>
+                  </div>
+                </div>
+              )}
               {filteredRoomMems.length > 0 ? (
+                viewMode === "grid" ? (
                 <div style={{
                   display: "grid",
                   gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(15rem, 1fr))",
@@ -692,6 +755,56 @@ export default function LibraryView() {
                     </div>
                   ))}
                 </div>
+                ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {filteredRoomMems.map((mem, i) => (
+                    <button
+                      key={mem.id}
+                      onClick={() => setDetailMem({ mem, wingId: selectedWing, roomId: selectedRoom })}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                        padding: "0.625rem 0.875rem",
+                        borderRadius: "0.625rem",
+                        border: `0.0625rem solid ${T.color.cream}`,
+                        background: "rgba(255,255,255,0.75)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        fontFamily: T.font.body,
+                        transition: "all 0.2s ease",
+                        animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${0.03 + i * 0.03}s both`,
+                      }}
+                    >
+                      {mem.dataUrl && (
+                        <img
+                          src={mem.dataUrl}
+                          alt=""
+                          style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.375rem", objectFit: "cover", flexShrink: 0 }}
+                        />
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{
+                          display: "block",
+                          fontSize: "0.875rem",
+                          fontWeight: 500,
+                          color: T.color.charcoal,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}>
+                          {mem.title}
+                        </span>
+                        {mem.type && (
+                          <span style={{ fontSize: "0.6875rem", color: T.color.muted }}>
+                            {mem.type}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                )
               ) : (
                 <LibraryEmptyState
                   type={(!!q || !!filterType) ? "search" : "room"}
@@ -701,86 +814,6 @@ export default function LibraryView() {
                 />
               )}
 
-              {/* Gallery / 3D action buttons */}
-              {getMemsForRoom(selectedRoom).length > 0 && (
-                <div style={{
-                  marginTop: "2.5rem", display: "flex", gap: "0.75rem",
-                  animation: "libSlideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both",
-                }}>
-                  <button
-                    onClick={() => {
-                      setNavMode("3d");
-                      enterCorridor(selectedWing);
-                      setTimeout(() => enterRoom(selectedRoom), 600);
-                    }}
-                    style={{
-                      padding: "0.625rem 1.375rem", borderRadius: "0.75rem",
-                      background: "rgba(255, 255, 255, 0.85)",
-                      backdropFilter: "blur(0.625rem)",
-                      WebkitBackdropFilter: "blur(0.625rem)",
-                      border: `0.0625rem solid ${T.color.cream}`,
-                      cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem",
-                      fontWeight: 500, letterSpacing: "0.015em",
-                      color: T.color.walnut, display: "flex", alignItems: "center", gap: "0.5rem",
-                      transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
-                      boxShadow: "0 0.0625rem 0.25rem rgba(44,44,42,0.04)",
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = T.color.white;
-                      e.currentTarget.style.borderColor = `${currentWing.accent}44`;
-                      e.currentTarget.style.transform = "translateY(-0.125rem)";
-                      e.currentTarget.style.boxShadow = `0 0.375rem 1rem rgba(44,44,42,0.08)`;
-                      e.currentTarget.style.color = T.color.charcoal;
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.85)";
-                      e.currentTarget.style.borderColor = T.color.cream;
-                      e.currentTarget.style.transform = "none";
-                      e.currentTarget.style.boxShadow = "0 0.0625rem 0.25rem rgba(44,44,42,0.04)";
-                      e.currentTarget.style.color = T.color.walnut;
-                    }}
-                  >
-                    <span style={{ fontSize: "0.9375rem", lineHeight: 1 }}>{"\u{1F5BC}\uFE0F"}</span>
-                    {t("openGallery")}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNavMode("3d");
-                      enterCorridor(selectedWing);
-                      setTimeout(() => enterRoom(selectedRoom), 600);
-                    }}
-                    style={{
-                      padding: "0.625rem 1.375rem", borderRadius: "0.75rem",
-                      background: "rgba(255, 255, 255, 0.85)",
-                      backdropFilter: "blur(0.625rem)",
-                      WebkitBackdropFilter: "blur(0.625rem)",
-                      border: `0.0625rem solid ${T.color.cream}`,
-                      cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem",
-                      fontWeight: 500, letterSpacing: "0.015em",
-                      color: T.color.walnut, display: "flex", alignItems: "center", gap: "0.5rem",
-                      transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
-                      boxShadow: "0 0.0625rem 0.25rem rgba(44,44,42,0.04)",
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = T.color.white;
-                      e.currentTarget.style.borderColor = `${currentWing.accent}44`;
-                      e.currentTarget.style.transform = "translateY(-0.125rem)";
-                      e.currentTarget.style.boxShadow = `0 0.375rem 1rem rgba(44,44,42,0.08)`;
-                      e.currentTarget.style.color = T.color.charcoal;
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.85)";
-                      e.currentTarget.style.borderColor = T.color.cream;
-                      e.currentTarget.style.transform = "none";
-                      e.currentTarget.style.boxShadow = "0 0.0625rem 0.25rem rgba(44,44,42,0.04)";
-                      e.currentTarget.style.color = T.color.walnut;
-                    }}
-                  >
-                    <span style={{ fontSize: "0.9375rem", lineHeight: 1 }}>{"\u{1F3DB}\uFE0F"}</span>
-                    {t("viewIn3D")}
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
