@@ -318,6 +318,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Shared variables for entrance click target (assigned inside era branch)
     let centralGroup: THREE.Group;
     let centralBodyMeshes: THREE.Mesh[];
+    let entranceCoreMeshes: THREE.Mesh[];
     let entrClickRadius = 10, entrClickHeight = 20;
 
     // ═══ RENAISSANCE PALAZZO — alternative to castle when era is "renaissance" ═══
@@ -454,6 +455,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       centralGroup.traverse((child: THREE.Object3D) => {
         if (child instanceof THREE.Mesh && child.material && !(child.material as any).transparent) centralBodyMeshes.push(child);
       });
+      entranceCoreMeshes = [...centralBodyMeshes]; // Renaissance: same as full set
       palace.add(centralGroup);
       entrClickRadius = 14; entrClickHeight = 16;
 
@@ -656,9 +658,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralGroup.add(mk(new THREE.BoxGeometry(4, 3, 0.08), M.stoneL, -6, vH * 0.5 + 1.3, -(vD / 2 + 0.02)));
     centralGroup.add(mk(new THREE.BoxGeometry(4, 3, 0.08), M.stoneL,  6, vH * 0.5 + 1.3, -(vD / 2 + 0.02)));
 
-    // Drainpipe cylinders at front corners
-    centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, vH, 6), M.stoneD, -(vW / 2 - 0.2), vH / 2 + 1.3, -(vD / 2 + 0.2)));
-    centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, vH, 6), M.stoneD,  (vW / 2 - 0.2), vH / 2 + 1.3, -(vD / 2 + 0.2)));
+    // (drainpipes removed — too visible/distracting)
 
     // Shadow line just below main cornice
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.5, 0.06, vD + 0.5), new THREE.MeshStandardMaterial({ color: "#6A5E50", roughness: 0.95 }), 0, vH + 1.2, 0));
@@ -924,6 +924,13 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralGroup.add(mk(new THREE.SphereGeometry(0.12, 8, 8), M.marble, 0, 3.1, 0));
     // Second sphere on top for added elegance
     centralGroup.add(mk(new THREE.SphereGeometry(0.08, 8, 8), M.marble, 0, 3.25, 0));
+
+    // Snapshot core building meshes BEFORE peristyle/garden/wings are added
+    // This is used for hover glow so only the core domus lights up, not the entire compound
+    entranceCoreMeshes = [];
+    centralGroup.traverse((child: THREE.Object3D) => {
+      if (child instanceof THREE.Mesh && child.material && !(child.material as any).transparent) entranceCoreMeshes.push(child);
+    });
 
     // ── PERISTYLE GARDEN (Behind atrium) ──
     const periZ = vD / 2 - 4;
@@ -2552,7 +2559,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── ENTRANCE HALL click target ──
     const entranceId="__entrance__";
-    const centralMeshes=centralBodyMeshes;
+    // Use entranceCoreMeshes (snapshotted before peristyle/garden/wings) so only core domus glows on hover
+    const centralMeshes=entranceCoreMeshes;
     sectionGroups.push({group:centralGroup,id:entranceId,targetY:0,currentY:0,meshes:centralMeshes,accent:"#E0C060"});
     // Entrance click target
     const ect=new THREE.Mesh(new THREE.CylinderGeometry(entrClickRadius,entrClickRadius,entrClickHeight,8),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false}));
@@ -2663,10 +2671,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         // Hovered section turns green; non-hovered sections dim when something is hovered
         // Skip color/emissive changes if walkthrough is highlighting this section
         const isWtHighlight=hlTarget===sg.id;
-        sg.meshes.forEach((wm: any, meshIdx: number)=>{
+        sg.meshes.forEach((wm: any)=>{
           if(!wm.material||wm.material.transparent)return;
-          // For entrance hall, only glow the core central meshes (skip peristyle, room wings, etc.)
-          if(sg.id==="__entrance__" && meshIdx > 80) return;
           const mat=wm.material as THREE.MeshStandardMaterial;
           // Store original color once
           if(!wm.userData._origColor){
