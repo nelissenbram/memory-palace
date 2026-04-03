@@ -24,6 +24,17 @@ import { WingIcon } from "./WingRoomIcons";
    profile.writtenStoryteller → "Written storyteller"
    profile.portraitTitle       → "{name}'s Portrait"
    profile.wikiSummary        → "Based on your {count} memories across ..."
+   profile.introInterviewPrompt → "Tell us about yourself — ..."
+
+   i18n keys (namespace: "persona")
+   ─────────────────────────────────────────────────────────────────
+   baselineCta.title              → "Your Story Starts Here"
+   baselineCta.description        → "Take a short introductory interview ..."
+   baselineCta.duration           → "~10 minutes"
+   baselineCta.durationDetail     → "5-6 thoughtful questions about legacy & memories"
+   baselineCta.button             → "Begin Your Baseline Interview"
+   baselineCta.completedTitle     → "Baseline Interview Complete"
+   baselineCta.completedSummaryLabel → "What we learned about you:"
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -35,8 +46,14 @@ interface PersonalProfileProps {
   totalWings: number;
   wingsData: { id: string; name: string; icon: string; memoryCount: number }[];
   userName: string | null;
-  onViewFullProfile: () => void;
   onStartInterview: () => void;
+  onStartBaselineInterview: () => void;
+  onNavigateLibrary: () => void;
+  onNavigateToWing?: (wingId: string) => void;
+  interviewSummaries?: string[];
+  baselineInterviewCompleted?: boolean;
+  baselineInterviewSummary?: string;
+  memoryTypeCounts?: { photo: number; video: number; audio: number; text: number };
   isMobile: boolean;
 }
 
@@ -46,6 +63,10 @@ interface PersonalProfileProps {
 
 function useAtriumT() {
   return useTranslation("atrium" as "common");
+}
+
+function usePersonaT() {
+  return useTranslation("persona" as "common");
 }
 
 /** CSS keyframes injected once via <style> tag */
@@ -75,6 +96,15 @@ const KEYFRAMES = `
 }
 @keyframes pp-donutDraw {
   from { stroke-dashoffset: var(--pp-circumference); }
+}
+/* Interactive card hover via CSS class — injected so inline styles get hover */
+.pp-interactive-card:hover {
+  transform: scale(1.02) !important;
+  border-color: rgba(212,175,55,0.35) !important;
+  box-shadow: 0 0.125rem 0.75rem rgba(212,175,55,0.12) !important;
+}
+.pp-interactive-card:active {
+  transform: scale(0.99) !important;
 }
 `;
 
@@ -191,11 +221,14 @@ function LifeChaptersCard({
   wingsData,
   isMobile,
   label,
+  onWingClick,
 }: {
   wingsData: PersonalProfileProps["wingsData"];
   isMobile: boolean;
   label: string;
+  onWingClick?: (wingId: string) => void;
 }) {
+  const { t } = useAtriumT();
   const sorted = useMemo(
     () => [...wingsData].sort((a, b) => b.memoryCount - a.memoryCount).slice(0, 5),
     [wingsData],
@@ -203,11 +236,15 @@ function LifeChaptersCard({
   const maxCount = sorted[0]?.memoryCount ?? 1;
 
   return (
-    <div style={insightCardStyle(isMobile)}>
+    <div className="pp-interactive-card" style={interactiveCardStyle(isMobile)}>
       <h4 style={insightTitleStyle}>{label}</h4>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
         {sorted.map((w, i) => (
-          <div key={w.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div
+            key={w.id}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: onWingClick ? "pointer" : undefined }}
+            onClick={onWingClick ? (e) => { e.stopPropagation(); onWingClick(w.id); } : undefined}
+          >
             <span style={{ fontSize: "0.875rem", width: "1.25rem", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <WingIcon wingId={w.id} size={14} color={T.color.gold} />
             </span>
@@ -243,7 +280,7 @@ function LifeChaptersCard({
           <span style={{ color: T.color.gold, fontWeight: 600 }}>{sorted[0].name}</span>{" "}
           <WingIcon wingId={sorted[0].id} size={12} color={T.color.gold} />{" "}
           <span style={{ color: T.color.linen, opacity: 0.7 }}>
-            — {sorted[0].memoryCount} memories
+            — {sorted[0].memoryCount} {t("profile.memoriesLabel")}
           </span>
         </p>
       )}
@@ -260,17 +297,27 @@ function MemoryStyleCard({
   isMobile,
   label,
   storytellerLabel,
+  memoryTypeCounts,
+  onClick,
 }: {
   totalMemories: number;
   isMobile: boolean;
   label: string;
   storytellerLabel: string;
+  memoryTypeCounts?: { photo: number; video: number; audio: number; text: number };
+  onClick?: () => void;
 }) {
-  /* Since we don't have per-type breakdowns in props, we derive a
-     placeholder split. In production this would come from real data. */
-  const visual = Math.round(totalMemories * 0.55);
-  const audio = Math.round(totalMemories * 0.15);
-  const text = totalMemories - visual - audio;
+  const { t } = useAtriumT();
+  /* Use real counts if provided, otherwise fall back to placeholder split */
+  const visual = memoryTypeCounts
+    ? memoryTypeCounts.photo + memoryTypeCounts.video
+    : Math.round(totalMemories * 0.55);
+  const audio = memoryTypeCounts
+    ? memoryTypeCounts.audio
+    : Math.round(totalMemories * 0.15);
+  const text = memoryTypeCounts
+    ? memoryTypeCounts.text
+    : totalMemories - visual - audio;
 
   const total = Math.max(1, totalMemories);
   const size = 64;
@@ -287,7 +334,14 @@ function MemoryStyleCard({
   let offset = 0;
 
   return (
-    <div style={insightCardStyle(isMobile)}>
+    <div
+      className="pp-interactive-card"
+      style={interactiveCardStyle(isMobile)}
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } } : undefined}
+    >
       <h4 style={insightTitleStyle}>{label}</h4>
       <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
         {/* Donut */}
@@ -335,9 +389,9 @@ function MemoryStyleCard({
         {/* Legend */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
           {[
-            { label: "Photos", count: visual, color: T.color.gold },
-            { label: "Audio", count: audio, color: T.color.terracotta },
-            { label: "Text", count: text, color: T.color.sage },
+            { label: t("profile.photos"), count: visual, color: T.color.gold },
+            { label: t("profile.audio"), count: audio, color: T.color.terracotta },
+            { label: t("profile.text"), count: text, color: T.color.sage },
           ].map((item) => (
             <div
               key={item.label}
@@ -381,16 +435,19 @@ function CoverageMapCard({
   totalWings,
   isMobile,
   label,
+  onWingClick,
 }: {
   wingsData: PersonalProfileProps["wingsData"];
   totalWings: number;
   isMobile: boolean;
   label: string;
+  onWingClick?: (wingId: string) => void;
 }) {
+  const { t } = useAtriumT();
   const filledCount = wingsData.filter((w) => w.memoryCount > 0).length;
 
   return (
-    <div style={insightCardStyle(isMobile)}>
+    <div className="pp-interactive-card" style={interactiveCardStyle(isMobile)}>
       <h4 style={insightTitleStyle}>{label}</h4>
       <div
         style={{
@@ -406,6 +463,7 @@ function CoverageMapCard({
             <div
               key={w.id}
               title={`${w.name}: ${w.memoryCount}`}
+              onClick={onWingClick ? (e) => { e.stopPropagation(); onWingClick(w.id); } : undefined}
               style={{
                 aspectRatio: "1",
                 borderRadius: "0.375rem",
@@ -417,7 +475,8 @@ function CoverageMapCard({
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "0.875rem",
-                transition: "background 0.3s ease",
+                cursor: onWingClick ? "pointer" : undefined,
+                transition: "background 0.3s ease, transform 0.2s ease",
               }}
             >
               <WingIcon wingId={w.id} size={12} color={filled ? T.color.gold : "rgba(255,255,255,0.3)"} />
@@ -427,10 +486,256 @@ function CoverageMapCard({
       </div>
       <p style={insightSummaryStyle}>
         <span style={{ color: T.color.gold, fontWeight: 600 }}>
-          {filledCount} of {totalWings}
+          {filledCount} {t("profile.ofAreas")} {totalWings}
         </span>{" "}
-        <span style={{ color: T.color.linen, opacity: 0.7 }}>life areas have memories</span>
+        <span style={{ color: T.color.linen, opacity: 0.7 }}>{t("profile.areasHaveMemories")}</span>
       </p>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dialogue Icon — SVG for baseline interview CTA
+   ═══════════════════════════════════════════════════════════════════ */
+
+function DialogueIcon({ size = 32 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* Left speech bubble */}
+      <path
+        d="M4 6C4 4.895 4.895 4 6 4H18C19.105 4 20 4.895 20 6V14C20 15.105 19.105 16 18 16H10L6 20V16H6C4.895 16 4 15.105 4 14V6Z"
+        fill={T.color.gold}
+        opacity={0.85}
+      />
+      {/* Right speech bubble */}
+      <path
+        d="M14 12C14 10.895 14.895 10 16 10H26C27.105 10 28 10.895 28 12V20C28 21.105 27.105 22 26 22H24V26L20 22H16C14.895 22 14 21.105 14 20V12Z"
+        fill={T.color.goldLight}
+        opacity={0.7}
+      />
+      {/* Dot accents inside left bubble */}
+      <circle cx="9" cy="10" r="1" fill={T.color.charcoal} opacity={0.5} />
+      <circle cx="12" cy="10" r="1" fill={T.color.charcoal} opacity={0.5} />
+      <circle cx="15" cy="10" r="1" fill={T.color.charcoal} opacity={0.5} />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Baseline Interview CTA Card
+   ═══════════════════════════════════════════════════════════════════ */
+
+function BaselineInterviewCTA({
+  isMobile,
+  completed,
+  summary,
+  onStart,
+}: {
+  isMobile: boolean;
+  completed: boolean;
+  summary?: string;
+  onStart: () => void;
+}) {
+  const { t } = usePersonaT();
+
+  /* ── Completed state: show summary ────────────────────────── */
+  if (completed) {
+    return (
+      <div
+        style={{
+          background: `linear-gradient(135deg, rgba(212,175,55,0.08), rgba(212,175,55,0.03))`,
+          border: `1px solid ${T.color.gold}30`,
+          borderRadius: "0.75rem",
+          padding: isMobile ? "1rem" : "1.25rem 1.5rem",
+          marginBottom: "1.25rem",
+          animation: "pp-fadeIn 0.5s ease-out 0.45s both",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+          <DialogueIcon size={20} />
+          <h4
+            style={{
+              fontFamily: T.font.display,
+              fontSize: "0.9375rem",
+              fontWeight: 600,
+              color: T.color.gold,
+              margin: 0,
+            }}
+          >
+            {t("baselineCta.completedTitle")}
+          </h4>
+        </div>
+        {summary && (
+          <>
+            <p
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.75rem",
+                color: "rgba(255,255,255,0.5)",
+                margin: "0 0 0.375rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {t("baselineCta.completedSummaryLabel")}
+            </p>
+            <p
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.875rem",
+                color: "rgba(255,255,255,0.75)",
+                margin: 0,
+                lineHeight: 1.65,
+                fontStyle: "italic",
+              }}
+            >
+              {summary.length > 250 ? summary.slice(0, 250) + "\u2026" : summary}
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  /* ── CTA state: invite user to take the interview ─────────── */
+  return (
+    <div
+      style={{
+        position: "relative",
+        background: `linear-gradient(135deg, rgba(212,175,55,0.10), rgba(212,175,55,0.04), rgba(255,255,255,0.03))`,
+        border: `1px solid ${T.color.gold}35`,
+        borderRadius: "0.75rem",
+        padding: isMobile ? "1.25rem 1rem" : "1.5rem 1.75rem",
+        marginBottom: "1.25rem",
+        animation: "pp-fadeIn 0.5s ease-out 0.45s both",
+        overflow: "hidden",
+      }}
+    >
+      {/* Subtle gold corner glow */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          top: "-1.5rem",
+          right: "-1.5rem",
+          width: "6rem",
+          height: "6rem",
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${T.color.gold}15, transparent 70%)`,
+          pointerEvents: "none",
+        }}
+      />
+
+      <div style={{ position: "relative" }}>
+        {/* Icon + Title row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: isMobile ? "flex-start" : "center",
+            gap: "0.75rem",
+            marginBottom: "0.75rem",
+          }}
+        >
+          <div
+            style={{
+              flexShrink: 0,
+              width: "2.75rem",
+              height: "2.75rem",
+              borderRadius: "0.625rem",
+              background: `linear-gradient(135deg, ${T.color.gold}20, ${T.color.goldLight}10)`,
+              border: `1px solid ${T.color.gold}25`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <DialogueIcon size={24} />
+          </div>
+          <div>
+            <h4
+              style={{
+                fontFamily: T.font.display,
+                fontSize: "1.0625rem",
+                fontWeight: 600,
+                color: T.color.linen,
+                margin: 0,
+                letterSpacing: "0.015em",
+              }}
+            >
+              {t("baselineCta.title")}
+            </h4>
+            <span
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.75rem",
+                color: T.color.gold,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+              }}
+            >
+              {t("baselineCta.duration")} &middot; {t("baselineCta.durationDetail")}
+            </span>
+          </div>
+        </div>
+
+        {/* Description */}
+        <p
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.875rem",
+            color: "rgba(255,255,255,0.7)",
+            margin: "0 0 1.125rem",
+            lineHeight: 1.65,
+            maxWidth: "32rem",
+          }}
+        >
+          {t("baselineCta.description")}
+        </p>
+
+        {/* CTA Button */}
+        <button
+          onClick={onStart}
+          aria-label={t("baselineCta.button")}
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            color: T.color.charcoal,
+            background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldLight})`,
+            border: "none",
+            borderRadius: "0.5rem",
+            padding: "0.6875rem 1.5rem",
+            cursor: "pointer",
+            transition: "transform 0.2s ease, box-shadow 0.2s ease",
+            boxShadow: `0 0.125rem 0.75rem ${T.color.gold}40`,
+            letterSpacing: "0.01em",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-0.0625rem)";
+            e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.gold}60`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = `0 0.125rem 0.75rem ${T.color.gold}40`;
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.transform = "translateY(-0.0625rem)";
+            e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.gold}60`;
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = `0 0.125rem 0.75rem ${T.color.gold}40`;
+          }}
+        >
+          {t("baselineCta.button")}
+        </button>
+      </div>
     </div>
   );
 }
@@ -446,6 +751,14 @@ function insightCardStyle(isMobile: boolean): React.CSSProperties {
     borderRadius: "0.75rem",
     padding: isMobile ? "0.875rem" : "1rem",
     animation: "pp-fadeIn 0.5s ease-out 0.3s both",
+  };
+}
+
+function interactiveCardStyle(isMobile: boolean): React.CSSProperties {
+  return {
+    ...insightCardStyle(isMobile),
+    cursor: "pointer",
+    transition: "transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
   };
 }
 
@@ -475,20 +788,38 @@ export default function PersonalProfile({
   totalWings,
   wingsData,
   userName,
-  onViewFullProfile,
   onStartInterview,
+  onStartBaselineInterview,
+  onNavigateLibrary,
+  onNavigateToWing,
+  interviewSummaries,
+  baselineInterviewCompleted,
+  baselineInterviewSummary,
+  memoryTypeCounts,
   isMobile,
 }: PersonalProfileProps) {
   const { t } = useAtriumT();
 
   /* Determine storyteller type label */
-  const visual = Math.round(totalMemories * 0.55);
-  const text = totalMemories - visual - Math.round(totalMemories * 0.15);
+  const visual = memoryTypeCounts
+    ? memoryTypeCounts.photo + memoryTypeCounts.video
+    : Math.round(totalMemories * 0.55);
+  const text = memoryTypeCounts
+    ? memoryTypeCounts.text
+    : totalMemories - visual - Math.round(totalMemories * 0.15);
   let storytellerKey = "profile.mixedStoryteller";
   if (totalMemories > 0) {
     if (visual / totalMemories > 0.5) storytellerKey = "profile.visualStoryteller";
     else if (text / totalMemories > 0.5) storytellerKey = "profile.writtenStoryteller";
   }
+
+  /* Interview summary excerpt */
+  const latestSummaryExcerpt = useMemo(() => {
+    if (!interviewSummaries || interviewSummaries.length === 0) return null;
+    const latest = interviewSummaries[interviewSummaries.length - 1];
+    return latest.length > 200 ? latest.slice(0, 200) + "\u2026" : latest;
+  }, [interviewSummaries]);
+  const hasInterviewSummaries = interviewSummaries && interviewSummaries.length > 0;
 
   /* Most active wing */
   const mostActive = useMemo(() => {
@@ -540,6 +871,7 @@ export default function PersonalProfile({
           </p>
           <button
             onClick={onStartInterview}
+            aria-label={t("profile.helpAiLearn")}
             style={{
               fontFamily: T.font.body,
               fontSize: "0.875rem",
@@ -559,6 +891,14 @@ export default function PersonalProfile({
               e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.gold}60`;
             }}
             onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = `0 0.125rem 0.75rem ${T.color.gold}40`;
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.transform = "translateY(-0.0625rem)";
+              e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.gold}60`;
+            }}
+            onBlur={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
               e.currentTarget.style.boxShadow = `0 0.125rem 0.75rem ${T.color.gold}40`;
             }}
@@ -647,42 +987,68 @@ export default function PersonalProfile({
           wingsData={wingsData}
           isMobile={isMobile}
           label={t("profile.lifeChapters")}
+          onWingClick={onNavigateToWing}
         />
         <MemoryStyleCard
           totalMemories={totalMemories}
           isMobile={isMobile}
           label={t("profile.memoryStyle")}
           storytellerLabel={t(storytellerKey)}
+          memoryTypeCounts={memoryTypeCounts}
+          onClick={onStartInterview}
         />
         <CoverageMapCard
           wingsData={wingsData}
           totalWings={totalWings}
           isMobile={isMobile}
           label={t("profile.coverageMap")}
+          onWingClick={onNavigateToWing}
         />
       </div>
 
-      {/* ── Wiki Summary ────────────────────────────────────────── */}
+      {/* ── Wiki Summary (bio paragraph) ────────────────────────── */}
       {totalMemories > 0 && (
-        <p
+        <div
           style={{
             position: "relative",
-            fontFamily: T.font.body,
-            fontSize: "0.8125rem",
-            color: "rgba(255,255,255,0.65)",
-            margin: "0 0 1.25rem",
-            lineHeight: 1.6,
-            fontStyle: "italic",
+            background: "rgba(255,255,255,0.06)",
+            border: `1px solid ${T.color.gold}25`,
+            borderRadius: "0.75rem",
+            padding: isMobile ? "1rem" : "1.25rem 1.5rem",
+            marginBottom: "1.25rem",
             animation: "pp-fadeIn 0.5s ease-out 0.45s both",
           }}
         >
-          {t("profile.wikiSummary", {
-            count: String(totalMemories),
-            wings: String(totalWings),
-            topWing: mostActive?.name ?? "",
-          })}
-        </p>
+          <p
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.9375rem",
+              color: "rgba(255,255,255,0.8)",
+              margin: 0,
+              lineHeight: 1.7,
+              fontStyle: "italic",
+            }}
+          >
+            {t("profile.wikiSummary", {
+              count: String(totalMemories),
+              wings: String(totalWings),
+              name: userName || t("profile.title"),
+              storytellerType: t(storytellerKey).toLowerCase(),
+              topWing: mostActive?.name ?? "",
+              activeWings: String(wingsData.filter((w) => w.memoryCount > 0).length),
+            })}
+          </p>
+
+        </div>
       )}
+
+      {/* ── Baseline Interview CTA / Summary ─────────────────── */}
+      <BaselineInterviewCTA
+        isMobile={isMobile}
+        completed={!!baselineInterviewCompleted}
+        summary={baselineInterviewSummary}
+        onStart={onStartBaselineInterview}
+      />
 
       {/* ── Key Stats Row ──────────────────────────────────────── */}
       <div
@@ -696,11 +1062,11 @@ export default function PersonalProfile({
         }}
       >
         {/* Total memories */}
-        <StatCell value={totalMemories} label="Memories" />
+        <StatCell value={totalMemories} label={t("profile.memoriesLabel")} />
         {/* Active wings */}
         <StatCell
           value={wingsData.filter((w) => w.memoryCount > 0).length}
-          label="Wings active"
+          label={t("profile.wingsActive")}
         />
         {/* Most active wing */}
         {mostActive && (
@@ -714,77 +1080,6 @@ export default function PersonalProfile({
         <StatCell value="—" label={t("profile.daysSinceFirst")} isText />
       </div>
 
-      {/* ── CTA Buttons ────────────────────────────────────────── */}
-      <div
-        style={{
-          position: "relative",
-          display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "0.75rem",
-          animation: "pp-fadeIn 0.5s ease-out 0.7s both",
-        }}
-      >
-        {/* Primary: Explore Full Profile */}
-        <button
-          onClick={onViewFullProfile}
-          style={{
-            fontFamily: T.font.body,
-            fontSize: "0.875rem",
-            fontWeight: 600,
-            color: T.color.charcoal,
-            background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldLight})`,
-            border: "none",
-            borderRadius: "0.5rem",
-            padding: "0.75rem 1.75rem",
-            cursor: "pointer",
-            transition: "transform 0.2s ease, box-shadow 0.2s ease",
-            boxShadow: `0 0.125rem 0.75rem ${T.color.gold}40`,
-            width: isMobile ? "100%" : "auto",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-0.0625rem)";
-            e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.gold}60`;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = `0 0.125rem 0.75rem ${T.color.gold}40`;
-          }}
-        >
-          {t("profile.exploreProfile")}
-        </button>
-
-        {/* Secondary: Help AI learn more */}
-        <button
-          onClick={onStartInterview}
-          style={{
-            fontFamily: T.font.body,
-            fontSize: "0.875rem",
-            fontWeight: 600,
-            color: T.color.gold,
-            background: "transparent",
-            border: `1.5px solid ${T.color.gold}60`,
-            borderRadius: "0.5rem",
-            padding: "0.6875rem 1.75rem",
-            cursor: "pointer",
-            transition: "transform 0.2s ease, background 0.2s ease, border-color 0.2s ease",
-            width: isMobile ? "100%" : "auto",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-0.0625rem)";
-            e.currentTarget.style.background = `${T.color.gold}10`;
-            e.currentTarget.style.borderColor = `${T.color.gold}90`;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.borderColor = `${T.color.gold}60`;
-          }}
-        >
-          {t("profile.helpAiLearn")}
-        </button>
-      </div>
     </TuscanCard>
   );
 }

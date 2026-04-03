@@ -57,8 +57,29 @@ export async function signUp(formData: FormData) {
 
 export async function signIn(formData: FormData) {
   const supabase = await createClient();
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+
+  const rawEmail = formData.get("email");
+  const rawPassword = formData.get("password");
+
+  if (typeof rawEmail !== "string" || !rawEmail.trim()) {
+    return { error: "Email is required." };
+  }
+  if (typeof rawPassword !== "string" || !rawPassword) {
+    return { error: "Password is required." };
+  }
+
+  const email = rawEmail.trim();
+  const password = rawPassword;
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { error: "Please enter a valid email address." };
+  }
+
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters long." };
+  }
+
   const redirectTo = formData.get("redirect") as string | null;
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -105,7 +126,18 @@ export async function signOut() {
 
 export async function resetPassword(formData: FormData) {
   const supabase = await createClient();
-  const email = formData.get("email") as string;
+
+  const rawEmail = formData.get("email");
+  if (typeof rawEmail !== "string" || !rawEmail.trim()) {
+    return { error: "Email is required." };
+  }
+
+  const email = rawEmail.trim();
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return { error: "Please enter a valid email address." };
+  }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")}/auth/callback`,

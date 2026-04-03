@@ -42,6 +42,7 @@ function InlineLink({
 
 export default function TermsOfServicePage() {
   const { t, locale, setLocale } = useTranslation("terms");
+  const { t: tc } = useTranslation("common");
 
   return (
     <div
@@ -66,7 +67,7 @@ export default function TermsOfServicePage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/" aria-label="Back to home" style={{
+          <Link href="/" aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: 32, height: 32, borderRadius: 8,
             border: `1px solid ${C.sandstone}50`,
@@ -100,7 +101,7 @@ export default function TermsOfServicePage() {
             </span>
           </Link>
         </div>
-        <button onClick={() => setLocale(locale === "en" ? "nl" : "en")} aria-label="Switch language" style={{
+        <button onClick={() => setLocale(locale === "en" ? "nl" : "en")} aria-label={tc("a11ySwitchLanguage")} style={{
           background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
           padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
           fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",

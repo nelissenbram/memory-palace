@@ -4,7 +4,14 @@ export interface NotificationPreferences {
   pushEnabled: boolean;
   onThisDay: boolean;
   timeCapsule: boolean;
+  memoryMilestones: boolean;
+  familyActivity: boolean;
+  interviewReminders: boolean;
+  weeklySummaryPush: boolean;
+  systemUpdates: boolean;
   emailDigest: boolean;
+  monthlyHighlights: boolean;
+  familyUpdatesEmail: boolean;
 }
 
 const STORAGE_KEY = "mp_notification_prefs";
@@ -13,7 +20,14 @@ const DEFAULT_PREFS: NotificationPreferences = {
   pushEnabled: false,
   onThisDay: true,
   timeCapsule: true,
+  memoryMilestones: true,
+  familyActivity: true,
+  interviewReminders: true,
+  weeklySummaryPush: false,
+  systemUpdates: true,
   emailDigest: true,
+  monthlyHighlights: true,
+  familyUpdatesEmail: true,
 };
 
 function loadPrefs(): NotificationPreferences {

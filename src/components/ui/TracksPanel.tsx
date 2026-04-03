@@ -9,6 +9,7 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import TrackIcon from "./TrackIcons";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 
@@ -68,7 +69,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
         position: "relative", zIndex: 1,
         width: "95%", maxWidth: "37.5rem", maxHeight: "85vh",
         background: T.color.linen, borderRadius: "1.25rem",
-        boxShadow: "0 24px 80px rgba(44,44,42,.3)",
+        boxShadow: "0 1.5rem 5rem rgba(44,44,42,.3)",
         border: `1px solid ${T.color.cream}`,
         display: "flex", flexDirection: "column",
         animation: "fadeUp .35s ease",
@@ -95,7 +96,11 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
               width: "2rem", height: "2rem", minWidth: "2.75rem", minHeight: "2.75rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
               background: T.color.white, cursor: "pointer", fontSize: "1rem", color: T.color.muted,
               display: "flex", alignItems: "center", justifyContent: "center",
-            }}>{"\u2715"}</button>
+              transition: "opacity .15s",
+            }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+            >{"\u2715"}</button>
           </div>
 
           {/* Points & Level summary */}
@@ -108,9 +113,9 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
               width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem",
               background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1rem", fontWeight: 700, color: "#FFF", fontFamily: T.font.body,
+              fontSize: "1rem", fontWeight: 700, color: T.color.white, fontFamily: T.font.body,
               flexShrink: 0,
-              boxShadow: `0 2px 8px ${levelInfo.color}30`,
+              boxShadow: `0 0.125rem 0.5rem ${levelInfo.color}30`,
             }}>{levelInfo.rank}</div>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -121,10 +126,16 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                   {tl(levelInfo.titleKey)}
                 </span>
               </div>
-              <div style={{
-                width: "100%", height: "0.375rem", borderRadius: "0.1875rem", marginTop: "0.375rem",
-                background: `${T.color.sandstone}25`, overflow: "hidden",
-              }}>
+              <div
+                role="progressbar"
+                aria-valuenow={Math.round(progressInfo.progress * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                style={{
+                  width: "100%", height: "0.375rem", borderRadius: "0.1875rem", marginTop: "0.375rem",
+                  background: `${T.color.sandstone}25`, overflow: "hidden",
+                }}
+              >
                 <div style={{
                   width: `${progressInfo.progress * 100}%`, height: "100%", borderRadius: "0.1875rem",
                   background: progressInfo.nextLevel
@@ -190,14 +201,20 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                       )}
                     </div>
                     {typeof m.resolution?.progress === "number" && <div>
-                      <div style={{
-                        width: "100%", height: "0.3125rem", borderRadius: "0.1875rem",
-                        background: `${T.color.sandstone}20`, overflow: "hidden",
-                      }}>
+                      <div
+                        role="progressbar"
+                        aria-valuenow={pct}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        style={{
+                          width: "100%", height: "0.3125rem", borderRadius: "0.1875rem",
+                          background: `${T.color.sandstone}20`, overflow: "hidden",
+                        }}
+                      >
                         <div style={{
                           width: `${pct}%`, height: "100%", borderRadius: "0.1875rem",
                           background: pct >= 100
-                            ? `linear-gradient(90deg,${T.color.success},#5A8751)`
+                            ? `linear-gradient(90deg,${T.color.success},${T.color.sage})`
                             : `linear-gradient(90deg,${T.color.sage}cc,${T.color.sage})`,
                           transition: "width .8s ease",
                         }} />
@@ -266,7 +283,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     background: `${track.color}15`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: "1.25rem", flexShrink: 0,
-                  }}>{track.icon}</div>
+                  }}><TrackIcon trackId={track.id} size="1.25rem" /></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                       fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
@@ -290,14 +307,20 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                       color: pct >= 100 ? T.color.success : track.color,
                     }}>{pct}%</span>
                   </div>
-                  <div style={{
-                    width: "100%", height: "0.375rem", borderRadius: "0.1875rem",
-                    background: `${T.color.sandstone}20`, overflow: "hidden",
-                  }}>
+                  <div
+                    role="progressbar"
+                    aria-valuenow={pct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    style={{
+                      width: "100%", height: "0.375rem", borderRadius: "0.1875rem",
+                      background: `${T.color.sandstone}20`, overflow: "hidden",
+                    }}
+                  >
                     <div style={{
                       width: `${pct}%`, height: "100%", borderRadius: "0.1875rem",
                       background: isComplete
-                        ? `linear-gradient(90deg,${T.color.success},#5A8751)`
+                        ? `linear-gradient(90deg,${T.color.success},${T.color.sage})`
                         : `linear-gradient(90deg,${track.color}cc,${track.color})`,
                       transition: "width .8s ease",
                     }} />

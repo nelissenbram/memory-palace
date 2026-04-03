@@ -184,10 +184,10 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
         <button
           onClick={handleDismiss}
           style={{
-            width: 26,
-            height: 26,
-            minWidth: 44,
-            minHeight: 44,
+            width: "2.75rem",
+            height: "2.75rem",
+            minWidth: "2.75rem",
+            minHeight: "2.75rem",
             borderRadius: 13,
             border: "1px solid #D4A84440",
             background: "rgba(212,168,68,.08)",

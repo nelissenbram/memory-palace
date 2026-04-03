@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useId } from "react";
+import React, { useState, useMemo, useId } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Mem } from "@/lib/constants/defaults";
@@ -10,11 +10,7 @@ import { RoomIcon } from "./WingRoomIcons";
 
 /* ── Shared constants ── */
 
-const TYPE_ICONS: Record<string, string> = {
-  photo: "\u{1F5BC}\uFE0F", video: "\u{1F3AC}", album: "\u{1F4D6}",
-  orb: "\u{1F52E}", case: "\u{1F3FA}", voice: "\u{1F399}\uFE0F",
-  document: "\u{1F4DC}", audio: "\u{1F3B5}", painting: "\u{1F3A8}",
-};
+import { TYPE_ICONS } from "@/lib/constants/type-icons";
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_OUT = "cubic-bezier(0.0, 0, 0.2, 1)";
@@ -66,6 +62,14 @@ function KeyframesStyle() {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-0.125rem); }
       }
+      @keyframes lc-card-fade-in {
+        from { opacity: 0; transform: translateY(0.75rem) scale(0.97); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes lc-empty-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-0.625rem); }
+      }
     `}</style>
   );
 }
@@ -84,7 +88,7 @@ export interface LibraryRoomCardProps {
   onAdd: () => void;
 }
 
-export function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onAdd }: LibraryRoomCardProps) {
+export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onAdd, animationIndex }: LibraryRoomCardProps & { animationIndex?: number }) {
   const { t } = useTranslation("library");
   const [hovered, setHovered] = useState(false);
   const [addHovered, setAddHovered] = useState(false);
@@ -115,7 +119,11 @@ export function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onA
     <>
       <KeyframesStyle />
       <div
+        role="button"
+        aria-label={room.name}
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -199,6 +207,7 @@ export function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onA
             onMouseEnter={() => setAddHovered(true)}
             onMouseLeave={() => setAddHovered(false)}
             title={t("addMemory")}
+            aria-label={t("addMemory")}
             style={{
               position: "absolute",
               top: "0.625rem",
@@ -316,7 +325,7 @@ export function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onA
       </div>
     </>
   );
-}
+});
 
 
 /* ══════════════════════════════════════════════════════════
@@ -329,9 +338,27 @@ export interface LibraryMemoryCardProps {
   onClick: () => void;
   subtitle?: string;
   onMove?: (mem: Mem) => void;
+  searchQuery?: string;
+  animationIndex?: number;
 }
 
-export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: LibraryMemoryCardProps) {
+/* ── Search highlight helper ── */
+function HighlightText({ text, query }: { text: string; query?: string }) {
+  if (!query || !text) return <>{text}</>;
+  const lq = query.toLowerCase();
+  const lt = text.toLowerCase();
+  const idx = lt.indexOf(lq);
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark style={{ background: `${T.color.gold}55`, color: "inherit", borderRadius: "0.125rem", padding: "0 0.0625rem" }}>{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove, searchQuery, animationIndex }: LibraryMemoryCardProps) {
   const { t } = useTranslation("library");
   const [hovered, setHovered] = useState(false);
   const [moveHovered, setMoveHovered] = useState(false);
@@ -381,11 +408,22 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: Li
     [],
   );
 
+  /* ── Hover preview ref ── */
+  const cardRef = React.useRef<HTMLDivElement>(null);
+
+  /* P2 #12: staggered animation delay */
+  const staggerDelay = animationIndex !== undefined ? `${animationIndex * 0.05}s` : "0s";
+
   return (
     <>
       <KeyframesStyle />
       <div
+        ref={cardRef}
+        role={locked ? undefined : "button"}
+        aria-label={mem.title}
+        tabIndex={locked ? undefined : 0}
         onClick={locked ? undefined : onClick}
+        onKeyDown={locked ? undefined : (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
@@ -394,7 +432,7 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: Li
           backdropFilter: "blur(1.5rem) saturate(1.4)",
           WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
           cursor: locked ? "default" : "pointer",
-          overflow: "hidden",
+          overflow: "visible",
           position: "relative",
           border: `0.0625rem solid ${hovered && !locked ? accent + "40" : T.color.cream}`,
           boxShadow: hovered && !locked
@@ -408,8 +446,45 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: Li
           transform: hovered && !locked ? "translateY(-0.25rem)" : "translateY(0)",
           transition: `all 0.4s ${EASE}`,
           opacity: locked ? 0.88 : 1,
+          animation: animationIndex !== undefined ? `lc-card-fade-in 0.4s ${EASE} ${staggerDelay} both` : undefined,
         }}
       >
+        {/* P2 #10: Hover preview tooltip (desktop) */}
+        {hovered && !locked && (mem.desc || mem.createdAt) && (
+          <div style={{
+            position: "absolute",
+            bottom: "calc(100% + 0.5rem)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 20,
+            background: "rgba(44,44,42,.92)",
+            backdropFilter: "blur(0.75rem)",
+            WebkitBackdropFilter: "blur(0.75rem)",
+            color: T.color.linen,
+            padding: "0.5rem 0.75rem",
+            borderRadius: "0.5rem",
+            maxWidth: "18rem",
+            pointerEvents: "none",
+            boxShadow: "0 0.25rem 1rem rgba(0,0,0,.2)",
+            animation: `lc-float 0s ease both`,
+          }}>
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.6875rem", margin: 0,
+              lineHeight: 1.4, overflow: "hidden", display: "-webkit-box",
+              WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const,
+            }}>
+              {mem.desc ? mem.desc.slice(0, 100) + (mem.desc.length > 100 ? "..." : "") : t("hoverPreviewNoDesc")}
+            </p>
+            {mem.createdAt && (
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.5625rem",
+                color: "rgba(255,255,255,.6)", margin: "0.25rem 0 0",
+              }}>
+                {new Date(mem.createdAt).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+        )}
         {/* ── Media section ── */}
         <div style={{
           position: "relative",
@@ -616,6 +691,7 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: Li
               onMouseEnter={() => setMoveHovered(true)}
               onMouseLeave={() => setMoveHovered(false)}
               title={t("moveMemory")}
+              aria-label={t("moveMemory")}
               style={{
                 position: "absolute",
                 top: "0.5rem",
@@ -682,7 +758,7 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: Li
         </div>
 
         {/* ── Info area ── */}
-        <div style={{ padding: "0.625rem 0.75rem 0.5rem", position: "relative" }}>
+        <div style={{ padding: "0.625rem 0.75rem 0.5rem", position: "relative", overflow: "hidden", borderRadius: "0 0 1rem 1rem" }}>
           {/* Title */}
           <p style={{
             fontFamily: T.font.display,
@@ -696,7 +772,7 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: Li
             letterSpacing: "0.01em",
             lineHeight: 1.35,
           }}>
-            {mem.title}
+            <HighlightText text={mem.title} query={searchQuery} />
           </p>
 
           {/* Subtitle (wing/room breadcrumb) or description */}
@@ -728,9 +804,32 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: Li
               WebkitBoxOrient: "vertical" as const,
               lineHeight: 1.45,
             }}>
-              {mem.desc}
+              <HighlightText text={mem.desc} query={searchQuery} />
             </p>
           ) : null}
+
+          {/* Location badge */}
+          {mem.locationName && (
+            <p style={{
+              fontFamily: T.font.body,
+              fontSize: "0.625rem",
+              color: T.color.walnut,
+              margin: "0.25rem 0 0",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.1875rem",
+              letterSpacing: "0.01em",
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.7 }}>
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              {mem.locationName.length > 25 ? mem.locationName.slice(0, 25) + "\u2026" : mem.locationName}
+            </p>
+          )}
         </div>
 
         {/* ── HSL accent strip at bottom ── */}
@@ -746,4 +845,4 @@ export function LibraryMemoryCard({ mem, accent, onClick, subtitle, onMove }: Li
       </div>
     </>
   );
-}
+});

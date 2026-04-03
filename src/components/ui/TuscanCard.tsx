@@ -38,8 +38,8 @@ const variantStyles: Record<TuscanCardVariant, React.CSSProperties> = {
   dark: {
     background: T.color.charcoal,
     color: T.color.linen,
-    borderTop: `2px solid ${T.color.gold}`,
     border: `1px solid rgba(255,255,255,0.08)`,
+    borderTop: `2px solid ${T.color.gold}`,
     borderRadius: "1rem",
     boxShadow: "0 0.25rem 1.5rem rgba(0,0,0,0.12)",
   },

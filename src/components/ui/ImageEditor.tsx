@@ -231,6 +231,43 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
     setCropDragging(false);
   };
 
+  // Touch event handlers (mirror mouse handlers)
+  const getTouchCropCoords = (e: React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !e.touches[0]) return null;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: Math.round(((e.touches[0].clientX - rect.left) / rect.width) * canvas.width),
+      y: Math.round(((e.touches[0].clientY - rect.top) / rect.height) * canvas.height),
+    };
+  };
+
+  const handleCropTouchStart = (e: React.TouchEvent) => {
+    if (!cropActive) return;
+    const coords = getTouchCropCoords(e);
+    if (!coords) return;
+    e.preventDefault();
+    setCropDragging(true);
+    setCropStart(coords);
+    setCropRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+  };
+
+  const handleCropTouchMove = (e: React.TouchEvent) => {
+    if (!cropDragging || !cropStart) return;
+    const coords = getTouchCropCoords(e);
+    if (!coords) return;
+    e.preventDefault();
+    const x = Math.min(cropStart.x, coords.x);
+    const y = Math.min(cropStart.y, coords.y);
+    const w = Math.abs(coords.x - cropStart.x);
+    const h = Math.abs(coords.y - cropStart.y);
+    setCropRect({ x, y, w, h });
+  };
+
+  const handleCropTouchEnd = () => {
+    setCropDragging(false);
+  };
+
   // Apply crop aspect ratio presets
   const applyCropPreset = (ratio: number) => {
     const canvas = canvasRef.current;
@@ -337,28 +374,31 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
           <div style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500, color: T.color.charcoal }}>{t("title")}</div>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button onClick={handleReset} style={{ padding: "0.375rem 0.75rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, cursor: "pointer" }}>{t("reset")}</button>
-            <button onClick={onCancel} aria-label={tc("close")} style={{ width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onCancel} aria-label={tc("close")} style={{ width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "2.75rem", minHeight: "2.75rem" }}>{"\u2715"}</button>
           </div>
         </div>
 
         {/* Canvas preview */}
-        <div ref={previewRef} style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "1rem 1rem 0.5rem", background: "#2A2218", minHeight: "12.5rem" }}>
+        <div ref={previewRef} style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "1rem 1rem 0.5rem", background: T.color.charcoal, minHeight: "12.5rem" }}>
           <canvas
             ref={canvasRef}
             onMouseDown={handleCropMouseDown}
             onMouseMove={handleCropMouseMove}
             onMouseUp={handleCropMouseUp}
             onMouseLeave={handleCropMouseUp}
-            style={{ maxWidth: "100%", maxHeight: "20rem", borderRadius: "0.5rem", cursor: cropActive ? "crosshair" : "default" }}
+            onTouchStart={handleCropTouchStart}
+            onTouchMove={handleCropTouchMove}
+            onTouchEnd={handleCropTouchEnd}
+            style={{ maxWidth: "100%", maxHeight: "20rem", borderRadius: "0.5rem", cursor: cropActive ? "crosshair" : "default", touchAction: cropActive ? "none" : "auto" }}
           />
         </div>
 
         {/* Tab bar */}
         <div style={{ display: "flex", borderBottom: `1px solid ${T.color.cream}`, padding: "0 1rem" }}>
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => { setTab(t.key); if (t.key !== "crop") { setCropActive(false); setCropRect(null); } }}
-              style={{ flex: 1, padding: "0.625rem 0", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: tab === t.key ? 600 : 400, color: tab === t.key ? color : T.color.muted, background: "transparent", border: "none", borderBottom: tab === t.key ? `2px solid ${color}` : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3125rem" }}>
-              <span style={{ fontSize: "0.75rem" }}>{t.icon}</span>{t.label}
+          {TABS.map(tab_ => (
+            <button key={tab_.key} onClick={() => { setTab(tab_.key); if (tab_.key !== "crop") { setCropActive(false); setCropRect(null); } }}
+              style={{ flex: 1, padding: "0.625rem 0", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: tab === tab_.key ? 600 : 400, color: tab === tab_.key ? color : T.color.muted, background: "transparent", border: "none", borderBottom: tab === tab_.key ? `2px solid ${color}` : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3125rem" }}>
+              <span style={{ fontSize: "0.75rem" }}>{tab_.icon}</span>{tab_.label}
             </button>
           ))}
         </div>
@@ -385,11 +425,12 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
               {ADJUSTMENTS.map(a => (
                 <div key={a.key}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
-                    <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal, fontWeight: 500 }}>{t(a.label)}</span>
+                    <label htmlFor={`adj-${a.key}`} style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.charcoal, fontWeight: 500 }}>{t(a.label)}</label>
                     <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>{adjustments[a.key]}{a.unit}</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                     <input
+                      id={`adj-${a.key}`}
                       type="range"
                       min={a.min}
                       max={a.max}
@@ -399,8 +440,9 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
                       style={{ flex: 1, accentColor: color }}
                     />
                     <button onClick={() => handleAdjust(a.key, a.default)}
+                      aria-label={t("resetAdjustment")}
                       style={{ width: "1.375rem", height: "1.375rem", borderRadius: "0.6875rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontSize: "0.625rem", cursor: "pointer", color: T.color.muted, display: "flex", alignItems: "center", justifyContent: "center" }}
-                      title={t("reset")}>{"\u21BA"}</button>
+                      title={t("resetAdjustment")}>{"\u21BA"}</button>
                   </div>
                 </div>
               ))}

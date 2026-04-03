@@ -16,6 +16,9 @@ import {
   type BustGender,
 } from "@/lib/3d/bustBuilder";
 
+const STATUS_SUCCESS = { bg: "#E8F5E4", border: "#A5D6A0", text: "#2E7D32" };
+const STATUS_WARNING = { bg: "#FFF3E0", border: "#FFB74D", text: "#E65100" };
+
 interface BustBuilderPanelProps {
   onClose: () => void;
   pedestalIndex?: number;
@@ -70,7 +73,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
       setFaceDetected(false);
       setStage("ready");
     }
-  }, []);
+  }, [t]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -209,7 +212,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
       position: "fixed", inset: 0, zIndex: 100,
       display: "flex", alignItems: "center", justifyContent: "center",
       background: "rgba(44,44,42,.6)", backdropFilter: "blur(6px)",
-    }} onClick={onClose}>
+    }} onClick={onClose} aria-hidden="true">
       <div ref={focusTrapRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{
         background: T.color.linen, borderRadius: "1.25rem",
         padding: isMobile ? "1.5rem 1.125rem" : "2rem 2.25rem",
@@ -284,13 +287,14 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
             {/* Name input */}
             <div style={{ marginBottom: "0.875rem" }}>
-              <label style={{
+              <label htmlFor="bust-name-plaque" style={{
                 fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
                 textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: "0.25rem",
               }}>
                 {t("nameOnPlaque")}
               </label>
               <input
+                id="bust-name-plaque"
                 type="text"
                 value={bustNameInput}
                 onChange={e => setBustNameInput(e.target.value)}
@@ -306,13 +310,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
             {/* Gender selector */}
             <div style={{ marginBottom: "1.125rem" }}>
-              <label style={{
+              <label id="bust-style-label" style={{
                 fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
                 textTransform: "uppercase", letterSpacing: 1, display: "block", marginBottom: "0.375rem",
               }}>
                 {t("bustStyle")}
               </label>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div role="radiogroup" aria-labelledby="bust-style-label" style={{ display: "flex", gap: "0.5rem" }}>
                 {(["male", "female"] as const).map(g => (
                   <button
                     key={g}
@@ -384,7 +388,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             </h2>
             {preview && (
               <img src={preview} alt={t("altProcessing")} style={{
-                width: 100, height: 100, objectFit: "cover",
+                width: "6.25rem", height: "6.25rem", objectFit: "cover",
                 borderRadius: "50%", margin: "0 auto 1rem",
                 border: `3px solid ${T.color.sandstone}`,
                 display: "block", opacity: 0.7,
@@ -423,13 +427,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   {t("original")}
                 </div>
                 <div style={{
-                  position: "relative", width: 110, height: 110,
+                  position: "relative", width: "6.875rem", height: "6.875rem",
                   borderRadius: "0.625rem", overflow: "hidden",
                   border: `2px solid ${T.color.sandstone}`,
                 }}>
                   {preview && (
                     <>
-                      <img src={preview} alt="Original" style={{
+                      <img src={preview} alt={t("original")} style={{
                         width: "100%", height: "100%", objectFit: "cover",
                       }} />
                       {/* Dimmed overlay with circular crop cutout */}
@@ -445,7 +449,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                         transform: "translate(-50%, -50%)",
                         width: "84%", height: "90%",
                         borderRadius: "45%",
-                        border: `2px dashed ${faceDetected ? "#4A6741" : "#FFB74D"}`,
+                        border: `2px dashed ${faceDetected ? T.color.sage : "#FFB74D"}`,
                         pointerEvents: "none",
                       }} />
                     </>
@@ -470,9 +474,9 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 </div>
                 {croppedFace && (
                   <img src={croppedFace} alt={t("altCroppedFace")} style={{
-                    width: 110, height: 110, objectFit: "cover",
+                    width: "6.875rem", height: "6.875rem", objectFit: "cover",
                     borderRadius: "50%",
-                    border: `3px solid ${faceDetected ? "#4A6741" : T.color.sandstone}`,
+                    border: `3px solid ${faceDetected ? T.color.sage : T.color.sandstone}`,
                     filter: bustStyle === "roman"
                       ? "saturate(0.35) sepia(0.25) brightness(1.05)"
                       : "saturate(0.3) sepia(0.45) brightness(0.85)",
@@ -484,13 +488,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             {/* Calibration feedback */}
             <div style={{
               padding: "0.625rem 1rem", borderRadius: "0.625rem", marginBottom: "1rem",
-              background: faceDetected ? "#E8F5E4" : "#FFF3E0",
-              border: `1px solid ${faceDetected ? "#A5D6A0" : "#FFB74D"}`,
+              background: faceDetected ? STATUS_SUCCESS.bg : STATUS_WARNING.bg,
+              border: `1px solid ${faceDetected ? STATUS_SUCCESS.border : STATUS_WARNING.border}`,
               textAlign: "center",
             }}>
               <div style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem",
-                color: faceDetected ? "#2E7D32" : "#E65100",
+                color: faceDetected ? STATUS_SUCCESS.text : STATUS_WARNING.text,
                 lineHeight: 1.4,
               }}>
                 {faceDetected ? "✓ " : "⚠ "}{calibrationMessage}
@@ -500,13 +504,14 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             {/* Gender + Name (compact) */}
             <div style={{ display: "flex", gap: "0.625rem", marginBottom: "0.875rem" }}>
               <div style={{ flex: 1 }}>
-                <label style={{
+                <label htmlFor="bust-name-ready" style={{
                   fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
                   textTransform: "uppercase", letterSpacing: 1,
                 }}>
                   {t("name")}
                 </label>
                 <input
+                  id="bust-name-ready"
                   type="text"
                   value={bustNameInput}
                   onChange={e => setBustNameInput(e.target.value)}
@@ -520,13 +525,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 />
               </div>
               <div style={{ width: "7.5rem" }}>
-                <label style={{
+                <label id="bust-body-label" style={{
                   fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
                   textTransform: "uppercase", letterSpacing: 1,
                 }}>
                   {t("body")}
                 </label>
-                <div style={{ display: "flex", gap: "0.25rem", marginTop: "0.25rem" }}>
+                <div role="radiogroup" aria-labelledby="bust-body-label" style={{ display: "flex", gap: "0.25rem", marginTop: "0.25rem" }}>
                   {(["male", "female"] as const).map(g => (
                     <button
                       key={g}
@@ -583,12 +588,12 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
             </h2>
             {/* Face preview with sculpting animation */}
             <div style={{
-              width: 120, height: 140, margin: "0 auto 1.25rem",
+              width: "7.5rem", height: "8.75rem", margin: "0 auto 1.25rem",
               position: "relative",
             }}>
               {croppedFace && (
                 <img src={croppedFace} alt={t("altSculpting")} style={{
-                  width: 90, height: 110, objectFit: "cover",
+                  width: "5.625rem", height: "6.875rem", objectFit: "cover",
                   borderRadius: "45% 45% 40% 40%",
                   border: `3px solid ${T.color.sandstone}`,
                   display: "block", margin: "0 auto",
@@ -600,7 +605,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               )}
               {/* Bust body silhouette */}
               <div style={{
-                width: 70, height: 35, margin: "-4px auto 0",
+                width: "4.375rem", height: "2.1875rem", margin: "-0.25rem auto 0",
                 background: bustStyle === "roman"
                   ? "linear-gradient(180deg, #E8E0D4, #D8D0C4)"
                   : "linear-gradient(180deg, #6A5840, #5A4830)",
@@ -638,7 +643,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               {t("somethingWrong")}
             </h2>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.875rem", color: "#C0392B",
+              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.error,
               marginBottom: "1rem",
             }}>
               {error || t("tryAgain")}
@@ -663,7 +668,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               {t("bustReady")}
             </h2>
             <div ref={previewCanvasRef} style={{
-              width: 220, height: 260, margin: "0 auto 1rem",
+              width: "13.75rem", height: "16.25rem", margin: "0 auto 1rem",
               borderRadius: "0.875rem", overflow: "hidden",
               background: `linear-gradient(180deg, ${T.color.warmStone}40, ${T.color.linen})`,
             }} />

@@ -73,6 +73,12 @@ export const ANIM = {
 
   // ── TuscanCard unified ──
   tuscanFadeSlideUp: "tuscan-fadeSlideUp",
+
+  // ── P2: Skeleton / Confetti / FAB ──
+  skeletonShimmer: "atrium-skeletonShimmer",
+  confettiFall: "atrium-confettiFall",
+  confettiFadeOut: "atrium-confettiFadeOut",
+  fabPulse: "atrium-fabPulse",
 } as const;
 
 /* ─────────────────────────────────────────────
@@ -393,6 +399,31 @@ export default function TuscanStyles() {
       @keyframes ${ANIM.tuscanFadeSlideUp} {
         from { opacity: 0; transform: translateY(1rem); }
         to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* ══════════════════════════════════════
+         11. P2: Skeleton / Confetti / FAB
+         ══════════════════════════════════════ */
+
+      @keyframes ${ANIM.skeletonShimmer} {
+        0%   { background-position: -20rem 0; }
+        100% { background-position: 20rem 0; }
+      }
+
+      @keyframes ${ANIM.confettiFall} {
+        0%   { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+      }
+
+      @keyframes ${ANIM.confettiFadeOut} {
+        0%   { opacity: 1; }
+        80%  { opacity: 1; }
+        100% { opacity: 0; }
+      }
+
+      @keyframes ${ANIM.fabPulse} {
+        0%, 100% { box-shadow: 0 0.25rem 1rem rgba(180, 90, 50, 0.3); }
+        50%      { box-shadow: 0 0.25rem 1.5rem rgba(180, 90, 50, 0.5); }
       }
 
       /* ══════════════════════════════════════

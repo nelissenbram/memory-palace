@@ -200,7 +200,7 @@ export async function scanExportTree(): Promise<ExportTree> {
     sq("track_progress", "user_id"),
     sq("memory_points", "user_id"),
     sq("family_tree_persons", "user_id"),
-    sq("family_groups", "owner_id"),
+    sq("family_groups", "created_by"),
     sq("legacy_contacts", "user_id"),
     sq("room_shares", "owner_id"),
     sq("notifications", "user_id"),

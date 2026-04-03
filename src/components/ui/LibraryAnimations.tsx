@@ -115,6 +115,17 @@ export function LibraryStyles() {
       .lib-scrollbar-hide::-webkit-scrollbar {
         display: none;
       }
+
+      /* P2 #13: Accessibility — focus styles for all interactive elements */
+      button:focus-visible,
+      a:focus-visible,
+      input:focus-visible,
+      select:focus-visible,
+      [role="button"]:focus-visible {
+        outline: 0.125rem solid #D4AF37;
+        outline-offset: 0.0625rem;
+        box-shadow: 0 0 0 0.1875rem rgba(212, 175, 55, 0.2);
+      }
     `}</style>
   );
 }
@@ -276,42 +287,6 @@ export function LibraryHeader({
           </div>
         </div>
 
-        {/* Add button */}
-        {roomName && onAdd && (
-          <button
-            onClick={onAdd}
-            style={{
-              width: "2rem",
-              height: "2rem",
-              borderRadius: "50%",
-              background: accent,
-              color: T.color.white,
-              border: "none",
-              cursor: "pointer",
-              fontSize: "1.125rem",
-              fontWeight: 300,
-              lineHeight: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-              transition: "all 0.25s cubic-bezier(0.22, 1, 0.36, 1)",
-              animation: "libScaleIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both",
-              boxShadow: `0 0.125rem 0.5rem ${accent}40`,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.1)";
-              e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${accent}60`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = `0 0.125rem 0.5rem ${accent}40`;
-            }}
-            title={t("addMemory")}
-          >
-            +
-          </button>
-        )}
       </div>
 
       {/* Decorative gradient border */}
@@ -372,8 +347,27 @@ export function LibraryEmptyState({ type, accent, onAdd, query }: LibraryEmptySt
         }}
       />
 
-      {/* Floating icons (wing / room) */}
-      {type !== "search" && (
+      {/* P2 #7: Animated SVG illustration for room empty state */}
+      {type === "room" && (
+        <div
+          style={{
+            position: "relative",
+            zIndex: 1,
+            marginBottom: "0.5rem",
+          }}
+        >
+          <svg width="5rem" height="5rem" viewBox="0 0 80 80" fill="none" style={{ animation: "libFloat 4s ease-in-out infinite" }}>
+            <rect x="15" y="20" width="50" height="40" rx="4" stroke={accent} strokeWidth="1.5" strokeDasharray="4 3" opacity="0.4" />
+            <path d="M30 40 L40 32 L50 40" stroke={accent} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+            <circle cx="35" cy="35" r="3" fill={accent} opacity="0.3" />
+            <line x1="25" y1="50" x2="55" y2="50" stroke={accent} strokeWidth="1" opacity="0.2" />
+            <line x1="28" y1="54" x2="52" y2="54" stroke={accent} strokeWidth="1" opacity="0.15" />
+          </svg>
+        </div>
+      )}
+
+      {/* Floating icons (wing / room — only for wing type now) */}
+      {type === "wing" && (
         <div
           style={{
             display: "flex",
@@ -430,7 +424,7 @@ export function LibraryEmptyState({ type, accent, onAdd, query }: LibraryEmptySt
         {type === "wing"
           ? t("emptyWingTitle")
           : type === "room"
-            ? t("emptyRoom")
+            ? t("emptyRoomAnimatedTitle")
             : t("emptySearchTitle", { query: query || "" })}
       </p>
 
@@ -456,7 +450,7 @@ export function LibraryEmptyState({ type, accent, onAdd, query }: LibraryEmptySt
             : t("emptySearchSubtitle")}
       </p>
 
-      {/* CTA button */}
+      {/* CTA button — enhanced for room with animation */}
       {type !== "search" && onAdd && (
         <button
           onClick={onAdd}
@@ -486,7 +480,7 @@ export function LibraryEmptyState({ type, accent, onAdd, query }: LibraryEmptySt
             e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${accent}30`;
           }}
         >
-          {t("addFirst")}
+          {type === "room" ? t("emptyRoomAnimatedCta") : t("addFirst")}
         </button>
       )}
     </div>

@@ -8,24 +8,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import RoomPlacementPicker from "@/components/ui/RoomPlacementPicker";
 
-const T = {
-  color: {
-    linen: "#FAFAF7",
-    warmStone: "#F2EDE7",
-    sandstone: "#D4C5B2",
-    walnut: "#8B7355",
-    sage: "#4A6741",
-    terracotta: "#C17F59",
-    charcoal: "#2C2C2A",
-    cream: "#EEEAE3",
-    white: "#FFFFFF",
-    muted: "#9A9183",
-  },
-  font: {
-    display: "'Cormorant Garamond', Georgia, serif",
-    body: "'Source Sans 3', system-ui, sans-serif",
-  },
-} as const;
+import { T } from "@/lib/theme";
 
 interface InviteResult {
   error?: string;
@@ -102,7 +85,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
       setUserWings(wings);
       setShowPlacement(true);
     } catch {
-      setAcceptError("Failed to load wings");
+      setAcceptError(t("failedToLoadWings"));
     }
     setAccepting(false);
   };
@@ -402,6 +385,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
           wings={userWings}
           onSelect={handlePlacement}
           onCreateSharedWing={handleCreateSharedWing}
+          onClose={() => setShowPlacement(false)}
           loading={placementLoading}
         />
       )}

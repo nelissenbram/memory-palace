@@ -29,6 +29,7 @@ interface LegacyPanelProps {
 export default function LegacyPanel({ onClose }: LegacyPanelProps) {
   const { markLegacyReviewed } = useTrackStore();
   const { t } = useTranslation("legacyPanel");
+  const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
 
   const RELATIONSHIPS = [
@@ -163,8 +164,17 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                 width: "3rem", height: "3rem", borderRadius: "0.875rem",
                 background: `${T.color.charcoal}10`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "1.5rem",
-              }}>{"\uD83C\uDFDB\uFE0F"}</div>
+              }}>
+                {/* Roman temple icon */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 9L12 4L21 9" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="3" y1="9" x2="21" y2="9" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="6" y1="9.5" x2="6" y2="19" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="12" y1="9.5" x2="12" y2="19" stroke={T.color.walnut} strokeWidth={1.2} strokeLinecap="round" />
+                  <line x1="18" y1="9.5" x2="18" y2="19" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="2" y1="20" x2="22" y2="20" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
               <div>
                 <h2 style={{
                   fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
@@ -265,7 +275,18 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               textAlign: "center", padding: "1.875rem 1.25rem",
               animation: "fadeUp .4s ease",
             }}>
-              <div style={{ fontSize: "2.25rem", marginBottom: "0.75rem" }}>{"\uD83D\uDC9B"}</div>
+              <div style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "center" }}>
+                {/* Heart/laurel wreath icon for empty state */}
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 19C8 16 6 14 6 11S7 6 10 4" stroke={T.color.walnut} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M16 19C16 16 18 14 18 11S17 6 14 4" stroke={T.color.walnut} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 7L12.6 9.2L14.8 9.6L12.8 10.8L13.2 13L12 11.4L10.8 13L11.2 10.8L9.2 9.6L11.4 9.2Z" fill={T.color.gold} stroke={T.color.gold} strokeWidth={0.8} strokeLinejoin="round" opacity={0.7} />
+                  <path d="M6.5 8.5C5.3 8.8 4.7 10 5.3 11" stroke={T.color.sandstone} strokeWidth={1.2} strokeLinecap="round" />
+                  <path d="M6 11.5C4.8 11.8 4.2 13 5 14" stroke={T.color.sandstone} strokeWidth={1.2} strokeLinecap="round" />
+                  <path d="M17.5 8.5C18.7 8.8 19.3 10 18.7 11" stroke={T.color.sandstone} strokeWidth={1.2} strokeLinecap="round" />
+                  <path d="M18 11.5C19.2 11.8 19.8 13 19 14" stroke={T.color.sandstone} strokeWidth={1.2} strokeLinecap="round" />
+                </svg>
+              </div>
               <div style={{
                 fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
                 color: T.color.charcoal, marginBottom: "0.5rem",
@@ -395,7 +416,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                         <span style={{
                           fontFamily: T.font.body, fontSize: "0.75rem",
                           color: formWings.includes(wing.id) ? T.color.charcoal : T.color.muted,
-                        }}>{wing.name}</span>
+                        }}>{tWings(wing.nameKey)}</span>
                       </button>
                     ))}
                   </div>

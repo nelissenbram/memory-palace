@@ -17,6 +17,11 @@ import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
  *   keys_auth TEXT NOT NULL,
  *   on_this_day BOOLEAN DEFAULT true,
  *   time_capsule BOOLEAN DEFAULT true,
+ *   memory_milestones BOOLEAN DEFAULT true,
+ *   family_activity BOOLEAN DEFAULT true,
+ *   interview_reminders BOOLEAN DEFAULT true,
+ *   weekly_summary_push BOOLEAN DEFAULT false,
+ *   system_updates BOOLEAN DEFAULT true,
  *   created_at TIMESTAMPTZ DEFAULT now(),
  *   updated_at TIMESTAMPTZ DEFAULT now(),
  *   UNIQUE(user_id, endpoint)
@@ -31,6 +36,17 @@ import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
  *
  * -- The service role bypasses RLS and can read all rows for sending
  * -- notifications. No broad USING(true) SELECT policy is needed.
+ *
+ * -- Migration to add new columns to existing table:
+ * -- ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS memory_milestones BOOLEAN DEFAULT true;
+ * -- ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS family_activity BOOLEAN DEFAULT true;
+ * -- ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS interview_reminders BOOLEAN DEFAULT true;
+ * -- ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS weekly_summary_push BOOLEAN DEFAULT false;
+ * -- ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS system_updates BOOLEAN DEFAULT true;
+ *
+ * -- For email preferences on profiles table:
+ * -- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS monthly_highlights BOOLEAN DEFAULT true;
+ * -- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS family_updates_email BOOLEAN DEFAULT true;
  * ---
  */
 
@@ -123,7 +139,12 @@ export async function DELETE(request: Request) {
  * PATCH /api/notifications/subscribe
  * Update notification preferences (which types to receive).
  *
- * Body: { onThisDay?: boolean, timeCapsule?: boolean }
+ * Push prefs (stored on push_subscriptions table):
+ *   onThisDay, timeCapsule, memoryMilestones, familyActivity,
+ *   interviewReminders, weeklySummaryPush, systemUpdates
+ *
+ * Email prefs (stored on profiles table):
+ *   emailDigest, monthlyHighlights, familyUpdatesEmail
  */
 export async function PATCH(request: Request) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -143,12 +164,26 @@ export async function PATCH(request: Request) {
 
   const body = await request.json();
 
-  // Handle push subscription preferences
+  // Handle push subscription preferences (camelCase -> snake_case mapping)
+  const pushFieldMap: Record<string, string> = {
+    onThisDay: "on_this_day",
+    timeCapsule: "time_capsule",
+    memoryMilestones: "memory_milestones",
+    familyActivity: "family_activity",
+    interviewReminders: "interview_reminders",
+    weeklySummaryPush: "weekly_summary_push",
+    systemUpdates: "system_updates",
+  };
+
   const pushUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   let hasPushUpdates = false;
 
-  if (typeof body.onThisDay === "boolean") { pushUpdates.on_this_day = body.onThisDay; hasPushUpdates = true; }
-  if (typeof body.timeCapsule === "boolean") { pushUpdates.time_capsule = body.timeCapsule; hasPushUpdates = true; }
+  for (const [camel, snake] of Object.entries(pushFieldMap)) {
+    if (typeof body[camel] === "boolean") {
+      pushUpdates[snake] = body[camel];
+      hasPushUpdates = true;
+    }
+  }
 
   if (hasPushUpdates) {
     const { error } = await supabase
@@ -162,15 +197,31 @@ export async function PATCH(request: Request) {
     }
   }
 
-  // Handle email digest preference (stored on profiles table)
-  if (typeof body.emailDigest === "boolean") {
+  // Handle email preferences (stored on profiles table)
+  const emailFieldMap: Record<string, string> = {
+    emailDigest: "email_digest",
+    monthlyHighlights: "monthly_highlights",
+    familyUpdatesEmail: "family_updates_email",
+  };
+
+  const profileUpdates: Record<string, unknown> = {};
+  let hasProfileUpdates = false;
+
+  for (const [camel, snake] of Object.entries(emailFieldMap)) {
+    if (typeof body[camel] === "boolean") {
+      profileUpdates[snake] = body[camel];
+      hasProfileUpdates = true;
+    }
+  }
+
+  if (hasProfileUpdates) {
     const { error } = await supabase
       .from("profiles")
-      .update({ email_digest: body.emailDigest })
+      .update(profileUpdates)
       .eq("id", user.id);
 
     if (error) {
-      console.error("[subscribe] Email digest update failed:", error);
+      console.error("[subscribe] Profile update failed:", error);
       return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
   }

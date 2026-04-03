@@ -134,9 +134,17 @@ export default function VerifiedPage() {
             fontFamily: T.font.body,
           }}
         >
-          <p style={{ fontSize: "0.9375rem", color: T.color.muted }}>
-            Loading...
-          </p>
+          <div
+            style={{
+              width: "2rem",
+              height: "2rem",
+              border: `3px solid ${T.color.cream}`,
+              borderTopColor: T.color.walnut,
+              borderRadius: "50%",
+              animation: "spin 0.8s linear infinite",
+            }}
+          />
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         </div>
       }
     >

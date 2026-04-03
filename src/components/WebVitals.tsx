@@ -14,9 +14,9 @@ export default function WebVitals() {
     }
 
     // In production, send to analytics endpoint when one is configured.
-    // For now we log poor metrics so they surface in error-monitoring tools.
+    // TODO: send poor metrics to analytics/monitoring service
     if (process.env.NODE_ENV === "production" && metric.rating === "poor") {
-      console.warn(`[Web Vital] Poor ${metric.name}: ${metric.value}`);
+      // Placeholder: integrate with analytics provider
     }
   });
 

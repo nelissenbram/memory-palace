@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { T } from "@/lib/theme";
 import { useTrackStore } from "@/lib/stores/trackStore";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 /**
  * Floating "+10 MP" animation that appears when points are earned.
@@ -34,6 +35,7 @@ export default function FloatingPoints() {
 }
 
 function FloatingEntry({ id, amount, onDone }: { id: string; amount: number; onDone: (id: string) => void }) {
+  const { t } = useTranslation("floatingPoints");
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -48,11 +50,11 @@ function FloatingEntry({ id, amount, onDone }: { id: string; amount: number; onD
 
   // Generate a few subtle sparkle positions
   const sparkles = [
-    { x: -16, y: -12, delay: 0.1, size: 3 },
-    { x: 22, y: -8, delay: 0.3, size: 2.5 },
-    { x: -8, y: -24, delay: 0.5, size: 2 },
-    { x: 14, y: -20, delay: 0.2, size: 3 },
-    { x: -20, y: -4, delay: 0.4, size: 2 },
+    { x: "-1rem", y: "-0.75rem", delay: 0.1, size: "0.1875rem" },
+    { x: "1.375rem", y: "-0.5rem", delay: 0.3, size: "0.15625rem" },
+    { x: "-0.5rem", y: "-1.5rem", delay: 0.5, size: "0.125rem" },
+    { x: "0.875rem", y: "-1.25rem", delay: 0.2, size: "0.1875rem" },
+    { x: "-1.25rem", y: "-0.25rem", delay: 0.4, size: "0.125rem" },
   ];
 
   return (
@@ -72,12 +74,12 @@ function FloatingEntry({ id, amount, onDone }: { id: string; amount: number; onD
             width: s.size,
             height: s.size,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #D4AF37, #C9A84C)",
+            background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldLight})`,
             left: "50%",
             top: "50%",
             animation: `sparkleFloat 1.2s ease ${s.delay}s both`,
-            "--sx": `${s.x}px`,
-            "--sy": `${s.y}px`,
+            "--sx": s.x,
+            "--sy": s.y,
           } as React.CSSProperties}
         />
       ))}
@@ -90,20 +92,20 @@ function FloatingEntry({ id, amount, onDone }: { id: string; amount: number; onD
         gap: "0.25rem",
         padding: "0.375rem 0.875rem",
         borderRadius: "1.25rem",
-        background: "linear-gradient(135deg, rgba(201,168,76,0.15), rgba(212,175,55,0.1))",
-        border: "1px solid rgba(201,168,76,0.3)",
+        background: `linear-gradient(135deg, ${T.color.goldLight}26, ${T.color.gold}1a)`,
+        border: `1px solid ${T.color.goldLight}4d`,
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
-        boxShadow: "0 4px 16px rgba(201,168,76,0.2)",
+        boxShadow: `0 0.25rem 1rem ${T.color.goldLight}33`,
       }}>
         <span style={{
           fontFamily: T.font.body,
           fontSize: "1rem",
           fontWeight: 700,
-          color: "#C9A84C",
-          textShadow: "0 1px 2px rgba(201,168,76,0.2)",
+          color: T.color.goldLight,
+          textShadow: `0 1px 2px ${T.color.goldLight}33`,
         }}>
-          +{amount} MP
+          {t("pointsEarned", { amount: String(amount) })}
         </span>
       </div>
     </div>

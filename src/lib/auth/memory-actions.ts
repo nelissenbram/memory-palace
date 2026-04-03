@@ -66,6 +66,9 @@ export async function createMemory(data: {
   filePath?: string | null;
   fileSize?: number | null;
   storageBackend?: string | null;
+  locationName?: string | null;
+  lat?: number | null;
+  lng?: number | null;
 }) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -99,6 +102,9 @@ export async function createMemory(data: {
       file_path: data.filePath || null,
       file_size: data.fileSize || 0,
       storage_backend: data.storageBackend || "supabase",
+      ...(data.locationName ? { location_name: data.locationName } : {}),
+      ...(data.lat != null ? { lat: data.lat } : {}),
+      ...(data.lng != null ? { lng: data.lng } : {}),
     })
     .select()
     .single();
@@ -148,7 +154,7 @@ export async function createMemory(data: {
 
 export async function updateMemoryAction(
   memoryId: string,
-  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string; storage_backend?: string }
+  updates: { title?: string; description?: string; type?: string; file_url?: string; file_path?: string; storage_backend?: string; location_name?: string; lat?: number; lng?: number }
 ) {
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -162,9 +168,14 @@ export async function updateMemoryAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  // Strip undefined values to avoid nullifying existing columns
+  const cleanUpdates = Object.fromEntries(
+    Object.entries(updates).filter(([, v]) => v !== undefined)
+  );
+
   const { data: memory, error } = await supabase
     .from("memories")
-    .update(updates)
+    .update(cleanUpdates)
     .eq("id", memoryId)
     .eq("user_id", user.id)
     .select()
@@ -271,6 +282,6 @@ export async function fetchMemories(localRoomId: string) {
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
-  if (error) return { memories: [] };
+  if (error) return { memories: [], error: error.message };
   return { memories: memories || [] };
 }

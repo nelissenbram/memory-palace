@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Disallow: /api/
+Disallow: /settings/
+Disallow: /palace/
+
+Sitemap: https://thememorypalace.ai/sitemap.xml

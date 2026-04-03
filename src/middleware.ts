@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/flythrough", "/api/stripe/webhook", "/api/cron/", "/api/email/", "/api/notifications/send"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/api/stripe/webhook", "/api/cron/", "/api/email/", "/api/notifications/send", "/video", "/test-palazzo"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -11,6 +11,11 @@ function isPublicPath(path: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
+  // Allow static media files through without auth
+  if (request.nextUrl.pathname.startsWith("/video/")) {
+    return NextResponse.next();
+  }
+
   // Fail closed: if Supabase env vars missing, only allow public routes + static assets
   if (
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -46,6 +51,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|workbox-.*\\.js|fallback-.*\\.js|manifest\\.json|clear\\.html|models/|draco/|textures/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|wasm|hdr)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|workbox-.*\\.js|fallback-.*\\.js|manifest\\.json|clear\\.html|models/|draco/|textures/|video/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|wasm|hdr|mp4|webm|ogg)$).*)",
   ],
 };

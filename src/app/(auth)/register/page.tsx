@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signUp } from "@/lib/auth/actions";
-import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
+import { signInWithGoogle } from "@/lib/auth/social-login";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -56,7 +56,17 @@ function RegisterContent() {
   if (success) {
     return (
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>✉️</div>
+        <div style={{
+          width: "4rem", height: "4rem", borderRadius: "2rem",
+          background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 1rem",
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="M22 4L12 13 2 4"/>
+          </svg>
+        </div>
         <h2
           style={{
             fontFamily: T.font.display,
@@ -123,7 +133,7 @@ function RegisterContent() {
             borderRadius: "0.625rem",
             background: "#FDF2F2",
             border: "1px solid #FECACA",
-            color: "#B91C1C",
+            color: T.color.error,
             fontSize: "0.8125rem",
             marginBottom: "1rem",
           }}
@@ -231,22 +241,21 @@ function RegisterContent() {
 
       <button
         type="button"
-        onClick={() => {
-          if (!ageConfirmed) {
-            setError(t("ageRequiredForSocial"));
-            return;
-          }
-          signInWithApple();
-        }}
+        disabled
         style={{
           ...appleButtonStyle,
-          ...(!ageConfirmed ? { opacity: 0.5, pointerEvents: "none" as const } : {}),
+          opacity: 0.5,
+          cursor: "not-allowed",
+          pointerEvents: "none" as const,
         }}
-        aria-disabled={!ageConfirmed}
+        aria-disabled
       >
         <AppleIcon />
         {t("signUpWithApple")}
       </button>
+      <span style={{ display: "block", textAlign: "center", fontSize: "0.75rem", fontStyle: "italic", color: T.color.muted, marginTop: "-0.25rem" }}>
+        {t("comingSoon")}
+      </span>
 
       <p
         style={{
@@ -291,9 +300,9 @@ function RegisterContent() {
 }
 
 const labelStyle: React.CSSProperties = {
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontFamily: T.font.body,
   fontSize: "0.6875rem",
-  color: "#9A9183",
+  color: T.color.muted,
   letterSpacing: ".5px",
   textTransform: "uppercase",
   display: "block",
@@ -304,11 +313,11 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.8125rem 1rem",
   borderRadius: "0.625rem",
-  border: "1.5px solid #D4C5B2",
-  background: "#FFFFFF",
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  border: `1.5px solid ${T.color.sandstone}`,
+  background: T.color.white,
+  fontFamily: T.font.body,
   fontSize: "0.875rem",
-  color: "#2C2C2A",
+  color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box",
   transition: "border-color 0.2s",
@@ -320,10 +329,10 @@ const buttonStyle = (disabled: boolean): React.CSSProperties => ({
   borderRadius: "0.75rem",
   border: "none",
   background: disabled
-    ? "#D4C5B240"
-    : "linear-gradient(135deg, #C17F59, #8B7355)",
-  color: disabled ? "#9A9183" : "#FFFFFF",
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+    ? `${T.color.sandstone}40`
+    : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+  color: disabled ? T.color.muted : T.color.white,
+  fontFamily: T.font.body,
   fontSize: "0.9375rem",
   fontWeight: 600,
   cursor: disabled ? "default" : "pointer",

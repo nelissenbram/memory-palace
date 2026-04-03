@@ -135,7 +135,7 @@ export default function GettingStartedChecklist({
     refreshCompleted();
 
     // Poll for changes every 2 seconds (other components may mark items)
-    const interval = setInterval(refreshCompleted, 2000);
+    const interval = setInterval(refreshCompleted, 5000);
     return () => clearInterval(interval);
   }, [refreshCompleted]);
 

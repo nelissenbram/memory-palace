@@ -13,6 +13,7 @@ import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, load
 import { loadBustModel, type BustStyle, type BustGender } from "@/lib/3d/bustBuilder";
 import type { BustPedestalData } from "@/lib/stores/userStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { T } from "@/lib/theme";
 
 /** Shared wing data from wing_shares table */
 export interface SharedWingDoor {
@@ -28,13 +29,13 @@ export interface SharedWingDoor {
 
 // ═══ ENTRANCE HALL — Grand Roman Senate / Pantheon Chamber ═══
 const HALL_DOORS = [
-  { id: "family",     label: "FAMILY",      locked: false },
-  { id: "locked1",    label: "", locked: true  },
-  { id: "travel",     label: "TRAVEL",      locked: false },
-  { id: "childhood",  label: "CHILDHOOD",   locked: false },
-  { id: "locked2",    label: "", locked: true  },
-  { id: "career",     label: "CAREER",      locked: false },
-  { id: "creativity", label: "CREATIVITY",  locked: false },
+  { id: "family",     locked: false },
+  { id: "locked1",    locked: true  },
+  { id: "travel",     locked: false },
+  { id: "childhood",  locked: false },
+  { id: "locked2",    locked: true  },
+  { id: "career",     locked: false },
+  { id: "creativity", locked: false },
 ];
 const NUM_HALL_DOORS = HALL_DOORS.length; // 7
 // Door angles pre-computed for column skip logic
@@ -156,6 +157,7 @@ export default function EntranceHallScene({
   sharedWings?: SharedWingDoor[];
 }) {
   const { t } = useTranslation("entranceHall");
+  const { t: tw } = useTranslation("wings");
   const WINGS = wingsProp || DEFAULT_WINGS;
   const mountRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
@@ -892,7 +894,7 @@ export default function EntranceHallScene({
       // ── ELEGANT WING NAME LABEL (upper portion of door/niche) ──
       const effectiveLabel = isSharedDoor
         ? (sharedWingRef?.name?.toUpperCase() || sharedWingForSlot!.wingId.toUpperCase())
-        : doorDef.label;
+        : (wing?.nameKey ? tw(wing.nameKey).toUpperCase() : "");
       if (effectiveLabel) {
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 1024;
@@ -915,7 +917,7 @@ export default function EntranceHallScene({
           // Subtle "shared" badge
           lctx.fillStyle = "#7A9AB8";
           lctx.font = "italic 36px Georgia, 'Times New Roman', serif";
-          lctx.fillText("shared", 512, 170);
+          lctx.fillText(t("sharedBadge"), 512, 170);
           // Decorative line
           lctx.strokeStyle = sharedAccent;
           lctx.lineWidth = 2;
@@ -2190,7 +2192,7 @@ export default function EntranceHallScene({
   }, [muted]);
 
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative" }}>
+    <div role="application" aria-label={t("sceneLabel")} style={{ width: "100%", height: "100%", position: "relative" }}>
       <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
       {/* Mute/unmute button overlay */}
       <button
@@ -2210,13 +2212,14 @@ export default function EntranceHallScene({
           alignItems: "center",
           justifyContent: "center",
           fontSize: "1rem",
-          color: "#6A5A48",
+          color: T.color.walnut,
           zIndex: 30,
           transition: "opacity 0.3s",
           opacity: 0.7,
         }}
         onMouseEnter={e => { (e.target as HTMLElement).style.opacity = "1"; }}
         onMouseLeave={e => { (e.target as HTMLElement).style.opacity = "0.7"; }}
+        aria-label={muted ? t("unmute") : t("mute")}
         title={muted ? t("unmute") : t("mute")}
       >
         {muted ? "\uD83D\uDD07" : "\uD83D\uDD0A"}

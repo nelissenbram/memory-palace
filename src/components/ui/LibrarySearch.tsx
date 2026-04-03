@@ -2,13 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-
-/* ── Type icon map ── */
-const TYPE_ICONS: Record<string, string> = {
-  photo: "\u{1F5BC}\uFE0F", video: "\u{1F3AC}", album: "\u{1F4D6}",
-  orb: "\u{1F52E}", case: "\u{1F3FA}", voice: "\u{1F399}\uFE0F",
-  document: "\u{1F4DC}", audio: "\u{1F3B5}", painting: "\u{1F3A8}",
-};
+import { TYPE_ICONS } from "@/lib/constants/type-icons";
 
 /* ── Animations (injected once) ── */
 const STYLE_ID = "library-search-animations";
@@ -61,6 +55,37 @@ export function LibrarySearch({
   const { t } = useTranslation("library");
   const inputRef = useRef<HTMLInputElement>(null);
   const [focused, setFocused] = useState(false);
+  const [localQuery, setLocalQuery] = useState(query);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync local state when parent clears the query externally
+  useEffect(() => {
+    if (query !== localQuery) {
+      setLocalQuery(query);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  // Debounced query change handler (300ms)
+  const handleQueryChange = useCallback((value: string) => {
+    setLocalQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (value === "") {
+      // Clear immediately for better UX
+      onQueryChange("");
+    } else {
+      debounceRef.current = setTimeout(() => {
+        onQueryChange(value);
+      }, 300);
+    }
+  }, [onQueryChange]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   useEffect(() => { ensureStyles(); }, []);
 
@@ -81,7 +106,7 @@ export function LibrarySearch({
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const hasQuery = query.length > 0;
+  const hasQuery = localQuery.length > 0;
   const showResultBadge = hasQuery && resultCount !== undefined;
 
   const accentGlow = accent + "20";
@@ -117,8 +142,8 @@ export function LibrarySearch({
       <input
         ref={inputRef}
         type="text"
-        value={query}
-        onChange={e => onQueryChange(e.target.value)}
+        value={localQuery}
+        onChange={e => handleQueryChange(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={t("searchPlaceholder")}
@@ -179,7 +204,7 @@ export function LibrarySearch({
         {/* Clear button */}
         {hasQuery && (
           <button
-            onClick={() => { onQueryChange(""); inputRef.current?.focus(); }}
+            onClick={() => { handleQueryChange(""); inputRef.current?.focus(); }}
             aria-label={t("clearSearch")}
             style={{
               width: "1.375rem",

@@ -37,29 +37,29 @@ export interface PalaceStats {
 
 export const ACHIEVEMENTS: Achievement[] = [
   // Memories
-  { id: "first_memory", titleKey: "achievements.first_memory.title", descKey: "achievements.first_memory.desc", icon: "\u{1F31F}", category: "memories", check: (s) => s.totalMemories >= 1 },
-  { id: "collector", titleKey: "achievements.collector.title", descKey: "achievements.collector.desc", icon: "\u{1F4E6}", category: "memories", check: (s) => s.totalMemories >= 10 },
-  { id: "archivist", titleKey: "achievements.archivist.title", descKey: "achievements.archivist.desc", icon: "\u{1F3DB}\uFE0F", category: "memories", check: (s) => s.totalMemories >= 50 },
-  { id: "centurion", titleKey: "achievements.centurion.title", descKey: "achievements.centurion.desc", icon: "\u{1F4AF}", category: "memories", check: (s) => s.totalMemories >= 100 },
-  { id: "diverse_collector", titleKey: "achievements.diverse_collector.title", descKey: "achievements.diverse_collector.desc", icon: "\u{1F3AD}", category: "memories", check: (s) => s.memoryTypes.size >= 5 },
+  { id: "first_memory", titleKey: "achievements.first_memory.title", descKey: "achievements.first_memory.desc", icon: "first_memory", category: "memories", check: (s) => s.totalMemories >= 1 },
+  { id: "collector", titleKey: "achievements.collector.title", descKey: "achievements.collector.desc", icon: "collector", category: "memories", check: (s) => s.totalMemories >= 10 },
+  { id: "archivist", titleKey: "achievements.archivist.title", descKey: "achievements.archivist.desc", icon: "archivist", category: "memories", check: (s) => s.totalMemories >= 50 },
+  { id: "centurion", titleKey: "achievements.centurion.title", descKey: "achievements.centurion.desc", icon: "centurion", category: "memories", check: (s) => s.totalMemories >= 100 },
+  { id: "diverse_collector", titleKey: "achievements.diverse_collector.title", descKey: "achievements.diverse_collector.desc", icon: "diverse_collector", category: "memories", check: (s) => s.memoryTypes.size >= 5 },
 
   // Social
-  { id: "generous_host", titleKey: "achievements.generous_host.title", descKey: "achievements.generous_host.desc", icon: "\u{1F91D}", category: "social", check: (s) => s.sharedRooms >= 1 },
-  { id: "social_butterfly", titleKey: "achievements.social_butterfly.title", descKey: "achievements.social_butterfly.desc", icon: "\u{1F98B}", category: "social", check: (s) => s.sharedRooms >= 3 },
-  { id: "open_palace", titleKey: "achievements.open_palace.title", descKey: "achievements.open_palace.desc", icon: "\u{1F3F0}", category: "social", check: (s) => s.totalWingsVisited >= 3 && s.sharedRooms >= 3 },
+  { id: "generous_host", titleKey: "achievements.generous_host.title", descKey: "achievements.generous_host.desc", icon: "generous_host", category: "social", check: (s) => s.sharedRooms >= 1 },
+  { id: "social_butterfly", titleKey: "achievements.social_butterfly.title", descKey: "achievements.social_butterfly.desc", icon: "social_butterfly", category: "social", check: (s) => s.sharedRooms >= 3 },
+  { id: "open_palace", titleKey: "achievements.open_palace.title", descKey: "achievements.open_palace.desc", icon: "open_palace", category: "social", check: (s) => s.totalWingsVisited >= 3 && s.sharedRooms >= 3 },
 
   // Explore
-  { id: "explorer", titleKey: "achievements.explorer.title", descKey: "achievements.explorer.desc", icon: "\u{1F9ED}", category: "explore", check: (s) => s.totalWingsVisited >= 5 },
-  { id: "decorator", titleKey: "achievements.decorator.title", descKey: "achievements.decorator.desc", icon: "\u{1F3A8}", category: "explore", check: (s) => s.layoutsChanged >= 1 },
-  { id: "architect", titleKey: "achievements.architect.title", descKey: "achievements.architect.desc", icon: "\u{1F528}", category: "explore", check: (s) => s.roomsAdded >= 1 },
-  { id: "curator", titleKey: "achievements.curator.title", descKey: "achievements.curator.desc", icon: "\u270F\uFE0F", category: "explore", check: (s) => s.roomsRenamed >= 1 },
-  { id: "palace_master", titleKey: "achievements.palace_master.title", descKey: "achievements.palace_master.desc", icon: "\u{1F451}", category: "explore", check: (s) => s.totalRoomsInPalace > 0 && s.roomsVisited >= s.totalRoomsInPalace },
+  { id: "explorer", titleKey: "achievements.explorer.title", descKey: "achievements.explorer.desc", icon: "explorer", category: "explore", check: (s) => s.totalWingsVisited >= 5 },
+  { id: "decorator", titleKey: "achievements.decorator.title", descKey: "achievements.decorator.desc", icon: "decorator", category: "explore", check: (s) => s.layoutsChanged >= 1 },
+  { id: "architect", titleKey: "achievements.architect.title", descKey: "achievements.architect.desc", icon: "architect", category: "explore", check: (s) => s.roomsAdded >= 1 },
+  { id: "curator", titleKey: "achievements.curator.title", descKey: "achievements.curator.desc", icon: "curator", category: "explore", check: (s) => s.roomsRenamed >= 1 },
+  { id: "palace_master", titleKey: "achievements.palace_master.title", descKey: "achievements.palace_master.desc", icon: "palace_master", category: "explore", check: (s) => s.totalRoomsInPalace > 0 && s.roomsVisited >= s.totalRoomsInPalace },
 
   // Create
-  { id: "filmmaker", titleKey: "achievements.filmmaker.title", descKey: "achievements.filmmaker.desc", icon: "\u{1F3AC}", category: "create", check: (s) => s.hasVideo },
-  { id: "dj", titleKey: "achievements.dj.title", descKey: "achievements.dj.desc", icon: "\u{1F3B5}", category: "create", check: (s) => s.hasAudio },
-  { id: "time_traveler", titleKey: "achievements.time_traveler.title", descKey: "achievements.time_traveler.desc", icon: "\u231B", category: "create", check: (s) => s.hasTimeCapsule },
-  { id: "storyteller", titleKey: "achievements.storyteller.title", descKey: "achievements.storyteller.desc", icon: "\u{1F4D6}", category: "create", check: (s) => s.memoriesWithDesc >= 10 },
+  { id: "filmmaker", titleKey: "achievements.filmmaker.title", descKey: "achievements.filmmaker.desc", icon: "filmmaker", category: "create", check: (s) => s.hasVideo },
+  { id: "dj", titleKey: "achievements.dj.title", descKey: "achievements.dj.desc", icon: "dj", category: "create", check: (s) => s.hasAudio },
+  { id: "time_traveler", titleKey: "achievements.time_traveler.title", descKey: "achievements.time_traveler.desc", icon: "time_traveler", category: "create", check: (s) => s.hasTimeCapsule },
+  { id: "storyteller", titleKey: "achievements.storyteller.title", descKey: "achievements.storyteller.desc", icon: "storyteller", category: "create", check: (s) => s.memoriesWithDesc >= 10 },
 ];
 
 // ─── Store ───

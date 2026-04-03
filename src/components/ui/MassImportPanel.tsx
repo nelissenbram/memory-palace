@@ -9,6 +9,7 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { extractExif } from "@/lib/utils/exif";
 import { generateThumbnail } from "@/lib/utils/thumbnail";
+import { geocodeLocationName } from "@/lib/geocode";
 import Image from "next/image";
 import type { Mem } from "@/lib/constants/defaults";
 
@@ -39,7 +40,7 @@ function formatBytes(b: number): string {
 const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
 
-// WCAG AA compliant muted color (≥4.5:1 on #FAFAF7 linen bg)
+// WCAG AA compliant alternative to T.color.muted on linen backgrounds
 const MUTED_AA = "#746B60";
 
 function isFileTooLarge(file: File): boolean {
@@ -237,6 +238,11 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           mem.lat = item.confirmed.lat;
           mem.lng = item.confirmed.lng;
         }
+        // Geocode location name if lat/lng not set
+        if (item.confirmed.locationName && mem.lat === undefined && mem.lng === undefined) {
+          const coords = await geocodeLocationName(item.confirmed.locationName);
+          if (coords) { mem.lat = coords.lat; mem.lng = coords.lng; }
+        }
         if (item.confirmed.locationName) mem.locationName = item.confirmed.locationName;
 
         await addMemory(item.confirmed.roomId, mem);
@@ -255,7 +261,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
   const totalSize = items.reduce((n, i) => n + i.fileSizeBytes, 0);
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(10px)", zIndex: 60, animation: "fadeIn .2s ease", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.5)", backdropFilter: "blur(10px)", zIndex: 60, animation: "fadeIn .2s ease", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
         width: isMobile ? "100%" : "min(51.25rem, 94vw)",
         maxHeight: isMobile ? "100%" : "90vh",
@@ -557,7 +563,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 <span>{progress.committed}/{progress.total}</span>
               </div>
               <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.total ? Math.round((progress.committed / progress.total) * 100) : 0} aria-label={t("addingMemories")} style={{ width: "100%", height: "0.5rem", borderRadius: "0.25rem", background: `${T.color.sandstone}33`, overflow: "hidden" }}>
-                <div style={{ width: `${progress.total ? (progress.committed / progress.total) * 100 : 0}%`, height: "100%", borderRadius: "0.25rem", background: `linear-gradient(90deg, #4A6741, #6A8848)`, transition: "width .3s" }} />
+                <div style={{ width: `${progress.total ? (progress.committed / progress.total) * 100 : 0}%`, height: "100%", borderRadius: "0.25rem", background: `linear-gradient(90deg, ${T.color.sage}, #6A8848)`, transition: "width .3s" }} />
               </div>
             </div>
           </>}
@@ -660,7 +666,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
         {/* Thumbnail */}
         <div style={{
           width: "3rem", height: "3rem", borderRadius: "0.5rem", flexShrink: 0, overflow: "hidden",
-          background: `hsl(0,0%,90%)`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+          background: T.color.warmStone, display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
         }}>
           {item.previewUrl ? (
             <Image src={item.previewUrl} alt="" fill sizes="48px" style={{ objectFit: "cover" }} unoptimized />

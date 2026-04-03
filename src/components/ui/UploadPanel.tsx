@@ -5,6 +5,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useOnlineStatus } from "@/lib/hooks/useOfflineSync";
+import { geocodeLocationName } from "@/lib/geocode";
 import { UPLOAD_DEMOS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
@@ -18,9 +19,10 @@ interface UploadPanelProps {
   roomMemories?: Mem[];
   onUpdateMemory?: (memId: string, updates: Partial<Mem>) => void;
   suggestedType?: string;
+  initialTimeCapsule?: boolean;
 }
 
-export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onUpdateMemory,suggestedType}: UploadPanelProps){
+export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onUpdateMemory,suggestedType,initialTimeCapsule}: UploadPanelProps){
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("uploadPanel");
   const { t: tc } = useTranslation("common");
@@ -36,7 +38,14 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const [imageUrl,setImageUrl]=useState("");
   const [isVideo,setIsVideo]=useState(false);
   const [uploadMethod,setUploadMethod]=useState("url");
-  const [timeCapsule,setTimeCapsule]=useState(false);
+  const [timeCapsule,setTimeCapsule]=useState(()=>{
+    if(initialTimeCapsule) return true;
+    try{
+      const flag=localStorage.getItem("mp_upload_time_capsule");
+      if(flag==="true"){localStorage.removeItem("mp_upload_time_capsule");return true;}
+    }catch{}
+    return false;
+  });
   const [revealDate,setRevealDate]=useState("");
   const [locationName,setLocationName]=useState("");
   const [lat,setLat]=useState<number|null>(null);
@@ -110,8 +119,10 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   };
   const todayStr=new Date().toISOString().split("T")[0];
   const capsuleValid=!timeCapsule||( revealDate&&revealDate>todayStr);
-  const submit=()=>{
-    if(!title.trim()||!capsuleValid)return;
+  const [submitting,setSubmitting]=useState(false);
+  const submit=async()=>{
+    if(!title.trim()||!capsuleValid||submitting)return;
+    setSubmitting(true);
     const hue=Math.floor(Math.random()*360);
     const mem: Mem={id:Date.now().toString(),title:title.trim(),hue,s:45+Math.floor(Math.random()*15),l:55+Math.floor(Math.random()*15),type:displayType,desc,dataUrl:preview||null,videoBlob:isVideo,createdAt:new Date().toISOString()};
     if(timeCapsule&&revealDate) mem.revealDate=revealDate;
@@ -120,9 +131,15 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
       if(targetDate) mem.resolution.targetDate=targetDate;
     }
     if(lat!==null&&lng!==null){mem.lat=lat;mem.lng=lng;}
+    // Geocode location name to lat/lng if not already set
+    if(locationName.trim()&&lat===null&&lng===null){
+      const coords=await geocodeLocationName(locationName.trim());
+      if(coords){mem.lat=coords.lat;mem.lng=coords.lng;}
+    }
     if(locationName.trim()) mem.locationName=locationName.trim();
     if(contextAccepted&&contextPreview) mem.historicalContext=contextPreview;
     onAdd(mem);
+    setSubmitting(false);
     if (!isOnline) {
       setSavedOffline(true);
       setTimeout(() => onClose(), 1500);

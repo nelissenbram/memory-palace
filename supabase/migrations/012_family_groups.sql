@@ -49,10 +49,19 @@ ALTER TABLE public.family_members ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Members can view their group members" ON public.family_members
   FOR SELECT USING (
     group_id IN (SELECT group_id FROM public.family_members fm WHERE fm.user_id = auth.uid())
+    OR group_id IN (SELECT id FROM public.family_groups fg WHERE fg.created_by = auth.uid())
+    OR email = (SELECT email FROM auth.users WHERE id = auth.uid())
   );
 
 CREATE POLICY "Owners/admins can insert members" ON public.family_members
   FOR INSERT WITH CHECK (
+    -- Group creator can always insert members (bootstrapping: first member)
+    group_id IN (
+      SELECT id FROM public.family_groups fg
+      WHERE fg.created_by = auth.uid()
+    )
+    OR
+    -- Existing owners/admins can insert members
     group_id IN (
       SELECT group_id FROM public.family_members fm
       WHERE fm.user_id = auth.uid() AND fm.role IN ('owner', 'admin')

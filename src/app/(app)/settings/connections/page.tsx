@@ -14,6 +14,7 @@ interface ProviderDef {
   accentColor: string;
   connectUrl: string;
   browseType: "photos" | "files";
+  comingSoon?: boolean;
 }
 
 const PROVIDERS: ProviderDef[] = [
@@ -25,6 +26,7 @@ const PROVIDERS: ProviderDef[] = [
     accentColor: "#4285F4",
     connectUrl: "/api/integrations/google/connect",
     browseType: "photos",
+    comingSoon: true,
   },
   {
     id: "dropbox",
@@ -52,6 +54,7 @@ const PROVIDERS: ProviderDef[] = [
     accentColor: "#0061D5",
     connectUrl: "/api/integrations/box/connect",
     browseType: "files",
+    comingSoon: true,
   },
   {
     id: "apple_photos",
@@ -61,6 +64,7 @@ const PROVIDERS: ProviderDef[] = [
     accentColor: "#999999",
     connectUrl: "",
     browseType: "photos",
+    comingSoon: true,
   },
 ];
 
@@ -212,6 +216,7 @@ function ConnectionsContent() {
             const account = connectedMap.get(provider.id);
             const isConnected = !!account;
             const isApple = provider.id === "apple_photos";
+            const isComingSoon = !!provider.comingSoon;
 
             return (
               <div key={provider.id} style={{
@@ -223,6 +228,7 @@ function ConnectionsContent() {
                   ? `0 0.125rem 0.75rem ${provider.accentColor}10`
                   : "0 0.125rem 0.5rem rgba(44,44,42,.04)",
                 transition: "all .2s",
+                ...(isComingSoon ? { opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" as const } : {}),
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                   {/* Icon */}
@@ -256,6 +262,18 @@ function ConnectionsContent() {
                         }}>
                           <span aria-hidden="true" style={{ fontSize: "0.625rem" }}>{"\u2713"}</span>
                           {t("connected")}
+                        </span>
+                      )}
+                      {isComingSoon && !isConnected && (
+                        <span style={{
+                          display: "inline-flex", alignItems: "center",
+                          padding: "0.1875rem 0.625rem", borderRadius: "1.25rem",
+                          background: `${T.color.sandstone}30`,
+                          color: T.color.muted,
+                          fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
+                          fontStyle: "italic",
+                        }}>
+                          {t("comingSoon")}
                         </span>
                       )}
                     </div>

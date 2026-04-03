@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { T } from "@/lib/theme";
 import { WINGS } from "@/lib/constants/wings";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 import Image from "next/image";
 
 interface PublicMemory {
@@ -25,17 +26,17 @@ interface PublicShareData {
 }
 
 // Map wing slug to its static config for accent colors & icons
-function getWingMeta(slug: string | null) {
-  if (!slug) return { icon: "", accent: T.color.terracotta, name: "Memories" };
+function getWingMeta(slug: string | null, fallbackName: string) {
+  if (!slug) return { icon: "", accent: T.color.terracotta, name: fallbackName };
   const wing = WINGS.find((w) => w.id === slug);
   return wing
     ? { icon: wing.icon, accent: wing.accent, name: wing.name }
-    : { icon: "", accent: T.color.terracotta, name: "Memories" };
+    : { icon: "", accent: T.color.terracotta, name: fallbackName };
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
   try {
-    return new Date(iso).toLocaleDateString("en-US", {
+    return new Date(iso).toLocaleDateString(locale, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -57,6 +58,7 @@ function MemoryTypeIcon({ type }: { type: string }) {
 }
 
 export default function PublicGallery({ slug }: { slug: string }) {
+  const { t, locale } = useTranslation("publicGallery");
   const [data, setData] = useState<PublicShareData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,10 +75,10 @@ export default function PublicGallery({ slug }: { slug: string }) {
         setLoading(false);
       })
       .catch(() => {
-        setError("This shared link is no longer available.");
+        setError(t("linkNoLongerAvailable"));
         setLoading(false);
       });
-  }, [slug]);
+  }, [slug, t]);
 
   if (loading) {
     return (
@@ -93,7 +95,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
           color: T.color.walnut,
           animation: "fadeIn .5s ease",
         }}>
-          Loading memories...
+          {t("loading")}
         </div>
       </div>
     );
@@ -119,7 +121,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
           color: T.color.charcoal,
           textAlign: "center",
         }}>
-          Link unavailable
+          {t("linkUnavailable")}
         </h1>
         <p style={{
           fontFamily: T.font.body,
@@ -129,7 +131,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
           maxWidth: 400,
           lineHeight: 1.6,
         }}>
-          {error || "This shared link may have been deactivated by the owner."}
+          {error || t("linkDeactivated")}
         </p>
         <a href="/" style={{
           marginTop: 8,
@@ -143,15 +145,18 @@ export default function PublicGallery({ slug }: { slug: string }) {
           textDecoration: "none",
           transition: "opacity .15s",
         }}>
-          Create your own Memory Palace
+          {t("createOwn")}
         </a>
       </div>
     );
   }
 
-  const wingMeta = getWingMeta(data.wing?.slug || null);
+  const wingMeta = getWingMeta(data.wing?.slug || null, t("memories"));
   const accent = wingMeta.accent;
   const memories = data.memories;
+  const headerTitle = data.wing?.name
+    ? t("sharedMemories", { name: data.wing.name })
+    : t("sharedMemories", { name: t("shared") });
 
   return (
     <div style={{
@@ -175,7 +180,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
           margin: "0 0 6px",
           letterSpacing: "-0.5px",
         }}>
-          {data.wing?.name || "Shared"} Memories
+          {headerTitle}
         </h1>
         <p style={{
           fontFamily: T.font.body,
@@ -183,11 +188,13 @@ export default function PublicGallery({ slug }: { slug: string }) {
           color: T.color.muted,
           margin: 0,
         }}>
-          Shared by {data.owner.displayName}
+          {t("sharedBy", { name: data.owner.displayName })}
           {memories.length > 0 && (
             <span style={{ margin: "0 6px", color: T.color.sandstone }}>{"\u00B7"}</span>
           )}
-          {memories.length > 0 && `${memories.length} ${memories.length === 1 ? "memory" : "memories"}`}
+          {memories.length > 0 && (memories.length === 1
+            ? t("memorySingular", { count: String(memories.length) })
+            : t("memoryPlural", { count: String(memories.length) }))}
         </p>
 
         {/* Decorative divider */}
@@ -213,7 +220,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
             fontSize: 20,
             color: T.color.walnut,
           }}>
-            No memories to show yet
+            {t("noMemories")}
           </p>
         </div>
       ) : (
@@ -232,6 +239,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
               mem={mem}
               accent={accent}
               index={i}
+              locale={locale}
               onClick={() => setSelectedMemory(mem)}
             />
           ))}
@@ -243,6 +251,8 @@ export default function PublicGallery({ slug }: { slug: string }) {
         <MemoryLightbox
           mem={selectedMemory}
           accent={accent}
+          locale={locale}
+          closeLabel={t("close")}
           onClose={() => setSelectedMemory(null)}
         />
       )}
@@ -262,7 +272,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
           color: T.color.walnut,
           marginBottom: 12,
         }}>
-          The Memory Palace
+          {t("brandName")}
         </div>
         <p style={{
           fontFamily: T.font.body,
@@ -271,9 +281,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
           marginBottom: 16,
           lineHeight: 1.6,
         }}>
-          A beautiful space to preserve your most precious memories —
-          <br />
-          photos, videos, and stories in a place as unique as your life.
+          {t("tagline")}
         </p>
         <a
           href="/register"
@@ -291,24 +299,26 @@ export default function PublicGallery({ slug }: { slug: string }) {
             boxShadow: `0 4px 16px ${accent}30`,
           }}
         >
-          Create your own Memory Palace
+          {t("createOwn")}
         </a>
       </footer>
     </div>
   );
 }
 
-/* ─── Memory Card ─────────────────────────────────────────── */
+/* --- Memory Card --------------------------------------------------------- */
 
 function MemoryCard({
   mem,
   accent,
   index,
+  locale,
   onClick,
 }: {
   mem: PublicMemory;
   accent: string;
   index: number;
+  locale: string;
   onClick: () => void;
 }) {
   const hasImage = mem.fileUrl && (mem.type === "photo" || mem.type === "album");
@@ -468,7 +478,7 @@ function MemoryCard({
                 fontSize: 11,
                 color: T.color.sandstone,
               }}>
-                {formatDate(mem.createdAt)}
+                {formatDate(mem.createdAt, locale)}
               </span>
             </>
           )}
@@ -478,15 +488,19 @@ function MemoryCard({
   );
 }
 
-/* ─── Lightbox ────────────────────────────────────────────── */
+/* --- Lightbox ------------------------------------------------------------- */
 
 function MemoryLightbox({
   mem,
   accent,
+  locale,
+  closeLabel,
   onClose,
 }: {
   mem: PublicMemory;
   accent: string;
+  locale: string;
+  closeLabel: string;
   onClose: () => void;
 }) {
   const hasImage = mem.fileUrl && (mem.type === "photo" || mem.type === "album");
@@ -645,7 +659,7 @@ function MemoryLightbox({
                   fontSize: 12,
                   color: T.color.sandstone,
                 }}>
-                  {formatDate(mem.createdAt)}
+                  {formatDate(mem.createdAt, locale)}
                 </span>
               </>
             )}
@@ -671,7 +685,7 @@ function MemoryLightbox({
             onMouseEnter={(e) => { e.currentTarget.style.background = T.color.warmStone; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
-            Close
+            {closeLabel}
           </button>
         </div>
       </div>

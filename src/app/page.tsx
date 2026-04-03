@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -16,14 +17,236 @@ import {
   FeatureTimeCapsuleIcon,
   FeatureSharingIcon,
   FeatureLegacyIcon,
-  AudienceHeritagIcon,
+  AudienceHeritageIcon,
   AudienceGuardianIcon,
   AudienceArchivistIcon,
 } from "@/components/landing/LandingIllustrations";
 
+/* ───────── Error Boundary (P1 #8) ───────── */
+class LandingErrorBoundary extends React.Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; fallback: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+/* ───────── useInView hook (P2 #2) ───────── */
+function useInView(options?: IntersectionObserverInit) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setInView(true); obs.disconnect(); } },
+      { rootMargin: "200px", threshold: 0, ...optionsRef.current },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, inView };
+}
+
+/* ───────── LazySection wrapper (P2 #2) ───────── */
+function LazySection({ children, minHeight = "12rem" }: { children: React.ReactNode; minHeight?: string }) {
+  const { ref, inView } = useInView();
+  return (
+    <div ref={ref}>
+      {inView ? children : <div style={{ minHeight, background: "transparent" }} />}
+    </div>
+  );
+}
+
+/* ───────── ScrollFadeIn wrapper (P2 #6) ───────── */
+function ScrollFadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
+  const { ref, inView } = useInView({ rootMargin: "0px", threshold: 0.1 });
+  return (
+    <div
+      ref={ref}
+      style={{
+        opacity: inView ? 1 : 0,
+        transform: inView ? "translateY(0)" : "translateY(1.5rem)",
+        transition: `opacity 0.5s ease ${delay}s, transform 0.5s ease ${delay}s`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ───────── Hero Background Video ───────── */
+function HeroVideo() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = true;
+    v.playsInline = true;
+    v.loop = true;
+    // Programmatic play — handles browser autoplay policies
+    const tryPlay = () => {
+      v.play().catch(() => {
+        // Some browsers need user interaction first; listen for any click
+        const onClick = () => {
+          v.play().catch(() => {});
+          document.removeEventListener("click", onClick);
+          document.removeEventListener("touchstart", onClick);
+        };
+        document.addEventListener("click", onClick, { once: true });
+        document.addEventListener("touchstart", onClick, { once: true });
+      });
+    };
+    if (v.readyState >= 3) {
+      tryPlay();
+    } else {
+      v.addEventListener("canplay", tryPlay, { once: true });
+    }
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      muted
+      loop
+      playsInline
+      autoPlay
+      preload="auto"
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        opacity: 0.3,
+        filter: "saturate(0.6) brightness(0.85)",
+        pointerEvents: "none",
+      }}
+    >
+      <source src="/video/hero-bg.mp4" type="video/mp4" />
+    </video>
+  );
+}
+
+/* ───────── FAQ Accordion (P2 #7) ───────── */
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    if (contentRef.current) setHeight(contentRef.current.scrollHeight);
+  }, [answer]);
+  return (
+    <div
+      style={{
+        borderBottom: `1px solid ${C.sandstone}40`,
+      }}
+    >
+      <button
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        style={{
+          width: "100%",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "1.25rem 0",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: F.display,
+          fontSize: "1.125rem",
+          fontWeight: 500,
+          color: C.charcoal,
+          textAlign: "left",
+        }}
+      >
+        {question}
+        <span
+          style={{
+            transition: "transform 0.3s ease",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            flexShrink: 0,
+            marginLeft: "1rem",
+            fontSize: "0.75rem",
+            color: C.walnut,
+          }}
+        >
+          &#9660;
+        </span>
+      </button>
+      <div
+        ref={contentRef}
+        style={{
+          overflow: "hidden",
+          maxHeight: open ? `${height}px` : "0",
+          transition: "max-height 0.35s ease",
+        }}
+      >
+        <p
+          style={{
+            fontSize: "0.9375rem",
+            color: C.walnut,
+            lineHeight: 1.7,
+            paddingBottom: "1.25rem",
+          }}
+        >
+          {answer}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ───────── Trust Badge SVG icons (P2 #3) ───────── */
+function SslIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width={size} height={size} fill="none" aria-hidden="true">
+      <rect x="3" y="7" width="10" height="8" rx="1.5" stroke={C.walnut} strokeWidth="1.2" />
+      <path d="M5.5 7V5a2.5 2.5 0 015 0v2" stroke={C.walnut} strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="8" cy="11" r="1" fill={C.walnut} />
+    </svg>
+  );
+}
+
+function GdprIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width={size} height={size} fill="none" aria-hidden="true">
+      <path d="M8 2L3 4.5V8c0 3.5 2.5 5.5 5 6.5 2.5-1 5-3 5-6.5V4.5L8 2z" stroke={C.walnut} strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M6 8.5l1.5 1.5L10.5 7" stroke={C.walnut} strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function EncryptedIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width={size} height={size} fill="none" aria-hidden="true">
+      <rect x="2" y="6" width="12" height="9" rx="1.5" stroke={C.walnut} strokeWidth="1.2" />
+      <circle cx="8" cy="10.5" r="1.5" stroke={C.walnut} strokeWidth="1" />
+      <path d="M8 12v1.5" stroke={C.walnut} strokeWidth="1" strokeLinecap="round" />
+      <path d="M5 6V4.5a3 3 0 016 0V6" stroke={C.walnut} strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /* ───────── tiny helpers ───────── */
 const F = T.font;
 const C = T.color;
+/* P2 #4: Accessible muted colors — WCAG AA 4.5:1 contrast */
+const MUTED_ON_LIGHT = "#716A5E"; /* ~4.6:1 on #FAFAF7 */
+const MUTED_ON_DARK = "#B5ADA3";  /* ~4.7:1 on #2C2C2A */
 
 /* ───────── inline SVG micro-icons ───────── */
 function LockIcon({ size = 14, color = C.muted }: { size?: number; color?: string }) {
@@ -79,13 +302,84 @@ function CrossIcon({ size = 16 }: { size?: number }) {
    ═══════════════════════════════════════════════════════════ */
 
 export default function LandingPage() {
+  return (
+    <LandingErrorBoundary fallback={<LandingErrorFallback />}>
+      <LandingPageContent />
+    </LandingErrorBoundary>
+  );
+}
+
+/* Error fallback (P1 #8) */
+function LandingErrorFallback() {
+  const { locale } = useTranslation("landing");
+  const landing = (locale === "nl" ? nlMessages : enMessages).landing;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const lAny = landing as any;
+  return (
+    <div
+      style={{
+        width: "100vw",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        background: C.linen,
+        fontFamily: F.body,
+        color: C.charcoal,
+        textAlign: "center",
+        padding: "2rem",
+      }}
+    >
+      <h1
+        style={{
+          fontFamily: F.display,
+          fontSize: "2rem",
+          fontWeight: 300,
+          marginBottom: "1rem",
+          color: C.charcoal,
+        }}
+      >
+        {lAny?.errorTitle || "Something went wrong"}
+      </h1>
+      <p style={{ fontSize: "1rem", color: C.walnut, marginBottom: "2rem", maxWidth: "25rem", lineHeight: 1.6 }}>
+        {lAny?.errorDescription || "We encountered an unexpected error. Please refresh the page to try again."}
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          fontFamily: F.body,
+          fontSize: "1rem",
+          fontWeight: 600,
+          color: C.white,
+          padding: "0.875rem 2rem",
+          borderRadius: "0.625rem",
+          border: "none",
+          background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+          cursor: "pointer",
+        }}
+      >
+        {lAny?.errorRefresh || "Refresh Page"}
+      </button>
+    </div>
+  );
+}
+
+function LandingPageContent() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
   const [scrollY, setScrollY] = useState(0);
-  const [videoFailed, setVideoFailed] = useState(false);
-  const videoUrl = process.env.NEXT_PUBLIC_PALACE_VIDEO_URL || "/palace-flythrough.webm";
+  const [ctaLoading, setCtaLoading] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { locale, setLocale } = useTranslation("landing");
   const landing = (locale === "nl" ? nlMessages : enMessages).landing;
+  const router = useRouter();
+
+  /* ─── CTA loading handler (P1 #4) ─── */
+  const handleCtaClick = useCallback((id: string, href: string) => {
+    setCtaLoading(id);
+    router.push(href);
+  }, [router]);
 
   /* ─── Data arrays ─── */
 
@@ -112,7 +406,7 @@ export default function LandingPage() {
   ];
 
   const AUDIENCES = [
-    { Icon: AudienceHeritagIcon, title: landing.audience.keepersTitle, desc: landing.audience.keepersDesc, accent: C.sage },
+    { Icon: AudienceHeritageIcon, title: landing.audience.keepersTitle, desc: landing.audience.keepersDesc, accent: C.sage },
     { Icon: AudienceGuardianIcon, title: landing.audience.guardiansTitle, desc: landing.audience.guardiansDesc, accent: C.terracotta },
     { Icon: AudienceArchivistIcon, title: landing.audience.archivistsTitle, desc: landing.audience.archivistsDesc, accent: C.walnut },
   ];
@@ -123,44 +417,59 @@ export default function LandingPage() {
   const comparison = lAny?.comparison as Record<string, string> | undefined;
 
   const TRUST_STATS = [
-    { stat: trust?.stat1 || "100,000+", label: trust?.label1 || "Memories Preserved" },
-    { stat: trust?.stat2 || "5,000+", label: trust?.label2 || "Families" },
-    { stat: trust?.stat3 || "30+", label: trust?.label3 || "Countries" },
-    { stat: trust?.stat4 || "Free Forever", label: trust?.label4 || "Plan Available" },
+    { stat: trust?.stat1 ?? "", label: trust?.label1 ?? "" },
+    { stat: trust?.stat2 ?? "", label: trust?.label2 ?? "" },
+    { stat: trust?.stat3 ?? "", label: trust?.label3 ?? "" },
+    { stat: trust?.stat4 ?? "", label: trust?.label4 ?? "" },
   ];
 
   const COMPARISONS = [
     {
-      category: comparison?.["row1Category"] || "Organization",
-      left: comparison?.["row1Left"] || "Folders & albums",
-      right: comparison?.["row1Right"] || "3D rooms by life chapter",
+      category: comparison?.["row1Label"] ?? "",
+      left: comparison?.["row1Left"] ?? "",
+      right: comparison?.["row1Right"] ?? "",
     },
     {
-      category: comparison?.["row2Category"] || "Storytelling",
-      left: comparison?.["row2Left"] || "No context",
-      right: comparison?.["row2Right"] || "AI interviews capture the story behind every photo",
+      category: comparison?.["row2Label"] ?? "",
+      left: comparison?.["row2Left"] ?? "",
+      right: comparison?.["row2Right"] ?? "",
     },
     {
-      category: comparison?.["row3Category"] || "Sharing",
-      left: comparison?.["row3Left"] || "Link sharing",
-      right: comparison?.["row3Right"] || "Co-created family rooms",
+      category: comparison?.["row3Label"] ?? "",
+      left: comparison?.["row3Left"] ?? "",
+      right: comparison?.["row3Right"] ?? "",
     },
     {
-      category: comparison?.["row4Category"] || "Legacy",
-      left: comparison?.["row4Left"] || "Account deletion risk",
-      right: comparison?.["row4Right"] || "Legacy heirs & time capsules",
+      category: comparison?.["row4Label"] ?? "",
+      left: comparison?.["row4Left"] ?? "",
+      right: comparison?.["row4Right"] ?? "",
     },
     {
-      category: comparison?.["row5Category"] || "Experience",
-      left: comparison?.["row5Left"] || "Scrolling thumbnails",
-      right: comparison?.["row5Right"] || "Immersive 3D walkthrough",
+      category: comparison?.["row5Label"] ?? "",
+      left: comparison?.["row5Left"] ?? "",
+      right: comparison?.["row5Right"] ?? "",
     },
     {
-      category: comparison?.["row6Category"] || "AI",
-      left: comparison?.["row6Left"] || "Basic search",
-      right: comparison?.["row6Right"] || "Auto-organize, describe & tag 1000s of photos",
+      category: comparison?.["row6Label"] ?? "",
+      left: comparison?.["row6Left"] ?? "",
+      right: comparison?.["row6Right"] ?? "",
     },
   ];
+
+  /* ─── Set html lang attribute on locale change (P1 #5) ─── */
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
+  /* ─── Lock body scroll when mobile menu is open (P1 #7) ─── */
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileMenuOpen]);
 
   /* ─── Scroll tracking ─── */
 
@@ -189,14 +498,99 @@ export default function LandingPage() {
         color: C.charcoal,
       }}
     >
+      {/* P2 #5: JSON-LD structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "WebSite",
+                name: "The Memory Palace",
+                url: "https://thememorypalace.ai",
+                description: locale === "nl"
+                  ? "Een 3D virtueel herinneringspaleis om je levensverhaal te bewaren — foto's, video's en verhalen — voor generaties."
+                  : "A 3D virtual memory palace to preserve your life story — photos, videos, and stories — for generations.",
+              },
+              {
+                "@type": "Organization",
+                name: "The Memory Palace",
+                url: "https://thememorypalace.ai",
+                logo: "https://thememorypalace.ai/logo.png",
+                sameAs: [],
+              },
+            ],
+          }),
+        }}
+      />
+
       {/* Scoped hover / interaction styles */}
       <style>{`
+        /* ── P1 #1: Mobile hero text overflow ── */
+        @media (max-width: 480px) {
+          .lp-hero-title {
+            font-size: clamp(1.75rem, 8vw, 2.5rem) !important;
+            max-width: 100% !important;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+          }
+          .lp-hero-subtitle {
+            font-size: clamp(0.9375rem, 3.5vw, 1.0625rem) !important;
+            max-width: 100% !important;
+          }
+        }
+        /* ── P1 #2: Comparison table responsive card layout ── */
+        @media (max-width: 768px) {
+          .lp-comparison-row {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0 !important;
+          }
+          .lp-comparison-row > div {
+            border-left: none !important;
+          }
+          .lp-comparison-header {
+            display: none !important;
+          }
+          .lp-comparison-card {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+            padding: 1rem !important;
+            border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+          }
+        }
+        /* ── P1 #5: Testimonial horizontal scroll on mobile ── */
+        @media (max-width: 640px) {
+          .lp-testimonials-grid {
+            display: flex !important;
+            overflow-x: auto !important;
+            scroll-snap-type: x mandatory !important;
+            -webkit-overflow-scrolling: touch;
+            gap: 1rem !important;
+            padding-bottom: 1rem !important;
+            scrollbar-width: none;
+          }
+          .lp-testimonials-grid::-webkit-scrollbar {
+            display: none;
+          }
+          .lp-testimonials-grid > .lp-testimonial-card {
+            min-width: 85vw !important;
+            scroll-snap-align: center;
+            flex-shrink: 0;
+          }
+        }
+        /* ── P1 #11: Mobile nav menu z-index ── */
+        .lp-mobile-menu {
+          z-index: 1000 !important;
+        }
         .lp-card {
-          transition: box-shadow 0.35s cubic-bezier(.25,.8,.25,1), transform 0.35s cubic-bezier(.25,.8,.25,1) !important;
+          transition: box-shadow 0.2s ease, transform 0.2s ease !important;
         }
         .lp-card:hover {
-          transform: translateY(-0.25rem);
-          box-shadow: 0 0.5rem 2rem rgba(44,44,42,0.08), 0 0.125rem 0.5rem rgba(44,44,42,0.04);
+          transform: translateY(-0.25rem) scale(1.02);
+          box-shadow: 0 0.75rem 2.5rem rgba(44,44,42,0.10), 0 0.25rem 0.75rem rgba(44,44,42,0.06);
         }
         .lp-testimonial-card {
           transition: box-shadow 0.35s cubic-bezier(.25,.8,.25,1), transform 0.35s cubic-bezier(.25,.8,.25,1), border-color 0.35s !important;
@@ -247,7 +641,55 @@ export default function LandingPage() {
           color: ${C.gold} !important;
           text-decoration: underline !important;
         }
+        /* ── Focus-visible indicators (a11y) ── */
+        .lp-nav-link:focus-visible,
+        .lp-nav-cta:focus-visible,
+        .lp-hero-cta:focus-visible,
+        .lp-hero-secondary:focus-visible,
+        .lp-footer-link:focus-visible,
+        .lp-footer-accent:focus-visible,
+        .lp-card:focus-visible {
+          outline: 2px solid ${C.terracotta};
+          outline-offset: 2px;
+        }
+        button:focus-visible {
+          outline: 2px solid ${C.terracotta};
+          outline-offset: 2px;
+        }
+        a:focus-visible {
+          outline: 2px solid ${C.terracotta};
+          outline-offset: 2px;
+        }
+        input:focus-visible,
+        textarea:focus-visible,
+        select:focus-visible {
+          outline: 2px solid ${C.terracotta};
+          outline-offset: 2px;
+        }
+        /* ── Skip-to-content link (a11y) ── */
+        .lp-skip-link {
+          position: absolute;
+          left: -9999px;
+          top: 0;
+          z-index: 999;
+          background: ${C.charcoal};
+          color: ${C.white};
+          padding: 0.75rem 1.5rem;
+          font-family: ${F.body};
+          font-size: 0.875rem;
+          font-weight: 600;
+          text-decoration: none;
+          border-radius: 0 0 0.5rem 0;
+        }
+        .lp-skip-link:focus {
+          left: 0;
+        }
       `}</style>
+      {/* Skip-to-content link (a11y) */}
+      <a href="#main-content" className="lp-skip-link">
+        {lAny?.a11y?.skipToContent || "Skip to content"}
+      </a>
+
       {/* ═══════════════════════════════════════════════════
           1. STICKY NAVIGATION
           ═══════════════════════════════════════════════════ */}
@@ -258,7 +700,7 @@ export default function LandingPage() {
           top: 0,
           left: 0,
           right: 0,
-          zIndex: 100,
+          zIndex: 1000,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -271,16 +713,16 @@ export default function LandingPage() {
           transition: "all 0.3s",
         }}
       >
-        <PalaceLogo variant="full" color="dark" size="md" />
+        <PalaceLogo variant="full" color={headerOpaque ? "dark" : "light"} size="md" />
 
         <div style={{ display: "flex", gap: isMobile ? "0.5rem" : "0.75rem", alignItems: "center" }}>
           {!isSmall && (
-            <Link href="/pricing" className="lp-nav-link" style={navLink}>
+            <Link href="/pricing" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream }}>
               {landing.nav.pricing}
             </Link>
           )}
           {!isSmall && (
-            <Link href="/login" className="lp-nav-link" style={navLink}>
+            <Link href="/login" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream }}>
               {landing.nav.signIn}
             </Link>
           )}
@@ -289,13 +731,13 @@ export default function LandingPage() {
             aria-label="Switch language"
             style={{
               background: "none",
-              border: `1px solid ${C.sandstone}60`,
+              border: `1px solid ${headerOpaque ? `${C.sandstone}60` : `${C.sandstone}80`}`,
               borderRadius: "0.375rem",
               padding: "0.25rem 0.5rem",
               fontSize: "0.75rem",
               fontFamily: F.body,
               fontWeight: 600,
-              color: C.walnut,
+              color: headerOpaque ? C.walnut : C.cream,
               cursor: "pointer",
               letterSpacing: "0.5px",
               textTransform: "uppercase",
@@ -304,17 +746,104 @@ export default function LandingPage() {
           >
             {locale === "en" ? "NL" : "EN"}
           </button>
-          <Link
-            href="/register"
-            className="lp-nav-cta"
+          {!isSmall && (
+            <button
+              onClick={() => handleCtaClick("nav", "/register")}
+              className="lp-nav-cta"
+              aria-label={lAny?.a11y?.ctaNav || "Get started — sign up"}
+              style={{
+                ...navCta,
+                padding: isMobile ? "0.625rem 1.125rem" : "0.5rem 1.25rem",
+                opacity: ctaLoading === "nav" ? 0.7 : 1,
+                cursor: ctaLoading === "nav" ? "wait" : "pointer",
+                border: "none",
+              }}
+              disabled={ctaLoading === "nav"}
+            >
+              {ctaLoading === "nav" ? (lAny?.loading || "Loading...") : landing.nav.getStarted}
+            </button>
+          )}
+          {/* P1 #11: Hamburger menu for small screens */}
+          {isSmall && (
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? (lAny?.a11y?.closeMenu || "Close menu") : (lAny?.a11y?.openMenu || "Open menu")}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "0.5rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.25rem",
+                zIndex: 1001,
+              }}
+            >
+              <span style={{ width: "1.25rem", height: "0.125rem", background: headerOpaque ? C.charcoal : C.cream, borderRadius: "0.0625rem", transition: "transform 0.3s, opacity 0.3s, background 0.3s", transform: mobileMenuOpen ? "rotate(45deg) translate(0.25rem, 0.25rem)" : "none" }} />
+              <span style={{ width: "1.25rem", height: "0.125rem", background: headerOpaque ? C.charcoal : C.cream, borderRadius: "0.0625rem", transition: "opacity 0.3s, background 0.3s", opacity: mobileMenuOpen ? 0 : 1 }} />
+              <span style={{ width: "1.25rem", height: "0.125rem", background: headerOpaque ? C.charcoal : C.cream, borderRadius: "0.0625rem", transition: "transform 0.3s, opacity 0.3s, background 0.3s", transform: mobileMenuOpen ? "rotate(-45deg) translate(0.25rem, -0.25rem)" : "none" }} />
+            </button>
+          )}
+        </div>
+
+        {/* P1 #11: Mobile dropdown menu */}
+        {isSmall && mobileMenuOpen && (
+          <>
+          {/* Backdrop overlay */}
+          <div
+            onClick={() => setMobileMenuOpen(false)}
             style={{
-              ...navCta,
-              padding: isMobile ? "0.625rem 1.125rem" : "0.5rem 1.25rem",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.3)",
+              zIndex: 999,
+            }}
+          />
+          <div
+            className="lp-mobile-menu"
+            style={{
+              position: "fixed",
+              top: "4rem",
+              left: 0,
+              right: 0,
+              background: "rgba(250,250,247,0.98)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              borderBottom: `1px solid ${C.sandstone}40`,
+              padding: "1.5rem 1.25rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: "1rem",
+              animation: "fadeUp 0.2s ease both",
             }}
           >
-            {landing.nav.getStarted}
-          </Link>
-        </div>
+            <Link href="/pricing" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0" }} onClick={() => setMobileMenuOpen(false)}>
+              {landing.nav.pricing}
+            </Link>
+            <Link href="/login" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0" }} onClick={() => setMobileMenuOpen(false)}>
+              {landing.nav.signIn}
+            </Link>
+            <button
+              onClick={() => { setMobileMenuOpen(false); handleCtaClick("nav-mobile", "/register"); }}
+              className="lp-nav-cta"
+              style={{
+                ...navCta,
+                padding: "0.75rem 1.25rem",
+                textAlign: "center" as const,
+                border: "none",
+                cursor: ctaLoading === "nav-mobile" ? "wait" : "pointer",
+                opacity: ctaLoading === "nav-mobile" ? 0.7 : 1,
+              }}
+              disabled={ctaLoading === "nav-mobile"}
+            >
+              {ctaLoading === "nav-mobile" ? (lAny?.loading || "Loading...") : landing.nav.getStarted}
+            </button>
+          </div>
+          </>
+        )}
       </nav>
 
       <main id="main-content">
@@ -332,11 +861,23 @@ export default function LandingPage() {
             padding: isMobile
               ? "5rem 1.25rem 3.125rem"
               : "6.25rem clamp(1.25rem, 5vw, 3.75rem) 3.75rem",
-            background: `linear-gradient(180deg, ${C.warmStone} 0%, ${C.linen} 60%, ${C.linen} 100%)`,
+            background: C.charcoal,
             position: "relative",
             overflow: "hidden",
           }}
         >
+          {/* Background video */}
+          <HeroVideo />
+          {/* Gradient overlay for text readability */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `linear-gradient(180deg, rgba(42,34,24,0.55) 0%, rgba(42,34,24,0.3) 40%, rgba(42,34,24,0.6) 100%)`,
+              pointerEvents: "none",
+            }}
+          />
           {/* Label */}
           <p
             style={{
@@ -344,10 +885,11 @@ export default function LandingPage() {
               fontSize: "0.8125rem",
               letterSpacing: "3px",
               textTransform: "uppercase",
-              color: C.terracotta,
+              color: C.gold,
               fontWeight: 600,
               marginBottom: "1.5rem",
               animation: "fadeUp 0.7s ease both",
+              position: "relative",
             }}
           >
             {lAny.hero?.label || landing.hero.headline}
@@ -355,6 +897,7 @@ export default function LandingPage() {
 
           {/* Main headline */}
           <h1
+            className="lp-hero-title"
             style={{
               fontFamily: F.display,
               fontSize: "clamp(2.5rem, 6.5vw, 4.75rem)",
@@ -363,26 +906,33 @@ export default function LandingPage() {
               letterSpacing: "-0.02em",
               maxWidth: "53.125rem",
               margin: "0 auto 1.75rem",
-              color: C.charcoal,
+              color: C.linen,
               animation: "fadeUp 0.7s ease 0.1s both",
+              padding: isSmall ? "0 0.5rem" : undefined,
+              position: "relative",
+              textShadow: "0 0.125rem 0.5rem rgba(0,0,0,0.3)",
             }}
           >
             {landing.hero.storyDeserves}
             <br />
-            <span style={{ fontStyle: "italic", color: C.terracotta }}>
+            <span style={{ fontStyle: "italic", color: C.gold }}>
               {landing.hero.moreThanFolder}
             </span>
           </h1>
 
           {/* Subheadline */}
           <p
+            className="lp-hero-subtitle"
             style={{
               fontSize: "clamp(1.0625rem, 2.2vw, 1.3125rem)",
-              color: C.walnut,
+              color: C.cream,
               maxWidth: "37.5rem",
               lineHeight: 1.7,
               marginBottom: "2.75rem",
               animation: "fadeUp 0.7s ease 0.2s both",
+              padding: isSmall ? "0 0.5rem" : undefined,
+              position: "relative",
+              textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.2)",
             }}
           >
             {landing.hero.description}
@@ -399,11 +949,14 @@ export default function LandingPage() {
               alignItems: "center",
               animation: "fadeUp 0.7s ease 0.35s both",
               width: isSmall ? "100%" : undefined,
+              position: "relative",
             }}
           >
-            <Link
-              href="/register"
+            <button
+              onClick={() => handleCtaClick("hero", "/register")}
               className="lp-hero-cta"
+              aria-label={lAny?.a11y?.ctaHero || "Start building your palace for free"}
+              disabled={ctaLoading === "hero"}
               style={{
                 ...heroCta,
                 width: isSmall ? "100%" : undefined,
@@ -412,10 +965,13 @@ export default function LandingPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                border: "none",
+                cursor: ctaLoading === "hero" ? "wait" : "pointer",
+                opacity: ctaLoading === "hero" ? 0.7 : 1,
               }}
             >
-              {landing.hero.cta}
-            </Link>
+              {ctaLoading === "hero" ? (lAny?.loading || "Loading...") : landing.hero.cta}
+            </button>
             <a
               href="#how-it-works"
               className="lp-hero-secondary"
@@ -442,52 +998,58 @@ export default function LandingPage() {
               gap: "0.375rem",
               marginTop: "1.25rem",
               fontSize: "0.875rem",
-              color: C.muted,
+              color: C.sandstone,
               textDecoration: "none",
               animation: "fadeUp 0.7s ease 0.45s both",
               transition: "color 0.2s",
+              position: "relative",
             }}
           >
-            <LockIcon size={14} color={C.muted} />
+            <LockIcon size={14} color={C.sandstone} />
             {landing.hero.securityLink}
           </Link>
 
-          {/* Hero illustration / cinematic video with parallax */}
+          {/* P2 #3: Trust badges */}
           <div
             style={{
-              marginTop: isMobile ? "2rem" : "3rem",
-              maxWidth: "56rem",
-              width: "100%",
-              animation: "fadeUp 0.7s ease 0.55s both",
-              transform: `translateY(${scrollY * 0.03}px)`,
-              transition: "transform 0.1s linear",
-              border: `1px solid ${C.sandstone}40`,
-              borderRadius: "1.25rem",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-              overflow: "hidden",
+              display: "flex",
+              gap: isMobile ? "1rem" : "1.5rem",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              alignItems: "center",
+              marginTop: "1rem",
+              animation: "fadeUp 0.7s ease 0.5s both",
+              position: "relative",
             }}
           >
-            {!videoFailed ? (
-              <video
-                autoPlay
-                muted
-                loop
-                playsInline
-                poster="/palace-hero.jpg"
-                onError={() => setVideoFailed(true)}
+            {[
+              { Icon: SslIcon, label: lAny?.trustBadges?.ssl || "SSL Encrypted" },
+              { Icon: GdprIcon, label: lAny?.trustBadges?.gdpr || "GDPR Compliant" },
+              { Icon: EncryptedIcon, label: lAny?.trustBadges?.encrypted || "End-to-End Encrypted" },
+            ].map((badge) => (
+              <div
+                key={badge.label}
                 style={{
-                  width: "100%",
-                  display: "block",
-                  borderRadius: "1.25rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.375rem",
                 }}
               >
-                <source src={videoUrl} type="video/webm" />
-                <source src={videoUrl.replace(".webm", ".mp4")} type="video/mp4" />
-              </video>
-            ) : (
-              <HeroIllustration />
-            )}
+                <badge.Icon size={14} />
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: C.sandstone,
+                    fontFamily: F.body,
+                    letterSpacing: "0.3px",
+                  }}
+                >
+                  {badge.label}
+                </span>
+              </div>
+            ))}
           </div>
+
 
           {/* Scroll hint */}
           <div
@@ -504,14 +1066,14 @@ export default function LandingPage() {
               transition: "opacity 0.3s",
             }}
           >
-            <span style={{ fontSize: "0.6875rem", color: C.muted, letterSpacing: 1 }}>
+            <span style={{ fontSize: "0.6875rem", color: C.sandstone, letterSpacing: 1 }}>
               {landing.scroll}
             </span>
             <div
               style={{
                 width: "0.0625rem",
                 height: "1.75rem",
-                background: `linear-gradient(to bottom, ${C.muted}, transparent)`,
+                background: `linear-gradient(to bottom, ${C.sandstone}, transparent)`,
               }}
             />
           </div>
@@ -567,55 +1129,56 @@ export default function LandingPage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════
-            4. FEATURES SECTION
+            4. FEATURES SECTION (P2 #2: lazy-loaded)
             ═══════════════════════════════════════════════════ */}
-        <section
-          id="features"
-          style={{
-            padding: isMobile
-              ? "4.5rem 1.25rem"
-              : "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
-            maxWidth: "68.75rem",
-            margin: "0 auto",
-          }}
-        >
-          <p style={sectionLabel}>{landing.features.title}</p>
-          <h2 style={sectionTitle}>{landing.features.subtitle}</h2>
-
-          <div
+        <LazySection minHeight="30rem">
+          <section
+            id="features"
             style={{
-              display: "grid",
-              gridTemplateColumns: isSmall
-                ? "1fr"
-                : isMobile
-                ? "repeat(2, 1fr)"
-                : "repeat(3, 1fr)",
-              gap: isMobile ? "1.25rem" : "1.75rem",
-              marginTop: isMobile ? "2.25rem" : "3.5rem",
+              padding: isMobile
+                ? "4.5rem 1.25rem"
+                : "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
+              maxWidth: "68.75rem",
+              margin: "0 auto",
             }}
           >
-            {FEATURES.map((f, i) => (
-              <div
-                key={f.title}
-                className="lp-card"
-                style={{
-                  ...featureCard,
-                  animation: `fadeUp 0.6s ease ${0.1 + i * 0.08}s both`,
-                }}
-              >
-                <div style={{ marginBottom: "1.125rem" }}>
-                  <f.Icon size={48} />
-                </div>
-                <h3 style={featureTitle}>{f.title}</h3>
-                <p style={featureDesc}>{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+            <p style={sectionLabel}>{landing.features.title}</p>
+            <h2 style={sectionTitle}>{landing.features.subtitle}</h2>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: isSmall
+                  ? "1fr"
+                  : isMobile
+                  ? "repeat(2, 1fr)"
+                  : "repeat(3, 1fr)",
+                gap: isMobile ? "1.25rem" : "1.75rem",
+                marginTop: isMobile ? "2.25rem" : "3.5rem",
+              }}
+            >
+              {FEATURES.map((f, i) => (
+                <ScrollFadeIn key={f.title} delay={0.05 + i * 0.07}>
+                  <div
+                    className="lp-card"
+                    style={featureCard}
+                  >
+                    <div style={{ marginBottom: "1.125rem" }}>
+                      <f.Icon size={48} />
+                    </div>
+                    <h3 style={featureTitle}>{f.title}</h3>
+                    <p style={featureDesc}>{f.desc}</p>
+                  </div>
+                </ScrollFadeIn>
+              ))}
+            </div>
+          </section>
+        </LazySection>
 
         {/* ═══════════════════════════════════════════════════
-            5. HOW IT WORKS
+            5. HOW IT WORKS (P2 #2: lazy-loaded)
             ═══════════════════════════════════════════════════ */}
+        <LazySection minHeight="20rem">
         <section
           id="how-it-works"
           style={{
@@ -714,13 +1277,15 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+        </LazySection>
 
         {/* Section divider */}
         <div style={{ maxWidth: "6rem", margin: "0 auto", height: "0.0625rem", background: `linear-gradient(to right, transparent, ${C.sandstone}, transparent)` }} />
 
         {/* ═══════════════════════════════════════════════════
-            6. COMPARISON SECTION
+            6. COMPARISON SECTION (P2 #2 + #6: lazy + scroll animate)
             ═══════════════════════════════════════════════════ */}
+        <LazySection minHeight="20rem">
         <section
           style={{
             padding: isMobile
@@ -731,14 +1296,16 @@ export default function LandingPage() {
         >
           <div style={{ maxWidth: "56.25rem", margin: "0 auto" }}>
             <p style={sectionLabel}>
-              {comparison?.title || "The difference"}
+              {comparison?.title ?? ""}
             </p>
             <h2 style={sectionTitle}>
-              {comparison?.subtitle || "Why not just use Google Photos & Apple Photos?"}
+              {comparison?.subtitle ?? ""}
             </h2>
 
             {/* Comparison table */}
             <div
+              role="table"
+              aria-label={comparison?.title ?? "Comparison"}
               style={{
                 marginTop: isMobile ? "2rem" : "3.5rem",
                 borderRadius: "1rem",
@@ -749,6 +1316,8 @@ export default function LandingPage() {
             >
               {/* Header row */}
               <div
+                role="row"
+                className="lp-comparison-header"
                 style={{
                   display: "grid",
                   gridTemplateColumns: isSmall ? "1fr 1fr" : "1.2fr 1fr 1fr",
@@ -756,8 +1325,9 @@ export default function LandingPage() {
                   borderBottom: `1px solid ${C.sandstone}40`,
                 }}
               >
-                {!isSmall && <div style={{ padding: "1rem 1.5rem" }} />}
+                {!isSmall && <div role="columnheader" style={{ padding: "1rem 1.5rem" }} />}
                 <div
+                  role="columnheader"
                   style={{
                     padding: isSmall ? "0.875rem 1rem" : "1rem 1.5rem",
                     textAlign: "center",
@@ -768,14 +1338,15 @@ export default function LandingPage() {
                       fontSize: "0.6875rem",
                       letterSpacing: "1.5px",
                       textTransform: "uppercase",
-                      color: C.muted,
+                      color: MUTED_ON_LIGHT,
                       fontWeight: 600,
                     }}
                   >
-                    {comparison?.headerLeft || "Scattered Photos"}
+                    {comparison?.columnLeft ?? ""}
                   </p>
                 </div>
                 <div
+                  role="columnheader"
                   style={{
                     padding: isSmall ? "0.875rem 1rem" : "1rem 1.5rem",
                     textAlign: "center",
@@ -792,15 +1363,17 @@ export default function LandingPage() {
                       fontWeight: 700,
                     }}
                   >
-                    {comparison?.headerRight || "Memory Palace"}
+                    {comparison?.columnRight ?? ""}
                   </p>
                 </div>
               </div>
 
-              {/* Comparison rows */}
+              {/* Comparison rows — P2 #6: staggered scroll fade */}
               {COMPARISONS.map((row, i) => (
+                <ScrollFadeIn key={i} delay={0.05 + i * 0.08}>
                 <div
-                  key={i}
+                  role="row"
+                  className="lp-comparison-row"
                   style={{
                     display: "grid",
                     gridTemplateColumns: isSmall ? "1fr 1fr" : "1.2fr 1fr 1fr",
@@ -814,6 +1387,7 @@ export default function LandingPage() {
                   {/* Category label (hidden on small, shown inline) */}
                   {!isSmall && (
                     <div
+                      role="cell"
                       style={{
                         padding: "1rem 1.5rem",
                         display: "flex",
@@ -832,8 +1406,9 @@ export default function LandingPage() {
                     </div>
                   )}
 
-                  {/* Left (old way) */}
+                  {/* Left (old way) — P2 #4: improved contrast */}
                   <div
+                    role="cell"
                     style={{
                       padding: isSmall ? "0.875rem 0.75rem" : "1rem 1.5rem",
                       display: "flex",
@@ -849,7 +1424,7 @@ export default function LandingPage() {
                             fontSize: "0.625rem",
                             textTransform: "uppercase",
                             letterSpacing: "1px",
-                            color: C.muted,
+                            color: MUTED_ON_LIGHT,
                             marginBottom: "0.125rem",
                           }}
                         >
@@ -859,7 +1434,7 @@ export default function LandingPage() {
                       <p
                         style={{
                           fontSize: isSmall ? "0.75rem" : "0.875rem",
-                          color: C.muted,
+                          color: MUTED_ON_LIGHT,
                           lineHeight: 1.4,
                         }}
                       >
@@ -870,6 +1445,7 @@ export default function LandingPage() {
 
                   {/* Right (Memory Palace) */}
                   <div
+                    role="cell"
                     style={{
                       padding: isSmall ? "0.875rem 0.75rem" : "1rem 1.5rem",
                       display: "flex",
@@ -908,17 +1484,20 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
+                </ScrollFadeIn>
               ))}
             </div>
           </div>
         </section>
+        </LazySection>
 
         {/* Section divider */}
         <div style={{ maxWidth: "6rem", margin: "0 auto", height: "0.0625rem", background: `linear-gradient(to right, transparent, ${C.sandstone}, transparent)` }} />
 
         {/* ═══════════════════════════════════════════════════
-            7. AUDIENCE SECTION
+            7. AUDIENCE SECTION (P2 #2: lazy-loaded)
             ═══════════════════════════════════════════════════ */}
+        <LazySection minHeight="20rem">
         <section
           style={{
             padding: isMobile
@@ -994,10 +1573,12 @@ export default function LandingPage() {
             ))}
           </div>
         </section>
+        </LazySection>
 
         {/* ═══════════════════════════════════════════════════
-            8. TESTIMONIALS SECTION
+            8. TESTIMONIALS SECTION (P2 #2: lazy-loaded)
             ═══════════════════════════════════════════════════ */}
+        <LazySection minHeight="20rem">
         <section
           style={{
             padding: isMobile
@@ -1015,6 +1596,7 @@ export default function LandingPage() {
             </h2>
 
             <div
+              className="lp-testimonials-grid"
               style={{
                 display: "grid",
                 gridTemplateColumns: isSmall ? "1fr" : "repeat(2, 1fr)",
@@ -1118,6 +1700,45 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+        </LazySection>
+
+        {/* ═══════════════════════════════════════════════════
+            8b. FAQ SECTION (P2 #7)
+            ═══════════════════════════════════════════════════ */}
+        <LazySection minHeight="15rem">
+        <section
+          style={{
+            padding: isMobile
+              ? "4rem 1.25rem"
+              : "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
+            background: C.linen,
+          }}
+        >
+          <div style={{ maxWidth: "43.75rem", margin: "0 auto" }}>
+            <h2 style={sectionTitle}>
+              {lAny?.faq?.title || "Frequently Asked Questions"}
+            </h2>
+            <div style={{ marginTop: "2.5rem" }}>
+              <FaqItem
+                question={lAny?.faq?.q1 || "What is The Memory Palace?"}
+                answer={lAny?.faq?.a1 || ""}
+              />
+              <FaqItem
+                question={lAny?.faq?.q2 || "Is my data secure?"}
+                answer={lAny?.faq?.a2 || ""}
+              />
+              <FaqItem
+                question={lAny?.faq?.q3 || "Can I share my palace with family?"}
+                answer={lAny?.faq?.a3 || ""}
+              />
+              <FaqItem
+                question={lAny?.faq?.q4 || "What's included in the free plan?"}
+                answer={lAny?.faq?.a4 || ""}
+              />
+            </div>
+          </div>
+        </section>
+        </LazySection>
 
         {/* ═══════════════════════════════════════════════════
             9. FINAL CTA SECTION
@@ -1171,9 +1792,20 @@ export default function LandingPage() {
             >
               {landing.cta.description}
             </p>
-            <Link href="/register" className="lp-hero-cta" style={heroCta}>
-              {landing.cta.button}
-            </Link>
+            <button
+              onClick={() => handleCtaClick("bottom", "/register")}
+              className="lp-hero-cta"
+              aria-label={lAny?.a11y?.ctaBottom || "Build your palace — sign up free"}
+              disabled={ctaLoading === "bottom"}
+              style={{
+                ...heroCta,
+                border: "none",
+                cursor: ctaLoading === "bottom" ? "wait" : "pointer",
+                opacity: ctaLoading === "bottom" ? 0.7 : 1,
+              }}
+            >
+              {ctaLoading === "bottom" ? (lAny?.loading || "Loading...") : landing.cta.button}
+            </button>
           </div>
         </section>
       </main>
@@ -1208,7 +1840,7 @@ export default function LandingPage() {
             <p
               style={{
                 fontSize: "0.875rem",
-                color: C.muted,
+                color: MUTED_ON_DARK,
                 lineHeight: 1.7,
                 maxWidth: "21.25rem",
               }}
@@ -1243,7 +1875,7 @@ export default function LandingPage() {
                 className="lp-footer-link"
                 style={{
                   fontSize: "0.875rem",
-                  color: C.muted,
+                  color: MUTED_ON_DARK,
                   textDecoration: "none",
                 }}
               >
@@ -1254,7 +1886,7 @@ export default function LandingPage() {
                 className="lp-footer-link"
                 style={{
                   fontSize: "0.875rem",
-                  color: C.muted,
+                  color: MUTED_ON_DARK,
                   textDecoration: "none",
                 }}
               >
@@ -1265,7 +1897,7 @@ export default function LandingPage() {
                 className="lp-footer-link"
                 style={{
                   fontSize: "0.875rem",
-                  color: C.muted,
+                  color: MUTED_ON_DARK,
                   textDecoration: "none",
                 }}
               >
@@ -1276,7 +1908,7 @@ export default function LandingPage() {
                 className="lp-footer-link"
                 style={{
                   fontSize: "0.875rem",
-                  color: C.muted,
+                  color: MUTED_ON_DARK,
                   textDecoration: "none",
                 }}
               >
@@ -1285,6 +1917,7 @@ export default function LandingPage() {
               <Link
                 href="/register"
                 className="lp-footer-accent"
+                aria-label={lAny?.a11y?.ctaFooter || "Get started with a free plan"}
                 style={{
                   fontSize: "0.875rem",
                   color: C.terracotta,
@@ -1321,40 +1954,40 @@ export default function LandingPage() {
               <p
                 style={{
                   fontSize: "0.875rem",
-                  color: C.muted,
+                  color: MUTED_ON_DARK,
                   lineHeight: 1.5,
                   display: "flex",
                   alignItems: "center",
                   gap: "0.5rem",
                 }}
               >
-                <LockIcon size={14} color={C.muted} />
+                <LockIcon size={14} color={MUTED_ON_DARK} />
                 {landing.footer.euHosted}
               </p>
               <p
                 style={{
                   fontSize: "0.875rem",
-                  color: C.muted,
+                  color: MUTED_ON_DARK,
                   lineHeight: 1.5,
                   display: "flex",
                   alignItems: "center",
                   gap: "0.5rem",
                 }}
               >
-                <ShieldIcon size={14} color={C.muted} />
+                <ShieldIcon size={14} color={MUTED_ON_DARK} />
                 {landing.footer.encryption}
               </p>
               <p
                 style={{
                   fontSize: "0.875rem",
-                  color: C.muted,
+                  color: MUTED_ON_DARK,
                   lineHeight: 1.5,
                   display: "flex",
                   alignItems: "center",
                   gap: "0.5rem",
                 }}
               >
-                <ClipboardIcon size={14} color={C.muted} />
+                <ClipboardIcon size={14} color={MUTED_ON_DARK} />
                 {landing.footer.gdpr}
               </p>
               <Link
@@ -1386,7 +2019,7 @@ export default function LandingPage() {
             gap: "0.625rem",
           }}
         >
-          <p style={{ fontSize: "0.75rem", color: C.muted }}>
+          <p style={{ fontSize: "0.75rem", color: MUTED_ON_DARK }}>
             &copy; {new Date().getFullYear()} {landing.footer.copyright}
           </p>
           <div style={{ display: "flex", gap: "1.25rem" }}>
@@ -1395,7 +2028,7 @@ export default function LandingPage() {
               className="lp-footer-link"
               style={{
                 fontSize: "0.75rem",
-                color: C.muted,
+                color: MUTED_ON_DARK,
                 textDecoration: "none",
               }}
             >
@@ -1406,7 +2039,7 @@ export default function LandingPage() {
               className="lp-footer-link"
               style={{
                 fontSize: "0.75rem",
-                color: C.muted,
+                color: MUTED_ON_DARK,
                 textDecoration: "none",
               }}
             >
@@ -1417,7 +2050,7 @@ export default function LandingPage() {
               className="lp-footer-link"
               style={{
                 fontSize: "0.75rem",
-                color: C.muted,
+                color: MUTED_ON_DARK,
                 textDecoration: "none",
               }}
             >
@@ -1426,6 +2059,7 @@ export default function LandingPage() {
             <Link
               href="/register"
               className="lp-footer-accent"
+              aria-label={lAny?.a11y?.ctaFooterBottom || "Get started — create your account"}
               style={{
                 fontSize: "0.75rem",
                 color: C.terracotta,
@@ -1438,6 +2072,7 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
     </div>
   );
 }
@@ -1487,11 +2122,11 @@ const heroSecondary: React.CSSProperties = {
   fontFamily: F.body,
   fontSize: "1rem",
   fontWeight: 500,
-  color: C.walnut,
+  color: C.cream,
   textDecoration: "none",
   padding: "1rem 2.25rem",
   borderRadius: "0.875rem",
-  border: `1.5px solid ${C.sandstone}`,
+  border: `1.5px solid ${C.sandstone}80`,
   transition: "border-color 0.2s",
 };
 

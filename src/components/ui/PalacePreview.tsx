@@ -132,6 +132,7 @@ export default function PalacePreview({
         style={{
           position: "relative",
           width: "100%",
+          minWidth: "17.5rem",
           aspectRatio: isMobile ? "16 / 9" : "2 / 1",
           borderRadius: "1rem",
           overflow: "hidden",
@@ -407,6 +408,12 @@ export default function PalacePreview({
                   top: pos.top,
                   transform: "translate(-50%, -50%)",
                   zIndex: 10,
+                  /* Transparent hit area for WCAG 44px minimum touch target */
+                  minWidth: "2.75rem",
+                  minHeight: "2.75rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
                 onMouseEnter={(e) => { e.stopPropagation(); setActiveWing(wing.id); }}
                 onMouseLeave={() => setActiveWing(null)}

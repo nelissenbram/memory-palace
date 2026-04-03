@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from "@/lib/supabase/server";
 
 export interface UserDataExport {
@@ -113,7 +115,7 @@ export async function exportUserData(
       safeQuery(supabase, "legacy_deliveries", "user_id", uid),
       safeQuery(supabase, "connected_accounts", "user_id", uid),
       safeQuery(supabase, "notifications", "user_id", uid),
-      safeQuery(supabase, "family_groups", "owner_id", uid),
+      safeQuery(supabase, "family_groups", "created_by", uid),
       safeQuery(supabase, "family_members", "user_id", uid),
       safeQuery(supabase, "family_tree_persons", "user_id", uid),
       safeQuery(supabase, "family_tree_relationships", "user_id", uid),

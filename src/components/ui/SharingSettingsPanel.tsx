@@ -125,7 +125,7 @@ function Toggle({
           width: "0.875rem",
           height: "0.875rem",
           borderRadius: "50%",
-          background: "#FFF",
+          background: T.color.white,
           position: "absolute",
           top: "0.1875rem",
           left: checked ? "1.1875rem" : "0.1875rem",
@@ -216,7 +216,7 @@ function ConfirmDialog({
 /*  Status badge                                                       */
 /* ------------------------------------------------------------------ */
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, label }: { status: string; label: string }) {
   const color =
     status === "accepted"
       ? T.color.sage
@@ -242,7 +242,7 @@ function StatusBadge({ status }: { status: string }) {
         textTransform: "capitalize",
       }}
     >
-      {status}
+      {label}
     </span>
   );
 }
@@ -251,7 +251,7 @@ function StatusBadge({ status }: { status: string }) {
 /*  Type badge (Wing / Room)                                           */
 /* ------------------------------------------------------------------ */
 
-function TypeBadge({ type }: { type: "wing" | "room" }) {
+function TypeBadge({ type, label }: { type: "wing" | "room"; label: string }) {
   const isWing = type === "wing";
   return (
     <span
@@ -267,7 +267,7 @@ function TypeBadge({ type }: { type: "wing" | "room" }) {
         letterSpacing: "0.03rem",
       }}
     >
-      {type}
+      {label}
     </span>
   );
 }
@@ -526,6 +526,8 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                minWidth: "2.75rem",
+                minHeight: "2.75rem",
               }}
             >
               &#x2715;
@@ -644,7 +646,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
             /* ============ SHARED BY ME ============ */
             sentCount === 0 ? (
               <EmptyState
-                icon="&#x1F517;"
+                icon={"\u{1F517}"}
                 title={t("noSentShares")}
                 subtitle={t("noSentSharesDesc")}
               />
@@ -671,7 +673,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         marginBottom: "0.5rem",
                       }}
                     >
-                      <TypeBadge type="wing" />
+                      <TypeBadge type="wing" label={t("wing")} />
                       <span style={{ fontSize: "1rem" }}>{share.wingIcon}</span>
                       <span
                         style={{
@@ -687,7 +689,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                       >
                         {share.wingName}
                       </span>
-                      <StatusBadge status={share.status} />
+                      <StatusBadge status={share.status} label={t(share.status)} />
                     </div>
 
                     {/* Recipient */}
@@ -799,7 +801,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         marginBottom: "0.25rem",
                       }}
                     >
-                      <TypeBadge type="room" />
+                      <TypeBadge type="room" label={t("room")} />
                       <span style={{ fontSize: "1rem" }}>{share.roomIcon}</span>
                       <span
                         style={{
@@ -815,7 +817,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                       >
                         {share.roomName}
                       </span>
-                      <StatusBadge status={share.status} />
+                      <StatusBadge status={share.status} label={t(share.status)} />
                     </div>
 
                     {/* Wing context */}
@@ -923,7 +925,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
             /* ============ SHARED WITH ME ============ */
             receivedCount === 0 ? (
               <EmptyState
-                icon="&#x1F3DB;&#xFE0F;"
+                icon={"\u{1F3DB}\uFE0F"}
                 title={t("noReceivedShares")}
                 subtitle={t("noReceivedSharesDesc")}
               />
@@ -950,7 +952,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         marginBottom: "0.25rem",
                       }}
                     >
-                      <TypeBadge type="wing" />
+                      <TypeBadge type="wing" label={t("wing")} />
                       <span style={{ fontSize: "1rem" }}>{share.wingIcon}</span>
                       <span
                         style={{
@@ -1047,7 +1049,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         marginBottom: "0.25rem",
                       }}
                     >
-                      <TypeBadge type="room" />
+                      <TypeBadge type="room" label={t("room")} />
                       <span style={{ fontSize: "1rem" }}>{share.roomIcon}</span>
                       <span
                         style={{
@@ -1160,8 +1162,10 @@ function EmptyState({
     <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
       <div
         style={{ fontSize: "2.25rem", marginBottom: "0.75rem" }}
-        dangerouslySetInnerHTML={{ __html: icon }}
-      />
+        aria-hidden
+      >
+        {icon}
+      </div>
       <p
         style={{
           fontFamily: T.font.display,

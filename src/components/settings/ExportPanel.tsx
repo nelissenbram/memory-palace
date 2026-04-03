@@ -7,18 +7,54 @@ import JSZip from "jszip";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { scanExportTree, fetchSharedRoomMemoriesForExport } from "@/lib/auth/export-scan-action";
 import type { ExportTree, ExportWingNode, ExportSharedWingNode } from "@/lib/auth/export-scan-action";
+import { WingIcon, RoomIcon, WING_ICON_MAP, ROOM_ICON_MAP } from "@/components/ui/WingRoomIcons";
 
 const META_CATEGORIES = [
-  { key: "interviews", icon: "\u{1F3A4}", table: "interview_sessions", col: "user_id" },
-  { key: "progress", icon: "\u{1F4CA}", table: "track_progress", col: "user_id" },
-  { key: "points", icon: "\u2B50", table: "memory_points", col: "user_id" },
-  { key: "family_tree", icon: "\u{1F333}", table: "family_tree_persons", col: "user_id" },
-  { key: "family_groups", icon: "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}", table: "family_groups", col: "owner_id" },
-  { key: "legacy", icon: "\u{1F4DC}", table: "legacy_contacts", col: "user_id" },
-  { key: "sharing", icon: "\u{1F517}", table: "room_shares", col: "owner_id" },
-  { key: "notifications", icon: "\u{1F514}", table: "notifications", col: "user_id" },
-  { key: "connections", icon: "\u{1F50C}", table: "connected_accounts", col: "user_id" },
+  { key: "interviews", table: "interview_sessions", col: "user_id" },
+  { key: "progress", table: "track_progress", col: "user_id" },
+  { key: "points", table: "memory_points", col: "user_id" },
+  { key: "family_tree", table: "family_tree_persons", col: "user_id" },
+  { key: "family_groups", table: "family_groups", col: "created_by" },
+  { key: "legacy", table: "legacy_contacts", col: "user_id" },
+  { key: "sharing", table: "room_shares", col: "owner_id" },
+  { key: "notifications", table: "notifications", col: "user_id" },
+  { key: "connections", table: "connected_accounts", col: "user_id" },
 ] as const;
+
+function MetaIcon({ name, color }: { name: string; color?: string }) {
+  const s = {
+    width: 14,
+    height: 14,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: color || T.color.muted,
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  switch (name) {
+    case "interviews":
+      return (<svg {...s}><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" /><path d="M19 10v2a7 7 0 01-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" /></svg>);
+    case "progress":
+      return (<svg {...s}><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg>);
+    case "points":
+      return (<svg {...s}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>);
+    case "family_tree":
+      return (<svg {...s}><path d="M12 22v-6" /><path d="M12 8V2" /><path d="M4 16h16" /><circle cx="12" cy="10" r="2" /><circle cx="4" cy="18" r="2" /><circle cx="20" cy="18" r="2" /><circle cx="12" cy="18" r="2" /></svg>);
+    case "family_groups":
+      return (<svg {...s}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" /></svg>);
+    case "legacy":
+      return (<svg {...s}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>);
+    case "sharing":
+      return (<svg {...s}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>);
+    case "notifications":
+      return (<svg {...s}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></svg>);
+    case "connections":
+      return (<svg {...s}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>);
+    default:
+      return null;
+  }
+}
 
 interface ExportPanelProps {
   showToast: (msg: string, type: "success" | "error") => void;
@@ -446,12 +482,16 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                         fontSize: "0.5625rem", color: T.color.muted, transition: "transform .2s",
                         transform: isExpanded ? "rotate(90deg)" : "rotate(0)",
                       }}>&#x25B6;</button>
-                      <span style={{ fontSize: "1rem" }}>{wing.icon}</span>
+                      <span style={{ fontSize: "1rem", display: "inline-flex", alignItems: "center" }}>
+                        {WING_ICON_MAP[wing.slug]
+                          ? <WingIcon wingId={wing.slug} size={14} color={T.color.walnut} />
+                          : wing.icon}
+                      </span>
                       <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal, flex: 1 }}>
                         {wing.name}
                       </span>
                       <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
-                        {totalMems} {"\u{1F4A1}"}{totalPhotos > 0 ? ` · ${totalPhotos} \u{1F4F7}` : ""}
+                        {totalMems} {t("exportMemLabel")}{totalPhotos > 0 ? ` · ${totalPhotos} ${t("exportPhotoLabel")}` : ""}
                       </span>
                     </div>
 
@@ -469,10 +509,14 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                               onChange={() => toggleRoom(room.roomId)}
                               style={{ accentColor: T.color.terracotta, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
                             />
-                            <span style={{ fontSize: "0.875rem" }}>{room.icon}</span>
+                            <span style={{ fontSize: "0.875rem", display: "inline-flex", alignItems: "center" }}>
+                              {ROOM_ICON_MAP[room.roomId] || WING_ICON_MAP[wing.slug]
+                                ? <RoomIcon roomId={room.roomId} wingId={wing.slug} size={14} color={T.color.walnut} />
+                                : room.icon}
+                            </span>
                             <span style={{ flex: 1 }}>{room.name}</span>
                             <span style={{ fontSize: "0.6875rem", color: T.color.muted }}>
-                              {room.memoryCount}{room.photoCount > 0 ? ` · ${room.photoCount} \u{1F4F7}` : ""}
+                              {room.memoryCount}{room.photoCount > 0 ? ` · ${room.photoCount} ${t("exportPhotoLabel")}` : ""}
                             </span>
                           </label>
                         ))}
@@ -512,7 +556,11 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                             fontSize: "0.5625rem", color: T.color.muted, transition: "transform .2s",
                             transform: isExpanded ? "rotate(90deg)" : "rotate(0)",
                           }}>&#x25B6;</button>
-                          <span style={{ fontSize: "1rem" }}>{sw.wingIcon}</span>
+                          <span style={{ fontSize: "1rem", display: "inline-flex", alignItems: "center" }}>
+                            {WING_ICON_MAP[sw.wingSlug]
+                              ? <WingIcon wingId={sw.wingSlug} size={14} color={T.color.walnut} />
+                              : sw.wingIcon}
+                          </span>
                           <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal, flex: 1 }}>
                             {sw.wingName}
                           </span>
@@ -520,7 +568,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                             {sw.ownerName}
                           </span>
                           <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
-                            {totalMems} {"\u{1F4A1}"}{totalPhotos > 0 ? ` · ${totalPhotos} \u{1F4F7}` : ""}
+                            {totalMems} {t("exportMemLabel")}{totalPhotos > 0 ? ` · ${totalPhotos} ${t("exportPhotoLabel")}` : ""}
                           </span>
                         </div>
 
@@ -538,10 +586,14 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                                   onChange={() => toggleSharedRoom(sw.shareId, room.roomId)}
                                   style={{ accentColor: T.color.terracotta, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
                                 />
-                                <span style={{ fontSize: "0.875rem" }}>{room.icon}</span>
+                                <span style={{ fontSize: "0.875rem", display: "inline-flex", alignItems: "center" }}>
+                                  {ROOM_ICON_MAP[room.roomId] || WING_ICON_MAP[sw.wingSlug]
+                                    ? <RoomIcon roomId={room.roomId} wingId={sw.wingSlug} size={14} color={T.color.walnut} />
+                                    : room.icon}
+                                </span>
                                 <span style={{ flex: 1 }}>{room.name}</span>
                                 <span style={{ fontSize: "0.6875rem", color: T.color.muted }}>
-                                  {room.memoryCount}{room.photoCount > 0 ? ` · ${room.photoCount} \u{1F4F7}` : ""}
+                                  {room.memoryCount}{room.photoCount > 0 ? ` · ${room.photoCount} ${t("exportPhotoLabel")}` : ""}
                                 </span>
                               </label>
                             ))}
@@ -574,7 +626,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                       onChange={e => setSelectedMeta(prev => ({ ...prev, [cat.key]: e.target.checked }))}
                       style={{ accentColor: T.color.terracotta, width: "1rem", height: "1rem", flexShrink: 0 }}
                     />
-                    <span>{cat.icon}</span>
+                    <MetaIcon name={cat.key} />
                     <span style={{ flex: 1 }}>{metaLabel(cat.key)}</span>
                     <span style={{ fontSize: "0.75rem", color: T.color.muted, minWidth: "3rem", textAlign: "right" }}>
                       {count}

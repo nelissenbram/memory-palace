@@ -92,13 +92,13 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
     }}>
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{
         position: "absolute", right: 0, top: 0, bottom: 0,
-        width: isMobile ? "100%" : "min(380px, 92vw)",
+        width: isMobile ? "100%" : "min(23.75rem, 92vw)",
         background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",
         borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`,
         padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem",
         overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)",
       }}>
-        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
+        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(2.5rem)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
@@ -115,13 +115,14 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
             color: T.color.muted, fontSize: "0.875rem", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
+            minWidth: "2.75rem", minHeight: "2.75rem",
           }}>&#x2715;</button>
         </div>
 
         {error && (
           <div role="alert" style={{
-            padding: "0.625rem 0.875rem", background: "#C0505010", border: "1px solid #C0505030",
-            borderRadius: "0.625rem", marginBottom: "1rem", fontFamily: T.font.body, fontSize: "0.75rem", color: "#C05050",
+            padding: "0.625rem 0.875rem", background: `${T.color.error}10`, border: `1px solid ${T.color.error}30`,
+            borderRadius: "0.625rem", marginBottom: "1rem", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.error,
           }}>
             {error}
           </div>
@@ -169,7 +170,7 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
                       </div>
                       <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginTop: "0.125rem" }}>
                         {invite.type === "wing"
-                          ? <>{t("shared")} {invite.wingIcon} <strong>{invite.wingName}</strong> wing</>
+                          ? <>{t("shared")} {invite.wingIcon} <strong>{invite.wingName}</strong> {t("wingLabel")}</>
                           : <>{t("shared")} <strong>{invite.roomName}</strong>{invite.wingName && <span> {t("in")} {invite.wingIcon} {invite.wingName}</span>}</>
                         }
                       </div>
@@ -209,19 +210,27 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
 
                   {/* Actions */}
                   <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button onClick={() => handleAccept(invite.id)} disabled={isProcessing} style={{
+                    <button onClick={() => handleAccept(invite.id)} disabled={isProcessing}
+                      onMouseEnter={e => { if (!isProcessing) e.currentTarget.style.opacity = "0.85"; }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = isProcessing ? "0.6" : "1"; }}
+                      style={{
                       flex: 1, padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: "none",
                       background: isProcessing ? T.color.sandstone : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                      color: "#FFF", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                      color: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
                       cursor: isProcessing ? "default" : "pointer", opacity: isProcessing ? 0.6 : 1,
+                      transition: "opacity .15s",
                     }}>
                       {isProcessing ? "..." : t("accept")}
                     </button>
-                    <button onClick={() => handleDecline(invite.id)} disabled={isProcessing} style={{
+                    <button onClick={() => handleDecline(invite.id)} disabled={isProcessing}
+                      onMouseEnter={e => { if (!isProcessing) { e.currentTarget.style.background = T.color.warmStone; e.currentTarget.style.borderColor = T.color.sandstone; } }}
+                      onMouseLeave={e => { e.currentTarget.style.background = T.color.white; e.currentTarget.style.borderColor = T.color.cream; }}
+                      style={{
                       flex: 1, padding: "0.625rem 0.875rem", borderRadius: "0.625rem",
                       border: `1px solid ${T.color.cream}`, background: T.color.white,
                       color: T.color.muted, fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
                       cursor: isProcessing ? "default" : "pointer",
+                      transition: "background .15s, border-color .15s",
                     }}>
                       {t("decline")}
                     </button>

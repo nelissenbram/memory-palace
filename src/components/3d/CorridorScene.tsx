@@ -9,10 +9,13 @@ import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
 export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: ()=>void}){
+  const { t } = useTranslation("corridor3d");
+  const { t: tWings } = useTranslation("wings");
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   const onDoorClickRef=useRef(onDoorClick);
   useEffect(()=>{onDoorClickRef.current=onDoorClick;},[onDoorClick]);
@@ -146,9 +149,10 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       scene.add(mk(new THREE.BoxGeometry(cW-1,.004,cL-2),MS.floorD,0,.003,0));
       scene.add(mk(new THREE.BoxGeometry(cW-2,.005,cL-3),MS.floorL,0,.004,0));
     }else{
+      // Pre-generate a shared palette of 10 mosaic tile materials instead of one per tile
+      const mosaicPalette=Array.from({length:10},(_,i)=>new THREE.MeshStandardMaterial({color:`hsl(${30+i*2},${25+i*1.5}%,${55+i*1.5}%)`,roughness:.6}));
       for(let fz=-cL/2+1;fz<cL/2;fz+=2)for(let fx=-cW/2+1;fx<cW/2;fx+=2){
-        const col=`hsl(${30+Math.random()*20},${25+Math.random()*15}%,${55+Math.random()*15}%)`;
-        scene.add(mk(new THREE.BoxGeometry(.8,.003,.8),new THREE.MeshStandardMaterial({color:col,roughness:.6}),fx,.002,fz));}
+        scene.add(mk(new THREE.BoxGeometry(.8,.003,.8),mosaicPalette[Math.floor(Math.random()*mosaicPalette.length)],fx,.002,fz));}
     }
 
     // ═══ FLOOR GOLD TRIM STRIPS along both walls ═══
@@ -1278,7 +1282,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     textGrad.addColorStop(0,"#C8A040");textGrad.addColorStop(0.5,"#FFD860");textGrad.addColorStop(1,"#C8A040");
     plx.fillStyle=textGrad;plx.font="bold 36px Georgia,serif";plx.textAlign="center";plx.textBaseline="middle";
     plx.shadowColor="rgba(0,0,0,0.3)";plx.shadowBlur=8;plx.shadowOffsetY=2;
-    plx.fillText("\u2190 ENTRANCE HALL",300,40);
+    plx.fillText(t("backToEntrance"),300,40);
     plx.shadowColor="transparent";
     // Decorative underline
     plx.strokeStyle="#D4AF37";plx.lineWidth=2;
@@ -1337,7 +1341,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     fc.shadowColor="transparent";
     // Subtitle
     fc.fillStyle=`${C.accent}88`;fc.font="italic 28px Georgia,serif";
-    fc.fillText(wing.desc||"",600,235);
+    fc.fillText(wing.descKey?tWings(wing.descKey):wing.desc||"",600,235);
     const fTex=new THREE.CanvasTexture(fC);fTex.colorSpace=THREE.SRGBColorSpace;
     // Fresco plane — 80% of corridor width
     const frescoW=cW*.8,frescoH=frescoW*.3;
@@ -1531,5 +1535,5 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[wingId]);
-  return <div ref={mountRef} style={{width:"100%",height:"100%"}}/>;
+  return <div ref={mountRef} role="application" aria-label={t("sceneLabel")} style={{width:"100%",height:"100%"}}/>;
 }

@@ -50,7 +50,7 @@ function isSkippedResult(r: ImportResult): boolean {
     lower.includes("duplicate") || lower.includes("skipped");
 }
 
-// WCAG AA compliant muted color (≥4.5:1 on #FAFAF7 linen bg)
+// WCAG AA compliant alternative to T.color.muted on linen backgrounds
 const MUTED_AA = "#746B60";
 
 interface Props {
@@ -140,7 +140,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
       } catch { setError(t("loadFailed")); }
       setLoadingAccounts(false);
     })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [t]);
 
   // Fetch items when provider changes
   const fetchItems = useCallback(async (provider: string, cursor?: string, folderId?: string) => {
@@ -172,7 +172,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
       }
     } catch { setError(t("loadFailed")); }
     setLoadingItems(false);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [t]);
 
   useEffect(() => {
     if (activeProvider) {
@@ -745,7 +745,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
   // Standalone modal mode
   return (
     <div onClick={onClose} style={{
-      position: "fixed", inset: 0,
+      position: "absolute", inset: 0,
       background: "rgba(42,34,24,.5)", backdropFilter: "blur(10px)",
       zIndex: 60, animation: "fadeIn .2s ease",
       display: "flex", alignItems: "center", justifyContent: "center",

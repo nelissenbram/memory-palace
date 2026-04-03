@@ -73,6 +73,10 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       const mapped: Mem[] = memories.map((m: any) => ({
         id: m.id, title: m.title, hue: m.hue, s: m.saturation, l: m.lightness,
         type: m.type, desc: m.description || "", dataUrl: m.file_url || null,
+        ...(m.location_name ? { locationName: m.location_name } : {}),
+        ...(m.lat != null ? { lat: m.lat } : {}),
+        ...(m.lng != null ? { lng: m.lng } : {}),
+        ...(m.created_at ? { createdAt: m.created_at } : {}),
       }));
       set((s) => ({ userMems: { ...s.userMems, [roomId]: mapped } }));
 
@@ -141,20 +145,44 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
           filePath = uploadData.path;
           fileUrl = uploadData.url;
           storageBackend = uploadData.storageBackend;
+        } else {
+          // Upload failed — roll back optimistic add
+          console.error("[memoryStore] addMemory upload failed:", uploadRes.status);
+          set((s) => {
+            const cur = s.userMems[roomId] || [];
+            return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== mem.id) } };
+          });
+          return;
         }
-      } catch (e) { console.error("Upload error:", e); }
+      } catch (e) {
+        console.error("Upload error:", e);
+        // Roll back optimistic add on network error
+        set((s) => {
+          const cur = s.userMems[roomId] || [];
+          return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== mem.id) } };
+        });
+        return;
+      }
     }
 
     // Save to DB
     const result = await createMemory({
       roomId, title: mem.title, description: mem.desc || "", type: mem.type,
       hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl, filePath, fileSize, storageBackend,
+      locationName: mem.locationName || null, lat: mem.lat ?? null, lng: mem.lng ?? null,
     });
     if (result.memory) {
       set((s) => {
         const cur = s.userMems[roomId] || [];
         const updated = cur.map((m) => m.id === mem.id ? { ...m, id: result.memory.id, dataUrl: fileUrl } : m);
         return { userMems: { ...s.userMems, [roomId]: updated } };
+      });
+    } else if (result.error) {
+      // DB save failed — roll back optimistic add
+      console.error("[memoryStore] addMemory createMemory failed:", result.error);
+      set((s) => {
+        const cur = s.userMems[roomId] || [];
+        return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== mem.id) } };
       });
     }
   },
@@ -199,28 +227,38 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     }
 
     await updateMemoryAction(memId, {
-      title: updates.title,
-      description: updates.desc,
-      type: updates.type,
+      ...(updates.title !== undefined ? { title: updates.title } : {}),
+      ...(updates.desc !== undefined ? { description: updates.desc } : {}),
+      ...(updates.type !== undefined ? { type: updates.type } : {}),
       ...(fileUrl && fileUrl !== updates.dataUrl ? { file_url: fileUrl } : {}),
       ...(filePath ? { file_path: filePath } : {}),
       ...(editStorageBackend ? { storage_backend: editStorageBackend } : {}),
+      ...(updates.locationName !== undefined ? { location_name: updates.locationName } : {}),
+      ...(updates.lat !== undefined ? { lat: updates.lat } : {}),
+      ...(updates.lng !== undefined ? { lng: updates.lng } : {}),
     });
   },
 
   deleteMemory: async (roomId, memId) => {
+    const prev = get().userMems[roomId] || ROOM_MEMS[roomId] || [];
     set((s) => {
       const cur = s.userMems[roomId] || ROOM_MEMS[roomId] || [];
       return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== memId) } };
     });
     if (!isSupabaseReady()) return;
-    await deleteMemoryAction(memId);
+    const result = await deleteMemoryAction(memId);
+    if (result.error) {
+      // Roll back optimistic update
+      console.error("[memoryStore] deleteMemory failed:", result.error);
+      set((s) => ({ userMems: { ...s.userMems, [roomId]: prev } }));
+    }
   },
 
   moveMemory: async (fromRoomId, toRoomId, memId) => {
     const state = get();
-    const fromList = state.userMems[fromRoomId] || ROOM_MEMS[fromRoomId] || [];
-    const mem = fromList.find((m) => m.id === memId);
+    const prevFrom = state.userMems[fromRoomId] || ROOM_MEMS[fromRoomId] || [];
+    const prevTo = state.userMems[toRoomId] || ROOM_MEMS[toRoomId] || [];
+    const mem = prevFrom.find((m) => m.id === memId);
     if (!mem) return;
 
     // Optimistic: remove from source, add to target (mark as stored in new room)
@@ -233,7 +271,12 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
 
     if (!isSupabaseReady()) return;
     // In DB: update room_id in a single operation to avoid data loss
-    await moveMemoryAction(memId, toRoomId);
+    const result = await moveMemoryAction(memId, toRoomId);
+    if (result.error) {
+      // Roll back optimistic update
+      console.error("[memoryStore] moveMemory failed:", result.error);
+      set((s) => ({ userMems: { ...s.userMems, [fromRoomId]: prevFrom, [toRoomId]: prevTo } }));
+    }
   },
 
   getRoomSharing: (roomId, activeWing) => {

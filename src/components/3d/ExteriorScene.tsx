@@ -11,11 +11,26 @@ import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
+import { useTranslation } from "@/lib/hooks/useTranslation";
+
+// ── Wing SVG icon strings for hover labels (matches WingRoomIcons.tsx) ──
+const WING_SVG_STRINGS: Record<string,string> = {
+  family: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,14 12,4 21,14"/><line x1="6" y1="14" x2="6" y2="20"/><line x1="18" y1="14" x2="18" y2="20"/><line x1="3" y1="20" x2="21" y2="20"/><path d="M10,20 L10,16 Q12,13 14,16 L14,20"/></svg>`,
+  travel: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="12,3 13,10 12,11 11,10" fill="currentColor" fill-opacity="0.15" stroke="currentColor"/><polygon points="12,21 11,14 12,13 13,14" fill="currentColor" fill-opacity="0.08" stroke="currentColor"/><polygon points="3,12 10,11 11,12 10,13" fill="currentColor" fill-opacity="0.08" stroke="currentColor"/><polygon points="21,12 14,13 13,12 14,11" fill="currentColor" fill-opacity="0.08" stroke="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor" fill-opacity="0.3"/></svg>`,
+  childhood: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="7"/><path d="M7,9 Q7,7 12,7 Q17,7 17,9 L12,20 Z" fill="currentColor" fill-opacity="0.06"/><ellipse cx="12" cy="10" rx="5" ry="1.5"/><circle cx="12" cy="20" r="0.6" fill="currentColor" fill-opacity="0.25"/></svg>`,
+  career: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10,20 Q4,16 4,10 Q4,6 8,4" fill="none"/><path d="M6,14 Q8,13 8,11"/><path d="M5,11 Q7,10.5 7.5,8.5"/><path d="M5.5,8 Q7.5,7.5 8,5.5"/><path d="M14,20 Q20,16 20,10 Q20,6 16,4" fill="none"/><path d="M18,14 Q16,13 16,11"/><path d="M19,11 Q17,10.5 16.5,8.5"/><path d="M18.5,8 Q16.5,7.5 16,5.5"/><path d="M10,20 L12,21 L14,20"/></svg>`,
+  creativity: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8,20 L8,18 Q8,16 10,15 L14,15 Q16,16 16,18 L16,20"/><line x1="7" y1="20" x2="17" y2="20"/><path d="M8,18 Q5,14 6,8 Q6.5,5 9,4" fill="none"/><path d="M16,18 Q19,14 18,8 Q17.5,5 15,4" fill="none"/><line x1="7" y1="7" x2="17" y2="7"/><line x1="10" y1="7" x2="10" y2="15"/><line x1="12" y1="7" x2="12" y2="15"/><line x1="14" y1="7" x2="14" y2="15"/></svg>`,
+  attic: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="3" ry="1"/><path d="M9,5 Q9,8 8,9" fill="none"/><path d="M15,5 Q15,8 16,9" fill="none"/><path d="M8,9 Q5,12 6,16 Q7,20 12,21 Q17,20 18,16 Q19,12 16,9" fill="currentColor" fill-opacity="0.05"/><path d="M8,9 Q4,10 5.5,14" fill="none"/><path d="M16,9 Q20,10 18.5,14" fill="none"/></svg>`,
+};
 
 // ═══ EXTERIOR — Fantasy Castle ═══
 export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman"}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string}){
   const WINGS = wingsProp || DEFAULT_WINGS;
   const ownerName = useUserStore((s) => s.userName);
+  const { t } = useTranslation("exterior3d");
+  const entranceHallLabel = t("entranceHall");
+  const entranceHallLabelRef = useRef(entranceHallLabel);
+  entranceHallLabelRef.current = entranceHallLabel;
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   // Camera starts facing entrance (-Z side) with aqueduct visible behind it
   // theta=PI*1.5 looks from -Z direction (south), phi controls elevation angle
@@ -36,8 +51,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(dlPreset.fogColor,.0018*dlPreset.fogDensity);
     // ── PHOTOREALISTIC TUSCAN GOLDEN HOUR SKY ──
     const skyGeo=new THREE.SphereGeometry(500,64,40);
-    const skyC=document.createElement("canvas");skyC.width=4096;skyC.height=2048;
+    const skyC=document.createElement("canvas");skyC.width=2048;skyC.height=1024;
     const skx=skyC.getContext("2d")!;
+    skx.scale(0.5,0.5); // draw at half resolution — all coordinates stay as original 4096x2048 space
     // Base gradient — warm Tuscan golden hour with subtle atmospheric scattering
     const skyG=skx.createLinearGradient(0,0,0,2048);
     skyG.addColorStop(0,"#0D1B38");skyG.addColorStop(.04,"#152848");skyG.addColorStop(.1,"#1E3A60");
@@ -118,6 +134,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       skx.beginPath();skx.arc(Math.random()*4096,sy,Math.random()*1.2,.0,Math.PI*2);skx.fill();
     }
     const skyTex=new THREE.CanvasTexture(skyC);skyTex.colorSpace=THREE.SRGBColorSpace;
+    // Release canvas memory after texture upload
+    skyC.width=0;skyC.height=0;
     // Procedural sky sphere used as fallback only — hidden when HDRI background loads
     const skySphere=new THREE.Mesh(skyGeo,new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide}));
     scene.add(skySphere);
@@ -154,13 +172,13 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // Hover label overlay
     const hovLabel=document.createElement("div");
-    hovLabel.style.cssText="position:absolute;display:none;pointer-events:none;z-index:10;transform:translate(-50%,-100%);font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 30px rgba(74,140,63,.5);padding:8px 20px;background:rgba(74,140,63,.7);border-radius:12px;backdrop-filter:blur(6px);white-space:nowrap;border:1px solid rgba(255,255,255,.2);";
+    hovLabel.style.cssText="position:absolute;display:none;pointer-events:none;z-index:10;transform:translate(-50%,-100%);font-family:'Cormorant Garamond',serif;font-size:1.375rem;font-weight:600;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 30px rgba(42,34,24,.5);padding:0.5rem 1.25rem;background:rgba(42,34,24,0.85);border-radius:0.75rem;backdrop-filter:blur(6px);white-space:nowrap;border:1px solid rgba(255,255,255,.2);";
     el.appendChild(hovLabel);
 
     // Dramatic golden-hour lighting
     scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#6A8858",0.6*dlPreset.ambientIntensity/0.5));
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,3.2*dlPreset.sunIntensity);sun.position.set(dlPreset.sunPosition[0],dlPreset.sunPosition[1],dlPreset.sunPosition[2]);sun.castShadow=true;
-    sun.shadow.mapSize.set(4096,4096);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
+    const shadowRes=window.innerWidth>=768?2048:1024;sun.shadow.mapSize.set(shadowRes,shadowRes);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
     sun.shadow.camera.left=-80;sun.shadow.camera.right=80;sun.shadow.camera.top=80;sun.shadow.camera.bottom=-80;sun.shadow.bias=-0.0003;scene.add(sun);
     const fill=new THREE.DirectionalLight(dlPreset.fillColor,0.4*dlPreset.fillIntensity/0.35);fill.position.set(-25,20,-15);scene.add(fill);
     const rim=new THREE.DirectionalLight(dlPreset.sunColor,0.6*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);
@@ -517,9 +535,59 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralBodyMeshes = [];
 
     const vW = 20, vD = 18, vH = 7;
-    const ochreWall = new THREE.MeshStandardMaterial({ color: "#C4B49A", roughness: 0.88, metalness: 0, map: wornPlasterTex.map, normalMap: wornPlasterTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: wornPlasterTex.roughnessMap, aoMap: wornPlasterTex.aoMap, aoMapIntensity: 0.5, envMapIntensity: 0.4 });
+    const ochreWall = new THREE.MeshStandardMaterial({ color: "#D4B878", roughness: 0.88, metalness: 0, map: wornPlasterTex.map, normalMap: wornPlasterTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: wornPlasterTex.roughnessMap, aoMap: wornPlasterTex.aoMap, aoMapIntensity: 0.5, envMapIntensity: 0.4 });
     const gardenGreen = new THREE.MeshStandardMaterial({ color: "#4A7A3A", roughness: 0.9 });
     const waterMat = new THREE.MeshStandardMaterial({ color: "#4A7A7A", roughness: 0.7, metalness: 0, transparent: true, opacity: 0.45, envMapIntensity: 0.1 });
+
+    // ── Helper: arched window assembly ──
+    const addArchedWindow = (parent: THREE.Group | THREE.Object3D, x: number, y: number, z: number, width: number, height: number, facingSide: "x" | "z", mat: THREE.Material) => {
+      const archR = width / 2;
+      const rectH = height - archR; // rectangular portion below the semicircular arch
+      if (facingSide === "z") {
+        // Window faces along Z axis (on X-facing wall)
+        // Dark glass rectangular opening
+        parent.add(mk(new THREE.BoxGeometry(0.12, rectH, width), M.win, x, y, z));
+        // Semicircular arch top (half torus)
+        const archGeo = new THREE.TorusGeometry(archR, 0.06, 8, 12, Math.PI);
+        const arch = new THREE.Mesh(archGeo, M.trim);
+        arch.position.set(x, y + rectH / 2, z);
+        arch.rotation.y = x > 0 ? -Math.PI / 2 : Math.PI / 2;
+        parent.add(arch);
+        // Arch glass fill (half cylinder)
+        const archFillGeo = new THREE.CylinderGeometry(archR - 0.02, archR - 0.02, 0.1, 12, 1, false, 0, Math.PI);
+        const archFill = new THREE.Mesh(archFillGeo, M.win);
+        archFill.position.set(x, y + rectH / 2, z);
+        archFill.rotation.x = Math.PI / 2;
+        archFill.rotation.y = x > 0 ? -Math.PI / 2 : Math.PI / 2;
+        parent.add(archFill);
+        // Stone surround frame
+        parent.add(mk(new THREE.BoxGeometry(0.14, rectH + 0.1, width + 0.2), mat, x, y, z));
+        // Vertical mullion
+        parent.add(mk(new THREE.BoxGeometry(0.15, rectH * 0.9, 0.06), M.trim, x, y, z));
+        // Horizontal transom
+        parent.add(mk(new THREE.BoxGeometry(0.15, 0.06, width * 0.85), M.trim, x, y + rectH * 0.15, z));
+      } else {
+        // Window faces along X axis (on Z-facing wall)
+        parent.add(mk(new THREE.BoxGeometry(width, rectH, 0.12), M.win, x, y, z));
+        // Semicircular arch top
+        const archGeo = new THREE.TorusGeometry(archR, 0.06, 8, 12, Math.PI);
+        const arch = new THREE.Mesh(archGeo, M.trim);
+        arch.position.set(x, y + rectH / 2, z);
+        parent.add(arch);
+        // Arch glass fill
+        const archFillGeo = new THREE.CylinderGeometry(archR - 0.02, archR - 0.02, 0.1, 12, 1, false, 0, Math.PI);
+        const archFill = new THREE.Mesh(archFillGeo, M.win);
+        archFill.position.set(x, y + rectH / 2, z);
+        archFill.rotation.x = Math.PI / 2;
+        parent.add(archFill);
+        // Stone surround frame
+        parent.add(mk(new THREE.BoxGeometry(width + 0.2, rectH + 0.1, 0.14), mat, x, y, z));
+        // Vertical mullion
+        parent.add(mk(new THREE.BoxGeometry(0.06, rectH * 0.9, 0.15), M.trim, x, y, z));
+        // Horizontal transom
+        parent.add(mk(new THREE.BoxGeometry(width * 0.85, 0.06, 0.15), M.trim, x, y + rectH * 0.15, z));
+      }
+    };
 
     // ══════════════════════════════════════════
     // CENTRAL DOMUS — single story + raised atrium
@@ -529,12 +597,29 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 6, 0.8, vD + 6), M.stoneD, 0, 0.4, 0));
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 3, 0.5, vD + 3), M.stone, 0, 1.05, 0));
 
-    // Main rectangular body
-    centralGroup.add(mk(new THREE.BoxGeometry(vW, vH, vD), M.stoneL, 0, vH / 2 + 1.3, 0));
+    // Main rectangular body — warm golden ochre
+    centralGroup.add(mk(new THREE.BoxGeometry(vW, vH, vD), ochreWall, 0, vH / 2 + 1.3, 0));
 
     // Horizontal trim bands
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.3, 0.15, vD + 0.3), M.trim, 0, vH + 1.3, 0));
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.3, 0.15, vD + 0.3), M.trim, 0, 1.3 + vH * 0.5, 0));
+
+    // Arched windows on central domus walls (front and back)
+    for (let wi = 0; wi < 3; wi++) {
+      const wx = -6 + wi * 6;
+      // Front face (-Z), skip center (entrance)
+      if (Math.abs(wx) > 2) {
+        addArchedWindow(centralGroup, wx, vH * 0.5 + 1.3, -(vD / 2 + 0.05), 1.4, 2.2, "x", M.trim);
+      }
+      // Back face (+Z)
+      addArchedWindow(centralGroup, wx, vH * 0.5 + 1.3, (vD / 2 + 0.05), 1.4, 2.2, "x", M.trim);
+    }
+    // Side arched windows
+    for (let wi = 0; wi < 3; wi++) {
+      const wz = -5 + wi * 5;
+      addArchedWindow(centralGroup, -(vW / 2 + 0.05), vH * 0.5 + 1.3, wz, 1.2, 2.0, "z", M.trim);
+      addArchedWindow(centralGroup, (vW / 2 + 0.05), vH * 0.5 + 1.3, wz, 1.2, 2.0, "z", M.trim);
+    }
 
     // ── ENTRANCE VESTIBULUM (Front — 6 Corinthian columns) ──
     const vestZ = -(vD / 2 + 3);
@@ -780,7 +865,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const rDomeR = 8;
     // Drum base (slightly wider, 3.5m tall)
     const rDrumR = 8.5, rDrumH = 3.5;
-    centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR, rDrumR + 0.3, rDrumH, 32), M.stoneD, 0, vH + 1.8 + rDrumH / 2, 0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR, rDrumR + 0.3, rDrumH, 32), ochreWall, 0, vH + 1.8 + rDrumH / 2, 0));
     // Drum cornice
     centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR + 0.5, rDrumR + 0.3, 0.25, 32), M.trim, 0, vH + 1.8 + rDrumH + 0.12, 0));
     // Small drum windows
@@ -836,33 +921,41 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     entrClickRadius = 12; entrClickHeight = vH + rDrumH + rDomeR + 4;
 
     // ══════════════════════════════════════════
-    // 5 ROMAN VILLA WINGS — colonnaded galleries
+    // 5 ROMAN VILLA WINGS — colonnaded galleries with arched arcades & tower pavilions
     // ══════════════════════════════════════════
     const wingDefs = [{ room: WINGS[0], length: 22 }, { room: WINGS[1], length: 20 }, { room: WINGS[2], length: 18 }, { room: WINGS[3], length: 19 }, { room: WINGS[4], length: 21 }];
     wingDefs.forEach((def, i) => {
       const angle = (i / 5) * Math.PI * 2;
       const wg = new THREE.Group();
-      const wW = 5, wH = 5, wL = def.length;
+      const wW = 7, wH = 5, wL = def.length;
       const wingMeshes: THREE.Mesh[] = [];
       function addM(m: any) { wg.add(m); if (m.material && !m.material.transparent) wingMeshes.push(m); return m; }
 
       // Stone foundation — extends down to ground to prevent floating appearance
       addM(mk(new THREE.BoxGeometry(wW + 2, 1.8, wL + 1.5), M.stoneD, 0, 0.3, -(vD / 2 + wL / 2)));
       addM(mk(new THREE.BoxGeometry(wW + 2.3, 0.3, wL + 1.8), M.stoneDk, 0, -0.55, -(vD / 2 + wL / 2)));
-      // Gallery body — lower rectangular block
+      // Gallery body — warm golden ochre walls
       addM(mk(new THREE.BoxGeometry(wW, wH, wL), ochreWall, 0, wH / 2 + 1.3, -(vD / 2 + wL / 2)));
       // Plinth
       addM(mk(new THREE.BoxGeometry(wW + 1.5, 0.6, wL + 1), M.stoneD, 0, 1.0, -(vD / 2 + wL / 2)));
       // Trim band at top
       addM(mk(new THREE.BoxGeometry(wW + 0.3, 0.2, wL + 0.3), M.trim, 0, wH + 1.4, -(vD / 2 + wL / 2)));
 
-      // Flat terracotta roof with slight overhang
-      addM(mk(new THREE.BoxGeometry(wW + 1.2, 0.2, wL + 0.8), M.tile, 0, wH + 1.65, -(vD / 2 + wL / 2)));
-      // Tegulae ridges on roof
-      for (let ti = 0; ti < 3; ti++) {
-        const tx = -wW / 2 + 1 + ti * (wW - 2) / 2;
-        addM(mk(new THREE.CylinderGeometry(0.08, 0.08, wL + 0.5, 6, 1, false, 0, Math.PI), M.tile, tx, wH + 1.82, -(vD / 2 + wL / 2)));
-      }
+      // ── HIPPED TERRACOTTA ROOF (two angled planes meeting at ridge) ──
+      const roofOverhang = 0.8;
+      const roofAngle = 0.26; // ~15 degrees
+      const roofSlabW = (wW + roofOverhang * 2) / 2 + 0.3;
+      const roofSlabL = wL + roofOverhang;
+      // Left slope
+      const roofLeft = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, -(roofSlabW / 2 - 0.15), wH + 1.8, -(vD / 2 + wL / 2));
+      roofLeft.rotation.z = roofAngle;
+      addM(roofLeft);
+      // Right slope
+      const roofRight = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, (roofSlabW / 2 - 0.15), wH + 1.8, -(vD / 2 + wL / 2));
+      roofRight.rotation.z = -roofAngle;
+      addM(roofRight);
+      // Ridge beam along the top
+      addM(mk(new THREE.BoxGeometry(0.3, 0.25, roofSlabL + 0.2), M.tile, 0, wH + 2.0 + Math.sin(roofAngle) * roofSlabW / 2, -(vD / 2 + wL / 2)));
       // Beam ends (overhang)
       const nBeams = Math.floor(wL / 2.5);
       for (let bi = 0; bi < nBeams; bi++) {
@@ -872,7 +965,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         }
       }
 
-      // Colonnaded portico walkway (6 columns per wing with flat beam)
+      // ── ARCHED COLONNADED PORTICO (columns with arches between them) ──
       const nCols = 6;
       for (let ci = 0; ci < nCols; ci++) {
         const cz = -(vD / 2 + 2 + ci * (wL - 4) / (nCols - 1));
@@ -882,50 +975,91 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
           wg.add(mk(new THREE.BoxGeometry(0.7, 0.15, 0.7), M.trim, cx, wH + 0.95, cz));
           // Attic base
           wg.add(mk(new THREE.CylinderGeometry(0.35, 0.38, 0.15, 12), M.stoneD, cx, 1.35, cz));
+
+          // Arched opening between this column and the next
+          if (ci < nCols - 1) {
+            const nextCz = -(vD / 2 + 2 + (ci + 1) * (wL - 4) / (nCols - 1));
+            const archCenterZ = (cz + nextCz) / 2;
+            const archSpan = Math.abs(nextCz - cz) / 2;
+            const archGeo = new THREE.TorusGeometry(archSpan * 0.8, 0.08, 8, 12, Math.PI);
+            const archMesh = new THREE.Mesh(archGeo, M.trim);
+            archMesh.position.set(cx, wH + 0.85, archCenterZ);
+            archMesh.rotation.x = Math.PI / 2;
+            archMesh.rotation.z = s > 0 ? Math.PI / 2 : -Math.PI / 2;
+            wg.add(archMesh);
+          }
         }
       }
-      // Flat portico beams connecting columns
-      for (let s = -1; s <= 1; s += 2) {
-        wg.add(mk(new THREE.BoxGeometry(0.25, 0.3, wL - 1), M.trim, s * (wW / 2 + 1.2), wH + 1.15, -(vD / 2 + wL / 2)));
-      }
 
-      // Simple rectangular windows (no arches)
+      // ── ARCHED WINDOWS along gallery walls ──
       const nWins = Math.floor(wL / 4);
       for (let wi = 0; wi < nWins; wi++) {
         const wz = -(vD / 2 + 3 + wi * 4);
         for (let s = -1; s <= 1; s += 2) {
-          addM(mk(new THREE.BoxGeometry(0.12, 1.6, 1.0), M.win, s * (wW / 2 + 0.05), wH * 0.55 + 1.3, wz));
-          // Window frame
-          addM(mk(new THREE.BoxGeometry(0.14, 0.1, 1.2), M.trim, s * (wW / 2 + 0.05), wH * 0.55 + 2.2, wz));
-          addM(mk(new THREE.BoxGeometry(0.14, 0.1, 1.2), M.trim, s * (wW / 2 + 0.05), wH * 0.55 + 0.4, wz));
+          addArchedWindow(wg, s * (wW / 2 + 0.05), wH * 0.55 + 1.3, wz, 1.0, 2.0, "z", M.trim);
         }
       }
 
-      // Terminal room at end: larger rectangular block with foundation
-      const eW = wW + 3, eD = 6, eH = wH + 1.5;
+      // ══ TOWER PAVILION at wing end (2-story square tower) ══
+      const eW = 8, eD = 8, eH = 11;
       const eZ = -(vD / 2 + wL + eD / 2);
+      // Tower stone foundation/plinth
       addM(mk(new THREE.BoxGeometry(eW + 2, 1.8, eD + 1.5), M.stoneD, 0, 0.3, eZ));
-      addM(mk(new THREE.BoxGeometry(eW, eH, eD), M.stoneL, 0, eH / 2 + 1.3, eZ));
       addM(mk(new THREE.BoxGeometry(eW + 1.5, 0.5, eD + 1), M.stoneD, 0, 1.0, eZ));
-      // Terminal room cornice
-      addM(mk(new THREE.BoxGeometry(eW + 0.5, 0.2, eD + 0.5), M.trim, 0, eH + 1.4, eZ));
-      // Flat terracotta roof
-      addM(mk(new THREE.BoxGeometry(eW + 1, 0.2, eD + 0.8), M.tile, 0, eH + 1.65, eZ));
-      // Terminal windows
-      for (let wi = 0; wi < 3; wi++) {
-        addM(mk(new THREE.BoxGeometry(1.2, 1.6, 0.12), M.win, -eW / 2 + 2 + wi * (eW - 4) / 2, eH * 0.5 + 1.3, eZ - eD / 2 - 0.05));
+      // Tower body — warm ochre walls
+      addM(mk(new THREE.BoxGeometry(eW, eH, eD), ochreWall, 0, eH / 2 + 1.3, eZ));
+      // Stone quoin details at corners (vertical trim strips)
+      for (let qx = -1; qx <= 1; qx += 2) {
+        for (let qz = -1; qz <= 1; qz += 2) {
+          addM(mk(new THREE.BoxGeometry(0.3, eH, 0.3), M.trim, qx * (eW / 2 - 0.1), eH / 2 + 1.3, eZ + qz * (eD / 2 - 0.1)));
+        }
       }
-      // Terminal entrance door
+      // Tower cornice
+      addM(mk(new THREE.BoxGeometry(eW + 0.6, 0.25, eD + 0.6), M.trim, 0, eH + 1.4, eZ));
+      // Mid-story string course
+      addM(mk(new THREE.BoxGeometry(eW + 0.3, 0.12, eD + 0.3), M.trim, 0, eH / 2 + 1.3, eZ));
+
+      // Two rows of arched windows (one per story) on front face
+      for (let floor = 0; floor < 2; floor++) {
+        const floorY = 3.8 + floor * (eH / 2 - 0.5);
+        for (let twi = 0; twi < 3; twi++) {
+          const twx = -eW / 2 + 2 + twi * (eW - 4) / 2;
+          addArchedWindow(wg, twx, floorY, eZ - eD / 2 - 0.05, 1.2, 2.2, "x", M.trim);
+        }
+        // Side windows (one per side per floor)
+        addArchedWindow(wg, -(eW / 2 + 0.05), floorY, eZ, 1.0, 2.0, "z", M.trim);
+        addArchedWindow(wg, (eW / 2 + 0.05), floorY, eZ, 1.0, 2.0, "z", M.trim);
+      }
+
+      // Tower entrance door
       addM(mk(new THREE.BoxGeometry(2.8, 4.5, 0.2), M.doorRich, 0, 3.7, eZ - eD / 2 - 0.08));
       addM(mk(new THREE.BoxGeometry(3.2, 5, 0.1), M.trim, 0, 3.9, eZ - eD / 2 - 0.04));
-      // Portico columns at terminal (4 columns)
+
+      // Portico columns at tower front (4 columns with arches)
       for (let ei = 0; ei < 4; ei++) {
         const ex = -eW / 2 + 1.5 + ei * (eW - 3) / 3;
-        wg.add(mk(new THREE.CylinderGeometry(0.25, 0.3, eH - 0.5, 12), M.col, ex, (eH - 0.5) / 2 + 1.3, eZ - eD / 2 - 0.5));
-        wg.add(mk(new THREE.BoxGeometry(0.7, 0.15, 0.7), M.trim, ex, eH + 0.95, eZ - eD / 2 - 0.5));
+        wg.add(mk(new THREE.CylinderGeometry(0.25, 0.3, eH * 0.5, 12), M.col, ex, eH * 0.25 + 1.3, eZ - eD / 2 - 0.5));
+        wg.add(mk(new THREE.BoxGeometry(0.7, 0.15, 0.7), M.trim, ex, eH * 0.5 + 0.95, eZ - eD / 2 - 0.5));
+        // Arches between tower portico columns
+        if (ei < 3) {
+          const nextEx = -eW / 2 + 1.5 + (ei + 1) * (eW - 3) / 3;
+          const archMidX = (ex + nextEx) / 2;
+          const archSpan = Math.abs(nextEx - ex) / 2;
+          const tArchGeo = new THREE.TorusGeometry(archSpan * 0.8, 0.06, 8, 10, Math.PI);
+          const tArch = new THREE.Mesh(tArchGeo, M.trim);
+          tArch.position.set(archMidX, eH * 0.5 + 0.85, eZ - eD / 2 - 0.5);
+          wg.add(tArch);
+        }
       }
-      // Flat beam over terminal portico
-      wg.add(mk(new THREE.BoxGeometry(eW - 1, 0.25, 0.3), M.trim, 0, eH + 1.15, eZ - eD / 2 - 0.5));
+
+      // ── HIPPED ROOF on tower (4 angled slabs — low pyramid) ──
+      const towerRoofH = 3;
+      const towerRoof = mk(new THREE.ConeGeometry(eW * 0.78, towerRoofH, 4), M.tile, 0, eH + 1.4 + towerRoofH / 2, eZ);
+      towerRoof.rotation.y = Math.PI / 4; // align square base with tower
+      towerRoof.castShadow = true;
+      addM(towerRoof);
+      // Ridge finial
+      addM(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze, 0, eH + 1.4 + towerRoofH + 0.2, eZ));
 
       wg.rotation.y = angle + Math.PI;
       const att = 2;
@@ -1889,6 +2023,17 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     let prevHovered: string|null=null;
     const clock=new THREE.Clock();
     const goldColor=new THREE.Color("#D4AF37");
+    // Pre-allocated objects reused every frame to avoid GC pressure
+    const _greenColor=new THREE.Color("#4A8C3F");
+    const _blackColor=new THREE.Color(0,0,0);
+    const _warmGlow=new THREE.Color("#FFE8B0");
+    const _windowBaseColor=new THREE.Color("#FFF0C0");
+    const _tmpColor=new THREE.Color();
+    const _tmpVec3=new THREE.Vector3();
+    const _projVec3=new THREE.Vector3();
+    const _accentColor=new THREE.Color();
+    // Cache for per-wing window mesh Sets (avoids new Set() per frame)
+    const _wingWindowSetCache=new Map<string,Set<any>>();
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const t=clock.getElapsedTime();
 
@@ -1921,7 +2066,6 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
       // ── SECTION SPLIT / LIFT ANIMATION ──
       const anyHovered=hoveredRoomRef.current!==null;
-      const greenColor=new THREE.Color("#4A8C3F");
       sectionGroups.forEach(sg=>{
         const isHov=hoveredRoomRef.current===sg.id;
         // Hovered section lifts up; others stay at 0
@@ -1947,25 +2091,25 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
             mat.emissiveIntensity+=(0.4+Math.sin(t*2.5)*.2-mat.emissiveIntensity)*.1;
           }else if(isHov){
             // Tint green
-            mat.color.lerp(greenColor,.08);
-            mat.emissive.lerp(greenColor,.1);
+            mat.color.lerp(_greenColor,.08);
+            mat.emissive.lerp(_greenColor,.1);
             mat.emissiveIntensity+=(0.3-mat.emissiveIntensity)*.08;
           }else if(anyHovered){
             // Dim non-hovered
-            const darkened=wm.userData._origColor.clone().multiplyScalar(0.5);
-            mat.color.lerp(darkened,.08);
-            mat.emissive.lerp(new THREE.Color(0,0,0),.1);
+            _tmpColor.copy(wm.userData._origColor).multiplyScalar(0.5);
+            mat.color.lerp(_tmpColor,.08);
+            mat.emissive.lerp(_blackColor,.1);
             mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
           }else if(hlTarget){
             // Walkthrough active but this isn't the target — dim it
-            const darkened=wm.userData._origColor.clone().multiplyScalar(0.6);
-            mat.color.lerp(darkened,.04);
-            mat.emissive.lerp(new THREE.Color(0,0,0),.1);
+            _tmpColor.copy(wm.userData._origColor).multiplyScalar(0.6);
+            mat.color.lerp(_tmpColor,.04);
+            mat.emissive.lerp(_blackColor,.1);
             mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
           }else{
             // Restore to original
             mat.color.lerp(wm.userData._origColor,.06);
-            mat.emissive.lerp(new THREE.Color(0,0,0),.1);
+            mat.emissive.lerp(_blackColor,.1);
             mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
           }
         });
@@ -1977,18 +2121,32 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         if(hovId){
           const sg=sectionGroups.find(s=>s.id===hovId);
           if(sg){
-            const wp=new THREE.Vector3();
-            sg.group.getWorldPosition(wp);
-            wp.y+=sg.id==="__entrance__"?25:18;
-            const projected=wp.clone().project(camera);
-            const sx=(projected.x*.5+.5)*w;
-            const sy=(-(projected.y)*.5+.5)*h;
-            hovLabel.style.display="block";
+            sg.group.getWorldPosition(_tmpVec3);
+            _tmpVec3.y+=sg.id==="__entrance__"?25:18;
+            _projVec3.copy(_tmpVec3).project(camera);
+            const sx=(_projVec3.x*.5+.5)*w;
+            const sy=(-(_projVec3.y)*.5+.5)*h;
+            hovLabel.style.display="flex";
+            hovLabel.style.alignItems="center";
+            hovLabel.style.gap="0.375rem";
             hovLabel.style.left=sx+"px";
-            hovLabel.style.top=sy+"px";
-            // Find wing name
+            // Clamp top so label stays below PalaceSubNav (NavBar 4.25rem + SubNav 3.5rem + 0.25rem margin = 8rem)
+            const rem=parseFloat(getComputedStyle(document.documentElement).fontSize);
+            const minTop=rem*8;
+            const clamped=sy<minTop;
+            hovLabel.style.top=Math.max(sy,minTop)+"px";
+            // When clamped, flip label to render downward so it doesn't hide behind the nav
+            hovLabel.style.transform=clamped?"translate(-50%, 0)":"translate(-50%, -100%)";
+            // Find wing name — use SVG icon from WingRoomIcons
             const wingDef=WINGS.find((wi: any)=>wi.id===hovId);
-            hovLabel.textContent=wingDef?`${wingDef.icon} ${wingDef.name}`:hovId==="__entrance__"?"Entrance Hall":"";
+            if(wingDef){
+              const svgStr=WING_SVG_STRINGS[wingDef.id]||"";
+              hovLabel.innerHTML=svgStr+`<span>${wingDef.name}</span>`;
+            }else if(hovId==="__entrance__"){
+              hovLabel.innerHTML=entranceHallLabelRef.current;
+            }else{
+              hovLabel.innerHTML="";
+            }
           }
         }else{
           hovLabel.style.display="none";
@@ -1996,19 +2154,19 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       }
 
       // Wing hover glow — emissive body + accent point light + window brightening
-      const warmGlow=new THREE.Color("#FFE8B0");
       clickTargets.forEach((ct: any)=>{
         const isHov=hoveredRoomRef.current===ct.userData.roomId;
         const isWtHl=hlTarget===ct.userData.roomId;
-        const accentColor=new THREE.Color(ct.userData.accent);
+        _accentColor.set(ct.userData.accent);
         // Smooth emissive glow on wing body meshes (skip cloned window mats + walkthrough highlighted)
         const winSet=wingWindowMats.get(ct.userData.roomId);
-        const winMeshSet=new Set(winSet?.map(e=>e.mesh));
+        let winMeshSet=_wingWindowSetCache.get(ct.userData.roomId);
+        if(!winMeshSet){winMeshSet=new Set(winSet?.map(e=>e.mesh));_wingWindowSetCache.set(ct.userData.roomId,winMeshSet);}
         ct.userData.wingMeshes.forEach((wm: any)=>{
           if(winMeshSet?.has(wm))return;// handled separately
           if(isWtHl)return;// walkthrough glow handled above
           if(wm.material.emissive){
-            if(isHov){wm.material.emissive.lerp(accentColor,.12);wm.material.emissiveIntensity+=(0.22-wm.material.emissiveIntensity)*.08;}
+            if(isHov){wm.material.emissive.lerp(_accentColor,.12);wm.material.emissiveIntensity+=(0.22-wm.material.emissiveIntensity)*.08;}
             else{wm.material.emissiveIntensity+=(0-wm.material.emissiveIntensity)*.06;}
           }
         });
@@ -2018,10 +2176,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
             const targetI=isHov?baseIntensity+0.85:baseIntensity;
             cloned.emissiveIntensity+=(targetI-cloned.emissiveIntensity)*.08;
             if(isHov){
-              cloned.emissive.lerp(warmGlow,.12);
+              cloned.emissive.lerp(_warmGlow,.12);
               cloned.opacity+=(0.88-cloned.opacity)*.08;
             }else{
-              cloned.emissive.lerp(new THREE.Color("#FFF0C0"),.04);
+              cloned.emissive.lerp(_windowBaseColor,.04);
               cloned.opacity+=(0.6-cloned.opacity)*.06;
             }
           });
@@ -2133,5 +2291,5 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[]);
-  return <div ref={mountRef} style={{width:"100%",height:"100%",cursor:hoveredRoom?"pointer":"grab"}}/>;
+  return <div ref={mountRef} role="application" aria-label={t("sceneLabel")} style={{width:"100%",height:"100%",cursor:hoveredRoom?"pointer":"grab"}}/>;
 }

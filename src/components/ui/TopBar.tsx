@@ -57,6 +57,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const userBtnRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuPanelRef = useRef<HTMLDivElement>(null);
 
   // Close user menu on Escape or click outside
   useEffect(() => {
@@ -74,11 +75,39 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
     return () => { document.removeEventListener("keydown", handleKey); document.removeEventListener("mousedown", handleClick); };
   }, [userMenuOpen]);
 
-  // Close mobile menu on Escape
+  // Close mobile menu on Escape + focus trap
   useEffect(() => {
     if (!menuOpen) return;
+    const panel = mobileMenuPanelRef.current;
+    if (!panel) return;
+
+    // Move focus to first focusable element on mount
+    const getFocusables = () =>
+      panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+    const focusables = getFocusables();
+    if (focusables.length > 0) focusables[0].focus();
+
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") { setMenuOpen(false); return; }
+      if (e.key === "Tab") {
+        const els = getFocusables();
+        if (els.length === 0) return;
+        const first = els[0];
+        const last = els[els.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
@@ -88,7 +117,15 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
   if (isMobile) {
     return (
       <>
-        <div style={{
+        {/* Focus-visible styles for TopBar mobile buttons */}
+        <style>{`
+          [data-topbar] button:focus-visible,
+          [data-topbar] a:focus-visible {
+            outline: 0.125rem solid ${T.color.terracotta};
+            outline-offset: 0.125rem;
+          }
+        `}</style>
+        <div data-topbar style={{
           position: "absolute", top: 0, left: 0, right: 0, height: "3rem",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "0 0.75rem", zIndex: 40,
@@ -100,9 +137,9 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               background: `linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem",
               border: `1px solid ${T.color.sandstone}`, cursor: view!=="exterior"?"pointer":"default", padding: 0,
-            }}>{"\u{1F3DB}\uFE0F"}</button>
+            }}><span aria-hidden="true">{"\u{1F3DB}\uFE0F"}</span></button>
             {/* Current location breadcrumb */}
-            <nav aria-label="Breadcrumb" style={{ display: "flex", alignItems: "center", gap: "0.25rem", overflow: "hidden", minWidth: 0 }}>
+            <nav aria-label={t("breadcrumb")} style={{ display: "flex", alignItems: "center", gap: "0.25rem", overflow: "hidden", minWidth: 0 }}>
               {crumbs.map((c, i) => (
                 <span key={i} style={{ display: "flex", alignItems: "center", gap: "0.1875rem", minWidth: 0 }}>
                   {i > 0 && <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, flexShrink: 0 }}>/</span>}
@@ -141,12 +178,12 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
           <div onClick={() => setMenuOpen(false)} role="dialog" aria-modal="true" aria-label={t("navigationMenu")} style={{
             position: "absolute", inset: 0, zIndex: 39, background: "rgba(42,34,24,.3)",
           }}>
-            <div onClick={e => e.stopPropagation()} style={{
+            <div ref={mobileMenuPanelRef} onClick={e => e.stopPropagation()} style={{
               position: "absolute", top: "3rem", right: "0.5rem", left: "0.5rem",
               maxHeight: "calc(100vh - 4rem)", overflowY: "auto",
-              background: `${T.color.linen}f5`, backdropFilter: "blur(16px)",
+              background: `${T.color.linen}f5`, backdropFilter: "blur(1rem)",
               borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
-              boxShadow: "0 8px 40px rgba(44,44,42,.15)", padding: "0.75rem",
+              boxShadow: "0 0.5rem 2.5rem rgba(44,44,42,.15)", padding: "0.75rem",
               animation: "fadeUp .2s ease",
             }}>
               {userName && (
@@ -393,13 +430,22 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
   const initials = userName ? userName.split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 2) : "";
 
   return(
-    <div style={{position:"absolute",top:0,left:0,right:0,height:"3.375rem",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1.375rem",zIndex:40,background:"linear-gradient(180deg,rgba(221,213,200,.92),rgba(221,213,200,0))"}}>
+    <>
+    {/* Focus-visible styles for TopBar desktop buttons */}
+    <style>{`
+      [data-topbar] button:focus-visible,
+      [data-topbar] a:focus-visible {
+        outline: 0.125rem solid ${T.color.terracotta};
+        outline-offset: 0.125rem;
+      }
+    `}</style>
+    <div data-topbar style={{position:"absolute",top:0,left:0,right:0,height:"3.375rem",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 1.375rem",zIndex:40,background:"linear-gradient(180deg,rgba(221,213,200,.92),rgba(221,213,200,0))"}}>
       <div style={{display:"flex",alignItems:"center",gap:"0.625rem"}}>
         <div style={{display:"flex",alignItems:"center",gap:"0.5rem"}}>
-          <button onClick={()=>{if(view!=="exterior")exitToPalace();}} title={t("backToPalace")} aria-label={t("backToPalace")} style={{width:"2.25rem",height:"2.25rem",borderRadius:"0.4375rem",background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.875rem",border:`1px solid ${T.color.sandstone}`,cursor:view!=="exterior"?"pointer":"default",padding:0}}>{"\u{1F3DB}\uFE0F"}</button>
+          <button onClick={()=>{if(view!=="exterior")exitToPalace();}} title={t("backToPalace")} aria-label={t("backToPalace")} style={{width:"2.25rem",height:"2.25rem",borderRadius:"0.4375rem",background:`linear-gradient(135deg,${T.color.warmStone},${T.color.sandstone})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.875rem",border:`1px solid ${T.color.sandstone}`,cursor:view!=="exterior"?"pointer":"default",padding:0}}><span aria-hidden="true">{"\u{1F3DB}\uFE0F"}</span></button>
           <button onClick={()=>setShowDirectory(!showDirectory)} title={t("directory")} aria-label={t("directory")} style={{width:"2.25rem",height:"2.25rem",borderRadius:"0.4375rem",border:`1px solid ${showDirectory?T.color.sandstone:T.color.cream}`,background:showDirectory?`${T.color.sandstone}30`:`${T.color.white}bb`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.8125rem",cursor:"pointer",color:T.color.muted}}>{"\u{1F4C2}"}</button>
           {userName&&<span style={{fontFamily:T.font.display,fontSize:"0.875rem",fontWeight:600,fontStyle:"italic",color:T.color.charcoal,background:`${T.color.linen}cc`,padding:"0.125rem 0.5rem",borderRadius:"0.375rem",textShadow:"0 1px 2px rgba(255,255,255,.9)"}}>{t("palace", { name: userName })}</span>}
-          <nav aria-label="Breadcrumb" style={{display:"flex",alignItems:"center",gap:"0.25rem",background:`${T.color.linen}cc`,padding:"0.125rem 0.5rem",borderRadius:"0.375rem"}}>
+          <nav aria-label={t("breadcrumb")} style={{display:"flex",alignItems:"center",gap:"0.25rem",background:`${T.color.linen}cc`,padding:"0.125rem 0.5rem",borderRadius:"0.375rem"}}>
             {crumbs.map((c,i)=><span key={i} style={{display:"flex",alignItems:"center",gap:"0.25rem"}}>
               {i>0&&<span style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted}}>/</span>}
               {c.action?<button onClick={c.action} aria-current={i===crumbs.length-1?"page":undefined} style={{fontFamily:T.font.display,fontSize:i===0?"0.9375rem":"0.8125rem",fontWeight:600,color:i===crumbs.length-1?T.color.charcoal:T.color.walnut,background:"none",border:"none",cursor:"pointer",textDecoration:"underline",textDecorationColor:`${T.color.sandstone}88`,textUnderlineOffset:"0.1875rem",padding:0}}>{c.label}</button>
@@ -427,7 +473,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               display: "flex", alignItems: "center", justifyContent: "center",
               fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 700,
               color: T.color.white, letterSpacing: "0.03125rem",
-              boxShadow: userMenuOpen ? `0 0 0 3px ${T.color.terracotta}30` : "0 1px 4px rgba(44,44,42,.15)",
+              boxShadow: userMenuOpen ? `0 0 0 3px ${T.color.terracotta}30` : "0 0.0625rem 0.25rem rgba(44,44,42,.15)",
             }}
           >
             {initials || "\u{1F464}"}
@@ -454,6 +500,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -491,8 +538,9 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
   const { totalPoints, getLevelInfo } = useTrackStore();
   const levelInfo = getLevelInfo();
 
-  // Total focusable items: menu links + a11y toggle + 2 lang buttons + sign-out = items.length + 4
-  const totalItems = USER_MENU_ITEMS.length + 5;
+  // Total focusable items: menu links + 2 lang buttons + a11y toggle + daylight toggle + sign-out
+  // When daylight panel is expanded, there's also the auto/manual button (+1)
+  const totalItems = USER_MENU_ITEMS.length + 5 + (daylightEnabled ? 1 : 0);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -534,9 +582,9 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
         position: "absolute", top: "calc(100% + 0.5rem)", right: 0,
         width: "17.5rem", maxHeight: "calc(100vh - 4.5rem)", overflowY: "auto",
         background: `${T.color.linen}f8`,
-        backdropFilter: "blur(20px)",
+        backdropFilter: "blur(1.25rem)", WebkitBackdropFilter: "blur(1.25rem)",
         borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
-        boxShadow: "0 12px 48px rgba(44,44,42,.18), 0 2px 8px rgba(44,44,42,.08)",
+        boxShadow: "0 0.75rem 3rem rgba(44,44,42,.18), 0 0.125rem 0.5rem rgba(44,44,42,.08)",
         padding: 0, zIndex: 100,
       }}
     >
@@ -571,7 +619,7 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
                 width: "1rem", height: "1rem", borderRadius: "0.5rem",
                 background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "0.5rem", fontWeight: 700, color: "#FFF", fontFamily: T.font.body,
+                fontSize: "0.5rem", fontWeight: 700, color: T.color.white, fontFamily: T.font.body,
               }}>
                 {levelInfo.rank}
               </div>
@@ -870,6 +918,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
         onClick={() => { setWingsOpen(!wingsOpen); setExpandedWing(null); }}
         aria-haspopup="true"
         aria-expanded={wingsOpen}
+        aria-label={tc("palaceMap")}
         style={{
           padding: "0.375rem 0.875rem", borderRadius: "1rem",
           fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
@@ -879,9 +928,9 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
           cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3125rem",
         }}
       >
-        <span style={{ fontSize: "0.75rem" }}>{activeWingData ? activeWingData.icon : "\u{1F3DB}\uFE0F"}</span>
+        <span style={{ fontSize: "0.75rem" }} aria-hidden="true">{activeWingData ? activeWingData.icon : "\u{1F3DB}\uFE0F"}</span>
         {activeWingData ? activeWingData.name : tc("palaceMap")}
-        <span style={{ fontSize: "0.625rem", marginLeft: "0.125rem", transition: "transform .2s", transform: wingsOpen ? "rotate(180deg)" : "none" }}>{"\u25BE"}</span>
+        <span style={{ fontSize: "0.625rem", marginLeft: "0.125rem", transition: "transform .2s", transform: wingsOpen ? "rotate(180deg)" : "none" }} aria-hidden="true">{"\u25BE"}</span>
       </button>
 
       {wingsOpen && (
@@ -889,9 +938,9 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
           position: "absolute", top: "calc(100% + 0.375rem)", right: 0,
           minWidth: "15rem", maxHeight: "26.25rem", overflowY: "auto",
           background: `${T.color.linen}f8`,
-          backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          backdropFilter: "blur(1.25rem)", WebkitBackdropFilter: "blur(1.25rem)",
           borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
-          boxShadow: "0 8px 32px rgba(44,44,42,.14)",
+          boxShadow: "0 0.5rem 2rem rgba(44,44,42,.14)",
           padding: "0.375rem", zIndex: 100,
           display: "flex", flexDirection: "column", gap: "0.125rem",
         }}>
@@ -934,6 +983,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                         transition: "transform .2s",
                       }}
                       title={tc("showRooms")}
+                      aria-label={tc("showRooms")}
                     >
                       <span style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .2s" }}>{"\u25BE"}</span>
                     </button>
@@ -1045,6 +1095,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                           display: "flex", alignItems: "center",
                         }}
                         title={tc("showRooms")}
+                        aria-label={tc("showRooms")}
                       >
                         <span style={{ transform: isExpanded ? "rotate(180deg)" : "none", transition: "transform .2s" }}>{"\u25BE"}</span>
                       </button>
@@ -1140,7 +1191,7 @@ function LevelBadgeMobile() {
         width: "1.125rem", height: "1.125rem", borderRadius: "0.5625rem",
         background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: "0.5625rem", fontWeight: 700, color: "#FFF", fontFamily: T.font.body,
+        fontSize: "0.5625rem", fontWeight: 700, color: T.color.white, fontFamily: T.font.body,
       }}>
         {levelInfo.rank}
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import Toast, { type ToastData } from "@/components/ui/Toast";
 import dynamic from "next/dynamic";
 import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
@@ -36,6 +37,7 @@ const SCENES: SceneDef[] = [
 const FADE_MS = 600;
 
 export default function FlythroughPage() {
+  const [toast, setToast] = useState<ToastData | null>(null);
   const [phase, setPhase] = useState<"idle" | "recording" | "done">("idle");
   const [currentScene, setCurrentScene] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -94,7 +96,7 @@ export default function FlythroughPage() {
     // Find the Three.js canvas
     const canvas = document.querySelector("canvas") as HTMLCanvasElement | null;
     if (!canvas) {
-      alert("No canvas found — wait for the 3D scene to load and try again.");
+      setToast({ message: "No canvas found — wait for the 3D scene to load and try again.", type: "warning" });
       return;
     }
 
@@ -106,7 +108,7 @@ export default function FlythroughPage() {
     ];
     const mimeType = codecs.find((c) => MediaRecorder.isTypeSupported(c));
     if (!mimeType) {
-      alert("Your browser does not support WebM recording.");
+      setToast({ message: "Your browser does not support WebM recording.", type: "error" });
       return;
     }
 
@@ -381,6 +383,14 @@ export default function FlythroughPage() {
 
       {/* Pulse animation for recording indicator */}
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

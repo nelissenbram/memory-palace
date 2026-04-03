@@ -121,11 +121,11 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://*.supabase.
 
 const cspDirectives = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
   `img-src 'self' data: blob: ${supabaseUrl} https://*.supabase.co https://lh3.googleusercontent.com`,
   `font-src 'self' https://fonts.gstatic.com`,
-  `connect-src 'self' ${supabaseUrl} https://*.supabase.co https://api.anthropic.com`,
+  `connect-src 'self' ${supabaseUrl} https://*.supabase.co https://api.anthropic.com https://nominatim.openstreetmap.org`,
   "media-src 'self' blob:",
   "object-src 'none'",
   "frame-ancestors 'none'",

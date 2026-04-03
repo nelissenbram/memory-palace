@@ -1,11 +1,25 @@
 "use client";
-import { useMemo } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Mem } from "@/lib/constants/defaults";
 import Image from "next/image";
 import TuscanCard from "./TuscanCard";
 import { TuscanSectionHeader } from "./TuscanCard";
+
+/* ═══════════════════════════════════════════════════════════
+   P2-9: Collaborator avatar color from initial
+   ═══════════════════════════════════════════════════════════ */
+const AVATAR_COLORS = [
+  T.color.terracotta, T.color.sage, T.color.gold,
+  "#7B68AE", "#4A8C9F", "#C17F59", "#8B6F4E",
+  "#6B8E6B", "#9B6B8E", "#5A7D9A",
+];
+
+function avatarColorForName(name: string): string {
+  const code = name.charCodeAt(0) || 0;
+  return AVATAR_COLORS[code % AVATAR_COLORS.length];
+}
 
 /* ═══════════════════════════════════════════════════════════
    TYPE ICONS
@@ -25,7 +39,7 @@ export interface OnThisDayCardProps {
   isMobile: boolean;
 }
 
-export function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCardProps) {
+export const OnThisDayCard = React.memo(function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCardProps) {
   const { t } = useTranslation("atrium");
 
   const yearBadges = useMemo(() => {
@@ -186,7 +200,7 @@ export function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCa
                   onClick={() => onMemoryClick(mem)}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={e => { if (e.key === "Enter") onMemoryClick(mem); }}
+                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onMemoryClick(mem); } }}
                   style={{
                     minWidth: isMobile ? "7.5rem" : "9rem",
                     maxWidth: isMobile ? "7.5rem" : "9rem",
@@ -298,20 +312,39 @@ export function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCa
       </div>
     </>
   );
-}
+});
 
 /* ═══════════════════════════════════════════════════════════
    2. SharedRoomsPreview — "Shared Spaces" with sage theme
    ═══════════════════════════════════════════════════════════ */
 export interface SharedRoomsPreviewProps {
-  sharedRooms: { id: string; name: string; icon: string; ownerName: string; memoryCount: number }[];
+  sharedRooms: { id: string; name: string; icon: string; wingName: string; memoryCount: number }[];
   onRoomClick: (roomId: string) => void;
   onViewAll: () => void;
   isMobile: boolean;
+  loading?: boolean;
 }
 
-export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobile }: SharedRoomsPreviewProps) {
+export const SharedRoomsPreview = React.memo(function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobile, loading }: SharedRoomsPreviewProps) {
   const { t } = useTranslation("atrium");
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          textAlign: "center",
+          padding: "1.5rem",
+          fontFamily: T.font.body,
+          fontSize: "0.875rem",
+          color: T.color.muted,
+        }}
+        role="status"
+        aria-live="polite"
+      >
+        {t("sharedLoading")}
+      </div>
+    );
+  }
 
   if (sharedRooms.length === 0) return null;
 
@@ -344,16 +377,27 @@ export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobi
               <path d="M7 7.5v3.5" stroke={T.color.sage} strokeWidth="1" strokeLinecap="round" opacity="0.5" />
             </svg>
           </div>
-          <h3 style={{
-            fontFamily: T.font.display,
-            fontWeight: 600,
-            fontSize: isMobile ? "1.0625rem" : "1.25rem",
-            color: T.color.charcoal,
-            margin: 0,
-            letterSpacing: "-0.01em",
-          }}>
-            {t("sharedWithYou")}
-          </h3>
+          <div>
+            <h3 style={{
+              fontFamily: T.font.display,
+              fontWeight: 600,
+              fontSize: isMobile ? "1.0625rem" : "1.25rem",
+              color: T.color.charcoal,
+              margin: 0,
+              letterSpacing: "-0.01em",
+            }}>
+              {t("sharedWithYou")}
+            </h3>
+            <p style={{
+              fontFamily: T.font.body,
+              fontSize: "0.75rem",
+              color: T.color.muted,
+              margin: "0.125rem 0 0",
+              letterSpacing: "0.01em",
+            }}>
+              {t("sharedWithYouSubtitle")}
+            </p>
+          </div>
         </div>
         <button
           onClick={onViewAll}
@@ -391,14 +435,14 @@ export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobi
         }}
       >
         {displayed.map((room, i) => {
-          const initial = room.ownerName.charAt(0).toUpperCase();
+          const initial = room.wingName.charAt(0).toUpperCase();
           return (
             <div
               key={room.id}
               onClick={() => onRoomClick(room.id)}
               role="button"
               tabIndex={0}
-              onKeyDown={e => { if (e.key === "Enter") onRoomClick(room.id); }}
+              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRoomClick(room.id); } }}
               style={{
                 background: "rgba(255,255,255,0.65)",
                 backdropFilter: "blur(1rem)",
@@ -454,31 +498,36 @@ export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobi
                   }}>
                     {room.icon}
                   </div>
-                  {/* Owner initial badge — refined ring */}
-                  <div style={{
-                    position: "absolute",
-                    bottom: "-0.25rem",
-                    right: "-0.25rem",
-                    width: "1.25rem",
-                    height: "1.25rem",
-                    borderRadius: "50%",
-                    background: `linear-gradient(135deg, ${T.color.sage} 0%, ${T.color.sage}DD 100%)`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: `0.125rem solid rgba(255,255,255,0.95)`,
-                    boxShadow: `0 0.0625rem 0.375rem rgba(74,103,65,0.2)`,
-                  }}>
-                    <span style={{
-                      fontFamily: T.font.body,
-                      fontSize: "0.5625rem",
-                      fontWeight: 700,
-                      color: T.color.white,
-                      lineHeight: 1,
-                    }}>
-                      {initial}
-                    </span>
-                  </div>
+                  {/* P2-9: Collaborator avatar — colored initial circle */}
+                  {(() => {
+                    const avatarColor = avatarColorForName(room.wingName);
+                    return (
+                      <div style={{
+                        position: "absolute",
+                        bottom: "-0.25rem",
+                        right: "-0.25rem",
+                        width: "1.375rem",
+                        height: "1.375rem",
+                        borderRadius: "50%",
+                        background: `linear-gradient(135deg, ${avatarColor} 0%, ${avatarColor}DD 100%)`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "0.125rem solid rgba(255,255,255,0.95)",
+                        boxShadow: `0 0.0625rem 0.375rem ${avatarColor}40`,
+                      }}>
+                        <span style={{
+                          fontFamily: T.font.body,
+                          fontSize: "0.5625rem",
+                          fontWeight: 700,
+                          color: T.color.white,
+                          lineHeight: 1,
+                        }}>
+                          {initial}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -502,7 +551,7 @@ export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobi
                     margin: "0.1875rem 0 0",
                     letterSpacing: "0.01em",
                   }}>
-                    {t("from")} {room.ownerName}
+                    {t("inWing", { name: room.wingName })}
                   </p>
                 </div>
 
@@ -529,7 +578,7 @@ export function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobi
       </div>
     </div>
   );
-}
+});
 
 /* ═══════════════════════════════════════════════════════════
    3. InterviewPrompt — "Your Voice Matters" premium CTA
@@ -629,6 +678,9 @@ function MicrophoneIllustration({ size = "5rem" }: { size?: string }) {
   );
 }
 
+const INTERVIEW_DISMISSED_IDS_KEY = "mp_interview_dismissed_ids";
+const TOTAL_INTERVIEW_TEMPLATES = 8;
+
 export function InterviewPrompt({
   hasInterviews,
   interviewCount,
@@ -637,6 +689,38 @@ export function InterviewPrompt({
   isMobile,
 }: InterviewPromptProps) {
   const { t } = useTranslation("atrium");
+
+  /* ── Card-cycling state: show 3 cards at a time, skip to next batch ── */
+  const [dismissedIds, setDismissedIds] = useState<number[]>([]);
+  const [seenAll, setSeenAll] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(INTERVIEW_DISMISSED_IDS_KEY);
+      if (raw) {
+        const ids: number[] = JSON.parse(raw);
+        setDismissedIds(ids);
+        if (ids.length >= TOTAL_INTERVIEW_TEMPLATES) setSeenAll(true);
+      }
+    } catch {}
+  }, []);
+
+  /** The 3 currently-visible template indices (1-based) */
+  const visibleTemplates = useMemo(() => {
+    const all = Array.from({ length: TOTAL_INTERVIEW_TEMPLATES }, (_, i) => i + 1);
+    const remaining = all.filter((n) => !dismissedIds.includes(n));
+    if (remaining.length === 0) return all.slice(0, 3); // wrap around — show first 3 again
+    return remaining.slice(0, 3);
+  }, [dismissedIds]);
+
+  const handleSkipCard = useCallback((templateId: number) => {
+    setDismissedIds((prev) => {
+      const next = [...prev, templateId];
+      try { localStorage.setItem(INTERVIEW_DISMISSED_IDS_KEY, JSON.stringify(next)); } catch {}
+      if (next.length >= TOTAL_INTERVIEW_TEMPLATES) setSeenAll(true);
+      return next;
+    });
+  }, []);
 
   if (!hasInterviews) {
     /* ── No interviews: premium, emotional invitation ── */
@@ -734,70 +818,110 @@ export function InterviewPrompt({
               {t("interview.pitch")}
             </p>
 
-            {/* Example interview cards */}
+            {/* Example interview cards — cycle through templates */}
+            {seenAll && (
+              <p style={{
+                fontFamily: T.font.body,
+                fontSize: "0.875rem",
+                color: T.color.terracotta,
+                margin: "0 0 0.75rem",
+                fontWeight: 500,
+              }}>
+                {t("interview.seenAllTemplates")}
+              </p>
+            )}
             <div style={{
               display: "flex",
               gap: "0.625rem",
               marginBottom: "1.5rem",
               flexWrap: "wrap",
             }}>
-              {([1, 2, 3] as const).map((n) => (
-                <button
+              {visibleTemplates.map((n) => (
+                <div
                   key={n}
-                  onClick={onStartInterview}
                   style={{
                     flex: isMobile ? "1 1 100%" : "1 1 0",
                     minWidth: isMobile ? "auto" : "8rem",
-                    background: `rgba(255,255,255,0.7)`,
-                    border: `0.0625rem solid ${T.color.sandstone}60`,
-                    borderRadius: "0.75rem",
-                    padding: "0.75rem 0.875rem",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    transition: "border-color 0.2s, box-shadow 0.2s",
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = T.color.terracotta;
-                    e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}15`;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = `${T.color.sandstone}60`;
-                    e.currentTarget.style.boxShadow = "none";
+                    display: "flex",
+                    flexDirection: "column",
                   }}
                 >
-                  <div style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "0.25rem",
-                  }}>
-                    <span style={{
-                      fontFamily: T.font.display,
-                      fontSize: "0.875rem",
-                      fontWeight: 600,
-                      color: T.color.charcoal,
+                  <button
+                    onClick={onStartInterview}
+                    style={{
+                      flex: 1,
+                      background: `rgba(255,255,255,0.7)`,
+                      border: `0.0625rem solid ${T.color.sandstone}60`,
+                      borderRadius: "0.75rem",
+                      padding: "0.75rem 0.875rem",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "border-color 0.2s, box-shadow 0.2s",
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = T.color.terracotta;
+                      e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}15`;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = `${T.color.sandstone}60`;
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    <div style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "0.25rem",
                     }}>
-                      {t(`interview.example${n}Title`)}
-                    </span>
+                      <span style={{
+                        fontFamily: T.font.display,
+                        fontSize: "0.875rem",
+                        fontWeight: 600,
+                        color: T.color.charcoal,
+                      }}>
+                        {t(`interview.example${n}Title`)}
+                      </span>
+                      <span style={{
+                        fontFamily: T.font.body,
+                        fontSize: "0.6875rem",
+                        color: T.color.terracotta,
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                      }}>
+                        {t(`interview.example${n}Time`)} {t("interview.minutesShort")}
+                      </span>
+                    </div>
                     <span style={{
                       fontFamily: T.font.body,
-                      fontSize: "0.6875rem",
-                      color: T.color.terracotta,
-                      fontWeight: 600,
-                      whiteSpace: "nowrap",
+                      fontSize: "0.75rem",
+                      color: T.color.muted,
+                      lineHeight: 1.4,
                     }}>
-                      {t(`interview.example${n}Time`)} {t("interview.minutesShort")}
+                      {t(`interview.example${n}Desc`)}
                     </span>
-                  </div>
-                  <span style={{
-                    fontFamily: T.font.body,
-                    fontSize: "0.75rem",
-                    color: T.color.muted,
-                    lineHeight: 1.4,
-                  }}>
-                    {t(`interview.example${n}Desc`)}
-                  </span>
-                </button>
+                  </button>
+                  {/* Skip / show-another button per card */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleSkipCard(n); }}
+                    style={{
+                      fontFamily: T.font.body,
+                      fontSize: "0.6875rem",
+                      color: T.color.muted,
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "0.25rem 0",
+                      marginTop: "0.25rem",
+                      opacity: 0.6,
+                      transition: "opacity 0.2s",
+                      textAlign: "center",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = "0.6"; }}
+                  >
+                    {t("interview.skipTemplate")}
+                  </button>
+                </div>
               ))}
             </div>
 
@@ -872,6 +996,7 @@ export function InterviewPrompt({
             }}>
               {t("interview.socialProof")}
             </p>
+
           </div>
         </div>
       </div>
@@ -1031,7 +1156,7 @@ export interface StorageIndicatorProps {
   isMobile: boolean;
 }
 
-export function StorageIndicator({ usedMB, limitMB, isMobile }: StorageIndicatorProps) {
+export const StorageIndicator = React.memo(function StorageIndicator({ usedMB, limitMB, isMobile }: StorageIndicatorProps) {
   const { t } = useTranslation("atrium");
 
   const pct = limitMB > 0 ? Math.min((usedMB / limitMB) * 100, 100) : 0;
@@ -1101,4 +1226,4 @@ export function StorageIndicator({ usedMB, limitMB, isMobile }: StorageIndicator
       </span>
     </div>
   );
-}
+});

@@ -17,6 +17,62 @@ export interface InterviewTemplate {
   estimatedTotalMinutes: number;
 }
 
+// ═══ BASELINE INTERVIEW ═══
+
+const baselineInterview: InterviewTemplate = {
+  id: "baseline",
+  titleKey: "baselineTitle",
+  descKey: "baselineDesc",
+  wingId: "general",
+  icon: "\uD83C\uDF1F",
+  difficulty: "deep",
+  estimatedTotalMinutes: 10,
+  questions: [
+    {
+      id: "bl-1",
+      textKey: "bl1Text",
+      text: "What does legacy mean to you?",
+      followUpHint: "Ask what first made them think about legacy — was it a person, an event, or a realization?",
+      estimatedMinutes: 2,
+    },
+    {
+      id: "bl-2",
+      textKey: "bl2Text",
+      text: "What memories do you most want to preserve for future generations?",
+      followUpHint: "Ask why those memories in particular — what makes them irreplaceable?",
+      estimatedMinutes: 2,
+    },
+    {
+      id: "bl-3",
+      textKey: "bl3Text",
+      text: "If you could tell your grandchildren one story about your life, what would it be?",
+      followUpHint: "Ask what they hope their grandchildren would take away from that story.",
+      estimatedMinutes: 2,
+    },
+    {
+      id: "bl-4",
+      textKey: "bl4Text",
+      text: "What values or life lessons do you want to pass on?",
+      followUpHint: "Ask how they learned those values themselves — through experience, or from someone they admired?",
+      estimatedMinutes: 2,
+    },
+    {
+      id: "bl-5",
+      textKey: "bl5Text",
+      text: "What moments in your life have shaped who you are today?",
+      followUpHint: "Ask about one moment they didn't realize was important until much later.",
+      estimatedMinutes: 2,
+    },
+    {
+      id: "bl-6",
+      textKey: "bl6Text",
+      text: "Why did you decide to start preserving your memories?",
+      followUpHint: "Ask what they would feel if those memories were lost — and who they're preserving them for.",
+      estimatedMinutes: 2,
+    },
+  ],
+};
+
 // ═══ FAMILY WING INTERVIEWS ═══
 
 const familyTraditions: InterviewTemplate = {
@@ -355,6 +411,8 @@ const meaningOfItAll: InterviewTemplate = {
 // ═══ ALL TEMPLATES ═══
 
 export const INTERVIEW_TEMPLATES: InterviewTemplate[] = [
+  // Baseline (introductory)
+  baselineInterview,
   // Family
   familyTraditions,
   growingUp,

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import Toast, { type ToastData } from "@/components/ui/Toast";
 import {
   fetchAllLegacyData,
   createLegacyContact,
@@ -163,7 +164,7 @@ export default function LegacyPage() {
   const [settings, setSettings] = useState<LegacySettings | null>(null);
   const [wings, setWings] = useState<UserWing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastData | null>(null);
 
   // Section expand state
   const [activeSection, setActiveSection] = useState<"contacts" | "messages" | "settings">("contacts");
@@ -171,7 +172,7 @@ export default function LegacyPage() {
   const dirtyRef = useRef(false);
   const [pendingTab, setPendingTab] = useState<"contacts" | "messages" | "settings" | null>(null);
 
-  const showToast = useCallback((message: string, type: "success" | "error") => {
+  const showToast = useCallback((message: string, type: "success" | "error" | "warning") => {
     setToast({ message, type });
   }, []);
 
@@ -185,13 +186,6 @@ export default function LegacyPage() {
       setActiveSection(tab);
     }
   }, [activeSection]);
-
-  useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 5000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
 
   useEffect(() => {
     async function load() {
@@ -232,23 +226,7 @@ export default function LegacyPage() {
     <div>
       {/* Toast */}
       {toast && (
-        <div role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
-          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? T.color.sage : T.color.error,
-          color: "#FFF",
-          fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-          boxShadow: "0 8px 24px rgba(0,0,0,.15)",
-          animation: "fadeIn .2s ease",
-          display: "flex", alignItems: "center", gap: "0.625rem",
-        }}>
-          <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
-          {toast.message}
-          <button onClick={() => setToast(null)} aria-label="Close" style={{
-            background: "none", border: "none", color: "#FFF",
-            fontSize: "1rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
-          }}>{"\u2715"}</button>
-        </div>
+        <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
 
       {/* Page header */}
@@ -478,6 +456,7 @@ export default function LegacyPage() {
           box-shadow: 0 0 0 0.1875rem ${T.color.terracotta}25 !important;
           outline: none !important;
         }
+        ${settingsFocusStyle}
       `}</style>
     </div>
   );
@@ -497,7 +476,7 @@ function ContactsSection({
   contacts: LegacyContact[];
   setContacts: React.Dispatch<React.SetStateAction<LegacyContact[]>>;
   wings: UserWing[];
-  showToast: (msg: string, type: "success" | "error") => void;
+  showToast: (msg: string, type: "success" | "error" | "warning") => void;
   setDirty: (v: boolean) => void;
 }) {
   const { t } = useTranslation("legacySettings");
@@ -625,7 +604,7 @@ function ContactsSection({
     {/* Delete contact confirmation modal (#2, #10) */}
     {confirmDeleteId && confirmDeleteContact && (
       <ConfirmModal
-        title={t("editContact")}
+        title={t("deleteContactTitle")}
         body={t("confirmDeleteContactSoft", { name: confirmDeleteContact.contact_name })}
         confirmLabel={t("modalRemoveContact")}
         cancelLabel={t("modalKeepContact")}
@@ -1019,7 +998,7 @@ function MessagesSection({
   messages: LegacyMessage[];
   setMessages: React.Dispatch<React.SetStateAction<LegacyMessage[]>>;
   contacts: LegacyContact[];
-  showToast: (msg: string, type: "success" | "error") => void;
+  showToast: (msg: string, type: "success" | "error" | "warning") => void;
   setDirty: (v: boolean) => void;
 }) {
   const { t } = useTranslation("legacySettings");
@@ -1074,7 +1053,7 @@ function MessagesSection({
     }
     // Empty body warning (#11)
     if (!body.trim()) {
-      showToast(t("emptyBodyWarning"), "success");
+      showToast(t("emptyBodyWarning"), "warning");
     }
     setSaving(true);
 
@@ -1128,7 +1107,7 @@ function MessagesSection({
     {/* Delete message confirmation modal (#2, #10) */}
     {confirmDeleteId && confirmDeleteMessage && (
       <ConfirmModal
-        title={t("editMessage")}
+        title={t("deleteMessageTitle")}
         body={t("confirmDeleteMessageSoft")}
         confirmLabel={t("modalRemoveMessage")}
         cancelLabel={t("modalKeepMessage")}
@@ -1421,7 +1400,7 @@ function SettingsSection({
 }: {
   settings: LegacySettings | null;
   setSettings: React.Dispatch<React.SetStateAction<LegacySettings | null>>;
-  showToast: (msg: string, type: "success" | "error") => void;
+  showToast: (msg: string, type: "success" | "error" | "warning") => void;
   setDirty: (v: boolean) => void;
 }) {
   const { t } = useTranslation("legacySettings");
@@ -1697,6 +1676,15 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box" as const,
   transition: "border-color .2s, box-shadow .2s",
 };
+
+/* ── Global focus-visible ring for settings inputs ── */
+const settingsFocusStyle = `
+  .mp-settings-input:focus-visible {
+    outline: 0.125rem solid ${T.color.terracotta};
+    outline-offset: 0.0625rem;
+    border-color: ${T.color.terracotta};
+  }
+`;
 
 const primaryBtnStyle: React.CSSProperties = {
   padding: "0.75rem 1.5rem",

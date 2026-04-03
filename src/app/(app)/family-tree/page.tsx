@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import Toast, { type ToastData } from "@/components/ui/Toast";
 import {
   getPersons,
   getRelationships,
@@ -493,6 +494,7 @@ export default function FamilyTreePage() {
   const [newLast, setNewLast] = useState("");
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [toast, setToast] = useState<ToastData | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -522,7 +524,7 @@ export default function FamilyTreePage() {
   const handleAdd = async () => {
     if (!newFirst.trim()) return;
     const result = await addPerson({ first_name: newFirst, last_name: newLast || undefined });
-    if (result?.error) { alert(result.error); return; }
+    if (result?.error) { setToast({ message: result.error, type: "error" }); return; }
     setNewFirst("");
     setNewLast("");
     setShowAddForm(false);
@@ -1084,6 +1086,14 @@ export default function FamilyTreePage() {
             onUpdate={loadData}
           />
         </>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
       )}
     </div>
   );

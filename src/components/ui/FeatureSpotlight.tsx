@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -127,6 +127,37 @@ export default function FeatureSpotlight({
     actionMap[currentCard.id]?.();
   };
 
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Focus trap: keep focus within the modal
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      dismiss();
+      return;
+    }
+    if (e.key === "Tab" && modalRef.current) {
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+  };
+
+  // Auto-focus first button on mount / card change
+  useEffect(() => {
+    if (visible && modalRef.current) {
+      const firstBtn = modalRef.current.querySelector<HTMLElement>("button");
+      firstBtn?.focus();
+    }
+  }, [visible, currentCard]);
+
   if (!visible || !currentCard) return null;
 
   const cardIndex = CARDS.findIndex((c) => c.id === currentCard.id);
@@ -134,6 +165,11 @@ export default function FeatureSpotlight({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("spotlightAriaLabel")}
+      ref={modalRef}
+      onKeyDown={handleKeyDown}
       style={{
         position: "absolute",
         top: 0,
@@ -151,7 +187,7 @@ export default function FeatureSpotlight({
       }}
       onClick={dismiss}
     >
-      <style>{`@keyframes fadeOut{from{opacity:1}to{opacity:0}}@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <style>{`@keyframes fadeOut{from{opacity:1}to{opacity:0}}@keyframes slideUp{from{opacity:0;transform:translateY(1.5rem)}to{opacity:1;transform:translateY(0)}}`}</style>
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -160,7 +196,7 @@ export default function FeatureSpotlight({
           padding: isMobile ? "2rem 1.5rem 1.5rem" : "2.5rem 2.25rem 1.75rem",
           maxWidth: "26.25rem",
           width: isMobile ? "calc(100% - 2.5rem)" : "90%",
-          boxShadow: "0 24px 80px rgba(44, 44, 42, 0.35)",
+          boxShadow: "0 1.5rem 5rem rgba(44, 44, 42, 0.35)",
           border: `2px solid ${T.color.cream}`,
           animation: exiting
             ? "fadeOut .3s ease forwards"
@@ -237,7 +273,7 @@ export default function FeatureSpotlight({
             background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
             color: "#FFF",
             cursor: "pointer",
-            boxShadow: `0 4px 16px rgba(193, 127, 89, 0.3)`,
+            boxShadow: `0 0.25rem 1rem rgba(193, 127, 89, 0.3)`,
             transition: "transform 0.15s, box-shadow 0.15s",
             minHeight: "3rem",
             display: "inline-block",
@@ -245,12 +281,12 @@ export default function FeatureSpotlight({
           onMouseEnter={(e) => {
             (e.currentTarget as HTMLElement).style.transform = "scale(1.03)";
             (e.currentTarget as HTMLElement).style.boxShadow =
-              "0 6px 24px rgba(193, 127, 89, 0.45)";
+              "0 0.375rem 1.5rem rgba(193, 127, 89, 0.45)";
           }}
           onMouseLeave={(e) => {
             (e.currentTarget as HTMLElement).style.transform = "none";
             (e.currentTarget as HTMLElement).style.boxShadow =
-              "0 4px 16px rgba(193, 127, 89, 0.3)";
+              "0 0.25rem 1rem rgba(193, 127, 89, 0.3)";
           }}
         >
           {t(currentCard.cta)}
@@ -260,6 +296,7 @@ export default function FeatureSpotlight({
         <div style={{ marginTop: "1rem" }}>
           <button
             onClick={dismiss}
+            aria-label={t("dismissAriaLabel")}
             style={{
               fontFamily: T.font.body,
               fontSize: "0.875rem",

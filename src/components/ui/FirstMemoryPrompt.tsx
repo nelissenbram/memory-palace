@@ -16,7 +16,7 @@ export default function FirstMemoryPrompt({ wing, room, onUpload }: FirstMemoryP
   const accent = wing?.accent || T.color.terracotta;
 
   return (
-    <div style={{
+    <div role="dialog" aria-modal="true" aria-label={t("title")} style={{
       position: "absolute",
       top: "50%",
       left: "50%",
@@ -32,8 +32,8 @@ export default function FirstMemoryPrompt({ wing, room, onUpload }: FirstMemoryP
         WebkitBackdropFilter: "blur(20px)",
         borderRadius: "1.5rem",
         padding: isMobile ? "2rem 1.75rem" : "2.5rem 2.75rem",
-        border: `1.5px solid ${T.color.cream}`,
-        boxShadow: "0 16px 64px rgba(44,44,42,.18)",
+        border: `0.09375rem solid ${T.color.cream}`,
+        boxShadow: "0 1rem 4rem rgba(44,44,42,.18)",
         maxWidth: isMobile ? "20rem" : "23.75rem",
         width: isMobile ? "calc(100vw - 3rem)" : "auto",
       }}>
@@ -81,7 +81,7 @@ export default function FirstMemoryPrompt({ wing, room, onUpload }: FirstMemoryP
             background: `linear-gradient(135deg, ${accent}, ${T.color.walnut})`,
             color: "#FFF",
             cursor: "pointer",
-            boxShadow: `0 4px 16px ${accent}40`,
+            boxShadow: `0 0.25rem 1rem ${accent}40`,
             transition: "transform 0.15s, box-shadow 0.15s",
             minHeight: "3rem",
             display: "inline-flex",

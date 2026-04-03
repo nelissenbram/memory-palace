@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import AppErrorBoundaryWrapper from "@/components/ui/AppErrorBoundaryWrapper";
 
 export default async function AppLayout({
   children,
@@ -11,7 +12,11 @@ export default async function AppLayout({
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return <main id="main-content" style={{ height: "100%", width: "100%" }}>{children}</main>;
+    return (
+      <main id="main-content" style={{ height: "100%", width: "100%" }}>
+        <AppErrorBoundaryWrapper>{children}</AppErrorBoundaryWrapper>
+      </main>
+    );
   }
 
   const supabase = await createClient();
@@ -23,5 +28,9 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return <main id="main-content" style={{ height: "100%", width: "100%" }}>{children}</main>;
+  return (
+    <main id="main-content" style={{ height: "100%", width: "100%" }}>
+      <AppErrorBoundaryWrapper>{children}</AppErrorBoundaryWrapper>
+    </main>
+  );
 }

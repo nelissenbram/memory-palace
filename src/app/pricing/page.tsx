@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
+import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { isNative } from "@/lib/native/platform";
@@ -17,10 +18,12 @@ export default function PricingPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
   const [loading, setLoading] = useState<PlanId | null>(null);
+  const [toast, setToast] = useState<ToastData | null>(null);
   const router = useRouter();
   const { t, locale, setLocale } = useTranslation("pricing");
   const { t: ts } = useTranslation("subscription");
   const { t: tp } = useTranslation("plans");
+  const { t: tc } = useTranslation("common");
 
   // Redirect away from pricing page in native app — Google Play forbids
   // directing users to external payment flows
@@ -51,10 +54,10 @@ export default function PricingPage() {
         // Not logged in, redirect to register
         window.location.href = "/register";
       } else {
-        alert(data.error || t("somethingWentWrong"));
+        setToast({ message: data.error || t("somethingWentWrong"), type: "error" });
       }
     } catch {
-      alert(t("couldNotConnect"));
+      setToast({ message: t("couldNotConnect"), type: "error" });
     }
     setLoading(null);
   };
@@ -89,7 +92,7 @@ export default function PricingPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/" aria-label="Back to home" style={{
+          <Link href="/" aria-label={tc("a11yBackToHome")} style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: 32, height: 32, borderRadius: 8,
             border: `1px solid ${C.sandstone}50`,
@@ -124,7 +127,7 @@ export default function PricingPage() {
           </Link>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button onClick={() => setLocale(locale === "en" ? "nl" : "en")} aria-label="Switch language" style={{
+          <button onClick={() => setLocale(locale === "en" ? "nl" : "en")} aria-label={tc("a11ySwitchLanguage")} style={{
             background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
             padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
             fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
@@ -497,6 +500,14 @@ export default function PricingPage() {
           &copy; {new Date().getFullYear()} {t("copyright")}
         </p>
       </footer>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

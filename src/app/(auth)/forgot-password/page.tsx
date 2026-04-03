@@ -29,7 +29,18 @@ export default function ForgotPasswordPage() {
   if (success) {
     return (
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>📬</div>
+        <div style={{
+          width: "4rem", height: "4rem", borderRadius: "2rem",
+          background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 1rem",
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <path d="M22 4L12 13 2 4"/>
+            <path d="M15 12l5 5M9 12l-5 5" opacity="0.4"/>
+          </svg>
+        </div>
         <h2
           style={{
             fontFamily: T.font.display,
@@ -64,7 +75,19 @@ export default function ForgotPasswordPage() {
   return (
     <form onSubmit={handleSubmit}>
       <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-        <div style={{ fontSize: "2.25rem", marginBottom: "0.5rem" }}>🔑</div>
+        <div style={{
+          width: "3.5rem", height: "3.5rem", borderRadius: "1.75rem",
+          background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}20)`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 0.5rem",
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="8" cy="15" r="5"/>
+            <path d="M12.5 10.5L21 2"/>
+            <path d="M17 2h4v4"/>
+            <path d="M17 6l-3.5 3.5"/>
+          </svg>
+        </div>
         <h1
           style={{
             fontFamily: T.font.display,

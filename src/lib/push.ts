@@ -11,12 +11,22 @@
 
 import webpush from "web-push";
 
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:hello@memory-palace.app";
+let vapidConfigured = false;
 
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+function ensureVapid(): boolean {
+  if (vapidConfigured) return true;
+  const pub = process.env.VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT || "mailto:info@thememorypalace.ai";
+  if (!pub || !priv) return false;
+  try {
+    webpush.setVapidDetails(subject, pub, priv);
+    vapidConfigured = true;
+    return true;
+  } catch (err) {
+    console.warn("[push] Invalid VAPID keys:", err);
+    return false;
+  }
 }
 
 export interface PushSubscriptionJSON {
@@ -44,7 +54,7 @@ export async function sendPush(
   subscription: PushSubscriptionJSON,
   payload: NotificationPayload
 ): Promise<boolean> {
-  if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+  if (!ensureVapid()) {
     console.warn("[push] VAPID keys not configured, skipping notification");
     return false;
   }

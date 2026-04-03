@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useCallback, useEffect, useState } from "react";
 import { T } from "@/lib/theme";
+import { useTranslation } from "@/lib/hooks/useTranslation";
 
 interface MobileJoystickProps {
   onMove: (direction: { x: number; y: number }) => void;
@@ -14,12 +15,14 @@ interface MobileJoystickProps {
  * and CorridorScene movement code picks them up.
  */
 export default function MobileJoystick({ onMove, visible }: MobileJoystickProps) {
+  const { t } = useTranslation("mobileJoystick");
   const outerRef = useRef<HTMLDivElement | null>(null);
   const [knobPos, setKnobPos] = useState({ x: 0, y: 0 });
   const touchIdRef = useRef<number | null>(null);
   const centerRef = useRef({ x: 0, y: 0 });
   const activeKeysRef = useRef<Set<string>>(new Set());
-  const OUTER_R = 50; // outer radius
+  const OUTER_SIZE_REM = 6.25; // 100px equivalent in rem
+  const OUTER_R = 50; // outer radius in px (for SVG/knob math)
   const KNOB_R = 20;  // knob radius
   const DEAD_ZONE = 0.15;
 
@@ -116,6 +119,8 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
   return (
     <div
       ref={outerRef}
+      role="application"
+      aria-label={t("joystickLabel")}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -124,8 +129,8 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
         position: "absolute",
         bottom: "7.5rem",
         left: "1.25rem",
-        width: OUTER_R * 2,
-        height: OUTER_R * 2,
+        width: `${OUTER_SIZE_REM}rem`,
+        height: `${OUTER_SIZE_REM}rem`,
         borderRadius: "50%",
         background: "rgba(42, 34, 24, 0.25)",
         backdropFilter: "blur(6px)",

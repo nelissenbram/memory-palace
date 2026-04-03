@@ -65,7 +65,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
             wings.push({
               shareId: s.id,
               wingSlug: s.wingId || "",
-              wingName: s.wingName || "Shared",
+              wingName: s.wingName || t("shared"),
               wingIcon: s.wingIcon || "\u{1F91D}",
               ownerName: s.ownerName || "",
               rooms: s.rooms || [],
@@ -74,10 +74,10 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
           } else {
             rooms.push({
               shareId: s.id,
-              wingName: s.wingName || "Shared",
+              wingName: s.wingName || t("shared"),
               wingIcon: s.wingIcon || "\u{1F91D}",
               ownerName: s.ownerName || "",
-              roomName: s.roomName || "Room",
+              roomName: s.roomName || t("room"),
               roomId: s.roomId || "",
               memoryCount: s.memoryCount || 0,
             });
@@ -87,7 +87,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
         setSharedRooms(rooms);
       }
     }).catch(() => {});
-  }, []);
+  }, [t]);
 
   // Build full tree with search filtering
   const tree=useMemo(()=>{
@@ -140,9 +140,9 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
   const totalMems=tree.reduce((n,w)=>n+w.totalMems,0);
 
   return(
-    <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
+    <div role="button" tabIndex={0} onClick={onClose} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } }} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e)=>{if(e.key==="Escape")onClose();handleKeyDown(e);}} onClick={e=>e.stopPropagation()} style={{position:"absolute",left:0,top:0,bottom:0,width:isMobile?"100%":"min(23.75rem, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderRight:isMobile?"none":`1px solid ${T.color.cream}`,padding:0,overflowY:"auto",animation:"slideInLeft .3s cubic-bezier(.23,1,.32,1)"}}>
-        <style>{`@keyframes slideInLeft{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:translateX(0)}}`}</style>
+        <style>{`@keyframes slideInLeft{from{opacity:0;transform:translateX(-2.5rem)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* Header */}
         <div style={{padding:"1.5rem 1.5rem 0",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1rem"}}>
@@ -150,7 +150,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,margin:0}}>{t("title")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,margin:"0.25rem 0 0"}}>{t("summary", { wings: String(WINGS.length), memories: String(totalMems) })}</p>
           </div>
-          <button onClick={onClose} aria-label={tc("close")} style={{width:"2rem",height:"2rem",borderRadius:"1rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:"0.875rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>&#x2715;</button>
+          <button onClick={onClose} aria-label={tc("close")} style={{width:"2rem",height:"2rem",borderRadius:"1rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:"0.875rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}>&#x2715;</button>
         </div>
 
         {/* Search */}
@@ -352,5 +352,5 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
 function highlightMatch(text: string, query: string){
   const idx=text.toLowerCase().indexOf(query);
   if(idx===-1) return text;
-  return <>{text.slice(0,idx)}<span style={{background:`${T.color.terracotta}25`,borderRadius:2,padding:"0 1px"}}>{text.slice(idx,idx+query.length)}</span>{text.slice(idx+query.length)}</>;
+  return <>{text.slice(0,idx)}<span style={{background:`${T.color.terracotta}25`,borderRadius:"0.125rem",padding:"0 0.0625rem"}}>{text.slice(idx,idx+query.length)}</span>{text.slice(idx+query.length)}</>;
 }

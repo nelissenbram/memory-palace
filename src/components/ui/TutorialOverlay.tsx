@@ -5,6 +5,10 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useTutorialStore, TUTORIAL_STEPS } from "@/lib/stores/tutorialStore";
 
+const GOLD_GLOW = "#FFEEBB";
+const GOLD_WARM = "#FFD080";
+const GOLD_INK = "#1A1408";
+
 // ═══ TUTORIAL OVERLAY — speech bubble + controls ═══
 export default function TutorialOverlay() {
   const isMobile = useIsMobile();
@@ -68,9 +72,9 @@ export default function TutorialOverlay() {
             width: "3.75rem",
             height: "3.75rem",
             borderRadius: "1.875rem",
-            border: "2.5px solid #D4AF37",
+            border: `0.15625rem solid ${T.color.gold}`,
             background: "transparent",
-            boxShadow: "0 0 18px rgba(212, 175, 55, 0.35), inset 0 0 18px rgba(212, 175, 55, 0.1)",
+            boxShadow: `0 0 1.125rem ${T.color.gold}59, inset 0 0 1.125rem ${T.color.gold}1A`,
             animation: "tutorialPulse 1.5s ease-in-out infinite",
           }} />
           {hl.labelKey && (
@@ -78,7 +82,7 @@ export default function TutorialOverlay() {
               fontFamily: T.font.body,
               fontSize: "0.6875rem",
               fontWeight: 600,
-              color: "#FFEEBB",
+              color: GOLD_GLOW,
               textShadow: "0 1px 6px rgba(0,0,0,0.5)",
               whiteSpace: "nowrap",
               letterSpacing: "0.01875rem",
@@ -103,8 +107,8 @@ export default function TutorialOverlay() {
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
         borderRadius: "1.25rem",
-        border: "1px solid rgba(212, 175, 55, 0.25)",
-        boxShadow: "0 12px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,240,200,0.08)",
+        border: `1px solid ${T.color.gold}40`,
+        boxShadow: "0 0.75rem 3rem rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,240,200,0.08)",
         padding: isMobile ? "1.125rem 1.25rem 1rem" : "1.5rem 1.75rem 1.25rem",
         position: "relative",
       }}>
@@ -116,8 +120,8 @@ export default function TutorialOverlay() {
           width: "1.75rem",
           height: "1.75rem",
           borderRadius: "0.875rem",
-          background: "radial-gradient(circle, #FFEEBB 0%, #FFD080 50%, rgba(255,208,128,0) 100%)",
-          boxShadow: "0 0 16px rgba(255,224,160,0.5)",
+          background: `radial-gradient(circle, ${GOLD_GLOW} 0%, ${GOLD_WARM} 50%, rgba(255,208,128,0) 100%)`,
+          boxShadow: "0 0 1rem rgba(255,224,160,0.5)",
         }} />
 
         {/* Title */}
@@ -125,7 +129,7 @@ export default function TutorialOverlay() {
           fontFamily: T.font.display,
           fontSize: isMobile ? "1.0625rem" : "1.25rem",
           fontWeight: 600,
-          color: "#FFEEBB",
+          color: GOLD_GLOW,
           marginBottom: "0.5rem",
           letterSpacing: "0.01875rem",
         }}>
@@ -137,7 +141,7 @@ export default function TutorialOverlay() {
           fontFamily: T.font.body,
           fontSize: isMobile ? "0.8125rem" : "0.875rem",
           lineHeight: 1.6,
-          color: "rgba(250, 250, 247, 0.88)",
+          color: `${T.color.linen}E0`,
           minHeight: isMobile ? "3rem" : "3.5rem",
           marginBottom: "1rem",
         }}>
@@ -146,7 +150,7 @@ export default function TutorialOverlay() {
             display: "inline-block",
             width: "0.125rem",
             height: "0.875rem",
-            background: "#FFD080",
+            background: GOLD_WARM,
             marginLeft: "0.125rem",
             animation: "blink 1s step-end infinite",
             verticalAlign: "text-bottom",
@@ -164,7 +168,7 @@ export default function TutorialOverlay() {
           <div style={{
             height: "100%",
             width: `${progress}%`,
-            background: "linear-gradient(90deg, #D4AF37, #FFEEBB)",
+            background: `linear-gradient(90deg, ${T.color.gold}, ${GOLD_GLOW})`,
             borderRadius: "0.0625rem",
             transition: "width 0.4s ease",
           }} />
@@ -178,19 +182,20 @@ export default function TutorialOverlay() {
         }}>
           <button
             onClick={skip}
+            aria-label={t("skipTourAriaLabel")}
             style={{
               background: "transparent",
               border: "none",
               fontFamily: T.font.body,
               fontSize: "0.75rem",
-              color: "rgba(250,250,247,0.4)",
+              color: `${T.color.linen}66`,
               cursor: "pointer",
               padding: "0.375rem 0.75rem",
               borderRadius: "0.5rem",
               transition: "color 0.2s",
             }}
-            onMouseEnter={e => { (e.target as HTMLElement).style.color = "rgba(250,250,247,0.7)"; }}
-            onMouseLeave={e => { (e.target as HTMLElement).style.color = "rgba(250,250,247,0.4)"; }}
+            onMouseEnter={e => { (e.target as HTMLElement).style.color = `${T.color.linen}B3`; }}
+            onMouseLeave={e => { (e.target as HTMLElement).style.color = `${T.color.linen}66`; }}
           >
             {isMobile ? t("skip") : t("skipTour")}
           </button>
@@ -199,14 +204,14 @@ export default function TutorialOverlay() {
             {/* Step dots */}
             <div style={{ display: "flex", gap: "0.25rem", marginRight: "0.5rem" }}>
               {TUTORIAL_STEPS.map((_, i) => (
-                <div key={i} style={{
+                <div key={i} role="presentation" aria-label={t("stepDot", { current: String(i + 1), total: String(TUTORIAL_STEPS.length) })} style={{
                   width: i === stepIndex ? "1rem" : "0.3125rem",
                   height: "0.3125rem",
                   borderRadius: "0.1875rem",
                   background: i === stepIndex
-                    ? "linear-gradient(90deg, #D4AF37, #FFEEBB)"
+                    ? `linear-gradient(90deg, ${T.color.gold}, ${GOLD_GLOW})`
                     : i < stepIndex
-                      ? "rgba(212,175,55,0.5)"
+                      ? `${T.color.gold}80`
                       : "rgba(255,255,255,0.12)",
                   transition: "all 0.3s ease",
                 }} />
@@ -215,27 +220,28 @@ export default function TutorialOverlay() {
 
             <button
               onClick={() => { if (typing) { setTypewriterText(message); setTyping(false); } else { next(); } }}
+              aria-label={t("nextStepAriaLabel")}
               style={{
-                background: "linear-gradient(135deg, #D4AF37, #B8922E)",
+                background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
                 border: "none",
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
                 fontWeight: 600,
-                color: "#1A1408",
+                color: GOLD_INK,
                 padding: "0.5rem 1.25rem",
                 borderRadius: "0.75rem",
                 cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(212,175,55,0.3)",
+                boxShadow: `0 0.25rem 1rem ${T.color.gold}4D`,
                 transition: "transform 0.15s, box-shadow 0.15s",
                 letterSpacing: "0.01875rem",
               }}
               onMouseEnter={e => {
                 (e.currentTarget as HTMLElement).style.transform = "scale(1.04)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 6px 20px rgba(212,175,55,0.45)";
+                (e.currentTarget as HTMLElement).style.boxShadow = `0 0.375rem 1.25rem ${T.color.gold}73`;
               }}
               onMouseLeave={e => {
                 (e.currentTarget as HTMLElement).style.transform = "none";
-                (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 16px rgba(212,175,55,0.3)";
+                (e.currentTarget as HTMLElement).style.boxShadow = `0 0.25rem 1rem ${T.color.gold}4D`;
               }}
             >
               {typing ? t("showAll") : (step.nextLabelKey ? t(step.nextLabelKey) : t("next"))}
@@ -274,7 +280,7 @@ export function TourButton({ style }: { style?: React.CSSProperties }) {
         alignItems: "center",
         gap: "0.375rem",
         cursor: "pointer",
-        boxShadow: "0 2px 10px rgba(44,44,42,.08)",
+        boxShadow: "0 0.125rem 0.625rem rgba(44,44,42,.08)",
         transition: "transform .2s",
         fontFamily: T.font.body,
         fontSize: "0.6875rem",
@@ -289,7 +295,7 @@ export function TourButton({ style }: { style?: React.CSSProperties }) {
         width: "1.125rem",
         height: "1.125rem",
         borderRadius: "0.5625rem",
-        background: "radial-gradient(circle, #FFEEBB 0%, #FFD080 60%, transparent 100%)",
+        background: `radial-gradient(circle, ${GOLD_GLOW} 0%, ${GOLD_WARM} 60%, transparent 100%)`,
         display: "inline-block",
         flexShrink: 0,
       }} />

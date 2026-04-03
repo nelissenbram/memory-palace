@@ -67,7 +67,7 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
         padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem",
         overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)",
       }}>
-        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
+        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(2.5rem)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
@@ -84,6 +84,7 @@ export default function SharedWithMePanel({ onClose, onNavigateToRoom }: SharedW
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
             color: T.color.muted, fontSize: "0.875rem", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
+            minWidth: "2.75rem", minHeight: "2.75rem",
           }}>&#x2715;</button>
         </div>
 

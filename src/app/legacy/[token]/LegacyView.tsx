@@ -59,7 +59,16 @@ export default function LegacyView({ data }: { data: LegacyData }) {
       <div style={styles.container}>
         <main>
           <div style={styles.card}>
-            <div style={styles.iconLarge}><span role="img" aria-label={t("memoryPalaceIcon")}>&#x1F3DB;&#xFE0F;</span></div>
+            <div style={styles.iconLarge} aria-label={t("memoryPalaceIcon")}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 9L12 4L21 9" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="6" y1="9.5" x2="6" y2="19" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="12" y1="9.5" x2="12" y2="19" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" opacity={0.6} />
+                <line x1="18" y1="9.5" x2="18" y2="19" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="2" y1="20" x2="22" y2="20" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
             <h1 style={styles.title}>{t("linkNotFound")}</h1>
             <p style={styles.subtitle}>
               {t("linkNotFoundDesc")}
@@ -83,7 +92,16 @@ export default function LegacyView({ data }: { data: LegacyData }) {
       <div style={styles.container}>
         <main>
           <div style={styles.card}>
-            <div style={styles.iconLarge}><span role="img" aria-label={t("memoryPalaceIcon")}>&#x1F3DB;&#xFE0F;</span></div>
+            <div style={styles.iconLarge} aria-label={t("memoryPalaceIcon")}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 9L12 4L21 9" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="6" y1="9.5" x2="6" y2="19" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="12" y1="9.5" x2="12" y2="19" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" opacity={0.6} />
+                <line x1="18" y1="9.5" x2="18" y2="19" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="2" y1="20" x2="22" y2="20" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
             <h1 style={styles.title}>{t("linkExpired")}</h1>
             <p style={styles.subtitle}>
               {t("linkExpiredDesc")}
@@ -137,7 +155,16 @@ export default function LegacyView({ data }: { data: LegacyData }) {
     <div style={styles.container}>
       {/* Header */}
       <header style={styles.header}>
-        <div style={styles.iconLarge}><span role="img" aria-label={t("memoryPalaceIcon")}>&#x1F3DB;&#xFE0F;</span></div>
+        <div style={{ ...styles.iconLarge, color: LT.color.white }} aria-label={t("memoryPalaceIcon")}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 9L12 4L21 9" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="3" y1="9" x2="21" y2="9" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="6" y1="9.5" x2="6" y2="19" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="12" y1="9.5" x2="12" y2="19" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" opacity={0.6} />
+                <line x1="18" y1="9.5" x2="18" y2="19" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="2" y1="20" x2="22" y2="20" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
         <h1 style={styles.headerTitle}>
           {t("memoriesFrom", { name: senderName })}
         </h1>
@@ -149,7 +176,10 @@ export default function LegacyView({ data }: { data: LegacyData }) {
       {/* Expiry banner */}
       {expiresDate && (
         <div style={styles.expiryBanner}>
-          <span style={styles.expiryBannerIcon} aria-hidden="true">&#x1F552;</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }} aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M12 7V12L15 14" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           <span>{t("expiryBanner", { date: expiresDate })}</span>
         </div>
       )}
@@ -329,9 +359,11 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: "center",
   },
   iconLarge: {
-    fontSize: "3rem",
     marginBottom: "1rem",
     textAlign: "center" as const,
+    display: "flex",
+    justifyContent: "center",
+    color: LT.color.walnut,
   },
   headerTitle: {
     margin: "0 0 0.5rem",
@@ -531,7 +563,7 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.5,
   },
   expiryBannerIcon: {
-    fontSize: "0.875rem",
+    /* SVG icon; no fontSize needed */
   },
   audioContainer: {
     width: "100%",

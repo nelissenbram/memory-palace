@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import {
@@ -8,7 +9,10 @@ import {
   inviteFamilyMember,
   acceptFamilyInvite,
   removeFamilyMember,
-  getFamilyGroup,
+  cancelFamilyInvite,
+  getAllFamilyGroups,
+  updateFamilyGroup,
+  deleteFamilyGroup,
 } from "@/lib/auth/family-actions";
 import {
   shareWing,
@@ -55,15 +59,32 @@ interface FamilyGroup {
   created_at: string;
 }
 
+/* ── visual step data for "How it works" ── */
+const STEP_ICONS = ["\u2160", "\u2161", "\u2162", "\u2163"]; // Roman numerals I-IV
+
+interface FamilyGroupEntry {
+  group: FamilyGroup;
+  members: FamilyMember[];
+  userRole: string;
+}
+
+interface PendingInviteEntry {
+  group: FamilyGroup;
+  userRole: string;
+}
+
 export default function FamilyPage() {
   const { t } = useTranslation("familySettings");
   const { t: tp } = useTranslation("palace");
-  const [group, setGroup] = useState<FamilyGroup | null>(null);
-  const [members, setMembers] = useState<FamilyMember[]>([]);
-  const [userRole, setUserRole] = useState<string>("");
+  // Multi-group state
+  const [groups, setGroups] = useState<FamilyGroupEntry[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInviteEntry[]>([]);
   const [userEmail, setUserEmail] = useState<string>("");
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  const [pendingInvite, setPendingInvite] = useState(false);
+  const [confirmRemoveMember, setConfirmRemoveMember] = useState<{ groupId: string; userId: string; email: string } | null>(null);
+  const [confirmUnshareId, setConfirmUnshareId] = useState<string | null>(null);
+  const [resendingId, setResendingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [groupName, setGroupName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
@@ -71,6 +92,12 @@ export default function FamilyPage() {
   const [saving, setSaving] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editGroupName, setEditGroupName] = useState("");
+  const [renamingSaving, setRenamingSaving] = useState(false);
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   // Wing sharing state
   const [myWingShares, setMyWingShares] = useState<WingShare[]>([]);
@@ -91,14 +118,22 @@ export default function FamilyPage() {
     }
   }, [toast]);
 
-  const loadGroup = useCallback(async () => {
-    const result = await getFamilyGroup();
-    setGroup(result.group || null);
-    setMembers((result.members || []) as FamilyMember[]);
-    setUserRole(result.userRole || "");
-    setUserEmail(result.userEmail || "");
-    setPendingInvite(!!result.pendingInvite);
-    setLoading(false);
+  const loadGroups = useCallback(async () => {
+    try {
+      const result = await getAllFamilyGroups();
+      setGroups((result.groups || []) as unknown as FamilyGroupEntry[]);
+      setPendingInvites((result.pendingInvites || []) as unknown as PendingInviteEntry[]);
+      setUserEmail(result.userEmail || "");
+      // Auto-expand the first group if only one exists
+      if (result.groups.length === 1 && !expandedGroupId) {
+        setExpandedGroupId((result.groups[0].group as unknown as FamilyGroup).id);
+      }
+    } catch {
+      // Server action may fail silently; keep current state
+    } finally {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadWingShares = useCallback(async () => {
@@ -110,7 +145,7 @@ export default function FamilyPage() {
     setSharedWithMe((withMeRes.shares || []) as WingShare[]);
   }, []);
 
-  useEffect(() => { loadGroup(); }, [loadGroup]);
+  useEffect(() => { loadGroups(); }, [loadGroups]);
   useEffect(() => { loadWingShares(); }, [loadWingShares]);
 
   const handleCreateGroup = async () => {
@@ -122,48 +157,82 @@ export default function FamilyPage() {
       showToast(result.error, "error");
     } else {
       showToast(t("groupCreated"), "success");
-      loadGroup();
+      setGroupName("");
+      setShowCreateForm(false);
+      if (result.group) {
+        setExpandedGroupId(result.group.id);
+      }
+      await loadGroups();
     }
   };
 
-  const handleInvite = async () => {
-    if (!inviteEmail.trim() || !inviteEmail.includes("@") || !group) return;
+  const handleInvite = async (groupId: string) => {
+    if (!inviteEmail.trim() || !inviteEmail.includes("@")) return;
     setInviting(true);
-    const result = await inviteFamilyMember(group.id, inviteEmail.trim(), inviteRole);
+    const result = await inviteFamilyMember(groupId, inviteEmail.trim(), inviteRole);
     setInviting(false);
     if (result.error) {
       showToast(result.error, "error");
     } else {
       showToast(t("inviteSent", { email: inviteEmail.trim() }), "success");
       setInviteEmail("");
-      loadGroup();
+      await loadGroups();
     }
   };
 
-  const handleAcceptInvite = async () => {
-    if (!group) return;
+  const handleResendInvite = async (groupId: string, member: FamilyMember) => {
+    setResendingId(member.id);
+    // Remove existing invite then re-invite
+    if (member.user_id) {
+      await removeFamilyMember(groupId, member.user_id);
+    } else {
+      // Invited members have no user_id — cancel by member row id
+      await cancelFamilyInvite(groupId, member.id);
+    }
+    const result = await inviteFamilyMember(groupId, member.email, member.role === "owner" ? "member" : member.role);
+    setResendingId(null);
+    if (result.error) {
+      showToast(result.error, "error");
+    } else {
+      showToast(t("inviteResent", { email: member.email }), "success");
+      await loadGroups();
+    }
+  };
+
+  const handleCopyInviteLink = async (groupId: string) => {
+    const link = `${window.location.origin}/join-family?group=${groupId}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast(t("inviteLinkCopied"), "success");
+    } catch {
+      // Clipboard write blocked by browser
+      showToast(t("clipboardError"), "error");
+    }
+  };
+
+  const handleAcceptInvite = async (groupId: string) => {
     setSaving(true);
-    const result = await acceptFamilyInvite(group.id);
+    const result = await acceptFamilyInvite(groupId);
     setSaving(false);
     if (result.error) {
       showToast(result.error, "error");
     } else {
       showToast(t("joinedSuccess"), "success");
-      loadGroup();
+      setExpandedGroupId(groupId);
+      await loadGroups();
     }
   };
 
-  const handleRemoveMember = async (userId: string, email: string) => {
-    if (!group) return;
-    if (!window.confirm(t("confirmRemoveMember", { email }))) return;
+  const handleRemoveMember = async (groupId: string, userId: string, email: string) => {
     setRemovingMemberId(userId);
-    const result = await removeFamilyMember(group.id, userId);
+    const result = await removeFamilyMember(groupId, userId);
     setRemovingMemberId(null);
+    setConfirmRemoveMember(null);
     if (result.error) {
       showToast(result.error, "error");
     } else {
       showToast(t("memberRemoved", { email }), "success");
-      loadGroup();
+      await loadGroups();
     }
   };
 
@@ -182,8 +251,8 @@ export default function FamilyPage() {
   };
 
   const handleUnshareWing = async (shareId: string) => {
-    if (!window.confirm(t("confirmUnshare"))) return;
     const result = await unshareWing(shareId);
+    setConfirmUnshareId(null);
     if (result.error) {
       showToast(result.error, "error");
     } else {
@@ -192,9 +261,43 @@ export default function FamilyPage() {
     }
   };
 
-  const canManage = userRole === "owner" || userRole === "admin";
+  const handleRenameGroup = async (groupId: string) => {
+    if (!editGroupName.trim()) return;
+    setRenamingSaving(true);
+    const result = await updateFamilyGroup(groupId, { name: editGroupName.trim() });
+    setRenamingSaving(false);
+    if (result.error) {
+      showToast(result.error, "error");
+    } else {
+      showToast(t("groupRenamed", { name: editGroupName.trim() }), "success");
+      setEditingGroupId(null);
+      setEditGroupName("");
+      await loadGroups();
+    }
+  };
 
-  const activeMembers = members.filter((m) => m.status === "active");
+  const handleDeleteGroup = async (groupId: string, groupName: string) => {
+    setDeletingGroupId(groupId);
+    const result = await deleteFamilyGroup(groupId);
+    setDeletingGroupId(null);
+    setShowDeleteConfirm(null);
+    if (result.error) {
+      showToast(result.error, "error");
+    } else {
+      showToast(t("groupDeleted", { name: groupName }), "success");
+      if (expandedGroupId === groupId) setExpandedGroupId(null);
+      await loadGroups();
+    }
+  };
+
+  // Collect all active members across all groups for wing sharing
+  const allOtherActiveMembers = groups.flatMap((g) =>
+    (g.members as FamilyMember[]).filter((m) => m.status === "active" && m.email.toLowerCase() !== userEmail.toLowerCase())
+  );
+  // Deduplicate by email
+  const uniqueOtherMembers = allOtherActiveMembers.filter(
+    (m, i, arr) => arr.findIndex((x) => x.email.toLowerCase() === m.email.toLowerCase()) === i
+  );
 
   const roleColor = (role: string) => {
     if (role === "owner") return T.color.terracotta;
@@ -214,6 +317,697 @@ export default function FamilyPage() {
       </div>
     );
   }
+
+  const hasGroups = groups.length > 0;
+  const hasPendingInvites = pendingInvites.length > 0;
+
+  /* Helper: render a single group card (used for each group in the list) */
+  const renderGroupCard = (entry: FamilyGroupEntry) => {
+    const { group: g, members: gMembers, userRole: gUserRole } = entry;
+    const grp = g as FamilyGroup;
+    const mems = gMembers as FamilyMember[];
+    const isExpanded = expandedGroupId === grp.id;
+    const canManage = gUserRole === "owner" || gUserRole === "admin";
+    const isCreator = gUserRole === "owner";
+    const isEditing = editingGroupId === grp.id;
+    const activeMembers = mems.filter((m) => m.status === "active");
+    const pendingMembers = mems.filter((m) => m.status === "invited");
+    const hasOnlyOwner = activeMembers.length <= 1 && pendingMembers.length === 0;
+
+    return (
+      <div key={grp.id} style={{
+        background: T.color.white,
+        borderRadius: "1rem",
+        border: isExpanded ? `2px solid ${T.color.gold}40` : `1px solid ${T.color.cream}`,
+        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        marginBottom: "1rem",
+        overflow: "hidden",
+        transition: "border-color .2s",
+      }}>
+        {/* Delete confirmation dialog */}
+        {showDeleteConfirm === grp.id && (
+          <div style={{
+            padding: "1.25rem 1.5rem",
+            background: `${T.color.error}08`,
+            borderBottom: `1px solid ${T.color.error}20`,
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem",
+            flexWrap: "wrap",
+          }}>
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
+              margin: 0, lineHeight: 1.5, flex: 1,
+            }}>
+              {t("deleteGroupConfirm")}
+            </p>
+            <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  borderRadius: "0.5rem",
+                  border: `1px solid ${T.color.cream}`,
+                  background: T.color.white,
+                  color: T.color.muted,
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "all .15s",
+                }}
+              >
+                {t("cancel")}
+              </button>
+              <button
+                onClick={() => handleDeleteGroup(grp.id, grp.name)}
+                disabled={deletingGroupId === grp.id}
+                style={{
+                  padding: "0.5rem 1rem",
+                  borderRadius: "0.5rem",
+                  border: "none",
+                  background: deletingGroupId === grp.id ? `${T.color.error}60` : T.color.error,
+                  color: "#FFF",
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  cursor: deletingGroupId === grp.id ? "default" : "pointer",
+                  transition: "all .15s",
+                  opacity: deletingGroupId === grp.id ? 0.7 : 1,
+                }}
+              >
+                {deletingGroupId === grp.id ? t("deleting") : t("deleteGroup")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Inline rename form */}
+        {isEditing && (
+          <div style={{
+            padding: "1rem 1.5rem",
+            background: `${T.color.gold}06`,
+            borderBottom: `1px solid ${T.color.gold}20`,
+            display: "flex", alignItems: "center", gap: "0.625rem",
+          }}>
+            <input
+              className="mp-settings-input"
+              autoFocus
+              type="text"
+              value={editGroupName}
+              onChange={(e) => setEditGroupName(e.target.value)}
+              placeholder={t("renameGroupPlaceholder")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleRenameGroup(grp.id);
+                if (e.key === "Escape") { setEditingGroupId(null); setEditGroupName(""); }
+              }}
+              style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
+            />
+            <button
+              onClick={() => handleRenameGroup(grp.id)}
+              disabled={!editGroupName.trim() || renamingSaving}
+              style={{
+                padding: "0.625rem 1.25rem",
+                borderRadius: "0.625rem",
+                border: "none",
+                background: !editGroupName.trim() || renamingSaving
+                  ? `${T.color.sandstone}60`
+                  : T.color.terracotta,
+                color: !editGroupName.trim() || renamingSaving ? T.color.muted : "#FFF",
+                fontFamily: T.font.body,
+                fontSize: "0.8125rem",
+                fontWeight: 600,
+                cursor: !editGroupName.trim() || renamingSaving ? "default" : "pointer",
+                transition: "all .15s",
+                flexShrink: 0,
+              }}
+            >
+              {renamingSaving ? t("renaming") : t("save")}
+            </button>
+            <button
+              onClick={() => { setEditingGroupId(null); setEditGroupName(""); }}
+              style={{
+                padding: "0.625rem 1rem",
+                borderRadius: "0.625rem",
+                border: `1px solid ${T.color.cream}`,
+                background: "transparent",
+                color: T.color.muted,
+                fontFamily: T.font.body,
+                fontSize: "0.8125rem",
+                fontWeight: 500,
+                cursor: "pointer",
+                transition: "all .15s",
+                flexShrink: 0,
+              }}
+            >
+              {t("cancel")}
+            </button>
+          </div>
+        )}
+
+        {/* Clickable group header */}
+        <button
+          onClick={() => setExpandedGroupId(isExpanded ? null : grp.id)}
+          style={{
+            width: "100%",
+            padding: "1.25rem 1.5rem",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            display: "flex", alignItems: "center", gap: "1rem",
+            textAlign: "left",
+          }}
+        >
+          <div style={{
+            width: "3rem", height: "3rem", borderRadius: "0.875rem",
+            background: `linear-gradient(135deg, ${T.color.gold}25, ${T.color.terracotta}15)`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "1.25rem",
+            border: `2px solid ${T.color.gold}30`,
+            flexShrink: 0,
+          }}>
+            {"\u{1F3DB}"}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{
+              fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+              color: T.color.charcoal, margin: 0,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {grp.name}
+            </h3>
+            <div style={{
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.125rem",
+              display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap",
+            }}>
+              <span>{mems.length !== 1 ? t("membersCount", { count: String(mems.length) }) : t("memberCount", { count: String(mems.length) })}</span>
+              <span style={{ color: T.color.cream }}>{"\u00B7"}</span>
+              <span style={{
+                display: "inline-block",
+                padding: "0.125rem 0.5rem",
+                borderRadius: "0.375rem",
+                background: `${roleColor(gUserRole)}15`,
+                color: roleColor(gUserRole),
+                fontSize: "0.6875rem",
+                fontWeight: 600,
+                textTransform: "capitalize",
+              }}>
+                {gUserRole === "owner" ? t("roleOwner") : gUserRole === "admin" ? t("roleAdmin") : t("roleMember")}
+              </span>
+            </div>
+          </div>
+
+          {/* Edit & Delete buttons (shown for owner/admin) */}
+          {canManage && (
+            <div
+              style={{ display: "flex", gap: "0.375rem", flexShrink: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Edit (pencil) button — owner or admin */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingGroupId(grp.id);
+                  setEditGroupName(grp.name);
+                }}
+                aria-label={t("renameGroup")}
+                title={t("renameGroup")}
+                style={{
+                  width: "2.25rem", height: "2.25rem", borderRadius: "0.5rem",
+                  border: `1px solid ${T.color.cream}`,
+                  background: `${T.color.gold}08`,
+                  color: T.color.walnut,
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all .15s",
+                }}
+              >
+                <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                  <path d="m15 5 4 4" />
+                </svg>
+              </button>
+              {/* Delete (trash) button — only creator */}
+              {isCreator && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDeleteConfirm(grp.id);
+                  }}
+                  aria-label={t("deleteGroup")}
+                  title={t("deleteGroup")}
+                  style={{
+                    width: "2.25rem", height: "2.25rem", borderRadius: "0.5rem",
+                    border: `1px solid ${T.color.cream}`,
+                    background: `${T.color.error}06`,
+                    color: T.color.error,
+                    cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all .15s",
+                  }}
+                >
+                  <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+
+          <svg
+            width="1.25rem" height="1.25rem" viewBox="0 0 24 24"
+            fill="none" stroke={T.color.muted} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"
+            style={{ flexShrink: 0, transform: isExpanded ? "rotate(90deg)" : "none", transition: "transform .2s" }}
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </button>
+
+        {/* Expanded content */}
+        {isExpanded && (
+          <div style={{ padding: "0 1.5rem 1.5rem" }}>
+            {/* Invite first member CTA */}
+            {hasOnlyOwner && canManage && (
+              <div style={{
+                padding: "1.25rem 1.5rem",
+                background: `linear-gradient(135deg, ${T.color.gold}08, ${T.color.terracotta}06)`,
+                borderRadius: "0.875rem",
+                border: `1.5px dashed ${T.color.gold}40`,
+                marginBottom: "1.25rem",
+                textAlign: "center",
+              }}>
+                <p style={{
+                  fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+                  margin: "0 0 1rem", lineHeight: 1.5,
+                }}>
+                  {t("inviteFirstMember")}
+                </p>
+                <button
+                  onClick={() => {
+                    const el = document.getElementById(`invite-email-${grp.id}`);
+                    if (el) el.focus();
+                  }}
+                  style={{
+                    padding: "0.75rem 1.75rem",
+                    borderRadius: "0.75rem",
+                    border: "none",
+                    background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
+                    color: "#FFF",
+                    fontFamily: T.font.body,
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all .2s",
+                  }}
+                >
+                  {t("inviteFirstMemberCta")}
+                </button>
+              </div>
+            )}
+
+            {/* Invite section */}
+            {canManage && (
+              <div style={{
+                padding: "1.25rem 1.375rem",
+                background: T.color.linen,
+                borderRadius: "0.875rem",
+                border: `1px solid ${T.color.cream}`,
+                marginBottom: "1.25rem",
+              }}>
+                <label htmlFor={`invite-email-${grp.id}`} style={labelStyle}>{t("inviteMember")}</label>
+                <p style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                  margin: "0 0 0.75rem", lineHeight: 1.5,
+                }}>
+                  {t("inviteExplanation")}
+                </p>
+                <div style={{ display: "flex", gap: "0.625rem", marginBottom: "0.75rem" }}>
+                  <input
+                    className="mp-settings-input"
+                    id={`invite-email-${grp.id}`}
+                    type="email"
+                    value={expandedGroupId === grp.id ? inviteEmail : ""}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    placeholder={t("emailPlaceholder")}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleInvite(grp.id); }}
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                  <button
+                    onClick={() => handleInvite(grp.id)}
+                    disabled={!inviteEmail.trim() || !inviteEmail.includes("@") || inviting}
+                    style={{
+                      padding: "0.875rem 1.5rem",
+                      borderRadius: "0.75rem",
+                      border: "none",
+                      background: !inviteEmail.trim() || inviting
+                        ? `${T.color.sandstone}60`
+                        : T.color.terracotta,
+                      color: !inviteEmail.trim() || inviting ? T.color.muted : "#FFF",
+                      fontFamily: T.font.body,
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      cursor: !inviteEmail.trim() || inviting ? "default" : "pointer",
+                      transition: "all .15s",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {inviting ? t("inviting") : t("invite")}
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.875rem" }}>
+                  {(["member", "admin"] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setInviteRole(r)}
+                      aria-pressed={inviteRole === r}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        borderRadius: "0.5rem",
+                        border: `1px solid ${inviteRole === r ? T.color.terracotta + "40" : T.color.cream}`,
+                        background: inviteRole === r ? `${T.color.terracotta}10` : T.color.white,
+                        cursor: "pointer",
+                        fontFamily: T.font.body,
+                        fontSize: "0.8125rem",
+                        color: inviteRole === r ? T.color.terracotta : T.color.muted,
+                        fontWeight: inviteRole === r ? 600 : 400,
+                        transition: "all .15s",
+                        textAlign: "left",
+                        flex: 1,
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: "0.125rem" }}>
+                        {r === "member" ? t("roleMember") : t("roleAdmin")}
+                      </div>
+                      <div style={{
+                        fontSize: "0.75rem", fontWeight: 400,
+                        color: inviteRole === r ? T.color.terracotta : T.color.muted,
+                        opacity: 0.85,
+                      }}>
+                        {r === "member" ? t("roleMemberDesc") : t("roleAdminDesc")}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => handleCopyInviteLink(grp.id)}
+                  style={{
+                    padding: "0.5rem 1rem",
+                    borderRadius: "0.5rem",
+                    border: `1px solid ${T.color.cream}`,
+                    background: T.color.white,
+                    cursor: "pointer",
+                    fontFamily: T.font.body,
+                    fontSize: "0.8125rem",
+                    color: T.color.walnut,
+                    fontWeight: 500,
+                    transition: "all .15s",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "0.375rem",
+                  }}
+                >
+                  <span style={{ fontSize: "0.875rem" }}>{"\u{1F517}"}</span>
+                  {t("copyInviteLink")}
+                </button>
+              </div>
+            )}
+
+            {/* Pending invites */}
+            {pendingMembers.length > 0 && (
+              <div style={{ marginBottom: "1.25rem" }}>
+                <label style={labelStyle}>{t("pendingInvites")}</label>
+                <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {pendingMembers.map((member) => (
+                    <div key={member.id} role="listitem" style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "0.75rem 1rem", borderRadius: "0.75rem",
+                      background: `${T.color.terracotta}06`,
+                      border: `1px dashed ${T.color.terracotta}25`,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", minWidth: 0 }}>
+                        <div style={{
+                          width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem",
+                          background: `${T.color.terracotta}15`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                          color: T.color.terracotta,
+                        }}>
+                          {member.email.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{
+                            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
+                            color: T.color.charcoal,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
+                            {member.email}
+                          </div>
+                          <div style={{
+                            fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                            display: "flex", alignItems: "center", gap: "0.375rem", marginTop: "0.125rem",
+                          }}>
+                            <span style={{
+                              display: "inline-block", width: "0.375rem", height: "0.375rem",
+                              borderRadius: "50%", background: T.color.terracotta, opacity: 0.6,
+                            }} />
+                            {t("statusInvited")}
+                          </div>
+                        </div>
+                      </div>
+                      {canManage && (
+                        <div style={{ display: "flex", gap: "0.375rem", flexShrink: 0 }}>
+                          <button
+                            onClick={() => handleResendInvite(grp.id, member)}
+                            disabled={resendingId === member.id}
+                            style={{
+                              padding: "0.375rem 0.75rem",
+                              borderRadius: "0.5rem",
+                              border: `1px solid ${T.color.terracotta}30`,
+                              background: T.color.white,
+                              color: T.color.terracotta,
+                              fontFamily: T.font.body,
+                              fontSize: "0.75rem",
+                              fontWeight: 600,
+                              cursor: resendingId === member.id ? "default" : "pointer",
+                              transition: "all .15s",
+                              opacity: resendingId === member.id ? 0.5 : 1,
+                            }}
+                          >
+                            {resendingId === member.id ? t("resending") : t("resend")}
+                          </button>
+                          {member.user_id && (
+                            confirmRemoveMember?.userId === member.user_id && confirmRemoveMember?.groupId === grp.id ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal }}>
+                                  {t("confirmRemoveShort")}
+                                </span>
+                                <button
+                                  onClick={() => handleRemoveMember(grp.id, member.user_id!, member.email)}
+                                  disabled={removingMemberId === member.user_id}
+                                  style={{
+                                    padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
+                                    border: "none", background: T.color.error, color: "#FFF",
+                                    fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                                    cursor: removingMemberId === member.user_id ? "default" : "pointer",
+                                    opacity: removingMemberId === member.user_id ? 0.7 : 1,
+                                    transition: "all .15s",
+                                  }}
+                                >
+                                  {removingMemberId === member.user_id ? t("removing") : t("confirmYes")}
+                                </button>
+                                <button
+                                  onClick={() => setConfirmRemoveMember(null)}
+                                  style={{
+                                    padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
+                                    border: `1px solid ${T.color.cream}`, background: T.color.white,
+                                    color: T.color.muted, fontFamily: T.font.body, fontSize: "0.6875rem",
+                                    fontWeight: 500, cursor: "pointer", transition: "all .15s",
+                                  }}
+                                >
+                                  {t("cancel")}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmRemoveMember({ groupId: grp.id, userId: member.user_id!, email: member.email })}
+                                aria-label={t("removeMember", { email: member.email })}
+                                style={{
+                                  width: "2rem", height: "2rem", borderRadius: "0.5rem",
+                                  border: `1px solid ${T.color.cream}`,
+                                  background: "transparent",
+                                  color: T.color.muted,
+                                  fontSize: "0.75rem",
+                                  cursor: "pointer",
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  transition: "all .15s",
+                                  minWidth: "2.5rem", minHeight: "2.5rem",
+                                }}
+                              >
+                                {"\u2715"}
+                              </button>
+                            )
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Active members list */}
+            <label style={labelStyle}>{t("members")}</label>
+            <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {activeMembers.map((member) => (
+                <div key={member.id} role="listitem" style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "0.875rem 1.125rem", borderRadius: "0.75rem",
+                  background: T.color.linen,
+                  border: `1px solid ${T.color.cream}`,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <div style={{
+                      width: "2.5rem", height: "2.5rem", borderRadius: "1.25rem",
+                      background: `linear-gradient(135deg, ${roleColor(member.role)}25, ${roleColor(member.role)}10)`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
+                      color: roleColor(member.role),
+                      border: `1.5px solid ${roleColor(member.role)}20`,
+                    }}>
+                      {member.email.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{
+                        fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
+                        color: T.color.charcoal,
+                      }}>
+                        {member.email}
+                        {member.email.toLowerCase() === userEmail.toLowerCase() && (
+                          <span style={{
+                            fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                            marginLeft: "0.375rem", fontStyle: "italic",
+                          }}>({t("youLabel")})</span>
+                        )}
+                      </div>
+                      <div style={{
+                        fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                        display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.125rem",
+                      }}>
+                        <span style={{
+                          display: "inline-block",
+                          padding: "1px 0.5rem",
+                          borderRadius: "0.375rem",
+                          background: `${roleColor(member.role)}15`,
+                          color: roleColor(member.role),
+                          fontSize: "0.6875rem",
+                          fontWeight: 600,
+                          textTransform: "capitalize",
+                        }}>
+                          {member.role === "owner" ? t("roleOwner") : member.role === "admin" ? t("roleAdmin") : t("roleMember")}
+                        </span>
+                        <span style={{ color: T.color.sage, display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <span style={{
+                            display: "inline-block", width: "0.375rem", height: "0.375rem",
+                            borderRadius: "50%", background: T.color.sage,
+                          }} />
+                          {t("statusActive")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", flexShrink: 0 }}>
+                    {member.email.toLowerCase() !== userEmail.toLowerCase() && (
+                      <a
+                        href={`mailto:${member.email}`}
+                        aria-label={t("sendEmail", { email: member.email })}
+                        title={t("sendEmail", { email: member.email })}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                          padding: "0.375rem 0.75rem",
+                          borderRadius: "0.5rem",
+                          border: `1px solid ${T.color.sage}30`,
+                          background: `${T.color.sage}08`,
+                          color: T.color.sage,
+                          fontFamily: T.font.body,
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          textDecoration: "none",
+                          cursor: "pointer",
+                          transition: "all .15s",
+                          minHeight: "2rem",
+                        }}
+                      >
+                        <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                          <rect width="20" height="16" x="2" y="4" rx="2" />
+                          <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                        </svg>
+                        {t("contactMember")}
+                      </a>
+                    )}
+                    {canManage && member.role !== "owner" && member.user_id && (
+                      confirmRemoveMember?.userId === member.user_id && confirmRemoveMember?.groupId === grp.id ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                          <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal }}>
+                            {t("confirmRemoveShort")}
+                          </span>
+                          <button
+                            onClick={() => handleRemoveMember(grp.id, member.user_id!, member.email)}
+                            disabled={removingMemberId === member.user_id}
+                            style={{
+                              padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
+                              border: "none", background: T.color.error, color: "#FFF",
+                              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                              cursor: removingMemberId === member.user_id ? "default" : "pointer",
+                              opacity: removingMemberId === member.user_id ? 0.7 : 1,
+                              transition: "all .15s",
+                            }}
+                          >
+                            {removingMemberId === member.user_id ? t("removing") : t("confirmYes")}
+                          </button>
+                          <button
+                            onClick={() => setConfirmRemoveMember(null)}
+                            style={{
+                              padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
+                              border: `1px solid ${T.color.cream}`, background: T.color.white,
+                              color: T.color.muted, fontFamily: T.font.body, fontSize: "0.6875rem",
+                              fontWeight: 500, cursor: "pointer", transition: "all .15s",
+                            }}
+                          >
+                            {t("cancel")}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmRemoveMember({ groupId: grp.id, userId: member.user_id!, email: member.email })}
+                          aria-label={t("removeMember", { email: member.email })}
+                          style={{
+                            width: "2rem", height: "2rem", borderRadius: "0.5rem",
+                            border: `1px solid ${T.color.cream}`,
+                            background: "transparent",
+                            color: T.color.muted,
+                            fontSize: "0.8125rem",
+                            cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            transition: "all .15s",
+                            minWidth: "2.75rem", minHeight: "2.75rem",
+                          }}
+                        >
+                          {"\u2715"}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -240,65 +1034,230 @@ export default function FamilyPage() {
 
       {/* Page header */}
       <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{
-          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 0.5rem",
-        }}>
-          {t("title")}
-        </h2>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+          <div style={{ flex: 1 }}>
+            <h2 style={{
+              fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+              color: T.color.charcoal, margin: "0 0 0.5rem",
+            }}>
+              {t("title")}
+            </h2>
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+              margin: 0, lineHeight: 1.5,
+            }}>
+              {t("description")}
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
+            <Link href="/family-tree" style={{
+              display: "inline-flex", alignItems: "center", gap: "0.5rem",
+              padding: "0.625rem 1.25rem",
+              borderRadius: "0.75rem",
+              border: `1.5px solid ${T.color.sage}40`,
+              background: `${T.color.sage}08`,
+              color: T.color.sage,
+              fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+              textDecoration: "none",
+              transition: "all .2s",
+            }}>
+              <svg width="1.125rem" height="1.125rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                <path d="M5 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                <path d="M19 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                <path d="M12 5v4" />
+                <path d="M5 16v-3a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v3" />
+              </svg>
+              {t("viewFamilyTree")}
+            </Link>
+          </div>
+        </div>
+        {/* Inclusive note */}
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
-          margin: 0, lineHeight: 1.5,
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
+          margin: "0.75rem 0 0", lineHeight: 1.5, fontStyle: "italic",
         }}>
-          {t("description")}
+          {t("inclusiveNote")}
         </p>
       </div>
 
-      {/* Pending invite */}
-      {pendingInvite && group && (
-        <div style={{
-          background: `${T.color.terracotta}08`,
-          borderRadius: "1rem",
-          border: `2px solid ${T.color.terracotta}30`,
-          padding: "1.75rem 2rem",
-          boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-          marginBottom: "1.5rem",
-        }}>
-          <h3 style={{
-            fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 0.5rem",
+      {/* Pending invites (user was invited by someone else) */}
+      {pendingInvites.map((inv) => {
+        const invGroup = inv.group as FamilyGroup;
+        return (
+          <div key={invGroup.id} style={{
+            background: `${T.color.terracotta}08`,
+            borderRadius: "1rem",
+            border: `2px solid ${T.color.terracotta}30`,
+            padding: "1.75rem 2rem",
+            boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+            marginBottom: "1rem",
           }}>
-            {t("invitedTitle")}
-          </h3>
-          <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
-            margin: "0 0 1.25rem", lineHeight: 1.5,
+            <h3 style={{
+              fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+              color: T.color.charcoal, margin: "0 0 0.5rem",
+            }}>
+              {t("invitedTitle")}
+            </h3>
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+              margin: "0 0 1.25rem", lineHeight: 1.5,
+            }}>
+              {t("invitedDescription", { name: invGroup.name })}
+            </p>
+            <button
+              onClick={() => handleAcceptInvite(invGroup.id)}
+              disabled={saving}
+              style={{
+                padding: "0.875rem 2rem",
+                borderRadius: "0.75rem",
+                border: "none",
+                background: saving ? `${T.color.sandstone}60` : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                color: saving ? T.color.muted : "#FFF",
+                fontFamily: T.font.body,
+                fontSize: "0.9375rem",
+                fontWeight: 600,
+                cursor: saving ? "default" : "pointer",
+                transition: "all .2s",
+              }}
+            >
+              {saving ? t("joining") : t("acceptInvite")}
+            </button>
+          </div>
+        );
+      })}
+
+      {/* ═══ NO GROUPS AT ALL: Warm CTA + benefits + how-it-works ═══ */}
+      {!hasGroups && !hasPendingInvites && (
+        <>
+          {/* Warm welcome CTA */}
+          <div style={{
+            background: `linear-gradient(135deg, ${T.color.gold}08, ${T.color.terracotta}06)`,
+            borderRadius: "1rem",
+            border: `2px solid ${T.color.gold}25`,
+            padding: "2rem 2rem 1.75rem",
+            marginBottom: "1.5rem",
+            textAlign: "center",
           }}>
-            {t("invitedDescription", { name: group.name })}
-          </p>
-          <button
-            onClick={handleAcceptInvite}
-            disabled={saving}
-            style={{
-              padding: "0.875rem 2rem",
-              borderRadius: "0.75rem",
-              border: "none",
-              background: saving ? `${T.color.sandstone}60` : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-              color: saving ? T.color.muted : "#FFF",
-              fontFamily: T.font.body,
-              fontSize: "0.9375rem",
-              fontWeight: 600,
-              cursor: saving ? "default" : "pointer",
-              transition: "all .2s",
-            }}
-          >
-            {saving ? t("joining") : t("acceptInvite")}
-          </button>
-        </div>
+            <div style={{
+              width: "4rem", height: "4rem", borderRadius: "50%",
+              background: `linear-gradient(135deg, ${T.color.gold}25, ${T.color.terracotta}15)`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 1.25rem",
+              border: `2px solid ${T.color.gold}30`,
+            }}>
+              <svg width="1.75rem" height="1.75rem" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <h3 style={{
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
+              color: T.color.charcoal, margin: "0 0 0.5rem",
+            }}>
+              {t("noGroupTitle")}
+            </h3>
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+              margin: "0 0 1.5rem", lineHeight: 1.6, maxWidth: "28rem", marginLeft: "auto", marginRight: "auto",
+            }}>
+              {t("noGroupDesc")}
+            </p>
+          </div>
+
+          {/* Benefits section */}
+          <div style={{
+            background: `${T.color.gold}08`,
+            borderRadius: "1rem",
+            border: `1px solid ${T.color.gold}20`,
+            padding: "1.75rem 2rem",
+            marginBottom: "1.5rem",
+          }}>
+            <h3 style={{
+              fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+              color: T.color.charcoal, margin: "0 0 1rem",
+            }}>
+              {t("benefitsTitle")}
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {(["benefit1", "benefit2", "benefit3", "benefit4"] as const).map((key) => (
+                <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem" }}>
+                  <span style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    width: "1.5rem", height: "1.5rem", borderRadius: "50%",
+                    background: `${T.color.gold}20`, color: T.color.gold,
+                    fontSize: "0.75rem", fontWeight: 700, flexShrink: 0, marginTop: "0.0625rem",
+                  }}>{"\u2713"}</span>
+                  <span style={{
+                    fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut, lineHeight: 1.5,
+                  }}>
+                    {t(key)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* How it works steps */}
+          <div style={{
+            background: T.color.white,
+            borderRadius: "1rem",
+            border: `1px solid ${T.color.cream}`,
+            padding: "1.75rem 2rem",
+            boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+            marginBottom: "1.5rem",
+          }}>
+            <h3 style={{
+              fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+              color: T.color.charcoal, margin: "0 0 1.25rem",
+            }}>
+              {t("stepsTitle")}
+            </h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(8.5rem, 1fr))", gap: "1rem" }}>
+              {([
+                { titleKey: "step1Title", descKey: "step1Desc" },
+                { titleKey: "step2Title", descKey: "step2Desc" },
+                { titleKey: "step3Title", descKey: "step3Desc" },
+                { titleKey: "step4Title", descKey: "step4Desc" },
+              ] as const).map((step, i) => (
+                <div key={step.titleKey} style={{
+                  textAlign: "center", padding: "1rem 0.75rem",
+                  borderRadius: "0.875rem",
+                  background: T.color.linen,
+                  border: `1px solid ${T.color.cream}`,
+                }}>
+                  <div style={{
+                    width: "2.5rem", height: "2.5rem", borderRadius: "50%",
+                    background: `linear-gradient(135deg, ${T.color.gold}30, ${T.color.terracotta}20)`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    margin: "0 auto 0.75rem",
+                    fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600,
+                    color: T.color.gold,
+                  }}>
+                    {STEP_ICONS[i]}
+                  </div>
+                  <div style={{
+                    fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600,
+                    color: T.color.charcoal, marginBottom: "0.25rem",
+                  }}>
+                    {t(step.titleKey)}
+                  </div>
+                  <div style={{
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, lineHeight: 1.4,
+                  }}>
+                    {t(step.descKey)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
-      {/* Create group (if no group) */}
-      {!group && !pendingInvite && (
+      {/* ═══ CREATE GROUP CARD (shown always — either as initial CTA or as "+ add another") ═══ */}
+      {(!hasGroups || showCreateForm) && (
         <div style={{
           background: T.color.white,
           borderRadius: "1rem",
@@ -323,6 +1282,7 @@ export default function FamilyPage() {
           <div>
             <label htmlFor="family-group-name" style={labelStyle}>{t("groupName")}</label>
             <input
+              className="mp-settings-input"
               id="family-group-name"
               type="text"
               value={groupName}
@@ -333,215 +1293,133 @@ export default function FamilyPage() {
             />
           </div>
 
-          <button
-            onClick={handleCreateGroup}
-            disabled={!groupName.trim() || saving}
-            style={{
-              marginTop: "1.25rem",
-              padding: "0.875rem 2rem",
-              borderRadius: "0.75rem",
-              border: "none",
-              background: !groupName.trim() || saving
-                ? `${T.color.sandstone}60`
-                : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-              color: !groupName.trim() || saving ? T.color.muted : "#FFF",
-              fontFamily: T.font.body,
-              fontSize: "0.9375rem",
-              fontWeight: 600,
-              cursor: !groupName.trim() || saving ? "default" : "pointer",
-              transition: "all .2s",
-            }}
-          >
-            {saving ? t("creating") : t("createGroupButton")}
-          </button>
+          <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.25rem" }}>
+            <button
+              onClick={handleCreateGroup}
+              disabled={!groupName.trim() || saving}
+              style={{
+                padding: "0.875rem 2rem",
+                borderRadius: "0.75rem",
+                border: "none",
+                background: !groupName.trim() || saving
+                  ? `${T.color.sandstone}60`
+                  : `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                color: !groupName.trim() || saving ? T.color.muted : "#FFF",
+                fontFamily: T.font.body,
+                fontSize: "0.9375rem",
+                fontWeight: 600,
+                cursor: !groupName.trim() || saving ? "default" : "pointer",
+                transition: "all .2s",
+              }}
+            >
+              {saving ? t("creating") : t("createGroupButton")}
+            </button>
+            {hasGroups && (
+              <button
+                onClick={() => { setShowCreateForm(false); setGroupName(""); }}
+                style={{
+                  padding: "0.875rem 1.5rem",
+                  borderRadius: "0.75rem",
+                  border: `1px solid ${T.color.cream}`,
+                  background: "transparent",
+                  color: T.color.muted,
+                  fontFamily: T.font.body,
+                  fontSize: "0.9375rem",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  transition: "all .2s",
+                }}
+              >
+                {t("close")}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Group info & members */}
-      {group && !pendingInvite && (
+      {/* ═══ GROUPS LIST ═══ */}
+      {hasGroups && (
         <>
-          {/* Group card */}
+          {/* Group count + add button */}
           <div style={{
-            background: T.color.white,
-            borderRadius: "1rem",
-            border: `1px solid ${T.color.cream}`,
-            padding: "1.75rem 2rem",
-            boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-            marginBottom: "1.5rem",
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            marginBottom: "1rem",
           }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                <div style={{
-                  width: "3.25rem", height: "3.25rem", borderRadius: "0.875rem",
-                  background: `linear-gradient(135deg, ${T.color.terracotta}20, ${T.color.walnut}15)`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "1.5rem",
-                }}>
-                  {"\u{1F3E0}"}
-                </div>
-                <div>
-                  <h3 style={{
-                    fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
-                    color: T.color.charcoal, margin: 0,
-                  }}>
-                    {group.name}
-                  </h3>
-                  <div style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.25rem",
-                  }}>
-                    {members.length !== 1 ? t("membersCount", { count: String(members.length) }) : t("memberCount", { count: String(members.length) })} &middot; {t("yourRole", { role: userRole })}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Invite section (owner/admin only) */}
-            {canManage && (
-              <div style={{
-                padding: "1.25rem 1.375rem",
-                background: T.color.linen,
-                borderRadius: "0.875rem",
-                border: `1px solid ${T.color.cream}`,
-                marginBottom: "1.5rem",
-              }}>
-                <label htmlFor="family-invite-email" style={labelStyle}>{t("inviteMember")}</label>
-                <div style={{ display: "flex", gap: "0.625rem", marginBottom: "0.75rem" }}>
-                  <input
-                    id="family-invite-email"
-                    type="email"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    placeholder={t("emailPlaceholder")}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleInvite(); }}
-                    style={{ ...inputStyle, flex: 1 }}
-                  />
-                  <button
-                    onClick={handleInvite}
-                    disabled={!inviteEmail.trim() || !inviteEmail.includes("@") || inviting}
-                    style={{
-                      padding: "0.875rem 1.5rem",
-                      borderRadius: "0.75rem",
-                      border: "none",
-                      background: !inviteEmail.trim() || inviting
-                        ? `${T.color.sandstone}60`
-                        : T.color.terracotta,
-                      color: !inviteEmail.trim() || inviting ? T.color.muted : "#FFF",
-                      fontFamily: T.font.body,
-                      fontSize: "0.875rem",
-                      fontWeight: 600,
-                      cursor: !inviteEmail.trim() || inviting ? "default" : "pointer",
-                      transition: "all .15s",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {inviting ? t("inviting") : t("invite")}
-                  </button>
-                </div>
-                {/* Role selector */}
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  {(["member", "admin"] as const).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setInviteRole(r)}
-                      aria-pressed={inviteRole === r}
-                      style={{
-                        padding: "0.5rem 1rem",
-                        borderRadius: "0.5rem",
-                        border: `1px solid ${inviteRole === r ? T.color.terracotta + "40" : T.color.cream}`,
-                        background: inviteRole === r ? `${T.color.terracotta}10` : T.color.white,
-                        cursor: "pointer",
-                        fontFamily: T.font.body,
-                        fontSize: "0.8125rem",
-                        color: inviteRole === r ? T.color.terracotta : T.color.muted,
-                        fontWeight: inviteRole === r ? 600 : 400,
-                        transition: "all .15s",
-                      }}
-                    >
-                      {r === "member" ? t("roleMember") : t("roleAdmin")}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <label style={{ ...labelStyle, marginBottom: 0 }}>
+              {t("yourGroups", { count: String(groups.length) })}
+            </label>
+            {!showCreateForm && (
+              <button
+                onClick={() => setShowCreateForm(true)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  borderRadius: "0.625rem",
+                  border: `1.5px solid ${T.color.terracotta}40`,
+                  background: `${T.color.terracotta}08`,
+                  color: T.color.terracotta,
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all .15s",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.375rem",
+                }}
+              >
+                <span style={{ fontSize: "1rem", lineHeight: 1 }}>+</span>
+                {t("addGroup")}
+              </button>
             )}
-
-            {/* Members list */}
-            <label style={labelStyle}>{t("members")}</label>
-            <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              {members.map((member) => (
-                <div key={member.id} role="listitem" style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "0.875rem 1.125rem", borderRadius: "0.75rem",
-                  background: T.color.linen,
-                  border: `1px solid ${T.color.cream}`,
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    <div style={{
-                      width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem",
-                      background: `${roleColor(member.role)}20`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                      color: roleColor(member.role),
-                    }}>
-                      {member.email.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div style={{
-                        fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-                        color: T.color.charcoal,
-                      }}>
-                        {member.email}
-                      </div>
-                      <div style={{
-                        fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
-                        display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.125rem",
-                      }}>
-                        <span style={{
-                          display: "inline-block",
-                          padding: "1px 0.5rem",
-                          borderRadius: "0.375rem",
-                          background: `${roleColor(member.role)}15`,
-                          color: roleColor(member.role),
-                          fontSize: "0.6875rem",
-                          fontWeight: 600,
-                          textTransform: "capitalize",
-                        }}>
-                          {member.role === "owner" ? t("roleOwner") : member.role === "admin" ? t("roleAdmin") : t("roleMember")}
-                        </span>
-                        <span style={{
-                          color: member.status === "active" ? T.color.sage : T.color.muted,
-                        }}>
-                          {member.status === "active" ? t("statusActive") : t("statusInvited")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Remove button (owner/admin, can't remove owner) */}
-                  {canManage && member.role !== "owner" && member.user_id && (
-                    <button
-                      onClick={() => handleRemoveMember(member.user_id!, member.email)}
-                      disabled={removingMemberId === member.user_id}
-                      aria-label={t("removeMember", { email: member.email })}
-                      style={{
-                        width: "2rem", height: "2rem", borderRadius: "0.5rem",
-                        border: `1px solid ${T.color.cream}`,
-                        background: "transparent",
-                        color: T.color.muted,
-                        fontSize: "0.8125rem",
-                        cursor: removingMemberId === member.user_id ? "default" : "pointer",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        transition: "all .15s",
-                        minWidth: "2.75rem", minHeight: "2.75rem",
-                        opacity: removingMemberId === member.user_id ? 0.5 : 1,
-                      }}
-                    >
-                      {removingMemberId === member.user_id ? "\u23F3" : "\u2715"}
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
           </div>
+
+          {/* Render each group card */}
+          {groups.map((entry) => renderGroupCard(entry))}
+
+          {/* ═══ FAMILY TREE LINK ═══ */}
+          <Link href="/family-tree" style={{ textDecoration: "none", display: "block" }}>
+            <div style={{
+              background: `linear-gradient(135deg, ${T.color.sage}08, ${T.color.gold}06)`,
+              borderRadius: "1rem",
+              border: `1.5px solid ${T.color.sage}25`,
+              padding: "1.25rem 1.5rem",
+              marginBottom: "1.5rem",
+              display: "flex", alignItems: "center", gap: "1rem",
+              cursor: "pointer",
+              transition: "all .2s",
+            }}>
+              <div style={{
+                width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem",
+                background: `linear-gradient(135deg, ${T.color.sage}20, ${T.color.sage}10)`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                flexShrink: 0,
+              }}>
+                <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none" stroke={T.color.sage} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                  <path d="M5 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                  <path d="M19 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                  <path d="M12 5v4" />
+                  <path d="M5 16v-3a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v3" />
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 500,
+                  color: T.color.charcoal, marginBottom: "0.125rem",
+                }}>
+                  {t("viewFamilyTree")}
+                </div>
+                <div style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, lineHeight: 1.4,
+                }}>
+                  {t("familyTreeDesc")}
+                </div>
+              </div>
+              <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </div>
+          </Link>
 
           {/* ═══ WING SHARING SECTION ═══ */}
           <div style={{
@@ -577,7 +1455,7 @@ export default function FamilyPage() {
             </div>
 
             {/* Share a wing form */}
-            {activeMembers.length > 1 && (
+            {uniqueOtherMembers.length > 0 && (
               <div style={{
                 padding: "1.25rem 1.375rem",
                 background: T.color.linen,
@@ -587,7 +1465,6 @@ export default function FamilyPage() {
               }}>
                 <label style={labelStyle}>{t("shareAWing")}</label>
 
-                {/* Wing selector */}
                 <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.875rem", flexWrap: "wrap" }}>
                   {WING_OPTION_IDS.map((wingId) => (
                     <button
@@ -612,7 +1489,6 @@ export default function FamilyPage() {
                   ))}
                 </div>
 
-                {/* Family member selector */}
                 <label htmlFor="family-share-member" style={{ ...labelStyle, marginTop: "0.5rem" }}>{t("familyMember")}</label>
                 <select
                   id="family-share-member"
@@ -626,14 +1502,11 @@ export default function FamilyPage() {
                   }}
                 >
                   <option value="">{t("selectMember")}</option>
-                  {activeMembers
-                    .filter((m) => m.email.toLowerCase() !== userEmail.toLowerCase())
-                    .map((m) => (
-                      <option key={m.id} value={m.email}>{m.email}</option>
-                    ))}
+                  {uniqueOtherMembers.map((m) => (
+                    <option key={m.id} value={m.email}>{m.email}</option>
+                  ))}
                 </select>
 
-                {/* Permission selector */}
                 <label style={{ ...labelStyle, marginTop: "0.25rem" }}>{t("permission")}</label>
                 <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
                   {(["view", "contribute"] as const).map((perm) => (
@@ -682,7 +1555,7 @@ export default function FamilyPage() {
               </div>
             )}
 
-            {activeMembers.length <= 1 && (
+            {uniqueOtherMembers.length === 0 && (
               <div style={{
                 padding: "1rem 1.25rem",
                 background: T.color.linen,
@@ -699,8 +1572,7 @@ export default function FamilyPage() {
               </div>
             )}
 
-            {/* Empty state for wing shares */}
-            {activeMembers.length > 1 && myWingShares.length === 0 && sharedWithMe.length === 0 && (
+            {uniqueOtherMembers.length > 0 && myWingShares.length === 0 && sharedWithMe.length === 0 && (
               <p style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
                 margin: "0 0 1rem", lineHeight: 1.5, fontStyle: "italic",
@@ -709,7 +1581,6 @@ export default function FamilyPage() {
               </p>
             )}
 
-            {/* My shared wings */}
             {myWingShares.length > 0 && (
               <>
                 <label style={labelStyle}>{t("wingsShared")}</label>
@@ -749,30 +1620,59 @@ export default function FamilyPage() {
                           {share.permission === "view" ? t("viewOnly") : t("canContribute")}
                         </span>
                       </div>
-                      <button
-                        onClick={() => handleUnshareWing(share.id)}
-                        aria-label={t("removeShare", { email: share.shared_with_email || "" })}
-                        style={{
-                          width: "1.75rem", height: "1.75rem", borderRadius: "0.4375rem",
-                          border: `1px solid ${T.color.cream}`,
-                          background: "transparent",
-                          color: T.color.muted,
-                          fontSize: "0.75rem",
-                          cursor: "pointer",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          transition: "all .15s",
-                          minWidth: "2.75rem", minHeight: "2.75rem",
-                        }}
-                      >
-                        {"\u2715"}
-                      </button>
+                      {confirmUnshareId === share.id ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", flexShrink: 0 }}>
+                          <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal }}>
+                            {t("confirmUnshareShort")}
+                          </span>
+                          <button
+                            onClick={() => handleUnshareWing(share.id)}
+                            style={{
+                              padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
+                              border: "none", background: T.color.error, color: "#FFF",
+                              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                              cursor: "pointer", transition: "all .15s",
+                            }}
+                          >
+                            {t("confirmYes")}
+                          </button>
+                          <button
+                            onClick={() => setConfirmUnshareId(null)}
+                            style={{
+                              padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
+                              border: `1px solid ${T.color.cream}`, background: T.color.white,
+                              color: T.color.muted, fontFamily: T.font.body, fontSize: "0.6875rem",
+                              fontWeight: 500, cursor: "pointer", transition: "all .15s",
+                            }}
+                          >
+                            {t("cancel")}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmUnshareId(share.id)}
+                          aria-label={t("removeShare", { email: share.shared_with_email || "" })}
+                          style={{
+                            width: "1.75rem", height: "1.75rem", borderRadius: "0.4375rem",
+                            border: `1px solid ${T.color.cream}`,
+                            background: "transparent",
+                            color: T.color.muted,
+                            fontSize: "0.75rem",
+                            cursor: "pointer",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            transition: "all .15s",
+                            minWidth: "2.75rem", minHeight: "2.75rem",
+                          }}
+                        >
+                          {"\u2715"}
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
               </>
             )}
 
-            {/* Shared with me */}
             {sharedWithMe.length > 0 && (
               <>
                 <label style={labelStyle}>{t("sharedWithMe")}</label>
@@ -818,7 +1718,7 @@ export default function FamilyPage() {
             )}
           </div>
 
-          {/* Info */}
+          {/* Info footer */}
           <div style={{
             padding: "1rem 1.25rem",
             background: `${T.color.warmStone}80`,
@@ -843,6 +1743,7 @@ export default function FamilyPage() {
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        ${settingsFocusStyle}
       `}</style>
     </div>
   );
@@ -871,5 +1772,14 @@ const inputStyle: React.CSSProperties = {
   color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box",
-  transition: "border-color .2s",
+  transition: "border-color .2s, box-shadow .2s",
 };
+
+/* ── Global focus-visible ring for settings inputs ── */
+const settingsFocusStyle = `
+  .mp-settings-input:focus-visible {
+    outline: 0.125rem solid ${T.color.terracotta};
+    outline-offset: 0.0625rem;
+    border-color: ${T.color.terracotta};
+  }
+`;

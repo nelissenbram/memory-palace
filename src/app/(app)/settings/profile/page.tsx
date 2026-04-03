@@ -14,18 +14,9 @@ import { useDaylight } from "@/components/providers/DaylightProvider";
 interface ProfileData {
   display_name: string;
   email: string;
-  goal: string;
   bio: string;
   avatar_url: string;
 }
-
-const GOAL_IDS = ["preserve", "legacy", "share", "organize"] as const;
-const GOAL_LABEL_KEYS: Record<string, string> = {
-  preserve: "goalPreserve",
-  legacy: "goalLegacy",
-  share: "goalShare",
-  organize: "goalOrganize",
-};
 
 /** Format hour (0-24 float) as HH:MM */
 function formatDaylightHour(h: number): string {
@@ -44,7 +35,6 @@ function daylightPeriodLabel(h: number, t: (k: string) => string): string {
 
 export default function ProfilePage() {
   const { t, locale, setLocale } = useTranslation("settings");
-  const { t: tOnboard } = useTranslation("onboarding");
   const { t: tc } = useTranslation("common");
   const { t: tA11y } = useTranslation("accessibility");
   const { accessibilityMode, toggleAccessibility } = useAccessibility();
@@ -59,11 +49,16 @@ export default function ProfilePage() {
   // Editable fields
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
-  const [goal, setGoal] = useState("");
   const [styleEra, setStyleEra] = useState("");
   const [aiConsent, setAiConsent] = useState(false);
-  const [aiBiometricConsent, setAiBiometricConsent] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
+  const [personaType, setPersonaType] = useState<string | null>(null);
+  const { t: tPersona } = useTranslation("persona" as "common");
+
+  // Load persona from localStorage
+  useEffect(() => {
+    setPersonaType(localStorage.getItem("mp_persona_type"));
+  }, []);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -95,17 +90,14 @@ export default function ProfilePage() {
           const p: ProfileData = {
             display_name: data.display_name || "",
             email: user.email || "",
-            goal: data.goal || "",
             bio: data.bio || "",
             avatar_url: data.avatar_url || "",
           };
           setProfile(p);
           setDisplayName(p.display_name);
           setBio(p.bio);
-          setGoal(p.goal);
           setStyleEra(data.style_era || "roman");
           setAiConsent(!!data.ai_consent);
-          setAiBiometricConsent(!!data.ai_biometric_consent);
         }
       } catch {
         // ignore
@@ -118,15 +110,13 @@ export default function ProfilePage() {
   const hasChanges =
     profile &&
     (displayName !== profile.display_name ||
-      bio !== profile.bio ||
-      goal !== profile.goal);
+      bio !== profile.bio);
 
   const handleSave = async () => {
     setSaving(true);
     const result = await updateProfile({
       displayName,
       bio,
-      goal,
     });
 
     if (result.error) {
@@ -135,7 +125,7 @@ export default function ProfilePage() {
       // Optimistic update
       setProfile((prev) =>
         prev
-          ? { ...prev, display_name: displayName, bio, goal }
+          ? { ...prev, display_name: displayName, bio }
           : prev
       );
       showToast(t("profileSaved"), "success");
@@ -153,7 +143,7 @@ export default function ProfilePage() {
   };
 
   const handleDeleteAccount = async () => {
-    if (deleteText !== "DELETE") return;
+    if (deleteText !== t("deleteConfirmWord")) return;
     setDeleting(true);
     const result = await deleteAccount();
     if (result.error) {
@@ -292,6 +282,7 @@ export default function ProfilePage() {
             <label htmlFor="profile-display-name" style={labelStyle}>{t("displayName")}</label>
             <input
               id="profile-display-name"
+              className="mp-settings-input"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -305,6 +296,7 @@ export default function ProfilePage() {
             <label htmlFor="profile-email" style={labelStyle}>{t("emailAddress")}</label>
             <input
               id="profile-email"
+              className="mp-settings-input"
               type="email"
               value={profile.email}
               readOnly
@@ -328,6 +320,7 @@ export default function ProfilePage() {
             <label htmlFor="profile-bio" style={labelStyle}>{t("aboutMe")}</label>
             <textarea
               id="profile-bio"
+              className="mp-settings-input"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder={t("aboutMePlaceholder")}
@@ -340,45 +333,6 @@ export default function ProfilePage() {
               }}
             />
           </div>
-
-          {/* Goal */}
-          <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
-            <legend style={labelStyle}>{t("yourGoal")}</legend>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-              margin: "0 0 0.625rem", lineHeight: 1.4,
-            }}>
-              {t("goalDescription")}
-            </p>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "0.625rem",
-            }}>
-              {GOAL_IDS.map((gId) => (
-                <button
-                  key={gId}
-                  onClick={() => setGoal(gId)}
-                  aria-pressed={goal === gId}
-                  style={{
-                    padding: "0.875rem 1rem",
-                    borderRadius: "0.75rem",
-                    border: `2px solid ${goal === gId ? T.color.terracotta : T.color.cream}`,
-                    background: goal === gId ? `${T.color.terracotta}12` : T.color.linen,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    transition: "all .2s",
-                    fontFamily: T.font.body,
-                    fontSize: "0.875rem",
-                    fontWeight: goal === gId ? 600 : 400,
-                    color: goal === gId ? T.color.terracotta : T.color.charcoal,
-                  }}
-                >
-                  {tOnboard(GOAL_LABEL_KEYS[gId])}
-                </button>
-              ))}
-            </div>
-          </fieldset>
 
           {/* Palace Style */}
           <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
@@ -433,6 +387,91 @@ export default function ProfilePage() {
               })}
             </div>
           </fieldset>
+
+          {/* Memory Style / Persona */}
+          <fieldset style={{ border: "none", padding: 0, margin: 0 }}>
+            <legend style={labelStyle}>{t("yourMemoryStyle")}</legend>
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              margin: "0 0 0.625rem", lineHeight: 1.4,
+            }}>
+              {t("memoryStyleDesc")}
+            </p>
+            {personaType ? (
+              <div style={{
+                display: "flex", alignItems: "center", gap: "1rem",
+                padding: "1rem 1.25rem", borderRadius: "0.75rem",
+                background: `${T.color.gold}08`,
+                border: `0.0625rem solid ${T.color.gold}30`,
+              }}>
+                <div style={{
+                  width: "2.5rem", height: "2.5rem", borderRadius: "50%",
+                  background: `${T.color.gold}18`, border: `0.0625rem solid ${T.color.gold}40`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" />
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
+                    color: T.color.charcoal,
+                  }}>
+                    {tPersona("resultTitle").replace("{type}", tPersona(`${personaType}Label`))}
+                  </div>
+                  <div style={{
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                    marginTop: "0.125rem", lineHeight: 1.45,
+                  }}>
+                    {tPersona(`${personaType}Desc`)}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem("mp_persona_type");
+                    setPersonaType(null);
+                    showToast(t("personaReset"), "success");
+                  }}
+                  style={{
+                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                    color: T.color.terracotta, background: "none",
+                    border: `0.0625rem solid ${T.color.terracotta}30`,
+                    borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
+                    cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
+                  }}
+                >
+                  {t("retakeQuiz")}
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                padding: "1rem 1.25rem", borderRadius: "0.75rem",
+                background: T.color.linen, border: `0.0625rem solid ${T.color.cream}`,
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}>
+                <span style={{
+                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+                }}>
+                  {t("noPersonaYet")}
+                </span>
+                <button
+                  onClick={() => { window.location.href = "/palace"; }}
+                  style={{
+                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                    color: T.color.terracotta, background: "none",
+                    border: `0.0625rem solid ${T.color.terracotta}30`,
+                    borderRadius: "0.5rem", padding: "0.5rem 0.875rem",
+                    cursor: "pointer", flexShrink: 0, transition: "all 0.2s",
+                  }}
+                >
+                  {t("takeQuiz")}
+                </button>
+              </div>
+            )}
+          </fieldset>
         </div>
 
         {/* Save button */}
@@ -463,7 +502,6 @@ export default function ProfilePage() {
               onClick={() => {
                 setDisplayName(profile.display_name);
                 setBio(profile.bio);
-                setGoal(profile.goal);
               }}
               style={{
                 padding: "0.875rem 1.5rem",
@@ -605,13 +643,7 @@ export default function ProfilePage() {
                 const newVal = !aiConsent;
                 setAiSaving(true);
                 setAiConsent(newVal);
-                // If disabling general AI, also disable biometric
-                if (!newVal && aiBiometricConsent) {
-                  setAiBiometricConsent(false);
-                  await updateProfile({ aiConsent: newVal, aiBiometricConsent: false });
-                } else {
-                  await updateProfile({ aiConsent: newVal });
-                }
+                await updateProfile({ aiConsent: newVal });
                 showToast(newVal ? t("aiConsentOn") : t("aiConsentOff"), "success");
                 setAiSaving(false);
               }}
@@ -642,67 +674,6 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Biometric AI consent toggle */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen,
-            border: `1px solid ${T.color.cream}`,
-            opacity: aiConsent ? 1 : 0.5,
-            pointerEvents: aiConsent ? "auto" : "none",
-          }}>
-            <div style={{ marginRight: "1rem" }}>
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                color: T.color.charcoal,
-              }}>
-                {t("aiBiometricConsent")}
-              </div>
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-                marginTop: "0.25rem", lineHeight: 1.4,
-              }}>
-                {t("aiBiometricConsentDesc")}
-              </div>
-            </div>
-            <button
-              role="switch"
-              aria-checked={aiBiometricConsent}
-              disabled={aiSaving || !aiConsent}
-              onClick={async () => {
-                const newVal = !aiBiometricConsent;
-                setAiSaving(true);
-                setAiBiometricConsent(newVal);
-                await updateProfile({ aiBiometricConsent: newVal });
-                showToast(newVal ? t("aiBiometricOn") : t("aiBiometricOff"), "success");
-                setAiSaving(false);
-              }}
-              style={{
-                width: "3.25rem",
-                height: "1.75rem",
-                borderRadius: "0.875rem",
-                border: "none",
-                background: aiBiometricConsent ? T.color.sage : T.color.sandstone,
-                cursor: aiSaving || !aiConsent ? "default" : "pointer",
-                position: "relative",
-                transition: "background .2s",
-                flexShrink: 0,
-                opacity: aiSaving ? 0.6 : 1,
-              }}
-            >
-              <span style={{
-                position: "absolute",
-                top: "0.1875rem",
-                left: aiBiometricConsent ? "1.6875rem" : "0.1875rem",
-                width: "1.375rem",
-                height: "1.375rem",
-                borderRadius: "0.6875rem",
-                background: T.color.white,
-                boxShadow: "0 1px 4px rgba(0,0,0,.15)",
-                transition: "left .2s",
-              }} />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1023,11 +994,23 @@ export default function ProfilePage() {
             <p style={{
               fontFamily: T.font.body, fontSize: "0.875rem", color: "#7F1D1D",
               margin: "0 0 1rem", lineHeight: 1.5,
-            }}
-              dangerouslySetInnerHTML={{ __html: t("deleteConfirmDescription") }}
-            />
+            }}>
+              {(() => {
+                const raw = t("deleteConfirmDescription");
+                const parts = raw.split(/\{boldStart\}|\{boldEnd\}/);
+                // parts[0] = before, parts[1] = bold text, parts[2] = after
+                return (
+                  <>
+                    {parts[0]}
+                    {parts[1] && <strong>{parts[1]}</strong>}
+                    {parts[2]}
+                  </>
+                );
+              })()}
+            </p>
             <input
               id="profile-delete-confirm"
+              className="mp-settings-input"
               aria-label={t("deleteConfirmTitle")}
               type="text"
               value={deleteText}
@@ -1042,24 +1025,24 @@ export default function ProfilePage() {
             <div style={{ display: "flex", gap: "0.625rem" }}>
               <button
                 onClick={handleDeleteAccount}
-                disabled={deleteText !== "DELETE" || deleting}
+                disabled={deleteText !== t("deleteConfirmWord") || deleting}
                 style={{
                   padding: "0.75rem 1.5rem",
                   borderRadius: "0.625rem",
                   border: "none",
                   background:
-                    deleteText === "DELETE" && !deleting
+                    deleteText === t("deleteConfirmWord") && !deleting
                       ? "#B91C1C"
                       : `${T.color.sandstone}60`,
                   color:
-                    deleteText === "DELETE" && !deleting
+                    deleteText === t("deleteConfirmWord") && !deleting
                       ? "#FFF"
                       : T.color.muted,
                   fontFamily: T.font.body,
                   fontSize: "0.875rem",
                   fontWeight: 600,
                   cursor:
-                    deleteText === "DELETE" && !deleting
+                    deleteText === t("deleteConfirmWord") && !deleting
                       ? "pointer"
                       : "default",
                   transition: "all .15s",
@@ -1094,6 +1077,7 @@ export default function ProfilePage() {
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        ${settingsFocusStyle}
       `}</style>
     </div>
   );
@@ -1122,5 +1106,14 @@ const inputStyle: React.CSSProperties = {
   color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box" as const,
-  transition: "border-color .2s",
+  transition: "border-color .2s, box-shadow .2s",
 };
+
+/* ── Global focus-visible ring for settings inputs ── */
+const settingsFocusStyle = `
+  .mp-settings-input:focus-visible {
+    outline: 0.125rem solid ${T.color.terracotta};
+    outline-offset: 0.0625rem;
+    border-color: ${T.color.terracotta};
+  }
+`;

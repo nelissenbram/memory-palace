@@ -62,7 +62,7 @@ export default function ServiceWorkerRegistration() {
         });
       })
       .catch((error) => {
-        console.log("SW registration failed:", error);
+        console.error("SW registration failed:", error);
       });
   }, []);
 

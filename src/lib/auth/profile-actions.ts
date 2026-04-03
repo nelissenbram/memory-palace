@@ -31,17 +31,20 @@ export async function completeOnboarding(data: {
     return { error: "Not authenticated" };
   }
 
-  // Update profile
+  // Upsert profile — handles edge case where DB trigger didn't create the row
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({
-      display_name: data.displayName,
-      goal: data.goal,
-      first_wing: data.firstWing,
-      style_era: data.styleEra || "roman",
-      onboarded: true,
-    })
-    .eq("id", user.id);
+    .upsert(
+      {
+        id: user.id,
+        display_name: data.displayName,
+        goal: data.goal,
+        first_wing: data.firstWing,
+        style_era: data.styleEra || "roman",
+        onboarded: true,
+      },
+      { onConflict: "id" }
+    );
 
   if (profileError) {
     return { error: profileError.message };

@@ -30,13 +30,9 @@ interface PalaceState {
 }
 
 function loadNavMode(): NavMode {
-  if (typeof window === "undefined") return "atrium";
-  try {
-    const stored = localStorage.getItem("mp_nav_mode");
-    if (stored === "atrium" || stored === "3d" || stored === "library") return stored;
-    // Migrate legacy "home" value
-    if (stored === "home") return "atrium";
-  } catch {}
+  // Always start in atrium on fresh page load.
+  // localStorage is still written on mode switch (for mid-session nav)
+  // but never restored on initial load.
   return "atrium";
 }
 
@@ -109,7 +105,7 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
 
   switchWing: (id) => {
     const { activeWing, view } = get();
-    if (view === "exterior") { get().enterWing(id); return; }
+    if (view === "exterior") { get().enterCorridor(id); return; }
     if (view === "entrance") { get().enterCorridor(id); return; }
     if (activeWing !== id) {
       get().fade(() => set({ activeWing: id, activeRoomId: null, view: "corridor", opacity: 1 }));

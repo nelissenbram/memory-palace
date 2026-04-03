@@ -1,9 +1,189 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, ReactNode } from "react";
 import { T } from "@/lib/theme";
-import { usePushNotificationStore } from "@/lib/stores/pushNotificationStore";
+import { usePushNotificationStore, NotificationPreferences } from "@/lib/stores/pushNotificationStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import Toast, { type ToastData } from "@/components/ui/Toast";
+
+// ── Custom SVG Icons (Roman/Tuscan aesthetic) ──
+
+function IconBell() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C12 2 12.5 2 13 2.5C13.5 3 14 4 14 5V5.5C16.5 6.5 18 9 18 12V16L20 18H4L6 16V12C6 9 7.5 6.5 10 5.5V5C10 4 10.5 3 11 2.5C11.5 2 12 2 12 2Z" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 18C10 19.1 10.9 20 12 20C13.1 20 14 19.1 14 18" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="5" r="1" fill={T.color.gold} opacity="0.4" />
+    </svg>
+  );
+}
+
+function IconOnThisDay() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="4" width="18" height="17" rx="2" stroke={T.color.gold} strokeWidth="1.5" />
+      <path d="M3 9H21" stroke={T.color.gold} strokeWidth="1.5" />
+      <path d="M8 2V5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M16 2V5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 13L13.1 15.3L15.7 15.6L13.8 17.3L14.3 19.9L12 18.6L9.7 19.9L10.2 17.3L8.3 15.6L10.9 15.3L12 13Z" fill={T.color.gold} opacity="0.5" stroke={T.color.gold} strokeWidth="1" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconTimeCapsule() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C9 2 8 3.5 8 5V6H16V5C16 3.5 15 2 12 2Z" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="7" y="6" width="10" height="4" rx="1" stroke={T.color.gold} strokeWidth="1.5" />
+      <path d="M8 10L7 20C7 21 7.5 22 9 22H15C16.5 22 17 21 17 20L16 10" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 14V18" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="14" r="1" fill={T.color.gold} opacity="0.5" />
+    </svg>
+  );
+}
+
+function IconMilestone() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2L14.5 7.5L20.5 8.2L16 12.4L17.2 18.3L12 15.5L6.8 18.3L8 12.4L3.5 8.2L9.5 7.5L12 2Z" stroke={T.color.gold} strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="12" cy="10" r="2" fill={T.color.gold} opacity="0.3" />
+      <path d="M8 21H16" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 18V21" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconFamily() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="9" cy="7" r="3" stroke={T.color.gold} strokeWidth="1.5" />
+      <circle cx="17" cy="7" r="2.5" stroke={T.color.gold} strokeWidth="1.5" />
+      <path d="M3 20C3 16.7 5.7 14 9 14C10.5 14 11.8 14.5 12.8 15.4" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 20C14 17.2 15.3 15 17 15C18.7 15 20 17.2 20 20" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5 19L7 17L9 19L11 17" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+    </svg>
+  );
+}
+
+function IconInterview() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="10" r="5" stroke={T.color.gold} strokeWidth="1.5" />
+      <path d="M12 7V10L14 11.5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 18C5 16 8 14.5 12 14.5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+      <path d="M17 17L19 19" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M15 19L17 17L19 19" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconWeeklySummary() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="3" width="16" height="18" rx="2" stroke={T.color.gold} strokeWidth="1.5" />
+      <path d="M8 8H16" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 12H14" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 16H12" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="17" cy="17" r="1.5" fill={T.color.gold} opacity="0.4" />
+    </svg>
+  );
+}
+
+function IconScroll() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 3C4.9 3 4 3.9 4 5V19C4 20.1 4.9 21 6 21" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M6 3H18C19.1 3 20 3.9 20 5V17C20 18.1 19.1 19 18 19H8C6.9 19 6 19.9 6 21V3Z" stroke={T.color.gold} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M10 8H16" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M10 12H15" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="17" cy="20" r="2" stroke={T.color.gold} strokeWidth="1.5" fill={T.color.gold} opacity="0.3" />
+    </svg>
+  );
+}
+
+function IconCalendarTablet() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="18" height="18" rx="2" stroke={T.color.gold} strokeWidth="1.5" />
+      <path d="M3 8H21" stroke={T.color.gold} strokeWidth="1.5" />
+      <rect x="6" y="11" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.3" />
+      <rect x="10.5" y="11" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.3" />
+      <rect x="15" y="11" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.3" />
+      <rect x="6" y="15.5" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.2" />
+      <rect x="10.5" y="15.5" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.2" />
+    </svg>
+  );
+}
+
+function IconMemories() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="4" width="16" height="16" rx="2" stroke={T.color.gold} strokeWidth="1.5" />
+      <rect x="6" y="6" width="12" height="12" rx="1" stroke={T.color.gold} strokeWidth="1" opacity="0.4" />
+      <path d="M6 16L10 12L13 15L16 11L18 14" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 8C1.5 6 2 4 2 4" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <path d="M22 8C22.5 6 22 4 22 4" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <path d="M2 16C1.5 18 2 20 2 20" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <path d="M22 16C22.5 18 22 20 22 20" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+    </svg>
+  );
+}
+
+function IconInfoPillar() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="8" y="6" width="8" height="14" stroke={T.color.gold} strokeWidth="1.5" />
+      <path d="M6 6H18" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M6 20H18" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5 4H19" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5 22H19" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="11" r="1.5" fill={T.color.gold} opacity="0.5" />
+      <path d="M12 14V17" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconSystemUpdates() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="8" stroke={T.color.gold} strokeWidth="1.5" />
+      <path d="M12 8V12L15 14" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 3L3 5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M19 3L21 5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 4V2" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// ── Notification Category Config ──
+
+type PushPrefKey = "onThisDay" | "timeCapsule" | "memoryMilestones" | "familyActivity" | "interviewReminders" | "weeklySummaryPush" | "systemUpdates";
+type EmailPrefKey = "emailDigest" | "monthlyHighlights" | "familyUpdatesEmail";
+
+interface CategoryItem<K> {
+  key: K;
+  titleKey: string;
+  descKey: string;
+  icon: ReactNode;
+}
+
+const PUSH_CATEGORIES: CategoryItem<PushPrefKey>[] = [
+  { key: "onThisDay", titleKey: "onThisDayTitle", descKey: "onThisDayDesc", icon: <IconOnThisDay /> },
+  { key: "timeCapsule", titleKey: "timeCapsuleTitle", descKey: "timeCapsuleDesc", icon: <IconTimeCapsule /> },
+  { key: "memoryMilestones", titleKey: "memoryMilestonesTitle", descKey: "memoryMilestonesDesc", icon: <IconMilestone /> },
+  { key: "familyActivity", titleKey: "familyActivityTitle", descKey: "familyActivityDesc", icon: <IconFamily /> },
+  { key: "interviewReminders", titleKey: "interviewRemindersTitle", descKey: "interviewRemindersDesc", icon: <IconInterview /> },
+  { key: "weeklySummaryPush", titleKey: "weeklySummaryPushTitle", descKey: "weeklySummaryPushDesc", icon: <IconWeeklySummary /> },
+  { key: "systemUpdates", titleKey: "systemUpdatesTitle", descKey: "systemUpdatesDesc", icon: <IconSystemUpdates /> },
+];
+
+const EMAIL_CATEGORIES: CategoryItem<EmailPrefKey>[] = [
+  { key: "emailDigest", titleKey: "weeklyDigestTitle", descKey: "weeklyDigestDesc", icon: <IconScroll /> },
+  { key: "monthlyHighlights", titleKey: "monthlyHighlightsTitle", descKey: "monthlyHighlightsDesc", icon: <IconCalendarTablet /> },
+  { key: "familyUpdatesEmail", titleKey: "familyUpdatesEmailTitle", descKey: "familyUpdatesEmailDesc", icon: <IconMemories /> },
+];
+
+// ── Main Page ──
 
 export default function NotificationsPage() {
   const { t } = useTranslation("notifications");
@@ -11,7 +191,7 @@ export default function NotificationsPage() {
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const [subscribing, setSubscribing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<ToastData | null>(null);
 
   useEffect(() => {
     init();
@@ -20,7 +200,7 @@ export default function NotificationsPage() {
     } else {
       setPermission(Notification.permission);
     }
-    // Load email digest preference from server profile
+    // Load email preferences from server profile
     (async () => {
       try {
         const { createClient } = await import("@/lib/supabase/client");
@@ -29,11 +209,15 @@ export default function NotificationsPage() {
         if (user) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("email_digest")
+            .select("email_digest, monthly_highlights, family_updates_email")
             .eq("id", user.id)
             .single();
-          if (profile && typeof profile.email_digest === "boolean") {
-            setPrefs({ emailDigest: profile.email_digest });
+          if (profile) {
+            const updates: Partial<NotificationPreferences> = {};
+            if (typeof profile.email_digest === "boolean") updates.emailDigest = profile.email_digest;
+            if (typeof profile.monthly_highlights === "boolean") updates.monthlyHighlights = profile.monthly_highlights;
+            if (typeof profile.family_updates_email === "boolean") updates.familyUpdatesEmail = profile.family_updates_email;
+            if (Object.keys(updates).length > 0) setPrefs(updates);
           }
         }
       } catch {
@@ -41,14 +225,6 @@ export default function NotificationsPage() {
       }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-dismiss toast
-  useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [toast]);
 
   const handleTogglePush = useCallback(async () => {
     if (prefs.pushEnabled) {
@@ -117,35 +293,10 @@ export default function NotificationsPage() {
     setSubscribing(false);
   }, [prefs.pushEnabled, setPrefs, t]);
 
-  const [savingEmail, setSavingEmail] = useState(false);
-
-  const handleToggleEmailDigest = useCallback(async () => {
-    const newVal = !prefs.emailDigest;
-    setPrefs({ emailDigest: newVal });
-
-    setSavingEmail(true);
-    try {
-      await fetch("/api/notifications/subscribe", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailDigest: newVal }),
-      });
-      setToast({
-        message: newVal ? t("weeklyDigestEnabled") : t("weeklyDigestDisabled"),
-        type: "success",
-      });
-    } catch {
-      setPrefs({ emailDigest: !newVal });
-      setToast({ message: t("saveFailed"), type: "error" });
-    }
-    setSavingEmail(false);
-  }, [prefs.emailDigest, setPrefs, t]);
-
-  const handleToggleType = useCallback(async (key: "onThisDay" | "timeCapsule") => {
+  const handleToggleCategory = useCallback(async (key: keyof NotificationPreferences) => {
     const newVal = !prefs[key];
     setPrefs({ [key]: newVal });
 
-    // Sync preference to server
     setSaving(true);
     try {
       await fetch("/api/notifications/subscribe", {
@@ -154,7 +305,6 @@ export default function NotificationsPage() {
         body: JSON.stringify({ [key]: newVal }),
       });
     } catch {
-      // Revert on failure
       setPrefs({ [key]: !newVal });
       setToast({ message: t("saveFailed"), type: "error" });
     }
@@ -168,23 +318,7 @@ export default function NotificationsPage() {
     <div>
       {/* Toast */}
       {toast && (
-        <div role={toast.type === "success" ? "status" : "alert"} style={{
-          position: "fixed", top: "1.5rem", right: "1.5rem", zIndex: 100,
-          padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? "#4A6741" : "#C05050",
-          color: "#FFF",
-          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-          boxShadow: "0 8px 24px rgba(0,0,0,.15)",
-          animation: "fadeIn .2s ease",
-          display: "flex", alignItems: "center", gap: "0.625rem",
-        }}>
-          <span aria-hidden="true">{toast.type === "success" ? "\u2713" : "\u26A0"}</span>
-          {toast.message}
-          <button onClick={() => setToast(null)} aria-label="Close"  style={{
-            background: "none", border: "none", color: "#FFF",
-            fontSize: "0.875rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
-          }}>{"\u2715"}</button>
-        </div>
+        <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
 
       {/* Page header */}
@@ -235,7 +369,7 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {/* Push notifications toggle */}
+      {/* ── Push Notifications Section ── */}
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
@@ -243,24 +377,37 @@ export default function NotificationsPage() {
         boxShadow: "0 2px 8px rgba(44,44,42,.04)",
         overflow: "hidden",
       }}>
+        {/* Section header */}
+        <div style={{
+          padding: "1rem 1.5rem 0.5rem",
+        }}>
+          <h3 style={{
+            fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
+            color: T.color.muted, margin: 0,
+            textTransform: "uppercase" as const,
+            letterSpacing: "0.03125rem",
+          }}>
+            {t("pushSectionHeader")}
+          </h3>
+        </div>
+
         {/* Main push toggle */}
         <div style={{
-          padding: "1.25rem 1.5rem",
+          padding: "1rem 1.5rem",
           display: "flex", alignItems: "center", gap: "1rem",
         }}>
           <div style={{
             width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", flexShrink: 0,
-            background: prefs.pushEnabled ? `${T.color.sage}12` : T.color.warmStone,
+            background: prefs.pushEnabled ? `${T.color.gold}14` : T.color.warmStone,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "1.25rem",
           }}>
-            {"\uD83D\uDD14"}
+            <IconBell />
           </div>
 
           <div style={{ flex: 1 }}>
             <h3 style={{
               fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600,
-              color: T.color.charcoal, margin: "0 0 2px",
+              color: T.color.charcoal, margin: "0 0 0.125rem",
             }}>
               {t("pushNotifications")}
             </h3>
@@ -280,71 +427,51 @@ export default function NotificationsPage() {
           />
         </div>
 
-        {/* Divider + notification type toggles */}
+        {/* Push sub-category toggles */}
         {prefs.pushEnabled && (
           <>
-            <div style={{ height: 1, background: T.color.cream, margin: "0 1.5rem" }} />
-
-            {/* On This Day */}
-            <div style={{
-              padding: "1rem 1.5rem 1rem 5.25rem",
-              display: "flex", alignItems: "center", gap: "1rem",
-            }}>
-              <div style={{ flex: 1 }}>
-                <h4 style={{
-                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: T.color.charcoal, margin: "0 0 2px",
+            {PUSH_CATEGORIES.map((cat, i) => (
+              <div key={cat.key}>
+                <div style={{ height: "0.0625rem", background: T.color.cream, margin: "0 1.5rem" }} />
+                <div style={{
+                  padding: "0.875rem 1.5rem",
+                  display: "flex", alignItems: "center", gap: "0.875rem",
                 }}>
-                  {t("onThisDayTitle")}
-                </h4>
-                <p style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
-                  margin: 0,
-                }}>
-                  {t("onThisDayDesc")}
-                </p>
+                  <div style={{
+                    width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", flexShrink: 0,
+                    background: prefs[cat.key] ? `${T.color.gold}10` : T.color.warmStone,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {cat.icon}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h4 style={{
+                      fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                      color: T.color.charcoal, margin: "0 0 0.0625rem",
+                    }}>
+                      {t(cat.titleKey)}
+                    </h4>
+                    <p style={{
+                      fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                      margin: 0, lineHeight: 1.4,
+                    }}>
+                      {t(cat.descKey)}
+                    </p>
+                  </div>
+                  <ToggleSwitch
+                    enabled={prefs[cat.key]}
+                    onChange={() => handleToggleCategory(cat.key)}
+                    disabled={saving}
+                  />
+                </div>
               </div>
-              <ToggleSwitch
-                enabled={prefs.onThisDay}
-                onChange={() => handleToggleType("onThisDay")}
-                disabled={saving}
-              />
-            </div>
-
-            <div style={{ height: 1, background: T.color.cream, margin: "0 1.5rem" }} />
-
-            {/* Time Capsule */}
-            <div style={{
-              padding: "1rem 1.5rem 1rem 5.25rem",
-              display: "flex", alignItems: "center", gap: "1rem",
-            }}>
-              <div style={{ flex: 1 }}>
-                <h4 style={{
-                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: T.color.charcoal, margin: "0 0 2px",
-                }}>
-                  {t("timeCapsuleTitle")}
-                </h4>
-                <p style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
-                  margin: 0,
-                }}>
-                  {t("timeCapsuleDesc")}
-                </p>
-              </div>
-              <ToggleSwitch
-                enabled={prefs.timeCapsule}
-                onChange={() => handleToggleType("timeCapsule")}
-                disabled={saving}
-              />
-            </div>
-
+            ))}
             <div style={{ height: "0.5rem" }} />
           </>
         )}
       </div>
 
-      {/* Email Notifications section */}
+      {/* ── Email Notifications Section ── */}
       <div style={{
         marginTop: "1.5rem",
         background: T.color.white,
@@ -361,67 +488,71 @@ export default function NotificationsPage() {
             fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
             color: T.color.muted, margin: 0,
             textTransform: "uppercase" as const,
-            letterSpacing: 0.5,
+            letterSpacing: "0.03125rem",
           }}>
-            {t("emailSection")}
+            {t("emailSectionHeader")}
           </h3>
         </div>
 
-        {/* Weekly digest toggle */}
-        <div style={{
-          padding: "1rem 1.5rem",
-          display: "flex", alignItems: "center", gap: "1rem",
-        }}>
-          <div style={{
-            width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", flexShrink: 0,
-            background: prefs.emailDigest ? `${T.color.sage}12` : T.color.warmStone,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "1.25rem",
-          }}>
-            {"\uD83D\uDCEC"}
-          </div>
-
-          <div style={{ flex: 1 }}>
-            <h4 style={{
-              fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-              color: T.color.charcoal, margin: "0 0 2px",
+        {EMAIL_CATEGORIES.map((cat, i) => (
+          <div key={cat.key}>
+            {i > 0 && (
+              <div style={{ height: "0.0625rem", background: T.color.cream, margin: "0 1.5rem" }} />
+            )}
+            <div style={{
+              padding: "0.875rem 1.5rem",
+              display: "flex", alignItems: "center", gap: "0.875rem",
             }}>
-              {t("weeklyDigestTitle")}
-            </h4>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
-              margin: 0,
-            }}>
-              {t("weeklyDigestDesc")}
-            </p>
+              <div style={{
+                width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", flexShrink: 0,
+                background: prefs[cat.key] ? `${T.color.gold}10` : T.color.warmStone,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {cat.icon}
+              </div>
+              <div style={{ flex: 1 }}>
+                <h4 style={{
+                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                  color: T.color.charcoal, margin: "0 0 0.0625rem",
+                }}>
+                  {t(cat.titleKey)}
+                </h4>
+                <p style={{
+                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                  margin: 0, lineHeight: 1.4,
+                }}>
+                  {t(cat.descKey)}
+                </p>
+              </div>
+              <ToggleSwitch
+                enabled={prefs[cat.key]}
+                onChange={() => handleToggleCategory(cat.key)}
+                disabled={saving}
+              />
+            </div>
           </div>
-
-          <ToggleSwitch
-            enabled={prefs.emailDigest}
-            onChange={handleToggleEmailDigest}
-            disabled={savingEmail}
-            loading={savingEmail}
-          />
-        </div>
+        ))}
+        <div style={{ height: "0.5rem" }} />
       </div>
 
-      {/* Info note */}
+      {/* Notification Schedule note */}
       <div style={{
         marginTop: "1.5rem", padding: "1rem 1.25rem", borderRadius: "0.75rem",
         background: `${T.color.sage}08`,
         border: `1px solid ${T.color.sage}15`,
+        display: "flex", alignItems: "flex-start", gap: "0.75rem",
       }}>
+        <div style={{ flexShrink: 0, marginTop: "0.125rem" }}>
+          <IconInfoPillar />
+        </div>
         <p style={{
           fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut,
           margin: 0, lineHeight: 1.5,
         }}>
-          {t("infoNote")}
+          {t("scheduleNote")}
         </p>
       </div>
 
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
     </div>
   );
 }

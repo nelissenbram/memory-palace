@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TuscanCard from "./TuscanCard";
@@ -64,6 +64,7 @@ function CompletenessRing({
   capturedLabel: string;
   statsLabel: string;
 }) {
+  const gradientId = useId();
   const size = isMobile ? 160 : 200;
   const strokeWidth = isMobile ? 8 : 10;
   const radius = (size - strokeWidth) / 2;
@@ -120,7 +121,7 @@ function CompletenessRing({
           />
           {/* Gradient definition — color-coded by tier */}
           <defs>
-            <linearGradient id="lsw-ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" stopColor={ringColor.start} />
               <stop offset="100%" stopColor={ringColor.end} />
             </linearGradient>
@@ -131,7 +132,7 @@ function CompletenessRing({
             cy={size / 2}
             r={radius}
             fill="none"
-            stroke="url(#lsw-ring-grad)"
+            stroke={`url(#${gradientId})`}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
             strokeDasharray={circumference}

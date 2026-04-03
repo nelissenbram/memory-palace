@@ -16,6 +16,9 @@ export interface EnhanceMemoriesProps {
   onAIEnhance: () => void;
   onAddDescription: () => void;
   onOrganize: () => void;
+  onSetupGallery: () => void;
+  onCreateFamilyGroup: () => void;
+  onCreateTimeCapsule: () => void;
   isMobile: boolean;
 }
 
@@ -124,6 +127,81 @@ function IconOrganize() {
   );
 }
 
+function IconGallery() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* Back frame */}
+      <rect x="6" y="2" width="15" height="13" rx="1.5" />
+      {/* Front frame */}
+      <rect x="3" y="6" width="15" height="13" rx="1.5" />
+      {/* Mountain landscape in front frame */}
+      <polyline points="3 16 8 11 12 15 15 12 18 16" />
+      {/* Sun */}
+      <circle cx="7" cy="10" r="1.5" />
+    </svg>
+  );
+}
+
+function IconFamilyGroup() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* Two people */}
+      <circle cx="9" cy="7" r="3" />
+      <circle cx="17" cy="8" r="2.5" />
+      <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+      <path d="M17 11.5a3 3 0 0 1 3 3V21" />
+    </svg>
+  );
+}
+
+function IconTimeCapsule() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {/* Hourglass top and bottom caps */}
+      <line x1="6" y1="2" x2="18" y2="2" />
+      <line x1="6" y1="22" x2="18" y2="22" />
+      {/* Hourglass body */}
+      <path d="M7 2v4a1 1 0 0 0 .3.7L12 12l-4.7 5.3a1 1 0 0 0-.3.7v4" />
+      <path d="M17 2v4a1 1 0 0 1-.3.7L12 12l4.7 5.3a1 1 0 0 1 .3.7v4" />
+      {/* Sand grains */}
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="18" r="0.4" fill="currentColor" stroke="none" />
+      <circle cx="13" cy="19" r="0.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="20" r="0.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 /* ── Action card config ── */
 
 interface ActionCardConfig {
@@ -141,6 +219,9 @@ export default function EnhanceMemories({
   onAIEnhance,
   onAddDescription,
   onOrganize,
+  onSetupGallery,
+  onCreateFamilyGroup,
+  onCreateTimeCapsule,
   isMobile,
 }: EnhanceMemoriesProps) {
   const { t } = useTranslation("enhance");
@@ -174,6 +255,27 @@ export default function EnhanceMemories({
       accent: T.color.sage,
       onClick: onOrganize,
     },
+    {
+      icon: <IconGallery />,
+      titleKey: "galleryTitle",
+      descKey: "galleryDesc",
+      accent: T.color.terracotta,
+      onClick: onSetupGallery,
+    },
+    {
+      icon: <IconFamilyGroup />,
+      titleKey: "familyGroupTitle",
+      descKey: "familyGroupDesc",
+      accent: T.color.walnut,
+      onClick: onCreateFamilyGroup,
+    },
+    {
+      icon: <IconTimeCapsule />,
+      titleKey: "timeCapsuleTitle",
+      descKey: "timeCapsuleDesc",
+      accent: T.color.gold,
+      onClick: onCreateTimeCapsule,
+    },
   ];
 
   return (
@@ -185,7 +287,7 @@ export default function EnhanceMemories({
           display: "grid",
           gridTemplateColumns: isMobile
             ? "repeat(2, 1fr)"
-            : "repeat(4, 1fr)",
+            : "repeat(auto-fit, minmax(10rem, 1fr))",
           gap: "1rem",
         }}
       >

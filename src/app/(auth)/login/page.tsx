@@ -4,7 +4,7 @@ import { useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth/actions";
-import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
+import { signInWithGoogle } from "@/lib/auth/social-login";
 import { createMFAChallenge, verifyMFAChallenge } from "@/lib/auth/mfa-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
@@ -360,14 +360,34 @@ function LoginContent() {
         {t("signInWithGoogle")}
       </button>
 
-      <button
-        type="button"
-        onClick={() => signInWithApple()}
-        style={appleButtonStyle}
-      >
-        <AppleIcon />
-        {t("signInWithApple")}
-      </button>
+      <div style={{ position: "relative" }}>
+        <button
+          type="button"
+          disabled
+          style={{
+            ...appleButtonStyle,
+            opacity: 0.5,
+            cursor: "not-allowed",
+            pointerEvents: "none" as const,
+          }}
+        >
+          <AppleIcon />
+          {t("signInWithApple")}
+        </button>
+        <span
+          style={{
+            display: "block",
+            textAlign: "center",
+            fontFamily: T.font.body,
+            fontSize: "0.6875rem",
+            color: T.color.muted,
+            marginTop: "0.25rem",
+            fontStyle: "italic",
+          }}
+        >
+          {t("comingSoon")}
+        </span>
+      </div>
 
       <p
         style={{

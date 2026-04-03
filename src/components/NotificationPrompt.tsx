@@ -53,7 +53,6 @@ export default function NotificationPrompt() {
         const reg = await navigator.serviceWorker.ready;
         const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
         if (!vapidKey) {
-          console.warn("[NotificationPrompt] VAPID public key not set");
           dismiss();
           return;
         }

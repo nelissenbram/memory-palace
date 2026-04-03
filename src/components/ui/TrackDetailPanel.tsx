@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { TRACK_MAP } from "@/lib/constants/tracks";
 import { useTrackStore } from "@/lib/stores/trackStore";
+import TrackIcon from "./TrackIcons";
 
 interface TrackDetailPanelProps {
   trackId: string;
@@ -50,7 +51,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
         position: "relative", zIndex: 1,
         width: "95%", maxWidth: "32.5rem", maxHeight: "85vh",
         background: T.color.linen, borderRadius: "1.25rem",
-        boxShadow: "0 24px 80px rgba(44,44,42,.3)",
+        boxShadow: "0 1.5rem 5rem rgba(44,44,42,.3)",
         border: `1px solid ${T.color.cream}`,
         display: "flex", flexDirection: "column",
         animation: "fadeUp .35s ease",
@@ -69,7 +70,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                 background: `${track.color}18`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "1.5rem",
-              }}>{track.icon}</div>
+              }}><TrackIcon trackId={track.id} size="1.5rem" /></div>
               <div>
                 <h2 style={{
                   fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
@@ -80,11 +81,15 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                 }}>{tTrack(track.descriptionKey)}</p>
               </div>
             </div>
-            <button onClick={onClose} style={{
+            <button onClick={onClose} aria-label={t("close")} style={{
               width: "2rem", height: "2rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
               background: T.color.white, cursor: "pointer", fontSize: "1rem", color: T.color.muted,
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-            }}>{"\u2715"}</button>
+              transition: "opacity .15s",
+            }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+            >{"\u2715"}</button>
           </div>
 
           {/* Progress bar */}
@@ -95,17 +100,23 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
               </span>
               <span style={{
                 fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
-                color: isComplete ? "#4A6741" : track.color,
+                color: isComplete ? T.color.sage : track.color,
               }}>{pct}%</span>
             </div>
-            <div style={{
-              width: "100%", height: "0.5rem", borderRadius: "0.25rem",
-              background: `${T.color.sandstone}20`, overflow: "hidden",
-            }}>
+            <div
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              style={{
+                width: "100%", height: "0.5rem", borderRadius: "0.25rem",
+                background: `${T.color.sandstone}20`, overflow: "hidden",
+              }}
+            >
               <div style={{
                 width: `${pct}%`, height: "100%", borderRadius: "0.25rem",
                 background: isComplete
-                  ? "linear-gradient(90deg,#4A6741,#5A8751)"
+                  ? `linear-gradient(90deg,${T.color.sage},${T.color.sage})`
                   : `linear-gradient(90deg,${track.color}cc,${track.color})`,
                 transition: "width .8s ease",
               }} />
@@ -115,8 +126,8 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
           {isComplete && (
             <div style={{
               marginTop: "0.75rem", padding: "0.5rem 0.75rem", borderRadius: "0.5rem",
-              background: "#4A674110", border: "1px solid #4A674120",
-              fontFamily: T.font.body, fontSize: "0.75rem", color: "#4A6741",
+              background: `${T.color.sage}10`, border: `1px solid ${T.color.sage}20`,
+              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.sage,
               textAlign: "center",
             }}>
               {t("trackCompleted", { points: String(track.completionBonus) })}
@@ -171,7 +182,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                   <div style={{
                     fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: isDone ? 500 : 600,
                     color: isDone ? T.color.muted : T.color.charcoal,
-                    textDecoration: isDone ? "none" : "none",
+                    textDecoration: "none",
                   }}>{tTrack(step.titleKey)}</div>
                   <div style={{
                     fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
@@ -214,7 +225,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                 {/* Points */}
                 <div style={{
                   fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
-                  color: isDone ? "#C9A84C" : `${T.color.sandstone}80`,
+                  color: isDone ? T.color.goldLight : `${T.color.sandstone}80`,
                   flexShrink: 0, paddingTop: "0.125rem",
                 }}>
                   {isDone ? `+${step.pointValue}` : `${step.pointValue} ${t("pts")}`}
@@ -233,7 +244,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
           <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
             {t("trackPointsEarned")}
           </span>
-          <span style={{ fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 700, color: "#C9A84C" }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 700, color: T.color.goldLight }}>
             {progress.stepsCompleted.reduce((sum, stepId) => {
               const step = track.steps.find((s) => s.id === stepId);
               return sum + (step?.pointValue || 0);

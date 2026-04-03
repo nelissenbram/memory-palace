@@ -5,7 +5,7 @@ import type { Wing, WingRoom } from "@/lib/constants/wings";
 // Max rooms per wing (corridor can grow but keep it sensible)
 export const MAX_ROOMS_PER_WING = 8;
 
-type WingCustom = Partial<{ name: string; icon: string; accent: string }>;
+type WingCustom = Partial<{ name: string; icon: string; accent: string; desc: string }>;
 
 interface RoomState {
   // Per-wing custom room lists. If a wing has an entry here, it overrides WING_ROOMS entirely.
@@ -22,6 +22,7 @@ interface RoomState {
   renameWing: (wingId: string, name: string) => void;
   changeWingIcon: (wingId: string, icon: string) => void;
   changeWingAccent: (wingId: string, accent: string) => void;
+  changeWingDesc: (wingId: string, desc: string) => void;
 
   // Actions
   renameRoom: (wingId: string, roomId: string, name: string) => void;
@@ -76,6 +77,7 @@ function applyWingCustom(wing: Wing, custom?: WingCustom): Wing {
     ...(custom.name !== undefined ? { name: custom.name } : {}),
     ...(custom.icon !== undefined ? { icon: custom.icon } : {}),
     ...(custom.accent !== undefined ? { accent: custom.accent } : {}),
+    ...(custom.desc !== undefined ? { desc: custom.desc } : {}),
   };
 }
 
@@ -117,6 +119,12 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     saveCustomWings(customWings);
   },
 
+  changeWingDesc: (wingId, desc) => {
+    const customWings = { ...get().customWings, [wingId]: { ...get().customWings[wingId], desc: desc.trim() || undefined } };
+    set({ customWings });
+    saveCustomWings(customWings);
+  },
+
   renameRoom: (wingId, roomId, name) => {
     const rooms = [...get().getWingRooms(wingId)];
     const idx = rooms.findIndex(r => r.id === roomId);
@@ -144,7 +152,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     rooms.push({
       id,
       name: name.trim() || "New Room",
-      icon: icon || "\u{1F3E0}",
+      icon: icon || "fr1",
       shared: false,
       sharedWith: [],
       coverHue: Math.floor(Math.random() * 360),

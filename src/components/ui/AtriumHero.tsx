@@ -22,7 +22,7 @@ function getGreetingKey(): string {
   return "goodEvening";
 }
 
-function formatDate(t: (k: string) => string): string {
+function formatDate(t: (k: string) => string, locale: string): string {
   const now = new Date();
   const dayNames = [
     t("sunday"), t("monday"), t("tuesday"), t("wednesday"),
@@ -34,6 +34,11 @@ function formatDate(t: (k: string) => string): string {
     t("september"), t("october"), t("november"), t("december"),
   ];
   const day = now.getDate();
+  if (locale === "nl") {
+    // Dutch: "Woensdag, 2 april"
+    return `${dayNames[now.getDay()]}, ${day} ${monthNames[now.getMonth()].toLowerCase()}`;
+  }
+  // English: "Wednesday, April 2nd"
   const suffix =
     day === 1 || day === 21 || day === 31 ? "st" :
     day === 2 || day === 22 ? "nd" :
@@ -648,7 +653,15 @@ function FloatingParticles({ hover }: { hover: boolean }) {
   }, []);
 
   return (
-    <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }} aria-hidden="true">
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        overflow: "hidden",
+        pointerEvents: "none",
+      }}
+      aria-hidden="true"
+    >
       {particles.map((p) => (
         <div
           key={p.id}
@@ -663,6 +676,7 @@ function FloatingParticles({ hover }: { hover: boolean }) {
             opacity: hover ? 0.45 : 0.25,
             transition: "opacity 0.5s ease",
             animation: `atriumParticleFloat ${p.duration} ease-in-out ${p.delay} infinite`,
+            willChange: "transform",
           }}
         />
       ))}
@@ -679,23 +693,26 @@ export default function AtriumHero({
   onNavigatePalace,
   isMobile,
 }: AtriumHeroProps) {
-  const { t } = useTranslation("atrium");
-
-  const greetingKey = useMemo(getGreetingKey, []);
-  const dateStr = useMemo(() => formatDate(t), [t]);
-
-  const greeting = userName
-    ? `${t(greetingKey)}, ${userName}`
-    : t("welcomeToYourPalace");
+  const { t, locale } = useTranslation("atrium");
 
   const [libHover, setLibHover] = React.useState(false);
   const [palHover, setPalHover] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
 
+  // Compute greeting key only on client to avoid SSR/timezone mismatch
+  const [greetingKey, setGreetingKey] = React.useState("welcomeToYourPalace");
+  const [dateStr, setDateStr] = React.useState("");
+
   useEffect(() => {
+    setGreetingKey(getGreetingKey());
+    setDateStr(formatDate(t, locale));
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [t]);
+
+  const greeting = userName
+    ? `${t(greetingKey)}, ${userName}`
+    : t("welcomeToYourPalace");
 
   return (
     <>

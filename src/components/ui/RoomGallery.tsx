@@ -6,16 +6,12 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import { TYPE_ICONS } from "@/lib/constants/type-icons";
 import Image from "next/image";
 
 // ═══ Per-type slot limits for 3D display ═══
 const DISPLAY_LIMITS: Record<string, number> = {
   photo: 5, painting: 1, album: 3, video: 1, orb: 4, case: 3, audio: 1, document: 4,
-};
-
-const TYPE_ICONS: Record<string, string> = {
-  photo: "\u{1F5BC}\uFE0F", painting: "\u{1F3A8}", video: "\u{1F3AC}", album: "\u{1F4D6}",
-  orb: "\u{1F52E}", case: "\u{1F3FA}", audio: "\u{1F3B5}", document: "\u{1F4DC}",
 };
 
 interface Props {
@@ -32,7 +28,8 @@ type FilterType = string | null;
 
 export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSelect }: Props) {
   const isMobile = useIsMobile();
-  const { t } = useTranslation("roomGallery");
+  const { t, locale } = useTranslation("roomGallery");
+  const { t: tc } = useTranslation("common");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const accent = wing?.accent || T.color.terracotta;
   const [mode, setMode] = useState<ViewMode>("grid");
@@ -88,8 +85,8 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
   };
 
   return (
-    <div onClick={onClose} style={{
-      position: "fixed", inset: 0, background: "rgba(20,15,10,.7)", backdropFilter: "blur(12px)",
+    <div role="button" tabIndex={0} onClick={onClose} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } }} style={{
+      position: "absolute", inset: 0, background: "rgba(20,15,10,.7)", backdropFilter: "blur(12px)",
       zIndex: 60, animation: "fadeIn .2s ease", display: "flex", alignItems: "stretch",
     }}>
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("gallery")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
@@ -117,12 +114,12 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
             <div style={{ display: "flex", gap: "0.375rem", alignItems: "center" }}>
               {/* View mode toggle */}
               <div style={{ display: "flex", background: T.color.warmStone, borderRadius: "0.5rem", padding: "0.125rem" }}>
-                <button onClick={() => setMode("grid")} style={{
+                <button onClick={() => setMode("grid")} aria-pressed={mode === "grid"} style={{
                   padding: "0.375rem 0.75rem", borderRadius: "0.375rem", border: "none",
                   background: mode === "grid" ? T.color.white : "transparent",
                   fontFamily: T.font.body, fontSize: "0.6875rem", color: mode === "grid" ? T.color.charcoal : T.color.muted, cursor: "pointer",
                 }}>{"\u25A6"} {t("grid")}</button>
-                <button onClick={() => { setMode("player"); setPlayerIdx(0); }} style={{
+                <button onClick={() => { setMode("player"); setPlayerIdx(0); }} aria-pressed={mode === "player"} style={{
                   padding: "0.375rem 0.75rem", borderRadius: "0.375rem", border: "none",
                   background: mode === "player" ? T.color.white : "transparent",
                   fontFamily: T.font.body, fontSize: "0.6875rem", color: mode === "player" ? T.color.charcoal : T.color.muted, cursor: "pointer",
@@ -133,8 +130,9 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                 background: showDisplayMgr ? accent + "10" : T.color.white,
                 fontFamily: T.font.body, fontSize: "0.6875rem", color: showDisplayMgr ? accent : T.color.muted, cursor: "pointer",
               }}>{"\u{1F3DB}\uFE0F"} {t("display")}</button>
-              <button onClick={onClose} style={{
-                width: "2rem", height: "2rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
+              <button onClick={onClose} aria-label={tc("close")} style={{
+                width: "2rem", height: "2rem", minWidth: "2.75rem", minHeight: "2.75rem",
+                borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
                 background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>{"\u2715"}</button>
@@ -143,17 +141,17 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
 
           {/* Type filter tabs */}
           <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
-            <button onClick={() => setFilter(null)} style={{
+            <button onClick={() => setFilter(null)} aria-pressed={filter === null} style={{
               padding: "0.3125rem 0.75rem", borderRadius: "0.5rem", border: filter === null ? `1.5px solid ${accent}` : `1px solid ${T.color.cream}`,
               background: filter === null ? accent + "10" : T.color.white,
               fontFamily: T.font.body, fontSize: "0.6875rem", color: filter === null ? accent : T.color.muted, cursor: "pointer",
             }}>{t("all")} ({mems.length})</button>
             {Object.entries(typeGroups).map(([type, items]) => (
-              <button key={type} onClick={() => setFilter(type)} style={{
+              <button key={type} onClick={() => setFilter(type)} aria-pressed={filter === type} style={{
                 padding: "0.3125rem 0.625rem", borderRadius: "0.5rem", border: filter === type ? `1.5px solid ${accent}` : `1px solid ${T.color.cream}`,
                 background: filter === type ? accent + "10" : T.color.white,
                 fontFamily: T.font.body, fontSize: "0.6875rem", color: filter === type ? accent : T.color.muted, cursor: "pointer",
-              }}>{TYPE_ICONS[type] || ""} {type} ({items.length})</button>
+              }}>{TYPE_ICONS[type] || ""} {t(`type_${type}`)} ({items.length})</button>
             ))}
           </div>
         </div>
@@ -187,7 +185,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                     <div key={type} style={{ background: T.color.white, borderRadius: "0.625rem", padding: "0.625rem 0.75rem", border: `1px solid ${T.color.cream}` }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.25rem" }}>
                         <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500, color: T.color.charcoal }}>
-                          {TYPE_ICONS[type]} {type}
+                          {TYPE_ICONS[type]} {t(`type_${type}`)}
                         </span>
                         <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: shown >= limit ? accent : T.color.muted }}>
                           {shown}/{limit} {t("slots")}
@@ -237,7 +235,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                                 {mem.title}
                               </div>
                               <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>
-                                {TYPE_ICONS[mem.type]} {mem.type} — {canDisplay ? `${limit - typeCount} ${limit - typeCount > 1 ? t("slotsAvailable") : t("slotAvailable")}` : t("allSlotsFull")}
+                                {TYPE_ICONS[mem.type]} {t(`type_${mem.type}`)} — {canDisplay ? `${limit - typeCount} ${limit - typeCount > 1 ? t("slotsAvailable") : t("slotAvailable")}` : t("allSlotsFull")}
                               </div>
                             </div>
                             {/* Display button */}
@@ -306,9 +304,9 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                     onMouseLeave={(e) => { (e.currentTarget).style.transform = "none"; (e.currentTarget).style.boxShadow = "none"; }}
                   >
                     {/* Thumbnail */}
-                    <div onClick={() => openPlayer(idx)} style={{
+                    <div role="button" tabIndex={0} onClick={() => openPlayer(idx)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPlayer(idx); } }} style={{
                       height: "6.25rem", background: mem.dataUrl ? `url(${mem.dataUrl}) center/cover` : `linear-gradient(135deg, hsl(${mem.hue},${mem.s}%,${mem.l}%), hsl(${mem.hue + 20},${mem.s - 5}%,${mem.l - 8}%))`,
-                      display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
+                      display: "flex", alignItems: "center", justifyContent: "center", position: "relative", cursor: "pointer",
                     }}>
                       {!mem.dataUrl && <span style={{ fontSize: "1.75rem", opacity: 0.3 }}>{TYPE_ICONS[mem.type] || ""}</span>}
                       {isMedia(mem) && <div style={{
@@ -328,7 +326,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                         {mem.title}
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.25rem" }}>
-                        <span style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: T.color.muted }}>{TYPE_ICONS[mem.type]} {mem.type}</span>
+                        <span style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: T.color.muted }}>{TYPE_ICONS[mem.type]} {t(`type_${mem.type}`)}</span>
                         {/* Display toggle */}
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleDisplay(mem); }}
@@ -359,7 +357,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               {/* Main display */}
               <div style={{
-                borderRadius: "1rem", overflow: "hidden", background: "#1A1510",
+                borderRadius: "1rem", overflow: "hidden", background: T.color.charcoal,
                 position: "relative", minHeight: "18.75rem",
               }}>
                 {playerMem.type === "video" || playerMem.videoBlob ? (
@@ -379,8 +377,8 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                 ) : playerMem.type === "audio" || playerMem.voiceBlob ? (
                   <div style={{ padding: "3.75rem 2.5rem", textAlign: "center" }}>
                     <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>{"\u{1F3B5}"}</div>
-                    <div style={{ fontFamily: T.font.display, fontSize: "1.25rem", color: "#E8DCC8", marginBottom: "0.5rem" }}>{playerMem.title}</div>
-                    {playerMem.desc && <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A89878", maxWidth: "25rem", margin: "0 auto 1rem" }}>{playerMem.desc}</p>}
+                    <div style={{ fontFamily: T.font.display, fontSize: "1.25rem", color: T.color.cream, marginBottom: "0.5rem" }}>{playerMem.title}</div>
+                    {playerMem.desc && <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.sandstone, maxWidth: "25rem", margin: "0 auto 1rem" }}>{playerMem.desc}</p>}
                     <audio
                       ref={audioRef}
                       key={playerMem.id}
@@ -397,8 +395,8 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                 ) : playerMem.type === "document" ? (
                   <div style={{ padding: "3.75rem 2.5rem", textAlign: "center" }}>
                     <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>{"\u{1F4DC}"}</div>
-                    <div style={{ fontFamily: T.font.display, fontSize: "1.25rem", color: "#E8DCC8", marginBottom: "0.5rem" }}>{playerMem.title}</div>
-                    {playerMem.desc && <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A89878", maxWidth: "31.25rem", margin: "0 auto", lineHeight: 1.7 }}>{playerMem.desc}</p>}
+                    <div style={{ fontFamily: T.font.display, fontSize: "1.25rem", color: T.color.cream, marginBottom: "0.5rem" }}>{playerMem.title}</div>
+                    {playerMem.desc && <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.sandstone, maxWidth: "31.25rem", margin: "0 auto", lineHeight: 1.7 }}>{playerMem.desc}</p>}
                     {playerMem.dataUrl && playerMem.dataUrl.startsWith("data:application/pdf") && (
                       <a href={playerMem.dataUrl} download={playerMem.title + ".pdf"}
                         style={{ display: "inline-block", marginTop: "1rem", padding: "0.625rem 1.25rem", borderRadius: "0.625rem", background: accent, color: "#FFF", fontFamily: T.font.body, fontSize: "0.8125rem", textDecoration: "none" }}>
@@ -408,7 +406,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                   </div>
                 ) : (
                   /* Photo / painting / album / orb / case — image display */
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "18.75rem", background: "#1A1510" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "18.75rem", background: T.color.charcoal }}>
                     {playerMem.dataUrl ? (
                       <div style={{ position: "relative", width: "100%", height: "26.25rem" }}>
                         <Image src={playerMem.dataUrl!} alt={playerMem.title}
@@ -457,8 +455,8 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                     {playerMem.title}
                   </div>
                   <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
-                    {playerIdx + 1} of {filtered.length} {filter ? `${filter}s` : t("memories")}
-                    {playerMem.createdAt && ` · ${new Date(playerMem.createdAt).toLocaleDateString()}`}
+                    {t("playerPosition", { current: String(playerIdx + 1), total: String(filtered.length) })} {filter ? t(`type_${filter}_plural`) : t("memories")}
+                    {playerMem.createdAt && ` · ${new Date(playerMem.createdAt).toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US")}`}
                   </div>
                 </div>
 

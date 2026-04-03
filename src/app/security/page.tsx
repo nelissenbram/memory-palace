@@ -289,6 +289,7 @@ export default function SecurityPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
   const { t, locale, setLocale } = useTranslation("securityPage");
+  const { t: tc } = useTranslation("common");
 
   return (
     <div
@@ -318,7 +319,7 @@ export default function SecurityPage() {
           {/* Back button */}
           <Link
             href="/"
-            aria-label="Back to home"
+            aria-label={tc("a11yBackToHome")}
             style={{
               display: "flex",
               alignItems: "center",
@@ -364,7 +365,7 @@ export default function SecurityPage() {
           {/* Language toggle */}
           <button
             onClick={() => setLocale(locale === "en" ? "nl" : "en")}
-            aria-label="Switch language"
+            aria-label={tc("a11ySwitchLanguage")}
             style={{
               background: "none",
               border: `1px solid ${C.sandstone}60`,

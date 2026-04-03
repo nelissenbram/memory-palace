@@ -1,7 +1,28 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { autoMatchInvites } from "@/lib/auth/invite-actions";
 import { sendWelcomeEmail } from "@/lib/email/send-welcome";
+
+/**
+ * Ensure a profiles row exists for this user.
+ * The DB trigger `handle_new_user` on auth.users should create it,
+ * but OAuth sign-ups can race or the trigger may be missing/broken.
+ * Uses the admin (service-role) client to bypass RLS.
+ */
+async function ensureProfile(userId: string, displayName: string) {
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin.from("profiles").upsert(
+      { id: userId, display_name: displayName },
+      { onConflict: "id", ignoreDuplicates: true }
+    );
+    if (error) {
+      console.error("ensureProfile upsert error:", error);
+    }
+  } catch (e) {
+    console.error("ensureProfile unexpected error:", e);
+  }
+}
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -18,6 +39,15 @@ export async function GET(request: Request) {
       } = await supabase.auth.getUser();
 
       if (user) {
+        // Ensure a profile row exists (defense-in-depth for OAuth sign-ups)
+        const displayName =
+          user.user_metadata?.display_name ||
+          user.user_metadata?.full_name ||
+          user.user_metadata?.name ||
+          user.email?.split("@")[0] ||
+          "";
+        await ensureProfile(user.id, displayName);
+
         // Auto-match any pending invites for this user's email
         if (user.email) {
           try {
@@ -40,9 +70,6 @@ export async function GET(request: Request) {
 
         // Send welcome email for new users (not yet onboarded)
         if (!profile?.onboarded && user.email) {
-          const displayName =
-            user.user_metadata?.display_name ||
-            user.email.split("@")[0];
           // Fire-and-forget: don't block the redirect
           sendWelcomeEmail({
             recipientEmail: user.email,

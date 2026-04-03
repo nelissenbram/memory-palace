@@ -1,10 +1,9 @@
 "use client";
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
-import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -48,10 +47,25 @@ interface StatisticsPanelProps {
 
 export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   const isMobile = useIsMobile();
-  const { t } = useTranslation("statistics");
+  const { t, locale } = useTranslation("statistics");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { userMems } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
+  const [showToast, setShowToast] = useState(false);
+  const [digestLoading, setDigestLoading] = useState(false);
+
+  const handleRequestDigest = useCallback(async () => {
+    setDigestLoading(true);
+    try {
+      await fetch("/api/email/digest", { method: "POST" });
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch {
+      // silently fail
+    } finally {
+      setDigestLoading(false);
+    }
+  }, []);
 
   /* ── aggregate all memories ── */
   const stats = useMemo(() => {
@@ -65,19 +79,14 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
       }
     }
 
-    // Merge default + user memories
-    const merged: Record<string, Mem[]> = { ...ROOM_MEMS };
-    for (const [k, v] of Object.entries(userMems)) {
-      merged[k] = v;
-    }
-
+    // Use only real user memories (no placeholder/example data)
     // Flatten all memories
     const allMems: Mem[] = [];
     const roomsWithMems = new Set<string>();
     const wingsWithMems = new Set<string>();
     const wingMemCount: Record<string, number> = {};
 
-    for (const [roomId, mems] of Object.entries(merged)) {
+    for (const [roomId, mems] of Object.entries(userMems)) {
       if (!mems.length) continue;
       const info = roomToWing[roomId];
       roomsWithMems.add(roomId);
@@ -97,11 +106,12 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
 
     // Timeline: memories per month (last 12 months)
     const now = new Date();
-    const monthBuckets: { key: string; label: string; count: number }[] = [];
+    const monthBuckets: { key: string; label: string; year: string; count: number }[] = [];
     for (let i = 11; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      monthBuckets.push({ key, label: MONTH_KEYS[d.getMonth()], count: 0 });
+      const year = `'${String(d.getFullYear()).slice(2)}`;
+      monthBuckets.push({ key, label: MONTH_KEYS[d.getMonth()], year, count: 0 });
     }
     for (const m of allMems) {
       if (!m.createdAt) continue;
@@ -128,7 +138,8 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
       activityDays.add(d.toISOString().slice(0, 10));
       dayOfWeekCounts[d.getDay()]++;
     }
-    const bestDayIdx = dayOfWeekCounts.indexOf(Math.max(...dayOfWeekCounts));
+    const maxDayCount = Math.max(...dayOfWeekCounts);
+    const bestDayIdx = maxDayCount > 0 ? dayOfWeekCounts.indexOf(maxDayCount) : -1;
 
     // Streak (consecutive days ending today or yesterday)
     let streak = 0;
@@ -171,7 +182,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
       maxWingCount,
       activeDays: activityDays.size,
       streak,
-      bestDay: DAY_KEYS[bestDayIdx],
+      bestDay: bestDayIdx >= 0 ? DAY_KEYS[bestDayIdx] : null,
       totalWords,
       earliest,
       latest,
@@ -223,7 +234,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   };
 
   const formatDate = (d: Date | null) =>
-    d ? d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "—";
+    d ? d.toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", { year: "numeric", month: "short", day: "numeric" }) : "—";
 
   return (
     <div
@@ -263,6 +274,28 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
           animation: "spSlideUp .3s cubic-bezier(.23,1,.32,1)",
         }}
       >
+        {/* ── Toast ── */}
+        {showToast && (
+          <div style={{
+            position: "absolute",
+            top: "0.75rem",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10,
+            background: T.color.sage,
+            color: T.color.white,
+            fontFamily: T.font.body,
+            fontSize: "0.8125rem",
+            fontWeight: 600,
+            padding: "0.5rem 1.25rem",
+            borderRadius: "0.5rem",
+            boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,0.2)",
+            animation: "spSlideUp .3s ease",
+          }}>
+            {t("weeklyDigestSent")}
+          </div>
+        )}
+
         {/* ── Header ── */}
         <div
           style={{
@@ -388,7 +421,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                   textAnchor="middle"
                   dominantBaseline="middle"
                   style={{
-                    fontFamily: "'Cormorant Garamond', Georgia, serif",
+                    fontFamily: T.font.display,
                     fontSize: "6px",
                     fontWeight: 600,
                     fill: T.color.charcoal,
@@ -401,7 +434,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                   textAnchor="middle"
                   dominantBaseline="middle"
                   style={{
-                    fontFamily: "'Source Sans 3', system-ui, sans-serif",
+                    fontFamily: T.font.body,
                     fontSize: "2.5px",
                     fill: T.color.muted,
                   }}
@@ -438,6 +471,11 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
           {/* 3. Timeline Chart — last 12 months */}
           <div style={cardStyle}>
             <h3 style={headingStyle}>{t("timelineTitle")}</h3>
+            {stats.totalMems === 0 ? (
+              <p style={{ ...mutedStyle, textAlign: "center", padding: "1rem 0" }}>
+                {t("noData")}
+              </p>
+            ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
               {stats.monthBuckets.map((bucket) => (
                 <div
@@ -451,12 +489,12 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                   <span
                     style={{
                       ...mutedStyle,
-                      width: "2rem",
+                      width: "3.75rem",
                       textAlign: "right",
                       flexShrink: 0,
                     }}
                   >
-                    {t(`month_${bucket.label}`)}
+                    {t(`month_${bucket.label}`)} {bucket.year}
                   </span>
                   <div
                     style={{
@@ -491,6 +529,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                 </div>
               ))}
             </div>
+            )}
           </div>
 
           {/* 4. Wing Distribution */}
@@ -588,7 +627,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                     lineHeight: 1,
                   }}
                 >
-                  {t(`day_${stats.bestDay}`)}
+                  {stats.bestDay ? t(`day_${stats.bestDay}`) : "—"}
                 </div>
                 <div style={{ ...mutedStyle, marginTop: "0.1875rem" }}>
                   {t("mostProductiveDay")}
@@ -637,26 +676,28 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             </div>
           </div>
 
-          {/* 7. Weekly Digest Link */}
+          {/* 7. Weekly Digest */}
           <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
             <button
-              onClick={() => { window.location.href = "/digest"; }}
+              onClick={handleRequestDigest}
+              disabled={digestLoading}
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.875rem",
                 fontWeight: 600,
-                color: T.color.terracotta,
+                color: digestLoading ? T.color.muted : T.color.terracotta,
                 background: `${T.color.terracotta}10`,
                 border: `1px solid ${T.color.terracotta}30`,
                 borderRadius: "0.5rem",
                 padding: "0.625rem 1.25rem",
-                cursor: "pointer",
+                cursor: digestLoading ? "default" : "pointer",
                 transition: "background 0.2s ease",
+                opacity: digestLoading ? 0.6 : 1,
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = `${T.color.terracotta}20`; }}
+              onMouseEnter={(e) => { if (!digestLoading) e.currentTarget.style.background = `${T.color.terracotta}20`; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = `${T.color.terracotta}10`; }}
             >
-              {t("weeklyDigestLink")}
+              {t("weeklyDigestRequest")}
             </button>
           </div>
         </div>

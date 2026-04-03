@@ -409,10 +409,10 @@ export function FeatureLegacyIcon({ style, size = 48 }: IconProps) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   8. AudienceHeritagIcon — Elderly person with photo album
+   8. AudienceHeritageIcon — Elderly person with photo album
    ═══════════════════════════════════════════════════════════════════════════ */
 
-export function AudienceHeritagIcon({ style, size = 48 }: IconProps) {
+export function AudienceHeritageIcon({ style, size = 48 }: IconProps) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

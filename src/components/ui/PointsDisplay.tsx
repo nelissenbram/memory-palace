@@ -40,7 +40,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
           width: "1.375rem", height: "1.375rem", borderRadius: "0.6875rem",
           background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}dd)`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "0.625rem", fontWeight: 700, color: "#FFF",
+          fontSize: "0.625rem", fontWeight: 700, color: T.color.white,
           fontFamily: T.font.body,
           boxShadow: `0 1px 4px ${levelInfo.color}40`,
         }}>
@@ -51,10 +51,16 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
           {totalPoints} <span style={{ fontSize: "0.625rem", fontWeight: 500, color: T.color.goldLight }}>{t("mp")}</span>
         </span>
         {/* Mini progress bar */}
-        <div style={{
-          width: "2rem", height: "0.1875rem", borderRadius: "0.125rem",
-          background: `${T.color.sandstone}33`, overflow: "hidden",
-        }}>
+        <div
+          role="progressbar"
+          aria-valuenow={Math.round(progressInfo.progress * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          style={{
+            width: "2rem", height: "0.1875rem", borderRadius: "0.125rem",
+            background: `${T.color.sandstone}33`, overflow: "hidden",
+          }}
+        >
           <div style={{
             width: `${progressInfo.progress * 100}%`, height: "100%", borderRadius: "0.125rem",
             background: `linear-gradient(90deg, ${levelInfo.color}, ${levelInfo.color}cc)`,
@@ -66,12 +72,12 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
       {/* Expanded dropdown */}
       {expanded && (
         <>
-          <div onClick={() => setExpanded(false)} style={{ position: "fixed", inset: 0, zIndex: 98 }} />
+          <div role="presentation" onClick={() => setExpanded(false)} style={{ position: "fixed", inset: 0, zIndex: 98 }} />
           <div style={{
             position: "absolute", top: "100%", right: 0, marginTop: "0.5rem",
             width: "17.5rem", background: `${T.color.linen}f8`, backdropFilter: "blur(16px)",
             borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
-            boxShadow: "0 8px 40px rgba(44,44,42,.18)", padding: "1rem",
+            boxShadow: "0 0.5rem 2.5rem rgba(44,44,42,.18)", padding: "1rem",
             zIndex: 99, animation: "fadeUp .25s ease",
           }}>
             {/* Header with level title */}
@@ -85,7 +91,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
                   width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem",
                   background: `linear-gradient(135deg, ${levelInfo.color}, ${levelInfo.color}dd)`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "0.75rem", fontWeight: 700, color: "#FFF", fontFamily: T.font.body,
+                  fontSize: "0.75rem", fontWeight: 700, color: T.color.white, fontFamily: T.font.body,
                   boxShadow: `0 2px 8px ${levelInfo.color}30`,
                 }}>{levelInfo.rank}</div>
               </div>
@@ -110,10 +116,16 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
                     {progressInfo.pointsInLevel}/{progressInfo.pointsNeeded}
                   </span>
                 </div>
-                <div style={{
-                  width: "100%", height: "0.375rem", borderRadius: "0.1875rem",
-                  background: `${T.color.sandstone}25`, overflow: "hidden",
-                }}>
+                <div
+                  role="progressbar"
+                  aria-valuenow={Math.round(progressInfo.progress * 100)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  style={{
+                    width: "100%", height: "0.375rem", borderRadius: "0.1875rem",
+                    background: `${T.color.sandstone}25`, overflow: "hidden",
+                  }}
+                >
                   <div style={{
                     width: `${progressInfo.progress * 100}%`, height: "100%", borderRadius: "0.1875rem",
                     background: `linear-gradient(90deg, ${levelInfo.color}, ${progressInfo.nextLevel.color})`,

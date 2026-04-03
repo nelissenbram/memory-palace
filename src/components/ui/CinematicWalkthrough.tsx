@@ -86,7 +86,7 @@ export default function CinematicWalkthrough() {
         transform: "translateX(-50%)",
         maxWidth: isMobile ? "calc(100vw - 2.5rem)" : "35rem",
         zIndex: 80,
-        background: "rgba(42,34,24,0.8)",
+        background: `${T.color.charcoal}CC`,
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
         borderRadius: "1.5rem",
@@ -98,22 +98,22 @@ export default function CinematicWalkthrough() {
           fontFamily: T.font.display,
           fontSize: isMobile ? "1.0625rem" : "1.1875rem",
           fontWeight: 400,
-          color: "#F5F0E8",
+          color: T.color.linen,
           lineHeight: 1.5,
           letterSpacing: "0.01em",
         }}>
           {narration}
         </div>
-        <button onClick={skip} style={{
+        <button onClick={skip} aria-label={t("skipIntroAriaLabel")} style={{
           marginTop: "0.625rem",
           background: "none",
           border: "none",
           fontFamily: T.font.body,
           fontSize: "0.75rem",
-          color: "rgba(245,240,232,0.5)",
+          color: `${T.color.linen}80`,
           cursor: "pointer",
           textDecoration: "underline",
-          textUnderlineOffset: 3,
+          textUnderlineOffset: "0.1875rem",
         }}>
           {t("skipIntro")}
         </button>
