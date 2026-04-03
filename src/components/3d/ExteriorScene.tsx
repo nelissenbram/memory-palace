@@ -142,7 +142,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     const camera=new THREE.PerspectiveCamera(32,w/h,0.1,600);
     const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.2*dlPreset.exposure;
+    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.4*dlPreset.exposure;
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
@@ -176,37 +176,38 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     el.appendChild(hovLabel);
 
     // Dramatic golden-hour lighting
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#6A8858",0.6*dlPreset.ambientIntensity/0.5));
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#8A7858",0.6*dlPreset.ambientIntensity/0.5));
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,3.2*dlPreset.sunIntensity);sun.position.set(dlPreset.sunPosition[0],dlPreset.sunPosition[1],dlPreset.sunPosition[2]);sun.castShadow=true;
     const shadowRes=window.innerWidth>=768?2048:1024;sun.shadow.mapSize.set(shadowRes,shadowRes);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
     sun.shadow.camera.left=-80;sun.shadow.camera.right=80;sun.shadow.camera.top=80;sun.shadow.camera.bottom=-80;sun.shadow.bias=-0.0003;scene.add(sun);
     const fill=new THREE.DirectionalLight(dlPreset.fillColor,0.4*dlPreset.fillIntensity/0.35);fill.position.set(-25,20,-15);scene.add(fill);
-    const rim=new THREE.DirectionalLight(dlPreset.sunColor,0.6*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);
+    const rim=new THREE.DirectionalLight(dlPreset.sunColor,0.8*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);
     // Warm uplight for drama
     const uplight=new THREE.PointLight(dlPreset.fillColor,.4*dlPreset.fillIntensity/0.35,80);uplight.position.set(0,2,0);scene.add(uplight);
+    const porticoWarm=new THREE.SpotLight("#FFE0A0",0.3,60,Math.PI*0.3);porticoWarm.position.set(0,2,-20);porticoWarm.target.position.set(0,5,0);scene.add(porticoWarm);scene.add(porticoWarm.target);
 
     const M={
       // ── WALLS — aged Tuscan intonaco plaster & stone (worn plaster PBR textures)
-      stone:new THREE.MeshStandardMaterial({color:"#C4B49A",roughness:.88,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:wornPlasterTex.roughnessMap,aoMap:wornPlasterTex.aoMap,aoMapIntensity:.6,envMapIntensity:.4}),
-      stoneL:new THREE.MeshStandardMaterial({color:"#D9CEBC",roughness:.82,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.35,.35),roughnessMap:wornPlasterTex.roughnessMap,envMapIntensity:.4}),
+      stone:new THREE.MeshStandardMaterial({color:"#C8B898",roughness:.88,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:wornPlasterTex.roughnessMap,aoMap:wornPlasterTex.aoMap,aoMapIntensity:.6,envMapIntensity:.4}),
+      stoneL:new THREE.MeshStandardMaterial({color:"#DDD0C0",roughness:.82,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.35,.35),roughnessMap:wornPlasterTex.roughnessMap,envMapIntensity:.4}),
       stoneW:new THREE.MeshStandardMaterial({color:"#D4A96A",roughness:.85,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:wornPlasterTex.roughnessMap,envMapIntensity:.5}),
-      stoneD:new THREE.MeshStandardMaterial({color:"#8A7E6B",roughness:.92,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.6,.6),roughnessMap:wornPlasterTex.roughnessMap,aoMap:wornPlasterTex.aoMap,aoMapIntensity:.5}),
+      stoneD:new THREE.MeshStandardMaterial({color:"#9A8E78",roughness:.92,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.6,.6),roughnessMap:wornPlasterTex.roughnessMap,aoMap:wornPlasterTex.aoMap,aoMapIntensity:.5}),
       stoneDk:new THREE.MeshStandardMaterial({color:"#7A7060",roughness:.9,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:wornPlasterTex.roughnessMap}),
       // ── TRIM — pietra serena (cool blue-grey sandstone) & aged gold
-      trim:new THREE.MeshStandardMaterial({color:"#8A8D8E",roughness:.7,metalness:0,envMapIntensity:.4,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
+      trim:new THREE.MeshStandardMaterial({color:"#C8BCA8",roughness:.7,metalness:0,envMapIntensity:.4,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
       gold:new THREE.MeshPhysicalMaterial({color:"#B8973A",roughness:.35,metalness:.92,emissive:"#3D3010",emissiveIntensity:.08,clearcoat:.15,clearcoatRoughness:.4,envMapIntensity:1.0}),
       goldBright:new THREE.MeshPhysicalMaterial({color:"#CFB53B",roughness:.18,metalness:.95,emissive:"#4A3A10",emissiveIntensity:.12,clearcoat:.35,clearcoatRoughness:.08,envMapIntensity:1.5}),
       bronze:new THREE.MeshPhysicalMaterial({color:"#6B5238",roughness:.3,metalness:.82,emissive:"#2A1E10",emissiveIntensity:.06,clearcoat:.2,clearcoatRoughness:.3,envMapIntensity:1.0}),
       copper:new THREE.MeshPhysicalMaterial({color:"#4A8B7A",roughness:.55,metalness:.25,emissive:"#1A3028",emissiveIntensity:.05,clearcoat:0,envMapIntensity:.6}),
       // ── ROOFS — aged terracotta coppo tiles with PBR textures (muted brown)
-      roof:new THREE.MeshStandardMaterial({color:"#9B7B68",roughness:.82,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:roofTileTex.roughnessMap,aoMap:roofTileTex.aoMap,aoMapIntensity:.4,envMapIntensity:.3}),
+      roof:new THREE.MeshStandardMaterial({color:"#A87860",roughness:.82,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:roofTileTex.roughnessMap,aoMap:roofTileTex.aoMap,aoMapIntensity:.4,envMapIntensity:.3}),
       roofD:new THREE.MeshStandardMaterial({color:"#7A6458",roughness:.88,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:roofTileTex.roughnessMap,envMapIntensity:.2}),
       roofSlate:new THREE.MeshStandardMaterial({color:"#6B7D6E",roughness:.45,metalness:.25,envMapIntensity:.5}),
-      tile:new THREE.MeshStandardMaterial({color:"#A0705C",roughness:.78,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.6,.6),roughnessMap:roofTileTex.roughnessMap,aoMap:roofTileTex.aoMap,aoMapIntensity:.3}),
+      tile:new THREE.MeshStandardMaterial({color:"#B07858",roughness:.78,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.6,.6),roughnessMap:roofTileTex.roughnessMap,aoMap:roofTileTex.aoMap,aoMapIntensity:.3}),
       // ── COLUMNS — travertine / worked stone (lower roughness = polished)
-      col:new THREE.MeshStandardMaterial({color:"#C8BDA8",roughness:.55,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2),envMapIntensity:.7}),
-      marble:new THREE.MeshStandardMaterial({color:"#F4EEE4",roughness:.55,metalness:0,envMapIntensity:.15}),
-      marbleVein:new THREE.MeshStandardMaterial({color:"#E8DED0",roughness:.6,metalness:0,envMapIntensity:.15}),
+      col:new THREE.MeshStandardMaterial({color:"#D4C8B0",roughness:.55,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2),envMapIntensity:.7}),
+      marble:new THREE.MeshStandardMaterial({color:"#F0E8D8",roughness:.55,metalness:0,envMapIntensity:.15}),
+      marbleVein:new THREE.MeshStandardMaterial({color:"#E4D8C8",roughness:.6,metalness:0,envMapIntensity:.15}),
       // ── WINDOWS — old glass with warm interior glow (IOR 1.52 = soda-lime glass)
       win:new THREE.MeshPhysicalMaterial({color:"#FFF8E7",emissive:"#FFAA44",emissiveIntensity:.25,roughness:.08,transparent:true,opacity:.7,transmission:.6,ior:1.52}),
       winBlue:new THREE.MeshPhysicalMaterial({color:"#D8E8F0",emissive:"#88AACC",emissiveIntensity:.12,roughness:.1,transparent:true,opacity:.65,transmission:.5,ior:1.52}),
@@ -290,15 +291,22 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       cropMap: cropTex.map, cropNormal: cropTex.normalMap, cropRoughness: cropTex.roughnessMap,
     });
     // Cobblestone courtyard — completely matte to avoid specular glare
-    const courtyardMat = new THREE.MeshLambertMaterial({ color: "#B8A888" });
+    const courtyardMat = new THREE.MeshStandardMaterial({ color: "#C8B898", roughness: 0.92, metalness: 0, map: groundTex.map, normalMap: groundTex.normalMap, normalScale: new THREE.Vector2(0.3, 0.3), roughnessMap: groundTex.roughnessMap });
     const cyGeo = new THREE.CircleGeometry(39, 64);
     cyGeo.rotateX(-Math.PI / 2);
     const cyMesh = new THREE.Mesh(cyGeo, courtyardMat);
     cyMesh.position.y = HILL_Y + 0.35;
     cyMesh.receiveShadow = true;
     scene.add(cyMesh);
-    // Decorative courtyard ring
+    // Decorative courtyard rings — cobblestone pattern
     scene.add(mk(new THREE.TorusGeometry(28,.12,8,48),M.stoneD,0,HILL_Y+.42,0));
+    scene.add(mk(new THREE.TorusGeometry(20,.08,4,48),M.stoneD,0,HILL_Y+.38,0));
+    scene.add(mk(new THREE.TorusGeometry(14,.06,4,36),M.stoneD,0,HILL_Y+.38,0));
+    // Compass rose / medallion at courtyard centre
+    const medallion = new THREE.Mesh(new THREE.CircleGeometry(2,16),M.goldBright);
+    medallion.rotation.x = -Math.PI/2;
+    medallion.position.set(0,HILL_Y+0.4,0);
+    scene.add(medallion);
 
     const palace=new THREE.Group(),clickTargets: THREE.Mesh[]=[];
     palace.position.y=HILL_Y+0.3; // Elevate palace slightly above terrain to prevent clipping
@@ -535,7 +543,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralBodyMeshes = [];
 
     const vW = 20, vD = 18, vH = 7;
-    const ochreWall = new THREE.MeshStandardMaterial({ color: "#D4B878", roughness: 0.88, metalness: 0, map: wornPlasterTex.map, normalMap: wornPlasterTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: wornPlasterTex.roughnessMap, aoMap: wornPlasterTex.aoMap, aoMapIntensity: 0.5, envMapIntensity: 0.4 });
+    const ochreWall = new THREE.MeshStandardMaterial({ color: "#DCC080", roughness: 0.88, metalness: 0, map: wornPlasterTex.map, normalMap: wornPlasterTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: wornPlasterTex.roughnessMap, aoMap: wornPlasterTex.aoMap, aoMapIntensity: 0.5, envMapIntensity: 0.4 });
     const gardenGreen = new THREE.MeshStandardMaterial({ color: "#4A7A3A", roughness: 0.9 });
     const waterMat = new THREE.MeshStandardMaterial({ color: "#4A7A7A", roughness: 0.7, metalness: 0, transparent: true, opacity: 0.45, envMapIntensity: 0.1 });
 
@@ -560,12 +568,21 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         archFill.rotation.x = Math.PI / 2;
         archFill.rotation.y = x > 0 ? -Math.PI / 2 : Math.PI / 2;
         parent.add(archFill);
-        // Stone surround frame
-        parent.add(mk(new THREE.BoxGeometry(0.14, rectH + 0.1, width + 0.2), mat, x, y, z));
+        // Stone surround frame (thicker by 0.05 each way)
+        parent.add(mk(new THREE.BoxGeometry(0.19, rectH + 0.15, width + 0.25), mat, x, y, z));
         // Vertical mullion
         parent.add(mk(new THREE.BoxGeometry(0.15, rectH * 0.9, 0.06), M.trim, x, y, z));
-        // Horizontal transom
+        // Horizontal transom (upper)
         parent.add(mk(new THREE.BoxGeometry(0.15, 0.06, width * 0.85), M.trim, x, y + rectH * 0.15, z));
+        // Horizontal transom (lower) — 6-pane grid
+        parent.add(mk(new THREE.BoxGeometry(0.15, 0.06, width * 0.85), M.trim, x, y - rectH * 0.2, z));
+        // Keystone at arch apex
+        parent.add(mk(new THREE.BoxGeometry(0.2, 0.15, 0.14), M.trim, x, y + rectH / 2 + archR - 0.05, z));
+        // Sill ledge at bottom of window
+        parent.add(mk(new THREE.BoxGeometry(0.2, 0.08, width + 0.3), M.trim, x, y - rectH / 2 - 0.04, z));
+        // Corbels under sill (two brackets)
+        parent.add(mk(new THREE.BoxGeometry(0.08, 0.1, 0.08), M.stoneD, x, y - rectH / 2 - 0.13, z + width * 0.28));
+        parent.add(mk(new THREE.BoxGeometry(0.08, 0.1, 0.08), M.stoneD, x, y - rectH / 2 - 0.13, z - width * 0.28));
       } else {
         // Window faces along X axis (on Z-facing wall)
         parent.add(mk(new THREE.BoxGeometry(width, rectH, 0.12), M.win, x, y, z));
@@ -580,12 +597,21 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         archFill.position.set(x, y + rectH / 2, z);
         archFill.rotation.x = Math.PI / 2;
         parent.add(archFill);
-        // Stone surround frame
-        parent.add(mk(new THREE.BoxGeometry(width + 0.2, rectH + 0.1, 0.14), mat, x, y, z));
+        // Stone surround frame (thicker by 0.05 each way)
+        parent.add(mk(new THREE.BoxGeometry(width + 0.25, rectH + 0.15, 0.19), mat, x, y, z));
         // Vertical mullion
         parent.add(mk(new THREE.BoxGeometry(0.06, rectH * 0.9, 0.15), M.trim, x, y, z));
-        // Horizontal transom
+        // Horizontal transom (upper)
         parent.add(mk(new THREE.BoxGeometry(width * 0.85, 0.06, 0.15), M.trim, x, y + rectH * 0.15, z));
+        // Horizontal transom (lower) — 6-pane grid
+        parent.add(mk(new THREE.BoxGeometry(width * 0.85, 0.06, 0.15), M.trim, x, y - rectH * 0.2, z));
+        // Keystone at arch apex
+        parent.add(mk(new THREE.BoxGeometry(0.14, 0.15, 0.2), M.trim, x, y + rectH / 2 + archR - 0.05, z));
+        // Sill ledge at bottom of window
+        parent.add(mk(new THREE.BoxGeometry(width + 0.3, 0.08, 0.2), M.trim, x, y - rectH / 2 - 0.04, z));
+        // Corbels under sill (two brackets)
+        parent.add(mk(new THREE.BoxGeometry(0.08, 0.1, 0.08), M.stoneD, x + width * 0.28, y - rectH / 2 - 0.13, z));
+        parent.add(mk(new THREE.BoxGeometry(0.08, 0.1, 0.08), M.stoneD, x - width * 0.28, y - rectH / 2 - 0.13, z));
       }
     };
 
@@ -605,14 +631,19 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.3, 0.15, vD + 0.3), M.trim, 0, 1.3 + vH * 0.5, 0));
 
     // Arched windows on central domus walls (front and back)
+    const waterStainMat = new THREE.MeshStandardMaterial({ color: "#8A7860", roughness: 0.95, transparent: true, opacity: 0.15 });
     for (let wi = 0; wi < 3; wi++) {
       const wx = -6 + wi * 6;
       // Front face (-Z), skip center (entrance)
       if (Math.abs(wx) > 2) {
         addArchedWindow(centralGroup, wx, vH * 0.5 + 1.3, -(vD / 2 + 0.05), 1.4, 2.2, "x", M.trim);
+        // Water staining streak below front window
+        centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, -(vD / 2 + 0.06)));
       }
       // Back face (+Z)
       addArchedWindow(centralGroup, wx, vH * 0.5 + 1.3, (vD / 2 + 0.05), 1.4, 2.2, "x", M.trim);
+      // Water staining streak below back window
+      centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.0, 0.02), waterStainMat, wx, vH * 0.5 + 1.3 - 1.5, (vD / 2 + 0.06)));
     }
     // Side arched windows
     for (let wi = 0; wi < 3; wi++) {
@@ -620,6 +651,23 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       addArchedWindow(centralGroup, -(vW / 2 + 0.05), vH * 0.5 + 1.3, wz, 1.2, 2.0, "z", M.trim);
       addArchedWindow(centralGroup, (vW / 2 + 0.05), vH * 0.5 + 1.3, wz, 1.2, 2.0, "z", M.trim);
     }
+
+    // Decorative wall panels flanking entrance (front face)
+    centralGroup.add(mk(new THREE.BoxGeometry(4, 3, 0.08), M.stoneL, -6, vH * 0.5 + 1.3, -(vD / 2 + 0.02)));
+    centralGroup.add(mk(new THREE.BoxGeometry(4, 3, 0.08), M.stoneL,  6, vH * 0.5 + 1.3, -(vD / 2 + 0.02)));
+
+    // Drainpipe cylinders at front corners
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, vH, 6), M.stoneD, -(vW / 2 - 0.2), vH / 2 + 1.3, -(vD / 2 + 0.2)));
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, vH, 6), M.stoneD,  (vW / 2 - 0.2), vH / 2 + 1.3, -(vD / 2 + 0.2)));
+
+    // Shadow line just below main cornice
+    centralGroup.add(mk(new THREE.BoxGeometry(vW + 0.5, 0.06, vD + 0.5), new THREE.MeshStandardMaterial({ color: "#6A5E50", roughness: 0.95 }), 0, vH + 1.2, 0));
+
+    // Ivy/vine patches on back wall (+Z face)
+    centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy, -7,   vH * 0.5 + 1.3 - 0.5, (vD / 2 + 0.03)));
+    centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy, -5.2, vH * 0.5 + 1.3 + 0.8, (vD / 2 + 0.03)));
+    centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy,  7.5, vH * 0.5 + 1.3 - 0.3, (vD / 2 + 0.03)));
+    centralGroup.add(mk(new THREE.BoxGeometry(1.5, 2, 0.05), M.ivy,  5.8, vH * 0.5 + 1.3 + 1.0, (vD / 2 + 0.03)));
 
     // ── ENTRANCE VESTIBULUM (Front — 6 Corinthian columns) ──
     const vestZ = -(vD / 2 + 3);
@@ -629,18 +677,43 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // 6 Corinthian columns
     for (let ci = 0; ci < 6; ci++) {
       const cx = -5 + ci * 2;
-      // Column shaft
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.5, 0.5, 5.5, 16), M.col, cx, 4.3, vestZ));
-      // Flared capital — wider box + small cylinder
+      // Column shaft — thicker radius 0.55
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.55, 0.55, 5.5, 16), M.col, cx, 4.3, vestZ));
+      // Column fluting — 8 thin vertical grooves around the shaft
+      for (let fi = 0; fi < 8; fi++) {
+        const fAngle = (fi / 8) * Math.PI * 2;
+        const fr = 0.54;
+        const fx = cx + Math.sin(fAngle) * fr;
+        const fz = vestZ + Math.cos(fAngle) * fr;
+        centralGroup.add(mk(new THREE.BoxGeometry(0.03, 5.5, 0.03), M.stoneD, fx, 4.3, fz));
+      }
+      // Echinus — small cylinder below capital for abacus/echinus effect
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.6, 0.55, 0.15, 16), M.trim, cx, 6.775, vestZ));
+      // Flared capital — wider box + transitional cylinder
       centralGroup.add(mk(new THREE.BoxGeometry(1.4, 0.3, 1.4), M.trim, cx, 7.15, vestZ));
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.7, 0.5, 0.3, 16), M.trim, cx, 6.9, vestZ));
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.7, 0.6, 0.3, 16), M.trim, cx, 6.95, vestZ));
       // Attic base
       centralGroup.add(mk(new THREE.CylinderGeometry(0.6, 0.65, 0.2, 16), M.stoneD, cx, 1.4, vestZ));
       centralGroup.add(mk(new THREE.BoxGeometry(0.9, 0.12, 0.9), M.stoneD, cx, 1.24, vestZ));
     }
 
+    // Dentil molding under entablature — evenly spaced small boxes
+    for (let di = 0; di <= 22; di++) {
+      const dx = -5.5 + di * 0.5;
+      centralGroup.add(mk(new THREE.BoxGeometry(0.15, 0.12, 0.15), M.trim, dx, 7.35, vestZ));
+    }
+
+    // Frieze band between entablature and pediment
+    centralGroup.add(mk(new THREE.BoxGeometry(12, 0.4, 2.1), M.stoneL, 0, 7.8, vestZ));
+
     // Marble entablature beam
     centralGroup.add(mk(new THREE.BoxGeometry(12, 0.5, 2), M.marble, 0, 7.55, vestZ));
+
+    // TRIGLYPHS — 6 grooved vertical panels across the frieze area
+    for (let ti = 0; ti < 6; ti++) {
+      const tx = -5 + ti * 2;
+      centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.5, 0.15), M.trim, tx, 7.6, vestZ - 1.05));
+    }
 
     // Classical triangular pediment (two angled slabs meeting at center)
     const pedLeft = mk(new THREE.BoxGeometry(6.5, 0.3, 2.2), M.marbleVein, -2.8, 8.5, vestZ);
@@ -652,10 +725,27 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Pediment base beam
     centralGroup.add(mk(new THREE.BoxGeometry(12.5, 0.2, 2.2), M.trim, 0, 7.9, vestZ));
 
-    // Acroterion finials at pediment corners (palmette cones)
-    centralGroup.add(mk(new THREE.ConeGeometry(0.35, 1.2, 8), M.bronze, 0, 9.8, vestZ));
-    centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, -6, 8.2, vestZ));
-    centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, 6, 8.2, vestZ));
+    // CORONA / GEISON — projecting cornice shelf casting shadow under raking cornices
+    centralGroup.add(mk(new THREE.BoxGeometry(13, 0.15, 2.5), M.marble, 0, 7.75, vestZ));
+
+    // RAKING CORNICE MOLDING — gilded strips along pediment slopes
+    const rakLeft = mk(new THREE.BoxGeometry(6.5, 0.12, 0.15), M.gold, -2.8, 8.7, vestZ);
+    rakLeft.rotation.z = 0.18;
+    centralGroup.add(rakLeft);
+    const rakRight = mk(new THREE.BoxGeometry(6.5, 0.12, 0.15), M.gold, 2.8, 8.7, vestZ);
+    rakRight.rotation.z = -0.18;
+    centralGroup.add(rakRight);
+
+    // Acroterion finials at pediment corners (palmette cones) — with marble bases
+    // Center acroterion: base + taller cone
+    centralGroup.add(mk(new THREE.BoxGeometry(0.5, 0.3, 0.5), M.marble, 0, 9.5, vestZ));
+    centralGroup.add(mk(new THREE.ConeGeometry(0.35, 1.5, 8), M.bronze, 0, 10.05, vestZ));
+    // Left corner acroterion: base + cone
+    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.4), M.marble, -6, 7.9, vestZ));
+    centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, -6, 8.4, vestZ));
+    // Right corner acroterion: base + cone
+    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.4), M.marble, 6, 7.9, vestZ));
+    centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, 6, 8.4, vestZ));
 
     // ── Solid triangular tympanum (filled pediment face) with owner's name ──
     {
@@ -675,6 +765,19 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       tymMesh.position.set(0, 7.95, vestZ - 1.11);
       tymMesh.rotation.y = Math.PI; // face outward (-Z, toward entrance)
       centralGroup.add(tymMesh);
+
+      // SCULPTURAL RELIEF — laurel wreath frame in bronze
+      const wreathGeo = new THREE.TorusGeometry(1.2, 0.08, 8, 24);
+      const wreathMesh = new THREE.Mesh(wreathGeo, M.bronze);
+      wreathMesh.position.set(0, 8.65, vestZ - 1.12);
+      centralGroup.add(wreathMesh);
+      // Ribbon tails at bottom of wreath — two angled crossing strips
+      const ribbonL = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, -0.3, 7.5, vestZ - 1.12);
+      ribbonL.rotation.z = 0.35;
+      centralGroup.add(ribbonL);
+      const ribbonR = mk(new THREE.BoxGeometry(0.8, 0.06, 0.15), M.bronze, 0.3, 7.5, vestZ - 1.12);
+      ribbonR.rotation.z = -0.35;
+      centralGroup.add(ribbonR);
 
       // Owner's name inscription carved into tympanum
       if (ownerName && ownerName.trim()) {
@@ -720,6 +823,73 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       ring.position.set(dp * 0.7, 4.3, -(vD / 2 + 0.25));
       centralGroup.add(ring);
     }
+    // Door panels — two recessed rectangular panels per door leaf (left and right)
+    for (let dp = -1; dp <= 1; dp += 2) {
+      centralGroup.add(mk(new THREE.BoxGeometry(1.8, 2, 0.03), M.door, dp * 1.05, 3.0, -(vD / 2 + 0.12)));
+      centralGroup.add(mk(new THREE.BoxGeometry(1.8, 2, 0.03), M.door, dp * 1.05, 5.5, -(vD / 2 + 0.12)));
+    }
+    // Decorative studs/nails — 2 columns of 4 bronze studs on each door leaf
+    for (let dp = -1; dp <= 1; dp += 2) {
+      for (let col = 0; col < 2; col++) {
+        for (let row = 0; row < 4; row++) {
+          const sx = dp * (0.55 + col * 0.7);
+          const sy = 2.5 + row * 1.1;
+          const stud = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6), M.bronze);
+          stud.position.set(sx, sy, -(vD / 2 + 0.24));
+          centralGroup.add(stud);
+        }
+      }
+    }
+    // Semicircular transom window above grand entrance
+    const transomGeo = new THREE.CylinderGeometry(2.0, 2.0, 0.08, 16, 1, false, 0, Math.PI);
+    const transomMesh = new THREE.Mesh(transomGeo, M.win);
+    transomMesh.position.set(0, 7.2, -(vD / 2 + 0.1));
+    transomMesh.rotation.z = Math.PI / 2; // orient flat semicircle facing -Z
+    centralGroup.add(transomMesh);
+    // Pilasters flanking the grand entrance
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 5.5, 0.15), M.trim, -2.8, 4.3, -(vD / 2 + 0.18)));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 5.5, 0.15), M.trim,  2.8, 4.3, -(vD / 2 + 0.18)));
+    // Pilaster capitals
+    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.2), M.trim, -2.8, 7.25, -(vD / 2 + 0.18)));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.2), M.trim,  2.8, 7.25, -(vD / 2 + 0.18)));
+    // Threshold / entrance step
+    centralGroup.add(mk(new THREE.BoxGeometry(5.5, 0.2, 1.5), M.marble, 0, 1.2, -(vD / 2 + 0.8)));
+
+    // ── WALL SCONCES — central domus front face (-Z) ──
+    for (const [x, y] of [[-8, vH * 0.4 + 1.3], [-3, vH * 0.4 + 1.3], [3, vH * 0.4 + 1.3], [8, vH * 0.4 + 1.3]] as [number, number][]) {
+      // Sconce bracket
+      centralGroup.add(mk(new THREE.BoxGeometry(0.15, 0.08, 0.4), M.bronze, x, y, -(vD / 2 + 0.15)));
+      // Torch holder
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.04, 0.4, 6), M.bronze, x, y + 0.25, -(vD / 2 + 0.3)));
+      // Warm glow (small point light)
+      const sconce = new THREE.PointLight("#FFD080", 0.08, 6);
+      sconce.position.set(x, y + 0.4, -(vD / 2 + 0.4));
+      centralGroup.add(sconce);
+    }
+
+    // ── HANGING LANTERNS — vestibulum portico ceiling ──
+    for (const lx of [-3, 3]) {
+      // Chain
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4), M.gold, lx, 7.0, vestZ));
+      // Lantern body
+      centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.4, 0.3), M.bronze, lx, 6.5, vestZ));
+      // Glass panels (four faces)
+      centralGroup.add(mk(new THREE.BoxGeometry(0.25, 0.3, 0.01), M.win, lx, 6.5, vestZ + 0.15));
+      centralGroup.add(mk(new THREE.BoxGeometry(0.25, 0.3, 0.01), M.win, lx, 6.5, vestZ - 0.15));
+      centralGroup.add(mk(new THREE.BoxGeometry(0.01, 0.3, 0.25), M.win, lx + 0.15, 6.5, vestZ));
+      centralGroup.add(mk(new THREE.BoxGeometry(0.01, 0.3, 0.25), M.win, lx - 0.15, 6.5, vestZ));
+      // Warm lantern light
+      const lantern = new THREE.PointLight("#FFE0A0", 0.12, 8);
+      lantern.position.set(lx, 6.5, vestZ);
+      centralGroup.add(lantern);
+    }
+
+    // ── GROUND-LEVEL UPLIGHTS — outermost vestibulum column bases ──
+    for (const ux of [-5, 5]) {
+      const uplight = new THREE.PointLight("#FFE8C0", 0.06, 5);
+      uplight.position.set(ux, 1.5, vestZ);
+      centralGroup.add(uplight);
+    }
 
     // ── OPEN ATRIUM (Center) — impluvium ──
     // Impluvium: sunken marble pool, recessed 0.4
@@ -737,16 +907,54 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Stacked marble rim
     centralGroup.add(mk(new THREE.BoxGeometry(8, 0.12, 6.5), M.marble, 0, 1.86, 0));
 
-    // 4 columns at impluvium corners
+    // ── MOSAIC FLOOR BORDER — gold ring around impluvium ──
+    const mosaicRing = new THREE.Mesh(new THREE.TorusGeometry(4.5, 0.08, 4, 32), M.goldBright);
+    mosaicRing.rotation.x = -Math.PI / 2;
+    mosaicRing.position.set(0, 1.38, 0);
+    centralGroup.add(mosaicRing);
+
+    // ── DECORATIVE FLOOR TILES — 4 corner panels ──
+    centralGroup.add(mk(new THREE.BoxGeometry(2, 0.02, 2), M.pathD, -4.5, 1.38, -3.5));
+    centralGroup.add(mk(new THREE.BoxGeometry(2, 0.02, 2), M.pathD,  4.5, 1.38, -3.5));
+    centralGroup.add(mk(new THREE.BoxGeometry(2, 0.02, 2), M.pathD, -4.5, 1.38,  3.5));
+    centralGroup.add(mk(new THREE.BoxGeometry(2, 0.02, 2), M.pathD,  4.5, 1.38,  3.5));
+
+    // ── LION HEAD SPOUTS — 4 decorative heads at impluvium rim midpoints ──
+    const spoutPositions: [number, number, number, number][] = [
+      [ 3.25, 0, 0,  Math.PI / 2],   // +X side
+      [-3.25, 0, 0, -Math.PI / 2],   // -X side
+      [0,  0,  2.5, 0],              // +Z side
+      [0,  0, -2.5, Math.PI],        // -Z side
+    ];
+    spoutPositions.forEach(([sx, , sz, ry]) => {
+      // Lion head sphere
+      centralGroup.add(mk(new THREE.SphereGeometry(0.15, 8, 8), M.bronze, sx, 1.9, sz));
+      // Water spout cylinder angled downward from the head
+      const spoutMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6), M.bronze);
+      spoutMesh.rotation.y = ry;
+      spoutMesh.rotation.z = Math.PI / 4; // angle downward
+      spoutMesh.position.set(sx, 1.9, sz);
+      centralGroup.add(spoutMesh);
+    });
+
+    // 4 columns at impluvium corners — with echinus necking between shaft and capital
     const impCorners = [[-3.25, -2.5], [-3.25, 2.5], [3.25, -2.5], [3.25, 2.5]];
     impCorners.forEach(([ix, iz]) => {
       centralGroup.add(mk(new THREE.CylinderGeometry(0.35, 0.35, 5, 16), M.col, ix, 4.3, iz));
+      // Echinus (necking between shaft top and capital abacus)
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.45, 0.35, 0.15, 16), M.trim, ix, 6.825, iz));
       centralGroup.add(mk(new THREE.BoxGeometry(1.0, 0.2, 1.0), M.trim, ix, 6.9, iz));
     });
 
-    // Small fountain jet (thin cylinder)
+    // ── FOUNTAIN — jet + basin + top sphere ──
+    // Lower basin below main jet
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.2, 0.25, 0.15, 8), M.marbleVein, 0, 1.9, 0));
+    // Main jet
     centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 1.5, 8), M.marble, 0, 2.3, 0));
+    // Primary sphere
     centralGroup.add(mk(new THREE.SphereGeometry(0.12, 8, 8), M.marble, 0, 3.1, 0));
+    // Second sphere on top for added elegance
+    centralGroup.add(mk(new THREE.SphereGeometry(0.08, 8, 8), M.marble, 0, 3.25, 0));
 
     // ── PERISTYLE GARDEN (Behind atrium) ──
     const periZ = vD / 2 - 4;
@@ -780,11 +988,44 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralGroup.add(mk(new THREE.BoxGeometry(2.5, 0.2, periD + 2), M.stoneL, -periW / 2, 6.6, periZ));
     centralGroup.add(mk(new THREE.BoxGeometry(2.5, 0.2, periD + 2), M.stoneL, periW / 2, 6.6, periZ));
 
-    // Topiary bushes (4 on CylinderGeometry stems)
+    // Central euripus — narrow marble-rimmed water channel
+    centralGroup.add(mk(new THREE.BoxGeometry(8, 0.08, 1.5), M.marble, 0, 1.38, periZ));
+    centralGroup.add(new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.04, 1.2), waterMat).translateX(0).translateY(1.35).translateZ(periZ));
+
+    // Flower beds along garden edges, flanking the euripus
+    centralGroup.add(new THREE.Mesh(new THREE.BoxGeometry(periW - 6, 0.15, 0.8), gardenGreen).translateX(0).translateY(1.42).translateZ(periZ - 2.5));
+    centralGroup.add(new THREE.Mesh(new THREE.BoxGeometry(periW - 6, 0.15, 0.8), gardenGreen).translateX(0).translateY(1.42).translateZ(periZ + 2.5));
+
+    // Topiary bushes — alternating sphere and cone for visual variety
     const topiaryPos = [[-3, periZ - 1.5], [-3, periZ + 1.5], [3, periZ - 1.5], [3, periZ + 1.5]];
-    topiaryPos.forEach(([tx, tz]) => {
+    topiaryPos.forEach(([tx, tz], idx) => {
       centralGroup.add(mk(new THREE.CylinderGeometry(0.08, 0.08, 1.2, 6), M.stoneD, tx, 2.0, tz));
-      centralGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), gardenGreen).translateX(tx).translateY(3.0).translateZ(tz));
+      if (idx % 2 === 0) {
+        // Sphere topiary
+        centralGroup.add(new THREE.Mesh(new THREE.SphereGeometry(0.6, 8, 8), gardenGreen).translateX(tx).translateY(3.0).translateZ(tz));
+      } else {
+        // Cone topiary
+        centralGroup.add(mk(new THREE.ConeGeometry(0.4, 1.2, 8), gardenGreen, tx, 3.2, tz));
+      }
+    });
+
+    // Stepping stones across the garden — 6 flat discs in a path
+    for (let si = 0; si < 6; si++) {
+      const sx = -3.0 + si * 1.2;
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 8), M.pathD, sx, 1.395, periZ));
+    }
+
+    // Climbing roses on every 3rd peristyle column
+    periCols.forEach(([px, pz], idx) => {
+      if (idx % 3 !== 0) return;
+      // Vine stem along column
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.02, 0.02, 3, 4), M.ivy, px + 0.32, 3.3, pz));
+      // 3 flower dots at staggered heights
+      for (let fi = 0; fi < 3; fi++) {
+        const fy = 2.2 + fi * 0.9;
+        const fOff = fi % 2 === 0 ? 0.28 : 0.35;
+        centralGroup.add(mk(new THREE.SphereGeometry(0.06, 4, 4), M.flower, px + fOff, fy, pz + (fi % 2 === 0 ? 0.1 : -0.1)));
+      }
     });
 
     // Low hedgerows
@@ -796,22 +1037,26 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.5, 1), M.marble, 2.6, 1.6, periZ));
     centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.5, 1), M.marble, 5.4, 1.6, periZ));
 
-    // 2 statues on pedestals — rough human figures from basic shapes
+    // 2 statues on pedestals — taller figures with draped cloth detail
     for (let si = -1; si <= 1; si += 2) {
       const sx = si * 5;
       // Pedestal with base moulding
       centralGroup.add(mk(new THREE.BoxGeometry(1.2, 0.2, 1.2), M.marble, sx, 1.4, periZ));
       centralGroup.add(mk(new THREE.BoxGeometry(1, 1.2, 1), M.marbleVein, sx, 2.1, periZ));
       centralGroup.add(mk(new THREE.BoxGeometry(1.1, 0.15, 1.1), M.marble, sx, 2.78, periZ));
-      // Figure: torso
-      centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.4, 0.35), M.marble, sx, 3.6, periZ));
+      // Figure: taller torso
+      centralGroup.add(mk(new THREE.BoxGeometry(0.6, 1.6, 0.35), M.marble, sx, 3.7, periZ));
+      // Draped cloth over one shoulder
+      const drape = mk(new THREE.BoxGeometry(0.5, 0.8, 0.2), M.marbleVein, sx - 0.2, 3.9, periZ - 0.1);
+      drape.rotation.z = 0.18;
+      centralGroup.add(drape);
       // Shoulders
-      centralGroup.add(mk(new THREE.BoxGeometry(0.9, 0.3, 0.35), M.marble, sx, 4.35, periZ));
+      centralGroup.add(mk(new THREE.BoxGeometry(0.9, 0.3, 0.35), M.marble, sx, 4.55, periZ));
       // Head
-      centralGroup.add(mk(new THREE.SphereGeometry(0.22, 8, 8), M.marble, sx, 4.75, periZ));
+      centralGroup.add(mk(new THREE.SphereGeometry(0.22, 8, 8), M.marble, sx, 4.95, periZ));
       // Arms (cylinders angled slightly outward)
       for (const arm of [-1, 1]) {
-        const a = mk(new THREE.CylinderGeometry(0.08, 0.07, 1.0, 6), M.marbleVein, sx + arm * 0.55, 3.7, periZ);
+        const a = mk(new THREE.CylinderGeometry(0.08, 0.07, 1.0, 6), M.marbleVein, sx + arm * 0.55, 3.9, periZ);
         a.rotation.z = arm * 0.15;
         centralGroup.add(a);
       }
@@ -825,67 +1070,223 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     });
 
     // ── ROOM WINGS (arranged around peristyle) ──
-    // Left wing
+    // Left wing — wall body
     centralGroup.add(mk(new THREE.BoxGeometry(5, 5, 4), ochreWall, -(vW / 2 - 2.5), 3.8, periZ - 2));
-    centralGroup.add(mk(new THREE.BoxGeometry(2, 3.5, 0.1), M.stoneD, -(vW / 2 - 2.5), 3.3, periZ - 4.01));
-    // Wooden beam ceiling detail
+    // Left wing — doorway opening (rich door panel + arch)
+    centralGroup.add(mk(new THREE.BoxGeometry(1.8, 3.2, 0.08), M.doorRich, -(vW / 2 - 2.5), 3.3, periZ - 4.01));
+    const leftArch = mk(new THREE.TorusGeometry(0.9, 0.06, 8, 10, Math.PI), M.trim, -(vW / 2 - 2.5), 5.0, periZ - 4.01);
+    leftArch.rotation.z = Math.PI;
+    centralGroup.add(leftArch);
+    // Left wing — window shutters (partially open)
+    const lwShutterL = mk(new THREE.BoxGeometry(0.5, 3, 0.06), M.door, -(vW / 2 - 2.5) - 1.3, 3.3, periZ - 4.01);
+    lwShutterL.rotation.y = 0.2;
+    centralGroup.add(lwShutterL);
+    const lwShutterR = mk(new THREE.BoxGeometry(0.5, 3, 0.06), M.door, -(vW / 2 - 2.5) + 1.3, 3.3, periZ - 4.01);
+    lwShutterR.rotation.y = -0.2;
+    centralGroup.add(lwShutterR);
+    // Left wing — flanking decorative columns with capitals
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.12, 0.12, 3, 8), M.col, -(vW / 2 - 2.5) - 1.1, 2.8, periZ - 4.05));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.08, 0.3), M.trim, -(vW / 2 - 2.5) - 1.1, 4.34, periZ - 4.05));
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.12, 0.12, 3, 8), M.col, -(vW / 2 - 2.5) + 1.1, 2.8, periZ - 4.05));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.08, 0.3), M.trim, -(vW / 2 - 2.5) + 1.1, 4.34, periZ - 4.05));
+    // Left wing — terracotta tile porch overhang
+    centralGroup.add(mk(new THREE.BoxGeometry(3, 0.12, 1.5), M.tile, -(vW / 2 - 2.5), 5.5, periZ - 4.76));
+    // Left wing — wooden beam ceiling detail
     for (let bi = 0; bi < 2; bi++) {
       centralGroup.add(mk(new THREE.CylinderGeometry(0.08, 0.08, 5, 6), M.door, -(vW / 2 - 2.5), 6.2, periZ - 1 + bi * -1.5));
     }
-    // Right wing
+
+    // Right wing — wall body
     centralGroup.add(mk(new THREE.BoxGeometry(5, 5, 4), ochreWall, (vW / 2 - 2.5), 3.8, periZ - 2));
-    centralGroup.add(mk(new THREE.BoxGeometry(2, 3.5, 0.1), M.stoneD, (vW / 2 - 2.5), 3.3, periZ - 4.01));
+    // Right wing — doorway opening (rich door panel + arch)
+    centralGroup.add(mk(new THREE.BoxGeometry(1.8, 3.2, 0.08), M.doorRich, (vW / 2 - 2.5), 3.3, periZ - 4.01));
+    const rightArch = mk(new THREE.TorusGeometry(0.9, 0.06, 8, 10, Math.PI), M.trim, (vW / 2 - 2.5), 5.0, periZ - 4.01);
+    rightArch.rotation.z = Math.PI;
+    centralGroup.add(rightArch);
+    // Right wing — window shutters (partially open)
+    const rwShutterL = mk(new THREE.BoxGeometry(0.5, 3, 0.06), M.door, (vW / 2 - 2.5) - 1.3, 3.3, periZ - 4.01);
+    rwShutterL.rotation.y = 0.2;
+    centralGroup.add(rwShutterL);
+    const rwShutterR = mk(new THREE.BoxGeometry(0.5, 3, 0.06), M.door, (vW / 2 - 2.5) + 1.3, 3.3, periZ - 4.01);
+    rwShutterR.rotation.y = -0.2;
+    centralGroup.add(rwShutterR);
+    // Right wing — flanking decorative columns with capitals
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.12, 0.12, 3, 8), M.col, (vW / 2 - 2.5) - 1.1, 2.8, periZ - 4.05));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.08, 0.3), M.trim, (vW / 2 - 2.5) - 1.1, 4.34, periZ - 4.05));
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.12, 0.12, 3, 8), M.col, (vW / 2 - 2.5) + 1.1, 2.8, periZ - 4.05));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.08, 0.3), M.trim, (vW / 2 - 2.5) + 1.1, 4.34, periZ - 4.05));
+    // Right wing — terracotta tile porch overhang
+    centralGroup.add(mk(new THREE.BoxGeometry(3, 0.12, 1.5), M.tile, (vW / 2 - 2.5), 5.5, periZ - 4.76));
+    // Right wing — wooden beam ceiling detail
     for (let bi = 0; bi < 2; bi++) {
       centralGroup.add(mk(new THREE.CylinderGeometry(0.08, 0.08, 5, 6), M.door, (vW / 2 - 2.5), 6.2, periZ - 1 + bi * -1.5));
     }
-    // Back wing (tablinium)
-    centralGroup.add(mk(new THREE.BoxGeometry(8, 5, 4), ochreWall, 0, 3.8, periZ + periD / 2 + 2));
-    centralGroup.add(mk(new THREE.BoxGeometry(3, 3.5, 0.1), M.stoneD, 0, 3.3, periZ + periD / 2 + 0.01));
-    // Panel outlines on walls
+
+    // Back wing (tablinium) — wider & more prominent (width 8→10)
+    centralGroup.add(mk(new THREE.BoxGeometry(10, 5, 4), ochreWall, 0, 3.8, periZ + periD / 2 + 2));
+    // Tablinium — doorway opening (rich door panel + arch)
+    centralGroup.add(mk(new THREE.BoxGeometry(1.8, 3.2, 0.08), M.doorRich, 0, 3.3, periZ + periD / 2 + 0.01));
+    const tabArch = mk(new THREE.TorusGeometry(0.9, 0.06, 8, 10, Math.PI), M.trim, 0, 5.0, periZ + periD / 2 + 0.01);
+    tabArch.rotation.z = Math.PI;
+    centralGroup.add(tabArch);
+    // Tablinium — flanking decorative columns with capitals
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.12, 0.12, 3, 8), M.col, -1.1, 2.8, periZ + periD / 2 - 0.05));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.08, 0.3), M.trim, -1.1, 4.34, periZ + periD / 2 - 0.05));
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.12, 0.12, 3, 8), M.col, 1.1, 2.8, periZ + periD / 2 - 0.05));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.08, 0.3), M.trim, 1.1, 4.34, periZ + periD / 2 - 0.05));
+    // Tablinium — terracotta tile porch overhang
+    centralGroup.add(mk(new THREE.BoxGeometry(4, 0.12, 1.5), M.tile, 0, 5.5, periZ + periD / 2 - 0.76));
+    // Tablinium — pediment detail (two angled slabs forming gable above porch)
+    const tabPedL = mk(new THREE.BoxGeometry(2.6, 0.18, 0.8), M.stoneL, -0.9, 6.1, periZ + periD / 2 - 0.76);
+    tabPedL.rotation.z = 0.18;
+    centralGroup.add(tabPedL);
+    const tabPedR = mk(new THREE.BoxGeometry(2.6, 0.18, 0.8), M.stoneL, 0.9, 6.1, periZ + periD / 2 - 0.76);
+    tabPedR.rotation.z = -0.18;
+    centralGroup.add(tabPedR);
+    // Tablinium — panel outlines on walls (adjusted for wider width)
     for (let pi = -1; pi <= 1; pi += 2) {
-      centralGroup.add(mk(new THREE.BoxGeometry(0.08, 3, 3.5), M.trim, pi * 3.5, 3.8, periZ + periD / 2 + 2));
+      centralGroup.add(mk(new THREE.BoxGeometry(0.08, 3, 3.5), M.trim, pi * 4.5, 3.8, periZ + periD / 2 + 2));
     }
 
-    // ── TERRACOTTA TILE ROOFING ──
-    // Low-pitched roof planes
-    centralGroup.add(mk(new THREE.BoxGeometry(vW + 2, 0.25, vD + 2), M.tile, 0, vH + 1.55, 0));
-    // Slight overhang with beam ends
+    // ── TERRACOTTA TILE ROOFING — HIPPED ROOF ──
+    const cRoofOverhang = 1.0;
+    const cRoofAngle = 0.2; // ~11.5 degrees
+    const cSlabW = (vW + cRoofOverhang * 2) / 2 + 0.3;
+    const cSlabL = vD + cRoofOverhang * 2;
+    const cRidgeY = vH + 1.55 + Math.sin(cRoofAngle) * cSlabW;
+    // Left slope
+    const cRoofLeft = mk(new THREE.BoxGeometry(cSlabW, 0.22, cSlabL), M.tile, -(cSlabW / 2 - 0.15), vH + 1.55, 0);
+    cRoofLeft.rotation.z = cRoofAngle;
+    centralGroup.add(cRoofLeft);
+    // Right slope
+    const cRoofRight = mk(new THREE.BoxGeometry(cSlabW, 0.22, cSlabL), M.tile, (cSlabW / 2 - 0.15), vH + 1.55, 0);
+    cRoofRight.rotation.z = -cRoofAngle;
+    centralGroup.add(cRoofRight);
+    // Ridge cap tiles along the main ridge (half-cylinder, open downward)
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.15, 0.15, vD + 1, 6, 1, false, 0, Math.PI), M.tile, 0, cRidgeY + 0.08, 0));
+    // Ridge beam under cap
+    centralGroup.add(mk(new THREE.BoxGeometry(0.35, 0.28, vD + 1.2), M.tile, 0, cRidgeY - 0.05, 0));
+    // Hip ridges — diagonal caps from ridge ends down to front/back eave corners
+    for (let s = -1; s <= 1; s += 2) {
+      const hipFront = mk(new THREE.BoxGeometry(0.2, 0.15, cSlabW * 1.35), M.tile, s * cSlabW * 0.48, cRidgeY - 0.12, -(cSlabL / 2 - cSlabW * 0.35));
+      hipFront.rotation.y = s * -0.78;
+      hipFront.rotation.x = -cRoofAngle * 0.6;
+      centralGroup.add(hipFront);
+      const hipBack = mk(new THREE.BoxGeometry(0.2, 0.15, cSlabW * 1.35), M.tile, s * cSlabW * 0.48, cRidgeY - 0.12, (cSlabL / 2 - cSlabW * 0.35));
+      hipBack.rotation.y = s * 0.78;
+      hipBack.rotation.x = cRoofAngle * 0.6;
+      centralGroup.add(hipBack);
+    }
+    // Beam ends at eaves
     for (let bi = 0; bi < 8; bi++) {
       const bx = -vW / 2 + 1 + bi * (vW / 7);
       centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6), M.door, bx, vH + 1.2, -(vD / 2 + 0.5)));
       centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6), M.door, bx, vH + 1.2, (vD / 2 + 0.5)));
     }
-    // Tegulae ridges (half-tube ridges)
+    // Tegulae ridges on slopes
     for (let ti = 0; ti < 5; ti++) {
       const tx = -vW / 2 + 2 + ti * (vW - 4) / 4;
       centralGroup.add(mk(new THREE.CylinderGeometry(0.12, 0.12, vD + 1.5, 6, 1, false, 0, Math.PI), M.tile, tx, vH + 1.75, 0));
     }
 
+    // ── ANTEFIXAE — terracotta discs along front (-Z) eave of central domus ──
+    for (let i = 0; i < 10; i++) {
+      const ax = -vW / 2 + 1 + i * (vW / 9);
+      const disc = mk(new THREE.CylinderGeometry(0.15, 0.15, 0.04, 8), M.tile, ax, vH + 1.45, -(vD / 2 + 0.8));
+      centralGroup.add(disc);
+      const palmette = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 4), M.tile);
+      palmette.scale.set(1.5, 0.3, 1);
+      palmette.position.set(ax, vH + 1.52, -(vD / 2 + 0.8));
+      centralGroup.add(palmette);
+    }
+
+    // ── DECORATIVE TERRACOTTA MEDALLION on central domus back wall ──
+    centralGroup.add(mk(new THREE.CircleGeometry(1.5, 16), M.tile, 0, vH * 0.65 + 1.3, vD / 2 + 0.06));
+    centralGroup.add(mk(new THREE.TorusGeometry(1.5, 0.06, 8, 16), M.stoneD, 0, vH * 0.65 + 1.3, vD / 2 + 0.06));
+
+    // ── AMPHORAE flanking the vestibulum entrance ──
+    for (let ap = -1; ap <= 1; ap += 2) {
+      const apX = ap * 3.5;
+      const apZ = vestZ + 1;
+      // Body
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.25, 0.35, 1.2, 8), M.tile, apX, 1.9, apZ));
+      // Neck
+      centralGroup.add(mk(new THREE.CylinderGeometry(0.12, 0.25, 0.3, 8), M.tile, apX, 2.65, apZ));
+      // Handles (two small tori per amphora)
+      for (let h = -1; h <= 1; h += 2) {
+        const handle = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.03, 6, 8), M.tile);
+        handle.position.set(apX + h * 0.28, 2.1, apZ);
+        handle.rotation.y = Math.PI / 2;
+        centralGroup.add(handle);
+      }
+    }
+
+    // ── ROOF RIDGE FINIALS at ends of central domus roof ──
+    centralGroup.add(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze, -(vW / 2 + 0.5), vH + 1.85, 0));
+    centralGroup.add(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze,  (vW / 2 + 0.5), vH + 1.85, 0));
+
     // ── PANTHEON-STYLE DOME (critical for transition coherence) ──
     const rDomeR = 8;
     // Drum base (slightly wider, 3.5m tall)
     const rDrumR = 8.5, rDrumH = 3.5;
-    centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR, rDrumR + 0.3, rDrumH, 32), ochreWall, 0, vH + 1.8 + rDrumH / 2, 0));
-    // Drum cornice
-    centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR + 0.5, rDrumR + 0.3, 0.25, 32), M.trim, 0, vH + 1.8 + rDrumH + 0.12, 0));
-    // Small drum windows
+    const drumBaseY = vH + 1.8;
+    centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR, rDrumR + 0.3, rDrumH, 32), ochreWall, 0, drumBaseY + rDrumH / 2, 0));
+    // Drum base cornice — wider band at bottom of drum
+    centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR + 0.4, rDrumR + 0.6, 0.2, 32), M.trim, 0, drumBaseY + 0.1, 0));
+    // Drum top cornice
+    centralGroup.add(mk(new THREE.CylinderGeometry(rDrumR + 0.5, rDrumR + 0.3, 0.25, 32), M.trim, 0, drumBaseY + rDrumH + 0.12, 0));
+    // Pilasters around drum exterior — 12 shallow rectangular pilasters
+    for (let p = 0; p < 12; p++) {
+      const pa = (p / 12) * Math.PI * 2;
+      const pilaster = mk(new THREE.BoxGeometry(0.4, rDrumH, 0.15), M.stoneL,
+        Math.cos(pa) * (rDrumR + 0.08), drumBaseY + rDrumH / 2, Math.sin(pa) * (rDrumR + 0.08));
+      pilaster.rotation.y = pa;
+      centralGroup.add(pilaster);
+    }
+    // Drum windows — taller for elegant proportions (0.7×1.6)
     for (let dw = 0; dw < 12; dw++) {
       const da = (dw / 12) * Math.PI * 2;
-      centralGroup.add(mk(new THREE.BoxGeometry(0.8, 1.2, 0.12), M.win,
-        Math.cos(da) * (rDrumR + 0.05), vH + 1.8 + rDrumH * 0.6, Math.sin(da) * (rDrumR + 0.05)));
+      centralGroup.add(mk(new THREE.BoxGeometry(0.7, 1.6, 0.12), M.win,
+        Math.cos(da) * (rDrumR + 0.05), drumBaseY + rDrumH * 0.6, Math.sin(da) * (rDrumR + 0.05)));
     }
-    // Hemispherical dome
+    // Hemispherical dome — weathered bronze-green material
+    const domeMat = new THREE.MeshStandardMaterial({ color: '#5A7868', roughness: 0.7, metalness: 0.3 });
     const rDome = new THREE.Mesh(
       new THREE.SphereGeometry(rDomeR, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.5),
-      M.copper
+      domeMat
     );
-    rDome.position.set(0, vH + 1.8 + rDrumH + 0.2, 0);
+    rDome.position.set(0, drumBaseY + rDrumH + 0.2, 0);
     rDome.castShadow = true;
     centralGroup.add(rDome);
+    // Dome exterior ribs — 8 radial coffers running from drum top toward oculus
+    const domeOriginY = drumBaseY + rDrumH + 0.2;
+    for (let r = 0; r < 8; r++) {
+      const ra = (r / 8) * Math.PI * 2;
+      for (let seg = 0; seg < 5; seg++) {
+        const phi = (seg / 5) * (Math.PI * 0.45); // equator toward apex
+        const ribR = rDomeR * Math.cos(phi) * 0.95;
+        const ribY = rDomeR * Math.sin(phi);
+        const rib = mk(new THREE.BoxGeometry(0.18, 0.12, 0.5), M.stoneD,
+          Math.cos(ra) * ribR, domeOriginY + ribY, Math.sin(ra) * ribR);
+        rib.rotation.y = ra;
+        rib.rotation.z = -phi;
+        centralGroup.add(rib);
+      }
+    }
     // Oculus opening (dark circle at apex)
-    centralGroup.add(mk(new THREE.CylinderGeometry(1.5, 1.5, 0.15, 24), M.stoneD, 0, vH + 1.8 + rDrumH + rDomeR + 0.1, 0));
-    // Oculus rim
-    centralGroup.add(mk(new THREE.TorusGeometry(1.5, 0.12, 8, 24), M.gold, 0, vH + 1.8 + rDrumH + rDomeR + 0.2, 0));
+    centralGroup.add(mk(new THREE.CylinderGeometry(1.5, 1.5, 0.15, 24), M.stoneD, 0, drumBaseY + rDrumH + rDomeR + 0.1, 0));
+    // Oculus rim — thicker tube for bold gold band
+    centralGroup.add(mk(new THREE.TorusGeometry(1.5, 0.18, 8, 24), M.gold, 0, drumBaseY + rDrumH + rDomeR + 0.2, 0));
+    // Lantern above oculus — cylinder with 6 tiny windows, cone roof, gold finial
+    const lanternY = drumBaseY + rDrumH + rDomeR + 0.35;
+    centralGroup.add(mk(new THREE.CylinderGeometry(0.8, 0.8, 1.5, 16), M.stoneL, 0, lanternY + 0.75, 0));
+    for (let lw = 0; lw < 6; lw++) {
+      const lwa = (lw / 6) * Math.PI * 2;
+      centralGroup.add(mk(new THREE.BoxGeometry(0.25, 0.55, 0.1), M.win,
+        Math.cos(lwa) * 0.82, lanternY + 0.75, Math.sin(lwa) * 0.82));
+    }
+    centralGroup.add(mk(new THREE.ConeGeometry(0.6, 1.0, 16), M.trim, 0, lanternY + 1.5 + 0.5, 0));
+    centralGroup.add(mk(new THREE.SphereGeometry(0.18, 12, 8), M.goldBright, 0, lanternY + 2.05, 0));
 
     // ── DISTANT ROMAN ELEMENTS ──
     // (Aqueduct moved to landscape section where atmosColor is available)
@@ -938,43 +1339,90 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       addM(mk(new THREE.BoxGeometry(wW, wH, wL), ochreWall, 0, wH / 2 + 1.3, -(vD / 2 + wL / 2)));
       // Plinth
       addM(mk(new THREE.BoxGeometry(wW + 1.5, 0.6, wL + 1), M.stoneD, 0, 1.0, -(vD / 2 + wL / 2)));
+      // Plinth molding — extra trim band at the base
+      addM(mk(new THREE.BoxGeometry(wW + 0.8, 0.12, wL + 0.5), M.trim, 0, 1.5, -(vD / 2 + wL / 2)));
+      // String course — horizontal trim band at mid-height
+      addM(mk(new THREE.BoxGeometry(wW + 0.2, 0.1, wL + 0.2), M.trim, 0, wH * 0.5 + 1.3, -(vD / 2 + wL / 2)));
       // Trim band at top
       addM(mk(new THREE.BoxGeometry(wW + 0.3, 0.2, wL + 0.3), M.trim, 0, wH + 1.4, -(vD / 2 + wL / 2)));
+      // Gutter / cornice shadow line under the roof
+      addM(mk(new THREE.BoxGeometry(wW + 1.0, 0.08, wL + 0.6), M.stoneD, 0, wH + 1.55, -(vD / 2 + wL / 2)));
+      // Quoin stones — vertical trim strips at all 4 corners of the gallery body
+      for (const qx of [-wW / 2, wW / 2]) {
+        for (const qz of [-(vD / 2 + 0.125), -(vD / 2 + wL - 0.125)]) {
+          addM(mk(new THREE.BoxGeometry(0.25, wH, 0.25), M.trim, qx, wH / 2 + 1.3, qz));
+        }
+      }
 
-      // ── HIPPED TERRACOTTA ROOF (two angled planes meeting at ridge) ──
-      const roofOverhang = 0.8;
+      // ── HIPPED TERRACOTTA ROOF (four-sided hip roof) ──
+      const roofOverhang = 1.2;
       const roofAngle = 0.26; // ~15 degrees
       const roofSlabW = (wW + roofOverhang * 2) / 2 + 0.3;
-      const roofSlabL = wL + roofOverhang;
+      const roofSlabL = wL + roofOverhang * 2;
+      const wRidgeY = wH + 2.0 + Math.sin(roofAngle) * roofSlabW;
+      const wRidgeCenterZ = -(vD / 2 + wL / 2);
       // Left slope
-      const roofLeft = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, -(roofSlabW / 2 - 0.15), wH + 1.8, -(vD / 2 + wL / 2));
+      const roofLeft = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, -(roofSlabW / 2 - 0.15), wH + 1.8, wRidgeCenterZ);
       roofLeft.rotation.z = roofAngle;
       addM(roofLeft);
       // Right slope
-      const roofRight = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, (roofSlabW / 2 - 0.15), wH + 1.8, -(vD / 2 + wL / 2));
+      const roofRight = mk(new THREE.BoxGeometry(roofSlabW, 0.18, roofSlabL), M.tile, (roofSlabW / 2 - 0.15), wH + 1.8, wRidgeCenterZ);
       roofRight.rotation.z = -roofAngle;
       addM(roofRight);
+      // Front hip slope (triangular end piece — approximated as tapered box)
+      const hipEndL = roofSlabW * 2 - 0.2;
+      const roofFront = mk(new THREE.BoxGeometry(hipEndL, 0.18, roofSlabW * 1.05), M.tile, 0, wH + 1.8, wRidgeCenterZ + roofSlabL / 2 - roofSlabW * 0.4);
+      roofFront.rotation.x = -roofAngle;
+      addM(roofFront);
+      // Back hip slope
+      const roofBack = mk(new THREE.BoxGeometry(hipEndL, 0.18, roofSlabW * 1.05), M.tile, 0, wH + 1.8, wRidgeCenterZ - roofSlabL / 2 + roofSlabW * 0.4);
+      roofBack.rotation.x = roofAngle;
+      addM(roofBack);
       // Ridge beam along the top
-      addM(mk(new THREE.BoxGeometry(0.3, 0.25, roofSlabL + 0.2), M.tile, 0, wH + 2.0 + Math.sin(roofAngle) * roofSlabW / 2, -(vD / 2 + wL / 2)));
-      // Beam ends (overhang)
+      addM(mk(new THREE.BoxGeometry(0.3, 0.25, roofSlabL - roofSlabW * 1.6), M.tile, 0, wRidgeY - 0.05, wRidgeCenterZ));
+      // Ridge cap tiles (half-cylinder) along the main ridge
+      addM(mk(new THREE.CylinderGeometry(0.15, 0.15, roofSlabL - roofSlabW * 1.6, 6, 1, false, 0, Math.PI), M.tile, 0, wRidgeY + 0.1, wRidgeCenterZ));
+      // Fascia boards under eave overhangs (long sides)
+      addM(mk(new THREE.BoxGeometry(roofSlabW * 2 + 0.1, 0.1, 0.15), M.door, 0, wH + 1.55, wRidgeCenterZ - roofSlabL / 2));
+      addM(mk(new THREE.BoxGeometry(roofSlabW * 2 + 0.1, 0.1, 0.15), M.door, 0, wH + 1.55, wRidgeCenterZ + roofSlabL / 2));
+      // Fascia boards on short (hip) ends
+      addM(mk(new THREE.BoxGeometry(0.15, 0.1, roofSlabL + 0.1), M.door, -(roofSlabW - 0.1), wH + 1.55, wRidgeCenterZ));
+      addM(mk(new THREE.BoxGeometry(0.15, 0.1, roofSlabL + 0.1), M.door, (roofSlabW - 0.1), wH + 1.55, wRidgeCenterZ));
+      // Beam ends (overhang) — sides, front face, and back face
       const nBeams = Math.floor(wL / 2.5);
       for (let bi = 0; bi < nBeams; bi++) {
         const bz = -(vD / 2 + 1.5 + bi * 2.5);
+        // Side beams (left / right flanks)
         for (let s = -1; s <= 1; s += 2) {
           addM(mk(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 6), M.door, s * (wW / 2 + 0.3), wH + 1.2, bz));
         }
+        // Front face beams (near end of wing)
+        addM(mk(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 6), M.door, (bi - nBeams / 2) * (wW / nBeams), wH + 1.2, -(vD / 2)));
+        // Back face beams (far end of wing)
+        addM(mk(new THREE.CylinderGeometry(0.05, 0.05, 0.8, 6), M.door, (bi - nBeams / 2) * (wW / nBeams), wH + 1.2, -(vD / 2 + wL)));
       }
 
       // ── ARCHED COLONNADED PORTICO (columns with arches between them) ──
       const nCols = 6;
+      // Continuous entablature above colonnade — one per side
+      for (let s = -1; s <= 1; s += 2) {
+        const cx = s * (wW / 2 + 1.2);
+        wg.add(mk(new THREE.BoxGeometry(0.3, 0.2, wL - 2), M.trim, cx, wH + 1.1, -(vD / 2 + 2 + (wL - 4) / 2)));
+      }
       for (let ci = 0; ci < nCols; ci++) {
         const cz = -(vD / 2 + 2 + ci * (wL - 4) / (nCols - 1));
         for (let s = -1; s <= 1; s += 2) {
           const cx = s * (wW / 2 + 1.2);
-          wg.add(mk(new THREE.CylinderGeometry(0.25, 0.3, wH - 0.5, 12), M.col, cx, (wH - 0.5) / 2 + 1.3, cz));
+          // Main shaft — thicker radius 0.3/0.35
+          wg.add(mk(new THREE.CylinderGeometry(0.3, 0.35, wH - 0.5, 12), M.col, cx, (wH - 0.5) / 2 + 1.3, cz));
+          // Entasis bulge at 1/3 height
+          wg.add(mk(new THREE.CylinderGeometry(0.33, 0.28, (wH - 0.5) * 0.3, 12), M.col, cx, (wH - 0.5) * 0.33 + 1.3, cz));
+          // Capital
           wg.add(mk(new THREE.BoxGeometry(0.7, 0.15, 0.7), M.trim, cx, wH + 0.95, cz));
-          // Attic base
-          wg.add(mk(new THREE.CylinderGeometry(0.35, 0.38, 0.15, 12), M.stoneD, cx, 1.35, cz));
+          // Impost block at spring line of arch
+          wg.add(mk(new THREE.BoxGeometry(0.5, 0.12, 0.3), M.trim, cx, wH + 0.85, cz));
+          // Column base — wider and lower than old attic base
+          wg.add(mk(new THREE.CylinderGeometry(0.4, 0.42, 0.12, 12), M.stoneD, cx, 1.22, cz));
 
           // Arched opening between this column and the next
           if (ci < nCols - 1) {
@@ -987,6 +1435,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
             archMesh.rotation.x = Math.PI / 2;
             archMesh.rotation.z = s > 0 ? Math.PI / 2 : -Math.PI / 2;
             wg.add(archMesh);
+            // Keystone at apex of each arch
+            wg.add(mk(new THREE.BoxGeometry(0.15, 0.2, 0.15), M.trim, cx, wH + 0.85 + archSpan * 0.8, archCenterZ));
           }
         }
       }
@@ -1019,47 +1469,175 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       // Mid-story string course
       addM(mk(new THREE.BoxGeometry(eW + 0.3, 0.12, eD + 0.3), M.trim, 0, eH / 2 + 1.3, eZ));
 
+      // ── RUSTICATED BASE — horizontal groove bands on lower third ──
+      for (const ry of [2.5, 3.5, 4.5]) {
+        addM(mk(new THREE.BoxGeometry(eW + 0.15, 0.06, eD + 0.15), M.stoneD, 0, ry, eZ));
+      }
+
       // Two rows of arched windows (one per story) on front face
       for (let floor = 0; floor < 2; floor++) {
         const floorY = 3.8 + floor * (eH / 2 - 0.5);
         for (let twi = 0; twi < 3; twi++) {
           const twx = -eW / 2 + 2 + twi * (eW - 4) / 2;
           addArchedWindow(wg, twx, floorY, eZ - eD / 2 - 0.05, 1.2, 2.2, "x", M.trim);
+          // ── WINDOW SURROUNDS — pediment hood above upper-floor windows only ──
+          if (floor === 1) {
+            const hoodY = floorY + 1.4;
+            const hoodZ = eZ - eD / 2 - 0.08;
+            const hoodW = 1.2 + 0.4; // window width + margin
+            // Left slab angled upward to centre
+            const hoodL = new THREE.Mesh(new THREE.BoxGeometry(hoodW / 2, 0.08, 0.22), M.trim);
+            hoodL.position.set(twx - hoodW / 4, hoodY, hoodZ);
+            hoodL.rotation.z = Math.PI / 8;
+            wg.add(hoodL);
+            // Right slab mirrored
+            const hoodR = new THREE.Mesh(new THREE.BoxGeometry(hoodW / 2, 0.08, 0.22), M.trim);
+            hoodR.position.set(twx + hoodW / 4, hoodY, hoodZ);
+            hoodR.rotation.z = -Math.PI / 8;
+            wg.add(hoodR);
+          }
         }
         // Side windows (one per side per floor)
         addArchedWindow(wg, -(eW / 2 + 0.05), floorY, eZ, 1.0, 2.0, "z", M.trim);
         addArchedWindow(wg, (eW / 2 + 0.05), floorY, eZ, 1.0, 2.0, "z", M.trim);
       }
 
+      // ── BALUSTRADE at mid-story string course — front face ──
+      {
+        const balY = eH / 2 + 1.3;
+        const balZ = eZ - eD / 2 - 0.05;
+        const postCount = 6;
+        const postSpanW = eW - 1;
+        // Top and bottom rails
+        addM(mk(new THREE.BoxGeometry(postSpanW, 0.04, 0.08), M.trim, 0, balY + 0.28, balZ));
+        addM(mk(new THREE.BoxGeometry(postSpanW, 0.04, 0.08), M.trim, 0, balY - 0.22, balZ));
+        // Vertical balusters
+        for (let bi = 0; bi < postCount; bi++) {
+          const bx = -postSpanW / 2 + (bi / (postCount - 1)) * postSpanW;
+          wg.add(mk(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 6), M.trim, bx, balY + 0.03, balZ));
+        }
+      }
+
+      // ── DECORATIVE MEDALLION (clock face) between floors, front face ──
+      addM(mk(new THREE.CircleGeometry(0.8, 16), M.goldBright, 0, eH * 0.5 + 1.3, eZ - eD / 2 - 0.06));
+
       // Tower entrance door
       addM(mk(new THREE.BoxGeometry(2.8, 4.5, 0.2), M.doorRich, 0, 3.7, eZ - eD / 2 - 0.08));
       addM(mk(new THREE.BoxGeometry(3.2, 5, 0.1), M.trim, 0, 3.9, eZ - eD / 2 - 0.04));
+      // Tower door divider
+      addM(mk(new THREE.BoxGeometry(0.07, 4.5, 0.1), M.gold, 0, 3.7, eZ - eD / 2 - 0.19));
+      // Tower door panels — two recessed panels per leaf
+      for (let tdp = -1; tdp <= 1; tdp += 2) {
+        addM(mk(new THREE.BoxGeometry(1.1, 1.5, 0.03), M.door, tdp * 0.65, 2.7, eZ - eD / 2 - 0.1));
+        addM(mk(new THREE.BoxGeometry(1.1, 1.5, 0.03), M.door, tdp * 0.65, 4.6, eZ - eD / 2 - 0.1));
+      }
+      // Tower door fanlight / semicircular transom
+      {
+        const tTransomGeo = new THREE.CylinderGeometry(1.3, 1.3, 0.07, 14, 1, false, 0, Math.PI);
+        const tTransomMesh = new THREE.Mesh(tTransomGeo, M.win);
+        tTransomMesh.position.set(0, 6.15, eZ - eD / 2 - 0.08);
+        tTransomMesh.rotation.z = Math.PI / 2;
+        wg.add(tTransomMesh);
+      }
+      // Tower door threshold step
+      addM(mk(new THREE.BoxGeometry(3.6, 0.18, 1.2), M.marble, 0, 1.1, eZ - eD / 2 - 0.7));
 
       // Portico columns at tower front (4 columns with arches)
       for (let ei = 0; ei < 4; ei++) {
         const ex = -eW / 2 + 1.5 + ei * (eW - 3) / 3;
         wg.add(mk(new THREE.CylinderGeometry(0.25, 0.3, eH * 0.5, 12), M.col, ex, eH * 0.25 + 1.3, eZ - eD / 2 - 0.5));
         wg.add(mk(new THREE.BoxGeometry(0.7, 0.15, 0.7), M.trim, ex, eH * 0.5 + 0.95, eZ - eD / 2 - 0.5));
-        // Arches between tower portico columns
+        // Arches between tower portico columns — increased tube radius for prominence
         if (ei < 3) {
           const nextEx = -eW / 2 + 1.5 + (ei + 1) * (eW - 3) / 3;
           const archMidX = (ex + nextEx) / 2;
           const archSpan = Math.abs(nextEx - ex) / 2;
-          const tArchGeo = new THREE.TorusGeometry(archSpan * 0.8, 0.06, 8, 10, Math.PI);
+          const tArchGeo = new THREE.TorusGeometry(archSpan * 0.8, 0.1, 8, 10, Math.PI);
           const tArch = new THREE.Mesh(tArchGeo, M.trim);
           tArch.position.set(archMidX, eH * 0.5 + 0.85, eZ - eD / 2 - 0.5);
           wg.add(tArch);
         }
       }
 
-      // ── HIPPED ROOF on tower (4 angled slabs — low pyramid) ──
-      const towerRoofH = 3;
-      const towerRoof = mk(new THREE.ConeGeometry(eW * 0.78, towerRoofH, 4), M.tile, 0, eH + 1.4 + towerRoofH / 2, eZ);
-      towerRoof.rotation.y = Math.PI / 4; // align square base with tower
-      towerRoof.castShadow = true;
-      addM(towerRoof);
-      // Ridge finial
-      addM(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze, 0, eH + 1.4 + towerRoofH + 0.2, eZ));
+      // ── CORNER URNS on tower cornice ──
+      for (const ux of [-eW / 2 + 0.3, eW / 2 - 0.3]) {
+        for (const uz of [eZ - eD / 2 + 0.3, eZ + eD / 2 - 0.3]) {
+          // Urn body
+          addM(mk(new THREE.CylinderGeometry(0.2, 0.15, 0.5, 8), M.stoneD, ux, eH + 1.7, uz));
+          // Urn top sphere
+          addM(mk(new THREE.SphereGeometry(0.15, 8, 8), M.stoneD, ux, eH + 1.7 + 0.4, uz));
+        }
+      }
+
+      // ── HIPPED ROOF on tower — 4 angled terracotta slabs, ridge cap, eaves, brackets ──
+      const tRoofBase = eH + 1.4;   // top of cornice
+      const tRoofPeak = tRoofBase + 2.6; // ridge height above cornice
+
+      // Front slope (toward viewer, -Z face)
+      {
+        const s = new THREE.Mesh(new THREE.BoxGeometry(eW + 1.5, 0.18, eD / 2 + 0.8), M.tile);
+        s.position.set(0, tRoofBase + 1.1, eZ - (eD / 4 + 0.2));
+        s.rotation.x = -0.3;
+        s.castShadow = true;
+        wg.add(s); addM(s);
+      }
+      // Back slope (+Z face)
+      {
+        const s = new THREE.Mesh(new THREE.BoxGeometry(eW + 1.5, 0.18, eD / 2 + 0.8), M.tile);
+        s.position.set(0, tRoofBase + 1.1, eZ + (eD / 4 + 0.2));
+        s.rotation.x = 0.3;
+        s.castShadow = true;
+        wg.add(s); addM(s);
+      }
+      // Left slope (-X face)
+      {
+        const s = new THREE.Mesh(new THREE.BoxGeometry(eW / 2 + 0.8, 0.18, eD + 1.5), M.tile);
+        s.position.set(-(eW / 4 + 0.2), tRoofBase + 1.1, eZ);
+        s.rotation.z = 0.3;
+        s.castShadow = true;
+        wg.add(s); addM(s);
+      }
+      // Right slope (+X face)
+      {
+        const s = new THREE.Mesh(new THREE.BoxGeometry(eW / 2 + 0.8, 0.18, eD + 1.5), M.tile);
+        s.position.set(eW / 4 + 0.2, tRoofBase + 1.1, eZ);
+        s.rotation.z = -0.3;
+        s.castShadow = true;
+        wg.add(s); addM(s);
+      }
+
+      // Flat ridge cap along the top
+      addM(mk(new THREE.BoxGeometry(eW * 0.3, 0.12, 0.12), M.tile, 0, tRoofPeak, eZ));
+
+      // Eave overhang strips — wooden fascia along all 4 eave edges
+      addM(mk(new THREE.BoxGeometry(eW + 1.6, 0.12, 0.12), M.door, 0, tRoofBase + 0.06, eZ - (eD / 2 + 0.75))); // front eave
+      addM(mk(new THREE.BoxGeometry(eW + 1.6, 0.12, 0.12), M.door, 0, tRoofBase + 0.06, eZ + (eD / 2 + 0.75))); // back eave
+      addM(mk(new THREE.BoxGeometry(0.12, 0.12, eD + 1.6), M.door, -(eW / 2 + 0.75), tRoofBase + 0.06, eZ));    // left eave
+      addM(mk(new THREE.BoxGeometry(0.12, 0.12, eD + 1.6), M.door, eW / 2 + 0.75, tRoofBase + 0.06, eZ));       // right eave
+
+      // Terracotta ridge tile — half-cylinder profile along centre ridge
+      {
+        const rg = new THREE.CylinderGeometry(0.1, 0.1, eW * 0.5, 6, 1, false, 0, Math.PI);
+        const rm = new THREE.Mesh(rg, M.tile);
+        rm.position.set(0, tRoofPeak, eZ);
+        wg.add(rm); addM(rm);
+      }
+
+      // Eave brackets — small wooden corbels under front/back eaves, 6 per side
+      for (let bi = 0; bi < 6; bi++) {
+        const bx = -eW / 2 + 0.8 + bi * (eW - 1.6) / 5;
+        addM(mk(new THREE.BoxGeometry(0.12, 0.15, 0.08), M.door, bx, tRoofBase + 0.06, eZ - (eD / 2 + 0.71)));
+        addM(mk(new THREE.BoxGeometry(0.12, 0.15, 0.08), M.door, bx, tRoofBase + 0.06, eZ + (eD / 2 + 0.71)));
+      }
+      // Eave brackets — left/right eaves, 6 per side
+      for (let bi = 0; bi < 6; bi++) {
+        const bz = eZ - eD / 2 + 0.5 + bi * (eD - 1.0) / 5;
+        addM(mk(new THREE.BoxGeometry(0.08, 0.15, 0.12), M.door, -(eW / 2 + 0.71), tRoofBase + 0.06, bz));
+        addM(mk(new THREE.BoxGeometry(0.08, 0.15, 0.12), M.door, eW / 2 + 0.71, tRoofBase + 0.06, bz));
+      }
+
+      // Ridge finial — bronze sphere repositioned to new peak
+      addM(mk(new THREE.SphereGeometry(0.2, 8, 8), M.bronze, 0, tRoofPeak + 0.25, eZ));
 
       wg.rotation.y = angle + Math.PI;
       const att = 2;
@@ -1124,22 +1702,89 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     let fW1: THREE.Mesh | null = null, fW2: THREE.Mesh | null = null, fW3: THREE.Mesh | null = null;
     let pool: THREE.Mesh | null = null;
     if (fountainSafe) {
+    // ── BASE STEPS — 3 concentric circular steps around the bottom basin ──
+    cAdd(mk(new THREE.CylinderGeometry(6.5,6.5,.15,32),M.stoneD,fX,.08,fZ));
+    cAdd(mk(new THREE.CylinderGeometry(6.0,6.0,.15,32),M.stoneD,fX,.23,fZ));
+    cAdd(mk(new THREE.CylinderGeometry(5.5,5.5,.15,32),M.stoneD,fX,.38,fZ));
+
     // Bottom basin
     cAdd(mk(new THREE.CylinderGeometry(5,5.5,1,32),M.marble,fX,.5,fZ));
     cAdd(mk(new THREE.CylinderGeometry(4.5,4.5,.15,32),M.marbleVein,fX,1.05,fZ));
     fW1=new THREE.Mesh(new THREE.CylinderGeometry(4.2,4.2,.08,32),M.water);fW1.position.set(fX,1.1,fZ);cAdd(fW1);
-    // Middle tier
+    // Scalloped edge — 12 bumps around bottom basin rim
+    for(let si=0;si<12;si++){
+      const sa=si*(Math.PI*2/12);
+      cAdd(mk(new THREE.SphereGeometry(.3,6,4),M.marbleVein,fX+Math.cos(sa)*4.5,1.1,fZ+Math.sin(sa)*4.5));
+    }
+
+    // Middle tier pedestal
     cAdd(mk(new THREE.CylinderGeometry(1,1.4,2.5,12),M.marble,fX,2.4,fZ));
+    // Carved panels on the 4 faces of the middle pedestal
+    for(let pi=0;pi<4;pi++){
+      const pa=pi*(Math.PI/2);
+      const pm=mk(new THREE.BoxGeometry(.6,.8,.02),M.marbleVein,fX+Math.cos(pa)*1.01,2.35,fZ+Math.sin(pa)*1.01);
+      pm.rotation.y=pa;cAdd(pm);
+    }
+    // Dolphin / putti figures — 4 decorative figures around middle pedestal
+    for(let di=0;di<4;di++){
+      const da=di*(Math.PI/2);
+      const dr=1.6;
+      cAdd(mk(new THREE.SphereGeometry(.25,6,6),M.bronze,fX+Math.cos(da)*dr,1.5,fZ+Math.sin(da)*dr));
+      const tail=mk(new THREE.CylinderGeometry(.08,.05,.5,6),M.bronze,fX+Math.cos(da)*dr,1.85,fZ+Math.sin(da)*dr);
+      tail.rotation.z=Math.cos(da)*0.4;tail.rotation.x=Math.sin(da)*0.4;cAdd(tail);
+    }
     cAdd(mk(new THREE.CylinderGeometry(2.5,2.5,.15,20),M.marbleVein,fX,3.7,fZ));
     fW2=new THREE.Mesh(new THREE.CylinderGeometry(2.2,2.2,.06,20),M.water);fW2.position.set(fX,3.75,fZ);cAdd(fW2);
+    // Scalloped edge — 12 bumps around middle basin rim
+    for(let si=0;si<12;si++){
+      const sa=si*(Math.PI*2/12);
+      cAdd(mk(new THREE.SphereGeometry(.3,6,4),M.marbleVein,fX+Math.cos(sa)*2.5,3.78,fZ+Math.sin(sa)*2.5));
+    }
+
     // Top tier
     cAdd(mk(new THREE.CylinderGeometry(.5,.7,1.8,8),M.marble,fX,4.6,fZ));
     cAdd(mk(new THREE.CylinderGeometry(1.2,1.2,.12,12),M.marbleVein,fX,5.6,fZ));
     fW3=new THREE.Mesh(new THREE.CylinderGeometry(1,1,.06,12),M.water);fW3.position.set(fX,5.63,fZ);cAdd(fW3);
-    // Simple finial
-    cAdd(mk(new THREE.CylinderGeometry(.2,.3,.8,8),M.bronze,fX,6.1,fZ));
-    cAdd(mk(new THREE.SphereGeometry(.3,8,8),M.goldBright,fX,6.7,fZ));
+    // Scalloped edge — 12 bumps around top basin rim
+    for(let si=0;si<12;si++){
+      const sa=si*(Math.PI*2/12);
+      cAdd(mk(new THREE.SphereGeometry(.3,6,4),M.marbleVein,fX+Math.cos(sa)*1.2,5.68,fZ+Math.sin(sa)*1.2));
     }
+
+    // Finial stem + sphere (bronze for authentic Roman look)
+    cAdd(mk(new THREE.CylinderGeometry(.2,.3,.8,8),M.bronze,fX,6.1,fZ));
+    cAdd(mk(new THREE.SphereGeometry(.3,8,8),M.bronze,fX,6.7,fZ));
+    // Acorn finial cone on top of sphere
+    cAdd(mk(new THREE.ConeGeometry(.12,.25,8),M.bronze,fX,7.05,fZ));
+    // Water jet — thin vertical cylinder simulating upward spray
+    cAdd(mk(new THREE.CylinderGeometry(.02,.02,1.5,6),M.water,fX,7.45,fZ));
+    }
+
+    // ── COURTYARD OLIVE TREES — gnarled, silver-green Mediterranean olives ──
+    const oliveCourtPositions = [[-18, -15], [18, -15], [-18, 15], [18, 15], [-25, 0], [25, 0]];
+    oliveCourtPositions.filter(([ox, oz]) => !isInWingZone(ox, oz, 4)).forEach(([ox, oz]) => {
+      // Gnarled trunk — thicker, with visible twist
+      const trunk = mk(new THREE.CylinderGeometry(0.2, 0.35, 3, 8), M.bark, ox, 1.5, oz);
+      trunk.rotation.z = Math.sin(ox * 0.5) * 0.08; // slight lean
+      cAdd(trunk);
+      // Secondary trunk branch
+      const branch = mk(new THREE.CylinderGeometry(0.06, 0.15, 2, 6), M.bark, ox + 0.4, 2.8, oz + 0.2);
+      branch.rotation.z = 0.3;
+      cAdd(branch);
+      // Wide spreading canopy — flattened, silver-green
+      const canopy1 = mk(new THREE.SphereGeometry(2.5, 10, 8), new THREE.MeshStandardMaterial({ color: "#7A8A5A", roughness: 0.85 }), ox, 4.0, oz);
+      canopy1.scale.set(1.2, 0.35, 1.1);
+      canopy1.castShadow = true;
+      cAdd(canopy1);
+      // Secondary canopy lobe
+      const canopy2 = mk(new THREE.SphereGeometry(1.8, 8, 6), new THREE.MeshStandardMaterial({ color: "#8A9A68", roughness: 0.82 }), ox + 1.2, 3.8, oz - 0.5);
+      canopy2.scale.set(1, 0.3, 0.9);
+      cAdd(canopy2);
+      // Dappled shadow disc on ground
+      const shadow = mk(new THREE.CircleGeometry(2.5, 12), new THREE.MeshStandardMaterial({ color: "#2A3A1A", roughness: 1, transparent: true, opacity: 0.12 }), ox, 0.06, oz);
+      shadow.rotation.x = -Math.PI / 2;
+      cAdd(shadow);
+    });
 
     // Symmetrical parterre gardens with flower beds
     const parterreData=[[-16,-25],[16,-25],[-16,-45],[16,-45],[-24,-35],[24,-35]];
@@ -1210,7 +1855,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Main gravel path — wide avenue from entrance gate south to hilltop edge (skip wing zones)
     for(let pi=0;pi<18;pi++){
       const pz=-14-pi*1.6;
-      if(!isInWingZone(0,pz,4))cAdd(mk(new THREE.BoxGeometry(4.5,.05,2.2),M.pathD,0,.04,pz));
+      if(!isInWingZone(0,pz,4))cAdd(mk(new THREE.BoxGeometry(5.5,.05,2.2),M.pathD,0,.04,pz));
     }
     // Radiating side paths (skip wing zones)
     for(let ri=0;ri<6;ri++){
@@ -2011,6 +2656,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     wingWindowMats.set(entranceId,centralWinEntries);
 
     scene.add(palace);
+    scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(-5).translateY(HILL_Y+5).translateZ(0));
+    scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(5).translateY(HILL_Y+5).translateZ(0));
 
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target wing/entrance meshes ──
     const hlLights: Map<string,THREE.PointLight>=new Map();
