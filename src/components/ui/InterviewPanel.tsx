@@ -9,6 +9,7 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
+import { InterviewIcon } from "@/components/ui/InterviewLibraryPanel";
 import enMessages from "@/messages/en.json";
 
 /** Dark interview palette — extracted so scattered hex values are referenced by name */
@@ -43,6 +44,30 @@ const DARK_PALETTE = {
   warmHighlight: DARK.accent,
   aiSoft: DARK.success,
 } as const;
+
+/* ── Inline SVG icons replacing emojis ── */
+const iconProps = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+function MicIcon({ size = 16 }: { size?: number }) {
+  return <svg {...iconProps} width={size} height={size} style={{ display: "inline-block", verticalAlign: "middle", marginRight: "0.375rem" }}><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M7 13a5 5 0 0010 0" /><line x1="12" y1="18" x2="12" y2="21" /><line x1="9" y1="21" x2="15" y2="21" /></svg>;
+}
+function KeyboardIcon({ size = 16 }: { size?: number }) {
+  return <svg {...iconProps} width={size} height={size} style={{ display: "inline-block", verticalAlign: "middle", marginRight: "0.375rem" }}><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="6" y1="9" x2="6" y2="9.01" /><line x1="10" y1="9" x2="10" y2="9.01" /><line x1="14" y1="9" x2="14" y2="9.01" /><line x1="18" y1="9" x2="18" y2="9.01" /><line x1="8" y1="13" x2="16" y2="13" /></svg>;
+}
+function PenIcon({ size = 16 }: { size?: number }) {
+  return <svg {...iconProps} width={size} height={size} style={{ display: "inline-block", verticalAlign: "middle", marginRight: "0.375rem" }}><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>;
+}
+function ScaleIcon({ size = 16 }: { size?: number }) {
+  return <svg {...iconProps} width={size} height={size} style={{ display: "inline-block", verticalAlign: "middle", marginRight: "0.375rem" }}><path d="M12 3v18" /><path d="M5 8l7-5 7 5" /><path d="M3 13l2-5 2 5a4 4 0 01-4 0z" /><path d="M17 13l2-5 2 5a4 4 0 01-4 0z" /></svg>;
+}
+function ClipboardIcon({ size = 16 }: { size?: number }) {
+  return <svg {...iconProps} width={size} height={size} style={{ display: "inline-block", verticalAlign: "middle", marginRight: "0.375rem" }}><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" /><rect x="8" y="2" width="8" height="4" rx="1" /><line x1="8" y1="11" x2="16" y2="11" /><line x1="8" y1="15" x2="13" y2="15" /></svg>;
+}
+function StopIcon({ size = 16 }: { size?: number }) {
+  return <svg {...iconProps} width={size} height={size} style={{ display: "inline-block", verticalAlign: "middle" }}><rect x="6" y="6" width="12" height="12" rx="1" fill="currentColor" stroke="none" /></svg>;
+}
+function SparklesIcon({ size = 48 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", margin: "0 auto" }}><path d="M12 2l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" /><path d="M19 8l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" opacity="0.5" /><path d="M5 16l0.5 1.5L7 18l-1.5 0.5L5 20l-0.5-1.5L3 18l1.5-0.5z" opacity="0.4" /></svg>;
+}
 
 interface InterviewPanelProps {
   onClose: () => void;
@@ -284,9 +309,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       hue,
       s: 40 + Math.floor(Math.random() * 15),
       l: 55 + Math.floor(Math.random() * 15),
-      type: "voice",
+      type: "interview",
       desc: narrative,
-      voiceBlob: true,
       createdAt: new Date().toISOString(),
     };
     onCreateMemory(mem, currentTemplate.wingId);
@@ -374,7 +398,9 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {/* ═══ INTRO PHASE ═══ */}
         {phase === "intro" && currentTemplate && (
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.8s ease both" }}>
-            <div style={{ fontSize: "3rem", marginBottom: "1.25rem" }}>{currentTemplate.icon}</div>
+            <div style={{ marginBottom: "1.25rem", display: "flex", justifyContent: "center" }}>
+              <InterviewIcon templateId={currentTemplate.id} wingId={currentTemplate.wingId} size={48} />
+            </div>
             <h1 style={{
               fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 400,
               color: DARK_PALETTE.question, lineHeight: 1.3, marginBottom: "1rem",
@@ -420,7 +446,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer",
                   transition: "all 0.2s",
                 }}>
-                  {mode === "voice" ? `\uD83C\uDF99\uFE0F ${t("speakAnswers")}` : `\u2328\uFE0F ${t("typeAnswers")}`}
+                  {mode === "voice" ? <><MicIcon />{t("speakAnswers")}</> : <><KeyboardIcon />{t("typeAnswers")}</>}
                 </button>
               ))}
             </div>
@@ -432,9 +458,9 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               </p>
               <div style={{ display: "flex", gap: "0.375rem", justifyContent: "center" }}>
                 {([
-                  { id: "literary" as const, label: `\u270D\uFE0F ${t("styleLiterary")}`, desc: t("styleLiteraryDesc") },
-                  { id: "balanced" as const, label: `\u2696\uFE0F ${t("styleBalanced")}`, desc: t("styleBalancedDesc") },
-                  { id: "factual" as const, label: `\uD83D\uDCCB ${t("styleFactual")}`, desc: t("styleFactualDesc") },
+                  { id: "literary" as const, icon: <PenIcon />, label: t("styleLiterary"), desc: t("styleLiteraryDesc") },
+                  { id: "balanced" as const, icon: <ScaleIcon />, label: t("styleBalanced"), desc: t("styleBalancedDesc") },
+                  { id: "factual" as const, icon: <ClipboardIcon />, label: t("styleFactual"), desc: t("styleFactualDesc") },
                 ]).map((s) => (
                   <button key={s.id} onClick={() => setWritingStyle(s.id)} title={s.desc} style={{
                     padding: "0.5rem 1rem", borderRadius: "1rem",
@@ -444,7 +470,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                     fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
                     transition: "all 0.2s",
                   }}>
-                    {s.label}
+                    {s.icon}{s.label}
                   </button>
                 ))}
               </div>
@@ -484,7 +510,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   display: "flex", alignItems: "center", justifyContent: "center",
                   minWidth: "5rem", minHeight: "5rem",
                 }}>
-                  {"\uD83C\uDF99\uFE0F"}
+                  <MicIcon size={28} />
                 </button>
                 <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: DARK_PALETTE.label }}>
                   {t("tapToRecord")}
@@ -598,7 +624,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               display: "flex", alignItems: "center", justifyContent: "center",
               minWidth: "5rem", minHeight: "5rem",
             }}>
-              {"\u23F9"}
+              <StopIcon size={28} />
             </button>
 
             {/* Pause/resume */}
@@ -791,7 +817,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {/* ═══ COMPLETE PHASE ═══ */}
         {phase === "complete" && currentTemplate && (
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.8s ease both" }}>
-            <div style={{ fontSize: "3.5rem", marginBottom: "1.25rem" }}>{"\u2728"}</div>
+            <div style={{ marginBottom: "1.25rem" }}><SparklesIcon size={56} /></div>
             <h2 style={{
               fontFamily: T.font.display, fontSize: isMobile ? "1.625rem" : "2rem", fontWeight: 400,
               color: DARK_PALETTE.question, marginBottom: "0.75rem",

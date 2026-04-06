@@ -364,14 +364,16 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
   const { t } = useTranslation("library");
   const [hovered, setHovered] = useState(false);
   const [moveHovered, setMoveHovered] = useState(false);
-  const [imgFailed, setImgFailed] = useState(false);
+  const [imgRetries, setImgRetries] = useState(0);
+  const imgFailed = imgRetries > 1; // Allow one retry
   const waveId = useId();
 
-  const isAudio = mem.type === "audio" || mem.type === "voice" || !!mem.voiceBlob;
+  const isInterview = mem.type === "interview";
+  const isAudio = !isInterview && (mem.type === "audio" || mem.type === "voice" || !!mem.voiceBlob);
   const isVideo = mem.type === "video" || !!mem.videoBlob;
-  const hasImage = mem.dataUrl && !isAudio && !isVideo && !mem.dataUrl.startsWith("data:audio");
+  const hasImage = mem.dataUrl && !isAudio && !isVideo && !isInterview && !mem.dataUrl.startsWith("data:audio");
   const isDocument = mem.type === "document" || mem.documentBlob;
-  const isText = mem.type === "orb" || mem.type === "case";
+  const isText = mem.type === "orb" || mem.type === "case" || isInterview;
   const locked = isTimeCapsuleLocked(mem);
   // Generate video thumbnail from the video URL (cached in memory)
   const videoThumb = useVideoThumbnail((isVideo || isAudio) && mem.dataUrl ? mem.dataUrl : null);
@@ -511,7 +513,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                 }}
                 sizes="280px"
                 unoptimized={mem.dataUrl!.startsWith("data:") || mem.dataUrl!.startsWith("/api/")}
-                onError={() => setImgFailed(true)}
+                onError={() => setImgRetries((r) => r + 1)}
               />
               {/* Warm corner vignette */}
               <div style={{

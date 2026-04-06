@@ -29,6 +29,12 @@
   padding: 0;
 }
 
+/* Ensure videos respect internal rotation metadata (EXIF orientation).
+   Prevents 90° rotation mismatch between mobile and desktop browsers. */
+video {
+  image-orientation: from-image;
+}
+
 html,
 body {
   width: 100%;
@@ -167,6 +173,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Remove Tailwind base if it causes issues with Three.js canvas */
 canvas {
   display: block;
+}
+
+/* Prevent browser gestures on 3D canvas */
+[role="application"] canvas {
+  touch-action: none;
 }
 
 /* Hide scrollbar on mobile action bars but allow scroll */

@@ -132,6 +132,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   const getMediaType = (m: Mem): "photo" | "video" | "audio" | "text" => {
     const t = m.type.toLowerCase();
     if (t === "video" || m.videoBlob) return "video";
+    if (t === "interview") return "text"; // Interview excerpts are text narratives
     if (t === "audio" || t === "voice" || m.voiceBlob) return "audio";
     if (t === "text" || t === "document" || t === "story" || m.documentBlob) return "text";
     return "photo";
@@ -266,6 +267,22 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
               padding: isMobile ? "1.5rem" : "2.5rem",
               backdropFilter: "blur(1rem)",
             }}>
+              {/* Interview badge */}
+              {mem.type === "interview" && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                  marginBottom: "1rem", opacity: 0.6,
+                }}>
+                  <TypeIcon type="interview" size={18} color="rgba(255,255,255,0.7)" />
+                  <span style={{
+                    fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                    color: "rgba(255,255,255,0.6)", letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                  }}>
+                    {t("mediaPlayerInterview") || "Interview"}
+                  </span>
+                </div>
+              )}
               <h2 style={{
                 fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 700,
                 color: "rgba(255,255,255,0.92)", margin: "0 0 1.25rem",

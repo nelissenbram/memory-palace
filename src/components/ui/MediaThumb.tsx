@@ -25,7 +25,8 @@ export const MediaThumb = React.memo(function MediaThumb({
   iconColor?: string;
 }) {
   const isVideo = mem.type === "video" || !!mem.videoBlob;
-  const isAudio = mem.type === "audio" || mem.type === "voice" || !!mem.voiceBlob;
+  const isInterview = mem.type === "interview";
+  const isAudio = !isInterview && (mem.type === "audio" || mem.type === "voice" || !!mem.voiceBlob);
   const isImage = mem.type === "photo" || mem.type === "painting" || mem.type === "album";
 
   // For images, use dataUrl directly

@@ -135,6 +135,7 @@ const VisIcon = ({ vis, color, size = 18 }: { vis: string; color: string; size?:
 const DISPLAY_TYPES: [string, string][] = [
   ["photo", "typeFrame"], ["painting", "typePainting"], ["video", "typeScreen"], ["album", "typeAlbum"],
   ["orb", "typeOrb"], ["case", "typeVitrine"], ["audio", "typeAudio"], ["document", "typeDocument"],
+  ["interview", "typeInterview"],
 ];
 
 const VISIBILITY_OPTIONS = ["private", "shared", "family", "public"] as const;
@@ -277,6 +278,9 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const [displayType, setDisplayType] = useState(mem.type);
   const [visibility, setVisibility] = useState<"private" | "shared" | "family" | "public">(mem.visibility || "private");
   const [peopleTags, setPeopleTags] = useState<string[]>((mem as any).people || []);
+  const [aiLabelLoading, setAiLabelLoading] = useState(false);
+  const [aiLabelError, setAiLabelError] = useState<string | null>(null);
+  const [aiLabelResult, setAiLabelResult] = useState<string | null>(null);
   const [newPerson, setNewPerson] = useState("");
   const [revealDate, setRevealDate] = useState(mem.revealDate || "");
   const [resolutionGoal, setResolutionGoal] = useState(mem.resolution?.goal || "");
@@ -450,6 +454,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
           boxShadow: "-8px 0 40px rgba(44,44,42,.15)",
           animation: isMobile ? "mdSlideUp .3s cubic-bezier(.23,1,.32,1)" : "mdSlideIn .3s cubic-bezier(.23,1,.32,1)",
           overflow: "hidden",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         {/* ── Header bar ── */}
@@ -1026,14 +1031,78 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   id="labels"
                   icon={<TagIcon color={openAction === "labels" ? accent : T.color.gold} />}
                   title={t("aiLabelsTitle")}
-                  value={(mem as any).labels?.join(", ") || t("generateLabelsCta")}
+                  value={aiLabelResult || (mem as any).labels?.join(", ") || t("generateLabelsCta")}
                   isOpen={openAction === "labels"}
                   onToggle={() => toggleAction("labels")}
                   accent={accent}
                 >
-                  <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, fontStyle: "italic" }}>
-                    {t("aiLabelsDesc")}
-                  </div>
+                  {mem.type === "photo" && mem.dataUrl ? (
+                    <div>
+                      {aiLabelLoading ? (
+                        <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted }}>{t("aiLabelsLoading")}</p>
+                      ) : aiLabelError ? (
+                        <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#c62828" }}>{aiLabelError}</p>
+                      ) : aiLabelResult ? (
+                        <div>
+                          <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, lineHeight: 1.5, margin: "0 0 0.5rem" }}>{aiLabelResult}</p>
+                          <button
+                            onClick={() => {
+                              onUpdate(mem.id, { desc: (desc ? desc + "\n\n" : "") + aiLabelResult });
+                              setDesc((prev) => (prev ? prev + "\n\n" : "") + aiLabelResult);
+                              setAiLabelResult(null);
+                            }}
+                            style={{
+                              padding: "0.375rem 0.875rem", borderRadius: "0.375rem",
+                              background: accent, color: "#fff", border: "none",
+                              fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {t("aiLabelsSave")}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={async () => {
+                            setAiLabelLoading(true); setAiLabelError(null);
+                            try {
+                              const res = await fetch("/api/ai-label", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ imageUrl: mem.dataUrl, memoryTitle: mem.title }),
+                              });
+                              if (res.status === 403) { setAiLabelError(t("aiLabelsConsentNeeded")); return; }
+                              if (res.status === 503) { setAiLabelError(t("aiLabelsNotConfigured")); return; }
+                              if (!res.ok) { setAiLabelError(t("aiLabelsFailed")); return; }
+                              const data = await res.json();
+                              const result = data.description + (data.labels?.length ? ` [${data.labels.join(", ")}]` : "");
+                              setAiLabelResult(result);
+                            } catch {
+                              setAiLabelError(t("aiLabelsFailed"));
+                            } finally {
+                              setAiLabelLoading(false);
+                            }
+                          }}
+                          style={{
+                            padding: "0.5rem 1rem", borderRadius: "0.5rem",
+                            background: `linear-gradient(135deg, ${accent}, ${T.color.walnut})`,
+                            color: "#fff", border: "none",
+                            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                            cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem",
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2l2.09 6.26L20 10l-4.91 3.74L17.18 20 12 16.27 6.82 20l2.09-6.26L4 10l5.91-1.74z"/>
+                          </svg>
+                          {t("aiLabelsGenerate")}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, fontStyle: "italic" }}>
+                      {t("aiLabelsPhotoOnly")}
+                    </p>
+                  )}
                 </ActionCard>
 
                 {/* 5. Display Type */}
