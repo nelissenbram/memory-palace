@@ -66,6 +66,7 @@ export async function createMemory(data: {
   filePath?: string | null;
   fileSize?: number | null;
   storageBackend?: string | null;
+  thumbnailUrl?: string | null;
   locationName?: string | null;
   lat?: number | null;
   lng?: number | null;
@@ -102,6 +103,7 @@ export async function createMemory(data: {
       file_path: data.filePath || null,
       file_size: data.fileSize || 0,
       storage_backend: data.storageBackend || "supabase",
+      ...(data.thumbnailUrl ? { thumbnail_url: data.thumbnailUrl } : {}),
       ...(data.locationName ? { location_name: data.locationName } : {}),
       ...(data.lat != null ? { lat: data.lat } : {}),
       ...(data.lng != null ? { lng: data.lng } : {}),

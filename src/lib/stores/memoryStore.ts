@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createMemory, updateMemoryAction, deleteMemoryAction, moveMemoryAction, fetchMemories } from "@/lib/auth/memory-actions";
-import { ROOM_MEMS } from "@/lib/constants/defaults";
+import { getDemoMems } from "@/lib/constants/defaults";
 import type { Mem, SharingInfo } from "@/lib/constants/defaults";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { enqueueMemory, cacheMemories, getCachedMemories, type CachedMemory } from "@/lib/offline/db";
@@ -73,6 +73,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       const mapped: Mem[] = memories.map((m: any) => ({
         id: m.id, title: m.title, hue: m.hue, s: m.saturation, l: m.lightness,
         type: m.type, desc: m.description || "", dataUrl: m.file_url || null,
+        thumbnailUrl: m.thumbnail_url || null,
         ...(m.location_name ? { locationName: m.location_name } : {}),
         ...(m.lat != null ? { lat: m.lat } : {}),
         ...(m.lng != null ? { lng: m.lng } : {}),
@@ -95,7 +96,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
   addMemory: async (roomId, mem) => {
     // Optimistic local update
     set((s) => {
-      const cur = s.userMems[roomId] || ROOM_MEMS[roomId] || [];
+      const cur = s.userMems[roomId] || getDemoMems(roomId);
       return { userMems: { ...s.userMems, [roomId]: [...cur, mem] } };
     });
     if (!isSupabaseReady()) return;
@@ -130,7 +131,12 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     let filePath: string | null = null;
     let fileSize: number | null = null;
     let storageBackend: string | null = null;
-    if (mem.dataUrl && mem.dataUrl.startsWith("data:")) {
+
+    // If file was already uploaded directly (via FormData in handleImportFiles)
+    if (mem._filePath) {
+      filePath = mem._filePath;
+      storageBackend = mem._storageBackend || null;
+    } else if (mem.dataUrl && mem.dataUrl.startsWith("data:")) {
       try {
         const res = await fetch(mem.dataUrl);
         const blob = await res.blob();
@@ -165,16 +171,34 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       }
     }
 
+    // Upload thumbnail if present (video/audio)
+    let thumbnailUrl: string | null = mem.thumbnailUrl || null;
+    if (thumbnailUrl && thumbnailUrl.startsWith("data:")) {
+      try {
+        const thumbRes = await fetch(thumbnailUrl);
+        const thumbBlob = await thumbRes.blob();
+        const thumbForm = new FormData();
+        thumbForm.append("file", new File([thumbBlob], "thumb.jpg", { type: "image/jpeg" }));
+        thumbForm.append("bucket", "memories");
+        const thumbUpload = await fetch("/api/upload", { method: "POST", body: thumbForm });
+        if (thumbUpload.ok) {
+          const thumbData = await thumbUpload.json();
+          thumbnailUrl = thumbData.url;
+        }
+      } catch { /* thumbnail upload failed — non-critical */ }
+    }
+
     // Save to DB
     const result = await createMemory({
       roomId, title: mem.title, description: mem.desc || "", type: mem.type,
       hue: mem.hue, saturation: mem.s, lightness: mem.l, fileUrl, filePath, fileSize, storageBackend,
+      thumbnailUrl,
       locationName: mem.locationName || null, lat: mem.lat ?? null, lng: mem.lng ?? null,
     });
     if (result.memory) {
       set((s) => {
         const cur = s.userMems[roomId] || [];
-        const updated = cur.map((m) => m.id === mem.id ? { ...m, id: result.memory.id, dataUrl: fileUrl } : m);
+        const updated = cur.map((m) => m.id === mem.id ? { ...m, id: result.memory.id, dataUrl: fileUrl, ...(thumbnailUrl ? { thumbnailUrl } : {}) } : m);
         return { userMems: { ...s.userMems, [roomId]: updated } };
       });
     } else if (result.error) {
@@ -190,7 +214,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
   updateMemory: async (roomId, memId, updates) => {
     // Optimistic local update
     set((s) => {
-      const cur = s.userMems[roomId] || ROOM_MEMS[roomId] || [];
+      const cur = s.userMems[roomId] || getDemoMems(roomId);
       const updated = cur.map((m) => m.id === memId ? { ...m, ...updates } : m);
       // Also update selMem if it's the one being edited
       const selMem = s.selMem?.id === memId ? { ...s.selMem, ...updates } : s.selMem;
@@ -240,9 +264,9 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
   },
 
   deleteMemory: async (roomId, memId) => {
-    const prev = get().userMems[roomId] || ROOM_MEMS[roomId] || [];
+    const prev = get().userMems[roomId] || getDemoMems(roomId);
     set((s) => {
-      const cur = s.userMems[roomId] || ROOM_MEMS[roomId] || [];
+      const cur = s.userMems[roomId] || getDemoMems(roomId);
       return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== memId) } };
     });
     if (!isSupabaseReady()) return;
@@ -256,16 +280,16 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
 
   moveMemory: async (fromRoomId, toRoomId, memId) => {
     const state = get();
-    const prevFrom = state.userMems[fromRoomId] || ROOM_MEMS[fromRoomId] || [];
-    const prevTo = state.userMems[toRoomId] || ROOM_MEMS[toRoomId] || [];
+    const prevFrom = state.userMems[fromRoomId] || getDemoMems(fromRoomId);
+    const prevTo = state.userMems[toRoomId] || getDemoMems(toRoomId);
     const mem = prevFrom.find((m) => m.id === memId);
     if (!mem) return;
 
     // Optimistic: remove from source, add to target (mark as stored in new room)
     const movedMem = { ...mem, displayed: false };
     set((s) => {
-      const from = (s.userMems[fromRoomId] || ROOM_MEMS[fromRoomId] || []).filter((m) => m.id !== memId);
-      const to = [...(s.userMems[toRoomId] || ROOM_MEMS[toRoomId] || []), movedMem];
+      const from = (s.userMems[fromRoomId] || getDemoMems(fromRoomId)).filter((m) => m.id !== memId);
+      const to = [...(s.userMems[toRoomId] || getDemoMems(toRoomId)), movedMem];
       return { userMems: { ...s.userMems, [fromRoomId]: from, [toRoomId]: to } };
     });
 

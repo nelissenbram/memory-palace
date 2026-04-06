@@ -6,10 +6,12 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useOnlineStatus } from "@/lib/hooks/useOfflineSync";
 import { geocodeLocationName } from "@/lib/geocode";
+import { generateThumbnail } from "@/lib/utils/thumbnail";
 import { UPLOAD_DEMOS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import Image from "next/image";
+import { TypeIcon } from "@/lib/constants/type-icons";
 
 interface UploadPanelProps {
   wing: Wing | null | undefined;
@@ -37,6 +39,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const [fileName,setFileName]=useState("");
   const [imageUrl,setImageUrl]=useState("");
   const [isVideo,setIsVideo]=useState(false);
+  const [videoThumb,setVideoThumb]=useState<string|null>(null);
   const [uploadMethod,setUploadMethod]=useState("url");
   const [timeCapsule,setTimeCapsule]=useState(()=>{
     if(initialTimeCapsule) return true;
@@ -93,10 +96,15 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
     setFileName(file.name);
     if(!title)setTitle(file.name.replace(/\.[^.]+$/,""));
     setIsVideo(isVid);
+    setVideoThumb(null);
     setDisplayType(isVid?"video":"photo");
     const r=new FileReader();
     r.onload=e=>{setPreview(e.target?.result as string);};
     r.readAsDataURL(file);
+    // Generate thumbnail from video/audio files during user interaction (works on mobile)
+    if(isVid||file.type.startsWith("audio/")){
+      generateThumbnail(file,280).then(t=>{if(t)setVideoThumb(t);}).catch(()=>{});
+    }
   };
   const loadUrl=()=>{
     if(!imageUrl.trim())return;
@@ -124,7 +132,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
     if(!title.trim()||!capsuleValid||submitting)return;
     setSubmitting(true);
     const hue=Math.floor(Math.random()*360);
-    const mem: Mem={id:Date.now().toString(),title:title.trim(),hue,s:45+Math.floor(Math.random()*15),l:55+Math.floor(Math.random()*15),type:displayType,desc,dataUrl:preview||null,videoBlob:isVideo,createdAt:new Date().toISOString()};
+    const mem: Mem={id:Date.now().toString(),title:title.trim(),hue,s:45+Math.floor(Math.random()*15),l:55+Math.floor(Math.random()*15),type:displayType,desc,dataUrl:preview||null,videoBlob:isVideo,createdAt:new Date().toISOString(),...(videoThumb?{thumbnailUrl:videoThumb}:{})};
     if(timeCapsule&&revealDate) mem.revealDate=revealDate;
     if(timeCapsule&&isResolution&&goalDesc.trim()){
       mem.resolution={goal:goalDesc.trim(),progress:trackProgress?0:undefined,reminders};
@@ -151,7 +159,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const demos=UPLOAD_DEMOS;
 
   return(
-    <div onClick={onClose} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("addMemory")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e=>e.stopPropagation()} style={{position:"absolute",right:0,top:0,bottom:0,width:isMobile?"100%":"min(380px, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderLeft:isMobile?"none":`1px solid ${T.color.cream}`,padding:isMobile?"1.25rem 1rem":"1.75rem 1.5rem",overflowY:"auto",animation:"slideInRight .3s cubic-bezier(.23,1,.32,1)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.5rem"}}>
           <div>
@@ -172,7 +180,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           {/* URL input */}
           <label htmlFor="upload-url" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("imageOrVideoUrl")}</label>
           <div style={{display:"flex",gap:"0.375rem",marginBottom:"0.75rem"}}>
-            <input id="upload-url" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadUrl();}} placeholder={t("urlPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+            <input id="upload-url" value={imageUrl} onChange={e=>setImageUrl(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")loadUrl();}} placeholder={t("urlPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
             <button onClick={loadUrl} style={{padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:"none",background:accent,color:"#FFF",fontFamily:T.font.body,fontSize:"0.75rem",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>{t("load")}</button>
           </div>
           {/* Quick demo images */}
@@ -186,8 +194,9 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           </div>
         </>:<>
           {/* File drop zone */}
-          <div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}
+          <div role="button" aria-label={t("dropOrBrowse")} tabIndex={0} onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={handleDrop}
             onClick={()=>fileRef.current?.click()}
+            onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fileRef.current?.click();}}}
             style={{border:`2px dashed ${dragOver?accent:T.color.sandstone}`,borderRadius:"1rem",padding:"2rem",textAlign:"center",cursor:"pointer",background:dragOver?`${accent}08`:T.color.warmStone,marginBottom:"1rem",transition:"all .2s"}}>
             <div style={{fontSize:"2rem",marginBottom:"0.5rem"}}>{dragOver?"✨":"📸"}</div>
             <p style={{fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.muted,margin:0}}>{t("dropOrBrowse")}</p>
@@ -205,7 +214,6 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           </p>
           <div style={{display:"flex",flexDirection:"column",gap:"0.5rem",marginBottom:"1rem",maxHeight:"15rem",overflowY:"auto"}}>
             {roomMemories.map(m=>{
-              const typeIcons: Record<string,string>={"photo":"\u{1F5BC}\uFE0F","painting":"\u{1F3A8}","video":"\u{1F3AC}","album":"\u{1F4D6}","orb":"\u{1F52E}","case":"\u{1F3FA}","audio":"\u{1F3B5}","document":"\u{1F4DC}","voice":"\u{1F399}\uFE0F"};
               return(
                 <button key={m.id} onClick={()=>{
                   if(onUpdateMemory){
@@ -223,8 +231,8 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
                       <Image src={m.dataUrl!} fill sizes="44px" style={{objectFit:"cover"}} alt=""/>
                     </div>
                   :
-                    <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.5rem",background:`hsl(${m.hue},${m.s}%,${m.l}%)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.125rem",flexShrink:0}}>
-                      {typeIcons[m.type]||"\u{2728}"}
+                    <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.5rem",background:`hsl(${m.hue},${m.s}%,${m.l}%)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <TypeIcon type={m.type} size={20} color={T.color.charcoal}/>
                     </div>
                   }
                   <div style={{flex:1,minWidth:0}}>
@@ -243,9 +251,9 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           {/* Display type selector for room picker */}
           <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.5rem"}}>{t("displayAs")}</label>
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"0.5rem",marginBottom:"1rem"}}>
-            {[["photo","\u{1F5BC}\uFE0F","typeFrame"],["painting","\u{1F3A8}","typePainting"],["video","\u{1F3AC}","typeScreen"],["album","\u{1F4D6}","typeAlbum"],["orb","\u{1F52E}","typeOrb"],["case","\u{1F3FA}","typeVitrine"],["audio","\u{1F3B5}","typeAudio"],["document","\u{1F4DC}","typeDocument"]].map(([val,icon,labelKey])=>(
+            {([["photo","typeFrame"],["painting","typePainting"],["video","typeScreen"],["album","typeAlbum"],["orb","typeOrb"],["case","typeVitrine"],["audio","typeAudio"],["document","typeDocument"]] as const).map(([val,labelKey])=>(
               <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"0.625rem 0.5rem",borderRadius:"0.625rem",border:displayType===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
-                <div style={{fontSize:"1.25rem"}}>{icon}</div>
+                <div style={{display:"flex",justifyContent:"center"}}><TypeIcon type={val} size={20} color={displayType===val?accent:T.color.muted}/></div>
                 <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:400,marginTop:"0.125rem"}}>{t(labelKey)}</div>
               </button>
             ))}
@@ -260,16 +268,16 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
 
         {/* Title */}
         <label htmlFor="upload-title" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("titleLabel")}</label>
-        <input id="upload-title" value={title} onChange={e=>setTitle(e.target.value)} placeholder={t("nameMemory")} style={{width:"100%",padding:"0.75rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:"1rem"}}/>
+        <input id="upload-title" value={title} onChange={e=>setTitle(e.target.value)} placeholder={t("nameMemory")} style={{width:"100%",padding:"0.75rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:"1rem"}}/>
         {/* Description */}
         <label htmlFor="upload-description" style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("descriptionOptional")}</label>
-        <textarea id="upload-description" value={desc} onChange={e=>setDesc(e.target.value)} placeholder={t("descriptionPlaceholder")} rows={2} style={{width:"100%",padding:"0.75rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:"1rem",resize:"none"}}/>
+        <textarea id="upload-description" value={desc} onChange={e=>setDesc(e.target.value)} placeholder={t("descriptionPlaceholder")} rows={2} style={{width:"100%",padding:"0.75rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box",marginBottom:"1rem",resize:"none"}}/>
         {/* Display type */}
         <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.5rem"}}>{t("displayAs")}</label>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:"0.5rem",marginBottom:"1.5rem"}}>
-          {[["photo","\u{1F5BC}\uFE0F","typeFrame"],["painting","\u{1F3A8}","typePainting"],["video","\u{1F3AC}","typeScreen"],["album","\u{1F4D6}","typeAlbum"],["orb","\u{1F52E}","typeOrb"],["case","\u{1F3FA}","typeVitrine"],["audio","\u{1F3B5}","typeAudio"],["document","\u{1F4DC}","typeDocument"]].map(([val,icon,labelKey])=>(
+          {([["photo","typeFrame"],["painting","typePainting"],["video","typeScreen"],["album","typeAlbum"],["orb","typeOrb"],["case","typeVitrine"],["audio","typeAudio"],["document","typeDocument"]] as const).map(([val,labelKey])=>(
             <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"0.625rem 0.5rem",borderRadius:"0.625rem",border:displayType===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
-              <div style={{fontSize:"1.25rem"}}>{icon}</div>
+              <div style={{display:"flex",justifyContent:"center"}}><TypeIcon type={val} size={20} color={displayType===val?accent:T.color.muted}/></div>
               <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:400,marginTop:"0.125rem"}}>{t(labelKey)}</div>
             </button>
           ))}
@@ -277,7 +285,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
         {/* Location */}
         <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("locationOptional")}</label>
         <div style={{display:"flex",gap:"0.375rem",marginBottom:"0.375rem"}}>
-          <input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder={t("locationPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+          <input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder={t("locationPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
           <button onClick={useCurrentLocation} disabled={geoLoading} style={{padding:"0.625rem 0.75rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.walnut,cursor:geoLoading?"wait":"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:"0.25rem"}}>
             {geoLoading?<span style={{display:"inline-block",width:"0.75rem",height:"0.75rem",border:"2px solid transparent",borderTopColor:T.color.walnut,borderRadius:"50%",animation:"spin .6s linear infinite"}}/>:"\uD83D\uDCCD"} {t("gps")}
           </button>
@@ -299,7 +307,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           {timeCapsule&&<div>
             <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("revealDate")}</label>
             <input type="date" value={revealDate} min={todayStr} onChange={e=>setRevealDate(e.target.value)}
-              style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+              style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
             {revealDate&&revealDate<=todayStr&&<p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.error,margin:"0.375rem 0 0"}}>{t("revealDateFuture")}</p>}
             {/* Resolution toggle */}
             <div style={{marginTop:"1rem"}}>
@@ -316,12 +324,12 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
                 <div>
                   <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("goalDescription")}</label>
                   <input value={goalDesc} onChange={e=>setGoalDesc(e.target.value)} placeholder={t("goalPlaceholder")}
-                    style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+                    style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
                 </div>
                 <div>
                   <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("targetDate")}</label>
                   <input type="date" value={targetDate} min={todayStr} onChange={e=>setTargetDate(e.target.value)}
-                    style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
+                    style={{width:"100%",padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
                 </div>
                 <label style={{display:"flex",alignItems:"center",gap:"0.625rem",cursor:"pointer"}}>
                   <div onClick={()=>setTrackProgress(!trackProgress)} style={{width:"2.125rem",height:"1.25rem",borderRadius:"0.625rem",background:trackProgress?T.color.sage:`${T.color.sandstone}80`,position:"relative",cursor:"pointer",transition:"background .2s",flexShrink:0}}>
