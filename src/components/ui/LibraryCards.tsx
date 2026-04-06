@@ -605,8 +605,41 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                 }} />
               ))}
             </div>
-          ) : isVideo && !hasImage ? (
-            /* --- Video (no thumb yet): play icon on gradient --- */
+          ) : isVideo && mem.dataUrl ? (
+            /* --- Video (no extracted thumb): native <video> shows first frame --- */
+            <>
+              <video
+                src={mem.dataUrl}
+                muted
+                playsInline
+                preload="metadata"
+                style={{
+                  position: "absolute", inset: 0, width: "100%", height: "100%",
+                  objectFit: "cover", pointerEvents: "none",
+                }}
+              />
+              <div style={{
+                position: "absolute", inset: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(0,0,0,.15)",
+              }}>
+                <div style={{
+                  width: "2.5rem", height: "2.5rem", borderRadius: "50%",
+                  background: "rgba(0,0,0,.45)",
+                  backdropFilter: "blur(0.5rem)",
+                  WebkitBackdropFilter: "blur(0.5rem)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 0.25rem 1rem rgba(0,0,0,.2)",
+                  border: "0.0625rem solid rgba(255,255,255,.2)",
+                }}>
+                  <svg width="12" height="14" viewBox="0 0 12 14" fill="rgba(255,255,255,.9)">
+                    <path d="M1 1.5v11l10-5.5L1 1.5z"/>
+                  </svg>
+                </div>
+              </div>
+            </>
+          ) : isVideo ? (
+            /* --- Video with no URL: gradient + play icon --- */
             <div style={{
               position: "absolute", inset: 0,
               display: "flex", alignItems: "center", justifyContent: "center",

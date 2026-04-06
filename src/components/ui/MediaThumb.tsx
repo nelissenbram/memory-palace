@@ -6,8 +6,9 @@ import type { Mem } from "@/lib/constants/defaults";
 
 /**
  * Renders a thumbnail for any memory type.
- * - Photos/paintings: shows dataUrl directly
- * - Video/audio: extracts a frame via useVideoThumbnail, falls back to thumbnailUrl, then gradient+icon
+ * - Photos/paintings: shows dataUrl directly via <img>
+ * - Video: stored thumbnailUrl → extracted frame → native <video> poster fallback
+ * - Audio: stored thumbnailUrl → extracted frame → gradient + icon
  * - Other types: gradient + type icon
  */
 export const MediaThumb = React.memo(function MediaThumb({
@@ -38,18 +39,24 @@ export const MediaThumb = React.memo(function MediaThumb({
 
   const thumbSrc = imageUrl || mediaThumb;
 
+  // For videos without any thumbnail, use a native <video> element as fallback
+  // The browser renders the first frame natively — works on mobile without canvas
+  const useNativeVideo = isVideo && !thumbSrc && !!mem.dataUrl;
+
   const gradient = `linear-gradient(135deg, hsl(${mem.hue},${mem.s}%,${mem.l}%), hsl(${(mem.hue + 20) % 360},${Math.max(mem.s - 5, 15)}%,${Math.max(mem.l - 8, 35)}%))`;
+
+  const sizeStyle = typeof size === "number" ? `${size}rem` : size;
 
   return (
     <div
       style={{
-        width: typeof size === "number" ? `${size}rem` : size,
-        height: typeof size === "number" ? `${size}rem` : size,
+        width: sizeStyle,
+        height: sizeStyle,
         borderRadius,
         flexShrink: 0,
         overflow: "hidden",
         position: "relative",
-        background: thumbSrc ? undefined : gradient,
+        background: thumbSrc || useNativeVideo ? "#000" : gradient,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -66,11 +73,26 @@ export const MediaThumb = React.memo(function MediaThumb({
             display: "block",
           }}
         />
+      ) : useNativeVideo ? (
+        /* Native <video> shows first frame as poster — works on mobile */
+        <video
+          src={mem.dataUrl!}
+          muted
+          playsInline
+          preload="metadata"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+            pointerEvents: "none",
+          }}
+        />
       ) : (
         <TypeIcon type={mem.type} size={iconSize} color={iconColor} />
       )}
-      {/* Play icon overlay for video/audio with thumbnail */}
-      {(isVideo || isAudio) && thumbSrc && (
+      {/* Play icon overlay for video/audio */}
+      {(isVideo || isAudio) && (thumbSrc || useNativeVideo) && (
         <div
           style={{
             position: "absolute",
