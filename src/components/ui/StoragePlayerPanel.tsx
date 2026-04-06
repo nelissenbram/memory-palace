@@ -6,6 +6,7 @@ import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import type { Mem } from "@/lib/constants/defaults";
 import Image from "next/image";
+import { MediaThumb } from "./MediaThumb";
 
 const TYPE_KEY_MAP: Record<string, string> = {
   video: "typeVideo",
@@ -133,14 +134,12 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
               {mems.map((mem) => (
                 <button key={mem.id} onClick={() => setActiveMem(mem)} style={{
-                  display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.625rem 0.875rem",
+                  display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.625rem 0.875rem", minHeight: "2.75rem",
                   background: activeMem?.id === mem.id ? "rgba(200,168,88,0.15)" : "rgba(255,255,255,0.04)",
                   border: activeMem?.id === mem.id ? "1px solid rgba(200,168,88,0.3)" : "1px solid transparent",
                   borderRadius: "0.5rem", cursor: "pointer", textAlign: "left", width: "100%",
                 }}>
-                  <span style={{ fontSize: "1.25rem", width: "1.75rem", textAlign: "center" }}>
-                    {mem.type === "video" ? "\u{1F3AC}" : mem.type === "audio" ? "\u{1F3B5}" : mem.type === "photo" ? "\u{1F5BC}\uFE0F" : mem.type === "document" ? "\u{1F4C4}" : "\u{1F4AD}"}
-                  </span>
+                  <MediaThumb mem={mem} size={2.25} borderRadius="0.375rem" iconSize={16} iconColor="#C8B898" />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                       fontFamily: T.font.body, fontSize: "0.875rem",

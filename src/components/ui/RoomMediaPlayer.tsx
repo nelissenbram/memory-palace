@@ -3,9 +3,10 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { TYPE_ICONS } from "@/lib/constants/type-icons";
+import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
 import type { Mem } from "@/lib/constants/defaults";
 import Image from "next/image";
+import { MediaThumb } from "./MediaThumb";
 
 interface RoomMediaPlayerProps {
   memories: Mem[];
@@ -32,7 +33,6 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   const { t: tc } = useTranslation("common");
 
   const [index, setIndex] = useState(Math.max(0, Math.min(initialIndex, memories.length - 1)));
-  const [showInfo, setShowInfo] = useState(false);
   const [autoPlay, setAutoPlay] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [transitioning, setTransitioning] = useState(false);
@@ -68,11 +68,11 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
       if (e.key === "Escape") onClose();
       else if (e.key === "ArrowLeft") goPrev();
       else if (e.key === "ArrowRight") goNext();
-      else if (e.key === "i" || e.key === "I") setShowInfo(prev => !prev);
+      else if (e.key === "e" || e.key === "E" || e.key === "i" || e.key === "I") onEdit(mem);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose, goPrev, goNext]);
+  }, [onClose, goPrev, goNext, onEdit, mem]);
 
   /* ─── Auto-play slideshow ─── */
   useEffect(() => {
@@ -174,7 +174,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
             display: "flex", alignItems: "center", justifyContent: "center",
             color: "rgba(255,255,255,0.4)", fontFamily: T.font.display, fontSize: "1.5rem",
           }}>
-            <span style={{ fontSize: "4rem", marginBottom: "1rem" }}>{TYPE_ICONS[mem.type] || "\u{1F5BC}\uFE0F"}</span>
+            <span style={{ marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "center" }}><TypeIcon type={mem.type} size={64} color="rgba(255,255,255,0.4)" /></span>
           </div>
         );
 
@@ -189,20 +189,21 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 key={mem.id}
                 controls
                 autoPlay
+                playsInline
+                preload="metadata"
+                src={mem.dataUrl}
                 style={{
                   maxWidth: "92%", maxHeight: "88%",
                   borderRadius: "0.5rem",
                   boxShadow: "0 0.5rem 2rem rgba(0,0,0,0.4)",
                 }}
-              >
-                <source src={mem.dataUrl} />
-              </video>
+              />
             ) : (
               <div style={{
                 display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem",
                 color: "rgba(255,255,255,0.4)", fontFamily: T.font.body, fontSize: "1rem",
               }}>
-                <span style={{ fontSize: "4rem" }}>{TYPE_ICONS.video}</span>
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}><TypeIcon type="video" size={64} color="rgba(255,255,255,0.4)" /></span>
                 <span>{mem.title}</span>
               </div>
             )}
@@ -241,10 +242,10 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 key={mem.id}
                 controls
                 autoPlay
+                preload="metadata"
+                src={mem.dataUrl}
                 style={{ width: "min(24rem, 85%)" }}
-              >
-                <source src={mem.dataUrl} />
-              </audio>
+              />
             )}
           </div>
         );
@@ -369,18 +370,27 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
             </button>
           )}
 
-          {/* Info toggle */}
+          {/* Edit button — opens detail editor directly */}
           <button
             className="rmp-ctrl-btn"
-            onClick={() => setShowInfo(prev => !prev)}
-            title={t("mediaPlayerInfo")}
+            onClick={() => onEdit(mem)}
+            title={t("mediaPlayerEdit")}
             style={{
               ...ctrlBtnStyle,
-              background: showInfo ? "rgba(255,255,255,0.18)" : ctrlBtnStyle.background,
+              display: "flex", alignItems: "center", gap: "0.375rem",
+              padding: "0 0.75rem",
+              width: "auto",
+              minWidth: ctrlBtnStyle.width,
             }}
-            aria-label={t("mediaPlayerInfo")}
+            aria-label={t("mediaPlayerEdit")}
           >
-            i
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            <span style={{ fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.03em" }}>
+              {t("mediaPlayerEdit")}
+            </span>
           </button>
 
           {/* Close */}
@@ -428,89 +438,35 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
           </button>
         )}
 
-        {/* ─── Info overlay ─── */}
-        {showInfo && mem && (
+        {/* ─── Title + type overlay at bottom ─── */}
+        {mem && (
           <div
-            onClick={(e) => e.stopPropagation()}
             style={{
               position: "absolute",
               bottom: 0, left: 0, right: 0,
-              background: "linear-gradient(transparent, rgba(0,0,0,0.85) 30%)",
-              padding: isMobile ? "3rem 1rem 1rem" : "4rem 2rem 1.25rem",
-              animation: "rmpSlideUp 0.25s ease both",
+              background: "linear-gradient(transparent, rgba(0,0,0,0.55))",
+              padding: isMobile ? "2rem 1rem 0.75rem" : "2.5rem 2rem 1rem",
+              pointerEvents: "none",
             }}
           >
-            <div style={{ maxWidth: "40rem" }}>
-              {/* Title */}
-              <h3 style={{
-                fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.375rem",
-                fontWeight: 700, color: "rgba(255,255,255,0.92)",
-                margin: "0 0 0.375rem", letterSpacing: "0.01em",
+            <h3 style={{
+              fontFamily: T.font.display, fontSize: isMobile ? "1rem" : "1.125rem",
+              fontWeight: 700, color: "rgba(255,255,255,0.88)",
+              margin: 0, letterSpacing: "0.01em",
+              textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.3)",
+            }}>
+              {mem.title}
+            </h3>
+            {mem.createdAt && (
+              <span style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem",
+                color: "rgba(255,255,255,0.5)",
               }}>
-                {mem.title}
-              </h3>
-
-              {/* Type badge + date row */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: "0.25rem",
-                  padding: "0.1875rem 0.5rem", borderRadius: "0.3125rem",
-                  background: "rgba(255,255,255,0.1)", border: "0.0625rem solid rgba(255,255,255,0.15)",
-                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
-                  color: "rgba(255,255,255,0.7)", textTransform: "uppercase" as const,
-                  letterSpacing: "0.05em",
-                }}>
-                  <span>{TYPE_ICONS[mem.type] || "\u{1F4C4}"}</span>
-                  {mem.type}
-                </span>
-                {mem.createdAt && (
-                  <span style={{
-                    fontFamily: T.font.body, fontSize: "0.75rem",
-                    color: "rgba(255,255,255,0.5)",
-                  }}>
-                    {new Date(mem.createdAt).toLocaleDateString(undefined, {
-                      year: "numeric", month: "long", day: "numeric",
-                    })}
-                  </span>
-                )}
-                {mem.locationName && (
-                  <span style={{
-                    fontFamily: T.font.body, fontSize: "0.75rem",
-                    color: "rgba(255,255,255,0.5)",
-                    display: "flex", alignItems: "center", gap: "0.1875rem",
-                  }}>
-                    {"\u{1F4CD}"} {mem.locationName}
-                  </span>
-                )}
-              </div>
-
-              {/* Description */}
-              {mem.desc && (
-                <p style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", lineHeight: 1.6,
-                  color: "rgba(255,255,255,0.6)", margin: "0 0 0.625rem",
-                  maxHeight: "4.5rem", overflow: "hidden",
-                }}>
-                  {mem.desc}
-                </p>
-              )}
-
-              {/* Edit button */}
-              <button
-                onClick={() => onEdit(mem)}
-                style={{
-                  padding: "0.375rem 0.875rem", borderRadius: "0.375rem",
-                  background: `${T.color.terracotta}30`,
-                  border: `0.0625rem solid ${T.color.terracotta}50`,
-                  color: T.color.terracotta,
-                  fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
-                  cursor: "pointer", letterSpacing: "0.02em",
-                  transition: "background 0.2s ease",
-                }}
-              >
-                {t("mediaPlayerEdit")}
-              </button>
-            </div>
+                {new Date(mem.createdAt).toLocaleDateString(undefined, {
+                  year: "numeric", month: "short", day: "numeric",
+                })}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -557,23 +513,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 }}
                 aria-label={`${m.title} (${i + 1}/${total})`}
               >
-                {m.dataUrl && (getMediaType(m) === "photo" || getMediaType(m) === "video") ? (
-                  <Image
-                    src={m.dataUrl}
-                    alt={m.title}
-                    fill
-                    unoptimized
-                    style={{ objectFit: "cover" }}
-                    sizes="3.25rem"
-                  />
-                ) : (
-                  <span style={{
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    width: "100%", height: "100%", fontSize: "1rem",
-                  }}>
-                    {TYPE_ICONS[m.type] || "\u{1F4C4}"}
-                  </span>
-                )}
+                <MediaThumb mem={m} size="100%" borderRadius="0" iconSize={16} iconColor="rgba(255,255,255,0.5)" />
               </button>
             );
           })}

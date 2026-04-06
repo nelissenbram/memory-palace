@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useId } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useVideoThumbnail } from "@/lib/hooks/useVideoThumbnail";
 import type { Mem } from "@/lib/constants/defaults";
 import type { WingRoom } from "@/lib/constants/wings";
 import Image from "next/image";
@@ -10,7 +11,7 @@ import { RoomIcon } from "./WingRoomIcons";
 
 /* ── Shared constants ── */
 
-import { TYPE_ICONS } from "@/lib/constants/type-icons";
+import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_OUT = "cubic-bezier(0.0, 0, 0.2, 1)";
@@ -149,7 +150,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
       >
         {/* ── Cover area ── */}
         <div style={{
-          aspectRatio: "3 / 2",
+          aspectRatio: "2 / 1",
           position: "relative",
           overflow: "hidden",
           borderRadius: "1rem 1rem 0 0",
@@ -271,7 +272,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
         <div style={{
           position: "absolute",
           left: "0.875rem",
-          top: "calc(66.66% - 1.125rem)", /* overlap the cover/content boundary */
+          top: "calc(50% - 1.125rem)", /* overlap the cover/content boundary */
           width: "2.25rem",
           height: "2.25rem",
           borderRadius: "50%",
@@ -309,6 +310,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
             letterSpacing: "0.01em",
             lineHeight: 1.3,
           }}>
+            <span style={{ fontWeight: 400, color: T.color.muted, fontSize: "0.8125rem", marginRight: "0.25rem" }}>{t("room")}</span>
             {room.name}
           </p>
           <p style={{
@@ -371,6 +373,9 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
   const isDocument = mem.type === "document" || mem.documentBlob;
   const isText = mem.type === "orb" || mem.type === "case";
   const locked = isTimeCapsuleLocked(mem);
+  // Generate video thumbnail from the video URL (cached in memory)
+  const videoThumb = useVideoThumbnail((isVideo || isAudio) && mem.dataUrl ? mem.dataUrl : null);
+  const mediaThumbnail = mem.thumbnailUrl || videoThumb;
 
   const bgGradient = useMemo(() => {
     const h = mem.hue;
@@ -390,8 +395,6 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
       hsl(${(h + 30) % 360}, ${Math.max(s - 6, 22)}%, ${Math.max(l - 8, 42)}%) 60%,
       hsl(${(h + 50) % 360}, ${Math.max(s - 12, 15)}%, ${Math.max(l - 14, 38)}%) 100%)`;
   }, [mem.hue, mem.s, mem.l, isAudio, isDocument]);
-
-  const typeLabel = TYPE_ICONS[mem.type] || "\u{1F4C4}";
 
   /* HSL accent strip color from mem properties */
   const accentStrip = useMemo(() =>
@@ -521,8 +524,45 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                 pointerEvents: "none",
               }} />
             </>
+          ) : (isVideo || isAudio) && mediaThumbnail ? (
+            /* --- Video/Audio with extracted thumbnail (BEFORE waveform fallback) --- */
+            <>
+              <img
+                src={mediaThumbnail}
+                alt={mem.title}
+                style={{
+                  position: "absolute", inset: 0, width: "100%", height: "100%",
+                  objectFit: "cover",
+                  transform: hovered && !locked ? "scale(1.05)" : "scale(1)",
+                  transition: `transform 0.6s ${EASE}`,
+                }}
+              />
+              <div style={{
+                position: "absolute", inset: 0,
+                background: "linear-gradient(to top, rgba(44,44,42,.35) 0%, transparent 50%)",
+                pointerEvents: "none",
+              }} />
+              <div style={{
+                position: "absolute", inset: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <div style={{
+                  width: "2.5rem", height: "2.5rem", borderRadius: "50%",
+                  background: "rgba(0,0,0,.45)",
+                  backdropFilter: "blur(0.5rem)",
+                  WebkitBackdropFilter: "blur(0.5rem)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 0.25rem 1rem rgba(0,0,0,.2)",
+                  border: "0.0625rem solid rgba(255,255,255,.2)",
+                }}>
+                  <svg width="12" height="14" viewBox="0 0 12 14" fill="rgba(255,255,255,.9)">
+                    <path d="M1 1.5v11l10-5.5L1 1.5z"/>
+                  </svg>
+                </div>
+              </div>
+            </>
           ) : isAudio ? (
-            /* --- Audio: waveform visualization --- */
+            /* --- Audio: waveform visualization (fallback when no thumbnail) --- */
             <div style={{
               position: "absolute", inset: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -551,10 +591,9 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
               justifyContent: "center", gap: "0.375rem",
             }}>
               <span style={{
-                fontSize: "2rem",
                 filter: "drop-shadow(0 0.125rem 0.375rem rgba(0,0,0,.1))",
               }}>
-                {"\u{1F4DC}"}
+                <TypeIcon type="document" size={32} color="rgba(139,115,85,.7)" />
               </span>
               {/* Fake text lines */}
               {[0.55, 0.75, 0.6, 0.45].map((w, i) => (
@@ -567,7 +606,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
               ))}
             </div>
           ) : isVideo && !hasImage ? (
-            /* --- Video (no thumb): play icon on gradient --- */
+            /* --- Video (no thumb yet): play icon on gradient --- */
             <div style={{
               position: "absolute", inset: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -619,7 +658,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                 transform: hovered ? "scale(1.1)" : "scale(1)",
                 transition: `transform 0.4s ${EASE}`,
               }}>
-                {TYPE_ICONS[mem.type] || "\u{1F4C4}"}
+                <TypeIcon type={mem.type} size={36} color="rgba(255,255,255,0.85)" />
               </span>
             </div>
           )}
@@ -677,11 +716,11 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
             backdropFilter: "blur(0.5rem)",
             WebkitBackdropFilter: "blur(0.5rem)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "0.75rem",
             boxShadow: "0 0.0625rem 0.25rem rgba(0,0,0,.1)",
             zIndex: 2,
+            color: accent,
           }}>
-            {typeLabel}
+            <TypeIcon type={mem.type} size={13} color={accent} />
           </span>
 
           {/* Move button — top left, appears on hover */}
