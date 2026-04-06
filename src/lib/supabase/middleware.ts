@@ -28,10 +28,19 @@ export async function updateSession(
     }
   );
 
-  // Refresh the auth token and return user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Refresh the auth token with a timeout to prevent 504 GATEWAY_TIMEOUT
+  let user: User | null = null;
+  try {
+    const result = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Auth timeout")), 4000)
+      ),
+    ]);
+    user = result.data.user;
+  } catch {
+    // On timeout or error, treat as unauthenticated rather than 504
+  }
 
   return { response: supabaseResponse, user };
 }
