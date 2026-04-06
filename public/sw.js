@@ -1,119 +1,38 @@
-/**
- * Service Worker for The Memory Palace
- *
- * Handles:
- * - Push notification display
- * - Notification click routing
- * - Basic offline caching for the app shell
- */
+// Service Worker — clears old caches and serves fresh content
+// Generated to replace stale PWA cache from previous builds
 
-const CACHE_NAME = "mp-cache-v1";
+const CACHE_VERSION = 'v2026-04-06c';
 
-// ── Push notification handling ──
-
-self.addEventListener("push", (event) => {
-  if (!event.data) return;
-
-  let payload;
-  try {
-    payload = event.data.json();
-  } catch {
-    payload = {
-      title: "Memory Palace",
-      body: event.data.text(),
-    };
-  }
-
-  const options = {
-    body: payload.body || "",
-    icon: payload.icon || "/apple-touch-icon.png",
-    badge: payload.badge || "/icons/icon-192x192.png",
-    tag: payload.tag || "mp-notification",
-    data: {
-      url: payload.url || "/palace",
-    },
-    vibrate: [100, 50, 100],
-    actions: [],
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(payload.title || "Memory Palace", options)
-  );
-});
-
-// ── Notification click handling ──
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-
-  const url = event.notification.data?.url || "/palace";
-
-  event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Focus existing window if one is open
-      for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && "focus" in client) {
-          client.navigate(url);
-          return client.focus();
-        }
-      }
-      // Open new window
-      return clients.openWindow(url);
-    })
-  );
-});
-
-// ── Install: pre-cache app shell ──
-
-self.addEventListener("install", (event) => {
-  // Skip waiting to activate immediately
+// Activate immediately, take control
+self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// ── Activate: clean up old caches ──
-
-self.addEventListener("activate", (event) => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((names) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        names
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+        cacheNames.map((cacheName) => {
+          // Delete ALL old caches to force fresh content
+          return caches.delete(cacheName);
+        })
       );
     }).then(() => {
-      // Take control of all clients immediately
       return self.clients.claim();
+    }).then(() => {
+      // Notify all clients to reload for fresh content
+      return self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => client.postMessage({ type: 'SW_UPDATED' }));
+      });
     })
   );
 });
 
-// ── Fetch: network-first strategy with cache fallback ──
+// Network-first for everything — ensures users always get fresh content
+self.addEventListener('fetch', (event) => {
+  // Skip non-GET requests
+  if (event.request.method !== 'GET') return;
 
-self.addEventListener("fetch", (event) => {
-  // Only cache GET requests, skip API calls and auth
-  if (
-    event.request.method !== "GET" ||
-    event.request.url.includes("/api/") ||
-    event.request.url.includes("/auth/")
-  ) {
-    return;
-  }
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Cache successful responses
-        if (response.ok && response.type === "basic") {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, clone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Fall back to cache on network failure
-        return caches.match(event.request);
-      })
-  );
+  // Let the browser handle it normally (no caching)
+  return;
 });
