@@ -122,7 +122,7 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
     <div
       style={{
         position: "absolute",
-        bottom: 72,
+        bottom: "calc(3.75rem + env(safe-area-inset-bottom, 0px))",
         left: 24,
         zIndex: 40,
         width: 320,
@@ -318,6 +318,10 @@ export default function OnThisDay({ onNavigateToRoom }: OnThisDayProps) {
             fontSize: 10,
             color: "#C8A868",
             textAlign: "center",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "0.25rem",
           }}
         >
           {anniversaries.length - 3 === 1 ? t("moreMemory", { count: String(anniversaries.length - 3) }) : t("moreMemories", { count: String(anniversaries.length - 3) })}

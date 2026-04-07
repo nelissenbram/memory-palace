@@ -842,6 +842,8 @@ export default function AtriumHero({
             onClick={onNavigateLibrary}
             onMouseEnter={() => setLibHover(true)}
             onMouseLeave={() => setLibHover(false)}
+            onTouchStart={() => setLibHover(true)}
+            onTouchEnd={() => { setTimeout(() => setLibHover(false), 300); }}
             onFocus={() => setLibHover(true)}
             onBlur={() => setLibHover(false)}
             style={{
@@ -995,6 +997,8 @@ export default function AtriumHero({
             onClick={onNavigatePalace}
             onMouseEnter={() => setPalHover(true)}
             onMouseLeave={() => setPalHover(false)}
+            onTouchStart={() => setPalHover(true)}
+            onTouchEnd={() => { setTimeout(() => setPalHover(false), 300); }}
             onFocus={() => setPalHover(true)}
             onBlur={() => setPalHover(false)}
             style={{

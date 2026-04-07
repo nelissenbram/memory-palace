@@ -126,7 +126,7 @@ export default function ContextualTooltip({
               transform: "translate(-50%, -50%)",
             }
           : {
-              bottom: isMobile ? "5.625rem" : "3.75rem",
+              bottom: isMobile ? "calc(5.625rem + env(safe-area-inset-bottom, 0px))" : "3.75rem",
               left: "50%",
               transform: "translateX(-50%)",
             }),

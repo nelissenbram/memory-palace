@@ -12,7 +12,7 @@ import { useAchievementStore, ACHIEVEMENTS } from "@/lib/stores/achievementStore
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { ROOM_MEMS } from "@/lib/constants/defaults";
+import { getDemoMems } from "@/lib/constants/defaults";
 import { TRACKS } from "@/lib/constants/tracks";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
@@ -185,7 +185,7 @@ export default function HomeView() {
   const { t: tAch } = useTranslation("achievementsPanel");
   const { t: tPersona } = useTranslation("persona" as "common");
   const { userName } = useUserStore();
-  const { navMode, setNavMode } = usePalaceStore();
+  const { navMode, setNavMode, enterEntrance } = usePalaceStore();
   const { getWings, getWingRooms } = useRoomStore();
   const { userMems, fetchRoomMemories } = useMemoryStore();
   const {
@@ -202,6 +202,7 @@ export default function HomeView() {
   } = useTrackStore();
   const {
     setShowPanel: setShowAchievementPanel,
+    openWithHighlight: openAchievementWithHighlight,
     getProgress: getAchievementProgress,
     earnedIds,
     earnedDates,
@@ -283,7 +284,7 @@ export default function HomeView() {
     const result: EnrichedMemory[] = [];
     for (const w of wings) {
       for (const r of getWingRooms(w.id)) {
-        const mems = userMems[r.id] || ROOM_MEMS[r.id] || [];
+        const mems = userMems[r.id] || getDemoMems(r.id);
         for (const m of mems) {
           result.push({ mem: m, wing: w, room: r });
         }
@@ -383,7 +384,7 @@ export default function HomeView() {
   }, [allMemories]);
 
   // Shared wings — wings shared WITH the user by others
-  const [sharedWithMe, setSharedWithMe] = useState<{ id: string; name: string; wingName: string; memoryCount: number; icon: string }[]>([]);
+  const [sharedWithMe, setSharedWithMe] = useState<{ id: string; name: string; wingName: string; memoryCount: number; icon: string; wingId?: string }[]>([]);
   const [sharedLoading, setSharedLoading] = useState(true);
   useEffect(() => {
     import("@/lib/auth/sharing-actions").then(({ getWingsSharedWithMe }) => {
@@ -395,6 +396,7 @@ export default function HomeView() {
             wingName: s.owner_name || t("shared.unknownOwner"),
             memoryCount: 0,
             icon: "",
+            wingId: s.wing_id,
           })));
         }
       }).catch(() => {}).finally(() => setSharedLoading(false));
@@ -487,7 +489,7 @@ export default function HomeView() {
             maxWidth: "72rem",
             margin: "0 auto",
             padding: isMobile
-              ? "1.5rem 1rem 6rem"
+              ? "1.5rem 1rem calc(4.5rem + env(safe-area-inset-bottom, 0px))"
               : "2.5rem 2.5rem 6rem",
           }}
         >
@@ -750,6 +752,10 @@ export default function HomeView() {
               hasInterviews={interviewSessions.length > 0}
               interviewCount={interviewSessions.length}
               onStartInterview={() => setShowInterviewLibrary(true)}
+              onStartSpecificInterview={async (templateId: string) => {
+                await startInterviewSession(templateId);
+                setShowInterview(true);
+              }}
               onViewInterviews={() => setShowInterviewLibrary(true)}
               isMobile={isMobile}
             />
@@ -763,7 +769,10 @@ export default function HomeView() {
             }}
           >
             <EnhanceMemories
-              onUploadPhotos={() => setShowMassImport(true)}
+              onUploadPhotos={() => {
+                localStorage.setItem("mp_spotlight_target", "import-upload");
+                handleNavigateLibrary();
+              }}
               onAIEnhance={() => {
                 localStorage.setItem("mp_spotlight_target", "ai-enhance");
                 handleNavigateLibrary();
@@ -773,8 +782,10 @@ export default function HomeView() {
                 handleNavigateLibrary();
               }}
               onOrganize={() => {
-                localStorage.setItem("mp_spotlight_target", "organize");
-                handleNavigateLibrary();
+                startTransition("3d", () => {
+                  setNavMode("3d");
+                  setTimeout(() => enterEntrance(), 300);
+                });
               }}
               onSetupGallery={() => handleNavigateLibrary()}
               onCreateFamilyGroup={() => { window.location.href = "/settings/family"; }}
@@ -810,8 +821,8 @@ export default function HomeView() {
                 for (const { mem } of allMemories) {
                   if (mem.type === "photo" || mem.type === "album") counts.photo++;
                   else if (mem.type === "video") counts.video++;
-                  else if (mem.type === "audio") counts.audio++;
-                  else counts.text++;
+                  else if (mem.type === "audio" || (mem.type === "voice" && !mem.desc)) counts.audio++;
+                  else counts.text++; // includes interview, voice-with-desc, orb, case, etc.
                 }
                 return counts;
               })()}
@@ -835,6 +846,10 @@ export default function HomeView() {
                   wingId: wing.id,
                 }))}
                 onMemoryClick={(mem, wingId, roomId) => handleMemoryClick(mem)}
+                onShowMore={() => {
+                  localStorage.setItem("mp_library_sort", "recent");
+                  handleNavigateLibrary();
+                }}
                 isMobile={isMobile}
               />
             </div>
@@ -852,6 +867,7 @@ export default function HomeView() {
               totalEarned={achievementProgress.earned}
               totalAvailable={achievementProgress.total}
               onViewAll={() => setShowAchievementPanel(true)}
+              onAchievementClick={(id) => openAchievementWithHighlight(id)}
               isMobile={isMobile}
             />
           </div>
@@ -886,7 +902,14 @@ export default function HomeView() {
             >
               <SharedRoomsPreview
                 sharedRooms={sharedWithMe}
-                onRoomClick={() => setShowSharedWithMe(true)}
+                onRoomClick={(roomId) => {
+                  const share = sharedWithMe.find(s => s.id === roomId);
+                  if (share && share.wingId) {
+                    handleNavigateToWing(share.wingId);
+                  } else {
+                    setShowSharedWithMe(true);
+                  }
+                }}
                 onViewAll={() => setShowSharedWithMe(true)}
                 isMobile={isMobile}
                 loading={sharedLoading}
@@ -1048,8 +1071,8 @@ export default function HomeView() {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => setShowLegacyPanel(true)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setShowLegacyPanel(true); } }}
+                  onClick={() => { localStorage.setItem("mp_legacy_tab", "messages"); window.location.href = "/settings/legacy"; }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); localStorage.setItem("mp_legacy_tab", "messages"); window.location.href = "/settings/legacy"; } }}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -1116,8 +1139,8 @@ export default function HomeView() {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => setShowLegacyPanel(true)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setShowLegacyPanel(true); } }}
+                  onClick={() => { localStorage.setItem("mp_legacy_tab", "settings"); window.location.href = "/settings/legacy"; }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); localStorage.setItem("mp_legacy_tab", "settings"); window.location.href = "/settings/legacy"; } }}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -1183,8 +1206,8 @@ export default function HomeView() {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => setShowLegacyPanel(true)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setShowLegacyPanel(true); } }}
+                  onClick={() => { localStorage.setItem("mp_legacy_tab", "settings"); window.location.href = "/settings/legacy"; }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); localStorage.setItem("mp_legacy_tab", "settings"); window.location.href = "/settings/legacy"; } }}
                   style={{
                     display: "flex",
                     alignItems: "center",

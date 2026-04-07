@@ -203,7 +203,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                       onClick={() => handleStepAction(step.navigateTo)}
                       style={{
                         marginTop: "0.5rem", padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
-                        border: "none",
+                        border: "none", minHeight: "2.75rem",
                         background: `linear-gradient(135deg,${track.color}cc,${track.color})`,
                         color: "#FFF", fontFamily: T.font.body, fontSize: "0.75rem",
                         fontWeight: 600, cursor: "pointer", transition: "transform .2s",
@@ -212,11 +212,15 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                       onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; }}
                     >
                       {step.navigateTo === "legacy" ? t("openLegacy") :
-                       step.navigateTo === "upload" ? t("goToUpload") :
+                       step.navigateTo === "library-import" ? t("goToImportUpload") :
+                       step.navigateTo === "library" ? t("goToLibrary") :
+                       step.navigateTo === "upload" ? t("goToImportUpload") :
+                       step.navigateTo === "entrance" ? t("goToEntrance") :
                        step.navigateTo === "room" ? t("goToRoom") :
                        step.navigateTo === "share" ? t("goToShare") :
                        step.navigateTo === "wings" ? t("exploreWings") :
                        step.navigateTo === "corridor" ? t("goToCorridor") :
+                       step.navigateTo === "interview" ? t("startInterview") :
                        t("continue")} {"\u2192"}
                     </button>
                   )}

@@ -9,7 +9,7 @@ export const T = {
     charcoal: "#2C2C2A",
     cream: "#EEEAE3",
     white: "#FFFFFF",
-    muted: "#9A9183",
+    muted: "#746B60",
     gold: "#D4AF37",
     goldLight: "#C9A84C",
     goldDark: "#B8922E",

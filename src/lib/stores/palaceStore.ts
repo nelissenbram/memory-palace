@@ -13,8 +13,11 @@ interface PalaceState {
   portalAnim: boolean;
   _timer: ReturnType<typeof setTimeout> | null;
   roomLayouts: Record<string, string>; // roomId → layout override id
+  /** Deep-link target for Library view — consumed once then cleared */
+  libraryTarget: { wingId: string; roomId: string; memoryId?: string } | null;
 
   setNavMode: (mode: NavMode) => void;
+  setLibraryTarget: (target: { wingId: string; roomId: string; memoryId?: string } | null) => void;
   setHovWing: (v: string | null) => void;
   setHovDoor: (v: string | null) => void;
   fade: (cb: () => void) => void;
@@ -47,11 +50,13 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
   portalAnim: false,
   _timer: null,
   roomLayouts: {},
+  libraryTarget: null,
 
   setNavMode: (mode) => {
     set({ navMode: mode });
     try { localStorage.setItem("mp_nav_mode", mode); } catch {}
   },
+  setLibraryTarget: (target) => set({ libraryTarget: target }),
   setHovWing: (v) => set({ hovWing: v }),
   setHovDoor: (v) => set({ hovDoor: v }),
 

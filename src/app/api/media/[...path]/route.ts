@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { r2Download, isR2Configured } from "@/lib/storage/r2";
+import { isR2Configured, r2PresignedUrl } from "@/lib/storage/r2";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/ip";
 
@@ -22,7 +22,8 @@ function isPathSafe(segments: string[]): boolean {
 
 /**
  * Media proxy endpoint. Authenticates the user, checks file ownership
- * or shared access, then streams the file from R2 or Supabase Storage.
+ * or shared access, then redirects to a presigned R2 URL or streams
+ * from Supabase Storage.
  *
  * URL format: /api/media/{bucket}/{user_id}/{filename}
  */
@@ -35,7 +36,6 @@ export async function GET(
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
-  // Fix #1: Path traversal protection
   if (!isPathSafe(segments)) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
@@ -43,16 +43,17 @@ export async function GET(
   const bucket = segments[0] as "memories" | "busts";
   const filePath = segments.slice(1).join("/");
 
-  // Busts are public — serve directly
+  // Busts are public — redirect to R2 presigned URL or stream from Supabase
   if (bucket === "busts") {
     const ip = getClientIp(request);
     const rl = await rateLimit(`media-busts:${ip}`, 120, 60_000);
     if (!rl.success) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
     }
-    // Fix #3: For busts, try R2 first when configured (no DB tracking for busts)
-    const bustBackend = isR2Configured() ? "r2" : "supabase";
-    return streamFile(bucket, filePath, bustBackend);
+    if (isR2Configured()) {
+      return redirectToR2(bucket, filePath);
+    }
+    return streamFromSupabase(request, bucket, filePath);
   }
 
   // Memories are private — authenticate
@@ -71,12 +72,27 @@ export async function GET(
     return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
   }
 
-  // Check ownership: file_path matches and user owns it, OR has shared access
-  const { data: memory } = await supabase
+  // Check ownership: file_path matches the video OR thumbnail_url references this path
+  // (thumbnails are uploaded as separate files but linked via thumbnail_url)
+  let { data: memory } = await supabase
     .from("memories")
     .select("id, user_id, storage_backend, room_id")
     .eq("file_path", filePath)
-    .single();
+    .maybeSingle();
+
+  let matchedViaThumbnail = false;
+  if (!memory) {
+    // Try matching by thumbnail_url. Use ilike with %filePath% to handle any URL format
+    // (proxy path, full URL with token, signed URL, etc.) — the file path is unique enough.
+    const { data: thumbMatch } = await supabase
+      .from("memories")
+      .select("id, user_id, storage_backend, room_id")
+      .ilike("thumbnail_url", `%${filePath}%`)
+      .limit(1)
+      .maybeSingle();
+    memory = thumbMatch;
+    matchedViaThumbnail = !!thumbMatch;
+  }
 
   if (!memory) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -84,7 +100,7 @@ export async function GET(
 
   let authorized = memory.user_id === user.id;
 
-  // Check shared access if not the owner — Fix #2: correct column name
+  // Check shared access if not the owner
   if (!authorized) {
     const { data: share } = await supabase
       .from("room_shares")
@@ -101,34 +117,72 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return streamFile(bucket, filePath, memory.storage_backend);
+  // Redirect to R2 presigned URL (Cloudflare CDN — fast, no buffering)
+  // Thumbnails are always uploaded to R2 when configured, even for legacy supabase-backed videos.
+  const useR2 = matchedViaThumbnail
+    ? isR2Configured()
+    : (memory.storage_backend || "supabase") === "r2" && isR2Configured();
+  if (useR2) {
+    return redirectToR2(bucket, filePath);
+  }
+
+  // Fallback: stream from Supabase (for legacy files not yet migrated to R2)
+  return streamFromSupabase(request, bucket, filePath);
 }
 
-const SECURITY_HEADERS = {
-  "X-Content-Type-Options": "nosniff",
-};
-
-async function streamFile(
+/**
+ * Redirect to a short-lived R2 presigned URL.
+ * The browser loads directly from Cloudflare's edge network — no buffering,
+ * no Vercel bandwidth, native range requests, and global CDN.
+ */
+async function redirectToR2(
   bucket: "memories" | "busts",
   filePath: string,
-  storageBackend: string | null,
 ): Promise<NextResponse> {
-  const backend = storageBackend || "supabase";
-
   try {
-    if (backend === "r2" && isR2Configured()) {
-      const { data, contentType } = await r2Download(bucket, filePath);
-      return new NextResponse(data, {
-        status: 200,
-        headers: {
-          "Content-Type": contentType,
-          "Cache-Control": "private, max-age=86400, immutable",
-          ...SECURITY_HEADERS,
-        },
-      });
-    }
+    const url = await r2PresignedUrl(bucket, filePath, 3600); // 1 hour
+    return NextResponse.redirect(url, {
+      status: 302,
+      headers: {
+        "Cache-Control": "private, max-age=1800", // cache redirect for 30 min
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch (err) {
+    console.error("[media] R2 presign error:", err);
+    return NextResponse.json({ error: "Storage error" }, { status: 500 });
+  }
+}
 
-    // Fallback to Supabase Storage
+/** Infer Content-Type from file extension when storage doesn't provide one. */
+function inferContentType(filePath: string): string {
+  const ext = filePath.split(".").pop()?.toLowerCase();
+  const map: Record<string, string> = {
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    gif: "image/gif",
+    webp: "image/webp",
+    svg: "image/svg+xml",
+    mp4: "video/mp4",
+    webm: "video/webm",
+    mov: "video/quicktime",
+    mp3: "audio/mpeg",
+    wav: "audio/wav",
+    ogg: "audio/ogg",
+    m4a: "audio/mp4",
+    pdf: "application/pdf",
+  };
+  return (ext && map[ext]) || "application/octet-stream";
+}
+
+/** Stream from Supabase Storage (fallback for non-R2 files). */
+async function streamFromSupabase(
+  request: NextRequest,
+  bucket: "memories" | "busts",
+  filePath: string,
+): Promise<NextResponse> {
+  try {
     const { createClient: createServerClient } = await import("@/lib/supabase/server");
     const supabase = await createServerClient();
     const { data, error } = await supabase.storage.from(bucket).download(filePath);
@@ -136,17 +190,35 @@ async function streamFile(
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    const buffer = await data.arrayBuffer();
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        "Content-Type": data.type || "application/octet-stream",
-        "Cache-Control": "private, max-age=86400",
-        ...SECURITY_HEADERS,
-      },
-    });
+    const arrayBuf = await data.arrayBuffer();
+    const buf = Buffer.from(arrayBuf);
+    const ct = data.type || inferContentType(filePath);
+    const size = buf.byteLength;
+    const rangeHeader = request.headers.get("range");
+
+    const headers: Record<string, string> = {
+      "Content-Type": ct,
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "private, max-age=604800", // 7 days
+      "X-Content-Type-Options": "nosniff",
+    };
+
+    if (rangeHeader) {
+      const match = rangeHeader.match(/bytes=(\d+)-(\d*)/);
+      if (match) {
+        const start = parseInt(match[1], 10);
+        const end = match[2] ? parseInt(match[2], 10) : size - 1;
+        headers["Content-Range"] = `bytes ${start}-${end}/${size}`;
+        headers["Content-Length"] = String(end - start + 1);
+        const slice = buf.subarray(start, end + 1);
+        return new NextResponse(new Uint8Array(slice) as unknown as BodyInit, { status: 206, headers });
+      }
+    }
+
+    headers["Content-Length"] = String(size);
+    return new NextResponse(new Uint8Array(buf) as unknown as BodyInit, { status: 200, headers });
   } catch (err) {
-    console.error("[media] Stream error:", err);
+    console.error("[media] Supabase stream error:", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Mem } from "@/lib/constants/defaults";
+import { TypeIcon } from "@/lib/constants/type-icons";
 import Image from "next/image";
 import TuscanCard from "./TuscanCard";
 import { TuscanSectionHeader } from "./TuscanCard";
@@ -22,21 +23,75 @@ function avatarColorForName(name: string): string {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   TYPE ICONS
-   ═══════════════════════════════════════════════════════════ */
-const TYPE_ICONS: Record<string, string> = {
-  photo: "\u{1F5BC}\uFE0F", video: "\u{1F3AC}", album: "\u{1F4D6}",
-  orb: "\u{1F52E}", case: "\u{1F3FA}", voice: "\u{1F399}\uFE0F",
-  document: "\u{1F4DC}", audio: "\u{1F3B5}", painting: "\u{1F3A8}",
-};
-
-/* ═══════════════════════════════════════════════════════════
    1. OnThisDayCard — "Memory Lane" nostalgia card
    ═══════════════════════════════════════════════════════════ */
 export interface OnThisDayCardProps {
   memories: { mem: Mem; wingName: string; year: number }[];
   onMemoryClick: (mem: Mem) => void;
   isMobile: boolean;
+}
+
+/** Thumbnail with onError fallback — extracted so each card has independent imgFailed state */
+function OTDThumb({ mem, isMobile, year }: { mem: Mem; isMobile: boolean; year: number }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const hasImage = mem.dataUrl && !mem.dataUrl.startsWith("data:audio") && !mem.videoBlob && !imgFailed;
+
+  return (
+    <div
+      style={{
+        height: isMobile ? "5rem" : "5.5rem",
+        position: "relative",
+        overflow: "hidden",
+        background: hasImage ? "transparent" : `linear-gradient(135deg, hsl(${mem.hue}, ${mem.s}%, ${mem.l}%) 0%, hsl(${mem.hue}, ${Math.max(0, mem.s - 10)}%, ${Math.min(100, mem.l + 8)}%) 100%)`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {hasImage ? (
+        <>
+          <Image
+            src={mem.dataUrl!}
+            alt={mem.title}
+            fill
+            style={{ objectFit: "cover", filter: "saturate(0.75) contrast(1.04) sepia(0.12) brightness(1.02)" }}
+            sizes="144px"
+            unoptimized={mem.dataUrl!.startsWith("data:") || mem.dataUrl!.startsWith("/api/")}
+            onError={() => setImgFailed(true)}
+          />
+          {/* Warm nostalgic vignette overlay on image */}
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(180deg, rgba(193,127,89,0.06) 0%, transparent 40%, rgba(139,115,85,0.18) 100%)",
+            pointerEvents: "none",
+          }} />
+        </>
+      ) : (
+        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.5 }}>
+          <TypeIcon type={mem.type} size={24} color={T.color.walnut} />
+        </span>
+      )}
+      {/* Year tag on thumbnail */}
+      <span style={{
+        position: "absolute",
+        top: "0.375rem",
+        right: "0.375rem",
+        fontFamily: T.font.body,
+        fontSize: "0.5625rem",
+        fontWeight: 700,
+        color: "rgba(255,255,255,0.95)",
+        background: "rgba(44,44,42,0.45)",
+        backdropFilter: "blur(0.5rem)",
+        WebkitBackdropFilter: "blur(0.5rem)",
+        padding: "0.0625rem 0.375rem",
+        borderRadius: "0.25rem",
+        letterSpacing: "0.03em",
+      }}>
+        {year}
+      </span>
+    </div>
+  );
 }
 
 export const OnThisDayCard = React.memo(function OnThisDayCard({ memories, onMemoryClick, isMobile }: OnThisDayCardProps) {
@@ -193,7 +248,6 @@ export const OnThisDayCard = React.memo(function OnThisDayCard({ memories, onMem
             }}
           >
             {memories.map(({ mem, wingName, year }, idx) => {
-              const hasImage = mem.dataUrl && !mem.dataUrl.startsWith("data:audio") && !mem.videoBlob;
               return (
                 <div
                   key={mem.id}
@@ -224,60 +278,8 @@ export const OnThisDayCard = React.memo(function OnThisDayCard({ memories, onMem
                     e.currentTarget.style.boxShadow = "0 0.125rem 0.625rem rgba(44,44,42,0.04)";
                   }}
                 >
-                  {/* Thumbnail with warm nostalgic tint */}
-                  <div
-                    style={{
-                      height: isMobile ? "5rem" : "5.5rem",
-                      position: "relative",
-                      overflow: "hidden",
-                      background: hasImage ? "transparent" : `linear-gradient(135deg, hsl(${mem.hue}, ${mem.s}%, ${mem.l}%) 0%, hsl(${mem.hue}, ${Math.max(0, mem.s - 10)}%, ${Math.min(100, mem.l + 8)}%) 100%)`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {hasImage ? (
-                      <>
-                        <Image
-                          src={mem.dataUrl!}
-                          alt={mem.title}
-                          fill
-                          style={{ objectFit: "cover", filter: "saturate(0.75) contrast(1.04) sepia(0.12) brightness(1.02)" }}
-                          sizes="144px"
-                          unoptimized={mem.dataUrl!.startsWith("data:")}
-                        />
-                        {/* Warm nostalgic vignette overlay on image */}
-                        <div style={{
-                          position: "absolute",
-                          inset: 0,
-                          background: "linear-gradient(180deg, rgba(193,127,89,0.06) 0%, transparent 40%, rgba(139,115,85,0.18) 100%)",
-                          pointerEvents: "none",
-                        }} />
-                      </>
-                    ) : (
-                      <span style={{ fontSize: "1.5rem", opacity: 0.5, filter: "grayscale(0.2)" }}>
-                        {TYPE_ICONS[mem.type] || "\u{1F4C4}"}
-                      </span>
-                    )}
-                    {/* Year tag on thumbnail */}
-                    <span style={{
-                      position: "absolute",
-                      top: "0.375rem",
-                      right: "0.375rem",
-                      fontFamily: T.font.body,
-                      fontSize: "0.5625rem",
-                      fontWeight: 700,
-                      color: "rgba(255,255,255,0.95)",
-                      background: "rgba(44,44,42,0.45)",
-                      backdropFilter: "blur(0.5rem)",
-                      WebkitBackdropFilter: "blur(0.5rem)",
-                      padding: "0.0625rem 0.375rem",
-                      borderRadius: "0.25rem",
-                      letterSpacing: "0.03em",
-                    }}>
-                      {year}
-                    </span>
-                  </div>
+                  {/* Thumbnail with onError fallback */}
+                  <OTDThumb mem={mem} isMobile={isMobile} year={year} />
                   {/* Info area */}
                   <div style={{ padding: "0.4375rem 0.5625rem 0.5rem" }}>
                     <p style={{
@@ -295,7 +297,7 @@ export const OnThisDayCard = React.memo(function OnThisDayCard({ memories, onMem
                     </p>
                     <p style={{
                       fontFamily: T.font.body,
-                      fontSize: "0.5625rem",
+                      fontSize: "0.6875rem",
                       color: T.color.muted,
                       margin: "0.1875rem 0 0",
                       letterSpacing: "0.01em",
@@ -318,7 +320,7 @@ export const OnThisDayCard = React.memo(function OnThisDayCard({ memories, onMem
    2. SharedRoomsPreview — "Shared Spaces" with sage theme
    ═══════════════════════════════════════════════════════════ */
 export interface SharedRoomsPreviewProps {
-  sharedRooms: { id: string; name: string; icon: string; wingName: string; memoryCount: number }[];
+  sharedRooms: { id: string; name: string; icon: string; wingName: string; memoryCount: number; wingId?: string }[];
   onRoomClick: (roomId: string) => void;
   onViewAll: () => void;
   isMobile: boolean;
@@ -399,31 +401,6 @@ export const SharedRoomsPreview = React.memo(function SharedRoomsPreview({ share
             </p>
           </div>
         </div>
-        <button
-          onClick={onViewAll}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: T.font.body,
-            fontSize: "0.8125rem",
-            fontWeight: 600,
-            color: T.color.sage,
-            padding: "0.3125rem 0.125rem",
-            transition: "color 0.2s ease",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.25rem",
-            letterSpacing: "0.01em",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = T.color.charcoal; }}
-          onMouseLeave={e => { e.currentTarget.style.color = T.color.sage; }}
-        >
-          {t("viewAllShared")}
-          <span style={{ display: "inline-block", animation: "atriumArrowSlide 2s ease-in-out infinite", fontSize: "0.875rem" }}>
-            {"\u2192"}
-          </span>
-        </button>
       </div>
 
       {/* Shared room cards grid */}
@@ -555,6 +532,22 @@ export const SharedRoomsPreview = React.memo(function SharedRoomsPreview({ share
                   </p>
                 </div>
 
+                {/* Type badge — walnut pill */}
+                <span style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.625rem",
+                  fontWeight: 700,
+                  color: T.color.walnut,
+                  background: `linear-gradient(135deg, ${T.color.sage}14 0%, ${T.color.sage}0A 100%)`,
+                  padding: "0.25rem 0.5625rem",
+                  borderRadius: "1rem",
+                  flexShrink: 0,
+                  border: `0.0625rem solid ${T.color.sage}15`,
+                  letterSpacing: "0.02em",
+                  lineHeight: 1.3,
+                }}>
+                  {t("sharedTypeWing")}
+                </span>
                 {/* Memory count badge — sage pill */}
                 <span style={{
                   fontFamily: T.font.body,
@@ -576,6 +569,35 @@ export const SharedRoomsPreview = React.memo(function SharedRoomsPreview({ share
           );
         })}
       </div>
+
+      {/* View All button — left-aligned below cards */}
+      <div style={{ display: "flex", justifyContent: "flex-start", marginTop: "1rem" }}>
+        <button
+          onClick={onViewAll}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: T.font.body,
+            fontSize: "0.8125rem",
+            fontWeight: 600,
+            color: T.color.sage,
+            padding: "0.3125rem 0.125rem",
+            transition: "color 0.2s ease",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.25rem",
+            letterSpacing: "0.01em",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = T.color.charcoal; }}
+          onMouseLeave={e => { e.currentTarget.style.color = T.color.sage; }}
+        >
+          {t("viewAllShared")}
+          <span style={{ display: "inline-block", animation: "atriumArrowSlide 2s ease-in-out infinite", fontSize: "0.875rem" }}>
+            {"\u2192"}
+          </span>
+        </button>
+      </div>
     </div>
   );
 });
@@ -587,9 +609,22 @@ export interface InterviewPromptProps {
   hasInterviews: boolean;
   interviewCount: number;
   onStartInterview: () => void;
+  onStartSpecificInterview?: (templateId: string) => void;
   onViewInterviews: () => void;
   isMobile: boolean;
 }
+
+/** Maps 1-based example card index to INTERVIEW_TEMPLATES id */
+const EXAMPLE_INDEX_TO_TEMPLATE_ID: Record<number, string> = {
+  1: "baseline",
+  2: "family-traditions",
+  3: "growing-up",
+  4: "parents-grandparents",
+  5: "love-story",
+  6: "raising-children",
+  7: "greatest-adventure",
+  8: "places-of-heart",
+};
 
 /** CSS sound-wave bars (decorative, cinematic) */
 function SoundWaveBars({ color, count = 9 }: { color: string; count?: number }) {
@@ -685,6 +720,7 @@ export function InterviewPrompt({
   hasInterviews,
   interviewCount,
   onStartInterview,
+  onStartSpecificInterview,
   onViewInterviews,
   isMobile,
 }: InterviewPromptProps) {
@@ -722,8 +758,8 @@ export function InterviewPrompt({
     });
   }, []);
 
-  if (!hasInterviews) {
-    /* ── No interviews: premium, emotional invitation ── */
+  {
+    /* ── Premium, emotional invitation — always shown ── */
     return (
       <div
         style={{
@@ -847,7 +883,14 @@ export function InterviewPrompt({
                   }}
                 >
                   <button
-                    onClick={onStartInterview}
+                    onClick={() => {
+                      const templateId = EXAMPLE_INDEX_TO_TEMPLATE_ID[n];
+                      if (templateId && onStartSpecificInterview) {
+                        onStartSpecificInterview(templateId);
+                      } else {
+                        onStartInterview();
+                      }
+                    }}
                     style={{
                       flex: 1,
                       background: `rgba(255,255,255,0.7)`,
@@ -1002,149 +1045,6 @@ export function InterviewPrompt({
       </div>
     );
   }
-
-  /* ── Has interviews: warm, compact card with encouragement ── */
-  return (
-    <div
-      style={{
-        background: `linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(193,127,89,0.07) 50%, rgba(212,175,55,0.04) 100%)`,
-        backdropFilter: "blur(1.5rem)",
-        WebkitBackdropFilter: "blur(1.5rem)",
-        borderRadius: "1.125rem",
-        border: `0.0625rem solid rgba(193,127,89,0.12)`,
-        borderLeft: `0.1875rem solid ${T.color.terracotta}`,
-        padding: isMobile ? "1.25rem 1.25rem" : "1.5rem 1.75rem",
-        animation: "atriumSlideUp 0.6s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both, atriumBorderGlow 6s ease-in-out 3s infinite",
-        display: "flex",
-        alignItems: "center",
-        gap: "1rem",
-        flexWrap: "wrap",
-        boxShadow: `0 0.25rem 1.25rem rgba(193,127,89,0.06), 0 0.125rem 0.5rem rgba(44,44,42,0.03), inset 0 0.0625rem 0 rgba(255,255,255,0.6)`,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Subtle background accent */}
-      <div style={{
-        position: "absolute",
-        top: 0,
-        right: 0,
-        width: "10rem",
-        height: "100%",
-        background: `linear-gradient(90deg, transparent, ${T.color.terracotta}06)`,
-        pointerEvents: "none",
-      }} />
-
-      {/* Mic icon with mini sound wave */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.5rem",
-        flexShrink: 0,
-        position: "relative",
-      }}>
-        <div style={{
-          width: "2.75rem",
-          height: "2.75rem",
-          borderRadius: "0.75rem",
-          background: `linear-gradient(135deg, ${T.color.terracotta}18 0%, ${T.color.terracotta}0A 100%)`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          border: `0.0625rem solid ${T.color.terracotta}18`,
-          boxShadow: `0 0.125rem 0.5rem ${T.color.terracotta}08`,
-        }}>
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
-            <rect x="5.5" y="2" width="5" height="8" rx="2.5" fill={`${T.color.terracotta}25`} stroke={T.color.terracotta} strokeWidth="1" />
-            <path d="M4 8.5C4 10.7 5.8 12.5 8 12.5C10.2 12.5 12 10.7 12 8.5" stroke={T.color.terracotta} strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.5" />
-            <line x1="8" y1="12.5" x2="8" y2="14" stroke={T.color.terracotta} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-          </svg>
-        </div>
-      </div>
-
-      <div style={{ flex: 1, minWidth: "8rem", position: "relative" }}>
-        {/* Session count */}
-        <p style={{
-          fontFamily: T.font.body,
-          fontSize: "0.75rem",
-          fontWeight: 600,
-          color: T.color.terracotta,
-          margin: "0 0 0.25rem",
-          letterSpacing: "0.02em",
-        }}>
-          {interviewCount} {interviewCount === 1 ? t("interview.sessionSingular") : t("interview.sessionPlural")}
-        </p>
-        {/* Warm encouragement */}
-        <h3 style={{
-          fontFamily: T.font.display,
-          fontWeight: 600,
-          fontSize: isMobile ? "1.0625rem" : "1.1875rem",
-          color: T.color.charcoal,
-          margin: 0,
-          letterSpacing: "-0.01em",
-          lineHeight: 1.3,
-        }}>
-          {t("interview.continueEncouragement")}
-        </h3>
-      </div>
-
-      <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0, position: "relative" }}>
-        <button
-          onClick={onViewInterviews}
-          style={{
-            fontFamily: T.font.body,
-            fontSize: "0.8125rem",
-            fontWeight: 500,
-            color: T.color.walnut,
-            background: "rgba(255,255,255,0.55)",
-            border: `0.0625rem solid ${T.color.cream}`,
-            borderRadius: "0.5rem",
-            padding: "0.4375rem 0.9375rem",
-            cursor: "pointer",
-            transition: "background 0.2s ease, border-color 0.2s ease",
-            letterSpacing: "0.005em",
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = T.color.cream;
-            e.currentTarget.style.borderColor = T.color.sandstone;
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = "rgba(255,255,255,0.55)";
-            e.currentTarget.style.borderColor = T.color.cream;
-          }}
-        >
-          {t("interview.viewLibrary")}
-        </button>
-        <button
-          onClick={onStartInterview}
-          style={{
-            fontFamily: T.font.display,
-            fontSize: "0.8125rem",
-            fontWeight: 600,
-            color: T.color.white,
-            background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-            border: "none",
-            borderRadius: "0.5rem",
-            padding: "0.4375rem 0.9375rem",
-            cursor: "pointer",
-            transition: "transform 0.2s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.2s ease",
-            boxShadow: `0 0.125rem 0.5rem ${T.color.terracotta}20`,
-            letterSpacing: "0.01em",
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.transform = "translateY(-0.0625rem)";
-            e.currentTarget.style.boxShadow = `0 0.25rem 0.75rem ${T.color.terracotta}30`;
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = `0 0.125rem 0.5rem ${T.color.terracotta}20`;
-          }}
-        >
-          {t("interview.continue")}
-        </button>
-      </div>
-    </div>
-  );
 }
 
 /* ═══════════════════════════════════════════════════════════

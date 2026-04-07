@@ -11,7 +11,6 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import SettingsTutorial, { useSettingsTutorial } from "@/components/ui/SettingsTutorial";
-import { useEffect } from "react";
 
 function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
   const s = {
@@ -119,13 +118,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const navMode = usePalaceStore((s) => s.navMode);
   const setNavMode = usePalaceStore((s) => s.setNavMode);
   const [tourOpen, setTourOpen] = useSettingsTutorial();
-
-  // Listen for help button presses from the shared mobile NavigationBar
-  useEffect(() => {
-    const open = () => setTourOpen(true);
-    window.addEventListener("mp:open-settings-tour", open);
-    return () => window.removeEventListener("mp:open-settings-tour", open);
-  }, [setTourOpen]);
 
   return (
     <div style={{

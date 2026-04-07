@@ -52,3 +52,8 @@ android/keystore.properties
 .cap-build-backup/
 
 .env*.local
+
+# PWA generated files
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map

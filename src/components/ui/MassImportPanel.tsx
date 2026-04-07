@@ -12,6 +12,7 @@ import { generateThumbnail } from "@/lib/utils/thumbnail";
 import { geocodeLocationName } from "@/lib/geocode";
 import Image from "next/image";
 import type { Mem } from "@/lib/constants/defaults";
+import { TypeIcon } from "@/lib/constants/type-icons";
 
 const CloudImportPanel = lazy(() => import("./CloudImportPanel"));
 
@@ -175,7 +176,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                   ...useImportStore.getState().items.find((it) => it.localId === batch[j].localId)!.confirmed,
                   title: s.title || batch[j].confirmed.title,
                   desc: s.desc || "",
-                  type: s.type || batch[j].confirmed.type,
+                  type: (s.type === "painting" ? "photo" : s.type) || batch[j].confirmed.type,
                   wingId: s.wingId || batch[j].confirmed.wingId,
                   roomId: s.roomId || batch[j].confirmed.roomId,
                   locationName: s.locationName || "",
@@ -451,7 +452,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 {items.map((item) => (
                   <div key={item.localId} style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.5rem 0.75rem", borderBottom: `1px solid ${T.color.cream}22` }}>
                     <div style={{ width: "2rem", height: "2rem", borderRadius: "0.375rem", background: T.color.warmStone, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem", flexShrink: 0, minWidth: "2.75rem", minHeight: "2.75rem" }}>
-                      {TYPE_ICONS[item.confirmed.type] || "\u{1F4C4}"}
+                      <TypeIcon type={item.confirmed.type} size={18} color={T.color.walnut} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fileName}</div>
@@ -671,7 +672,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
           {item.previewUrl ? (
             <Image src={item.previewUrl} alt="" fill sizes="48px" style={{ objectFit: "cover" }} unoptimized />
           ) : (
-            <span style={{ fontSize: "1.375rem" }}>{TYPE_ICONS[item.confirmed.type] || "\u{1F4C4}"}</span>
+            <TypeIcon type={item.confirmed.type} size={22} color={T.color.walnut} />
           )}
         </div>
 
@@ -681,7 +682,7 @@ function ReviewCard({ item, wings, getWingRooms }: {
             {item.confirmed.title}
           </div>
           <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, display: "flex", gap: "0.5rem" }}>
-            <span>{TYPE_ICONS[item.confirmed.type]} {item.confirmed.type}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.1875rem" }}><TypeIcon type={item.confirmed.type} size={12} color={T.color.muted} /> {item.confirmed.type}</span>
             {item.confirmed.wingId && <span>{"\u2192"} {wings.find((w) => w.id === item.confirmed.wingId)?.icon} {getWingRooms(item.confirmed.wingId).find((r) => r.id === item.confirmed.roomId)?.name || "?"}</span>}
             {item.aiSuggestions && <span style={{ color: "#C9A84C" }}>{Math.round(item.aiSuggestions.confidence * 100)}% AI</span>}
           </div>

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { ROOM_MEMS } from "@/lib/constants/defaults";
+import { getDemoMems } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -18,7 +18,7 @@ export function useRoomMemories() {
 
   // Derived room memories (all)
   const allRoomMems: Mem[] = activeRoomId
-    ? userMems[activeRoomId] || ROOM_MEMS[activeRoomId] || []
+    ? userMems[activeRoomId] || getDemoMems(activeRoomId)
     : [];
 
   // Filtered memories

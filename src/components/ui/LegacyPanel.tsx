@@ -257,12 +257,12 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                   <button onClick={() => startEdit(contact)} style={{
                     padding: "0.375rem 0.625rem", borderRadius: "0.375rem", border: `1px solid ${T.color.cream}`,
                     background: T.color.linen, cursor: "pointer", fontFamily: T.font.body,
-                    fontSize: "0.6875rem", color: T.color.walnut,
+                    fontSize: "0.6875rem", color: T.color.walnut, minHeight: "2.75rem",
                   }}>{t("edit")}</button>
                   <button onClick={() => handleRemove(contact.id)} style={{
                     padding: "0.375rem 0.625rem", borderRadius: "0.375rem", border: `1px solid #C1665520`,
                     background: "#C1665508", cursor: "pointer", fontFamily: T.font.body,
-                    fontSize: "0.6875rem", color: "#C16655",
+                    fontSize: "0.6875rem", color: "#C16655", minHeight: "2.75rem",
                   }}>{t("removeBtn")}</button>
                 </div>
               </div>
@@ -360,7 +360,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               }}>
                 {RELATIONSHIPS.map((rel) => (
                   <button key={rel.id} onClick={() => setFormRelationship(rel.id)} style={{
-                    padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
+                    padding: "0.375rem 0.75rem", borderRadius: "0.5rem", minHeight: "2.75rem",
                     border: formRelationship === rel.id ? `2px solid ${T.color.walnut}` : `1px solid ${T.color.cream}`,
                     background: formRelationship === rel.id ? `${T.color.walnut}10` : T.color.white,
                     cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem",
@@ -380,7 +380,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               }}>
                 {ACCESS_LEVELS.map((level) => (
                   <button key={level.id} onClick={() => setFormAccessLevel(level.id)} style={{
-                    padding: "0.625rem 0.875rem", borderRadius: "0.625rem", textAlign: "left",
+                    padding: "0.625rem 0.875rem", borderRadius: "0.625rem", textAlign: "left", minHeight: "2.75rem",
                     border: formAccessLevel === level.id ? `2px solid ${T.color.walnut}` : `1px solid ${T.color.cream}`,
                     background: formAccessLevel === level.id ? `${T.color.walnut}08` : T.color.white,
                     cursor: "pointer",
@@ -407,7 +407,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                   }}>
                     {WINGS.filter((w) => w.id !== "attic").map((wing) => (
                       <button key={wing.id} onClick={() => toggleWing(wing.id)} style={{
-                        padding: "0.5rem 0.75rem", borderRadius: "0.5rem", display: "flex",
+                        padding: "0.5rem 0.75rem", borderRadius: "0.5rem", display: "flex", minHeight: "2.75rem",
                         alignItems: "center", gap: "0.375rem", cursor: "pointer",
                         border: formWings.includes(wing.id) ? `2px solid ${wing.accent}` : `1px solid ${T.color.cream}`,
                         background: formWings.includes(wing.id) ? `${wing.accent}12` : T.color.white,

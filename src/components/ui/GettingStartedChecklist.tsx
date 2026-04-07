@@ -303,6 +303,11 @@ export default function GettingStartedChecklist({
             color: T.color.muted,
             padding: "0.25rem 0.5rem",
             lineHeight: 1,
+            minWidth: "2.75rem",
+            minHeight: "2.75rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           {"\u2212"}

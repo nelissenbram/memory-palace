@@ -1,45 +1,36 @@
 /**
  * Social login helpers for Google and Apple OAuth via Supabase Auth.
  *
- * Uses the custom auth domain (auth.thememorypalace.ai) so the Google/Apple
- * consent screen shows a branded domain instead of the raw Supabase project ref.
- *
- * Configuration:
- * - Google OAuth: configured in Supabase Dashboard > Authentication > Providers > Google
- * - Apple OAuth: configured in Supabase Dashboard > Authentication > Providers > Apple
+ * Uses the Supabase SDK's signInWithOAuth() which properly handles PKCE
+ * (stores code_verifier in cookies so exchangeCodeForSession works).
  */
 
-import { isNative } from "@/lib/native/platform";
-
-const AUTH_BASE =
-  process.env.NEXT_PUBLIC_SUPABASE_CUSTOM_AUTH_URL ||
-  `${process.env.NEXT_PUBLIC_SUPABASE_URL!}/auth/v1`;
-
-function getRedirectUrl(): string {
-  if (isNative()) {
-    return "https://thememorypalace.ai/auth/callback";
-  }
-  return window.location.origin + "/auth/callback";
-}
-
-function oauthRedirect(provider: "google" | "apple") {
-  // Generate CSRF state token — Supabase validates it on return via PKCE flow
-  const state = crypto.randomUUID();
-  sessionStorage.setItem("oauth_state", state);
-
-  const params = new URLSearchParams({
-    provider,
-    redirect_to: getRedirectUrl(),
-    scopes: provider === "google" ? "email profile" : "email name",
-    state,
-  });
-  window.location.href = `${AUTH_BASE}/authorize?${params.toString()}`;
-}
+import { createClient } from "@/lib/supabase/client";
 
 export async function signInWithGoogle() {
-  oauthRedirect("google");
+  const supabase = createClient();
+  const redirectTo = window.location.origin + "/auth/callback";
+
+  await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      queryParams: {
+        access_type: "offline",
+        prompt: "consent",
+      },
+    },
+  });
 }
 
 export async function signInWithApple() {
-  oauthRedirect("apple");
+  const supabase = createClient();
+  const redirectTo = window.location.origin + "/auth/callback";
+
+  await supabase.auth.signInWithOAuth({
+    provider: "apple",
+    options: {
+      redirectTo,
+    },
+  });
 }

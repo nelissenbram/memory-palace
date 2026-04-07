@@ -5,14 +5,15 @@ import {
   DeleteObjectsCommand,
   ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 let client: S3Client | null = null;
 
 function getClient(): S3Client | null {
   if (client) return client;
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const accountId = process.env.R2_ACCOUNT_ID?.trim();
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim();
   if (!accountId || !accessKeyId || !secretAccessKey) {
     console.warn("[r2] R2 credentials not configured");
     return null;
@@ -26,8 +27,8 @@ function getClient(): S3Client | null {
 }
 
 function getBucket(bucket: "memories" | "busts"): string {
-  if (bucket === "memories") return process.env.R2_BUCKET_MEMORIES || "memory-palace-memories";
-  return process.env.R2_BUCKET_BUSTS || "memory-palace-busts";
+  if (bucket === "memories") return (process.env.R2_BUCKET_MEMORIES || "memory-palace-memories").trim();
+  return (process.env.R2_BUCKET_BUSTS || "memory-palace-busts").trim();
 }
 
 export async function r2Upload(
@@ -98,6 +99,24 @@ export async function r2List(
     continuationToken = res.NextContinuationToken;
   } while (continuationToken);
   return items;
+}
+
+/**
+ * Generate a short-lived presigned URL for direct download from R2.
+ * The browser fetches directly from Cloudflare's edge — no proxy buffering.
+ */
+export async function r2PresignedUrl(
+  bucket: "memories" | "busts",
+  path: string,
+  expiresInSeconds = 3600,
+): Promise<string> {
+  const s3 = getClient();
+  if (!s3) throw new Error("R2 not configured");
+  const cmd = new GetObjectCommand({
+    Bucket: getBucket(bucket),
+    Key: path,
+  });
+  return getSignedUrl(s3, cmd, { expiresIn: expiresInSeconds });
 }
 
 export function r2PublicUrl(path: string): string {

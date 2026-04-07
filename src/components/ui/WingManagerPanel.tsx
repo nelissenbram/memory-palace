@@ -165,14 +165,14 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                   {editingId === wing.id ? (
                     <form onSubmit={e => { e.preventDefault(); saveEdit(wing.id); }} style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
                       <input value={editName} onChange={e => setEditName(e.target.value)} autoFocus
-                        style={{ flex: 1, padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1.5px solid ${wing.accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, outline: "none" }} />
+                        style={{ flex: 1, padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1.5px solid ${wing.accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: T.color.charcoal, outline: "none" }} />
                       <div>
                         <label htmlFor={`wing-subtitle-${wing.id}`} style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{t("editSubtitle")}</label>
                         <textarea id={`wing-subtitle-${wing.id}`} value={editDesc} onChange={e => setEditDesc(e.target.value)}
                           onBlur={() => saveEdit(wing.id)}
                           placeholder={t("subtitlePlaceholder")}
                           rows={2}
-                          style={{ width: "100%", padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, outline: "none", resize: "none", marginTop: "0.125rem" }} />
+                          style={{ width: "100%", padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: T.color.charcoal, outline: "none", resize: "none", marginTop: "0.125rem" }} />
                       </div>
                     </form>
                   ) : (

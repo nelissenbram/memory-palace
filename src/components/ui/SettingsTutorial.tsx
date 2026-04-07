@@ -2,11 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { create } from "zustand";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 const STORAGE_KEY = "mp_settings_tour_seen_v2";
+
+// Global store so any component (e.g. NavigationBar help button) can trigger
+// the settings tour without relying on event listener timing.
+interface SettingsTourState {
+  open: boolean;
+  setOpen: (v: boolean) => void;
+}
+export const useSettingsTourStore = create<SettingsTourState>((set) => ({
+  open: false,
+  setOpen: (v) => set({ open: v }),
+}));
 
 const FEATURES = [
   { iconKey: "profile", titleKey: "feat_profile_title", descKey: "feat_profile_desc" },
@@ -316,7 +328,8 @@ function TourControls({
  *  or when the URL contains ?tour=1 (which also resets the "seen" flag).
  */
 export function useSettingsTutorial(): [boolean, (v: boolean) => void] {
-  const [open, setOpen] = useState(false);
+  const open = useSettingsTourStore((s) => s.open);
+  const setOpen = useSettingsTourStore((s) => s.setOpen);
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
@@ -335,6 +348,6 @@ export function useSettingsTutorial(): [boolean, (v: boolean) => void] {
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [setOpen]);
   return [open, setOpen];
 }

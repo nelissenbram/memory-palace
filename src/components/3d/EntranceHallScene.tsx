@@ -141,11 +141,13 @@ export default function EntranceHallScene({
   bustName,
   bustGender,
   sharedWings,
+  autoWalkTo,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
   highlightDoor?: string | null;
   styleEra?: string;
+  autoWalkTo?: string | null;
   onInlayClick?: () => void;
   onBustClick?: (pedestalIndex: number) => void;
   bustPedestals?: Record<number, BustPedestalData>;
@@ -165,6 +167,8 @@ export default function EntranceHallScene({
   useEffect(() => { onDoorClickRef.current = onDoorClick; }, [onDoorClick]);
   const highlightDoorRef = useRef(highlightDoor);
   useEffect(() => { highlightDoorRef.current = highlightDoor; }, [highlightDoor]);
+  const autoWalkToRef = useRef(autoWalkTo);
+  useEffect(() => { autoWalkToRef.current = autoWalkTo; }, [autoWalkTo]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [muted, setMuted] = useState(false);
 
@@ -1828,7 +1832,35 @@ export default function EntranceHallScene({
       lookA.current.yaw += (lookT.current.yaw - lookA.current.yaw) * 0.08;
       lookA.current.pitch += (lookT.current.pitch - lookA.current.pitch) * 0.08;
 
+      // ── Auto-walk toward target door ──
+      const awTarget = autoWalkToRef.current;
+      if (awTarget) {
+        const doorIdx = HALL_DOORS.findIndex(d => d.id === awTarget);
+        if (doorIdx >= 0) {
+          const doorAngle = (doorIdx / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
+          const approachR = RADIUS - 4;
+          const targetX = Math.cos(doorAngle) * approachR;
+          const targetZ = Math.sin(doorAngle) * approachR;
+          const dx = targetX - posT.current.x;
+          const dz = targetZ - posT.current.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+
+          if (dist > 0.8) {
+            const speed = 5.0 * dt;
+            posT.current.x += (dx / dist) * speed;
+            posT.current.z += (dz / dist) * speed;
+            // Face the door using atan2 (look toward target position)
+            const faceDoorAngle = Math.atan2(targetX - posT.current.x, -(targetZ - posT.current.z));
+            lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * 0.06;
+          } else {
+            autoWalkToRef.current = null;
+            onDoorClickRef.current(awTarget);
+          }
+        }
+      }
+
       // ── Movement (WASD / Arrow keys) ──
+      if (!awTarget) {
       const spd = 4.0 * dt;
       _dir.current.set(0, 0, 0);
       const k = keys.current;
@@ -1840,6 +1872,7 @@ export default function EntranceHallScene({
         _dir.current.normalize().multiplyScalar(spd);
         _dir.current.applyAxisAngle(_yAxis.current, -lookA.current.yaw);
         posT.current.add(_dir.current);
+      }
       }
 
       // ── Collision detection ──

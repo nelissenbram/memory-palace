@@ -81,7 +81,7 @@ const t: Record<string, Record<string, string>> = {
     yourProgress: "Your Progress",
     next: "Next:",
     addAMemory: "+ Add a Memory",
-    visitYourPalace: "Visit Your Palace",
+    visitYourPalace: "Walk through your Palace",
     totalMemories: "Total Memories",
     thisWeek: "This Week",
     rooms: "Rooms",
@@ -126,7 +126,7 @@ const t: Record<string, Record<string, string>> = {
     yourProgress: "Jouw Voortgang",
     next: "Volgende:",
     addAMemory: "+ Herinnering Toevoegen",
-    visitYourPalace: "Bezoek je Paleis",
+    visitYourPalace: "Wandel door je Paleis",
     totalMemories: "Totaal Herinneringen",
     thisWeek: "Deze Week",
     rooms: "Kamers",
@@ -155,7 +155,7 @@ function sectionHeading(title: string): string {
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;">
       <tr>
-        <td style="font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;font-weight:600;color:#C17F59;letter-spacing:2px;text-transform:uppercase;">
+        <td style="font-family:'Cormorant Garamond',Georgia,serif;font-size:12px;font-weight:600;color:#B8922E;letter-spacing:0.16em;text-transform:uppercase;">
           ${title}
         </td>
         <td style="text-align:right;">
@@ -171,7 +171,7 @@ function renderStats(stats: WeeklyStats, streakWeeks: number, l: Record<string, 
       <p class="text-primary" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:34px;font-weight:400;color:#2C2C2A;line-height:1.1;letter-spacing:-1px;">
         ${value}
       </p>
-      <p style="margin:6px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:10px;color:#8B7355;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">
+      <p style="margin:6px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:10px;color:#8B7355;text-transform:uppercase;letter-spacing:1.5px;font-weight:600;">
         ${label}
       </p>
     </td>`;
@@ -196,7 +196,7 @@ function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null, l: Record<string,
 
   const thumbnail = memory.thumbnailUrl
     ? `<img src="${escapeHtml(memory.thumbnailUrl)}" alt="${escapeHtml(memory.title)}" width="120" height="120" style="display:block;width:120px;height:120px;object-fit:cover;border-radius:3px;border:1px solid #EEEAE3;" />`
-    : `<div style="width:120px;height:120px;border-radius:3px;background:#C17F59;background:linear-gradient(145deg,#C17F59 0%,#8B7355 100%);text-align:center;line-height:120px;">
+    : `<div style="width:120px;height:120px;border-radius:3px;background:#D4AF37;background:linear-gradient(145deg,#D4AF37 0%,#8B7355 100%);text-align:center;line-height:120px;">
         <span style="font-size:32px;opacity:0.6;">&#x1f3db;</span>
       </div>`;
 
@@ -209,10 +209,10 @@ function renderMemoryOfTheWeek(memory: MemoryOfTheWeek | null, l: Record<string,
           <p class="text-primary" style="margin:0 0 8px;font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:500;color:#2C2C2A;line-height:1.3;font-style:italic;">
             &ldquo;${escapeHtml(memory.title)}&rdquo;
           </p>
-          <p class="text-muted" style="margin:0 0 14px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#9A9183;letter-spacing:0.3px;">
+          <p class="text-muted" style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#9A9183;letter-spacing:0.3px;">
             ${l.inRoom} <strong style="color:#8B7355;">${escapeHtml(memory.roomName)}</strong>
           </p>
-          <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#B8A99A;font-style:italic;line-height:1.5;">
+          <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#B8A99A;font-style:italic;line-height:1.5;">
             ${l.revisitMemory}
           </p>
         </td>
@@ -245,7 +245,7 @@ function renderStreak(streakWeeks: number, l: Record<string, string>): string {
       <p class="text-primary" style="margin:0 0 6px;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:400;color:#2C2C2A;line-height:1.3;">
         <strong>${streakWeeks} ${l.weeksInARow}</strong>
       </p>
-      <p class="text-muted" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#8B7355;font-style:italic;line-height:1.5;">
+      <p class="text-muted" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#8B7355;font-style:italic;line-height:1.5;">
         ${encouragement}
       </p>
     </td></tr>
@@ -258,10 +258,10 @@ function renderOnThisDay(memories: OnThisDayMemory[], l: Record<string, string>)
   const items = memories.slice(0, 5).map((m, i) => `
     <tr><td style="padding:13px 20px;${i < memories.slice(0, 5).length - 1 ? "border-bottom:1px solid #F0EBE5;" : ""}">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td class="text-primary" style="font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
+        <td class="text-primary" style="font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
           &ldquo;${escapeHtml(m.title)}&rdquo;
         </td>
-        <td width="80" style="text-align:right;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#B8A99A;white-space:nowrap;">
+        <td width="80" style="text-align:right;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#B8A99A;white-space:nowrap;">
           ${m.yearsAgo} ${m.yearsAgo === 1 ? l.yearAgo : l.yearsAgo}
         </td>
       </tr></table>
@@ -283,11 +283,11 @@ function renderCapsules(capsules: UpcomingCapsule[], locale: string, l: Record<s
     return `
     <tr><td style="padding:13px 20px;${i < capsules.slice(0, 5).length - 1 ? "border-bottom:1px solid #F0EBE5;" : ""}">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-        <td class="text-primary" style="font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;">
+        <td class="text-primary" style="font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2C2C2A;">
           &ldquo;${escapeHtml(c.title)}&rdquo;
         </td>
         <td width="70" style="text-align:right;">
-          <span style="display:inline-block;padding:3px 10px;border:1px solid #D4C5B2;border-radius:2px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:10px;font-weight:600;color:#8B7355;letter-spacing:0.5px;text-transform:uppercase;">
+          <span style="display:inline-block;padding:3px 10px;border:1px solid #D4C5B2;border-radius:2px;font-family:Georgia,'Times New Roman',serif;font-size:10px;font-weight:600;color:#8B7355;letter-spacing:0.5px;text-transform:uppercase;">
             ${escapeHtml(dateStr)}
           </span>
         </td>
@@ -311,7 +311,7 @@ function renderSharedActivity(activities: SharedRoomActivity[], l: Record<string
       : l.addedMemoriesPlural.replace("{count}", `${a.memoryCount}`);
     return `
     <tr><td style="padding:13px 20px;${i < activities.slice(0, 5).length - 1 ? "border-bottom:1px solid #F0EBE5;" : ""}">
-      <p class="text-primary" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
+      <p class="text-primary" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
         <strong>${escapeHtml(a.contributorName)}</strong> ${addedText}
         <em>&ldquo;${escapeHtml(a.roomName)}&rdquo;</em>
       </p>
@@ -346,11 +346,11 @@ function renderTrack(track: TrackProgress | null, l: Record<string, string>): st
 
   // Next step hint with milestone label for a specific CTA
   const nextStepHtml = track.nextMilestoneLabel
-    ? `<p class="text-primary" style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#2C2C2A;line-height:1.5;">
+    ? `<p class="text-primary" style="margin:10px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#2C2C2A;line-height:1.5;">
         <strong>${l.next}</strong> ${escapeHtml(track.nextMilestoneLabel)}
       </p>`
     : track.nextStepHint
-      ? `<p class="text-primary" style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#2C2C2A;line-height:1.5;">
+      ? `<p class="text-primary" style="margin:10px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#2C2C2A;line-height:1.5;">
           <strong>${l.next}</strong> ${escapeHtml(track.nextStepHint)}
         </p>`
       : "";
@@ -361,10 +361,10 @@ function renderTrack(track: TrackProgress | null, l: Record<string, string>): st
     <tr><td style="padding:20px 24px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
+          <td style="font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#2C2C2A;line-height:1.5;">
             <strong class="text-primary">${escapeHtml(track.icon)} ${escapeHtml(track.trackName)}</strong>
           </td>
-          <td style="text-align:right;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:400;color:#C9A84C;letter-spacing:-0.5px;">
+          <td style="text-align:right;font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;font-weight:400;color:#D4AF37;letter-spacing:-0.5px;">
             ${pct}%
           </td>
         </tr>
@@ -372,7 +372,7 @@ function renderTrack(track: TrackProgress | null, l: Record<string, string>): st
       <div style="background:#E8E2DA;border-radius:3px;height:8px;overflow:hidden;margin:12px 0 0;">
         <div style="background:#4A6741;background:linear-gradient(90deg,#4A6741,#5B8040);width:${barWidth}%;height:100%;border-radius:3px;"></div>
       </div>
-      <p class="text-muted" style="margin:10px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:12px;color:#4A6741;font-style:italic;line-height:1.5;">
+      <p class="text-muted" style="margin:10px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:12px;color:#4A6741;font-style:italic;line-height:1.5;">
         ${encouragement}
       </p>
       ${nextStepHtml}
@@ -385,13 +385,13 @@ function renderQuickAddButton(siteUrl: string, l: Record<string, string>): strin
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
       <tr><td class="cta-cell" style="text-align:center;padding:8px 0 0;">
         <!--[if mso]>
-        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${siteUrl}/palace?action=add" style="height:46px;v-text-anchor:middle;width:240px;" arcsize="10%" fillcolor="#C9A84C" stroke="f">
+        <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${siteUrl}/palace?action=add" style="height:46px;v-text-anchor:middle;width:240px;" arcsize="10%" fillcolor="#D4AF37" stroke="f">
           <w:anchorlock/>
           <center style="color:#ffffff;font-family:Georgia,serif;font-size:14px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;">${l.addAMemory}</center>
         </v:roundrect>
         <![endif]-->
         <!--[if !mso]><!-->
-        <a href="${siteUrl}/palace?action=add" style="display:inline-block;padding:13px 36px;background:#C9A84C;color:#FFFFFF;font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-weight:700;text-decoration:none;border-radius:4px;letter-spacing:1px;text-transform:uppercase;mso-hide:all;">
+        <a href="${siteUrl}/palace?action=add" style="display:inline-block;padding:13px 36px;background:#D4AF37;color:#FFFFFF;font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-weight:700;text-decoration:none;border-radius:4px;letter-spacing:1px;text-transform:uppercase;mso-hide:all;">
           ${l.addAMemory}
         </a>
         <!--<![endif]-->
@@ -446,13 +446,13 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
   const greeting = getGreeting(displayName, l);
 
   const headerHtml = `
-    <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+    <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#B8922E;letter-spacing:0.18em;text-transform:uppercase;">
       ${l.weeklyDigest}
     </p>
     <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
       ${l.yourReport.replace("{weekday}", weekday)}
     </h1>
-    <p class="header-subtitle" style="margin:14px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#8B7355;line-height:1.6;">
+    <p class="header-subtitle" style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#8B7355;line-height:1.6;">
       ${greeting}. ${l.hereIsWhatHappened}
     </p>`;
 
@@ -484,10 +484,10 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
     ctaUrl: `${siteUrl}/palace`,
     footerExtra: `
       <style>${motwMobileStyle}</style>
-      <p style="margin:0 0 6px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+      <p style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#D4C5B2;">
         ${l.footerNotice}
       </p>
-      <a href="${unsubscribeUrl}" style="font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#9A9183;text-decoration:underline;">
+      <a href="${unsubscribeUrl}" style="font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#9A9183;text-decoration:underline;">
         ${l.unsubscribe}
       </a>`,
     locale,

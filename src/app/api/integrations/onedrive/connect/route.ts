@@ -38,7 +38,14 @@ export async function GET() {
     });
 
     const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`;
-    const response = NextResponse.redirect(authUrl);
+
+    // Return an HTML page (200) that sets cookies then redirects via meta-refresh + JS.
+    // Mobile Safari/Chrome can drop cookies set on 3xx redirect responses,
+    // and sameSite:"lax" is correct here (same-site navigation, not cross-origin embed).
+    const response = new NextResponse(
+      `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=${authUrl}"><script>window.location.href=${JSON.stringify(authUrl)}</script></head><body>Redirecting to OneDrive...</body></html>`,
+      { status: 200, headers: { "Content-Type": "text/html" } }
+    );
 
     response.cookies.set("oauth_state_onedrive", state, {
       httpOnly: true,

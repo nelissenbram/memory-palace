@@ -12,8 +12,14 @@ import { MediaThumb } from "./MediaThumb";
 
 // ═══ Per-type slot limits for 3D display ═══
 const DISPLAY_LIMITS: Record<string, number> = {
-  photo: 5, painting: 1, album: 3, video: 1, orb: 4, case: 3, audio: 1, document: 4,
+  photo: 5, painting: 1, album: 3, video: 1, orb: 4, case: 3, audio: 1, document: 4, interview: 4,
 };
+
+/** Normalize legacy "voice" type to "interview" — all voice entries are interview excerpts */
+function normalizeType(mem: Mem): string {
+  if (mem.type === "voice") return "interview";
+  return mem.type;
+}
 
 interface Props {
   mems: Mem[];
@@ -43,7 +49,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
   const slideTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Filter memories
-  const filtered = filter ? mems.filter((m) => m.type === filter) : mems;
+  const filtered = filter ? mems.filter((m) => normalizeType(m) === filter) : mems;
   const typeGroups = groupByType(mems);
   const playerMem = filtered[playerIdx] || null;
 
@@ -51,7 +57,8 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
   const displayedCounts: Record<string, number> = {};
   for (const m of mems) {
     if (m.displayed !== false) {
-      displayedCounts[m.type] = (displayedCounts[m.type] || 0) + 1;
+      const type = normalizeType(m);
+      displayedCounts[type] = (displayedCounts[type] || 0) + 1;
     }
   }
 
@@ -495,7 +502,8 @@ function isMedia(mem: Mem): boolean {
 function groupByType(mems: Mem[]): Record<string, Mem[]> {
   const groups: Record<string, Mem[]> = {};
   for (const m of mems) {
-    (groups[m.type] ||= []).push(m);
+    const type = normalizeType(m);
+    (groups[type] ||= []).push(m);
   }
   return groups;
 }

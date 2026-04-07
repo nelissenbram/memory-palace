@@ -81,7 +81,7 @@ export default function CinematicWalkthrough() {
       {/* Narration bubble */}
       <div key={phase} style={{
         position: "absolute",
-        bottom: isMobile ? "8.75rem" : "5rem",
+        bottom: isMobile ? "calc(11rem + env(safe-area-inset-bottom, 0px))" : "5rem",
         left: "50%",
         transform: "translateX(-50%)",
         maxWidth: isMobile ? "calc(100vw - 2.5rem)" : "35rem",

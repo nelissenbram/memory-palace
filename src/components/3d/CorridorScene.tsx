@@ -8,12 +8,12 @@ import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
-import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
-export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: ()=>void}){
+export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDoor,wingData:wingDataProp,corridorPaintings,highlightDoor,styleEra="roman",onInlayClick,onPaintingClick,autoWalkTo}: {wingId: any,rooms?: WingRoom[],onDoorHover: any,onDoorClick: any,hoveredDoor: any,wingData?: Wing,corridorPaintings?: Record<string,{url?: string, title?: string}>,highlightDoor?: string|null,styleEra?: string,onInlayClick?: ()=>void,onPaintingClick?: ()=>void,autoWalkTo?: string|null}){
   const { t } = useTranslation("corridor3d");
   const { t: tWings } = useTranslation("wings");
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
@@ -21,6 +21,8 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
   useEffect(()=>{onDoorClickRef.current=onDoorClick;},[onDoorClick]);
   const highlightDoorRef=useRef(highlightDoor);
   useEffect(()=>{highlightDoorRef.current=highlightDoor;},[highlightDoor]);
+  const autoWalkToRef=useRef(autoWalkTo);
+  useEffect(()=>{autoWalkToRef.current=autoWalkTo;},[autoWalkTo]);
   const wing=wingDataProp||DEFAULT_WINGS.find(w=>w.id===wingId)!;
   const rooms=roomsProp||[];
   const doorMeshes=useRef<any[]>([]);
@@ -591,7 +593,8 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       scene.add(mk(new THREE.BoxGeometry(.04,.12,dW+.2),MS.trim,wx-(side*.02),dH+.1,z));
       // Recess
       scene.add(mk(new THREE.BoxGeometry(.03,dH-.1,dW+.1),MS.doorD,wx-(side*.015),(dH-.1)/2,z));
-      // Door panel
+      // Door panel — clone material per door because each door needs independent
+      // emissive state for hover highlights and pulse animations (see animate loop)
       const doorMat=MS.door.clone();
       const doorMesh=mk(new THREE.BoxGeometry(.05,dH-.2,dW-.05),doorMat,wx-(side*.03),(dH-.2)/2,z);
       doorMesh.userData={roomId:room.id,wingId,idx:i};doorMesh.castShadow=true;scene.add(doorMesh);
@@ -1369,8 +1372,8 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.035,transparent:true,opacity:.28*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
 
     // ── CAMERA + CONTROLS ──
-    camera.position.set(0,1.7,cL/2-3);
-    const lookA={yaw:0,pitch:0},lookT={yaw:0,pitch:0};
+    camera.position.set(0,1.7,cL/2-1);
+    const lookA={yaw:-0.5,pitch:0},lookT={yaw:-0.5,pitch:0};
     const pos=camera.position.clone(),posT=pos.clone();
     const keys: Record<string,boolean>={},drag={v:false},prev={x:0,y:0};let hovDoor: string|null=null;
 
@@ -1382,10 +1385,34 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();
       lookA.yaw+=(lookT.yaw-lookA.yaw)*.08;lookA.pitch+=(lookT.pitch-lookA.pitch)*.08;
+      // ── Auto-walk toward target door ──
+      const awTarget=autoWalkToRef.current;
+      if(awTarget&&dMeshes.length>0){
+        const dm=dMeshes.find((d: any)=>d.room.id===awTarget);
+        if(dm){
+          const targetX=dm.x+dm.side*2;
+          const targetZ=dm.z;
+          const dx2=targetX-posT.x;
+          const dz2=targetZ-posT.z;
+          const dist=Math.sqrt(dx2*dx2+dz2*dz2);
+          if(dist>0.5){
+            const speed=5.0*dt;
+            posT.x+=(dx2/dist)*speed;
+            posT.z+=(dz2/dist)*speed;
+            const targetYaw=Math.atan2(dm.x-posT.x,-(dm.z-posT.z));
+            lookT.yaw+=(targetYaw-lookT.yaw)*0.06;
+          }else{
+            autoWalkToRef.current=null;
+            onDoorClickRef.current(awTarget);
+          }
+        }
+      }
+      if(!awTarget){
       const spd=3*dt;_dir.set(0,0,0);
       if(keys.w||keys.arrowup)_dir.z-=1;if(keys.s||keys.arrowdown)_dir.z+=1;
       if(keys.a||keys.arrowleft)_dir.x-=1;if(keys.d||keys.arrowright)_dir.x+=1;
       if(_dir.length()>0){_dir.normalize().multiplyScalar(spd);_dir.applyAxisAngle(_yAxis,-lookA.yaw);posT.add(_dir);}
+      }
       posT.x=Math.max(-cW/2+1,Math.min(cW/2-1,posT.x));posT.z=Math.max(-cL/2+1.5,Math.min(cL/2-1.5,posT.z));
       pos.lerp(posT,.1);camera.position.copy(pos);
       _ld.set(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
@@ -1520,10 +1547,10 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         if (obj.material) {
           const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
           materials.forEach((m: any) => {
-            if (m.map) m.map.dispose();
-            if (m.normalMap) m.normalMap.dispose();
-            if (m.roughnessMap) m.roughnessMap.dispose();
-            if (m.emissiveMap) m.emissiveMap.dispose();
+            if (m.map && !isCachedTexture(m.map)) m.map.dispose();
+            if (m.normalMap && !isCachedTexture(m.normalMap)) m.normalMap.dispose();
+            if (m.roughnessMap && !isCachedTexture(m.roughnessMap)) m.roughnessMap.dispose();
+            if (m.emissiveMap && !isCachedTexture(m.emissiveMap)) m.emissiveMap.dispose();
             m.dispose();
           });
         }

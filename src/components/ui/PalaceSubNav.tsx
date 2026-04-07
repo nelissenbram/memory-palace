@@ -185,7 +185,8 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
       display: "flex",
       alignItems: "center",
       gap: compact ? "0.1875rem" : "0.375rem",
-      padding: compact ? "0.25rem 0.5rem" : "0.3125rem 0.75rem",
+      padding: compact ? "0.375rem 0.5rem" : "0.3125rem 0.75rem",
+      minHeight: compact ? "2.75rem" : undefined,
       borderRadius: "1.25rem",
       border: active ? `1.5px solid ${c}` : `1px solid ${c}44`,
       background: active ? `${c}18` : `${T.color.cream}80`,
@@ -479,7 +480,8 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                   fontWeight: isActiveWing ? 700 : 500,
                   background: isActiveWing ? `${w.accent}18` : `${T.color.cream}80`,
                   fontSize: compact ? "0.6875rem" : "0.75rem",
-                  padding: compact ? "0.1875rem 0.375rem" : "0.25rem 0.5rem",
+                  padding: compact ? "0.375rem 0.375rem" : "0.25rem 0.5rem",
+                  minHeight: compact ? "2.75rem" : undefined,
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = `${w.accent}20`;
@@ -520,7 +522,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                     position: "absolute",
                     top: "100%",
                     left: "50%",
-                    transform: "translateX(-50%)",
+                    transform: "translateX(max(-50%, calc(-100% + 1rem)))",
                     marginTop: "0.375rem",
                     background: `${T.color.white}f5`,
                     backdropFilter: "blur(0.75rem)",
@@ -529,7 +531,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                     border: `1px solid ${w.accent}33`,
                     padding: "0.25rem",
                     minWidth: "9rem",
-                    maxWidth: "15rem",
+                    maxWidth: "min(15rem, calc(100vw - 1rem))",
                     boxShadow: `0 0.25rem 1rem rgba(0,0,0,0.10), 0 0 0 1px ${w.accent}11`,
                     zIndex: 50,
                     animation: "subnavDropdownIn 0.15s ease",
@@ -634,7 +636,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           ...pillStyle(true, accent),
           overflow: "hidden",
           textOverflow: "ellipsis",
-          maxWidth: compact ? "6rem" : "12rem",
+          maxWidth: compact ? "8rem" : "12rem",
         }}
       >
         {roomId && (
@@ -700,11 +702,13 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
       <div
         role="navigation"
         aria-label={t("subnavBreadcrumb")}
+        className="hide-scrollbar"
         style={{
           position: "fixed",
           top: 0,
           left: 0,
           right: 0,
+          paddingTop: "env(safe-area-inset-top, 0px)",
           height: "3rem",
           zIndex: 42,
           overflow: "visible",
@@ -717,6 +721,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           alignItems: "center",
           padding: "0 0.5rem",
           gap: "0.125rem",
+          overflowX: "auto",
           transition: "transform 0.25s ease, opacity 0.25s ease",
         }}
       >
@@ -734,6 +739,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
     <div
       role="navigation"
       aria-label={t("subnavBreadcrumb")}
+      data-nudge="palace_subnav"
       style={{
         position: "absolute",
         top: "4.25rem",

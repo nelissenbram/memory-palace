@@ -540,25 +540,10 @@ function LandingPageContent() {
             max-width: 100% !important;
           }
         }
-        /* ── P1 #2: Comparison table responsive card layout ── */
+        /* ── P1 #2: Comparison table responsive — keep side-by-side on mobile ── */
         @media (max-width: 768px) {
-          .lp-comparison-row {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 0 !important;
-          }
           .lp-comparison-row > div {
-            border-left: none !important;
-          }
-          .lp-comparison-header {
-            display: none !important;
-          }
-          .lp-comparison-card {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 0.75rem !important;
-            padding: 1rem !important;
-            border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+            padding: 0.625rem 0.5rem !important;
           }
         }
         /* ── P1 #5: Testimonial horizontal scroll on mobile ── */

@@ -138,12 +138,19 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       storageBackend = mem._storageBackend || null;
     } else if (mem.dataUrl && mem.dataUrl.startsWith("data:")) {
       try {
-        const res = await fetch(mem.dataUrl);
-        const blob = await res.blob();
+        // Manual decode — CSP blocks fetch() on data: URLs
+        const commaIdx = mem.dataUrl.indexOf(",");
+        const header = mem.dataUrl.slice(0, commaIdx);
+        const b64 = mem.dataUrl.slice(commaIdx + 1);
+        const mime = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const blob = new Blob([bytes], { type: mime });
         fileSize = blob.size;
-        const ext = mem.dataUrl.match(/data:image\/(\w+)/)?.[1] || "jpg";
+        const ext = mime.match(/image\/(\w+)/)?.[1] || "jpg";
         const formData = new FormData();
-        formData.append("file", new File([blob], `memory.${ext}`, { type: blob.type }));
+        formData.append("file", new File([blob], `memory.${ext}`, { type: mime }));
         formData.append("bucket", "memories");
         const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
         if (uploadRes.ok) {
@@ -175,8 +182,15 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     let thumbnailUrl: string | null = mem.thumbnailUrl || null;
     if (thumbnailUrl && thumbnailUrl.startsWith("data:")) {
       try {
-        const thumbRes = await fetch(thumbnailUrl);
-        const thumbBlob = await thumbRes.blob();
+        // Manual decode — CSP blocks fetch() on data: URLs
+        const commaIdx = thumbnailUrl.indexOf(",");
+        const header = thumbnailUrl.slice(0, commaIdx);
+        const b64 = thumbnailUrl.slice(commaIdx + 1);
+        const mime = header.match(/data:([^;]+)/)?.[1] || "image/jpeg";
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const thumbBlob = new Blob([bytes], { type: mime });
         const thumbForm = new FormData();
         thumbForm.append("file", new File([thumbBlob], "thumb.jpg", { type: "image/jpeg" }));
         thumbForm.append("bucket", "memories");

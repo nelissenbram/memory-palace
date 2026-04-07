@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { TYPE_ICONS } from "@/lib/constants/type-icons";
+import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
 
 /* ── Animations (injected once) ── */
 const STYLE_ID = "library-search-animations";
@@ -121,23 +121,39 @@ export function LibrarySearch({
         minWidth: isMobile ? 0 : "12rem",
       }}
     >
-      {/* Magnifying glass icon */}
-      <span
+      {/* Magnifying glass icon — clickable when query present */}
+      <button
+        type="button"
+        onClick={() => {
+          if (hasQuery) {
+            // Submit: flush debounce immediately
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            onQueryChange(localQuery);
+          }
+          inputRef.current?.focus();
+        }}
         style={{
           position: "absolute",
-          left: "0.875rem",
+          left: "0.5rem",
           top: "50%",
           transform: "translateY(-50%)",
-          fontSize: "0.875rem",
           color: focused ? accent : T.color.muted,
-          pointerEvents: "none",
+          pointerEvents: hasQuery ? "auto" : "none",
+          cursor: hasQuery ? "pointer" : "default",
           transition: "color 0.2s ease",
           zIndex: 1,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "none", border: "none", padding: "0.375rem",
+          borderRadius: "50%",
         }}
-        aria-hidden="true"
+        aria-label={hasQuery ? t("searchPlaceholder") : undefined}
+        aria-hidden={!hasQuery}
+        tabIndex={hasQuery ? 0 : -1}
       >
-        {"\u{1F50D}"}
-      </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      </button>
 
       <input
         ref={inputRef}
@@ -155,7 +171,7 @@ export function LibrarySearch({
           border: `1px solid ${focused ? accent : T.color.cream}`,
           borderRadius: "1.5rem",
           fontFamily: T.font.body,
-          fontSize: "0.875rem",
+          fontSize: isMobile ? "1rem" : "0.875rem",
           fontStyle: query ? "normal" : "italic",
           color: T.color.charcoal,
           background: T.color.linen,
@@ -207,8 +223,8 @@ export function LibrarySearch({
             onClick={() => { handleQueryChange(""); inputRef.current?.focus(); }}
             aria-label={t("clearSearch")}
             style={{
-              width: "1.375rem",
-              height: "1.375rem",
+              width: "1.75rem",
+              height: "1.75rem",
               borderRadius: "50%",
               border: "none",
               background: T.color.cream,
@@ -217,7 +233,7 @@ export function LibrarySearch({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "0.75rem",
+              fontSize: "0.8125rem",
               lineHeight: 1,
               fontFamily: T.font.body,
               fontWeight: 600,
@@ -299,6 +315,8 @@ export function LibraryFilterBar({
         /* hide scrollbar */
         scrollbarWidth: "none",
         msOverflowStyle: "none",
+        maskImage: "linear-gradient(to right, transparent 0, black 0.75rem, black calc(100% - 0.75rem), transparent 100%)",
+        WebkitMaskImage: "linear-gradient(to right, transparent 0, black 0.75rem, black calc(100% - 0.75rem), transparent 100%)",
       }}
       /* webkit scrollbar hide via inline won't work; we handle it below */
     >
@@ -316,7 +334,7 @@ export function LibraryFilterBar({
       {types.map((type, i) => (
         <Chip
           key={type}
-          icon={TYPE_ICONS[type] || ""}
+          iconNode={<TypeIcon type={type} size={13} color={activeType === type ? "#fff" : accent} />}
           label={type}
           count={typeCounts?.[type]}
           active={activeType === type}
@@ -336,8 +354,8 @@ export function LibraryFilterBar({
 }
 
 /* ── Single chip ── */
-function Chip({ icon, label, count, active, accent, index, onClick }: {
-  icon?: string; label: string; count?: number; active: boolean;
+function Chip({ icon, iconNode, label, count, active, accent, index, onClick }: {
+  icon?: string; iconNode?: React.ReactNode; label: string; count?: number; active: boolean;
   accent: string; index: number; onClick: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -371,7 +389,7 @@ function Chip({ icon, label, count, active, accent, index, onClick }: {
         animationDelay: `${index * 0.04}s`,
       }}
     >
-      {icon && <span style={{ fontSize: "0.8125rem", lineHeight: 1 }}>{icon}</span>}
+      {iconNode ? <span style={{ display: "inline-flex", alignItems: "center", lineHeight: 1 }}>{iconNode}</span> : icon ? <span style={{ fontSize: "0.8125rem", lineHeight: 1 }}>{icon}</span> : null}
       <span>{label}</span>
       {count !== undefined && (
         <span

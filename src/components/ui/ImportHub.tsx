@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useRoomStore } from "@/lib/stores/roomStore";
 
 /* ═══════════════════════════════════════════════════════
    SVG Icons — Roman / Tuscan style line-art
@@ -84,8 +85,9 @@ export interface QueuedFile {
 
 interface ImportHubProps {
   onClose: () => void;
-  onImportFiles: (files: QueuedFile[]) => void;
+  onImportFiles: (files: QueuedFile[], roomId?: string) => Promise<void> | void;
   onOpenCloudProvider: (provider: string) => void;
+  initialRoomId?: string | null;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -97,7 +99,8 @@ const ACCEPT_VIDEO = ".mp4,.mov,.webm";
 const ACCEPT_AUDIO = ".mp3,.wav,.m4a";
 const ACCEPT_ALL = [ACCEPT_IMAGES, ACCEPT_VIDEO, ACCEPT_AUDIO].join(",");
 
-const ACCEPT_MIME_RE = /^(image\/(jpeg|png|webp|heic|heif)|video\/(mp4|quicktime|webm)|audio\/(mpeg|wav|mp4|x-m4a))$/i;
+const ACCEPT_MIME_RE = /^(image\/(jpeg|jpg|png|webp|heic|heif)|video\/(mp4|quicktime|webm|3gpp)|audio\/(mpeg|wav|mp4|x-m4a|aac|ogg))$/i;
+const ACCEPT_EXT_RE = /\.(jpe?g|png|webp|heic|heif|mp4|mov|webm|mp3|wav|m4a|3gp|aac|ogg)$/i;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -112,6 +115,9 @@ function makeId() {
 /* ═══════════════════════════════════════════════════════
    Cloud provider data
    ═══════════════════════════════════════════════════════ */
+
+// Disabled providers are faded out — to be reactivated later
+const DISABLED_PROVIDERS = new Set(["googlePhotos", "applePhotos", "onedrive"]);
 
 const CLOUD_PROVIDERS = [
   { key: "googlePhotos", icon: (
@@ -132,19 +138,38 @@ const CLOUD_PROVIDERS = [
    Component
    ═══════════════════════════════════════════════════════ */
 
-export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider }: ImportHubProps) {
+export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider, initialRoomId }: ImportHubProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
+  const roomStore = useRoomStore();
+  const allWings = roomStore.getWings();
+
+  // Initialize wing/room selection from the initial room (if provided)
+  const initialWingId = (() => {
+    if (!initialRoomId) return allWings[0]?.id || "";
+    for (const w of allWings) {
+      if (roomStore.getWingRooms(w.id).some((r) => r.id === initialRoomId)) return w.id;
+    }
+    return allWings[0]?.id || "";
+  })();
+  const [targetWingId, setTargetWingId] = useState<string>(initialWingId);
+  const [targetRoomId, setTargetRoomId] = useState<string>(initialRoomId || "");
+  const targetRooms = roomStore.getWingRooms(targetWingId);
+  // If no room yet selected, default to the first in the wing
+  useEffect(() => {
+    if (!targetRoomId && targetRooms.length > 0) setTargetRoomId(targetRooms[0].id);
+    else if (targetRoomId && !targetRooms.some((r) => r.id === targetRoomId)) {
+      setTargetRoomId(targetRooms[0]?.id || "");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetWingId]);
 
   const [queue, setQueue] = useState<QueuedFile[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [dragFileInfo, setDragFileInfo] = useState<{ count: number; size: number } | null>(null);
-  const [urlInput, setUrlInput] = useState("");
-  const [urlPreview, setUrlPreview] = useState<string | null>(null);
-  const [urlLoading, setUrlLoading] = useState(false);
   const [clipboardAvailable, setClipboardAvailable] = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [, setActiveSection] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -176,13 +201,28 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
   /* ── helpers ────────────────────────────── */
 
   const fileToQueued = useCallback((file: File): QueuedFile => {
-    const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+    // Detect image by MIME or extension (iOS may report empty type for HEIC)
+    const isImage = file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(file.name);
+    const previewUrl = isImage ? URL.createObjectURL(file) : null;
+    // Infer MIME type from extension if browser didn't set one
+    let fileType = file.type;
+    if (!fileType) {
+      if (/\.(jpe?g)$/i.test(file.name)) fileType = "image/jpeg";
+      else if (/\.png$/i.test(file.name)) fileType = "image/png";
+      else if (/\.webp$/i.test(file.name)) fileType = "image/webp";
+      else if (/\.heic$/i.test(file.name)) fileType = "image/heic";
+      else if (/\.(mp4)$/i.test(file.name)) fileType = "video/mp4";
+      else if (/\.(mov)$/i.test(file.name)) fileType = "video/quicktime";
+      else if (/\.(mp3)$/i.test(file.name)) fileType = "audio/mpeg";
+      else if (/\.(wav)$/i.test(file.name)) fileType = "audio/wav";
+      else if (/\.(m4a)$/i.test(file.name)) fileType = "audio/mp4";
+    }
     return {
       id: makeId(),
       file,
       name: file.name,
       size: file.size,
-      type: file.type,
+      type: fileType,
       previewUrl,
       status: "queued",
       progress: 0,
@@ -190,7 +230,8 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
   }, []);
 
   const addFiles = useCallback((files: File[]) => {
-    const valid = files.filter(f => ACCEPT_MIME_RE.test(f.type));
+    // Accept by MIME type or by file extension (iOS may report empty/non-standard types)
+    const valid = files.filter(f => ACCEPT_MIME_RE.test(f.type) || ACCEPT_EXT_RE.test(f.name));
     if (valid.length === 0) return;
     setQueue(prev => [...prev, ...valid.map(fileToQueued)]);
     setActiveSection(null);
@@ -259,65 +300,32 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, [addFiles]);
 
-  /* ── URL import ────────────────────────── */
-
-  const handleUrlAdd = useCallback(async () => {
-    const url = urlInput.trim();
-    if (!url) return;
-    setUrlLoading(true);
-    setUrlPreview(null);
-
-    // Try to detect type from URL
-    const isYouTube = /youtube\.com\/watch|youtu\.be\//.test(url);
-    let previewUrl: string | null = null;
-    let name = url.split("/").pop() || "link";
-
-    if (isYouTube) {
-      const match = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-      if (match) {
-        previewUrl = `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
-        name = `YouTube: ${match[1]}`;
-      }
-    } else if (/\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(url)) {
-      previewUrl = url;
-    }
-
-    setUrlPreview(previewUrl);
-
-    const item: QueuedFile = {
-      id: makeId(),
-      url,
-      name,
-      size: 0,
-      type: isYouTube ? "video/youtube" : "image/url",
-      previewUrl,
-      status: "queued",
-      progress: 0,
-    };
-    setQueue(prev => [...prev, item]);
-    setUrlInput("");
-    setUrlLoading(false);
-  }, [urlInput]);
-
   /* ── Clipboard paste ───────────────────── */
 
   const handleClipboardPaste = useCallback(async () => {
     try {
+      if (!navigator.clipboard?.read) {
+        alert(t("importClipboardUnsupported") || "Clipboard access not supported in this browser");
+        return;
+      }
       const items = await navigator.clipboard.read();
       for (const item of items) {
         for (const type of item.types) {
           if (type.startsWith("image/")) {
             const blob = await item.getType(type);
-            const file = new File([blob], `clipboard-${Date.now()}.png`, { type });
+            const ext = type.split("/")[1]?.split(";")[0] || "png";
+            const file = new File([blob], `clipboard-${Date.now()}.${ext}`, { type });
             addFiles([file]);
             return;
           }
         }
       }
-    } catch {
-      /* user denied or no image on clipboard */
+      alert(t("importClipboardEmpty") || "No image found on clipboard");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Clipboard access denied";
+      alert(`${t("importClipboardError") || "Could not read clipboard"}: ${msg}`);
     }
-  }, [addFiles]);
+  }, [addFiles, t]);
 
   /* ── Global paste listener ─────────────── */
 
@@ -333,16 +341,19 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
 
   /* ── Import all ────────────────────────── */
 
-  const handleImportAll = useCallback(() => {
+  const handleImportAll = useCallback(async () => {
     if (queue.length === 0) return;
+    if (!targetRoomId) return;
     setImporting(true);
-    onImportFiles(queue);
-    setTimeout(() => {
-      clearQueue();
-      setImporting(false);
-      onClose();
-    }, 300);
-  }, [queue, onImportFiles, clearQueue, onClose]);
+    try {
+      await onImportFiles(queue, targetRoomId);
+    } catch {
+      /* import errors handled upstream */
+    }
+    clearQueue();
+    setImporting(false);
+    onClose();
+  }, [queue, onImportFiles, clearQueue, onClose, targetRoomId]);
 
   /* ── Total queue stats ─────────────────── */
 
@@ -356,15 +367,15 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: "0.5rem",
-    padding: "1.25rem 1rem",
+    gap: isMobile ? "0.25rem" : "0.5rem",
+    padding: isMobile ? "0.75rem 0.625rem" : "1.25rem 1rem",
     borderRadius: "0.75rem",
     border: `0.0625rem solid ${T.color.cream}`,
     background: T.color.linen,
     cursor: "pointer",
     transition: "all 0.25s ease",
     textAlign: "center",
-    minHeight: "7rem",
+    minHeight: isMobile ? "auto" : "7rem",
     justifyContent: "center",
   };
 
@@ -447,22 +458,22 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
           {/* ── Header ─────────────────────── */}
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: isMobile ? "1rem 1.25rem" : "1.25rem 1.75rem",
+            padding: isMobile ? "0.75rem 1rem" : "1.25rem 1.75rem",
             borderBottom: `0.0625rem solid ${T.color.cream}`,
           }}>
             <div>
               <h2 style={{
-                fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
+                fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.375rem", fontWeight: 600,
                 color: T.color.charcoal, margin: 0, letterSpacing: "0.01em",
               }}>
                 {t("importHubTitle")}
               </h2>
-              <p style={{
+              {!isMobile && <p style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
                 margin: "0.25rem 0 0", lineHeight: 1.4,
               }}>
                 {t("importHubSubtitle")}
-              </p>
+              </p>}
             </div>
             <button
               onClick={onClose}
@@ -480,9 +491,86 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
             </button>
           </div>
 
-          <div style={{ padding: isMobile ? "1rem 1.25rem" : "1.5rem 1.75rem" }}>
+          <div style={{ padding: isMobile ? "0.75rem 1rem" : "1.5rem 1.75rem" }}>
 
-            {/* ═══ A. DRAG & DROP ZONE ═══ */}
+            {/* ═══ DESTINATION SELECTOR ═══ */}
+            <div style={{
+              display: "flex", gap: isMobile ? "0.75rem" : "1rem",
+              marginBottom: isMobile ? "1rem" : "1.5rem",
+              flexDirection: isMobile ? "column" : "row",
+              padding: isMobile ? "0.875rem 1rem" : "1rem 1.25rem",
+              background: T.color.cream,
+              borderRadius: "0.75rem",
+              border: `0.0625rem solid ${T.color.sandstone}`,
+            }}>
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  display: "block", fontFamily: T.font.display,
+                  fontSize: isMobile ? "0.8125rem" : "0.875rem",
+                  fontWeight: 600, color: T.color.walnut,
+                  marginBottom: "0.375rem",
+                }}>{t("importTargetWing") || "Wing"}</label>
+                <select
+                  value={targetWingId}
+                  onChange={(e) => setTargetWingId(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: isMobile ? "0.75rem 0.875rem" : "0.625rem 0.875rem",
+                    borderRadius: "0.5rem",
+                    border: `0.0625rem solid ${T.color.sandstone}`,
+                    background: T.color.white,
+                    fontFamily: T.font.body,
+                    fontSize: isMobile ? "1rem" : "0.9375rem",
+                    color: T.color.charcoal,
+                    cursor: "pointer",
+                    appearance: "none",
+                    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23${T.color.walnut.replace("#", "")}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1l5 5 5-5'/></svg>")`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 0.875rem center",
+                    paddingRight: "2rem",
+                  }}
+                >
+                  {allWings.map((w) => (
+                    <option key={w.id} value={w.id}>{w.name || w.id}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{
+                  display: "block", fontFamily: T.font.display,
+                  fontSize: isMobile ? "0.8125rem" : "0.875rem",
+                  fontWeight: 600, color: T.color.walnut,
+                  marginBottom: "0.375rem",
+                }}>{t("importTargetRoom") || "Room"}</label>
+                <select
+                  value={targetRoomId}
+                  onChange={(e) => setTargetRoomId(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: isMobile ? "0.75rem 0.875rem" : "0.625rem 0.875rem",
+                    borderRadius: "0.5rem",
+                    border: `0.0625rem solid ${T.color.sandstone}`,
+                    background: T.color.white,
+                    fontFamily: T.font.body,
+                    fontSize: isMobile ? "1rem" : "0.9375rem",
+                    color: T.color.charcoal,
+                    cursor: "pointer",
+                    appearance: "none",
+                    backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23${T.color.walnut.replace("#", "")}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1l5 5 5-5'/></svg>")`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 0.875rem center",
+                    paddingRight: "2rem",
+                  }}
+                >
+                  {targetRooms.map((r) => (
+                    <option key={r.id} value={r.id}>{r.name || r.id}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* ═══ A. DRAG & DROP ZONE (desktop only — mobile uses file picker directly) ═══ */}
+            {!isMobile && (
             <div
               ref={dropRef}
               onDragEnter={handleDragEnter}
@@ -525,54 +613,34 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
                 </p>
               )}
             </div>
+            )}
 
             {/* ═══ OPTION CARDS GRID ═══ */}
             <div style={{
               display: "grid",
-              gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr",
-              gap: "0.75rem",
-              marginBottom: "1.25rem",
+              gridTemplateColumns: isMobile ? "1fr 1fr 1fr" : "1fr 1fr 1fr",
+              gap: isMobile ? "0.5rem" : "0.75rem",
+              marginBottom: isMobile ? "0.75rem" : "1.25rem",
             }}>
-              {/* B. Choose from Computer */}
+              {/* B. Choose from Device */}
               <div
                 style={cardStyle}
                 onClick={() => fileInputRef.current?.click()}
                 onMouseEnter={e => cardHover(e, true)}
                 onMouseLeave={e => cardHover(e, false)}
               >
-                <ComputerIcon />
+                <div style={{ transform: isMobile ? "scale(0.7)" : "none", lineHeight: 0 }}><ComputerIcon /></div>
                 <span style={{
-                  fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
+                  fontFamily: T.font.display, fontSize: isMobile ? "0.6875rem" : "0.875rem", fontWeight: 600,
                   color: T.color.charcoal, lineHeight: 1.3,
                 }}>
                   {t("importFromComputer")}
                 </span>
-                <span style={{
+                {!isMobile && <span style={{
                   fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.3,
                 }}>
                   {t("importFromComputerDesc")}
-                </span>
-              </div>
-
-              {/* C. Paste URL / Link */}
-              <div
-                style={cardStyle}
-                onClick={() => setActiveSection(activeSection === "url" ? null : "url")}
-                onMouseEnter={e => cardHover(e, true)}
-                onMouseLeave={e => cardHover(e, false)}
-              >
-                <LinkIcon />
-                <span style={{
-                  fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                  color: T.color.charcoal, lineHeight: 1.3,
-                }}>
-                  {t("importPasteUrl")}
-                </span>
-                <span style={{
-                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.3,
-                }}>
-                  {t("importPasteUrlDesc")}
-                </span>
+                </span>}
               </div>
 
               {/* E. From Clipboard */}
@@ -583,134 +651,74 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
                   onMouseEnter={e => cardHover(e, true)}
                   onMouseLeave={e => cardHover(e, false)}
                 >
-                  <ClipboardIcon />
+                  <div style={{ transform: isMobile ? "scale(0.7)" : "none", lineHeight: 0 }}><ClipboardIcon /></div>
                   <span style={{
-                    fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
+                    fontFamily: T.font.display, fontSize: isMobile ? "0.6875rem" : "0.875rem", fontWeight: 600,
                     color: T.color.charcoal, lineHeight: 1.3,
                   }}>
                     {t("importClipboard")}
                   </span>
-                  <span style={{
+                  {!isMobile && <span style={{
                     fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.3,
                   }}>
                     {t("importClipboardDesc")}
-                  </span>
+                  </span>}
                 </div>
               )}
             </div>
 
-            {/* ═══ URL INPUT SECTION (expanded) ═══ */}
-            {activeSection === "url" && (
-              <div style={{
-                marginBottom: "1.25rem",
-                padding: "1rem",
-                borderRadius: "0.75rem",
-                background: "rgba(255,255,255,0.7)",
-                border: `0.0625rem solid ${T.color.cream}`,
-                animation: "impHubFadeIn 0.2s ease both",
-              }}>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <input
-                    type="url"
-                    value={urlInput}
-                    onChange={e => setUrlInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") handleUrlAdd(); }}
-                    placeholder={t("importUrlPlaceholder")}
-                    style={{
-                      flex: 1,
-                      padding: "0.625rem 0.875rem",
-                      borderRadius: "0.5rem",
-                      border: `0.0625rem solid ${T.color.cream}`,
-                      fontFamily: T.font.body, fontSize: "0.875rem",
-                      color: T.color.charcoal,
-                      background: T.color.white,
-                      outline: "none",
-                    }}
-                  />
-                  <button
-                    onClick={handleUrlAdd}
-                    disabled={!urlInput.trim() || urlLoading}
-                    style={{
-                      padding: "0.625rem 1rem",
-                      borderRadius: "0.5rem",
-                      border: "none",
-                      background: urlInput.trim() ? T.color.gold : T.color.sandstone,
-                      color: T.color.white, fontFamily: T.font.body,
-                      fontSize: "0.8125rem", fontWeight: 600,
-                      cursor: urlInput.trim() ? "pointer" : "default",
-                      opacity: urlInput.trim() ? 1 : 0.5,
-                      transition: "all 0.2s",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {t("importUrlAdd")}
-                  </button>
-                </div>
-                {urlPreview && (
-                  <div style={{ marginTop: "0.75rem", textAlign: "center" }}>
-                    <img
-                      src={urlPreview}
-                      alt="Preview"
-                      style={{
-                        maxWidth: "100%", maxHeight: "8rem",
-                        borderRadius: "0.5rem", objectFit: "contain",
-                      }}
-                    />
-                  </div>
-                )}
-                <p style={{
-                  fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
-                  margin: "0.5rem 0 0", lineHeight: 1.4,
-                }}>
-                  {t("importUrlHint")}
-                </p>
-              </div>
-            )}
-
             {/* ═══ D. CLOUD SERVICES ═══ */}
-            <div style={{ marginBottom: "1.25rem" }}>
+            <div style={{ marginBottom: isMobile ? "0.75rem" : "1.25rem" }}>
               <p style={{
-                fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600,
-                color: T.color.charcoal, margin: "0 0 0.625rem",
+                fontFamily: T.font.display, fontSize: isMobile ? "0.8125rem" : "0.9375rem", fontWeight: 600,
+                color: T.color.charcoal, margin: isMobile ? "0 0 0.375rem" : "0 0 0.625rem",
               }}>
                 {t("importCloudTitle")}
               </p>
               <div style={{
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr",
-                gap: "0.5rem",
+                gap: isMobile ? "0.375rem" : "0.5rem",
               }}>
-                {CLOUD_PROVIDERS.map(({ key, icon }) => (
+                {CLOUD_PROVIDERS.map(({ key, icon }) => {
+                  const disabled = DISABLED_PROVIDERS.has(key);
+                  return (
                   <button
                     key={key}
-                    onClick={() => onOpenCloudProvider(key)}
+                    onClick={() => { if (!disabled) onOpenCloudProvider(key); }}
+                    disabled={disabled}
                     style={{
                       display: "flex", alignItems: "center", gap: "0.5rem",
-                      padding: "0.625rem 0.875rem",
+                      padding: isMobile ? "0.5rem 0.625rem" : "0.625rem 0.875rem",
                       borderRadius: "0.625rem",
                       background: T.color.white,
                       border: `0.0625rem solid ${T.color.cream}`,
-                      cursor: "pointer",
-                      fontFamily: T.font.body, fontSize: "0.8125rem",
+                      cursor: disabled ? "default" : "pointer",
+                      fontFamily: T.font.body, fontSize: isMobile ? "0.75rem" : "0.8125rem",
                       fontWeight: 500, color: T.color.walnut,
                       transition: "all 0.2s ease",
                       textAlign: "left",
+                      opacity: disabled ? 0.35 : 1,
+                      pointerEvents: disabled ? "none" : "auto",
                     }}
                     onMouseEnter={e => {
+                      if (disabled) return;
                       e.currentTarget.style.borderColor = `${T.color.walnut}44`;
                       e.currentTarget.style.transform = "translateY(-0.0625rem)";
                       e.currentTarget.style.boxShadow = "0 0.25rem 0.75rem rgba(44,44,42,0.06)";
                     }}
                     onMouseLeave={e => {
+                      if (disabled) return;
                       e.currentTarget.style.borderColor = T.color.cream;
                       e.currentTarget.style.transform = "none";
                       e.currentTarget.style.boxShadow = "none";
                     }}
                   >
                     {icon}
-                    {t(key)}
+                    <span>{t(key)}{disabled && <span style={{ fontSize: "0.5625rem", color: T.color.muted, marginLeft: "0.25rem" }}>{t("comingSoon") || "soon"}</span>}</span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -884,11 +892,11 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider 
         </div>
       </div>
 
-      {/* Hidden file input */}
+      {/* Hidden file input — broad accept for mobile compatibility */}
       <input
         ref={fileInputRef}
         type="file"
-        accept={ACCEPT_ALL}
+        accept={`${ACCEPT_ALL},image/*,video/*,audio/*`}
         multiple
         onChange={handleFileSelect}
         style={{ display: "none" }}

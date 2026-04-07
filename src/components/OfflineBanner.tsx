@@ -30,7 +30,7 @@ export default function OfflineBanner() {
         fontFamily: T.font.body,
         fontSize: "0.8125rem",
         fontWeight: 500,
-        padding: "0.5rem 1rem",
+        padding: "calc(0.5rem + env(safe-area-inset-top, 0px)) 1rem 0.5rem",
         textAlign: "center",
         display: "flex",
         alignItems: "center",

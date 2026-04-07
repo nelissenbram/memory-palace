@@ -330,6 +330,11 @@ export function loadWornPlasterTextures(repeat: [number, number] = [3, 3]): PBRT
   return loadPBRSet("/textures/pbr/worn_plaster_wall", "worn_plaster_wall", { repeat });
 }
 
+/** Clay plaster — warm Tuscan villa stucco with coarse weathered finish (CC0, Poly Haven) */
+export function loadClayPlasterTextures(repeat: [number, number] = [3, 3]): PBRTextureSet {
+  return loadPBRSet("/textures/pbr/clay_plaster", "clay_plaster", { repeat });
+}
+
 /** Stone floor tiles — for corridor and entrance floors */
 export function loadFloorTileTextures(repeat: [number, number] = [4, 4]): PBRTextureSet {
   return loadPBRSet("/textures/pbr/floor_tiles", "floor_tiles_02", { repeat });

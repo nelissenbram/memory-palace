@@ -10,7 +10,7 @@ import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
-import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
@@ -728,18 +728,18 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       let videoEl: HTMLVideoElement|null=null,screenImg: HTMLImageElement|null=null;
       const vm=videoMems[0];
       if(vm.dataUrl){
-        // Detect if this is a video: check videoBlob flag, type field, or URL extension
+        // Type flags take priority over URL extension (dataUrl may be a thumbnail)
         const isVidSrc=vm.videoBlob||vm.type==="video"||/\.(mp4|webm|mov|avi|mkv|m4v)/i.test(vm.dataUrl)||vm.dataUrl.startsWith("data:video/");
         if(isVidSrc){
           videoEl=document.createElement("video");
           videoEl.src=vm.dataUrl;videoEl.crossOrigin="anonymous";videoEl.loop=true;videoEl.playsInline=true;videoEl.volume=0;
-          // Draw loading frame on canvas
+          videoEl.preload="auto";
+          // Draw loading frame on canvas with title
           vctx.fillStyle="#1A1510";vctx.fillRect(0,0,384,256);
           vctx.fillStyle="rgba(255,255,255,.3)";vctx.font="16px Georgia,serif";vctx.textAlign="center";
           vctx.fillText(t("loadingVideo"),192,128);vtex.needsUpdate=true;
-          // Try unmuted first (volume=0); if blocked, fall back to muted autoplay
-          videoEl.muted=false;
-          videoEl.play().catch(()=>{videoEl!.muted=true;videoEl!.play().catch(()=>{});});
+          // Start paused — first frame renders as thumbnail, user presses play
+          videoEl.muted=true;
           videoElRef.current=videoEl;
         }else{
           const si=new Image();si.onload=()=>{screenImg=si;};si.crossOrigin="anonymous";si.src=vm.dataUrl;
@@ -1301,10 +1301,10 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
         if (obj.material) {
           const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
           materials.forEach((m: any) => {
-            if (m.map) m.map.dispose();
-            if (m.normalMap) m.normalMap.dispose();
-            if (m.roughnessMap) m.roughnessMap.dispose();
-            if (m.emissiveMap) m.emissiveMap.dispose();
+            if (m.map && !isCachedTexture(m.map)) m.map.dispose();
+            if (m.normalMap && !isCachedTexture(m.normalMap)) m.normalMap.dispose();
+            if (m.roughnessMap && !isCachedTexture(m.roughnessMap)) m.roughnessMap.dispose();
+            if (m.emissiveMap && !isCachedTexture(m.emissiveMap)) m.emissiveMap.dispose();
             m.dispose();
           });
         }
@@ -1365,9 +1365,13 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     const switchTrack=isVid?switchVideoTrack:switchAudioTrack;
     return(
     <div style={{background:"rgba(30,26,22,.88)",backdropFilter:"blur(16px)",borderRadius:"0.875rem",border:`1px solid ${barBorder}`,padding:"0.5rem 0.75rem",display:"flex",flexWrap:"wrap",alignItems:"center",gap:"0.5rem",boxShadow:"0 8px 40px rgba(0,0,0,.35)",maxWidth:"min(36.25rem, 92vw)"}} onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()}>
-      <div style={{width:"1.75rem",height:"1.75rem",borderRadius:isVid?"0.375rem":"0.875rem",background:isVid?"linear-gradient(135deg,#1A2744,#3A5A7A)":"linear-gradient(135deg,#3A2010,#6A4A2A)",display:"flex",alignItems:"center",justifyContent:"center",border:`1.5px solid ${barAccent}40`,flexShrink:0}}>
-        <span style={{fontSize:"0.8125rem"}}>{isVid?"\uD83D\uDCFA":"\uD83D\uDCBF"}</span>
-      </div>
+      {isVid&&ref.current&&(ref.current as HTMLVideoElement).readyState>=2?(
+        <canvas ref={el=>{if(el&&ref.current){const c=el.getContext("2d");if(c){const v=ref.current as HTMLVideoElement;const s=Math.min(40/v.videoWidth,28/v.videoHeight);c.drawImage(v,0,0,v.videoWidth*s,v.videoHeight*s);}}}} width={40} height={28} style={{width:"2.5rem",height:"1.75rem",borderRadius:"0.375rem",objectFit:"cover",border:`1.5px solid ${barAccent}40`,flexShrink:0}}/>
+      ):(
+        <div style={{width:"1.75rem",height:"1.75rem",borderRadius:isVid?"0.375rem":"0.875rem",background:isVid?"linear-gradient(135deg,#1A2744,#3A5A7A)":"linear-gradient(135deg,#3A2010,#6A4A2A)",display:"flex",alignItems:"center",justifyContent:"center",border:`1.5px solid ${barAccent}40`,flexShrink:0}}>
+          <span style={{fontSize:"0.8125rem"}}>{isVid?"\uD83D\uDCFA":"\uD83D\uDCBF"}</span>
+        </div>
+      )}
       <div style={{minWidth:0,maxWidth:"7.5rem"}}>
         <div style={{fontFamily:T.font.body,fontSize:"0.5rem",color:barAccent,textTransform:"uppercase",letterSpacing:"0.075rem",fontWeight:700,marginBottom:"0.0625rem"}}>
           {isVid?t("cinemaScreen"):t("vinylPlayer")}{hasMultiple?` (${curIdx+1}/${playlist.length})`:""}

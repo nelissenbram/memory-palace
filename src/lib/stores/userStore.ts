@@ -84,6 +84,13 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   loadProfile: async () => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      // Fallback: check localStorage for cached onboarded state to prevent
+      // false onboarding when Supabase is unavailable
+      try {
+        if (localStorage.getItem("mp_onboarded") === "true") {
+          set({ onboarded: true, userName: localStorage.getItem("mp_userName") || "" });
+        }
+      } catch { /* SSR or storage error */ }
       set({ profileLoading: false });
       return;
     }
@@ -101,6 +108,8 @@ export const useUserStore = create<UserState>((set, get) => ({
           pedestals = { 0: { faceUrl: profile.bust_texture_url, name: profile.bust_name || profile.display_name || "", gender: (profile.bust_gender as "male" | "female") || "male" } };
         }
         set({ onboarded: true, userName: profile.display_name || "", styleEra: profile.style_era || null, bustTextureUrl: profile.bust_texture_url || null, bustModelUrl: profile.bust_model_url || null, bustName: profile.bust_name || null, bustGender: profile.bust_gender || null, bustPedestals: pedestals, accessibilityMode: !!profile.accessibility_mode });
+        // Cache onboarded state for offline/fallback scenarios
+        try { localStorage.setItem("mp_onboarded", "true"); localStorage.setItem("mp_userName", profile.display_name || ""); } catch { /* ignore */ }
       }
       else set({ onboarded: false });
     }
@@ -112,5 +121,10 @@ export const useUserStore = create<UserState>((set, get) => ({
     const result = await completeOnboarding({ displayName: userName, goal: userGoal, firstWing: firstWing || "", styleEra: styleEra || "roman" });
     if (result.error) console.error("Onboarding error:", result.error);
     set({ onboarded: true });
+    // Cache onboarded state in localStorage as fallback
+    try {
+      localStorage.setItem("mp_onboarded", "true");
+      localStorage.setItem("mp_userName", get().userName);
+    } catch { /* SSR or storage error */ }
   },
 }));

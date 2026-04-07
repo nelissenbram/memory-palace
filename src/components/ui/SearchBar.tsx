@@ -25,7 +25,7 @@ export default function SearchBar({query,filterType,totalCount,filteredCount,acc
   const isFiltering=!!query||!!filterType;
 
   return(
-    <div style={{position:"absolute",top:isMobile?"3.125rem":"3.875rem",left:isMobile?"0.5rem":"1.375rem",right:isMobile?"0.5rem":undefined,zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",flexDirection:"column",gap:"0.5rem",maxWidth:isMobile?undefined:"min(320px, calc(100vw - 44px))"}}>
+    <div style={{position:"absolute",top:isMobile?"3.5rem":"3.875rem",left:isMobile?"0.5rem":"1.375rem",right:isMobile?"0.5rem":undefined,zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",flexDirection:"column",gap:"0.5rem",maxWidth:isMobile?undefined:"min(320px, calc(100vw - 44px))"}}>
       {/* Search input */}
       <div style={{background:`${T.color.white}ee`,backdropFilter:"blur(10px)",borderRadius:"0.75rem",border:`1px solid ${T.color.cream}`,padding:isMobile?"0.5rem 0.75rem":"0.375rem 0.625rem",display:"flex",alignItems:"center",gap:"0.5rem"}}>
         <span style={{fontSize:"0.8125rem",opacity:.5}}>🔍</span>

@@ -20,6 +20,8 @@ import UploadPanel from "@/components/ui/UploadPanel";
 import SharingPanel from "@/components/ui/SharingPanel";
 import MemoryDetail from "@/components/ui/MemoryDetail";
 import NavigationBar from "@/components/ui/NavigationBar";
+import NotificationsPage from "@/components/ui/NotificationsPage";
+import SettingsInline from "@/components/ui/SettingsInline";
 import RoomManagerPanel from "@/components/ui/RoomManagerPanel";
 import WingManagerPanel from "@/components/ui/WingManagerPanel";
 import AchievementsPanel from "@/components/ui/AchievementsPanel";
@@ -67,11 +69,14 @@ import DiscoveryMenu from "@/components/ui/DiscoveryMenu";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { updateProfile } from "@/lib/auth/profile-actions";
-import LibraryView from "@/components/ui/LibraryView";
-import HomeView from "@/components/ui/HomeView";
+const LibraryView = lazy(() => import("@/components/ui/LibraryView"));
+const HomeView = lazy(() => import("@/components/ui/HomeView"));
 import UniversalActions from "@/components/ui/UniversalActions";
 import { useActions } from "@/lib/hooks/useActions";
 import PalaceSubNav from "@/components/ui/PalaceSubNav";
+import NudgeProvider, { getNudgeHighlight } from "@/components/ui/NudgeTooltip";
+import { RoomIcon } from "@/components/ui/WingRoomIcons";
+import { useNudgeStore } from "@/lib/stores/nudgeStore";
 import TuscanCard from "@/components/ui/TuscanCard";
 import TuscanStyles from "@/components/ui/TuscanStyles";
 import { getWingsSharedWithMe, getSharedWingData, getSharedRoomMemories } from "@/lib/auth/sharing-actions";
@@ -88,39 +93,123 @@ export default function MemoryPalace(){
   // Key fragment for scene remounting when daylight mode changes manually
   const dlKey = daylightEnabled ? `dl_${daylightMode}${daylightMode !== "auto" ? "_" + resolvedHour : ""}` : "dl_off";
 
-  // ── Stores ──
-  const { profileLoading, onboarded, firstWing, styleEra, bustTextureUrl, bustModelUrl, bustProportions, userName, bustName, bustGender, bustPedestals,
-    loadProfile, finishOnboarding, setStyleEra } = useUserStore();
-  const { navMode, view, activeWing, activeRoomId, hovWing, hovDoor, opacity, portalAnim, roomLayouts,
-    setNavMode, setHovWing, setHovDoor, enterWing, enterEntrance, enterCorridor, enterRoom, setRoomLayout, exitToPalace, exitToCorridor, exitToEntrance, switchWing } = usePalaceStore();
-  const { selMem, showUpload, showSharing, showDirectory, searchQuery, filterType,
-    setSelMem, setShowUpload, setShowSharing, setShowDirectory, setSearchQuery, setFilterType } = useMemoryStore();
-  const { getWingRooms, customRooms } = useRoomStore();
-  const { toast: achToast, showPanel: showAchievements, setShowPanel: setShowAchievements,
-    checkAchievements, dismissToast: dismissAchToast, trackWingVisit, trackRoomVisit, getProgress,
-    visitedWings } = useAchievementStore();
-  const { showTracksPanel, selectedTrackId, showLegacyPanel,
-    toast: trackToast, celebration: trackCelebration,
-    setShowTracksPanel, setSelectedTrackId, setShowLegacyPanel,
-    dismissToast: dismissTrackToast, dismissCelebration,
-    loadProgress: loadTrackProgress, runProgressCheck, hasUsedMassImport, legacyReviewed } = useTrackStore();
-  const {
-    showMemoryMap, setShowMemoryMap,
-    showTimeline, setShowTimeline,
-    showMassImport, setShowMassImport,
-    showGallery, setShowGallery,
-    showInvites, setShowInvites,
-    showSharedWithMe, setShowSharedWithMe,
-    showSharingSettings, setShowSharingSettings,
-    showCorridorGallery, setShowCorridorGallery,
-    showEraPicker, setShowEraPicker,
-    showUpgradePrompt, setShowUpgradePrompt,
-    showRoomManager, setShowRoomManager,
-    showRoomShare, setShowRoomShare,
-    showStoragePlayer, setShowStoragePlayer,
-    showWingManager, setShowWingManager,
-    showStatistics, setShowStatistics,
-  } = useUIPanelStore();
+  // ── Stores (individual selectors to avoid unnecessary re-renders) ──
+  const profileLoading = useUserStore((s) => s.profileLoading);
+  const onboarded = useUserStore((s) => s.onboarded);
+  const firstWing = useUserStore((s) => s.firstWing);
+  const styleEra = useUserStore((s) => s.styleEra);
+  const bustTextureUrl = useUserStore((s) => s.bustTextureUrl);
+  const bustModelUrl = useUserStore((s) => s.bustModelUrl);
+  const bustProportions = useUserStore((s) => s.bustProportions);
+  const userName = useUserStore((s) => s.userName);
+  const bustName = useUserStore((s) => s.bustName);
+  const bustGender = useUserStore((s) => s.bustGender);
+  const bustPedestals = useUserStore((s) => s.bustPedestals);
+  const loadProfile = useUserStore((s) => s.loadProfile);
+  const finishOnboarding = useUserStore((s) => s.finishOnboarding);
+  const setStyleEra = useUserStore((s) => s.setStyleEra);
+
+  const navMode = usePalaceStore((s) => s.navMode);
+  const view = usePalaceStore((s) => s.view);
+  const activeWing = usePalaceStore((s) => s.activeWing);
+  const activeRoomId = usePalaceStore((s) => s.activeRoomId);
+  const hovWing = usePalaceStore((s) => s.hovWing);
+  const hovDoor = usePalaceStore((s) => s.hovDoor);
+  const opacity = usePalaceStore((s) => s.opacity);
+  const portalAnim = usePalaceStore((s) => s.portalAnim);
+  const roomLayouts = usePalaceStore((s) => s.roomLayouts);
+  const setNavMode = usePalaceStore((s) => s.setNavMode);
+  const setHovWing = usePalaceStore((s) => s.setHovWing);
+  const setHovDoor = usePalaceStore((s) => s.setHovDoor);
+  const enterWing = usePalaceStore((s) => s.enterWing);
+  const enterEntrance = usePalaceStore((s) => s.enterEntrance);
+  const enterCorridor = usePalaceStore((s) => s.enterCorridor);
+  const enterRoom = usePalaceStore((s) => s.enterRoom);
+  const setRoomLayout = usePalaceStore((s) => s.setRoomLayout);
+  const exitToPalace = usePalaceStore((s) => s.exitToPalace);
+  const exitToCorridor = usePalaceStore((s) => s.exitToCorridor);
+  const exitToEntrance = usePalaceStore((s) => s.exitToEntrance);
+  const switchWing = usePalaceStore((s) => s.switchWing);
+  const setLibraryTarget = usePalaceStore((s) => s.setLibraryTarget);
+
+  const selMem = useMemoryStore((s) => s.selMem);
+  const showUpload = useMemoryStore((s) => s.showUpload);
+  const showSharing = useMemoryStore((s) => s.showSharing);
+  const showDirectory = useMemoryStore((s) => s.showDirectory);
+  const searchQuery = useMemoryStore((s) => s.searchQuery);
+  const filterType = useMemoryStore((s) => s.filterType);
+  const setSelMem = useMemoryStore((s) => s.setSelMem);
+  const setShowUpload = useMemoryStore((s) => s.setShowUpload);
+  const setShowSharing = useMemoryStore((s) => s.setShowSharing);
+  const setShowDirectory = useMemoryStore((s) => s.setShowDirectory);
+  const setSearchQuery = useMemoryStore((s) => s.setSearchQuery);
+  const setFilterType = useMemoryStore((s) => s.setFilterType);
+
+  const getWingRooms = useRoomStore((s) => s.getWingRooms);
+  const customRooms = useRoomStore((s) => s.customRooms);
+
+  const nudgeActiveNudge = useNudgeStore((s) => s.activeNudge);
+  const nudgeDismiss = useNudgeStore((s) => s.dismiss);
+  const nudgeHL = getNudgeHighlight(nudgeActiveNudge);
+  const autoWalking = useNudgeStore((s) => s.autoWalking);
+
+  const achToast = useAchievementStore((s) => s.toast);
+  const showAchievements = useAchievementStore((s) => s.showPanel);
+  const setShowAchievements = useAchievementStore((s) => s.setShowPanel);
+  const achHighlightId = useAchievementStore((s) => s.highlightId);
+  const openAchWithHighlight = useAchievementStore((s) => s.openWithHighlight);
+  const checkAchievements = useAchievementStore((s) => s.checkAchievements);
+  const dismissAchToast = useAchievementStore((s) => s.dismissToast);
+  const trackWingVisit = useAchievementStore((s) => s.trackWingVisit);
+  const trackRoomVisit = useAchievementStore((s) => s.trackRoomVisit);
+  const getProgress = useAchievementStore((s) => s.getProgress);
+  const visitedWings = useAchievementStore((s) => s.visitedWings);
+
+  const showTracksPanel = useTrackStore((s) => s.showTracksPanel);
+  const selectedTrackId = useTrackStore((s) => s.selectedTrackId);
+  const showLegacyPanel = useTrackStore((s) => s.showLegacyPanel);
+  const trackToast = useTrackStore((s) => s.toast);
+  const trackCelebration = useTrackStore((s) => s.celebration);
+  const setShowTracksPanel = useTrackStore((s) => s.setShowTracksPanel);
+  const setSelectedTrackId = useTrackStore((s) => s.setSelectedTrackId);
+  const setShowLegacyPanel = useTrackStore((s) => s.setShowLegacyPanel);
+  const dismissTrackToast = useTrackStore((s) => s.dismissToast);
+  const dismissCelebration = useTrackStore((s) => s.dismissCelebration);
+  const loadTrackProgress = useTrackStore((s) => s.loadProgress);
+  const runProgressCheck = useTrackStore((s) => s.runProgressCheck);
+  const hasUsedMassImport = useTrackStore((s) => s.hasUsedMassImport);
+  const legacyReviewed = useTrackStore((s) => s.legacyReviewed);
+
+  const showMemoryMap = useUIPanelStore((s) => s.showMemoryMap);
+  const setShowMemoryMap = useUIPanelStore((s) => s.setShowMemoryMap);
+  const showTimeline = useUIPanelStore((s) => s.showTimeline);
+  const setShowTimeline = useUIPanelStore((s) => s.setShowTimeline);
+  const showMassImport = useUIPanelStore((s) => s.showMassImport);
+  const setShowMassImport = useUIPanelStore((s) => s.setShowMassImport);
+  const showGallery = useUIPanelStore((s) => s.showGallery);
+  const setShowGallery = useUIPanelStore((s) => s.setShowGallery);
+  const showInvites = useUIPanelStore((s) => s.showInvites);
+  const setShowInvites = useUIPanelStore((s) => s.setShowInvites);
+  const showSharedWithMe = useUIPanelStore((s) => s.showSharedWithMe);
+  const setShowSharedWithMe = useUIPanelStore((s) => s.setShowSharedWithMe);
+  const showSharingSettings = useUIPanelStore((s) => s.showSharingSettings);
+  const setShowSharingSettings = useUIPanelStore((s) => s.setShowSharingSettings);
+  const showCorridorGallery = useUIPanelStore((s) => s.showCorridorGallery);
+  const setShowCorridorGallery = useUIPanelStore((s) => s.setShowCorridorGallery);
+  const showEraPicker = useUIPanelStore((s) => s.showEraPicker);
+  const setShowEraPicker = useUIPanelStore((s) => s.setShowEraPicker);
+  const showUpgradePrompt = useUIPanelStore((s) => s.showUpgradePrompt);
+  const setShowUpgradePrompt = useUIPanelStore((s) => s.setShowUpgradePrompt);
+  const showRoomManager = useUIPanelStore((s) => s.showRoomManager);
+  const setShowRoomManager = useUIPanelStore((s) => s.setShowRoomManager);
+  const showRoomShare = useUIPanelStore((s) => s.showRoomShare);
+  const setShowRoomShare = useUIPanelStore((s) => s.setShowRoomShare);
+  const showStoragePlayer = useUIPanelStore((s) => s.showStoragePlayer);
+  const setShowStoragePlayer = useUIPanelStore((s) => s.setShowStoragePlayer);
+  const showWingManager = useUIPanelStore((s) => s.showWingManager);
+  const setShowWingManager = useUIPanelStore((s) => s.setShowWingManager);
+  const showStatistics = useUIPanelStore((s) => s.showStatistics);
+  const setShowStatistics = useUIPanelStore((s) => s.setShowStatistics);
   const [sharedWings, setSharedWings] = useState<SharedWingDoor[]>([]);
   // sharedContext removed — was never read
   const [sharedWingData, setSharedWingData] = useState<{ wing: any; rooms: any[] } | null>(null);
@@ -128,7 +217,16 @@ export default function MemoryPalace(){
   const [showSpotlight, setShowSpotlight] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [showTools, setShowTools] = useState(false);
-  const { isActive: walkthroughActive, showDiscoveryMenu, setShowDiscoveryMenu } = useWalkthroughStore();
+  const [showNotificationsPage, setShowNotificationsPage] = useState(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("notifications") === "1";
+    }
+    return false;
+  });
+  const [showSettings, setShowSettings] = useState(false);
+  const walkthroughActive = useWalkthroughStore((s) => s.isActive);
+  const showDiscoveryMenu = useWalkthroughStore((s) => s.showDiscoveryMenu);
+  const setShowDiscoveryMenu = useWalkthroughStore((s) => s.setShowDiscoveryMenu);
   const walkthroughStart = useWalkthroughStore((s) => s.start);
   const walkthroughCompleted = useWalkthroughStore((s) => s.completed);
   const walkthroughPhase = useWalkthroughStore((s) => s.phase);
@@ -137,15 +235,20 @@ export default function MemoryPalace(){
   const [sceneLoading, setSceneLoading] = useState(true);
   const [searchBarVisible, setSearchBarVisible] = useState(true);
   const searchHideTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
-  const { showLibrary: showInterviewLibrary, showHistory: showInterviewHistory, showInterview,
-    setShowLibrary: setShowInterviewLibrary, setShowHistory: setShowInterviewHistory,
-    setShowInterview: setShowInterviewPanel } = useInterviewStore();
+  const showInterviewLibrary = useInterviewStore((s) => s.showLibrary);
+  const showInterviewHistory = useInterviewStore((s) => s.showHistory);
+  const showInterview = useInterviewStore((s) => s.showInterview);
+  const setShowInterviewLibrary = useInterviewStore((s) => s.setShowLibrary);
+  const setShowInterviewHistory = useInterviewStore((s) => s.setShowHistory);
+  const setShowInterviewPanel = useInterviewStore((s) => s.setShowInterview);
 
   // ── Hint bars — show only on first 3 visits ──
   // showHints removed — bottom hints replaced by PalaceSubNav
 
   // ── Tutorial ──
-  const { active: tutorialActive, completed: tutorialCompleted, start: startTutorial } = useTutorialStore();
+  const tutorialActive = useTutorialStore((s) => s.active);
+  const tutorialCompleted = useTutorialStore((s) => s.completed);
+  const startTutorial = useTutorialStore((s) => s.start);
 
   // ── Hooks ──
   const { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings } = useNavigation();
@@ -212,7 +315,7 @@ export default function MemoryPalace(){
   // ── Scene loading overlay — show on view transitions, fade out after scene builds ──
   useEffect(() => {
     setSceneLoading(true);
-    const t = setTimeout(() => setSceneLoading(false), 1400);
+    const t = setTimeout(() => setSceneLoading(false), 800);
     return () => clearTimeout(t);
   }, [view]);
 
@@ -227,6 +330,50 @@ export default function MemoryPalace(){
     }, 300);
     return () => clearTimeout(t);
   }, [userMems, customRooms, roomLayouts, roomSharingData, checkAchievements]);
+
+  // ── Browser back button: push mode changes to history ──
+  const prevNavModeRef = useRef(navMode);
+  useEffect(() => {
+    if (navMode !== prevNavModeRef.current) {
+      window.history.pushState({ navMode }, "", window.location.pathname);
+      prevNavModeRef.current = navMode;
+    }
+  }, [navMode]);
+
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      const mode = e.state?.navMode;
+      if (mode && (mode === "atrium" || mode === "library" || mode === "3d")) {
+        setNavMode(mode);
+        prevNavModeRef.current = mode;
+      }
+    };
+    // Seed current state so first Back works
+    window.history.replaceState({ navMode }, "", window.location.pathname);
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Handle ?help=1 query param (from Settings "Help & Tutorial" link) ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("help") === "1") {
+      window.history.replaceState({}, "", window.location.pathname);
+      useNudgeStore.getState().reset();
+      const page = navMode === "3d" ? "palace" : navMode;
+      setTimeout(() => useNudgeStore.getState().initPage(page as "atrium" | "library" | "palace"), 300);
+    }
+    // Handle ?mode= param (from Settings NavigationBar)
+    const modeParam = params.get("mode");
+    if (modeParam && (modeParam === "atrium" || modeParam === "library" || modeParam === "3d")) {
+      window.history.replaceState({}, "", window.location.pathname);
+      setNavMode(modeParam);
+    }
+    // Clean up ?notifications=1 param (read synchronously in useState initializer)
+    if (params.get("notifications") === "1") {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (activeWing) trackWingVisit(activeWing);
@@ -301,18 +448,8 @@ export default function MemoryPalace(){
     searchHideTimer.current = setTimeout(() => setSearchBarVisible(false), 3000);
   }, []);
 
-  // Auto-start tutorial on first entrance-hall visit — but NOT right after onboarding
-  // (users who just onboarded go straight to their first room instead)
-  useEffect(() => {
-    if (view === "entrance" && !tutorialCompleted && !tutorialActive) {
-      if (justOnboardedRef.current) {
-        justOnboardedRef.current = false;
-        return; // Skip — they're navigating to their first room
-      }
-      const t = setTimeout(startTutorial, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [view, tutorialCompleted, tutorialActive, startTutorial]);
+  // Old tutorial auto-start — disabled, replaced by NudgeTooltip system
+  // useEffect(() => { ... }, [view, tutorialCompleted, tutorialActive, startTutorial]);
 
   // Show feature spotlight for returning users who haven't seen all cards yet
   // Deferred: only show on 2nd+ visit (not during the first session after onboarding)
@@ -337,15 +474,35 @@ export default function MemoryPalace(){
     await finishOnboarding();
     setOnboardDate();
     justOnboardedRef.current = true;
-    // Start cinematic walkthrough — user walks themselves, system narrates
-    if(firstWing) {
-      const rooms = getWingRooms(firstWing);
-      const firstRoom = rooms[0];
-      walkthroughStart(firstWing, firstRoom?.id || "");
-      // View stays at "exterior" — user sees the palace from outside first
-    }
-    // Do NOT show feature spotlight immediately — defer to second visit
+    // Land on Atrium — nudge system guides user through Atrium → Library → Palace
+    setNavMode("atrium");
   };
+
+  // ── Early returns for Settings / Notifications (before profileLoading gate
+  //    so users never see the loading splash when switching tabs) ──
+  const earlyNavBarProps = {
+    isMobile,
+    userName,
+    onToolsClick: () => setShowTools(!showTools),
+    toolsOpen: showTools,
+    onNotifications: () => { setShowNotificationsPage(true); setShowSettings(false); },
+    onSettings: () => { setShowSettings(true); setShowNotificationsPage(false); },
+    onModeChange: (mode: string) => { setShowNotificationsPage(false); setShowSettings(false); setNavMode(mode as any); },
+  };
+
+  if (showSettings && !walkthroughActive) {
+    return (<>
+      <NavigationBar currentMode={navMode} {...earlyNavBarProps} activeTab="me" />
+      <SettingsInline />
+    </>);
+  }
+
+  if (showNotificationsPage && !walkthroughActive) {
+    return (<>
+      <NavigationBar currentMode={navMode} {...earlyNavBarProps} activeTab="notifications" />
+      <NotificationsPage />
+    </>);
+  }
 
   if(profileLoading){
     return(<div style={{width:"100vw",height:"100dvh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:`linear-gradient(165deg,${T.color.linen} 0%,${T.color.warmStone} 50%,${T.color.sandstone} 100%)`,fontFamily:T.font.display}}>
@@ -370,11 +527,11 @@ export default function MemoryPalace(){
   const sharedPanelOverlays = (<>
     {showTimeline&&<Suspense fallback={lazyFallback}><MemoryTimeline onClose={()=>setShowTimeline(false)} onNavigateLibrary={()=>{setShowTimeline(false);setNavMode("library");}}/></Suspense>}
     {showStatistics&&<Suspense fallback={lazyFallback}><StatisticsPanel onClose={()=>setShowStatistics(false)}/></Suspense>}
-    {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";enterWing(wingId);setTimeout(()=>enterRoom(roomId),300);}}/></Suspense>}
+    {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
     {showMassImport&&<Suspense fallback={lazyFallback}><MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/></Suspense>}
-    {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)}/>}
+    {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)} highlightId={achHighlightId}/>}
     {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "upload":setShowMassImport(true);break;case "room":if(activeWing){setNavMode("3d");enterCorridor(activeWing);}break;case "corridor":if(activeWing){setNavMode("3d");enterCorridor(activeWing);}break;case "share":if(activeRoomId)setShowSharing(true);break;case "wings":setNavMode("3d");break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
+    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowMassImport(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowMassImport(true);break;case "room":{const wing=activeWing||"family";const prefix:{[k:string]:string}={family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"fr"}1`),600);break;}case "corridor":{const wing=activeWing||"family";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"family";const prefix:{[k:string]:string}={family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"};const roomId=`${prefix[wing]||"fr"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"family";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
     {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
     {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
     {showInterview&&<Suspense fallback={lazyFallback}><InterviewPanel onClose={()=>{setShowInterviewPanel(false);markChecklistItem("complete_interview");}} onCreateMemory={(mem, wingId)=>{
@@ -387,12 +544,24 @@ export default function MemoryPalace(){
     {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";setNavMode("3d");enterCorridor(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
   </>);
 
+  // ── Helper: shared NavigationBar props ──
+  const navBarProps = {
+    isMobile,
+    userName,
+    onToolsClick: () => setShowTools(!showTools),
+    toolsOpen: showTools,
+    onNotifications: () => { setShowNotificationsPage(true); setShowSettings(false); },
+    onSettings: () => { setShowSettings(true); setShowNotificationsPage(false); },
+    onModeChange: (mode: string) => { setShowNotificationsPage(false); setShowSettings(false); setNavMode(mode as any); },
+  };
+
   // ── Home mode: render Home dashboard ──
   if (navMode === "atrium" && !walkthroughActive) {
     return (<>
-      <NavigationBar currentMode="atrium" onModeChange={(mode) => setNavMode(mode as any)} isMobile={isMobile} userName={userName} onToolsClick={() => setShowTools(!showTools)} toolsOpen={showTools} />
+      <NavigationBar currentMode="atrium" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
-      <HomeView />
+      <Suspense fallback={lazyFallback}><HomeView /></Suspense>
+      <NudgeProvider page="atrium" />
       {sharedPanelOverlays}
     </>);
   }
@@ -400,9 +569,10 @@ export default function MemoryPalace(){
   // ── Library mode: render Library view instead of 3D (skip during walkthrough) ──
   if (navMode === "library" && !walkthroughActive) {
     return (<>
-      <NavigationBar currentMode="library" onModeChange={(mode) => setNavMode(mode as any)} isMobile={isMobile} userName={userName} onToolsClick={() => setShowTools(!showTools)} toolsOpen={showTools} />
+      <NavigationBar currentMode="library" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
-      <LibraryView />
+      <Suspense fallback={lazyFallback}><LibraryView /></Suspense>
+      <NudgeProvider page="library" />
       {sharedPanelOverlays}
     </>);
   }
@@ -410,28 +580,24 @@ export default function MemoryPalace(){
   return(
     <div style={{width:"100vw",height:"100dvh",background:T.color.sandstone,position:"relative",overflow:"hidden"}}>
       <TuscanStyles />
-      <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}70%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}@keyframes fadeIn{from{opacity:0;transform:translateY(0.75rem)}to{opacity:1;transform:translateY(0)}}@keyframes fadeUp{from{opacity:0;transform:translateY(0.5rem)}to{opacity:1;transform:translateY(0)}}@keyframes portalFlash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}.era-btn:focus-visible{outline:0.125rem solid ${T.color.gold};outline-offset:0.125rem}.era-btn{transition:all .2s ease;}.era-btn:hover{background:${T.color.warmStone} !important;border-color:${T.color.gold} !important;transform:translateY(-0.0625rem)}.layout-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238B7355'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.25rem center;padding-right:1rem !important}.layout-select:focus-visible{outline:0.125rem solid ${T.color.gold};outline-offset:0.0625rem;border-color:${T.color.gold} !important}`}</style>
-      <div role="application" aria-label={tPalace("sceneAriaLabel")} style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease"}}>
-        {view==="exterior"&&<ExteriorScene key={dlKey} onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={walkthroughActive&&walkthroughPhase===0?"__entrance__":null} styleEra={styleEra||"roman"}/>}
-        {view==="entrance"&&<EntranceHallScene key={dlKey} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else enterCorridor(wingId);}} wings={allWings} sharedWings={sharedWings} highlightDoor={walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null}/>}
-        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>:view==="corridor"&&activeWing&&wingData&&<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>}
+      <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}50%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}@keyframes fadeIn{from{opacity:0;transform:translateY(0.75rem)}to{opacity:1;transform:translateY(0)}}@keyframes fadeUp{from{opacity:0;transform:translateY(0.5rem)}to{opacity:1;transform:translateY(0)}}@keyframes portalFlash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}.era-btn:focus-visible{outline:0.125rem solid ${T.color.gold};outline-offset:0.125rem}.era-btn{transition:all .2s ease;}.era-btn:hover{background:${T.color.warmStone} !important;border-color:${T.color.gold} !important;transform:translateY(-0.0625rem)}.layout-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238B7355'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.25rem center;padding-right:1rem !important}.layout-select:focus-visible{outline:0.125rem solid ${T.color.gold};outline-offset:0.0625rem;border-color:${T.color.gold} !important}`}</style>
+      <div role="application" aria-label={tPalace("sceneAriaLabel")} className="no-overscroll" style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease",touchAction:"none"}}>
+        {view==="exterior"&&<ExteriorScene key={dlKey} onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){if(nudgeHL.entrance)nudgeDismiss();enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={(walkthroughActive&&walkthroughPhase===0?"__entrance__":null)||nudgeHL.entrance||null} styleEra={styleEra||"roman"} autoWalkTo={autoWalking && nudgeHL.entrance ? nudgeHL.entrance : undefined}/>}
+        {view==="entrance"&&<EntranceHallScene key={dlKey} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/>}
+        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>:view==="corridor"&&activeWing&&wingData&&<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/>}
         {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={dlKey+"|"+roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined} styleEra={styleEra||"roman"}/>}
       </div>
 
       {/* Scene loading overlay — fades out after 3D canvas initializes */}
-      {sceneLoading&&<div key={view} style={{position:"absolute",inset:0,zIndex:40,display:"flex",alignItems:"center",justifyContent:"center",background:T.color.warmStone,animation:"sceneLoadFadeOut 1.4s ease-in-out forwards",pointerEvents:"none"}}><span style={{fontFamily:T.font.display,fontSize:"1.3rem",color:T.color.walnut,letterSpacing:"0.04em",animation:"sceneLoadPulse 1.2s ease-in-out infinite"}}>{tPalace("sceneLoading")}</span></div>}
+      {sceneLoading&&<div key={view} style={{position:"absolute",inset:0,zIndex:40,display:"flex",alignItems:"center",justifyContent:"center",background:T.color.warmStone,animation:"sceneLoadFadeOut 0.8s ease-in-out forwards",pointerEvents:"none"}}><span style={{fontFamily:T.font.display,fontSize:"1.3rem",color:T.color.walnut,letterSpacing:"0.04em",animation:"sceneLoadPulse 1.2s ease-in-out infinite"}}>{tPalace("sceneLoading")}</span></div>}
 
       {/* TopBar hidden — replaced by PalaceSubNav */}
 
       {/* NavigationBar — mode switcher (atrium / library / 3D) */}
       <NavigationBar
         currentMode="3d"
-        onModeChange={(mode) => setNavMode(mode as any)}
-        isMobile={isMobile}
-        userName={userName}
+        {...navBarProps}
         hidden={!!selMem || showUpload || showSharing || walkthroughActive}
-        onToolsClick={() => setShowTools(!showTools)}
-        toolsOpen={showTools}
       />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <PalaceSubNav
@@ -486,24 +652,24 @@ export default function MemoryPalace(){
         </div>
         {/* Tap zone to reveal search when hidden */}
         {!searchBarVisible && <div onClick={revealSearchBar} style={{position:"absolute",top:0,left:0,right:0,height:"3.375rem",zIndex:29,cursor:"pointer"}} />}
-        {!isMobile && (()=>{const rs=currentSharing(activeRoomId);return <div style={{position:"absolute",top:"3.625rem",right:"1.125rem",zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",gap:"0.375rem",alignItems:"center"}}>
+        {!isMobile && (()=>{const rs=currentSharing(activeRoomId);return <div style={{position:"absolute",top:"8.25rem",right:"1.125rem",zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",gap:"0.375rem",alignItems:"center"}}>
           {/* Compact room info strip */}
-          <div style={{background:`${T.color.white}e6`,backdropFilter:"blur(0.75rem)",WebkitBackdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.375rem 0.75rem",border:`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:"0.375rem",boxShadow:"0 0.125rem 0.75rem rgba(44,44,42,.06)"}}>
-            <span style={{fontSize:"0.875rem"}}>{activeRoomData.icon}</span>
+          <div data-nudge="palace_room_info" style={{background:`${T.color.white}e6`,backdropFilter:"blur(0.75rem)",WebkitBackdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.375rem 0.75rem",border:`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:"0.375rem",boxShadow:"0 0.125rem 0.75rem rgba(44,44,42,.06)"}}>
+            <span style={{display:"inline-flex",lineHeight:1}}><RoomIcon roomId={activeRoomId} wingId={activeWing||undefined} size={16} color={wingData?.accent||T.color.terracotta} /></span>
             <span style={{fontFamily:T.font.display,fontSize:"0.8125rem",fontWeight:500,color:T.color.charcoal}}>{activeRoomData.name}</span>
             <span style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.muted}}>{allRoomMems.length}</span>
             <div style={{width:"0.0625rem",height:"0.875rem",background:T.color.cream}} />
-            <select className="layout-select" value={roomLayouts[activeRoomId]||""} onChange={e=>setRoomLayout(activeRoomId,e.target.value)} style={{background:`${T.color.warmStone}66`,border:`1px solid ${T.color.cream}`,borderRadius:"0.375rem",fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.walnut,cursor:"pointer",outline:"none",padding:"0.25rem 1rem 0.25rem 0.375rem"}}>
+            <select className="layout-select" data-nudge="palace_room_layout" value={roomLayouts[activeRoomId]||""} onChange={e=>setRoomLayout(activeRoomId,e.target.value)} style={{background:`${T.color.warmStone}66`,border:`1px solid ${T.color.cream}`,borderRadius:"0.375rem",fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.walnut,cursor:"pointer",outline:"none",padding:"0.25rem 1rem 0.25rem 0.375rem"}}>
               <option value="">{tAction("auto")}</option>
               {ROOM_LAYOUTS.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
             <div style={{width:"0.0625rem",height:"0.875rem",background:T.color.cream}} />
-            <button onClick={()=>setShowSharing(true)} style={{background:"transparent",border:"none",display:"flex",alignItems:"center",gap:"0.25rem",cursor:"pointer",padding:"0.375rem 0.5rem",borderRadius:"0.375rem",transition:"background .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=`${T.color.warmStone}88`;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
+            <button data-nudge="palace_room_share" onClick={()=>setShowSharing(true)} style={{background:"transparent",border:"none",display:"flex",alignItems:"center",gap:"0.25rem",cursor:"pointer",padding:"0.375rem 0.5rem",borderRadius:"0.375rem",transition:"background .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=`${T.color.warmStone}88`;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
               {rs.shared?<><div style={{width:"0.375rem",height:"0.375rem",borderRadius:"0.1875rem",background:T.color.sage}}/><span style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.sage,fontWeight:500}}>{tAction("shareStatus")}</span></>
               :<span style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.muted}}>{tAction("shareAction")}</span>}
             </button>
             <button onClick={()=>setShowRoomShare(true)} title={tAction("shareAsCard")} style={{background:"transparent",border:"none",cursor:"pointer",fontSize:"0.875rem",lineHeight:1,padding:"0.375rem 0.5rem",display:"flex",alignItems:"center",borderRadius:"0.375rem",transition:"background .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=`${T.color.warmStone}88`;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-              {"\uD83D\uDCE4"}
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
             </button>
           </div>
         </div>;})()}
@@ -551,15 +717,15 @@ export default function MemoryPalace(){
       {showRoomShare&&activeRoomData&&wingData&&<ShareCard roomName={activeRoomData.name} roomIcon={activeRoomData.icon} wingName={wingData.name} wingIcon={wingData.icon} memCount={allRoomMems.length} accent={wingData.accent} onClose={()=>setShowRoomShare(false)}/>}
       {showTimeline&&<Suspense fallback={lazyFallback}><MemoryTimeline onClose={()=>setShowTimeline(false)} onNavigateLibrary={()=>{setShowTimeline(false);setNavMode("library");}}/></Suspense>}
       {showStatistics&&<Suspense fallback={lazyFallback}><StatisticsPanel onClose={()=>setShowStatistics(false)}/></Suspense>}
-      {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";enterWing(wingId);setTimeout(()=>enterRoom(roomId),300);}}/></Suspense>}
+      {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
       {showMassImport&&<Suspense fallback={lazyFallback}><MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/></Suspense>}
       {showGallery&&activeRoomId&&<RoomGallery mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>setShowGallery(false)} onUpdate={handleUpdateMemory} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}}/>}
       {showCorridorGallery&&activeWing&&wingData&&<CorridorGalleryPanel wing={wingData} rooms={getWingRooms(activeWing)} onClose={()=>setShowCorridorGallery(false)} onPaintingsChange={setCorridorPaintings} currentPaintings={corridorPaintings}/>}
       {showStoragePlayer&&<StoragePlayerPanel onClose={()=>setShowStoragePlayer(false)}/>}
 
 
-      {/* Tutorial overlay */}
-      <TutorialOverlay />
+      {/* Old tutorial overlay — disabled, replaced by NudgeTooltip system */}
+      {/* <TutorialOverlay /> */}
 
       {/* Feature spotlight — shown once after onboarding completes */}
       {showSpotlight && !tutorialActive && !walkthroughActive && <FeatureSpotlight
@@ -569,13 +735,8 @@ export default function MemoryPalace(){
         onShare={() => { setShowSpotlight(false); if (activeRoomId) setShowSharing(true); }}
       />}
 
-      {/* Getting Started checklist — first 7 days, shown in all views */}
-      {!tutorialActive && !showSpotlight && !walkthroughActive && !showUpload && !selMem && <GettingStartedChecklist
-        onUpload={() => { if (activeRoomId) setShowUpload(true); else setShowMassImport(true); }}
-        onInterview={() => setShowInterviewLibrary(true)}
-        onCustomize={() => { if (activeWing) setShowRoomManager(true); else setShowWingManager(true); }}
-        onShare={() => { if (activeRoomId) setShowSharing(true); }}
-      />}
+      {/* Getting Started checklist — disabled, replaced by NudgeTooltip system */}
+      {/* <GettingStartedChecklist ... /> */}
 
       {/* First memory prompt — shown in empty rooms when upload panel is closed */}
       {view==="room"&&activeRoomId&&allRoomMems.length===0&&!showUpload&&!selMem&&!showSharing&&!tutorialActive&&
@@ -646,7 +807,7 @@ export default function MemoryPalace(){
 
 
       {/* Achievement toast notification */}
-      {achToast&&<div role="status" onClick={()=>{dismissAchToast();setShowAchievements(true);}} style={{position:"absolute",top:isMobile?"0.75rem":"4.125rem",right:isMobile?"0.75rem":"1.375rem",left:isMobile?"0.75rem":undefined,zIndex:90,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.875rem 1.125rem",border:`1.5px solid ${T.color.gold}66`,boxShadow:"0 0.5rem 2rem rgba(169,124,46,.25)",display:"flex",alignItems:"center",gap:"0.75rem",maxWidth:isMobile?undefined:"20rem"}}>
+      {achToast&&<div role="status" onClick={()=>{dismissAchToast();openAchWithHighlight(achToast.id);}} style={{position:"absolute",top:isMobile?"3.5rem":"4.125rem",right:isMobile?"max(0.75rem, env(safe-area-inset-right, 0.75rem))":"1.375rem",left:isMobile?"max(0.75rem, env(safe-area-inset-left, 0.75rem))":undefined,zIndex:90,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.875rem 1.125rem",border:`1.5px solid ${T.color.gold}66`,boxShadow:"0 0.5rem 2rem rgba(169,124,46,.25)",display:"flex",alignItems:"center",gap:"0.75rem",maxWidth:isMobile?undefined:"20rem"}}>
         <div style={{width:"2.75rem",height:"2.75rem",borderRadius:"0.75rem",background:`linear-gradient(135deg,${T.color.goldLight}22,${T.color.gold}22)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><AchievementIcon id={achToast.icon} size={24} /></div>
         <div>
           <div style={{fontFamily:T.font.body,fontSize:"0.625rem",fontWeight:600,color:T.color.goldLight,textTransform:"uppercase",letterSpacing:"0.0625rem",marginBottom:"0.125rem"}}>{tAch("achievementUnlocked")}</div>
@@ -655,7 +816,7 @@ export default function MemoryPalace(){
         </div>
       </div>}
 
-      {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)}/>}
+      {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)} highlightId={achHighlightId}/>}
 
       {/* Invite & shared panels */}
       {showInvites&&<InviteNotificationsPanel onClose={()=>setShowInvites(false)}/>}
@@ -675,11 +836,11 @@ export default function MemoryPalace(){
 
       {/* Track panels */}
       {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "upload":setShowMassImport(true);break;case "room":if(activeWing){setNavMode("3d");enterCorridor(activeWing);}break;case "corridor":if(activeWing){setNavMode("3d");enterCorridor(activeWing);}break;case "share":if(activeRoomId)setShowSharing(true);break;case "wings":setNavMode("3d");break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
+      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowMassImport(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowMassImport(true);break;case "room":{const wing=activeWing||"family";const prefix:{[k:string]:string}={family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"fr"}1`),600);break;}case "corridor":{const wing=activeWing||"family";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"family";const prefix:{[k:string]:string}={family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"};const roomId=`${prefix[wing]||"fr"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"family";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
       {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
 
       {/* Track step completion toast */}
-      {trackToast&&<div role="status" onClick={()=>{dismissTrackToast();setShowTracksPanel(true);}} style={{position:"absolute",top:isMobile?"3.75rem":"4.125rem",left:isMobile?"0.75rem":undefined,right:isMobile?"0.75rem":"1.375rem",zIndex:88,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.75rem 1rem",border:`1.5px solid ${T.color.sage}44`,boxShadow:"0 0.5rem 2rem rgba(74,103,65,.2)",display:"flex",alignItems:"center",gap:"0.75rem",maxWidth:isMobile?undefined:"21.25rem"}}>
+      {trackToast&&<div role="status" onClick={()=>{dismissTrackToast();setShowTracksPanel(true);}} style={{position:"absolute",top:isMobile?"6.25rem":"4.125rem",left:isMobile?"max(0.75rem, env(safe-area-inset-left, 0.75rem))":undefined,right:isMobile?"max(0.75rem, env(safe-area-inset-right, 0.75rem))":"1.375rem",zIndex:88,cursor:"pointer",animation:"fadeUp .4s ease",background:`${T.color.white}f5`,backdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.75rem 1rem",border:`1.5px solid ${T.color.sage}44`,boxShadow:"0 0.5rem 2rem rgba(74,103,65,.2)",display:"flex",alignItems:"center",gap:"0.75rem",maxWidth:isMobile?undefined:"21.25rem"}}>
         <div style={{width:"2.5rem",height:"2.5rem",borderRadius:"0.625rem",background:`linear-gradient(135deg,${T.color.sage}18,${T.color.sage}08)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.25rem",flexShrink:0}}>{"\u2713"}</div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontFamily:T.font.body,fontSize:"0.625rem",fontWeight:600,color:T.color.sage,textTransform:"uppercase",letterSpacing:"0.0625rem",marginBottom:"0.0625rem"}}>{tTrack("stepCompleted")}</div>
@@ -700,6 +861,21 @@ export default function MemoryPalace(){
           <div style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.muted,marginTop:"1rem"}}>{tTrack("tapToContinue")}</div>
         </div>
       </div>}
+
+      <NudgeProvider
+        page="palace"
+        palaceView={view}
+        onNavigateEntrance={() => { enterEntrance(); }}
+        onNavigateCorridor={() => {
+          const firstWingId = allWings[0]?.id || "family";
+          enterCorridor(firstWingId);
+        }}
+        onNavigateRoom={() => {
+          const firstWingId = allWings[0]?.id || "family";
+          const firstRoom = getWingRooms(firstWingId)[0];
+          if (firstRoom) enterRoom(firstRoom.id);
+        }}
+      />
     </div>
   );
 }

@@ -21,6 +21,12 @@ const BG: Record<ToastData["type"], string> = {
   warning: T.color.terracotta,
 };
 
+const FG: Record<ToastData["type"], string> = {
+  success: "#FFF",
+  error: "#FFF",
+  warning: T.color.charcoal,
+};
+
 const ICON: Record<ToastData["type"], string> = {
   success: "\u2713",
   error: "\u26A0",
@@ -51,7 +57,7 @@ export default function Toast({ message, type, onDismiss }: ToastProps) {
           padding: "0.875rem 1.25rem",
           borderRadius: "0.75rem",
           background: BG[type],
-          color: "#FFF",
+          color: FG[type],
           fontFamily: T.font.body,
           fontSize: "0.875rem",
           fontWeight: 500,
@@ -70,7 +76,7 @@ export default function Toast({ message, type, onDismiss }: ToastProps) {
           style={{
             background: "none",
             border: "none",
-            color: "#FFF",
+            color: FG[type],
             fontSize: "0.875rem",
             cursor: "pointer",
             marginLeft: "0.5rem",

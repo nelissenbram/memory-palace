@@ -231,9 +231,8 @@ function RegisterContent() {
         }}
         style={{
           ...googleButtonStyle,
-          ...(!ageConfirmed ? { opacity: 0.5, pointerEvents: "none" as const } : {}),
+          ...(!ageConfirmed ? { opacity: 0.6 } : {}),
         }}
-        aria-disabled={!ageConfirmed}
       >
         <GoogleIcon />
         {t("signUpWithGoogle")}

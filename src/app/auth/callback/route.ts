@@ -39,6 +39,15 @@ export async function GET(request: Request) {
       } = await supabase.auth.getUser();
 
       if (user) {
+        // Detect password recovery flow — redirect to set new password
+        // Supabase sets this in user_metadata or the session type after recovery
+        const isRecovery =
+          searchParams.get("type") === "recovery" ||
+          user.user_metadata?.recovery === true;
+        if (isRecovery) {
+          return NextResponse.redirect(`${origin}/reset-password`);
+        }
+
         // Ensure a profile row exists (defense-in-depth for OAuth sign-ups)
         const displayName =
           user.user_metadata?.display_name ||
@@ -79,9 +88,6 @@ export async function GET(request: Request) {
           });
         }
 
-        if (profile?.onboarded) {
-          return NextResponse.redirect(`${origin}/palace`);
-        }
         return NextResponse.redirect(`${origin}/palace`);
       }
     }

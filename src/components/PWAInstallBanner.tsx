@@ -72,10 +72,10 @@ export default function PWAInstallBanner() {
   return (
     <div style={{
       position: "fixed",
-      bottom: 0,
+      bottom: "calc(3.75rem + env(safe-area-inset-bottom, 0px))",
       left: 0,
       right: 0,
-      zIndex: 9999,
+      zIndex: 9996,
       animation: "slideUp .4s ease",
     }}>
       <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
@@ -91,14 +91,12 @@ export default function PWAInstallBanner() {
           boxShadow: "0 -4px 30px rgba(0,0,0,.25)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.875rem" }}>
-            {/* App icon */}
+            {/* App icon — favicon SVG */}
             <div style={{
               width: "3.25rem", height: "3.25rem", borderRadius: "0.875rem",
-              background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1.625rem", flexShrink: 0,
+              overflow: "hidden", flexShrink: 0,
             }}>
-              {"\u{1F3DB}\uFE0F"}
+              <img src="/favicon.svg" alt="" width={52} height={52} style={{ display: "block" }} />
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -135,8 +133,8 @@ export default function PWAInstallBanner() {
 
             {/* Small dismiss X */}
             <button onClick={handleDismiss} style={{
-              width: "1.75rem", height: "1.75rem",
-              borderRadius: "0.875rem",
+              width: "2.75rem", height: "2.75rem",
+              borderRadius: "1.375rem",
               border: "none",
               background: "rgba(255,255,255,.1)",
               color: "#9A9183",

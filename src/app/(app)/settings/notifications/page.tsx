@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, ReactNode } from "react";
 import { T } from "@/lib/theme";
 import { usePushNotificationStore, NotificationPreferences } from "@/lib/stores/pushNotificationStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 
 // ── Custom SVG Icons (Roman/Tuscan aesthetic) ──
@@ -187,6 +188,7 @@ const EMAIL_CATEGORIES: CategoryItem<EmailPrefKey>[] = [
 
 export default function NotificationsPage() {
   const { t } = useTranslation("notifications");
+  const isMobile = useIsMobile();
   const { prefs, init, setPrefs } = usePushNotificationStore();
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const [subscribing, setSubscribing] = useState(false);
@@ -321,21 +323,23 @@ export default function NotificationsPage() {
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
 
-      {/* Page header */}
-      <div style={{ marginBottom: "1.75rem" }}>
-        <h2 style={{
-          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 0.5rem",
-        }}>
-          {t("title")}
-        </h2>
-        <p style={{
-          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-          margin: 0, lineHeight: 1.5,
-        }}>
-          {t("description")}
-        </p>
-      </div>
+      {/* Page header — desktop only */}
+      {!isMobile && (
+        <div style={{ marginBottom: "1.75rem" }}>
+          <h2 style={{
+            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+            color: T.color.charcoal, margin: "0 0 0.5rem",
+          }}>
+            {t("title")}
+          </h2>
+          <p style={{
+            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+            margin: 0, lineHeight: 1.5,
+          }}>
+            {t("description")}
+          </p>
+        </div>
+      )}
 
       {/* Browser support warning */}
       {isUnsupported && (

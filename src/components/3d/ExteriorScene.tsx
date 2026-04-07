@@ -8,7 +8,7 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -24,7 +24,7 @@ const WING_SVG_STRINGS: Record<string,string> = {
 };
 
 // ═══ EXTERIOR — Fantasy Castle ═══
-export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman"}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string}){
+export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman",autoWalkTo}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string,autoWalkTo?: string|null}){
   const WINGS = wingsProp || DEFAULT_WINGS;
   const ownerName = useUserStore((s) => s.userName);
   const { t } = useTranslation("exterior3d");
@@ -32,18 +32,20 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
   const entranceHallLabelRef = useRef(entranceHallLabel);
   entranceHallLabelRef.current = entranceHallLabel;
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
-  // Camera starts facing entrance (-Z side) with aqueduct visible behind it
-  // theta=PI*1.5 looks from -Z direction (south), phi controls elevation angle
-  const camO=useRef({theta:Math.PI*1.5,phi:Math.PI*.25}),camOT=useRef({theta:Math.PI*1.5,phi:Math.PI*.25}),camD=useRef(90);
+  // Camera starts facing entrance (-Z side), low angle showing palace prominently
+  // phi=0.38 ≈ 68° from zenith = low ground-level view, camD=90 for wider framing
+  const camO=useRef({theta:Math.PI*1.5,phi:Math.PI*.38}),camOT=useRef({theta:Math.PI*1.5,phi:Math.PI*.38}),camD=useRef(90);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
   const onRoomClickRef=useRef(onRoomClick);
   const highlightDoorRef=useRef(highlightDoor);
+  const autoWalkToRef=useRef(autoWalkTo);
 
   // Keep refs in sync so event listeners always read the latest value
   useEffect(()=>{hoveredRoomRef.current=hoveredRoom;},[hoveredRoom]);
   useEffect(()=>{onRoomClickRef.current=onRoomClick;},[onRoomClick]);
   useEffect(()=>{highlightDoorRef.current=highlightDoor;},[highlightDoor]);
+  useEffect(()=>{autoWalkToRef.current=autoWalkTo;},[autoWalkTo]);
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
@@ -146,6 +148,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
+    // Cache root font size for rem calculations in render loop (avoid per-frame getComputedStyle)
+    let cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);
+
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
     const envMapProc=createExteriorEnvMap(ren,{sunIntensity:0.9*dlPreset.sunIntensity,skyBrightness:0.7*dlPreset.envBrightness/0.45});
     scene.environment=envMapProc;
@@ -161,6 +166,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // ── REAL PBR TEXTURES ──
     const stoneTex=loadPlasterWallTextures([4,4]);
     const wornPlasterTex=loadWornPlasterTextures([3,3]);
+    const clayPlasterTex=loadClayPlasterTextures([2,2]);
+    const paintedPlasterTex=loadPlasterWallTextures([2,2]);
     const roofTileTex=loadTerracottaTileTextures([3,3]);
     const woodDoorTex=loadDarkWoodTextures([2,3]);
     const grassTex=loadGrassTextures([12,12]);
@@ -168,7 +175,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const cropTex=loadCropTextures([6,6]);
     const whiteGravelTex=loadWhiteGravelTextures([4,4]);
     const roadTex=loadGravelRoadTextures([3,3]);
-    const allTexSets: PBRTextureSet[]=[stoneTex,wornPlasterTex,roofTileTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex];
+    const allTexSets: PBRTextureSet[]=[stoneTex,wornPlasterTex,clayPlasterTex,paintedPlasterTex,roofTileTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex];
 
     // Hover label overlay
     const hovLabel=document.createElement("div");
@@ -187,27 +194,27 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const porticoWarm=new THREE.SpotLight("#FFE0A0",0.3,60,Math.PI*0.3);porticoWarm.position.set(0,2,-20);porticoWarm.target.position.set(0,5,0);scene.add(porticoWarm);scene.add(porticoWarm.target);
 
     const M={
-      // ── WALLS — aged Tuscan intonaco plaster & stone (worn plaster PBR textures)
-      stone:new THREE.MeshStandardMaterial({color:"#C8B898",roughness:.88,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:wornPlasterTex.roughnessMap,aoMap:wornPlasterTex.aoMap,aoMapIntensity:.6,envMapIntensity:.4}),
-      stoneL:new THREE.MeshStandardMaterial({color:"#DDD0C0",roughness:.82,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.35,.35),roughnessMap:wornPlasterTex.roughnessMap,envMapIntensity:.4}),
-      stoneW:new THREE.MeshStandardMaterial({color:"#D4A96A",roughness:.85,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:wornPlasterTex.roughnessMap,envMapIntensity:.5}),
-      stoneD:new THREE.MeshStandardMaterial({color:"#9A8E78",roughness:.92,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.6,.6),roughnessMap:wornPlasterTex.roughnessMap,aoMap:wornPlasterTex.aoMap,aoMapIntensity:.5}),
-      stoneDk:new THREE.MeshStandardMaterial({color:"#7A7060",roughness:.9,metalness:0,map:wornPlasterTex.map,normalMap:wornPlasterTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:wornPlasterTex.roughnessMap}),
+      // ── WALLS — warm golden Tuscan ochre stucco with subtle plaster normalMap
+      stone:new THREE.MeshStandardMaterial({color:"#FFDD78",roughness:.72,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.9,.9),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneL:new THREE.MeshStandardMaterial({color:"#FFE898",roughness:.65,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.8,.8),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneW:new THREE.MeshStandardMaterial({color:"#FFD468",roughness:.70,metalness:0,envMapIntensity:.65,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneD:new THREE.MeshStandardMaterial({color:"#FFCC58",roughness:.75,metalness:0,envMapIntensity:.6,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(.95,.95),roughnessMap:clayPlasterTex.roughnessMap}),
+      stoneDk:new THREE.MeshStandardMaterial({color:"#D8B050",roughness:.82,metalness:0,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(1,1),roughnessMap:clayPlasterTex.roughnessMap}),
       // ── TRIM — pietra serena (cool blue-grey sandstone) & aged gold
-      trim:new THREE.MeshStandardMaterial({color:"#C8BCA8",roughness:.7,metalness:0,envMapIntensity:.4,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
+      trim:new THREE.MeshStandardMaterial({color:"#EDE4D4",roughness:.60,metalness:0,envMapIntensity:.6,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
       gold:new THREE.MeshPhysicalMaterial({color:"#B8973A",roughness:.35,metalness:.92,emissive:"#3D3010",emissiveIntensity:.08,clearcoat:.15,clearcoatRoughness:.4,envMapIntensity:1.0}),
       goldBright:new THREE.MeshPhysicalMaterial({color:"#CFB53B",roughness:.18,metalness:.95,emissive:"#4A3A10",emissiveIntensity:.12,clearcoat:.35,clearcoatRoughness:.08,envMapIntensity:1.5}),
       bronze:new THREE.MeshPhysicalMaterial({color:"#6B5238",roughness:.3,metalness:.82,emissive:"#2A1E10",emissiveIntensity:.06,clearcoat:.2,clearcoatRoughness:.3,envMapIntensity:1.0}),
-      copper:new THREE.MeshPhysicalMaterial({color:"#4A8B7A",roughness:.55,metalness:.25,emissive:"#1A3028",emissiveIntensity:.05,clearcoat:0,envMapIntensity:.6}),
+      copper:new THREE.MeshPhysicalMaterial({color:"#5A9A80",roughness:.55,metalness:.30,emissive:"#1A3028",emissiveIntensity:.05,clearcoat:0,envMapIntensity:.7}),
       // ── ROOFS — aged terracotta coppo tiles with PBR textures (muted brown)
       roof:new THREE.MeshStandardMaterial({color:"#A87860",roughness:.82,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:roofTileTex.roughnessMap,aoMap:roofTileTex.aoMap,aoMapIntensity:.4,envMapIntensity:.3}),
       roofD:new THREE.MeshStandardMaterial({color:"#7A6458",roughness:.88,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:roofTileTex.roughnessMap,envMapIntensity:.2}),
       roofSlate:new THREE.MeshStandardMaterial({color:"#6B7D6E",roughness:.45,metalness:.25,envMapIntensity:.5}),
       tile:new THREE.MeshStandardMaterial({color:"#B07858",roughness:.78,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.6,.6),roughnessMap:roofTileTex.roughnessMap,aoMap:roofTileTex.aoMap,aoMapIntensity:.3}),
-      // ── COLUMNS — travertine / worked stone (lower roughness = polished)
-      col:new THREE.MeshStandardMaterial({color:"#D4C8B0",roughness:.55,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2),envMapIntensity:.7}),
-      marble:new THREE.MeshStandardMaterial({color:"#F0E8D8",roughness:.55,metalness:0,envMapIntensity:.15}),
-      marbleVein:new THREE.MeshStandardMaterial({color:"#E4D8C8",roughness:.6,metalness:0,envMapIntensity:.15}),
+      // ── COLUMNS — warm cream travertine (lower roughness = polished)
+      col:new THREE.MeshStandardMaterial({color:"#E8DCC0",roughness:.48,metalness:0,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15),envMapIntensity:.8}),
+      marble:new THREE.MeshStandardMaterial({color:"#E0D8C8",roughness:.52,metalness:0,envMapIntensity:.25}),
+      marbleVein:new THREE.MeshStandardMaterial({color:"#D8D0C0",roughness:.58,metalness:0,envMapIntensity:.25}),
       // ── WINDOWS — old glass with warm interior glow (IOR 1.52 = soda-lime glass)
       win:new THREE.MeshPhysicalMaterial({color:"#FFF8E7",emissive:"#FFAA44",emissiveIntensity:.25,roughness:.08,transparent:true,opacity:.7,transmission:.6,ior:1.52}),
       winBlue:new THREE.MeshPhysicalMaterial({color:"#D8E8F0",emissive:"#88AACC",emissiveIntensity:.12,roughness:.1,transparent:true,opacity:.65,transmission:.5,ior:1.52}),
@@ -321,6 +328,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     let entranceCoreMeshes: THREE.Mesh[];
     let entrClickRadius = 10, entrClickHeight = 20;
 
+    // Collect standalone materials/geometries for explicit cleanup
+    const extraDisposables: THREE.Material[] = [];
+    const extraGeoDisposables: THREE.BufferGeometry[] = [];
+
     // ═══ RENAISSANCE PALAZZO — alternative to castle when era is "renaissance" ═══
     if (isRenaissance) {
       centralGroup = new THREE.Group();
@@ -371,17 +382,41 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         const wy = 7 + floor * 3.5;
         for (let wi = 0; wi < 8; wi++) {
           const wx = -pzW / 2 + 2 + wi * (pzW - 4) / 7;
-          // Window opening
-          centralGroup.add(mk(new THREE.BoxGeometry(1.4, 2, 0.15), M.win, wx, wy, -(pzD / 2 + 0.05)));
+          // Window — 4 panes separated by dark frame bars (visible cross pattern)
+          { const wGap = 0.12, pW = (1.4 - wGap) / 2, pH = (2 - wGap) / 2, wz0 = -(pzD / 2 + 0.05);
+            // 4 glass panes
+            centralGroup.add(mk(new THREE.BoxGeometry(pW, pH, 0.12), M.win, wx - pW / 2 - wGap / 2, wy + pH / 2 + wGap / 2, wz0));
+            centralGroup.add(mk(new THREE.BoxGeometry(pW, pH, 0.12), M.win, wx + pW / 2 + wGap / 2, wy + pH / 2 + wGap / 2, wz0));
+            centralGroup.add(mk(new THREE.BoxGeometry(pW, pH, 0.12), M.win, wx - pW / 2 - wGap / 2, wy - pH / 2 - wGap / 2, wz0));
+            centralGroup.add(mk(new THREE.BoxGeometry(pW, pH, 0.12), M.win, wx + pW / 2 + wGap / 2, wy - pH / 2 - wGap / 2, wz0));
+            // Dark frame cross (behind = dark void)
+            centralGroup.add(mk(new THREE.BoxGeometry(0.12, 2.1, 0.20), M.stoneDk, wx, wy, wz0 + 0.02));
+            centralGroup.add(mk(new THREE.BoxGeometry(1.5, 0.12, 0.20), M.stoneDk, wx, wy, wz0 + 0.02));
+          }
           // Window surround (pietra serena)
           centralGroup.add(mk(new THREE.BoxGeometry(1.8, 0.15, 0.2), M.trim, wx, wy + 1.1, -(pzD / 2 + 0.02)));
           centralGroup.add(mk(new THREE.BoxGeometry(1.8, 0.15, 0.2), M.trim, wx, wy - 1.1, -(pzD / 2 + 0.02)));
-          // Back windows
-          centralGroup.add(mk(new THREE.BoxGeometry(1.4, 2, 0.15), M.win, wx, wy, (pzD / 2 + 0.05)));
+          // Back windows — same 4-pane pattern
+          { const wGap = 0.12, pW = (1.4 - wGap) / 2, pH = (2 - wGap) / 2, wz0 = (pzD / 2 + 0.05);
+            centralGroup.add(mk(new THREE.BoxGeometry(pW, pH, 0.12), M.win, wx - pW / 2 - wGap / 2, wy + pH / 2 + wGap / 2, wz0));
+            centralGroup.add(mk(new THREE.BoxGeometry(pW, pH, 0.12), M.win, wx + pW / 2 + wGap / 2, wy + pH / 2 + wGap / 2, wz0));
+            centralGroup.add(mk(new THREE.BoxGeometry(pW, pH, 0.12), M.win, wx - pW / 2 - wGap / 2, wy - pH / 2 - wGap / 2, wz0));
+            centralGroup.add(mk(new THREE.BoxGeometry(pW, pH, 0.12), M.win, wx + pW / 2 + wGap / 2, wy - pH / 2 - wGap / 2, wz0));
+            centralGroup.add(mk(new THREE.BoxGeometry(0.12, 2.1, 0.20), M.stoneDk, wx, wy, wz0 - 0.02));
+            centralGroup.add(mk(new THREE.BoxGeometry(1.5, 0.12, 0.20), M.stoneDk, wx, wy, wz0 - 0.02));
+          }
           // Side windows
           if (wi < 4) {
-            centralGroup.add(mk(new THREE.BoxGeometry(0.15, 2, 1.4), M.win, -(pzW / 2 + 0.05), wy, -pzD / 2 + 2 + wi * 4));
-            centralGroup.add(mk(new THREE.BoxGeometry(0.15, 2, 1.4), M.win, (pzW / 2 + 0.05), wy, -pzD / 2 + 2 + wi * 4));
+            for (const sx of [-(pzW / 2 + 0.05), (pzW / 2 + 0.05)]) {
+              const dir = sx > 0 ? 1 : -1;
+              const wGap = 0.12, pW = (1.4 - wGap) / 2, pH = (2 - wGap) / 2, sz = -pzD / 2 + 2 + wi * 4;
+              centralGroup.add(mk(new THREE.BoxGeometry(0.12, pH, pW), M.win, sx, wy + pH / 2 + wGap / 2, sz - pW / 2 - wGap / 2));
+              centralGroup.add(mk(new THREE.BoxGeometry(0.12, pH, pW), M.win, sx, wy + pH / 2 + wGap / 2, sz + pW / 2 + wGap / 2));
+              centralGroup.add(mk(new THREE.BoxGeometry(0.12, pH, pW), M.win, sx, wy - pH / 2 - wGap / 2, sz - pW / 2 - wGap / 2));
+              centralGroup.add(mk(new THREE.BoxGeometry(0.12, pH, pW), M.win, sx, wy - pH / 2 - wGap / 2, sz + pW / 2 + wGap / 2));
+              centralGroup.add(mk(new THREE.BoxGeometry(0.20, 2.1, 0.12), M.stoneDk, sx + dir * 0.02, wy, sz));
+              centralGroup.add(mk(new THREE.BoxGeometry(0.20, 0.12, 1.5), M.stoneDk, sx + dir * 0.02, wy, sz));
+            }
           }
         }
       }
@@ -483,7 +518,17 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
           const wz = -(pzD / 2 + 2 + wi * 3);
           for (let s = -1; s <= 1; s += 2) {
             const wx = s * (wW / 2 + 0.05);
-            addM(mk(new THREE.BoxGeometry(0.15, 2.2, 1.2), M.win, wx, wH * 0.5 + 1.2, wz));
+            // Window — 4 panes with dark frame cross
+            { const wy2 = wH * 0.5 + 1.2, wGap = 0.12, pZ = (1.2 - wGap) / 2, pH2 = (2.2 - wGap) / 2;
+              addM(mk(new THREE.BoxGeometry(0.12, pH2, pZ), M.win, wx, wy2 + pH2 / 2 + wGap / 2, wz - pZ / 2 - wGap / 2));
+              addM(mk(new THREE.BoxGeometry(0.12, pH2, pZ), M.win, wx, wy2 + pH2 / 2 + wGap / 2, wz + pZ / 2 + wGap / 2));
+              addM(mk(new THREE.BoxGeometry(0.12, pH2, pZ), M.win, wx, wy2 - pH2 / 2 - wGap / 2, wz - pZ / 2 - wGap / 2));
+              addM(mk(new THREE.BoxGeometry(0.12, pH2, pZ), M.win, wx, wy2 - pH2 / 2 - wGap / 2, wz + pZ / 2 + wGap / 2));
+              // Dark frame cross (behind glass = visible through gap)
+              const dir2 = s > 0 ? 1 : -1;
+              addM(mk(new THREE.BoxGeometry(0.20, 2.3, 0.12), M.stoneDk, wx - dir2 * 0.02, wy2, wz));
+              addM(mk(new THREE.BoxGeometry(0.20, 0.12, 1.3), M.stoneDk, wx - dir2 * 0.02, wy2, wz));
+            }
             // Arch above window
             const archGeo = new THREE.TorusGeometry(0.6, 0.06, 6, 10, Math.PI);
             const arch = new THREE.Mesh(archGeo, M.trim);
@@ -545,75 +590,104 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     centralBodyMeshes = [];
 
     const vW = 20, vD = 18, vH = 7;
-    const ochreWall = new THREE.MeshStandardMaterial({ color: "#E0CCA0", roughness: 0.88, metalness: 0, map: wornPlasterTex.map, normalMap: wornPlasterTex.normalMap, normalScale: new THREE.Vector2(0.5, 0.5), roughnessMap: wornPlasterTex.roughnessMap, aoMap: wornPlasterTex.aoMap, aoMapIntensity: 0.5, envMapIntensity: 0.4 });
+    const ochreWall = M.stone; // reuse identical material from M dictionary
     const gardenGreen = new THREE.MeshStandardMaterial({ color: "#4A7A3A", roughness: 0.9 });
     const waterMat = new THREE.MeshStandardMaterial({ color: "#4A7A7A", roughness: 0.7, metalness: 0, transparent: true, opacity: 0.45, envMapIntensity: 0.1 });
+    extraDisposables.push(gardenGreen, waterMat);
 
-    // ── Helper: arched window assembly ──
+    // ── Helper: arched window assembly with shutters & deep reveal ──
+    const mullionMat = new THREE.MeshStandardMaterial({ color: "#1A1A1A", roughness: 0.9, metalness: 0 });
+    const shutterMat = new THREE.MeshStandardMaterial({ color: "#6B7A5A", roughness: 0.75, metalness: 0, map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(0.3, 0.3) });
+    extraDisposables.push(mullionMat, shutterMat);
     const addArchedWindow = (parent: THREE.Group | THREE.Object3D, x: number, y: number, z: number, width: number, height: number, facingSide: "x" | "z", mat: THREE.Material) => {
       const archR = width / 2;
-      const rectH = height - archR; // rectangular portion below the semicircular arch
+      const rectH = height - archR;
+      const revealD = 0.25; // deep window reveal
       if (facingSide === "z") {
-        // Window faces along Z axis (on X-facing wall)
-        // Dark glass rectangular opening
-        parent.add(mk(new THREE.BoxGeometry(0.12, rectH, width), M.win, x, y, z));
-        // Semicircular arch top (half torus)
-        const archGeo = new THREE.TorusGeometry(archR, 0.06, 8, 12, Math.PI);
+        const dir = x > 0 ? 1 : -1;
+        // Deep reveal recess (dark void behind the glass)
+        parent.add(mk(new THREE.BoxGeometry(revealD, rectH + archR * 0.6, width + 0.04), M.stoneDk, x - dir * revealD * 0.4, y + archR * 0.15, z));
+        // Glass set back into the reveal
+        parent.add(mk(new THREE.BoxGeometry(0.08, rectH, width), M.win, x - dir * revealD * 0.3, y, z));
+        // Semicircular arch top
+        const archGeo = new THREE.TorusGeometry(archR, 0.07, 8, 16, Math.PI);
         const arch = new THREE.Mesh(archGeo, M.trim);
         arch.position.set(x, y + rectH / 2, z);
-        arch.rotation.y = x > 0 ? -Math.PI / 2 : Math.PI / 2;
+        arch.rotation.y = dir === 1 ? -Math.PI / 2 : Math.PI / 2;
         parent.add(arch);
-        // Arch glass fill (half cylinder)
-        const archFillGeo = new THREE.CylinderGeometry(archR - 0.02, archR - 0.02, 0.1, 12, 1, false, 0, Math.PI);
+        // Arch glass fill
+        const archFillGeo = new THREE.CylinderGeometry(archR - 0.02, archR - 0.02, 0.08, 12, 1, false, 0, Math.PI);
         const archFill = new THREE.Mesh(archFillGeo, M.win);
-        archFill.position.set(x, y + rectH / 2, z);
+        archFill.position.set(x - dir * revealD * 0.3, y + rectH / 2, z);
         archFill.rotation.x = Math.PI / 2;
-        archFill.rotation.y = x > 0 ? -Math.PI / 2 : Math.PI / 2;
+        archFill.rotation.y = dir === 1 ? -Math.PI / 2 : Math.PI / 2;
         parent.add(archFill);
-        // Stone surround frame (thin depth so it sits behind the glass)
-        parent.add(mk(new THREE.BoxGeometry(0.06, rectH + 0.08, width + 0.15), mat, x, y, z));
-        // Vertical mullion
-        parent.add(mk(new THREE.BoxGeometry(0.15, rectH * 0.9, 0.06), M.trim, x, y, z));
-        // Horizontal transom (upper)
-        parent.add(mk(new THREE.BoxGeometry(0.15, 0.06, width * 0.85), M.trim, x, y + rectH * 0.15, z));
-        // Horizontal transom (lower) — 6-pane grid
-        parent.add(mk(new THREE.BoxGeometry(0.15, 0.06, width * 0.85), M.trim, x, y - rectH * 0.2, z));
-        // Keystone at arch apex
-        parent.add(mk(new THREE.BoxGeometry(0.2, 0.15, 0.14), M.trim, x, y + rectH / 2 + archR - 0.05, z));
-        // Sill ledge at bottom of window
-        parent.add(mk(new THREE.BoxGeometry(0.2, 0.08, width + 0.3), M.trim, x, y - rectH / 2 - 0.04, z));
-        // Corbels under sill (two brackets)
-        parent.add(mk(new THREE.BoxGeometry(0.08, 0.1, 0.08), M.stoneD, x, y - rectH / 2 - 0.13, z + width * 0.28));
-        parent.add(mk(new THREE.BoxGeometry(0.08, 0.1, 0.08), M.stoneD, x, y - rectH / 2 - 0.13, z - width * 0.28));
+        // Stone surround frame — thicker for more presence
+        parent.add(mk(new THREE.BoxGeometry(0.1, rectH + 0.12, width + 0.2), mat, x + dir * 0.02, y, z));
+        // Vertical mullion — black, narrow
+        parent.add(mk(new THREE.BoxGeometry(0.10, rectH * 0.9, 0.05), mullionMat, x + dir * 0.08, y, z));
+        // Horizontal transom
+        parent.add(mk(new THREE.BoxGeometry(0.10, 0.05, width * 0.85), mullionMat, x + dir * 0.08, y, z));
+        // Keystone — larger, trapezoidal feel
+        parent.add(mk(new THREE.BoxGeometry(0.25, 0.2, 0.18), M.trim, x, y + rectH / 2 + archR - 0.05, z));
+        // Impost blocks at arch spring points
+        parent.add(mk(new THREE.BoxGeometry(0.18, 0.12, 0.12), M.trim, x, y + rectH / 2 - 0.06, z + archR));
+        parent.add(mk(new THREE.BoxGeometry(0.18, 0.12, 0.12), M.trim, x, y + rectH / 2 - 0.06, z - archR));
+        // Sill ledge — wider and thicker
+        parent.add(mk(new THREE.BoxGeometry(0.25, 0.1, width + 0.4), M.trim, x + dir * 0.05, y - rectH / 2 - 0.05, z));
+        // Corbels under sill
+        parent.add(mk(new THREE.BoxGeometry(0.1, 0.14, 0.1), M.stoneD, x, y - rectH / 2 - 0.17, z + width * 0.3));
+        parent.add(mk(new THREE.BoxGeometry(0.1, 0.14, 0.1), M.stoneD, x, y - rectH / 2 - 0.17, z - width * 0.3));
+        // Wooden shutters — angled open, one on each side
+        const shutterH = rectH * 0.92, shutterW = width * 0.48;
+        const sh1 = mk(new THREE.BoxGeometry(0.06, shutterH, shutterW), shutterMat, x + dir * 0.06, y, z + (width / 2 + shutterW * 0.35));
+        sh1.rotation.y = dir * 0.35;
+        parent.add(sh1);
+        const sh2 = mk(new THREE.BoxGeometry(0.06, shutterH, shutterW), shutterMat, x + dir * 0.06, y, z - (width / 2 + shutterW * 0.35));
+        sh2.rotation.y = -dir * 0.35;
+        parent.add(sh2);
       } else {
         // Window faces along X axis (on Z-facing wall)
-        parent.add(mk(new THREE.BoxGeometry(width, rectH, 0.12), M.win, x, y, z));
+        const dir = z > 0 ? 1 : -1;
+        // Deep reveal recess
+        parent.add(mk(new THREE.BoxGeometry(width + 0.04, rectH + archR * 0.6, revealD), M.stoneDk, x, y + archR * 0.15, z - dir * revealD * 0.4));
+        // Glass set back into the reveal
+        parent.add(mk(new THREE.BoxGeometry(width, rectH, 0.08), M.win, x, y, z - dir * revealD * 0.3));
         // Semicircular arch top
-        const archGeo = new THREE.TorusGeometry(archR, 0.06, 8, 12, Math.PI);
+        const archGeo = new THREE.TorusGeometry(archR, 0.07, 8, 16, Math.PI);
         const arch = new THREE.Mesh(archGeo, M.trim);
         arch.position.set(x, y + rectH / 2, z);
         parent.add(arch);
         // Arch glass fill
-        const archFillGeo = new THREE.CylinderGeometry(archR - 0.02, archR - 0.02, 0.1, 12, 1, false, 0, Math.PI);
+        const archFillGeo = new THREE.CylinderGeometry(archR - 0.02, archR - 0.02, 0.08, 12, 1, false, 0, Math.PI);
         const archFill = new THREE.Mesh(archFillGeo, M.win);
-        archFill.position.set(x, y + rectH / 2, z);
+        archFill.position.set(x, y + rectH / 2, z - dir * revealD * 0.3);
         archFill.rotation.x = Math.PI / 2;
         parent.add(archFill);
-        // Stone surround frame (thin depth so it sits behind the glass)
-        parent.add(mk(new THREE.BoxGeometry(width + 0.15, rectH + 0.08, 0.06), mat, x, y, z));
-        // Vertical mullion
-        parent.add(mk(new THREE.BoxGeometry(0.06, rectH * 0.9, 0.15), M.trim, x, y, z));
-        // Horizontal transom (upper)
-        parent.add(mk(new THREE.BoxGeometry(width * 0.85, 0.06, 0.15), M.trim, x, y + rectH * 0.15, z));
-        // Horizontal transom (lower) — 6-pane grid
-        parent.add(mk(new THREE.BoxGeometry(width * 0.85, 0.06, 0.15), M.trim, x, y - rectH * 0.2, z));
-        // Keystone at arch apex
-        parent.add(mk(new THREE.BoxGeometry(0.14, 0.15, 0.2), M.trim, x, y + rectH / 2 + archR - 0.05, z));
-        // Sill ledge at bottom of window
-        parent.add(mk(new THREE.BoxGeometry(width + 0.3, 0.08, 0.2), M.trim, x, y - rectH / 2 - 0.04, z));
-        // Corbels under sill (two brackets)
-        parent.add(mk(new THREE.BoxGeometry(0.08, 0.1, 0.08), M.stoneD, x + width * 0.28, y - rectH / 2 - 0.13, z));
-        parent.add(mk(new THREE.BoxGeometry(0.08, 0.1, 0.08), M.stoneD, x - width * 0.28, y - rectH / 2 - 0.13, z));
+        // Stone surround frame — thicker
+        parent.add(mk(new THREE.BoxGeometry(width + 0.2, rectH + 0.12, 0.1), mat, x, y, z + dir * 0.02));
+        // Vertical mullion — black, narrow
+        parent.add(mk(new THREE.BoxGeometry(0.05, rectH * 0.9, 0.10), mullionMat, x, y, z + dir * 0.08));
+        // Horizontal transom
+        parent.add(mk(new THREE.BoxGeometry(width * 0.85, 0.05, 0.10), mullionMat, x, y, z + dir * 0.08));
+        // Keystone
+        parent.add(mk(new THREE.BoxGeometry(0.18, 0.2, 0.25), M.trim, x, y + rectH / 2 + archR - 0.05, z));
+        // Impost blocks
+        parent.add(mk(new THREE.BoxGeometry(0.12, 0.12, 0.18), M.trim, x + archR, y + rectH / 2 - 0.06, z));
+        parent.add(mk(new THREE.BoxGeometry(0.12, 0.12, 0.18), M.trim, x - archR, y + rectH / 2 - 0.06, z));
+        // Sill ledge — wider and thicker
+        parent.add(mk(new THREE.BoxGeometry(width + 0.4, 0.1, 0.25), M.trim, x, y - rectH / 2 - 0.05, z + dir * 0.05));
+        // Corbels under sill
+        parent.add(mk(new THREE.BoxGeometry(0.1, 0.14, 0.1), M.stoneD, x + width * 0.3, y - rectH / 2 - 0.17, z));
+        parent.add(mk(new THREE.BoxGeometry(0.1, 0.14, 0.1), M.stoneD, x - width * 0.3, y - rectH / 2 - 0.17, z));
+        // Wooden shutters — angled open
+        const shutterH = rectH * 0.92, shutterW = width * 0.48;
+        const sh1 = mk(new THREE.BoxGeometry(shutterW, shutterH, 0.06), shutterMat, x + (width / 2 + shutterW * 0.35), y, z + dir * 0.06);
+        sh1.rotation.y = dir * 0.35;
+        parent.add(sh1);
+        const sh2 = mk(new THREE.BoxGeometry(shutterW, shutterH, 0.06), shutterMat, x - (width / 2 + shutterW * 0.35), y, z + dir * 0.06);
+        sh2.rotation.y = -dir * 0.35;
+        parent.add(sh2);
       }
     };
 
@@ -672,20 +746,25 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // ── ENTRANCE VESTIBULUM (Front — 6 Corinthian columns) ──
     const vestZ = -(vD / 2 + 3);
     // Portico platform
-    centralGroup.add(mk(new THREE.BoxGeometry(12, 0.5, 7), M.marble, 0, 1.05, vestZ));
+    centralGroup.add(mk(new THREE.BoxGeometry(12, 0.4, 7), M.marble, 0, 1.12, vestZ));
 
     // 6 Corinthian columns
+    // Fluting material — subtle dark lines for column grooves
+    const fluteMat = new THREE.MeshStandardMaterial({ color: "#C8C0A8", roughness: 0.7, metalness: 0 });
+    extraDisposables.push(fluteMat);
+    const centralFluteGeo = new THREE.BoxGeometry(0.02, 5.2, 0.06);
+    extraGeoDisposables.push(centralFluteGeo);
     for (let ci = 0; ci < 6; ci++) {
       const cx = -5 + ci * 2;
       // Column shaft — thicker radius 0.55
       centralGroup.add(mk(new THREE.CylinderGeometry(0.55, 0.55, 5.5, 16), M.col, cx, 4.3, vestZ));
-      // Column fluting — 8 thin vertical grooves around the shaft
-      for (let fi = 0; fi < 8; fi++) {
-        const fAngle = (fi / 8) * Math.PI * 2;
-        const fr = 0.54;
-        const fx = cx + Math.sin(fAngle) * fr;
-        const fz = vestZ + Math.cos(fAngle) * fr;
-        centralGroup.add(mk(new THREE.BoxGeometry(0.03, 5.5, 0.03), M.stoneD, fx, 4.3, fz));
+      // Column fluting — 8 thin dark vertical stripes around circumference
+      for (let fl = 0; fl < 8; fl++) {
+        const fa = (fl / 8) * Math.PI * 2;
+        const stripe = mk(centralFluteGeo, fluteMat,
+          cx + Math.cos(fa) * 0.56, 4.3, vestZ + Math.sin(fa) * 0.56);
+        stripe.rotation.y = fa;
+        centralGroup.add(stripe);
       }
       // Echinus — small cylinder below capital for abacus/echinus effect
       centralGroup.add(mk(new THREE.CylinderGeometry(0.6, 0.55, 0.15, 16), M.trim, cx, 6.775, vestZ));
@@ -715,54 +794,56 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.5, 0.15), M.trim, tx, 7.6, vestZ - 1.05));
     }
 
-    // Classical triangular pediment (two angled slabs meeting at center)
-    const pedLeft = mk(new THREE.BoxGeometry(6.5, 0.3, 2.2), M.marbleVein, -2.8, 8.5, vestZ);
-    pedLeft.rotation.z = 0.18;
+    // Classical triangular pediment — spans full entablature (12 units wide)
+    const pedBaseY = 7.9, pedHalfSpan = 6.2, pedAngle = Math.atan2(1.1, pedHalfSpan);
+    const pedSlab = Math.sqrt(pedHalfSpan * pedHalfSpan + 1.1 * 1.1) + 0.3; // slab length
+    const pedApexY = pedBaseY + 1.1;
+    const pedLeft = mk(new THREE.BoxGeometry(pedSlab, 0.28, 2.2), M.marbleVein, -pedHalfSpan / 2, pedBaseY + 0.55, vestZ);
+    pedLeft.rotation.z = pedAngle;
     centralGroup.add(pedLeft);
-    const pedRight = mk(new THREE.BoxGeometry(6.5, 0.3, 2.2), M.marbleVein, 2.8, 8.5, vestZ);
-    pedRight.rotation.z = -0.18;
+    const pedRight = mk(new THREE.BoxGeometry(pedSlab, 0.28, 2.2), M.marbleVein, pedHalfSpan / 2, pedBaseY + 0.55, vestZ);
+    pedRight.rotation.z = -pedAngle;
     centralGroup.add(pedRight);
     // Pediment base beam
-    centralGroup.add(mk(new THREE.BoxGeometry(12.5, 0.2, 2.2), M.trim, 0, 7.9, vestZ));
+    centralGroup.add(mk(new THREE.BoxGeometry(pedHalfSpan * 2 + 1, 0.2, 2.2), M.trim, 0, pedBaseY, vestZ));
 
-    // CORONA / GEISON — projecting cornice shelf casting shadow under raking cornices
-    centralGroup.add(mk(new THREE.BoxGeometry(13, 0.15, 2.5), M.marble, 0, 7.75, vestZ));
+    // CORONA / GEISON — projecting cornice shelf
+    centralGroup.add(mk(new THREE.BoxGeometry(pedHalfSpan * 2 + 1.2, 0.15, 2.5), M.marble, 0, pedBaseY - 0.15, vestZ));
 
     // RAKING CORNICE MOLDING — gilded strips along pediment slopes
-    const rakLeft = mk(new THREE.BoxGeometry(6.5, 0.12, 0.15), M.gold, -2.8, 8.7, vestZ);
-    rakLeft.rotation.z = 0.18;
+    const rakLeft = mk(new THREE.BoxGeometry(pedSlab, 0.10, 0.15), M.gold, -pedHalfSpan / 2, pedBaseY + 0.55 + 0.18, vestZ);
+    rakLeft.rotation.z = pedAngle;
     centralGroup.add(rakLeft);
-    const rakRight = mk(new THREE.BoxGeometry(6.5, 0.12, 0.15), M.gold, 2.8, 8.7, vestZ);
-    rakRight.rotation.z = -0.18;
+    const rakRight = mk(new THREE.BoxGeometry(pedSlab, 0.10, 0.15), M.gold, pedHalfSpan / 2, pedBaseY + 0.55 + 0.18, vestZ);
+    rakRight.rotation.z = -pedAngle;
     centralGroup.add(rakRight);
 
     // Acroterion finials at pediment corners (palmette cones) — with marble bases
     // Center acroterion: base + taller cone
-    centralGroup.add(mk(new THREE.BoxGeometry(0.5, 0.3, 0.5), M.marble, 0, 9.5, vestZ));
-    centralGroup.add(mk(new THREE.ConeGeometry(0.35, 1.5, 8), M.bronze, 0, 10.05, vestZ));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.5, 0.3, 0.5), M.marble, 0, pedApexY + 0.3, vestZ));
+    centralGroup.add(mk(new THREE.ConeGeometry(0.35, 1.5, 8), M.bronze, 0, pedApexY + 0.85, vestZ));
     // Left corner acroterion: base + cone
-    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.4), M.marble, -6, 7.9, vestZ));
-    centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, -6, 8.4, vestZ));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.4), M.marble, -pedHalfSpan, pedBaseY, vestZ));
+    centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, -pedHalfSpan, pedBaseY + 0.5, vestZ));
     // Right corner acroterion: base + cone
-    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.4), M.marble, 6, 7.9, vestZ));
-    centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, 6, 8.4, vestZ));
+    centralGroup.add(mk(new THREE.BoxGeometry(0.4, 0.2, 0.4), M.marble, pedHalfSpan, pedBaseY, vestZ));
+    centralGroup.add(mk(new THREE.ConeGeometry(0.25, 0.8, 8), M.bronze, pedHalfSpan, pedBaseY + 0.5, vestZ));
 
     // ── Solid triangular tympanum (filled pediment face) with owner's name ──
     {
-      // Triangular fill — solid stone panel filling the pediment triangle
+      // Triangular fill — matches pediment slope exactly
       const tymShape = new THREE.Shape();
-      tymShape.moveTo(-5.8, 0);    // bottom-left
-      tymShape.lineTo(5.8, 0);     // bottom-right
-      tymShape.lineTo(0, 1.6);     // apex
+      tymShape.moveTo(-pedHalfSpan, 0);
+      tymShape.lineTo(pedHalfSpan, 0);
+      tymShape.lineTo(0, 1.1);
       tymShape.closePath();
       const tymGeo = new THREE.ShapeGeometry(tymShape);
       const tymMat = new THREE.MeshStandardMaterial({
-        color: "#C8BAA4", roughness: 0.82, metalness: 0,
-        map: wornPlasterTex.map, normalMap: wornPlasterTex.normalMap,
-        normalScale: new THREE.Vector2(0.3, 0.3), side: THREE.DoubleSide,
+        color: "#D8B458", roughness: 0.75, metalness: 0,
+        side: THREE.DoubleSide, normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
       });
       const tymMesh = new THREE.Mesh(tymGeo, tymMat);
-      tymMesh.position.set(0, 7.95, vestZ - 1.11);
+      tymMesh.position.set(0, pedBaseY + 0.05, vestZ - 1.11);
       tymMesh.rotation.y = Math.PI; // face outward (-Z, toward entrance)
       centralGroup.add(tymMesh);
 
@@ -828,8 +909,6 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     for (const [x, y] of [[-8, vH * 0.4 + 1.3], [-3, vH * 0.4 + 1.3], [3, vH * 0.4 + 1.3], [8, vH * 0.4 + 1.3]] as [number, number][]) {
       // Sconce bracket
       centralGroup.add(mk(new THREE.BoxGeometry(0.15, 0.08, 0.4), M.bronze, x, y, -(vD / 2 + 0.15)));
-      // Torch holder
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.06, 0.04, 0.4, 6), M.bronze, x, y + 0.25, -(vD / 2 + 0.3)));
       // Warm glow (small point light)
       const sconce = new THREE.PointLight("#FFD080", 0.08, 6);
       sconce.position.set(x, y + 0.4, -(vD / 2 + 0.4));
@@ -838,8 +917,6 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── HANGING LANTERNS — vestibulum portico ceiling ──
     for (const lx of [-3, 3]) {
-      // Chain
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4), M.gold, lx, 7.0, vestZ));
       // Lantern body
       centralGroup.add(mk(new THREE.BoxGeometry(0.3, 0.4, 0.3), M.bronze, lx, 6.5, vestZ));
       // Glass panels (four faces)
@@ -994,8 +1071,6 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Climbing roses on every 3rd peristyle column
     periCols.forEach(([px, pz], idx) => {
       if (idx % 3 !== 0) return;
-      // Vine stem along column
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.02, 0.02, 3, 4), M.ivy, px + 0.32, 3.3, pz));
       // 3 flower dots at staggered heights
       for (let fi = 0; fi < 3; fi++) {
         const fy = 2.2 + fi * 0.9;
@@ -1129,7 +1204,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     cRoofRight.rotation.z = -cRoofAngle;
     centralGroup.add(cRoofRight);
     // Ridge cap tiles along the main ridge (half-cylinder, open downward)
-    centralGroup.add(mk(new THREE.CylinderGeometry(0.15, 0.15, vD + 1, 6, 1, false, 0, Math.PI), M.tile, 0, cRidgeY + 0.08, 0));
+    { const rcm = mk(new THREE.CylinderGeometry(0.15, 0.15, vD + 1, 6, 1, false, 0, Math.PI), M.tile, 0, cRidgeY + 0.08, 0); rcm.rotation.x = -Math.PI / 2; centralGroup.add(rcm); }
     // Ridge beam under cap
     centralGroup.add(mk(new THREE.BoxGeometry(0.35, 0.28, vD + 1.2), M.tile, 0, cRidgeY - 0.05, 0));
     // Hip ridges — diagonal caps from ridge ends down to front/back eave corners
@@ -1146,7 +1221,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Tegulae ridges on slopes
     for (let ti = 0; ti < 5; ti++) {
       const tx = -vW / 2 + 2 + ti * (vW - 4) / 4;
-      centralGroup.add(mk(new THREE.CylinderGeometry(0.12, 0.12, vD + 1.5, 6, 1, false, 0, Math.PI), M.tile, tx, vH + 1.75, 0));
+      const teg = mk(new THREE.CylinderGeometry(0.12, 0.12, vD + 1.5, 6, 1, false, 0, Math.PI), M.tile, tx, vH + 1.75, 0);
+      teg.rotation.x = -Math.PI / 2;
+      centralGroup.add(teg);
     }
 
     // ── ANTEFIXAE — terracotta discs along front (-Z) eave of central domus ──
@@ -1209,8 +1286,14 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       centralGroup.add(mk(new THREE.BoxGeometry(0.7, 1.6, 0.12), M.win,
         Math.cos(da) * (rDrumR + 0.05), drumBaseY + rDrumH * 0.6, Math.sin(da) * (rDrumR + 0.05)));
     }
-    // Hemispherical dome — weathered bronze-green material
-    const domeMat = new THREE.MeshStandardMaterial({ color: '#7A9888', roughness: 0.7, metalness: 0.3 });
+    // Hemispherical dome — verdigris copper with patina texture
+    const domeMat = new THREE.MeshStandardMaterial({
+      color: '#6B9A85', roughness: 0.65, metalness: 0.35,
+      normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(1.2, 1.2),
+      roughnessMap: clayPlasterTex.roughnessMap,
+      envMapIntensity: 0.7,
+    });
+    extraDisposables.push(domeMat);
     const rDome = new THREE.Mesh(
       new THREE.SphereGeometry(rDomeR, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.5),
       domeMat
@@ -1285,6 +1368,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // 5 ROMAN VILLA WINGS — colonnaded galleries with arched arcades & tower pavilions
     // ══════════════════════════════════════════
     const wingDefs = [{ room: WINGS[0], length: 22 }, { room: WINGS[1], length: 20 }, { room: WINGS[2], length: 18 }, { room: WINGS[3], length: 19 }, { room: WINGS[4], length: 21 }];
+    const wingFluteGeo = new THREE.BoxGeometry(0.015, (5 - 0.5) * 0.9, 0.04); // colH = wH - 0.5, shared across all wing columns
+    extraGeoDisposables.push(wingFluteGeo);
     wingDefs.forEach((def, i) => {
       const angle = (i / 5) * Math.PI * 2;
       const wg = new THREE.Group();
@@ -1341,7 +1426,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       // Ridge beam along the top
       addM(mk(new THREE.BoxGeometry(0.3, 0.25, roofSlabL - roofSlabW * 1.6), M.tile, 0, wRidgeY - 0.05, wRidgeCenterZ));
       // Ridge cap tiles (half-cylinder) along the main ridge
-      addM(mk(new THREE.CylinderGeometry(0.15, 0.15, roofSlabL - roofSlabW * 1.6, 6, 1, false, 0, Math.PI), M.tile, 0, wRidgeY + 0.1, wRidgeCenterZ));
+      { const wrc = mk(new THREE.CylinderGeometry(0.15, 0.15, roofSlabL - roofSlabW * 1.6, 6, 1, false, 0, Math.PI), M.tile, 0, wRidgeY + 0.1, wRidgeCenterZ); wrc.rotation.x = -Math.PI / 2; addM(wrc); }
       // Fascia boards under eave overhangs (long sides)
       addM(mk(new THREE.BoxGeometry(roofSlabW * 2 + 0.1, 0.1, 0.15), M.door, 0, wH + 1.55, wRidgeCenterZ - roofSlabL / 2));
       addM(mk(new THREE.BoxGeometry(roofSlabW * 2 + 0.1, 0.1, 0.15), M.door, 0, wH + 1.55, wRidgeCenterZ + roofSlabL / 2));
@@ -1360,9 +1445,18 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         for (let s = -1; s <= 1; s += 2) {
           const cx = s * (wW / 2 + 1.2);
           // Main shaft — thicker radius 0.3/0.35
-          wg.add(mk(new THREE.CylinderGeometry(0.3, 0.35, wH - 0.5, 12), M.col, cx, (wH - 0.5) / 2 + 1.3, cz));
+          const colH = wH - 0.5;
+          wg.add(mk(new THREE.CylinderGeometry(0.3, 0.35, colH, 12), M.col, cx, colH / 2 + 1.3, cz));
           // Entasis bulge at 1/3 height
-          wg.add(mk(new THREE.CylinderGeometry(0.33, 0.28, (wH - 0.5) * 0.3, 12), M.col, cx, (wH - 0.5) * 0.33 + 1.3, cz));
+          wg.add(mk(new THREE.CylinderGeometry(0.33, 0.28, colH * 0.3, 12), M.col, cx, colH * 0.33 + 1.3, cz));
+          // Column fluting — 6 thin dark vertical stripes (shared geometry)
+          for (let fl = 0; fl < 6; fl++) {
+            const fa = (fl / 6) * Math.PI * 2;
+            const stripe = mk(wingFluteGeo, fluteMat,
+              cx + Math.cos(fa) * 0.36, colH / 2 + 1.3, cz + Math.sin(fa) * 0.36);
+            stripe.rotation.y = fa;
+            wg.add(stripe);
+          }
           // Capital
           wg.add(mk(new THREE.BoxGeometry(0.7, 0.15, 0.7), M.trim, cx, wH + 0.95, cz));
           // Impost block at spring line of arch
@@ -1566,6 +1660,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         const rg = new THREE.CylinderGeometry(0.1, 0.1, eW * 0.5, 6, 1, false, 0, Math.PI);
         const rm = new THREE.Mesh(rg, M.tile);
         rm.position.set(0, tRoofPeak, eZ);
+        rm.rotation.x = -Math.PI / 2;
         wg.add(rm); addM(rm);
       }
 
@@ -2602,6 +2697,19 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     });
     wingWindowMats.set(entranceId,centralWinEntries);
 
+    // ── CLONE ALL BODY MATERIALS per section so emissive glow is fully isolated ──
+    // Without this, shared materials like ochreWall cause glow to bleed across all buildings
+    sectionGroups.forEach(sg=>{
+      sg.meshes.forEach((wm: any)=>{
+        if(!wm.material||wm.material.transparent)return;
+        const mat=wm.material as THREE.MeshStandardMaterial;
+        if(!mat.emissive)return;
+        // Skip already-cloned window materials
+        if(mat===M.win||mat===M.winBlue)return;
+        wm.material=mat.clone();
+      });
+    });
+
     scene.add(palace);
     scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(-5).translateY(HILL_Y+5).translateZ(0));
     scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(5).translateY(HILL_Y+5).translateZ(0));
@@ -2618,7 +2726,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const clock=new THREE.Clock();
     const goldColor=new THREE.Color("#D4AF37");
     // Pre-allocated objects reused every frame to avoid GC pressure
-    const _greenColor=new THREE.Color("#4A8C3F");
+    const _hoverOrange=new THREE.Color("#D4802A");
     const _blackColor=new THREE.Color(0,0,0);
     const _warmGlow=new THREE.Color("#FFE8B0");
     const _windowBaseColor=new THREE.Color("#FFF0C0");
@@ -2628,26 +2736,42 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const _accentColor=new THREE.Color();
     // Cache for per-wing window mesh Sets (avoids new Set() per frame)
     const _wingWindowSetCache=new Map<string,Set<any>>();
+    const _sectionGroupMap=new Map<string,any>();
+    sectionGroups.forEach((sg: any)=>_sectionGroupMap.set(sg.id,sg));
+    const _isMobile=window.innerWidth<768;
+    let _frameCount=0;
+    let _lastHovId:string|null=null;
     const animate=()=>{
-      frameRef.current=requestAnimationFrame(animate);const t=clock.getElapsedTime();
+      frameRef.current=requestAnimationFrame(animate);const t=clock.getElapsedTime();_frameCount++;
 
       // Walkthrough highlight — pulse golden emissive on target meshes
       const hlTarget=highlightDoorRef.current;
-      clickTargets.forEach((ct: any)=>{
-        const active=hlTarget===ct.userData.roomId;
-        const hl=hlLights.get(ct.userData.roomId);
-        if(active){
-          const pulse=0.15+Math.sin(t*2.5)*.1;
-          ct.userData.wingMeshes.forEach((wm: any)=>{
-            if(wm.material.emissive){wm.material.emissive.lerp(goldColor,.15);wm.material.emissiveIntensity+=(pulse-wm.material.emissiveIntensity)*.1;}
-          });
-          if(hl)hl.intensity=3+Math.sin(t*2)*1.5;
-        }else{
-          if(hl&&!hoveredRoomRef.current)hl.intensity+=(0-hl.intensity)*.05;
+      if(hlTarget){
+        clickTargets.forEach((ct: any)=>{
+          const active=hlTarget===ct.userData.roomId;
+          if(active){
+            const pulse=0.15+Math.sin(t*2.5)*.1;
+            ct.userData.wingMeshes.forEach((wm: any)=>{
+              if(wm.material.emissive){wm.material.emissive.lerp(goldColor,.15);wm.material.emissiveIntensity+=(pulse-wm.material.emissiveIntensity)*.1;}
+            });
+            const hl=hlLights.get(ct.userData.roomId);
+            if(hl)hl.intensity=3+Math.sin(t*2)*1.5;
+          }
+        });
+      }
+      // Auto-walk: zoom toward entrance (fast exponential approach)
+      if(autoWalkToRef.current==="__entrance__"){
+        camOT.current.theta=Math.PI*1.5;
+        camOT.current.phi=Math.PI*0.22;
+        camD.current+=(35-camD.current)*0.04;
+        if(Math.abs(camD.current-35)<2){
+          autoWalkToRef.current=null;
+          onRoomClickRef.current("__entrance__");
         }
-      });
-      camO.current.theta+=(camOT.current.theta-camO.current.theta)*.04;
-      camO.current.phi+=(camOT.current.phi-camO.current.phi)*.04;
+      }
+      const camLerp=autoWalkToRef.current?0.02:0.04;
+      camO.current.theta+=(camOT.current.theta-camO.current.theta)*camLerp;
+      camO.current.phi+=(camOT.current.phi-camO.current.phi)*camLerp;
       const r=camD.current;
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
       camera.lookAt(0,HILL_Y+8,0);
@@ -2658,62 +2782,14 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       if (fW2) (fW2.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*1.0)*.03;
       if (fW3) (fW3.material as THREE.MeshStandardMaterial).opacity=.4+Math.sin(t*1.1)*.02;
 
-      // ── SECTION SPLIT / LIFT ANIMATION ──
-      const anyHovered=hoveredRoomRef.current!==null;
-      sectionGroups.forEach(sg=>{
-        const isHov=hoveredRoomRef.current===sg.id;
-        // Hovered section lifts up; others stay at 0
-        sg.targetY=0;
-        // Smooth lerp
-        sg.currentY+=(sg.targetY-sg.currentY)*.07;
-        sg.group.position.y=sg.currentY;
-
-        // Hovered section turns green; non-hovered sections dim when something is hovered
-        // Skip color/emissive changes if walkthrough is highlighting this section
-        const isWtHighlight=hlTarget===sg.id;
-        sg.meshes.forEach((wm: any)=>{
-          if(!wm.material||wm.material.transparent)return;
-          const mat=wm.material as THREE.MeshStandardMaterial;
-          // Store original color once
-          if(!wm.userData._origColor){
-            wm.userData._origColor=mat.color.clone();
-          }
-          if(isWtHighlight){
-            // Walkthrough golden glow — strong pulse
-            mat.color.lerp(wm.userData._origColor,.06);
-            mat.emissive.lerp(goldColor,.12);
-            mat.emissiveIntensity+=(0.4+Math.sin(t*2.5)*.2-mat.emissiveIntensity)*.1;
-          }else if(isHov){
-            // Tint green
-            mat.color.lerp(_greenColor,.08);
-            mat.emissive.lerp(_greenColor,.1);
-            mat.emissiveIntensity+=(0.3-mat.emissiveIntensity)*.08;
-          }else if(anyHovered){
-            // Dim non-hovered
-            _tmpColor.copy(wm.userData._origColor).multiplyScalar(0.5);
-            mat.color.lerp(_tmpColor,.08);
-            mat.emissive.lerp(_blackColor,.1);
-            mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
-          }else if(hlTarget){
-            // Walkthrough active but this isn't the target — dim it
-            _tmpColor.copy(wm.userData._origColor).multiplyScalar(0.6);
-            mat.color.lerp(_tmpColor,.04);
-            mat.emissive.lerp(_blackColor,.1);
-            mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
-          }else{
-            // Restore to original
-            mat.color.lerp(wm.userData._origColor,.06);
-            mat.emissive.lerp(_blackColor,.1);
-            mat.emissiveIntensity+=(0-mat.emissiveIntensity)*.06;
-          }
-        });
-      });
+      // ── HOVER GLOW — handled entirely in the per-wing block below ──
+      // (removed shared-material sectionGroups loop that caused bleed across sections)
 
       // ── HOVER LABEL — project hovered section's world position to screen ──
       if(hovLabel&&camera){
         const hovId=hoveredRoomRef.current;
         if(hovId){
-          const sg=sectionGroups.find(s=>s.id===hovId);
+          const sg=_sectionGroupMap.get(hovId);
           if(sg){
             sg.group.getWorldPosition(_tmpVec3);
             _tmpVec3.y+=sg.id==="__entrance__"?25:18;
@@ -2725,43 +2801,53 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
             hovLabel.style.gap="0.375rem";
             hovLabel.style.left=sx+"px";
             // Clamp top so label stays below PalaceSubNav (NavBar 4.25rem + SubNav 3.5rem + 0.25rem margin = 8rem)
-            const rem=parseFloat(getComputedStyle(document.documentElement).fontSize);
-            const minTop=rem*8;
+            const minTop=cachedRem*8;
             const clamped=sy<minTop;
             hovLabel.style.top=Math.max(sy,minTop)+"px";
             // When clamped, flip label to render downward so it doesn't hide behind the nav
             hovLabel.style.transform=clamped?"translate(-50%, 0)":"translate(-50%, -100%)";
-            // Find wing name — use SVG icon from WingRoomIcons
-            const wingDef=WINGS.find((wi: any)=>wi.id===hovId);
-            if(wingDef){
-              const svgStr=WING_SVG_STRINGS[wingDef.id]||"";
-              hovLabel.innerHTML=svgStr+`<span>${wingDef.name}</span>`;
-            }else if(hovId==="__entrance__"){
-              hovLabel.innerHTML=entranceHallLabelRef.current;
-            }else{
-              hovLabel.innerHTML="";
+            // Find wing name — use SVG icon from WingRoomIcons (skip if unchanged)
+            if(hovId!==_lastHovId){
+              _lastHovId=hovId;
+              const wingDef=WINGS.find((wi: any)=>wi.id===hovId);
+              if(wingDef){
+                const svgStr=WING_SVG_STRINGS[wingDef.id]||"";
+                hovLabel.innerHTML=svgStr+`<span>${wingDef.name}</span>`;
+              }else if(hovId==="__entrance__"){
+                hovLabel.innerHTML=entranceHallLabelRef.current;
+              }else{
+                hovLabel.innerHTML="";
+              }
             }
           }
         }else{
           hovLabel.style.display="none";
+          _lastHovId=null;
         }
       }
 
-      // Wing hover glow — emissive body + accent point light + window brightening
+      // Wing & entrance hover glow — emissive body + accent point light + window brightening
+      // Materials are cloned per section, so emissive changes are fully isolated
+      const _hovRoom=hoveredRoomRef.current;
       clickTargets.forEach((ct: any)=>{
-        const isHov=hoveredRoomRef.current===ct.userData.roomId;
+        const isHov=_hovRoom===ct.userData.roomId;
         const isWtHl=hlTarget===ct.userData.roomId;
         _accentColor.set(ct.userData.accent);
-        // Smooth emissive glow on wing body meshes (skip cloned window mats + walkthrough highlighted)
         const winSet=wingWindowMats.get(ct.userData.roomId);
         let winMeshSet=_wingWindowSetCache.get(ct.userData.roomId);
         if(!winMeshSet){winMeshSet=new Set(winSet?.map(e=>e.mesh));_wingWindowSetCache.set(ct.userData.roomId,winMeshSet);}
         ct.userData.wingMeshes.forEach((wm: any)=>{
-          if(winMeshSet?.has(wm))return;// handled separately
-          if(isWtHl)return;// walkthrough glow handled above
-          if(wm.material.emissive){
-            if(isHov){wm.material.emissive.lerp(_accentColor,.12);wm.material.emissiveIntensity+=(0.22-wm.material.emissiveIntensity)*.08;}
-            else{wm.material.emissiveIntensity+=(0-wm.material.emissiveIntensity)*.06;}
+          if(winMeshSet?.has(wm))return;// handled separately below
+          if(!wm.material||!wm.material.emissive)return;
+          if(isWtHl){
+            wm.material.emissive.lerp(goldColor,.12);
+            wm.material.emissiveIntensity+=(0.35+Math.sin(t*2.5)*.15-wm.material.emissiveIntensity)*.1;
+          }else if(isHov){
+            wm.material.emissive.lerp(_hoverOrange,.18);
+            wm.material.emissiveIntensity+=(0.45-wm.material.emissiveIntensity)*.1;
+          }else{
+            wm.material.emissive.lerp(_blackColor,.1);
+            wm.material.emissiveIntensity+=(0-wm.material.emissiveIntensity)*.06;
           }
         });
         // Window glow — cloned materials, independent per wing
@@ -2790,30 +2876,34 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         }
       });
 
-      // Animate dust motes
-      const dp=dG.attributes.position.array;
-      for(let i=0;i<dustN;i++){dp[i*3]+=Math.sin(t*.08+i*.3)*.012;dp[i*3+1]+=Math.sin(t*.12+i*.5)*.006;if(dp[i*3+1]>27)dp[i*3+1]=2;}
-      dG.attributes.position.needsUpdate=true;
+      // Animate particles — throttle to every 2nd frame on mobile for performance
+      const _doParticles=!_isMobile||(_frameCount&1)===0;
+      if(_doParticles){
+        // Animate dust motes
+        const dp=dG.attributes.position.array;
+        for(let i=0;i<dustN;i++){dp[i*3]+=Math.sin(t*.08+i*.3)*.012;dp[i*3+1]+=Math.sin(t*.12+i*.5)*.006;if(dp[i*3+1]>27)dp[i*3+1]=2;}
+        dG.attributes.position.needsUpdate=true;
 
-      // Animate floating orbs (gentle rise and drift)
-      const op=orbG.attributes.position.array;
-      for(let i=0;i<orbN;i++){
-        op[i*3]+=Math.sin(t*.05+i*1.7)*.015;
-        op[i*3+1]+=Math.sin(t*.08+i*2.3)*.008;
-        op[i*3+2]+=Math.cos(t*.06+i*1.1)*.012;
+        // Animate floating orbs (gentle rise and drift)
+        const op=orbG.attributes.position.array;
+        for(let i=0;i<orbN;i++){
+          op[i*3]+=Math.sin(t*.05+i*1.7)*.015;
+          op[i*3+1]+=Math.sin(t*.08+i*2.3)*.008;
+          op[i*3+2]+=Math.cos(t*.06+i*1.1)*.012;
+        }
+        orbG.attributes.position.needsUpdate=true;
+
+        // Animate mist drift
+        mistMeshes.forEach((mm,i)=>{
+          mm.position.x+=Math.sin(t*.02+i)*.01;
+          (mm.material as THREE.MeshBasicMaterial).opacity=.03+Math.sin(t*.1+i*2)*.015;
+        });
+
+        // Animate birds
+        const bp=birdG.attributes.position.array;
+        for(let i=0;i<birdN;i++){bp[i*3]+=.02;bp[i*3+1]+=Math.sin(t*3+i)*.01;if(bp[i*3]>60)bp[i*3]=-60;}
+        birdG.attributes.position.needsUpdate=true;
       }
-      orbG.attributes.position.needsUpdate=true;
-
-      // Animate mist drift
-      mistMeshes.forEach((mm,i)=>{
-        mm.position.x+=Math.sin(t*.02+i)*.01;
-        (mm.material as THREE.MeshBasicMaterial).opacity=.03+Math.sin(t*.1+i*2)*.015;
-      });
-
-      // Animate birds
-      const bp=birdG.attributes.position.array;
-      for(let i=0;i<birdN;i++){bp[i*3]+=.02;bp[i*3+1]+=Math.sin(t*3+i)*.01;if(bp[i*3]>60)bp[i*3]=-60;}
-      birdG.attributes.position.needsUpdate=true;
 
       // Update grass and wheat wind animation
       grassSystem.update();
@@ -2830,7 +2920,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const onCk=(e: MouseEvent)=>{if(drag.current)return;const rect=el.getBoundingClientRect();mse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0)onRoomClickRef.current(hits[0].object.userData.roomId);};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(180,camD.current+e.deltaY*.05));};
-    const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
+    const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);
 
     // ── TOUCH SUPPORT ──
@@ -2878,6 +2968,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         }
       });
       allTexSets.forEach(disposePBRSet);
+      extraDisposables.forEach(m => m.dispose());
+      extraGeoDisposables.forEach(g => g.dispose());
       grassSystem.dispose();
       wheatFields.forEach(wf => wf.dispose());
       cropDispMap.dispose();

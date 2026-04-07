@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/auth/callback", "/invite", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/api/stripe/webhook", "/api/cron/", "/api/email/", "/api/notifications/send", "/video", "/test-palazzo"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/api/stripe/webhook", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/video", "/test-palazzo"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -37,7 +37,9 @@ export async function middleware(request: NextRequest) {
   const isInvitePage = path.startsWith("/invite");
   const isPublicSharePage = path.startsWith("/public");
   const isLegacyPage = path.startsWith("/legacy");
-  if (user && (isPublicRoute || path === "/") && !isInvitePage && !isPublicSharePage && !isLegacyPage) {
+  const isResetPasswordPage = path.startsWith("/reset-password");
+  const isApiRoute = path.startsWith("/api/");
+  if (user && (isPublicRoute || path === "/") && !isInvitePage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute) {
     return NextResponse.redirect(new URL("/palace", request.url));
   }
 
@@ -51,6 +53,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|workbox-.*\\.js|fallback-.*\\.js|manifest\\.json|clear\\.html|models/|draco/|textures/|video/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|wasm|hdr|mp4|webm|ogg)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sw\\.js|workbox-.*\\.js|fallback-.*\\.js|manifest\\.json|clear\\.html|models/|draco/|textures/|video/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|glb|gltf|wasm|hdr)$).*)",
   ],
 };

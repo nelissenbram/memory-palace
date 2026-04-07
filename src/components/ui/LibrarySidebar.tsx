@@ -156,6 +156,8 @@ export default function LibrarySidebar({
           scrollBehavior: "smooth",
           msOverflowStyle: "none" as never,
           scrollbarWidth: "none" as never,
+          maskImage: "linear-gradient(to right, transparent 0, black 0.75rem, black calc(100% - 0.75rem), transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to right, transparent 0, black 0.75rem, black calc(100% - 0.75rem), transparent 100%)",
         }}
       >
         <style>{keyframes}</style>
@@ -225,6 +227,7 @@ export default function LibrarySidebar({
     <nav
       aria-label={t("sidebarNav")}
       className="lsb-desktop-nav"
+      data-nudge="library_wing_sidebar"
       style={{
         width: "17rem",
         minWidth: "17rem",
@@ -628,12 +631,12 @@ export default function LibrarySidebar({
               <>
                 {/* Divider between wing and rooms */}
                 <div style={{
-                  height: "0.0625rem", margin: "0.25rem 1rem 0.25rem 3.25rem",
+                  height: "0.0625rem", margin: "0.25rem 1rem 0.25rem 2.25rem",
                   background: `linear-gradient(90deg, ${w.accent}33, ${T.color.cream}22, transparent)`,
                 }} />
                 {/* "Rooms in {wingName}" label */}
                 <div style={{
-                  padding: "0.25rem 1rem 0.125rem 3.25rem",
+                  padding: "0.25rem 1rem 0.125rem 2.25rem",
                   fontFamily: T.font.body,
                   fontSize: "0.5625rem",
                   fontWeight: 600,
@@ -649,7 +652,7 @@ export default function LibrarySidebar({
                     key={room.id}
                     style={{
                       display: "flex", alignItems: "center", gap: "0.5rem",
-                      padding: "0.375rem 0.75rem 0.375rem 3.25rem",
+                      padding: "0.375rem 0.75rem 0.375rem 2.25rem",
                       borderRadius: "0.5rem",
                       cursor: "pointer",
                       transition: `all 0.2s ${EASE_OUT_EXPO}`,

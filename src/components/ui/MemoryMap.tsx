@@ -66,6 +66,8 @@ interface MemoryMapProps {
   onClose: () => void;
   onNavigate?: (roomId: string) => void;
   onNavigateLibrary: () => void;
+  /** Navigate to a specific memory in the Library */
+  onNavigateToMemory?: (wingId: string, roomId: string, memoryId: string) => void;
 }
 
 function latLngToXY(lat: number, lng: number, width: number, height: number) {
@@ -209,7 +211,7 @@ interface ClusteredPin {
   accent: string;
 }
 
-export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLibrary }: MemoryMapProps) {
+export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLibrary, onNavigateToMemory }: MemoryMapProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("memoryMap");
   const { t: tc } = useTranslation("common");
@@ -501,8 +503,8 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
         )}
 
         {/* Map area */}
-        <div ref={containerRef} style={{ flex: 1, position: "relative", overflow: "hidden", margin: "1rem", borderRadius: "0.75rem", border: `1px solid ${T.color.sandstone}40` }}>
-          <div style={{ width: "100%", height: "100%", position: "relative", transform: viewportTransform, transformOrigin: "0 0", transition: "transform .5s ease" }}>
+        <div ref={containerRef} style={{ flex: 1, position: "relative", overflow: isMobile ? "auto" : "hidden", margin: isMobile ? "0.5rem" : "1rem", borderRadius: "0.75rem", border: `1px solid ${T.color.sandstone}40`, WebkitOverflowScrolling: "touch" }}>
+          <div style={{ width: isMobile ? "180%" : "100%", height: "100%", minHeight: isMobile ? "50vh" : undefined, position: "relative", transform: viewportTransform, transformOrigin: "0 0", transition: "transform .5s ease" }}>
           <canvas ref={canvasRef} width={mapSize.w} height={mapSize.h} style={{ width: "100%", height: "100%", display: "block" }} />
 
           {/* Pins — sizes stay in px since they are map overlay elements */}
@@ -630,7 +632,13 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
                   const wing = WINGS.find(w => w.id === m.wingId);
                   return (
                     <button key={j}
-                      onClick={() => { if (onNavigate) onNavigate(m.roomId); }}
+                      onClick={() => {
+                        if (onNavigateToMemory) {
+                          onNavigateToMemory(m.wingId, m.roomId, m.mem.id);
+                        } else if (onNavigate) {
+                          onNavigate(m.roomId);
+                        }
+                      }}
                       style={{
                         display: "flex", alignItems: "center", gap: "0.75rem",
                         padding: "0.625rem 0.875rem", borderRadius: "0.75rem",

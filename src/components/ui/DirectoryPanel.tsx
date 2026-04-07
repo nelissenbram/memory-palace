@@ -10,10 +10,7 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { getAcceptedShares } from "@/lib/auth/invite-actions";
-
-const TYPE_ICONS: Record<string,string> = {
-  photo:"\u{1F5BC}\uFE0F",video:"\u{1F3AC}",album:"\u{1F4D6}",orb:"\u{1F52E}","case":"\u{1F3FA}",voice:"\u{1F399}\uFE0F",document:"\u{1F4DC}",
-};
+import { TypeIcon } from "@/lib/constants/type-icons";
 
 interface DirectoryPanelProps {
   onClose: () => void;
@@ -175,7 +172,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
               <div key={wing.id} style={{marginBottom:"0.125rem"}}>
                 {/* Wing row */}
                 <button onClick={()=>toggle(wing.id)} aria-expanded={wingExpanded}
-                  style={{width:"100%",display:"flex",alignItems:"center",gap:"0.625rem",padding:"0.625rem 0.75rem",borderRadius:"0.625rem",border:"none",
+                  style={{width:"100%",display:"flex",alignItems:"center",gap:"0.625rem",padding:"0.625rem 0.75rem",borderRadius:"0.625rem",border:"none",minHeight:"2.75rem",
                     background:isActive?`${wing.accent}10`:"transparent",cursor:"pointer",textAlign:"left",transition:"background .15s"}}>
                   <span style={{fontSize:"0.625rem",color:T.color.muted,transition:"transform .2s",transform:wingExpanded?"rotate(90deg)":"rotate(0)"}}>&#x25B6;</span>
                   <span style={{fontSize:"1.125rem"}}>{wing.icon}</span>
@@ -197,7 +194,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
                         {/* Room row */}
                         <div style={{display:"flex",alignItems:"center",gap:"0.125rem"}}>
                           <button onClick={()=>toggle(room.id)} aria-expanded={roomExpanded}
-                            style={{flex:1,display:"flex",alignItems:"center",gap:"0.5rem",padding:"0.4375rem 0.625rem",borderRadius:"0.5rem",border:"none",
+                            style={{flex:1,display:"flex",alignItems:"center",gap:"0.5rem",padding:"0.4375rem 0.625rem",borderRadius:"0.5rem",border:"none",minHeight:"2.75rem",
                               background:isRoomActive?`${wing.accent}12`:"transparent",cursor:"pointer",textAlign:"left",transition:"background .15s"}}>
                             <span style={{fontSize:"0.5625rem",color:T.color.muted,transition:"transform .2s",transform:roomExpanded?"rotate(90deg)":"rotate(0)"}}>&#x25B6;</span>
                             <span style={{fontSize:"0.875rem"}}>{room.icon}</span>
@@ -207,7 +204,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
                             </div>
                           </button>
                           <button onClick={()=>navigateToRoom(wing.id,room.id)} title={t("openIn3d")} aria-label={t("openIn3d")}
-                            style={{width:"1.625rem",height:"1.625rem",borderRadius:"0.5rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,
+                            style={{minWidth:"2.75rem",minHeight:"2.75rem",borderRadius:"0.5rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,
                               fontSize:"0.6875rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:T.color.muted,flexShrink:0}}>
                             {"\uD83C\uDFDB\uFE0F"}
                           </button>
@@ -217,7 +214,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
                         {roomExpanded&&mems.length>0&&<div style={{paddingLeft:"1.5rem",paddingBottom:"0.25rem"}}>
                           {mems.map(mem=>(
                             <button key={mem.id} onClick={()=>openMemory(mem)}
-                              style={{width:"100%",display:"flex",alignItems:"center",gap:"0.5rem",padding:"0.3125rem 0.625rem",borderRadius:"0.375rem",border:"none",
+                              style={{width:"100%",display:"flex",alignItems:"center",gap:"0.5rem",padding:"0.3125rem 0.625rem",borderRadius:"0.375rem",border:"none",minHeight:"2.75rem",
                                 background:"transparent",cursor:"pointer",textAlign:"left",transition:"background .1s"}}
                               onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background=`${T.color.warmStone}`;}}
                               onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background="transparent";}}>
@@ -227,7 +224,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
                                   {q?highlightMatch(mem.title,q):mem.title}
                                 </div>
                               </div>
-                              <span style={{fontSize:"0.625rem",opacity:.5}}>{TYPE_ICONS[mem.type]||""}</span>
+                              <span style={{fontSize:"0.625rem",opacity:.5,display:"inline-flex",alignItems:"center"}}><TypeIcon type={mem.type} size={12} color={T.color.muted} /></span>
                             </button>
                           ))}
                         </div>}

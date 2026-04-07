@@ -10,6 +10,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import Image from "next/image";
 import { useDaylight } from "@/components/providers/DaylightProvider";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 interface ProfileData {
   display_name: string;
@@ -54,6 +55,7 @@ export default function ProfilePage() {
   const [aiSaving, setAiSaving] = useState(false);
   const [personaType, setPersonaType] = useState<string | null>(null);
   const { t: tPersona } = useTranslation("persona" as "common");
+  const isMobile = useIsMobile();
 
   // Load persona from localStorage
   useEffect(() => {
@@ -209,21 +211,23 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Page header */}
-      <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{
-          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 0.5rem",
-        }}>
-          {t("yourProfile")}
-        </h2>
-        <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
-          margin: 0, lineHeight: 1.5,
-        }}>
-          {t("profileDescription")}
-        </p>
-      </div>
+      {/* Page header — desktop only (mobile uses tab bar as title) */}
+      {!isMobile && (
+        <div style={{ marginBottom: "2rem" }}>
+          <h2 style={{
+            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+            color: T.color.charcoal, margin: "0 0 0.5rem",
+          }}>
+            {t("yourProfile")}
+          </h2>
+          <p style={{
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+            margin: 0, lineHeight: 1.5,
+          }}>
+            {t("profileDescription")}
+          </p>
+        </div>
+      )}
 
       {/* ── Profile Card ── */}
       <div style={{
@@ -580,6 +584,7 @@ export default function ProfilePage() {
                 cursor: "pointer",
                 transition: "all .15s",
                 flexShrink: 0,
+                minHeight: "2.75rem",
               }}
             >
               {t("sendResetLink")}

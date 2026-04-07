@@ -6,6 +6,7 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import NotificationBell from "@/components/ui/NotificationBell";
 import { useNudgeStore } from "@/lib/stores/nudgeStore";
+import { useSettingsTourStore } from "@/components/ui/SettingsTutorial";
 import { useNotificationStore } from "@/lib/stores/notificationStore";
 
 /* ------------------------------------------------------------------ */
@@ -815,7 +816,7 @@ export default function NavigationBar({
             data-nudge="atrium_help_button"
             onClick={() => {
               if (typeof window !== "undefined" && window.location.pathname.startsWith("/settings")) {
-                window.dispatchEvent(new CustomEvent("mp:open-settings-tour"));
+                useSettingsTourStore.getState().setOpen(true);
                 return;
               }
               // reset() sets _forceCurrentPage + increments _resetCount,

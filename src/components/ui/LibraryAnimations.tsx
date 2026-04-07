@@ -1,6 +1,7 @@
 "use client";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { WingIcon } from "./WingRoomIcons";
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -162,7 +163,7 @@ export function LibraryHeader({
   return (
     <header
       style={{
-        padding: isMobile ? "0.75rem 1rem" : "1rem 1.5rem",
+        padding: isMobile ? "0.5rem 0.75rem" : "1rem 1.5rem",
         display: "flex",
         flexDirection: "column",
         gap: 0,
@@ -259,7 +260,7 @@ export function LibraryHeader({
                 animation: "libSlideRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both",
               }}
             >
-              {roomName || wingName}
+              {roomName ? <><span style={{ fontWeight: 400, color: T.color.muted, fontSize: "0.875rem", marginRight: "0.25rem" }}>{t("room")}</span>{roomName}</> : wingName}
             </h2>
 
             {/* Breadcrumb or description */}
@@ -320,6 +321,7 @@ const WING_ICONS = ["\uD83D\uDDBC\uFE0F", "\uD83C\uDFAC", "\uD83C\uDF99\uFE0F", 
 const ROOM_ICONS = ["\uD83D\uDCF7", "\uD83C\uDFB5", "\uD83D\uDD2E"];
 
 export function LibraryEmptyState({ type, accent, onAdd, query }: LibraryEmptyStateProps) {
+  const isMobile = useIsMobile();
   const { t } = useTranslation("library");
 
   const icons = type === "wing" ? WING_ICONS : type === "room" ? ROOM_ICONS : [];
@@ -331,7 +333,7 @@ export function LibraryEmptyState({ type, accent, onAdd, query }: LibraryEmptySt
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "4rem 1rem",
+        padding: isMobile ? "2rem 1rem" : "4rem 1rem",
         gap: "1rem",
         position: "relative",
         animation: "libFadeIn 0.4s ease both",

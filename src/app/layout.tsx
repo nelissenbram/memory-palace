@@ -5,7 +5,6 @@ import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import OfflineBanner from "@/components/OfflineBanner";
-import NotificationPrompt from "@/components/NotificationPrompt";
 import NativeInit from "@/components/NativeInit";
 import { AccessibilityProvider } from "@/components/providers/AccessibilityProvider";
 import { DaylightProvider } from "@/components/providers/DaylightProvider";
@@ -39,7 +38,7 @@ export const metadata: Metadata = {
     siteName: "The Memory Palace",
     images: [
       {
-        url: "https://thememorypalace.ai/og-image.png",
+        url: "https://thememorypalace.ai/palace-hero.jpg",
         width: 1200,
         height: 630,
         alt: "The Memory Palace — a 3D palace for your life story",
@@ -53,7 +52,7 @@ export const metadata: Metadata = {
     title: "The Memory Palace — Preserve Your Most Precious Memories",
     description:
       "A beautiful 3D space to preserve your photos, videos, and stories — in a place as unique as your life.",
-    images: ["https://thememorypalace.ai/og-image.png"],
+    images: ["https://thememorypalace.ai/palace-hero.jpg"],
   },
   appleWebApp: {
     capable: true,
@@ -87,7 +86,7 @@ export default async function RootLayout({
         {/* Force clear stale PWA caches — runs before any JS bundles */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
-            var V="v4";
+            var V="v18";
             try{
               var s=localStorage.getItem("mp_v");
               if(s!==V){
@@ -172,7 +171,6 @@ export default async function RootLayout({
         <ServiceWorkerRegistration />
         <PWAInstallBanner />
         <OfflineBanner />
-        <NotificationPrompt />
         <NativeInit />
         <AccessibilityProvider>
           <DaylightProvider>

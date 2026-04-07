@@ -426,7 +426,7 @@ export function TrackProgress({
         >
           <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>
             {/* Gold laurel wreath */}
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
+            <svg aria-hidden="true" width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ display: "inline-block", verticalAlign: "middle" }}>
               <path d="M20 4l1.5 4.5L26 6l-1.5 4.5L29 12l-4.5 1.5L26 18l-4.5-1.5L20 21l-1.5-4.5L14 18l1.5-4.5L11 12l4.5-1.5L14 6l4.5 2.5z" fill={T.color.gold} opacity="0.8" />
               <path d="M8 20c0-2 1-4 3-5M32 20c0-2-1-4-3-5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
               <path d="M8 20c-1 3 0 7 3 10M32 20c1 3 0 7-3 10" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
@@ -521,7 +521,7 @@ export function TrackProgress({
                     {i === 0 && <span style={{ color: track.color || T.color.terracotta, fontWeight: 600, marginLeft: "0.375rem" }}>{t("tracks.startHere")}</span>}
                   </div>
                 </div>
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
                   <path d="M5 3l4 4-4 4" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
@@ -786,6 +786,7 @@ const TrackCard = React.memo(function TrackCard({
               border: "none",
               borderRadius: "0.5rem",
               padding: isStarted ? "0.4375rem 1rem" : "0.5625rem 1rem",
+              minHeight: "2.75rem",
               cursor: "pointer",
               letterSpacing: "0.03em",
               transition: "opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease",
@@ -828,6 +829,7 @@ const TrackCard = React.memo(function TrackCard({
    ═══════════════════════════════════════════════════════════════════ */
 
 export interface AchievementShowcaseProps {
+  onAchievementClick?: (id: string) => void;
   achievements: {
     id: string;
     name: string;
@@ -847,6 +849,7 @@ export function AchievementShowcase({
   totalEarned,
   totalAvailable,
   onViewAll,
+  onAchievementClick,
   isMobile,
 }: AchievementShowcaseProps) {
   const { t } = useAtriumT();
@@ -1016,6 +1019,8 @@ export function AchievementShowcase({
               achievement={a}
               index={i}
               isMobile={isMobile}
+              onViewAll={onViewAll}
+              onAchievementClick={onAchievementClick}
             />
           ))}
         </div>
@@ -1035,6 +1040,7 @@ export const AchievementIcon = React.memo(function AchievementIcon({ id, size = 
   const sw = 1.3; // default strokeWidth
 
   const props = {
+    "aria-hidden": true as const,
     width: size,
     height: size,
     viewBox: "0 0 20 20",
@@ -1314,7 +1320,7 @@ export const AchievementIcon = React.memo(function AchievementIcon({ id, size = 
 function LockedIcon({ size = 20 }: { size?: number }) {
   const grey = T.color.muted;
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       {/* Lock body */}
       <rect x="4" y="9" width="12" height="8" rx="1.5" stroke={grey} strokeWidth="1.3" fill={`${grey}15`} />
       {/* Shackle */}
@@ -1330,13 +1336,18 @@ const AchievementBadge = React.memo(function AchievementBadge({
   achievement,
   index,
   isMobile,
+  onViewAll,
+  onAchievementClick,
 }: {
   achievement: AchievementShowcaseProps["achievements"][number];
   index: number;
   isMobile: boolean;
+  onViewAll?: () => void;
+  onAchievementClick?: (id: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const { t } = useAtriumT();
+  const { t: tAch } = useTranslation("achievementsPanel" as "common");
   const isEarned = !!achievement.earnedAt;
   const size = isMobile ? "3rem" : "3.5rem";
   const goldColor = T.color.gold;
@@ -1358,8 +1369,10 @@ const AchievementBadge = React.memo(function AchievementBadge({
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        title={achievement.name}
-        role="img"
+        onClick={() => { if (onAchievementClick) onAchievementClick(achievement.id); else if (onViewAll) onViewAll(); }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (onAchievementClick) onAchievementClick(achievement.id); else if (onViewAll) onViewAll(); } }}
         aria-label={isEarned ? achievement.name : `${achievement.name} — ${t("achievements.locked")}`}
         style={{
           width: size,
@@ -1377,14 +1390,14 @@ const AchievementBadge = React.memo(function AchievementBadge({
           flexShrink: 0,
           position: "relative",
           transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, opacity 0.2s ease",
-          transform: hovered && isEarned ? "scale(1.15)" : "scale(1)",
+          transform: hovered ? "scale(1.15)" : "scale(1)",
           boxShadow: isEarned
             ? (hovered
               ? `0 0 1.5rem 0.375rem ${goldColor}55, inset 0 0 0.625rem ${goldColor}20`
               : `0 0 1rem 0.125rem ${goldColor}30, inset 0 0 0.375rem ${goldColor}12`)
-            : "none",
-          opacity: isEarned ? 1 : 0.5,
-          cursor: "default",
+            : (hovered ? `0 0 0.75rem 0.125rem ${greyColor}20` : "none"),
+          opacity: isEarned ? 1 : (hovered ? 0.7 : 0.5),
+          cursor: "pointer",
           overflow: "hidden",
         }}
       >
@@ -1419,7 +1432,7 @@ const AchievementBadge = React.memo(function AchievementBadge({
           }
         </span>
 
-        {/* Tooltip on hover */}
+        {/* Tooltip on hover — name + description */}
         {hovered && (
           <div
             style={{
@@ -1430,17 +1443,41 @@ const AchievementBadge = React.memo(function AchievementBadge({
               background: T.color.charcoal,
               color: T.color.white,
               fontFamily: T.font.body,
-              fontSize: "0.6875rem",
-              fontWeight: 600,
-              padding: "0.25rem 0.625rem",
-              borderRadius: "0.375rem",
-              whiteSpace: "nowrap",
+              padding: "0.375rem 0.75rem",
+              borderRadius: "0.5rem",
+              width: "max-content",
+              maxWidth: "12rem",
               pointerEvents: "none",
               animation: "aw-fadeIn 0.15s ease-out",
               zIndex: 10,
+              textAlign: "center",
             }}
           >
-            {achievement.name}
+            <div style={{ fontSize: "0.6875rem", fontWeight: 600, lineHeight: 1.3 }}>
+              {achievement.name}
+            </div>
+            {achievement.descKey && (
+              <div style={{
+                fontSize: "0.5625rem",
+                fontWeight: 400,
+                color: "rgba(255,255,255,0.7)",
+                marginTop: "0.125rem",
+                lineHeight: 1.4,
+              }}>
+                {tAch(achievement.descKey)}
+              </div>
+            )}
+            {isEarned && achievement.earnedAt && (
+              <div style={{
+                fontSize: "0.5rem",
+                fontWeight: 500,
+                color: T.color.gold,
+                marginTop: "0.1875rem",
+                letterSpacing: "0.03em",
+              }}>
+                {new Date(achievement.earnedAt).toLocaleDateString()}
+              </div>
+            )}
             <div
               style={{
                 position: "absolute",
@@ -1490,6 +1527,7 @@ export interface RecentMemoriesProps {
     wingId: string;
   }[];
   onMemoryClick: (mem: Mem, wingId: string, roomId: string) => void;
+  onShowMore?: () => void;
   isMobile: boolean;
 }
 
@@ -1509,15 +1547,12 @@ function relativeDate(iso: string | undefined, t: (key: string, params?: Record<
 export function RecentMemories({
   memories,
   onMemoryClick,
+  onShowMore,
   isMobile,
 }: RecentMemoriesProps) {
   const { t } = useAtriumT();
-  const [showAll, setShowAll] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const INITIAL_LIMIT = 6;
-  const visibleMemories = showAll ? memories : memories.slice(0, INITIAL_LIMIT);
-  const hasMore = memories.length > INITIAL_LIMIT;
 
   const typeIcons: Record<string, string> = {
     photo: "\uD83D\uDCF7",
@@ -1549,7 +1584,7 @@ export function RecentMemories({
           margin: "-0.5rem -0.125rem",
         }}
       >
-        {visibleMemories.map((item, i) => (
+        {memories.map((item, i) => (
           <MemoryCard
             key={item.mem.id}
             item={item}
@@ -1560,9 +1595,9 @@ export function RecentMemories({
         ))}
       </div>
 
-      {hasMore && !showAll && (
+      {onShowMore && (
         <button
-          onClick={() => setShowAll(true)}
+          onClick={onShowMore}
           style={{
             fontFamily: T.font.body,
             fontSize: "0.8125rem",
@@ -1601,11 +1636,13 @@ const MemoryCard = React.memo(function MemoryCard({
 }) {
   const { t } = useAtriumT();
   const [hovered, setHovered] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
   const { mem, wingName, roomName, wingId } = item;
 
   const bg = `hsl(${mem.hue}, ${mem.s}%, ${mem.l}%)`;
   const icon = typeIcons[mem.type] || "\uD83D\uDCCC";
   const dateStr = relativeDate(mem.createdAt, t);
+  const hasImage = mem.dataUrl && !mem.dataUrl.startsWith("data:audio") && !mem.videoBlob && !imgFailed;
 
   return (
     <div
@@ -1659,16 +1696,17 @@ const MemoryCard = React.memo(function MemoryCard({
           height: "8rem",
           overflow: "hidden",
           position: "relative",
-          background: mem.dataUrl ? undefined : bg,
+          background: hasImage ? undefined : bg,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        {mem.dataUrl ? (
+        {hasImage ? (
           <img
-            src={mem.dataUrl}
+            src={mem.dataUrl!}
             alt={mem.title}
+            onError={() => setImgFailed(true)}
             style={{
               width: "100%",
               height: "100%",

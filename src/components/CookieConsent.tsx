@@ -51,7 +51,7 @@ export default function CookieConsent() {
         aria-label={t("cookieSettings")}
         style={{
           position: "fixed",
-          bottom: "1rem",
+          bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))",
           right: "1rem",
           zIndex: 9998,
           background: C.linen,
@@ -95,10 +95,11 @@ export default function CookieConsent() {
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: 9999,
+        zIndex: 9997,
         background: C.charcoal,
         borderTop: `1px solid ${C.sandstone}30`,
         padding: "0 clamp(1rem, 4vw, 2.5rem)",
+        paddingBottom: "calc(3.75rem + env(safe-area-inset-bottom, 0px))",
         boxShadow: "0 -0.25rem 1.5rem rgba(0,0,0,0.15)",
       }}
     >
@@ -141,7 +142,7 @@ export default function CookieConsent() {
                 {t("privacyPolicy")}
               </Link>
             </p>
-            <div style={{ display: "flex", gap: "0.625rem", flexShrink: 0 }}>
+            <div style={{ display: "flex", gap: "0.625rem", flexShrink: 0, flexWrap: "wrap" }}>
               <button
                 onClick={() => setShowManage(true)}
                 style={{
@@ -153,6 +154,7 @@ export default function CookieConsent() {
                   border: `1px solid ${C.sandstone}60`,
                   borderRadius: "0.5rem",
                   padding: "0.5rem 1rem",
+                  minHeight: "2.75rem",
                   cursor: "pointer",
                   transition: "border-color 0.2s",
                 }}
@@ -170,6 +172,7 @@ export default function CookieConsent() {
                   border: `1px solid ${C.sandstone}80`,
                   borderRadius: "0.5rem",
                   padding: "0.5rem 1.25rem",
+                  minHeight: "2.75rem",
                   cursor: "pointer",
                   transition: "opacity 0.2s",
                 }}
@@ -187,6 +190,7 @@ export default function CookieConsent() {
                   border: "none",
                   borderRadius: "0.5rem",
                   padding: "0.5rem 1.25rem",
+                  minHeight: "2.75rem",
                   cursor: "pointer",
                   transition: "opacity 0.2s",
                 }}
@@ -287,6 +291,7 @@ export default function CookieConsent() {
                 justifyContent: "flex-end",
                 gap: "0.625rem",
                 marginTop: "1rem",
+                flexWrap: "wrap",
               }}
             >
               <button

@@ -209,8 +209,8 @@ export default function FeatureSpotlight({
         <div
           style={{
             position: "absolute",
-            top: "1rem",
-            right: "1.25rem",
+            top: "max(1rem, env(safe-area-inset-top, 1rem))",
+            right: "max(1.25rem, env(safe-area-inset-right, 1.25rem))",
             fontFamily: T.font.body,
             fontSize: "0.75rem",
             color: T.color.muted,
@@ -307,6 +307,7 @@ export default function FeatureSpotlight({
               textDecoration: "underline",
               textUnderlineOffset: "0.1875rem",
               padding: "0.5rem 1rem",
+              minHeight: "2.75rem",
             }}
           >
             {remaining <= 1 ? t("close") : t("skipShowNext")}

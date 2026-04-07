@@ -102,7 +102,8 @@ export async function POST(req: NextRequest) {
 Available wings and rooms:
 ${wingList}
 
-Memory display types: photo, video, album, orb, case, voice, document, painting, audio
+Memory display types: photo, video, album, orb, case, voice, document, audio
+Note: Use "photo" for all photographs and images. Never use "painting" — that is a manual display option only.
 
 Files to tag:
 ${itemDescs}

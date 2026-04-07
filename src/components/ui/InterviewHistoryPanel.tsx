@@ -7,6 +7,7 @@ import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { getTemplate } from "@/lib/constants/interviews";
 import type { InterviewSession } from "@/lib/stores/interviewStore";
+import { InterviewIcon } from "@/components/ui/InterviewLibraryPanel";
 
 interface InterviewHistoryPanelProps {
   onClose: () => void;
@@ -108,7 +109,9 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                     marginBottom: "0.5rem", cursor: "pointer",
                     display: "flex", alignItems: "center", gap: "0.75rem",
                   }}>
-                    <div style={{ fontSize: "1.25rem" }}>{template?.icon || "\uD83D\uDCDD"}</div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {template ? <InterviewIcon templateId={template.id} wingId={template.wingId} size={22} /> : <span style={{ fontSize: "1.25rem" }}>{"\uD83D\uDCDD"}</span>}
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal }}>
                         {template ? tTpl(template.titleKey) : session.templateId}
@@ -157,7 +160,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                       display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: "1.25rem", flexShrink: 0,
                     }}>
-                      {template?.icon || "\u2713"}
+                      {template ? <InterviewIcon templateId={template.id} wingId={template.wingId} size={22} /> : "\u2713"}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal }}>

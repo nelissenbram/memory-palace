@@ -1,5 +1,19 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: {
+    template: "%s - The Memory Palace",
+    default: "Sign In - The Memory Palace",
+  },
+  description:
+    "Sign in or create an account to preserve your most precious memories in The Memory Palace.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default async function AuthLayout({
   children,

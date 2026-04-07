@@ -60,31 +60,26 @@ export default function SubscriptionPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Load subscription
-        const { data: subData } = await supabase
-          .from("subscriptions")
-          .select("plan, status, current_period_end, stripe_customer_id")
-          .eq("user_id", user.id)
-          .single();
+        // Parallelize all queries — subscription, usage counts, and storage
+        const [subRes, wingsRes, roomsRes, memoriesRes, storageRes] = await Promise.all([
+          supabase
+            .from("subscriptions")
+            .select("plan, status, current_period_end, stripe_customer_id")
+            .eq("user_id", user.id)
+            .single(),
+          supabase.from("wings").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("rooms").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("memories").select("*", { count: "exact", head: true }).eq("user_id", user.id),
+          supabase.from("memories").select("file_size").eq("user_id", user.id),
+        ]);
 
-        if (subData) {
-          setSub(subData as SubscriptionData);
+        if (subRes.data) {
+          setSub(subRes.data as SubscriptionData);
         } else {
           setSub({ plan: "free", status: "active", current_period_end: null, stripe_customer_id: null });
         }
 
-        // Load usage counts
-        const [wingsRes, roomsRes, memoriesRes] = await Promise.all([
-          supabase.from("wings").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-          supabase.from("rooms").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-          supabase.from("memories").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-        ]);
-
-        // Load storage usage
-        const { data: storageData } = await supabase
-          .from("memories")
-          .select("file_size")
-          .eq("user_id", user.id);
+        const storageData = storageRes.data;
         const totalStorageMb = storageData
           ? Math.round(storageData.reduce((sum: number, m: { file_size: number }) => sum + (m.file_size || 0), 0) / (1024 * 1024))
           : 0;
@@ -174,21 +169,23 @@ export default function SubscriptionPage() {
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
 
-      {/* Header */}
-      <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{
-          fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
-          color: C.charcoal, margin: "0 0 0.5rem",
-        }}>
-          {t("title")}
-        </h2>
-        <p style={{
-          fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
-          margin: 0, lineHeight: 1.5,
-        }}>
-          {t("description")}
-        </p>
-      </div>
+      {/* Header — desktop only */}
+      {!isMobile && (
+        <div style={{ marginBottom: "2rem" }}>
+          <h2 style={{
+            fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
+            color: C.charcoal, margin: "0 0 0.5rem",
+          }}>
+            {t("title")}
+          </h2>
+          <p style={{
+            fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
+            margin: 0, lineHeight: 1.5,
+          }}>
+            {t("description")}
+          </p>
+        </div>
+      )}
 
       {/* Current Plan Card */}
       <div style={{

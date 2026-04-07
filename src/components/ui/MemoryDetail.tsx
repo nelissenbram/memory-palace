@@ -135,7 +135,7 @@ const VisIcon = ({ vis, color, size = 18 }: { vis: string; color: string; size?:
 const DISPLAY_TYPES: [string, string][] = [
   ["photo", "typeFrame"], ["painting", "typePainting"], ["video", "typeScreen"], ["album", "typeAlbum"],
   ["orb", "typeOrb"], ["case", "typeVitrine"], ["audio", "typeAudio"], ["document", "typeDocument"],
-  ["interview", "typeInterview"],
+  ["interview", "typeInterview"], ["voice", "typeInterview"],
 ];
 
 const VISIBILITY_OPTIONS = ["private", "shared", "family", "public"] as const;

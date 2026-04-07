@@ -34,7 +34,7 @@ export default function TouchControlsOverlay({ view }: TouchControlsOverlayProps
     <div
       style={{
         position: "absolute",
-        bottom: "5rem",
+        bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))",
         left: "1rem",
         right: "1rem",
         zIndex: 46,

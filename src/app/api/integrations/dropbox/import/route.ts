@@ -75,12 +75,20 @@ export async function POST(request: NextRequest) {
     // Check for duplicates: find which paths are already imported for this user
     const { data: existingMemories, error: dupCheckError } = await supabase
       .from("memories")
-      .select("metadata")
+      .select("id, metadata, file_size, file_path")
       .eq("user_id", user.id)
       .in(
         "metadata->>originalPath",
         filePaths,
       );
+
+    // Delete broken prior attempts (file_size 0 or null file_path) so re-import can proceed
+    const brokenIds = (existingMemories || [])
+      .filter((m) => !m.file_path || !m.file_size)
+      .map((m) => m.id);
+    if (brokenIds.length > 0) {
+      await supabase.from("memories").delete().in("id", brokenIds).eq("user_id", user.id);
+    }
 
     if (dupCheckError) {
       console.error("Duplicate check failed:", dupCheckError.message);
@@ -89,6 +97,7 @@ export async function POST(request: NextRequest) {
 
     const alreadyImportedPaths = new Set(
       (existingMemories || [])
+        .filter((m) => m.file_path && m.file_size)
         .map((m) => (m.metadata as Record<string, unknown>)?.originalPath as string)
         .filter(Boolean),
     );

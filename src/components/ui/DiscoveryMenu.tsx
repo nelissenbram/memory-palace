@@ -88,7 +88,7 @@ export default function DiscoveryMenu(props: DiscoveryMenuProps) {
         padding: isMobile ? "2rem 1.25rem 1.5rem" : "2.5rem 2.5rem 2rem",
         maxWidth: isMobile ? "calc(100vw - 2rem)" : "32.5rem",
         width: "100%",
-        maxHeight: "calc(100vh - 3.75rem)",
+        maxHeight: "calc(100dvh - 3.75rem - env(safe-area-inset-bottom, 0px))",
         overflowY: "auto",
         boxShadow: "0 1.5rem 5rem rgba(44,44,42,.35)",
         animation: "discoveryUp .5s ease both",

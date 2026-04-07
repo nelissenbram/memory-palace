@@ -1,15 +1,13 @@
 "use client";
 import React from "react";
-import { useVideoThumbnail } from "@/lib/hooks/useVideoThumbnail";
 import { TypeIcon } from "@/lib/constants/type-icons";
 import type { Mem } from "@/lib/constants/defaults";
 
 /**
- * Renders a thumbnail for any memory type.
+ * Lightweight thumbnail for any memory type.
  * - Photos/paintings: shows dataUrl directly via <img>
- * - Video: stored thumbnailUrl → extracted frame → native <video> poster fallback
- * - Audio: stored thumbnailUrl → extracted frame → gradient + icon
- * - Other types: gradient + type icon
+ * - Video/audio with stored thumbnailUrl: shows it
+ * - Everything else: gradient + type icon (NO video preloading)
  */
 export const MediaThumb = React.memo(function MediaThumb({
   mem,
@@ -25,24 +23,17 @@ export const MediaThumb = React.memo(function MediaThumb({
   iconColor?: string;
 }) {
   const isVideo = mem.type === "video" || !!mem.videoBlob;
-  const isInterview = mem.type === "interview";
-  const isAudio = !isInterview && (mem.type === "audio" || mem.type === "voice" || !!mem.voiceBlob);
+  const isInterview = mem.type === "interview" || mem.type === "voice";
+  const isAudio = !isInterview && (mem.type === "audio" || !!mem.voiceBlob);
   const isImage = mem.type === "photo" || mem.type === "painting" || mem.type === "album";
 
   // For images, use dataUrl directly
   const imageUrl = isImage && mem.dataUrl ? mem.dataUrl : null;
 
-  // For video/audio, try stored thumbnailUrl first, then extract from dataUrl
-  const extractedThumb = useVideoThumbnail(
-    (isVideo || isAudio) && mem.dataUrl && !mem.thumbnailUrl ? mem.dataUrl : null,
-  );
-  const mediaThumb = (isVideo || isAudio) ? (mem.thumbnailUrl || extractedThumb) : null;
+  // For video/audio, only use stored thumbnailUrl (no runtime extraction — too heavy)
+  const mediaThumb = (isVideo || isAudio) ? (mem.thumbnailUrl || null) : null;
 
   const thumbSrc = imageUrl || mediaThumb;
-
-  // For videos without any thumbnail, use a native <video> element as fallback
-  // The browser renders the first frame natively — works on mobile without canvas
-  const useNativeVideo = isVideo && !thumbSrc && !!mem.dataUrl;
 
   const gradient = `linear-gradient(135deg, hsl(${mem.hue},${mem.s}%,${mem.l}%), hsl(${(mem.hue + 20) % 360},${Math.max(mem.s - 5, 15)}%,${Math.max(mem.l - 8, 35)}%))`;
 
@@ -57,7 +48,7 @@ export const MediaThumb = React.memo(function MediaThumb({
         flexShrink: 0,
         overflow: "hidden",
         position: "relative",
-        background: thumbSrc || useNativeVideo ? "#000" : gradient,
+        background: gradient,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -67,33 +58,20 @@ export const MediaThumb = React.memo(function MediaThumb({
         <img
           src={thumbSrc}
           alt=""
+          loading="lazy"
+          decoding="async"
           style={{
             width: "100%",
             height: "100%",
             objectFit: "cover",
             display: "block",
-          }}
-        />
-      ) : useNativeVideo ? (
-        /* Native <video> shows first frame as poster — works on mobile */
-        <video
-          src={mem.dataUrl!}
-          muted
-          playsInline
-          preload="metadata"
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-            pointerEvents: "none",
           }}
         />
       ) : (
-        <TypeIcon type={mem.type} size={iconSize} color={iconColor} />
+        <TypeIcon type={isInterview ? "interview" : mem.type} size={iconSize} color={iconColor} />
       )}
-      {/* Play icon overlay for video/audio */}
-      {(isVideo || isAudio) && (thumbSrc || useNativeVideo) && (
+      {/* Play icon overlay for video/audio with thumbnail */}
+      {(isVideo || isAudio) && thumbSrc && (
         <div
           style={{
             position: "absolute",
@@ -112,6 +90,37 @@ export const MediaThumb = React.memo(function MediaThumb({
           >
             <path d="M1 1.5v11l10-5.5L1 1.5z" />
           </svg>
+        </div>
+      )}
+      {/* Play icon for video/audio without thumbnail */}
+      {(isVideo || isAudio) && !thumbSrc && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{
+            width: `${Math.max(1.5, iconSize * 0.12)}rem`,
+            height: `${Math.max(1.5, iconSize * 0.12)}rem`,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            <svg
+              width={Math.max(8, iconSize * 0.5)}
+              height={Math.max(8, iconSize * 0.5)}
+              viewBox="0 0 12 14"
+              fill="rgba(255,255,255,0.8)"
+            >
+              <path d="M1 1.5v11l10-5.5L1 1.5z" />
+            </svg>
+          </div>
         </div>
       )}
     </div>

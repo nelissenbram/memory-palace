@@ -8,6 +8,20 @@ export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 
+/** Infer MIME type from extension when the browser/device sends a generic type (e.g. Samsung). */
+function inferMimeType(filename: string, reportedType: string): string {
+  if (reportedType && reportedType !== "application/octet-stream") return reportedType;
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const EXT_MAP: Record<string, string> = {
+    jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", gif: "image/gif",
+    webp: "image/webp", heic: "image/heic", heif: "image/heif",
+    mp4: "video/mp4", mov: "video/quicktime", webm: "video/webm", avi: "video/x-msvideo",
+    mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4", aac: "audio/aac",
+    ogg: "audio/ogg", flac: "audio/flac", pdf: "application/pdf",
+  };
+  return (ext && EXT_MAP[ext]) || reportedType;
+}
+
 const ALLOWED_TYPES = new Set([
   "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic",
   "image/heif", "image/tiff", "image/bmp", "image/svg+xml",
@@ -55,7 +69,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "File too large" }, { status: 400 });
   }
 
-  const contentType = file.type || "application/octet-stream";
+  const contentType = inferMimeType(file.name, file.type || "application/octet-stream");
   if (!ALLOWED_TYPES.has(contentType)) {
     return NextResponse.json({ error: "File type not allowed" }, { status: 400 });
   }

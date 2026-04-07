@@ -160,7 +160,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
                     <form onSubmit={e => { e.preventDefault(); saveEdit(room.id); }} style={{ display: "flex", gap: "0.375rem" }}>
                       <input value={editName} onChange={e => setEditName(e.target.value)} autoFocus
                         onBlur={() => saveEdit(room.id)}
-                        style={{ flex: 1, padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1.5px solid ${accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, outline: "none" }} />
+                        style={{ flex: 1, padding: "0.375rem 0.625rem", borderRadius: "0.5rem", border: `1.5px solid ${accent}`, background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: T.color.charcoal, outline: "none" }} />
                     </form>
                   ) : (
                     <div role="button" tabIndex={0} onClick={() => startEdit(room.id, room.name)}
@@ -233,7 +233,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
               </button>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("roomNamePlaceholder")} autoFocus
                 onKeyDown={e => { if (e.key === "Enter") handleAdd(); }}
-                style={{ flex: 1, padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, outline: "none" }} />
+                style={{ flex: 1, padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "1rem", color: T.color.charcoal, outline: "none" }} />
             </div>
 
             {showNewIconPicker && iconPicker(newIcon, (icon) => { setNewIcon(icon); setShowNewIconPicker(false); })}

@@ -221,14 +221,14 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                   <div style={{ display: "flex", gap: "0.375rem", flexShrink: 0 }}>
                     {override && (
                       <button onClick={() => handleClear(roomId)} title={t("removeOverride")} aria-label={t("removeOverride")} style={{
-                        width: "1.875rem", height: "1.875rem", borderRadius: "0.5rem",
+                        width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
                         border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
                         color: T.color.muted, fontSize: "0.75rem", cursor: "pointer",
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>{"\u2715"}</button>
                     )}
                     <button onClick={() => setPickingSlot(isPicking ? null : roomId)} style={{
-                      padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
+                      padding: "0.375rem 0.75rem", borderRadius: "0.5rem", minHeight: "2.75rem",
                       border: `1px solid ${isPicking ? accent : T.color.cream}`,
                       background: isPicking ? `${accent}15` : T.color.warmStone,
                       fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
@@ -245,7 +245,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                     {/* Upload + source filter */}
                     <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.625rem", flexWrap: "wrap" }}>
                       <button onClick={() => handleUpload(roomId)} style={{
-                        padding: "0.375rem 0.75rem", borderRadius: "0.5rem",
+                        padding: "0.375rem 0.75rem", borderRadius: "0.5rem", minHeight: "2.75rem",
                         border: `1px solid ${accent}`, background: `${accent}15`,
                         fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
                         color: accent, cursor: "pointer",
@@ -253,14 +253,14 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                         {t("uploadImage")}
                       </button>
                       <button onClick={() => setSourceFilter("all")} style={{
-                        padding: "0.3125rem 0.625rem", borderRadius: "0.5rem",
+                        padding: "0.3125rem 0.625rem", borderRadius: "0.5rem", minHeight: "2.75rem",
                         border: `1px solid ${sourceFilter === "all" ? accent : T.color.cream}`,
                         background: sourceFilter === "all" ? `${accent}15` : T.color.warmStone,
                         fontFamily: T.font.body, fontSize: "0.625rem", color: sourceFilter === "all" ? accent : T.color.muted,
                         cursor: "pointer",
                       }}>{t("allWings")}</button>
                       <button onClick={() => setSourceFilter("wing")} style={{
-                        padding: "0.3125rem 0.625rem", borderRadius: "0.5rem",
+                        padding: "0.3125rem 0.625rem", borderRadius: "0.5rem", minHeight: "2.75rem",
                         border: `1px solid ${sourceFilter === "wing" ? accent : T.color.cream}`,
                         background: sourceFilter === "wing" ? `${accent}15` : T.color.warmStone,
                         fontFamily: T.font.body, fontSize: "0.625rem", color: sourceFilter === "wing" ? accent : T.color.muted,

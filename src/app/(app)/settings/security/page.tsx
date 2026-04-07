@@ -3,6 +3,7 @@
 import React from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 const F = T.font;
 const C = T.color;
@@ -133,24 +134,27 @@ const SECTIONS: SectionDef[] = [
 
 export default function SecuritySettingsPage() {
   const { t } = useTranslation("securityPage");
+  const isMobile = useIsMobile();
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{
-          fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
-          color: C.charcoal, margin: "0 0 0.5rem",
-        }}>
-          {t("heroTitle")}
-        </h2>
-        <p style={{
-          fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
-          margin: 0, lineHeight: 1.5, maxWidth: "37.5rem",
-        }}>
-          {t("heroDescription")}
-        </p>
-      </div>
+      {/* Header — desktop only */}
+      {!isMobile && (
+        <div style={{ marginBottom: "2rem" }}>
+          <h2 style={{
+            fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
+            color: C.charcoal, margin: "0 0 0.5rem",
+          }}>
+            {t("heroTitle")}
+          </h2>
+          <p style={{
+            fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
+            margin: 0, lineHeight: 1.5, maxWidth: "37.5rem",
+          }}>
+            {t("heroDescription")}
+          </p>
+        </div>
+      )}
 
       {/* Sections */}
       {SECTIONS.map((section, si) => (

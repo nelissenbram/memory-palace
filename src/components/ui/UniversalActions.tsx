@@ -123,7 +123,7 @@ export default function UniversalActions({ groups, open, onClose, isMobile }: Un
               }}>
                 {t(group.titleKey.replace("actionMenu.", ""))}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)", gap: "0.5rem" }}>
                 {group.items.map((item) => (
                   <button
                     key={item.id}

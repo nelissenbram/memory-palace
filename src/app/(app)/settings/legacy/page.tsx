@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import {
   fetchAllLegacyData,
@@ -159,6 +160,7 @@ const DELIVERY_OPTIONS = [
 
 export default function LegacyPage() {
   const { t } = useTranslation("legacySettings");
+  const isMobile = useIsMobile();
   const [contacts, setContacts] = useState<LegacyContact[]>([]);
   const [messages, setMessages] = useState<LegacyMessage[]>([]);
   const [settings, setSettings] = useState<LegacySettings | null>(null);
@@ -167,7 +169,16 @@ export default function LegacyPage() {
   const [toast, setToast] = useState<ToastData | null>(null);
 
   // Section expand state
-  const [activeSection, setActiveSection] = useState<"contacts" | "messages" | "settings">("contacts");
+  const [activeSection, setActiveSection] = useState<"contacts" | "messages" | "settings">(() => {
+    if (typeof window !== "undefined") {
+      const tab = localStorage.getItem("mp_legacy_tab");
+      if (tab === "messages" || tab === "settings") {
+        localStorage.removeItem("mp_legacy_tab");
+        return tab;
+      }
+    }
+    return "contacts";
+  });
   const [showOnboarding, setShowOnboarding] = useState(true);
   const dirtyRef = useRef(false);
   const [pendingTab, setPendingTab] = useState<"contacts" | "messages" | "settings" | null>(null);
@@ -229,21 +240,23 @@ export default function LegacyPage() {
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
       )}
 
-      {/* Page header */}
-      <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{
-          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 0.5rem",
-        }}>
-          {t("title")}
-        </h2>
-        <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
-          margin: 0, lineHeight: 1.6,
-        }}>
-          {t("description")}
-        </p>
-      </div>
+      {/* Page header — desktop only */}
+      {!isMobile && (
+        <div style={{ marginBottom: "2rem" }}>
+          <h2 style={{
+            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+            color: T.color.charcoal, margin: "0 0 0.5rem",
+          }}>
+            {t("title")}
+          </h2>
+          <p style={{
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+            margin: 0, lineHeight: 1.6,
+          }}>
+            {t("description")}
+          </p>
+        </div>
+      )}
 
       {/* Warm intro callout */}
       <div style={{

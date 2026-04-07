@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 const F = T.font;
 const C = T.color;
@@ -135,6 +136,7 @@ const CATEGORIES: CookieCategory[] = [
 
 export default function CookieSettingsPage() {
   const { t } = useTranslation("cookieSettings");
+  const isMobile = useIsMobile();
   const [consents, setConsents] = useState<Record<string, boolean>>({});
   const [loaded, setLoaded] = useState(false);
 
@@ -169,21 +171,23 @@ export default function CookieSettingsPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{
-          fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
-          color: C.charcoal, margin: "0 0 0.5rem",
-        }}>
-          {t("pageTitle")}
-        </h2>
-        <p style={{
-          fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
-          margin: 0, lineHeight: 1.5, maxWidth: "37.5rem",
-        }}>
-          {t("pageDescription")}
-        </p>
-      </div>
+      {/* Header — desktop only */}
+      {!isMobile && (
+        <div style={{ marginBottom: "2rem" }}>
+          <h2 style={{
+            fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
+            color: C.charcoal, margin: "0 0 0.5rem",
+          }}>
+            {t("pageTitle")}
+          </h2>
+          <p style={{
+            fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
+            margin: 0, lineHeight: 1.5, maxWidth: "37.5rem",
+          }}>
+            {t("pageDescription")}
+          </p>
+        </div>
+      )}
 
       {/* Explanation card */}
       <div style={{

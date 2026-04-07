@@ -27,7 +27,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
         aria-label={`${tl(levelInfo.titleKey)} \u2014 ${totalPoints} ${t("title")}`}
         style={{
           display: "flex", alignItems: "center", gap: "0.375rem",
-          height: "2rem", borderRadius: "1rem", padding: "0 0.625rem 0 0.375rem",
+          minHeight: "2.75rem", borderRadius: "1rem", padding: "0 0.625rem 0 0.375rem",
           background: "transparent",
           border: "none",
           cursor: "pointer", transition: "background .15s",

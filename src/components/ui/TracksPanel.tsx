@@ -28,7 +28,6 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
   const { userMems } = useMemoryStore();
   const levelInfo = getLevelInfo();
 
-  // Collect all resolutions from all rooms
   const resolutions = useMemo(() => {
     const allMems: Record<string, Mem[]> = { ...ROOM_MEMS };
     for (const [k, v] of Object.entries(userMems)) { allMems[k] = v; }
@@ -51,6 +50,13 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
 
   const handleTrackClick = (trackId: string) => {
     setSelectedTrackId(trackId);
+  };
+
+  /* Shared style: forces any child to respect card boundary */
+  const clampLine: React.CSSProperties = {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
   };
 
   return (
@@ -81,7 +87,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
           background: `linear-gradient(180deg, ${T.color.warmStone} 0%, ${T.color.linen} 100%)`,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <h2 style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem", fontWeight: 500,
                 color: T.color.charcoal, margin: 0,
@@ -93,10 +99,10 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
               </p>
             </div>
             <button onClick={onClose} aria-label={tc("close")} style={{
-              width: "2rem", height: "2rem", minWidth: "2.75rem", minHeight: "2.75rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
+              width: "2.75rem", height: "2.75rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
               background: T.color.white, cursor: "pointer", fontSize: "1rem", color: T.color.muted,
               display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "opacity .15s",
+              transition: "opacity .15s", flexShrink: 0,
             }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
@@ -117,7 +123,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
               flexShrink: 0,
               boxShadow: `0 0.125rem 0.5rem ${levelInfo.color}30`,
             }}>{levelInfo.rank}</div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                 <span style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal }}>
                   {totalPoints} {t("mp")}
@@ -155,17 +161,17 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
           </div>
         </div>
 
-        {/* Track cards */}
+        {/* Track cards — scrollable area */}
         <div style={{
-          flex: 1, overflowY: "auto", padding: isMobile ? "0.75rem 0.75rem 1.25rem" : "1rem 1.25rem 1.5rem",
-          display: "flex", flexDirection: "column", gap: "0.75rem",
+          flex: 1, overflowY: "auto", overflowX: "hidden",
+          padding: isMobile ? "0.75rem" : "1rem 1.25rem 1.5rem",
         }}>
           {/* My Resolutions mini-section */}
           {resolutions.length > 0 && <div style={{
             padding: "1rem", borderRadius: "0.875rem",
             border: `1px solid ${T.color.sage}30`,
             background: "linear-gradient(135deg, rgba(74,103,65,.05), rgba(74,103,65,.02))",
-            marginBottom: "0.25rem",
+            marginBottom: "0.75rem",
           }}>
             <div style={{
               fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
@@ -173,62 +179,63 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
             }}>
               {t("myResolutions")}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-              {resolutions.map((m) => {
-                const pct = m.resolution?.progress ?? 0;
-                const hasTarget = !!m.resolution?.targetDate;
-                const daysLeft = hasTarget ? Math.ceil((new Date(m.resolution!.targetDate! + "T00:00:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
-                return (
-                  <div key={m.id} style={{
-                    padding: "0.625rem 0.875rem", borderRadius: "0.625rem",
-                    background: T.color.white, border: `1px solid ${T.color.cream}`,
-                  }}>
-                    <div style={{
-                      fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                      color: T.color.charcoal, marginBottom: "0.25rem",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>{m.resolution?.goal}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.375rem" }}>
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>{m.title}</span>
-                      {hasTarget && daysLeft !== null && (
-                        <span style={{
-                          fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
-                          color: daysLeft > 0 ? T.color.sage : T.color.error,
-                          marginLeft: "auto",
-                        }}>
-                          {daysLeft > 0 ? t("daysLeft", { count: String(daysLeft) }) : t("pastDue")}
-                        </span>
-                      )}
-                    </div>
-                    {typeof m.resolution?.progress === "number" && <div>
-                      <div
-                        role="progressbar"
-                        aria-valuenow={pct}
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        style={{
-                          width: "100%", height: "0.3125rem", borderRadius: "0.1875rem",
-                          background: `${T.color.sandstone}20`, overflow: "hidden",
-                        }}
-                      >
-                        <div style={{
-                          width: `${pct}%`, height: "100%", borderRadius: "0.1875rem",
-                          background: pct >= 100
-                            ? `linear-gradient(90deg,${T.color.success},${T.color.sage})`
-                            : `linear-gradient(90deg,${T.color.sage}cc,${T.color.sage})`,
-                          transition: "width .8s ease",
-                        }} />
-                      </div>
-                      <div style={{
-                        fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted,
-                        marginTop: "0.1875rem", textAlign: "right",
-                      }}>{pct}%</div>
-                    </div>}
+            {resolutions.map((m) => {
+              const pct = m.resolution?.progress ?? 0;
+              const hasTarget = !!m.resolution?.targetDate;
+              const daysLeft = hasTarget ? Math.ceil((new Date(m.resolution!.targetDate! + "T00:00:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+              return (
+                <div key={m.id} style={{
+                  padding: "0.625rem 0.875rem", borderRadius: "0.625rem",
+                  background: T.color.white, border: `1px solid ${T.color.cream}`,
+                  marginBottom: "0.5rem",
+                }}>
+                  <div style={{
+                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                    color: T.color.charcoal, marginBottom: "0.25rem",
+                    ...clampLine,
+                  }}>{m.resolution?.goal}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.375rem" }}>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, ...clampLine, flex: 1, minWidth: 0 }}>{m.title}</span>
+                    {hasTarget && daysLeft !== null && (
+                      <span style={{
+                        fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
+                        color: daysLeft > 0 ? T.color.sage : T.color.error,
+                        flexShrink: 0,
+                      }}>
+                        {daysLeft > 0 ? t("daysLeft", { count: String(daysLeft) }) : t("pastDue")}
+                      </span>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                  {typeof m.resolution?.progress === "number" && <div>
+                    <div
+                      role="progressbar"
+                      aria-valuenow={pct}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      style={{
+                        width: "100%", height: "0.3125rem", borderRadius: "0.1875rem",
+                        background: `${T.color.sandstone}20`, overflow: "hidden",
+                      }}
+                    >
+                      <div style={{
+                        width: `${pct}%`, height: "100%", borderRadius: "0.1875rem",
+                        background: pct >= 100
+                          ? `linear-gradient(90deg,${T.color.success},${T.color.sage})`
+                          : `linear-gradient(90deg,${T.color.sage}cc,${T.color.sage})`,
+                        transition: "width .8s ease",
+                      }} />
+                    </div>
+                    <div style={{
+                      fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted,
+                      marginTop: "0.1875rem", textAlign: "right",
+                    }}>{pct}%</div>
+                  </div>}
+                </div>
+              );
+            })}
           </div>}
+
+          {/* Track cards */}
           {sortedTracks.map((track, i) => {
             const progress = tracks[track.id];
             const stepsCompleted = progress?.stepsCompleted.length || 0;
@@ -239,65 +246,80 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
             const nextStep = track.steps.find((s) => !progress?.stepsCompleted.includes(s.id));
 
             return (
-              <button
+              <div
                 key={track.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => handleTrackClick(track.id)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleTrackClick(track.id); } }}
                 style={{
-                  display: "flex", flexDirection: "column", gap: "0.625rem",
-                  padding: isMobile ? "0.75rem 0.75rem" : "1rem 1.125rem", borderRadius: "0.875rem",
+                  padding: isMobile ? "0.75rem" : "1rem 1.125rem",
+                  borderRadius: "0.875rem",
                   border: isRecommended ? `2px solid ${track.color}44` : `1px solid ${T.color.cream}`,
                   background: isComplete ? `${track.color}08` : T.color.white,
-                  cursor: "pointer", textAlign: "left", transition: "all .2s",
-                  position: "relative", overflow: "hidden",
+                  cursor: "pointer", textAlign: "left",
+                  transition: "all .2s",
+                  marginBottom: "0.75rem",
+                  /* KEY: contain prevents any child from overflowing */
+                  contain: "inline-size",
+                  overflow: "hidden",
                   animation: `fadeUp .4s ease ${i * 0.06}s both`,
                 }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 4px 20px ${track.color}18`; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
               >
-                {/* Recommended badge */}
-                {isRecommended && !isComplete && (
-                  <div style={{
-                    position: "absolute", top: "0.625rem", right: "0.75rem",
-                    fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
-                    color: track.color, textTransform: "uppercase", letterSpacing: "0.0625rem",
-                    padding: "0.1875rem 0.5rem", borderRadius: "0.375rem",
-                    background: `${track.color}15`, border: `1px solid ${track.color}25`,
-                  }}>{t("recommended")}</div>
-                )}
-
-                {/* Completed badge */}
-                {isComplete && (
-                  <div style={{
-                    position: "absolute", top: "0.625rem", right: "0.75rem",
-                    fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
-                    color: T.color.success, textTransform: "uppercase", letterSpacing: "0.0625rem",
-                    padding: "0.1875rem 0.5rem", borderRadius: "0.375rem",
-                    background: `${T.color.success}15`, border: `1px solid ${T.color.success}25`,
-                  }}>{t("complete")}</div>
-                )}
-
-                {/* Top row: icon + name */}
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                {/* Row 1: Icon + Name + Badge */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "0.75rem",
+                }}>
                   <div style={{
                     width: "2.5rem", height: "2.5rem", borderRadius: "0.75rem",
                     background: `${track.color}15`,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "1.25rem", flexShrink: 0,
+                    flexShrink: 0,
                   }}><TrackIcon trackId={track.id} size="1.25rem" /></div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
-                      color: T.color.charcoal,
-                    }}>{t(track.nameKey)}</div>
-                    <div style={{
-                      fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
-                      lineHeight: 1.4,
-                    }}>{t(track.descriptionKey)}</div>
-                  </div>
+
+                  <div style={{
+                    fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                    color: T.color.charcoal,
+                    flex: 1, minWidth: 0,
+                    ...clampLine,
+                  }}>{t(track.nameKey)}</div>
+
+                  {/* Badge inline, not absolutely positioned */}
+                  {isRecommended && !isComplete && (
+                    <span style={{
+                      fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
+                      color: track.color, textTransform: "uppercase", letterSpacing: "0.0625rem",
+                      padding: "0.1875rem 0.5rem", borderRadius: "0.375rem",
+                      background: `${track.color}15`, border: `1px solid ${track.color}25`,
+                      flexShrink: 0, whiteSpace: "nowrap",
+                    }}>{t("recommended")}</span>
+                  )}
+                  {isComplete && (
+                    <span style={{
+                      fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
+                      color: T.color.success, textTransform: "uppercase", letterSpacing: "0.0625rem",
+                      padding: "0.1875rem 0.5rem", borderRadius: "0.375rem",
+                      background: `${T.color.success}15`, border: `1px solid ${T.color.success}25`,
+                      flexShrink: 0, whiteSpace: "nowrap",
+                    }}>{t("complete")}</span>
+                  )}
                 </div>
 
-                {/* Progress bar */}
-                <div>
+                {/* Row 2: Description (max 2 lines) */}
+                <div style={{
+                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                  lineHeight: 1.4, marginTop: "0.375rem",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical" as const,
+                  overflow: "hidden",
+                  wordBreak: "break-word",
+                }}>{t(track.descriptionKey)}</div>
+
+                {/* Row 3: Progress bar */}
+                <div style={{ marginTop: "0.625rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.25rem" }}>
                     <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
                       {stepsCompleted} {t("of")} {totalSteps} {t("steps")}
@@ -313,7 +335,7 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     aria-valuemin={0}
                     aria-valuemax={100}
                     style={{
-                      width: "100%", height: "0.375rem", borderRadius: "0.1875rem",
+                      height: "0.375rem", borderRadius: "0.1875rem",
                       background: `${T.color.sandstone}20`, overflow: "hidden",
                     }}
                   >
@@ -327,12 +349,14 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                   </div>
                 </div>
 
-                {/* Next step hint */}
+                {/* Row 4: Next step hint */}
                 {nextStep && !isComplete && (
                   <div style={{
                     display: "flex", alignItems: "center", gap: "0.375rem",
                     padding: "0.375rem 0.625rem", borderRadius: "0.5rem",
                     background: `${track.color}08`,
+                    marginTop: "0.5rem",
+                    overflow: "hidden",
                   }}>
                     <div style={{
                       width: "0.375rem", height: "0.375rem", borderRadius: "0.1875rem",
@@ -340,17 +364,18 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
                     }} />
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.walnut,
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0,
+                      flex: 1, minWidth: 0,
+                      ...clampLine,
                     }}>
                       {t("next")} {t(nextStep.titleKey)}
                     </span>
                     <span style={{
-                      marginLeft: "auto", fontFamily: T.font.body, fontSize: "0.625rem",
+                      flexShrink: 0, fontFamily: T.font.body, fontSize: "0.625rem",
                       color: T.color.muted,
                     }}>{"\u2192"}</span>
                   </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>

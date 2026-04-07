@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -50,9 +51,10 @@ const CATEGORIES = [
 
 interface Props {
   onClose: () => void;
+  highlightId?: string | null;
 }
 
-export default function AchievementsPanel({ onClose }: Props) {
+export default function AchievementsPanel({ onClose, highlightId }: Props) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("achievementsPanel");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
@@ -160,6 +162,7 @@ export default function AchievementsPanel({ onClose }: Props) {
                     achievement={ach}
                     earned={earnedIds.includes(ach.id)}
                     earnedDate={earnedDates[ach.id]}
+                    highlighted={ach.id === highlightId}
                   />
                 ))}
               </div>
@@ -171,12 +174,21 @@ export default function AchievementsPanel({ onClose }: Props) {
   );
 }
 
-function AchievementCard({ achievement, earned, earnedDate }: {
-  achievement: Achievement; earned: boolean; earnedDate?: string;
+function AchievementCard({ achievement, earned, earnedDate, highlighted }: {
+  achievement: Achievement; earned: boolean; earnedDate?: string; highlighted?: boolean;
 }) {
   const { t } = useTranslation("achievementsPanel");
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (highlighted && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlighted]);
+
   return (
     <div
+      ref={cardRef}
       role="listitem"
       aria-label={earned ? t(achievement.titleKey) : t("lockedAchievement", { name: t(achievement.titleKey) })}
       style={{
@@ -187,13 +199,14 @@ function AchievementCard({ achievement, earned, earnedDate }: {
         gap: "0.75rem",
         padding: "0.75rem 0.875rem",
         borderRadius: "0.875rem",
-        background: earned ? `${T.color.white}ee` : `${T.color.warmStone}88`,
-        border: earned ? `1px solid ${T.color.gold}44` : `1px solid ${T.color.cream}`,
+        background: highlighted ? `${T.color.gold}18` : earned ? `${T.color.white}ee` : `${T.color.warmStone}88`,
+        border: highlighted ? `2px solid ${T.color.gold}88` : earned ? `1px solid ${T.color.gold}44` : `1px solid ${T.color.cream}`,
         opacity: earned ? 1 : 0.6,
         transition: "all .2s ease",
         position: "relative",
         overflow: "hidden",
         minHeight: "3.5rem",
+        boxShadow: highlighted ? `0 0 1rem ${T.color.gold}33` : undefined,
       }}
     >
       {/* Icon — fixed size, vertically centered */}

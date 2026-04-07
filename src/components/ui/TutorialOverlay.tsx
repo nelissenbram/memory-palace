@@ -192,6 +192,7 @@ export default function TutorialOverlay() {
               cursor: "pointer",
               padding: "0.375rem 0.75rem",
               borderRadius: "0.5rem",
+              minHeight: "2.75rem",
               transition: "color 0.2s",
             }}
             onMouseEnter={e => { (e.target as HTMLElement).style.color = `${T.color.linen}B3`; }}
@@ -230,6 +231,7 @@ export default function TutorialOverlay() {
                 color: GOLD_INK,
                 padding: "0.5rem 1.25rem",
                 borderRadius: "0.75rem",
+                minHeight: "2.75rem",
                 cursor: "pointer",
                 boxShadow: `0 0.25rem 1rem ${T.color.gold}4D`,
                 transition: "transform 0.15s, box-shadow 0.15s",

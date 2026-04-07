@@ -138,32 +138,33 @@ function saveImportantDates(dates: ImportantDate[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(dates));
 }
 
-/** Generate recurring instances of an important date within a reasonable range */
+/** Generate recurring instances of an important date — only forward-looking from the original date */
 function expandRecurrences(dates: ImportantDate[]): ImportantDateEntry[] {
   const entries: ImportantDateEntry[] = [];
-  const now = new Date();
-  const minYear = now.getFullYear() - 5;
-  const maxYear = now.getFullYear() + 2;
+  const maxYear = new Date().getFullYear() + 2;
 
   for (const id of dates) {
     const base = new Date(id.date);
     const recurrence = id.recurrence || "none";
 
-    if (recurrence === "none") {
-      entries.push({ importantDate: id, date: base, isRecurring: false });
-    } else if (recurrence === "yearly") {
-      for (let y = minYear; y <= maxYear; y++) {
+    // Always include the original date
+    entries.push({ importantDate: id, date: base, isRecurring: false });
+
+    if (recurrence === "yearly") {
+      // Only future years after the original
+      for (let y = base.getFullYear() + 1; y <= maxYear; y++) {
         const d = new Date(y, base.getMonth(), base.getDate());
-        const isOriginal = y === base.getFullYear();
-        entries.push({ importantDate: id, date: d, isRecurring: !isOriginal });
+        entries.push({ importantDate: id, date: d, isRecurring: true });
       }
     } else if (recurrence === "monthly") {
-      for (let y = minYear; y <= maxYear; y++) {
-        for (let m = 0; m < 12; m++) {
-          const d = new Date(y, m, Math.min(base.getDate(), new Date(y, m + 1, 0).getDate()));
-          const isOriginal = y === base.getFullYear() && m === base.getMonth();
-          entries.push({ importantDate: id, date: d, isRecurring: !isOriginal });
-        }
+      // Only future months after the original
+      const startMonth = base.getFullYear() * 12 + base.getMonth() + 1; // next month after original
+      const endMonth = maxYear * 12 + 11;
+      for (let absMonth = startMonth; absMonth <= endMonth; absMonth++) {
+        const y = Math.floor(absMonth / 12);
+        const m = absMonth % 12;
+        const d = new Date(y, m, Math.min(base.getDate(), new Date(y, m + 1, 0).getDate()));
+        entries.push({ importantDate: id, date: d, isRecurring: true });
       }
     }
   }
@@ -232,6 +233,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
 
   // Memory context menu
   const [memMenuId, setMemMenuId] = useState<string | null>(null);
+  // Important date context menu
+  const [dateMenuId, setDateMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     setImportantDates(loadImportantDates());
@@ -381,89 +384,30 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
 
   const smallBtnStyle: React.CSSProperties = {
     background: "none",
-    border: "none",
+    border: `1px solid ${T.color.cream}`,
     cursor: "pointer",
-    padding: "0.25rem",
-    borderRadius: "0.25rem",
+    padding: "0.5rem",
+    borderRadius: "0.375rem",
+    minWidth: "2.25rem",
+    minHeight: "2.25rem",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
   };
 
-  /** Inline icon picker grid */
-  function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-    return (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", maxWidth: "15rem" }}>
-        {ICON_CHOICES.map((ic) => (
-          <button
-            key={ic.id}
-            type="button"
-            onClick={() => onChange(ic.id)}
-            title={t(ic.labelKey)}
-            style={{
-              width: "2rem",
-              height: "2rem",
-              border: value === ic.id ? `2px solid ${T.color.gold}` : `1px solid ${T.color.cream}`,
-              borderRadius: "0.375rem",
-              background: value === ic.id ? `${T.color.gold}18` : T.color.white,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: value === ic.id ? T.color.gold : T.color.walnut,
-            }}
-            aria-label={t(ic.labelKey)}
-          >
-            <CategoryIcon iconId={ic.id} size={16} color={value === ic.id ? T.color.gold : T.color.walnut} />
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  /** Recurrence toggle */
-  function RecurrenceToggle({ value, onChange }: { value: Recurrence; onChange: (v: Recurrence) => void }) {
-    const options: { key: Recurrence; label: string }[] = [
-      { key: "none", label: t("recurrenceNone") },
-      { key: "yearly", label: t("recurrenceYearly") },
-      { key: "monthly", label: t("recurrenceMonthly") },
+  /** Render the add/edit date form fields — inlined to avoid nested component re-mount on state change */
+  const renderDateFormFields = (
+    title: string, setTitle: (v: string) => void,
+    date: string, setDate: (v: string) => void,
+    desc: string, setDesc: (v: string) => void,
+    icon: string, setIcon: (v: string) => void,
+    recurrence: Recurrence, setRecurrence: (v: Recurrence) => void,
+  ) => {
+    const recOptions: { key: Recurrence; labelKey: string }[] = [
+      { key: "none", labelKey: "recurrenceNone" },
+      { key: "yearly", labelKey: "recurrenceYearly" },
+      { key: "monthly", labelKey: "recurrenceMonthly" },
     ];
-    return (
-      <div style={{ display: "flex", gap: "0.25rem" }}>
-        {options.map((o) => (
-          <button
-            key={o.key}
-            type="button"
-            onClick={() => onChange(o.key)}
-            style={{
-              fontFamily: T.font.body,
-              fontSize: "0.6875rem",
-              fontWeight: value === o.key ? 600 : 400,
-              color: value === o.key ? T.color.gold : T.color.muted,
-              background: value === o.key ? `${T.color.gold}15` : "none",
-              border: `1px solid ${value === o.key ? T.color.gold + "40" : T.color.cream}`,
-              borderRadius: "0.375rem",
-              padding: "0.25rem 0.5rem",
-              cursor: "pointer",
-            }}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  /** Render the add/edit date form fields */
-  function DateFormFields({
-    title, setTitle, date, setDate, desc, setDesc, icon, setIcon, recurrence, setRecurrence,
-  }: {
-    title: string; setTitle: (v: string) => void;
-    date: string; setDate: (v: string) => void;
-    desc: string; setDesc: (v: string) => void;
-    icon: string; setIcon: (v: string) => void;
-    recurrence: Recurrence; setRecurrence: (v: Recurrence) => void;
-  }) {
     return (
       <>
         <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal }}>
@@ -484,15 +428,52 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
         <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal }}>
           {t("dateIcon")}
         </label>
-        <IconPicker value={icon} onChange={setIcon} />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", maxWidth: "15rem" }}>
+          {ICON_CHOICES.map((ic) => (
+            <button
+              key={ic.id}
+              type="button"
+              onClick={() => setIcon(ic.id)}
+              title={t(ic.labelKey)}
+              style={{
+                width: "2rem", height: "2rem",
+                border: icon === ic.id ? `2px solid ${T.color.gold}` : `1px solid ${T.color.cream}`,
+                borderRadius: "0.375rem",
+                background: icon === ic.id ? `${T.color.gold}18` : T.color.white,
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+              aria-label={t(ic.labelKey)}
+            >
+              <CategoryIcon iconId={ic.id} size={16} color={icon === ic.id ? T.color.gold : T.color.walnut} />
+            </button>
+          ))}
+        </div>
 
         <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal, marginTop: "0.25rem" }}>
           {t("recurrence")}
         </label>
-        <RecurrenceToggle value={recurrence} onChange={setRecurrence} />
+        <div style={{ display: "flex", gap: "0.25rem" }}>
+          {recOptions.map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              onClick={() => setRecurrence(o.key)}
+              style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem",
+                fontWeight: recurrence === o.key ? 600 : 400,
+                color: recurrence === o.key ? T.color.gold : T.color.muted,
+                background: recurrence === o.key ? `${T.color.gold}15` : "none",
+                border: `1px solid ${recurrence === o.key ? T.color.gold + "40" : T.color.cream}`,
+                borderRadius: "0.375rem", padding: "0.25rem 0.5rem", cursor: "pointer",
+              }}
+            >
+              {t(o.labelKey)}
+            </button>
+          ))}
+        </div>
       </>
     );
-  }
+  };
 
   return (
     <div
@@ -694,13 +675,13 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                 gap: "0.5rem",
               }}
             >
-              <DateFormFields
-                title={formTitle} setTitle={setFormTitle}
-                date={formDate} setDate={setFormDate}
-                desc={formDesc} setDesc={setFormDesc}
-                icon={formIcon} setIcon={setFormIcon}
-                recurrence={formRecurrence} setRecurrence={setFormRecurrence}
-              />
+              {renderDateFormFields(
+                formTitle, setFormTitle,
+                formDate, setFormDate,
+                formDesc, setFormDesc,
+                formIcon, setFormIcon,
+                formRecurrence, setFormRecurrence,
+              )}
               <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", marginTop: "0.25rem" }}>
                 <button
                   onClick={() => setShowAddForm(false)}
@@ -806,7 +787,8 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
 
                     if (mixed.kind === "importantDate") {
                       const { importantDate, date, isRecurring } = mixed.entry;
-                      const isEditing = editingDateId === importantDate.id && !isRecurring;
+                      const isEditing = editingDateId === importantDate.id;
+                      const showDateMenu = dateMenuId === `${importantDate.id}-${date.getTime()}`;
                       const displayIconId = importantDate.icon || DEFAULT_ICON_ID;
 
                       return (
@@ -858,13 +840,13 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 gap: "0.5rem",
                               }}
                             >
-                              <DateFormFields
-                                title={editTitle} setTitle={setEditTitle}
-                                date={editDate} setDate={setEditDate}
-                                desc={editDesc} setDesc={setEditDesc}
-                                icon={editIcon} setIcon={setEditIcon}
-                                recurrence={editRecurrence} setRecurrence={setEditRecurrence}
-                              />
+                              {renderDateFormFields(
+                                editTitle, setEditTitle,
+                                editDate, setEditDate,
+                                editDesc, setEditDesc,
+                                editIcon, setEditIcon,
+                                editRecurrence, setEditRecurrence,
+                              )}
                               <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", marginTop: "0.25rem" }}>
                                 <button onClick={() => setEditingDateId(null)} style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, background: "none", border: `1px solid ${T.color.cream}`, borderRadius: "0.375rem", padding: "0.375rem 0.75rem", cursor: "pointer" }}>
                                   {t("cancel")}
@@ -969,31 +951,59 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 )}
                               </div>
 
-                              {/* Action buttons (only on original, not recurring ghosts) */}
-                              {!isRecurring && (
-                                <div style={{ display: "flex", gap: "0.125rem", flexShrink: 0 }}>
-                                  <button
-                                    onClick={() => startEditDate(importantDate)}
-                                    title={t("editDate")}
-                                    aria-label={t("editDate")}
-                                    style={{ ...smallBtnStyle, color: T.color.muted }}
-                                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.gold}18`; }}
-                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
-                                  >
-                                    <PencilIcon size={12} color={T.color.muted} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteDate(importantDate.id)}
-                                    title={t("deleteDate")}
-                                    aria-label={t("deleteDate")}
-                                    style={{ ...smallBtnStyle, color: T.color.muted }}
-                                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.error}15`; }}
-                                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
-                                  >
-                                    <TrashIcon size={12} color={T.color.muted} />
-                                  </button>
-                                </div>
-                              )}
+                              {/* Three-dot menu */}
+                              <div style={{ position: "relative", flexShrink: 0 }}>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setDateMenuId(showDateMenu ? null : `${importantDate.id}-${date.getTime()}`); }}
+                                  aria-label={t("memoryOptions")}
+                                  style={{
+                                    ...smallBtnStyle,
+                                    color: T.color.muted,
+                                  }}
+                                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.gold}15`; }}
+                                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+                                >
+                                  <DotsIcon size={14} color={T.color.muted} />
+                                </button>
+
+                                {showDateMenu && (
+                                  <div style={{
+                                    position: "absolute", right: 0, top: "2.25rem", zIndex: 10,
+                                    background: T.color.white, border: `1px solid ${T.color.cream}`,
+                                    borderRadius: "0.5rem", boxShadow: "0 0.25rem 1rem rgba(0,0,0,.1)",
+                                    minWidth: "8rem", overflow: "hidden",
+                                  }}>
+                                    <button
+                                      onClick={() => { setDateMenuId(null); startEditDate(importantDate); }}
+                                      style={{
+                                        width: "100%", fontFamily: T.font.body, fontSize: "0.75rem",
+                                        color: T.color.charcoal, background: "none", border: "none",
+                                        padding: "0.5rem 0.75rem", cursor: "pointer", textAlign: "left",
+                                        display: "flex", alignItems: "center", gap: "0.375rem",
+                                      }}
+                                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = T.color.warmStone; }}
+                                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+                                    >
+                                      <PencilIcon size={12} color={T.color.gold} />
+                                      {t("editDate")}
+                                    </button>
+                                    <button
+                                      onClick={() => { setDateMenuId(null); handleDeleteDate(importantDate.id); }}
+                                      style={{
+                                        width: "100%", fontFamily: T.font.body, fontSize: "0.75rem",
+                                        color: T.color.error, background: "none", border: "none",
+                                        padding: "0.5rem 0.75rem", cursor: "pointer", textAlign: "left",
+                                        display: "flex", alignItems: "center", gap: "0.375rem",
+                                      }}
+                                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.error}08`; }}
+                                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+                                    >
+                                      <TrashIcon size={12} color={T.color.error} />
+                                      {t("deleteDate")}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
 
                               {/* Gold accent indicator */}
                               <div

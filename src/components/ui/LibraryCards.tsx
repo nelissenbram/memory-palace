@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useId } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useVideoThumbnail } from "@/lib/hooks/useVideoThumbnail";
+
 import type { Mem } from "@/lib/constants/defaults";
 import type { WingRoom } from "@/lib/constants/wings";
 import Image from "next/image";
@@ -368,16 +368,15 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
   const imgFailed = imgRetries > 1; // Allow one retry
   const waveId = useId();
 
-  const isInterview = mem.type === "interview";
-  const isAudio = !isInterview && (mem.type === "audio" || mem.type === "voice" || !!mem.voiceBlob);
+  // All "voice" type entries are legacy interview excerpts (no current code path creates voice type)
+  const isInterview = mem.type === "interview" || mem.type === "voice";
+  const isAudio = !isInterview && (mem.type === "audio" || !!mem.voiceBlob);
   const isVideo = mem.type === "video" || !!mem.videoBlob;
   const hasImage = mem.dataUrl && !isAudio && !isVideo && !isInterview && !mem.dataUrl.startsWith("data:audio");
   const isDocument = mem.type === "document" || mem.documentBlob;
   const isText = mem.type === "orb" || mem.type === "case" || isInterview;
   const locked = isTimeCapsuleLocked(mem);
-  // Generate video thumbnail from the video URL (cached in memory)
-  const videoThumb = useVideoThumbnail((isVideo || isAudio) && mem.dataUrl ? mem.dataUrl : null);
-  const mediaThumbnail = mem.thumbnailUrl || videoThumb;
+  const mediaThumbnail = mem.thumbnailUrl || null;
 
   const bgGradient = useMemo(() => {
     const h = mem.hue;
@@ -392,11 +391,18 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
     if (isDocument) {
       return `linear-gradient(160deg, #F5F0E6 0%, #EDE5D6 50%, #E2D8C6 100%)`;
     }
+    if (isInterview) {
+      // Warm parchment-like gradient for interview excerpts
+      return `linear-gradient(150deg,
+        hsl(${h}, ${Math.max(s - 5, 15)}%, ${Math.min(l + 8, 60)}%) 0%,
+        hsl(${(h + 15) % 360}, ${Math.max(s - 10, 12)}%, ${Math.max(l - 4, 45)}%) 60%,
+        hsl(${(h + 25) % 360}, ${Math.max(s - 15, 10)}%, ${Math.max(l - 10, 38)}%) 100%)`;
+    }
     return `linear-gradient(145deg,
       hsl(${h}, ${s}%, ${l}%) 0%,
       hsl(${(h + 30) % 360}, ${Math.max(s - 6, 22)}%, ${Math.max(l - 8, 42)}%) 60%,
       hsl(${(h + 50) % 360}, ${Math.max(s - 12, 15)}%, ${Math.max(l - 14, 38)}%) 100%)`;
-  }, [mem.hue, mem.s, mem.l, isAudio, isDocument]);
+  }, [mem.hue, mem.s, mem.l, isAudio, isDocument, isInterview]);
 
   /* HSL accent strip color from mem properties */
   const accentStrip = useMemo(() =>
@@ -505,6 +511,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                 src={mem.dataUrl!}
                 alt={mem.title}
                 fill
+                loading="lazy"
                 style={{
                   objectFit: "cover",
                   transform: hovered && !locked ? "scale(1.05)" : "scale(1)",
@@ -532,6 +539,8 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
               <img
                 src={mediaThumbnail}
                 alt={mem.title}
+                loading="lazy"
+                decoding="async"
                 style={{
                   position: "absolute", inset: 0, width: "100%", height: "100%",
                   objectFit: "cover",
@@ -607,39 +616,6 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                 }} />
               ))}
             </div>
-          ) : isVideo && mem.dataUrl ? (
-            /* --- Video (no extracted thumb): native <video> shows first frame --- */
-            <>
-              <video
-                src={mem.dataUrl}
-                muted
-                playsInline
-                preload="metadata"
-                style={{
-                  position: "absolute", inset: 0, width: "100%", height: "100%",
-                  objectFit: "cover", pointerEvents: "none",
-                }}
-              />
-              <div style={{
-                position: "absolute", inset: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(0,0,0,.15)",
-              }}>
-                <div style={{
-                  width: "2.5rem", height: "2.5rem", borderRadius: "50%",
-                  background: "rgba(0,0,0,.45)",
-                  backdropFilter: "blur(0.5rem)",
-                  WebkitBackdropFilter: "blur(0.5rem)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: "0 0.25rem 1rem rgba(0,0,0,.2)",
-                  border: "0.0625rem solid rgba(255,255,255,.2)",
-                }}>
-                  <svg width="12" height="14" viewBox="0 0 12 14" fill="rgba(255,255,255,.9)">
-                    <path d="M1 1.5v11l10-5.5L1 1.5z"/>
-                  </svg>
-                </div>
-              </div>
-            </>
           ) : isVideo ? (
             /* --- Video with no URL: gradient + play icon --- */
             <div style={{
@@ -661,6 +637,30 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                   <path d="M1 1.5v11l10-5.5L1 1.5z"/>
                 </svg>
               </div>
+            </div>
+          ) : isInterview ? (
+            /* --- Interview excerpt: speech bubble icon + text lines --- */
+            <div style={{
+              position: "absolute", inset: 0,
+              display: "flex", flexDirection: "column", alignItems: "center",
+              justifyContent: "center", gap: "0.5rem",
+            }}>
+              <span style={{
+                filter: "drop-shadow(0 0.125rem 0.375rem rgba(0,0,0,.12))",
+                transform: hovered ? "scale(1.08)" : "scale(1)",
+                transition: `transform 0.4s ${EASE}`,
+              }}>
+                <TypeIcon type="interview" size={36} color="rgba(255,255,255,.55)" />
+              </span>
+              {/* Fake text lines */}
+              {[0.6, 0.8, 0.65, 0.5].map((w, i) => (
+                <div key={i} style={{
+                  width: `${w * 50}%`,
+                  height: "0.125rem",
+                  background: `rgba(255,255,255,${0.1 + i * 0.015})`,
+                  borderRadius: "0.0625rem",
+                }} />
+              ))}
             </div>
           ) : isText ? (
             /* --- Text/Note: quotation mark --- */
@@ -755,7 +755,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
             zIndex: 2,
             color: accent,
           }}>
-            <TypeIcon type={mem.type} size={13} color={accent} />
+            <TypeIcon type={isInterview ? "interview" : mem.type} size={13} color={accent} />
           </span>
 
           {/* Move button — top left, appears on hover */}

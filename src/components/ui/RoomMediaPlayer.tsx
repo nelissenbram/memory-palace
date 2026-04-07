@@ -132,8 +132,8 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   const getMediaType = (m: Mem): "photo" | "video" | "audio" | "text" => {
     const t = m.type.toLowerCase();
     if (t === "video" || m.videoBlob) return "video";
-    if (t === "interview") return "text"; // Interview excerpts are text narratives
-    if (t === "audio" || t === "voice" || m.voiceBlob) return "audio";
+    if (t === "interview" || t === "voice") return "text";
+    if (t === "audio" || m.voiceBlob) return "audio";
     if (t === "text" || t === "document" || t === "story" || m.documentBlob) return "text";
     return "photo";
   };
@@ -268,7 +268,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
               backdropFilter: "blur(1rem)",
             }}>
               {/* Interview badge */}
-              {mem.type === "interview" && (
+              {(mem.type === "interview" || mem.type === "voice") && (
                 <div style={{
                   display: "flex", alignItems: "center", gap: "0.5rem",
                   marginBottom: "1rem", opacity: 0.6,

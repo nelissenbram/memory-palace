@@ -71,6 +71,7 @@ interface AchievementState {
   toast: Achievement | null;
   stats: PalaceStats;
   showPanel: boolean;
+  highlightId: string | null;
   // Tracked data persisted to localStorage
   visitedWings: string[];
   visitedRooms: string[];
@@ -85,6 +86,8 @@ interface AchievementState {
   dismissToast: () => void;
   getProgress: () => { earned: number; total: number; percentage: number };
   setShowPanel: (v: boolean) => void;
+  setHighlightId: (id: string | null) => void;
+  openWithHighlight: (id: string) => void;
   trackWingVisit: (wingId: string) => void;
   trackRoomVisit: (roomId: string) => void;
 }
@@ -116,6 +119,7 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
     roomsAdded: 0, layoutsChanged: 0, totalRoomsInPalace: 0, roomsVisited: 0,
   },
   showPanel: false,
+  highlightId: null,
   visitedWings: loadJSON<string[]>("mp_visited_wings", []),
   visitedRooms: loadJSON<string[]>("mp_visited_rooms", []),
   activeDays: loadJSON<string[]>("mp_active_days", []),
@@ -229,5 +233,7 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
     return { earned, total, percentage: total > 0 ? Math.round((earned / total) * 100) : 0 };
   },
 
-  setShowPanel: (v) => set({ showPanel: v }),
+  setShowPanel: (v) => set({ showPanel: v, ...(v ? {} : { highlightId: null }) }),
+  setHighlightId: (id) => set({ highlightId: id }),
+  openWithHighlight: (id) => set({ showPanel: true, highlightId: id }),
 }));

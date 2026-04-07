@@ -341,9 +341,13 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
 
             {/* Photo upload */}
             <div
+              role="button"
+              aria-label={t("dropPortrait")}
+              tabIndex={0}
               onDragOver={e => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => inputRef.current?.click()}
+              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputRef.current?.click(); } }}
               style={{
                 border: `2px dashed ${T.color.sandstone}`,
                 borderRadius: "0.875rem", padding: "2.25rem 1.25rem",
@@ -668,7 +672,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               {t("bustReady")}
             </h2>
             <div ref={previewCanvasRef} style={{
-              width: "13.75rem", height: "16.25rem", margin: "0 auto 1rem",
+              width: "min(13.75rem, calc(100% - 2rem))", height: "16.25rem", margin: "0 auto 1rem",
               borderRadius: "0.875rem", overflow: "hidden",
               background: `linear-gradient(180deg, ${T.color.warmStone}40, ${T.color.linen})`,
             }} />
