@@ -6,7 +6,7 @@ import { usePushNotificationStore, NotificationPreferences } from "@/lib/stores/
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
-import { seedTestActivities, TEST_ACTIVITY_SAMPLES } from "@/lib/auth/notification-actions";
+import { seedTestActivities } from "@/lib/auth/notification-actions";
 import { useNotificationStore } from "@/lib/stores/notificationStore";
 
 // ── Custom SVG Icons (Roman/Tuscan aesthetic) ──
@@ -581,20 +581,32 @@ export default function NotificationsPage() {
           type="button"
           onClick={async () => {
             let diag: Awaited<ReturnType<typeof seedTestActivities>> | null = null;
+            let threw: string | null = null;
             try {
               diag = await seedTestActivities();
               // eslint-disable-next-line no-console
               console.log("[seedTestActivities]", diag);
             } catch (err) {
+              threw = (err as Error)?.message || String(err);
               // eslint-disable-next-line no-console
               console.error("[seedTestActivities] threw", err);
             }
 
-            // Always inject locally so the user SEES something in the bell,
-            // even if the notifications table doesn't exist in this env.
+            // Always inject the samples locally so the bell shows them,
+            // even if the notifications DB table is missing.
+            const samples = diag?.samples || [
+              { type: "welcome",          message: "✧ Welcome to your Memory Palace — let's preserve something beautiful." },
+              { type: "achievement",      message: "⚜ Ten memories preserved — you're off to a beautiful start." },
+              { type: "achievement",      message: "❀ First memory in \"Atrium\" — this room just came alive." },
+              { type: "family_invite",    message: "❦ Sofia joined your family palace." },
+              { type: "new_contribution", message: "✎ Marcus added a memory to \"Living Room\"." },
+              { type: "on_this_day",      message: "❧ On this day, 3 years ago — \"Grandpa's 80th birthday\"." },
+              { type: "reminder",         message: "⧗ A quiet nudge: the Library has been patient. Want to add a story?" },
+              { type: "system",           message: "⚜ A new feature has arrived in your palace. Explore the Atrium." },
+            ];
             try {
               const store = useNotificationStore.getState();
-              for (const s of TEST_ACTIVITY_SAMPLES) {
+              for (const s of samples) {
                 store.addLocal({
                   user_id: "",
                   type: s.type,
@@ -607,23 +619,27 @@ export default function NotificationsPage() {
                   read: false,
                 });
               }
-              await store.load();
+              // Do NOT call store.load() — that would overwrite the local rows
+              // if the server returns an empty list.
             } catch { /* ignore */ }
 
-            // Build a diagnostic toast so we know what happened
+            // Build a diagnostic toast
             if (diag) {
               const parts: string[] = [];
-              parts.push(`DB: ${diag.dbInserted}/${TEST_ACTIVITY_SAMPLES.length}`);
+              parts.push(`DB: ${diag.dbInserted}/${samples.length}`);
               parts.push(`Push: ${diag.pushSent}`);
               parts.push(`Devices: ${diag.subscriptionCount}`);
               parts.push(`VAPID: ${diag.vapidConfigured ? "✓" : "✗"}`);
               if (diag.dbError) parts.push(`Err: ${diag.dbError.slice(0, 40)}`);
               setToast({
-                message: `${t("sentTest")} · ${parts.join(" · ")}`,
-                type: diag.dbError ? "error" : "success",
+                message: `Added 8 locally · ${parts.join(" · ")}`,
+                type: "success",
               });
             } else {
-              setToast({ message: t("sendTestFailed"), type: "error" });
+              setToast({
+                message: `Added 8 locally (server error: ${(threw || "unknown").slice(0, 60)})`,
+                type: "success",
+              });
             }
           }}
           style={{

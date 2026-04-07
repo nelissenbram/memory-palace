@@ -205,7 +205,7 @@ export async function notifyFamilyJoined(opts: {
   });
 }
 
-export const TEST_ACTIVITY_SAMPLES: { type: string; message: string }[] = [
+const TEST_ACTIVITY_SAMPLES: { type: string; message: string }[] = [
   { type: "welcome",          message: "✧ Welcome to your Memory Palace — let's preserve something beautiful." },
   { type: "achievement",      message: "⚜ Ten memories preserved — you're off to a beautiful start." },
   { type: "achievement",      message: "❀ First memory in \"Atrium\" — this room just came alive." },

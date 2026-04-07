@@ -63,16 +63,25 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({ loading: true });
     try {
       const { notifications } = await fetchNotifications();
-      if (notifications.length > 0 || !get().useLocalFallback) {
-        set({ notifications, loading: false, useLocalFallback: false });
+      if (notifications.length > 0) {
+        // Merge: prefer server rows, keep any locally-added rows on top
+        const existingLocal = get().notifications.filter((n) => n.id.startsWith("local_"));
+        set({
+          notifications: [...existingLocal, ...notifications],
+          loading: false,
+          useLocalFallback: false,
+        });
         ensureClientGenerated(get, set);
         return;
       }
     } catch {
       // Supabase table likely doesn't exist — fall back to localStorage
     }
-    // Fallback: load from localStorage
-    set({ notifications: lsGet(), loading: false, useLocalFallback: true });
+    // Server returned nothing — keep whatever we already have, plus localStorage
+    const current = get().notifications;
+    const stored = lsGet();
+    const merged = current.length >= stored.length ? current : stored;
+    set({ notifications: merged, loading: false, useLocalFallback: true });
     ensureClientGenerated(get, set);
   },
 
