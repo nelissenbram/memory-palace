@@ -814,6 +814,10 @@ export default function NavigationBar({
           <button
             data-nudge="atrium_help_button"
             onClick={() => {
+              if (typeof window !== "undefined" && window.location.pathname.startsWith("/settings")) {
+                window.dispatchEvent(new CustomEvent("mp:open-settings-tour"));
+                return;
+              }
               // reset() sets _forceCurrentPage + increments _resetCount,
               // which triggers NudgeProvider's useEffect → initPage()
               useNudgeStore.getState().reset();
