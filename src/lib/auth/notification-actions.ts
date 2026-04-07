@@ -157,14 +157,14 @@ async function pushToUserDevices(opts: {
 // ── Milestone check after a memory is created ──
 const MILESTONES = [1, 10, 25, 50, 100, 250, 500, 1000];
 const MILESTONE_COPY: Record<number, string> = {
-  1: "✦ Your very first memory is in the palace.",
-  10: "✦ Ten memories preserved — you're off to a beautiful start.",
-  25: "✦ Twenty-five memories — the palace is taking shape.",
-  50: "⚜ Fifty memories. You're officially an Archivist.",
-  100: "⚜ One hundred memories — welcome to the Centurion club.",
-  250: "❦ Two hundred and fifty — your palace is becoming a living archive.",
-  500: "⚜ Five hundred memories. An extraordinary legacy.",
-  1000: "❖ One thousand memories. A truly remarkable palace.",
+  1: "Your very first memory is in the palace.",
+  10: "Ten memories preserved — you're off to a beautiful start.",
+  25: "Twenty-five memories — the palace is taking shape.",
+  50: "Fifty memories. You're officially an Archivist.",
+  100: "One hundred memories — welcome to the Centurion club.",
+  250: "Two hundred and fifty — your palace is becoming a living archive.",
+  500: "Five hundred memories. An extraordinary legacy.",
+  1000: "One thousand memories. A truly remarkable palace.",
 };
 
 export async function checkAndNotifyMilestone(opts: {
@@ -186,7 +186,7 @@ export async function notifyFirstInRoom(opts: {
   await createNotification({
     userId: opts.userId,
     type: "achievement",
-    message: `❀ First memory in "${opts.roomName}" — this room just came alive.`,
+    message: `First memory in "${opts.roomName}" — this room just came alive.`,
     roomId: opts.roomId,
     roomName: opts.roomName,
   });
@@ -200,20 +200,20 @@ export async function notifyFamilyJoined(opts: {
   await createNotification({
     userId: opts.ownerId,
     type: "family_invite",
-    message: `❦ ${opts.joinedName} joined your family palace.`,
+    message: `${opts.joinedName} joined your family palace.`,
     fromUserName: opts.joinedName,
   });
 }
 
 const TEST_ACTIVITY_SAMPLES: { type: string; message: string }[] = [
-  { type: "welcome",          message: "✧ Welcome to your Memory Palace — let's preserve something beautiful." },
-  { type: "achievement",      message: "⚜ Ten memories preserved — you're off to a beautiful start." },
-  { type: "achievement",      message: "❀ First memory in \"Atrium\" — this room just came alive." },
-  { type: "family_invite",    message: "❦ Sofia joined your family palace." },
-  { type: "new_contribution", message: "✎ Marcus added a memory to \"Living Room\"." },
-  { type: "on_this_day",      message: "❧ On this day, 3 years ago — \"Grandpa's 80th birthday\"." },
-  { type: "reminder",         message: "⧗ A quiet nudge: the Library has been patient. Want to add a story?" },
-  { type: "system",           message: "⚜ A new feature has arrived in your palace. Explore the Atrium." },
+  { type: "welcome",          message: "Welcome to your Memory Palace — let's preserve something beautiful." },
+  { type: "achievement",      message: "Ten memories preserved — you're off to a beautiful start." },
+  { type: "achievement",      message: "First memory in \"Atrium\" — this room just came alive." },
+  { type: "family_invite",    message: "Sofia joined your family palace." },
+  { type: "new_contribution", message: "Marcus added a memory to \"Living Room\"." },
+  { type: "on_this_day",      message: "On this day, 3 years ago — \"Grandpa's 80th birthday\"." },
+  { type: "reminder",         message: "A quiet nudge: the Library has been patient. Want to add a story?" },
+  { type: "system",           message: "A new feature has arrived in your palace. Explore the Atrium." },
 ];
 
 // ── Seed one of each Activity type for the current user (test helper) ──

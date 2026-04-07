@@ -149,7 +149,7 @@ function ensureClientGenerated(
         id: `welcome_${Date.now()}`,
         user_id: "",
         type: "welcome",
-        message: "✧ Welcome to your Memory Palace — let's preserve something beautiful.",
+        message: "Welcome to your Memory Palace — let's preserve something beautiful.",
         room_id: null,
         room_name: null,
         wing_id: null,
