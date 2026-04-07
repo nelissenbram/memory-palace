@@ -321,7 +321,7 @@ export default function NavigationBar({
   const { t } = useTranslation("navigation" as any);
   const router = useRouter();
   const pathname = usePathname() || "";
-  const isSettingsRoute = pathname.startsWith("/settings");
+  const isSettingsRoute = pathname.startsWith("/settings") || activeTab === "me";
   const notifCount = useNotificationStore((s) => s.notifications.filter(n => !n.read).length);
   const nudgeActive = useNudgeStore((s) => s.activeNudge !== null || s.queue.length > 0);
   const [helpToast, setHelpToast] = useState(false);
