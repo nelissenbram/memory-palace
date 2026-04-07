@@ -86,7 +86,7 @@ export default async function RootLayout({
         {/* Force clear stale PWA caches — runs before any JS bundles */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
-            var V="v18";
+            var V="v19";
             try{
               var s=localStorage.getItem("mp_v");
               if(s!==V){

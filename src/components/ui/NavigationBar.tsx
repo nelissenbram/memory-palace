@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import NotificationBell from "@/components/ui/NotificationBell";
@@ -320,6 +320,8 @@ export default function NavigationBar({
   // Fix: regenerate the Namespace type from the JSON keys, then remove `as any`.
   const { t } = useTranslation("navigation" as any);
   const router = useRouter();
+  const pathname = usePathname() || "";
+  const isSettingsRoute = pathname.startsWith("/settings");
   const notifCount = useNotificationStore((s) => s.notifications.filter(n => !n.read).length);
   const nudgeActive = useNudgeStore((s) => s.activeNudge !== null || s.queue.length > 0);
   const [helpToast, setHelpToast] = useState(false);
@@ -516,7 +518,7 @@ export default function NavigationBar({
                       router.push("/settings");
                     }
                   } else if (isHelp) {
-                    if (typeof window !== "undefined" && window.location.pathname.startsWith("/settings")) {
+                    if (isSettingsRoute) {
                       useSettingsTourStore.getState().setOpen(true);
                       return;
                     }
@@ -813,7 +815,7 @@ export default function NavigationBar({
           <button
             data-nudge="atrium_help_button"
             onClick={() => {
-              if (typeof window !== "undefined" && window.location.pathname.startsWith("/settings")) {
+              if (isSettingsRoute) {
                 useSettingsTourStore.getState().setOpen(true);
                 return;
               }
