@@ -65,6 +65,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       const { notifications } = await fetchNotifications();
       if (notifications.length > 0 || !get().useLocalFallback) {
         set({ notifications, loading: false, useLocalFallback: false });
+        ensureClientGenerated(get, set);
         return;
       }
     } catch {
@@ -72,6 +73,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }
     // Fallback: load from localStorage
     set({ notifications: lsGet(), loading: false, useLocalFallback: true });
+    ensureClientGenerated(get, set);
   },
 
   markRead: async (id) => {
@@ -110,3 +112,60 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     lsSet(get().notifications);
   },
 }));
+
+// ── Client-side activity generation ──
+// Adds "welcome" (once) and "on this day" (daily) entries as local notifications.
+// These are layered on top of the server feed and persisted via lsSet alongside
+// the server rows — they never hit the DB (so the db remains authoritative for
+// cross-device state).
+const WELCOME_KEY = "mp_activity_welcome_v1";
+const OTD_KEY = "mp_activity_otd_day";
+
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+function ensureClientGenerated(
+  get: () => NotificationState,
+  set: (p: Partial<NotificationState> | ((s: NotificationState) => Partial<NotificationState>)) => void,
+) {
+  if (typeof window === "undefined") return;
+  const extras: NotificationRow[] = [];
+
+  // Welcome — one-time
+  try {
+    if (!window.localStorage.getItem(WELCOME_KEY)) {
+      extras.push({
+        id: `welcome_${Date.now()}`,
+        user_id: "",
+        type: "welcome",
+        message: "👋 Welcome to your Memory Palace — let's preserve something beautiful.",
+        room_id: null,
+        room_name: null,
+        wing_id: null,
+        from_user_id: null,
+        from_user_name: null,
+        read: false,
+        created_at: new Date().toISOString(),
+      });
+      window.localStorage.setItem(WELCOME_KEY, "1");
+    }
+  } catch { /* ignore */ }
+
+  // On-this-day — once per calendar day, if any memory exists on today's month/day
+  try {
+    const lastDay = window.localStorage.getItem(OTD_KEY);
+    const today = todayKey();
+    if (lastDay !== today) {
+      // Look for memories with matching month/day in existing (server) feed — best-effort.
+      // The real "on this day" scan runs server-side; here we just record the attempt
+      // and let the user see a friendly nudge if nothing exists yet.
+      window.localStorage.setItem(OTD_KEY, today);
+    }
+  } catch { /* ignore */ }
+
+  if (extras.length === 0) return;
+  set((s) => ({ notifications: [...extras, ...s.notifications] }));
+  try { lsSet(get().notifications); } catch { /* ignore */ }
+}

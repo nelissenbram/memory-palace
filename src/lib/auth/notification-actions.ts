@@ -69,6 +69,87 @@ export async function createContributionNotification(data: {
   }
 }
 
+// ── Generic: create a notification row (silently ignores missing table) ──
+export async function createNotification(input: {
+  userId: string;
+  type: string;
+  message: string;
+  roomId?: string | null;
+  roomName?: string | null;
+  wingId?: string | null;
+  fromUserId?: string | null;
+  fromUserName?: string | null;
+}) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
+  try {
+    const supabase = await createClient();
+    await supabase.from("notifications").insert({
+      user_id: input.userId,
+      type: input.type,
+      message: input.message,
+      room_id: input.roomId ?? null,
+      room_name: input.roomName ?? null,
+      wing_id: input.wingId ?? null,
+      from_user_id: input.fromUserId ?? null,
+      from_user_name: input.fromUserName ?? null,
+      read: false,
+    });
+  } catch {
+    // Table may not exist — client falls back to localStorage
+  }
+}
+
+// ── Milestone check after a memory is created ──
+const MILESTONES = [1, 10, 25, 50, 100, 250, 500, 1000];
+const MILESTONE_COPY: Record<number, string> = {
+  1: "🎉 Your very first memory is in the palace!",
+  10: "🏆 10 memories preserved — you're off to a beautiful start.",
+  25: "✨ 25 memories — the palace is taking shape.",
+  50: "🌟 50 memories! You're officially an Archivist.",
+  100: "👑 100 memories preserved — welcome to the Centurion club.",
+  250: "📚 250 memories — your palace is becoming a living archive.",
+  500: "🏛️ 500 memories! Incredible legacy.",
+  1000: "💫 1000 memories — a truly remarkable palace.",
+};
+
+export async function checkAndNotifyMilestone(opts: {
+  userId: string;
+  totalMemories: number;
+}) {
+  if (!MILESTONES.includes(opts.totalMemories)) return;
+  const msg = MILESTONE_COPY[opts.totalMemories];
+  if (!msg) return;
+  await createNotification({ userId: opts.userId, type: "achievement", message: msg });
+}
+
+// ── First memory in a room ──
+export async function notifyFirstInRoom(opts: {
+  userId: string;
+  roomId: string;
+  roomName: string;
+}) {
+  await createNotification({
+    userId: opts.userId,
+    type: "achievement",
+    message: `🎨 First memory in "${opts.roomName}" — this room just came alive.`,
+    roomId: opts.roomId,
+    roomName: opts.roomName,
+  });
+}
+
+// ── Family: member joined / accepted invite ──
+export async function notifyFamilyJoined(opts: {
+  ownerId: string;
+  joinedName: string;
+}) {
+  await createNotification({
+    userId: opts.ownerId,
+    type: "family_invite",
+    message: `👋 ${opts.joinedName} joined your family palace.`,
+    fromUserName: opts.joinedName,
+  });
+}
+
 // ── Fetch notifications for the current user ──
 export async function fetchNotifications(): Promise<{ notifications: NotificationRow[] }> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {

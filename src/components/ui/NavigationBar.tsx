@@ -599,19 +599,23 @@ export default function NavigationBar({
                 >
                   {t(labelKey)}
                 </span>
-                {/* Notification badge dot */}
+                {/* Subtle unread indicator — gold dot with gentle pulse */}
                 {isNotifications && notifCount > 0 && (
-                  <span style={{
-                    position: "absolute",
-                    top: "0.25rem",
-                    right: "50%",
-                    transform: "translateX(0.625rem)",
-                    width: "0.5rem",
-                    height: "0.5rem",
-                    borderRadius: "50%",
-                    background: T.color.terracotta,
-                    border: `0.0625rem solid ${T.color.linen}`,
-                  }} />
+                  <>
+                    <style>{`@keyframes mpNavBellPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.55);} 50% { box-shadow:0 0 0 0.375rem rgba(212,175,55,0);} }`}</style>
+                    <span style={{
+                      position: "absolute",
+                      top: "0.25rem",
+                      right: "50%",
+                      transform: "translateX(0.625rem)",
+                      width: "0.5rem",
+                      height: "0.5rem",
+                      borderRadius: "50%",
+                      background: `radial-gradient(circle, #F5D76E 0%, ${T.color.gold} 70%)`,
+                      border: `0.0625rem solid ${T.color.linen}`,
+                      animation: "mpNavBellPulse 2.2s ease-in-out infinite",
+                    }} />
+                  </>
                 )}
               </button>
             );

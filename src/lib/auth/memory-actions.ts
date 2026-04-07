@@ -151,6 +151,40 @@ export async function createMemory(data: {
     // Non-critical — don't block memory creation if notification fails
   }
 
+  // ── Milestone + first-in-room activity notifications (for the creator) ──
+  try {
+    const { checkAndNotifyMilestone, notifyFirstInRoom } = await import(
+      "@/lib/auth/notification-actions"
+    );
+    // Total memories for this user
+    const { count: totalCount } = await supabase
+      .from("memories")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    if (typeof totalCount === "number") {
+      await checkAndNotifyMilestone({ userId: user.id, totalMemories: totalCount });
+    }
+    // First memory in this room (by this user) — count === 1 means this one is first
+    const { count: roomCount, data: _r } = await supabase
+      .from("memories")
+      .select("id", { count: "exact", head: false })
+      .eq("room_id", dbRoomId)
+      .limit(2);
+    void _r;
+    if (roomCount === 1) {
+      const { data: roomRow } = await supabase
+        .from("rooms")
+        .select("name")
+        .eq("id", dbRoomId)
+        .single();
+      if (roomRow?.name) {
+        await notifyFirstInRoom({ userId: user.id, roomId: dbRoomId, roomName: roomRow.name });
+      }
+    }
+  } catch {
+    // Non-critical
+  }
+
   return { memory };
 }
 

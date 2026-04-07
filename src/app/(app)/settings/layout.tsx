@@ -101,7 +101,7 @@ const NAV_ITEMS = [
   { href: "/settings/family", labelKey: "family", iconKey: "family" },
   { href: "/settings/subscription", labelKey: "subscription", iconKey: "subscription", hideInNative: true },
   { href: "/settings/connections", labelKey: "connections", iconKey: "connections" },
-  { href: "/settings/notifications", labelKey: "notifications", iconKey: "notifications" },
+  { href: "/settings/notifications", labelKey: "alerts", iconKey: "notifications" },
   { href: "/settings/legacy", labelKey: "legacy", iconKey: "legacy" },
   { href: "/settings/security", labelKey: "security", iconKey: "security" },
   { href: "/settings/cookies", labelKey: "cookies", iconKey: "cookies" },

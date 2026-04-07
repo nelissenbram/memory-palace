@@ -193,7 +193,18 @@ export default function NotificationBell() {
                 marginTop: "0.0625rem",
               }}
             >
-              {n.type === "new_contribution" ? "\u{1F4DD}" : "\u{1F514}"}
+              {(() => {
+                switch (n.type) {
+                  case "new_contribution": return "\u{1F4DD}";
+                  case "achievement":      return "\u{1F3C6}";
+                  case "family_invite":    return "\u{1F44B}";
+                  case "on_this_day":      return "\u{1F4C5}";
+                  case "welcome":          return "\u{2728}";
+                  case "reminder":         return "\u{23F0}";
+                  case "system":           return "\u{1F3DB}\u{FE0F}";
+                  default:                 return "\u{1F514}";
+                }
+              })()}
             </div>
 
             {/* Content */}
@@ -298,37 +309,27 @@ export default function NotificationBell() {
           />
         </svg>
 
-        {/* Unread badge */}
+        {/* Subtle unread indicator — soft gold dot with gentle pulse */}
         {count > 0 && (
-          <div
-            aria-label={t("unreadNotifications", { count: String(count) })}
-            style={{
-              position: "absolute",
-              top: "-0.125rem",
-              right: "-0.125rem",
-              minWidth: "1rem",
-              height: "1rem",
-              borderRadius: "0.5rem",
-              background: T.color.terracotta,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0 0.25rem",
-              border: `1.5px solid ${T.color.linen}`,
-            }}
-          >
+          <>
+            <style>{`
+              @keyframes mpBellPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.55);} 50% { box-shadow:0 0 0 0.375rem rgba(212,175,55,0);} }
+            `}</style>
             <span
+              aria-label={t("unreadNotifications", { count: String(count) })}
               style={{
-                fontFamily: T.font.body,
-                fontSize: "0.5625rem",
-                fontWeight: 700,
-                color: "#FFF",
-                lineHeight: 1,
+                position: "absolute",
+                top: "0.25rem",
+                right: "0.25rem",
+                width: "0.5rem",
+                height: "0.5rem",
+                borderRadius: "50%",
+                background: `radial-gradient(circle, #F5D76E 0%, ${T.color.gold} 70%)`,
+                border: `1.5px solid ${T.color.linen}`,
+                animation: "mpBellPulse 2.2s ease-in-out infinite",
               }}
-            >
-              {count > 9 ? "9+" : count}
-            </span>
-          </div>
+            />
+          </>
         )}
       </button>
 

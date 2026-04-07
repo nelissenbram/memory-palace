@@ -193,6 +193,28 @@ export async function acceptFamilyInvite(groupId: string) {
     .eq("id", invite.id);
 
   if (error) return { error: error.message };
+
+  // Notify the group owner that this user joined (Activity feed)
+  try {
+    const { data: group } = await supabase
+      .from("family_groups")
+      .select("created_by")
+      .eq("id", groupId)
+      .single();
+    if (group?.created_by && group.created_by !== user.id) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .single();
+      const joinedName = profile?.display_name || user.email || "Someone";
+      const { notifyFamilyJoined } = await import("@/lib/auth/notification-actions");
+      await notifyFamilyJoined({ ownerId: group.created_by, joinedName });
+    }
+  } catch {
+    // Non-critical
+  }
+
   return { success: true };
 }
 

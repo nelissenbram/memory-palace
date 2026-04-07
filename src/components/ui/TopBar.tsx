@@ -243,7 +243,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", padding: "0 0.125rem" }}>
                 <NotificationBell />
-                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut }}>{t("notifications")}</span>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut }}>{t("activity")}</span>
               </div>
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button onClick={() => { setShowDirectory(!showDirectory); setMenuOpen(false); }} style={{

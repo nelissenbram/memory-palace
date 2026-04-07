@@ -46,7 +46,7 @@ const NAV_ITEMS: { tab: SettingsTab; labelKey: string; iconKey: string; hideInNa
   { tab: "family", labelKey: "family", iconKey: "family" },
   { tab: "subscription", labelKey: "subscription", iconKey: "subscription", hideInNative: true },
   { tab: "connections", labelKey: "connections", iconKey: "connections" },
-  { tab: "notifications", labelKey: "notifications", iconKey: "notifications" },
+  { tab: "notifications", labelKey: "alerts", iconKey: "notifications" },
   { tab: "legacy", labelKey: "legacy", iconKey: "legacy" },
   { tab: "security", labelKey: "security", iconKey: "security" },
   { tab: "cookies", labelKey: "cookies", iconKey: "cookies" },
