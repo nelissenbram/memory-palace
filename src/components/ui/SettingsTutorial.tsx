@@ -120,6 +120,12 @@ export default function SettingsTutorial({ open, onClose }: Props) {
 
   const totalSteps = 2;
 
+  // Match the Atrium/Library nudge overview card style
+  const cardBg = "rgba(42,34,24,0.94)";
+  const cardBorder = "rgba(212,175,55,0.25)";
+  const cardShadow = "0 1rem 3rem rgba(0,0,0,0.4)";
+  const goldLight = (T.color as Record<string, string>).goldLight || "#E8C870";
+
   const overlay = (
     <div
       role="dialog"
@@ -127,181 +133,104 @@ export default function SettingsTutorial({ open, onClose }: Props) {
       aria-label={t("step1Title")}
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        inset: 0,
         zIndex: 2147483000,
-        background: "rgba(20, 16, 10, 0.6)",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
+        background: "rgba(0,0,0,0.35)",
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
-        justifyContent: step === 0 ? "flex-start" : "center",
-        padding: "calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))",
-        overflowY: "auto",
-        animation: "mpSettingsTourFade .25s ease",
+        justifyContent: "center",
+        padding: "1rem",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      {step === 0 ? (
-        <>
-          {/* Arrow pointing up toward tab bar */}
-          <div
-            aria-hidden="true"
-            style={{
-              marginTop: isMobile ? "3.25rem" : "4.75rem",
-              width: 0,
-              height: 0,
-              borderLeft: "0.75rem solid transparent",
-              borderRight: "0.75rem solid transparent",
-              borderBottom: `0.875rem solid ${T.color.white}`,
-              filter: "drop-shadow(0 -2px 4px rgba(0,0,0,.15))",
-            }}
-          />
-          <div
-            style={{
-              maxWidth: "26rem",
-              width: "100%",
-              background: T.color.white,
-              borderRadius: "1.125rem",
-              padding: "1.375rem 1.25rem 1rem",
-              boxShadow: "0 1.25rem 3rem rgba(0,0,0,.22)",
-              border: `1px solid ${T.color.cream}`,
-            }}
-          >
-            <h3
-              style={{
-                fontFamily: T.font.display,
-                fontSize: "1.25rem",
-                fontWeight: 600,
-                color: T.color.charcoal,
-                margin: "0 0 0.5rem",
-              }}
-            >
-              {t("step1Title")}
-            </h3>
-            <p
-              style={{
-                fontFamily: T.font.body,
-                fontSize: "0.9375rem",
-                lineHeight: 1.55,
-                color: T.color.muted,
-                margin: "0 0 1rem",
-              }}
-            >
-              {t("step1Body")}
-            </p>
-            <TourControls step={step} total={totalSteps} onSkip={onClose} onNext={() => setStep(1)} t={t} />
-          </div>
-        </>
-      ) : (
+      <style>{`
+        @keyframes mpNudgeCardIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+      `}</style>
+      <div
+        style={{
+          width: isMobile ? "calc(100vw - 2rem)" : "22rem",
+          maxWidth: "24rem",
+          maxHeight: "calc(100dvh - 4rem)",
+          overflowY: "auto",
+          animation: "mpNudgeCardIn .3s ease both",
+        }}
+      >
         <div
           style={{
-            maxWidth: "32rem",
-            width: "100%",
-            background: T.color.white,
-            borderRadius: "1.25rem",
-            padding: "1.5rem 1.25rem 1.25rem",
-            boxShadow: "0 1.25rem 3rem rgba(0,0,0,.25)",
-            border: `1px solid ${T.color.cream}`,
+            background: cardBg,
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderRadius: "1rem",
+            padding: "1.25rem 1.25rem 1rem",
+            border: `1px solid ${cardBorder}`,
+            boxShadow: cardShadow,
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.75rem",
           }}
         >
-          <h3
-            style={{
-              fontFamily: T.font.display,
-              fontSize: "1.375rem",
-              fontWeight: 600,
-              color: T.color.charcoal,
-              margin: "0 0 0.375rem",
-            }}
-          >
-            {t("step2Title")}
-          </h3>
-          <p
-            style={{
-              fontFamily: T.font.body,
-              fontSize: "0.9375rem",
-              color: T.color.muted,
-              margin: "0 0 1rem",
-            }}
-          >
-            {t("step2Body")}
-          </p>
-
-          <ul
-            style={{
-              listStyle: "none",
-              padding: 0,
-              margin: "0 0 1.25rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.625rem",
-            }}
-          >
-            {FEATURES.map((f) => (
-              <li
-                key={f.iconKey}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "0.75rem",
-                  padding: "0.75rem 0.875rem",
-                  borderRadius: "0.75rem",
-                  background: `${T.color.warmStone}80`,
-                  border: `1px solid ${T.color.cream}`,
-                }}
-              >
-                <div
-                  style={{
-                    width: "2rem",
-                    height: "2rem",
-                    borderRadius: "0.5rem",
-                    background: `${T.color.terracotta}15`,
-                    color: T.color.terracotta,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <FeatIcon name={f.iconKey} size={16} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontFamily: T.font.body,
-                      fontSize: "0.9375rem",
-                      fontWeight: 600,
-                      color: T.color.charcoal,
-                      marginBottom: "0.125rem",
-                    }}
-                  >
-                    {t(f.titleKey)}
+          {step === 0 ? (
+            <>
+              <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: goldLight, letterSpacing: "0.02em" }}>
+                {t("step1Title")}
+              </div>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "rgba(250,250,247,0.88)", lineHeight: 1.6 }}>
+                {t("step1Body")}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: goldLight, letterSpacing: "0.02em" }}>
+                {t("step2Title")}
+              </div>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "rgba(250,250,247,0.88)", lineHeight: 1.6 }}>
+                {t("step2Body")}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.125rem" }}>
+                {FEATURES.map((f) => (
+                  <div key={f.iconKey} style={{ display: "flex", alignItems: "flex-start", gap: "0.625rem" }}>
+                    <div
+                      style={{
+                        width: "1.375rem",
+                        height: "1.375rem",
+                        borderRadius: "0.375rem",
+                        background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
+                        color: "#1a1410",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                        marginTop: "0.0625rem",
+                      }}
+                    >
+                      <FeatIcon name={f.iconKey} size={13} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: goldLight, lineHeight: 1.3 }}>
+                        {t(f.titleKey)}
+                      </div>
+                      <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", lineHeight: 1.5, color: "rgba(250,250,247,0.75)" }}>
+                        {t(f.descKey)}
+                      </div>
+                    </div>
                   </div>
-                  <div
-                    style={{
-                      fontFamily: T.font.body,
-                      fontSize: "0.8125rem",
-                      lineHeight: 1.45,
-                      color: T.color.muted,
-                    }}
-                  >
-                    {t(f.descKey)}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          <TourControls step={step} total={totalSteps} onSkip={onClose} onNext={onClose} t={t} lastStep />
+                ))}
+              </div>
+            </>
+          )}
+          <TourControls
+            step={step}
+            total={totalSteps}
+            onSkip={onClose}
+            onNext={step === 0 ? () => setStep(1) : onClose}
+            t={t}
+            lastStep={step === totalSteps - 1}
+            goldLight={goldLight}
+          />
         </div>
-      )}
-
-      <style>{`@keyframes mpSettingsTourFade{from{opacity:0}to{opacity:1}}`}</style>
+      </div>
     </div>
   );
 
@@ -315,6 +244,7 @@ function TourControls({
   onNext,
   t,
   lastStep = false,
+  goldLight,
 }: {
   step: number;
   total: number;
@@ -322,35 +252,37 @@ function TourControls({
   onNext: () => void;
   t: (k: string) => string;
   lastStep?: boolean;
+  goldLight: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.125rem", gap: "0.75rem" }}>
       <button
         type="button"
-        onClick={onSkip}
+        onClick={(e) => { e.stopPropagation(); onSkip(); }}
         style={{
-          background: "transparent",
-          border: "none",
-          color: T.color.muted,
           fontFamily: T.font.body,
-          fontSize: "0.875rem",
+          fontSize: "0.625rem",
+          fontWeight: 400,
+          color: "rgba(250,250,247,0.45)",
+          background: "none",
+          border: "none",
           cursor: "pointer",
-          minHeight: "2.75rem",
-          padding: "0.5rem 0.75rem",
+          padding: "0.125rem 0.25rem",
+          letterSpacing: "0.03em",
         }}
       >
         {t("skip")}
       </button>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
         <div style={{ display: "flex", gap: "0.25rem" }}>
           {Array.from({ length: total }).map((_, i) => (
             <span
               key={i}
               style={{
-                width: i === step ? "1.125rem" : "0.375rem",
-                height: "0.375rem",
-                borderRadius: "0.1875rem",
-                background: i === step ? T.color.terracotta : `${T.color.terracotta}30`,
+                width: i === step ? "1rem" : "0.375rem",
+                height: "0.25rem",
+                borderRadius: "0.125rem",
+                background: i === step ? goldLight : "rgba(232,200,112,0.25)",
                 transition: "all .2s",
               }}
             />
@@ -358,18 +290,19 @@ function TourControls({
         </div>
         <button
           type="button"
-          onClick={onNext}
+          onClick={(e) => { e.stopPropagation(); onNext(); }}
           style={{
-            background: T.color.terracotta,
-            color: T.color.white,
-            border: "none",
-            borderRadius: "0.625rem",
-            padding: "0.625rem 1.125rem",
             fontFamily: T.font.body,
-            fontSize: "0.875rem",
+            fontSize: "0.75rem",
             fontWeight: 600,
+            color: "#FFF",
+            background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+            border: "none",
+            borderRadius: "0.5rem",
+            padding: "0.4375rem 1.125rem",
             cursor: "pointer",
-            minHeight: "2.75rem",
+            transition: "all .2s",
+            letterSpacing: "0.02em",
           }}
         >
           {lastStep ? t("done") : t("next")}
