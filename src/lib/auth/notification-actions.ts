@@ -251,6 +251,15 @@ export async function seedTestActivities(): Promise<{
     return result;
   }
 
+  // Proactively purge known-dead subscriptions (FCM sentinel endpoints)
+  try {
+    await supabase
+      .from("push_subscriptions")
+      .delete()
+      .eq("user_id", user.id)
+      .like("endpoint", "%permanently-removed.invalid%");
+  } catch { /* ignore */ }
+
   // How many subscribed devices does this user have?
   try {
     const { count } = await supabase
@@ -284,7 +293,7 @@ export async function seedTestActivities(): Promise<{
       try {
         const { data: subs } = await supabase
           .from("push_subscriptions")
-          .select("endpoint, keys_p256dh, keys_auth")
+          .select("id, endpoint, keys_p256dh, keys_auth")
           .eq("user_id", user.id);
         if (subs) {
           const { sendPushDetailed } = await import("@/lib/push");
@@ -312,7 +321,7 @@ export async function seedTestActivities(): Promise<{
                 (r.error || "").includes("ENOTFOUND");
               if (isDead) {
                 try {
-                  await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+                  await supabase.from("push_subscriptions").delete().eq("id", sub.id);
                 } catch { /* ignore */ }
               }
             }
