@@ -301,6 +301,15 @@ export default function NotificationsPage() {
         applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
       });
 
+      if (subscription.endpoint.includes("permanently-removed.invalid")) {
+        setToast({
+          message: "Browser revoked push for this site. Reset Notification permission in Chrome site settings, then retry.",
+          type: "error",
+        });
+        setSubscribing(false);
+        return;
+      }
+
       stage = "POST /api/notifications/subscribe";
       const res = await fetch("/api/notifications/subscribe", {
         method: "POST",
