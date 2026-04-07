@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
-const STORAGE_KEY = "mp_settings_tour_seen_v1";
+const STORAGE_KEY = "mp_settings_tour_seen_v2";
 
 const FEATURES = [
   { iconKey: "profile", titleKey: "feat_profile_title", descKey: "feat_profile_desc" },
@@ -31,23 +32,23 @@ function FeatIcon({ name, size = 18 }: { name: string; size?: number }) {
   };
   switch (name) {
     case "profile":
-      return (<svg {...s}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>);
+      return (<svg {...s} style={{ pointerEvents: "none" }}><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>);
     case "family":
-      return (<svg {...s}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>);
+      return (<svg {...s} style={{ pointerEvents: "none" }}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>);
     case "subscription":
-      return (<svg {...s}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>);
+      return (<svg {...s} style={{ pointerEvents: "none" }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>);
     case "connections":
-      return (<svg {...s}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>);
+      return (<svg {...s} style={{ pointerEvents: "none" }}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" /></svg>);
     case "notifications":
-      return (<svg {...s}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></svg>);
+      return (<svg {...s} style={{ pointerEvents: "none" }}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></svg>);
     case "legacy":
-      return (<svg {...s}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>);
+      return (<svg {...s} style={{ pointerEvents: "none" }}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>);
     case "security":
-      return (<svg {...s}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>);
+      return (<svg {...s} style={{ pointerEvents: "none" }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>);
     case "cookies":
-      return (<svg {...s}><circle cx="12" cy="12" r="9" /><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" /><circle cx="14" cy="8.5" r="0.75" fill="currentColor" stroke="none" /><circle cx="10.5" cy="14.5" r="0.9" fill="currentColor" stroke="none" /></svg>);
+      return (<svg {...s} style={{ pointerEvents: "none" }}><circle cx="12" cy="12" r="9" /><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" /><circle cx="14" cy="8.5" r="0.75" fill="currentColor" stroke="none" /><circle cx="10.5" cy="14.5" r="0.9" fill="currentColor" stroke="none" /></svg>);
     case "help":
-      return (<svg {...s}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>);
+      return (<svg {...s} style={{ pointerEvents: "none" }}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>);
     default:
       return null;
   }
@@ -57,26 +58,31 @@ export function SettingsHelpButton({ onClick }: { onClick: () => void }) {
   const { t } = useTranslation("settingsTour");
   return (
     <button
+      type="button"
       onClick={onClick}
       aria-label={t("helpAria")}
-      title={t("help")}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center",
-        width: "2.75rem",
+        gap: "0.5rem",
         height: "2.75rem",
-        minWidth: "2.75rem",
+        minHeight: "2.75rem",
+        padding: "0 1rem",
         borderRadius: "1.375rem",
-        border: `1px solid ${T.color.cream}`,
-        background: T.color.white,
-        color: T.color.walnut,
+        border: `1px solid ${T.color.terracotta}40`,
+        background: `${T.color.terracotta}10`,
+        color: T.color.terracotta,
         cursor: "pointer",
-        boxShadow: "0 0.125rem 0.5rem rgba(44,44,42,.06)",
+        fontFamily: T.font.body,
+        fontSize: "0.875rem",
+        fontWeight: 600,
+        boxShadow: "0 0.125rem 0.5rem rgba(193,127,89,.12)",
         flexShrink: 0,
+        WebkitTapHighlightColor: "transparent",
       }}
     >
       <FeatIcon name="help" size={18} />
+      <span>{t("help")}</span>
     </button>
   );
 }
@@ -90,25 +96,43 @@ export default function SettingsTutorial({ open, onClose }: Props) {
   const { t } = useTranslation("settingsTour");
   const isMobile = useIsMobile();
   const [step, setStep] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (open) setStep(0);
   }, [open]);
 
-  if (!open) return null;
+  // Lock body scroll while overlay is open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  if (!mounted || !open) return null;
 
   const totalSteps = 2;
 
-  return (
+  const overlay = (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={t("step1Title")}
       style={{
         position: "fixed",
-        inset: 0,
-        zIndex: 200,
-        background: "rgba(20, 16, 10, 0.55)",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 2147483000,
+        background: "rgba(20, 16, 10, 0.6)",
         backdropFilter: "blur(4px)",
         WebkitBackdropFilter: "blur(4px)",
         display: "flex",
@@ -116,19 +140,20 @@ export default function SettingsTutorial({ open, onClose }: Props) {
         alignItems: "center",
         justifyContent: step === 0 ? "flex-start" : "center",
         padding: "calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))",
+        overflowY: "auto",
         animation: "mpSettingsTourFade .25s ease",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      {step === 0 && (
+      {step === 0 ? (
         <>
-          {/* Arrow pointing up to tab bar */}
+          {/* Arrow pointing up toward tab bar */}
           <div
             aria-hidden="true"
             style={{
-              marginTop: isMobile ? "3.25rem" : "4.5rem",
+              marginTop: isMobile ? "3.25rem" : "4.75rem",
               width: 0,
               height: 0,
               borderLeft: "0.75rem solid transparent",
@@ -143,8 +168,8 @@ export default function SettingsTutorial({ open, onClose }: Props) {
               width: "100%",
               background: T.color.white,
               borderRadius: "1.125rem",
-              padding: "1.25rem 1.25rem 1rem",
-              boxShadow: "0 1.25rem 3rem rgba(0,0,0,.2)",
+              padding: "1.375rem 1.25rem 1rem",
+              boxShadow: "0 1.25rem 3rem rgba(0,0,0,.22)",
               border: `1px solid ${T.color.cream}`,
             }}
           >
@@ -170,24 +195,14 @@ export default function SettingsTutorial({ open, onClose }: Props) {
             >
               {t("step1Body")}
             </p>
-            <TourControls
-              step={step}
-              total={totalSteps}
-              onSkip={onClose}
-              onNext={() => setStep(1)}
-              t={t}
-            />
+            <TourControls step={step} total={totalSteps} onSkip={onClose} onNext={() => setStep(1)} t={t} />
           </div>
         </>
-      )}
-
-      {step === 1 && (
+      ) : (
         <div
           style={{
             maxWidth: "32rem",
             width: "100%",
-            maxHeight: "85vh",
-            overflowY: "auto",
             background: T.color.white,
             borderRadius: "1.25rem",
             padding: "1.5rem 1.25rem 1.25rem",
@@ -282,20 +297,15 @@ export default function SettingsTutorial({ open, onClose }: Props) {
             ))}
           </ul>
 
-          <TourControls
-            step={step}
-            total={totalSteps}
-            onSkip={onClose}
-            onNext={onClose}
-            t={t}
-            lastStep
-          />
+          <TourControls step={step} total={totalSteps} onSkip={onClose} onNext={onClose} t={t} lastStep />
         </div>
       )}
 
       <style>{`@keyframes mpSettingsTourFade{from{opacity:0}to{opacity:1}}`}</style>
     </div>
   );
+
+  return createPortal(overlay, document.body);
 }
 
 function TourControls({
@@ -316,6 +326,7 @@ function TourControls({
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
       <button
+        type="button"
         onClick={onSkip}
         style={{
           background: "transparent",
@@ -346,6 +357,7 @@ function TourControls({
           ))}
         </div>
         <button
+          type="button"
           onClick={onNext}
           style={{
             background: T.color.terracotta,

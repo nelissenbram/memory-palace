@@ -11,6 +11,7 @@ import {
   acceptFamilyInvite,
   removeFamilyMember,
   cancelFamilyInvite,
+  updateFamilyMemberRole,
   getAllFamilyGroups,
   updateFamilyGroup,
   deleteFamilyGroup,
@@ -260,6 +261,27 @@ export default function FamilyPage() {
     } else {
       showToast(t("joinedSuccess"), "success");
       setExpandedGroupId(groupId);
+      await loadGroups();
+    }
+  };
+
+  const handleCancelInvite = async (groupId: string, memberId: string, email: string) => {
+    const result = await cancelFamilyInvite(groupId, memberId);
+    if (result.error) {
+      showToast(result.error, "error");
+    } else {
+      showToast(t("memberRemoved", { email }), "success");
+      await loadGroups();
+    }
+  };
+
+  const handleToggleRole = async (groupId: string, userId: string, currentRole: string) => {
+    const newRole = currentRole === "admin" ? "member" : "admin";
+    const result = await updateFamilyMemberRole(groupId, userId, newRole);
+    if (result.error) {
+      showToast(result.error, "error");
+    } else {
+      showToast(t("roleUpdated") || "Role updated", "success");
       await loadGroups();
     }
   };
@@ -838,58 +860,24 @@ export default function FamilyPage() {
                           >
                             {resendingId === member.id ? t("resending") : t("resend")}
                           </button>
-                          {member.user_id && (
-                            confirmRemoveMember?.userId === member.user_id && confirmRemoveMember?.groupId === grp.id ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal }}>
-                                  {t("confirmRemoveShort")}
-                                </span>
-                                <button
-                                  onClick={() => handleRemoveMember(grp.id, member.user_id!, member.email)}
-                                  disabled={removingMemberId === member.user_id}
-                                  style={{
-                                    padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
-                                    border: "none", background: T.color.error, color: "#FFF",
-                                    fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
-                                    cursor: removingMemberId === member.user_id ? "default" : "pointer",
-                                    opacity: removingMemberId === member.user_id ? 0.7 : 1,
-                                    transition: "all .15s",
-                                  }}
-                                >
-                                  {removingMemberId === member.user_id ? t("removing") : t("confirmYes")}
-                                </button>
-                                <button
-                                  onClick={() => setConfirmRemoveMember(null)}
-                                  style={{
-                                    padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
-                                    border: `1px solid ${T.color.cream}`, background: T.color.white,
-                                    color: T.color.muted, fontFamily: T.font.body, fontSize: "0.6875rem",
-                                    fontWeight: 500, cursor: "pointer", transition: "all .15s",
-                                  }}
-                                >
-                                  {t("cancel")}
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setConfirmRemoveMember({ groupId: grp.id, userId: member.user_id!, email: member.email })}
-                                aria-label={t("removeMember", { email: member.email })}
-                                style={{
-                                  width: "2rem", height: "2rem", borderRadius: "0.5rem",
-                                  border: `1px solid ${T.color.cream}`,
-                                  background: "transparent",
-                                  color: T.color.muted,
-                                  fontSize: "0.75rem",
-                                  cursor: "pointer",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  transition: "all .15s",
-                                  minWidth: "2.5rem", minHeight: "2.5rem",
-                                }}
-                              >
-                                {"\u2715"}
-                              </button>
-                            )
-                          )}
+                          <button
+                            onClick={() => handleCancelInvite(grp.id, member.id, member.email)}
+                            aria-label={t("removeMember", { email: member.email })}
+                            title={t("cancel")}
+                            style={{
+                              width: "2rem", height: "2rem", borderRadius: "0.5rem",
+                              border: `1px solid ${T.color.cream}`,
+                              background: "transparent",
+                              color: T.color.muted,
+                              fontSize: "0.75rem",
+                              cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              transition: "all .15s",
+                              minWidth: "2.5rem", minHeight: "2.5rem",
+                            }}
+                          >
+                            {"\u2715"}
+                          </button>
                         </div>
                       )}
                     </div>
@@ -987,6 +975,23 @@ export default function FamilyPage() {
                         </svg>
                         {t("contactMember")}
                       </a>
+                    )}
+                    {canManage && member.role !== "owner" && member.user_id && (
+                      <button
+                        onClick={() => handleToggleRole(grp.id, member.user_id!, member.role)}
+                        title={member.role === "admin" ? (t("makeMember") || "Make member") : (t("makeAdmin") || "Make admin")}
+                        style={{
+                          padding: "0.375rem 0.625rem", borderRadius: "0.5rem",
+                          border: `1px solid ${T.color.terracotta}30`,
+                          background: T.color.white,
+                          color: T.color.terracotta,
+                          fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                          cursor: "pointer", transition: "all .15s",
+                          minHeight: "2.75rem",
+                        }}
+                      >
+                        {member.role === "admin" ? (t("makeMember") || "Make member") : (t("makeAdmin") || "Make admin")}
+                      </button>
                     )}
                     {canManage && member.role !== "owner" && member.user_id && (
                       confirmRemoveMember?.userId === member.user_id && confirmRemoveMember?.groupId === grp.id ? (

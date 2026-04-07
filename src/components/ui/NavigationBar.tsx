@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import NotificationBell from "@/components/ui/NotificationBell";
+import { useNudgeStore } from "@/lib/stores/nudgeStore";
+import { useNotificationStore } from "@/lib/stores/notificationStore";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -24,6 +27,12 @@ interface NavigationBarProps {
   onNavigate?: (path: string) => void;
   /** Minimal mode — only show mode buttons (used in 3D Palace view) */
   minimal?: boolean;
+  /** Active special tab — used to highlight non-mode tabs like "me" or "notifications" */
+  activeTab?: "me" | "notifications" | null;
+  /** Callback when notifications tab is tapped */
+  onNotifications?: () => void;
+  /** Callback when Me/settings tab is tapped */
+  onSettings?: () => void;
 }
 
 type ModeKey = "atrium" | "library" | "3d";
@@ -155,7 +164,7 @@ function MeIcon({ color = "currentColor", size = 16 }: { color?: string; size?: 
 /*  Mode icon renderer                                                 */
 /* ------------------------------------------------------------------ */
 
-function ModeIcon({ mode, active, size = 16, color: colorOverride }: { mode: ModeKey | "me"; active: boolean; size?: number; color?: string }) {
+function ModeIcon({ mode, active, size = 16, color: colorOverride }: { mode: ModeKey | "me" | "help"; active: boolean; size?: number; color?: string }) {
   const activeColor = T.color.gold;
   const inactiveColor = "currentColor";
   const color = colorOverride ?? (active ? activeColor : inactiveColor);
@@ -169,7 +178,22 @@ function ModeIcon({ mode, active, size = 16, color: colorOverride }: { mode: Mod
       return <PalaceIcon color={color} size={size} />;
     case "me":
       return <MeIcon color={color} size={size} />;
+    case "help":
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      );
   }
+}
+
+function NotificationIcon({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 01-3.46 0" />
+    </svg>
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -286,11 +310,24 @@ export default function NavigationBar({
   toolsOpen = false,
   onNavigate,
   minimal = false,
+  activeTab = null,
+  onNotifications,
+  onSettings,
 }: NavigationBarProps) {
   // NOTE: "navigation" namespace exists in en.json — the `as any` cast is needed
   // because the TypeScript namespace union type hasn't been regenerated to include it.
   // Fix: regenerate the Namespace type from the JSON keys, then remove `as any`.
   const { t } = useTranslation("navigation" as any);
+  const router = useRouter();
+  const notifCount = useNotificationStore((s) => s.notifications.filter(n => !n.read).length);
+  const nudgeActive = useNudgeStore((s) => s.activeNudge !== null || s.queue.length > 0);
+  const [helpToast, setHelpToast] = useState(false);
+
+  // Prefetch routes for instant navigation
+  useEffect(() => {
+    router.prefetch("/settings");
+    router.prefetch("/palace");
+  }, [router]);
 
   /* ---- refs for sliding indicator ---- */
   const containerRef = useRef<HTMLDivElement>(null);
@@ -299,6 +336,7 @@ export default function NavigationBar({
     library: null,
     "3d": null,
   });
+  const allTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({});
   const [mounted, setMounted] = useState(false);
@@ -331,11 +369,14 @@ export default function NavigationBar({
 
   /* ---- sliding indicator position ---- */
   const updateIndicator = useCallback(() => {
-    const btn = buttonRefs.current[currentMode];
     const container = containerRef.current;
-    if (!btn || !container) return;
+    if (!container) return;
 
     if (isMobile) {
+      // Determine which tab is active — special tabs take priority
+      const activeKey = activeTab ? activeTab : nudgeActive ? "help" : currentMode;
+      const btn = allTabRefs.current[activeKey] || buttonRefs.current[currentMode];
+      if (!btn) return;
       const cRect = container.getBoundingClientRect();
       const bRect = btn.getBoundingClientRect();
       setIndicatorStyle({
@@ -350,6 +391,8 @@ export default function NavigationBar({
         boxShadow: `0 0.125rem 0.5rem rgba(193,127,89,0.35)`,
       });
     } else {
+      const btn = buttonRefs.current[currentMode];
+      if (!btn) return;
       const cRect = container.getBoundingClientRect();
       const bRect = btn.getBoundingClientRect();
       setIndicatorStyle({
@@ -365,7 +408,7 @@ export default function NavigationBar({
         pointerEvents: "none" as const,
       });
     }
-  }, [currentMode, isMobile]);
+  }, [currentMode, isMobile, activeTab, nudgeActive]);
 
   useEffect(() => {
     updateIndicator();
@@ -376,10 +419,15 @@ export default function NavigationBar({
   /* ---- pulse on mode change ---- */
   const handleModeChange = useCallback(
     (mode: ModeKey) => {
-      if (mode === currentMode) return;
-      setPulsingMode(mode);
+      // Block navigation while nudge sequence is running
+      if (useNudgeStore.getState().isNudging()) return;
+      // Always call onModeChange — parent decides whether to act on it
+      // (needed so clicking a mode from notifications/settings clears the overlay)
       onModeChange(mode);
-      setTimeout(() => setPulsingMode(null), 400);
+      if (mode !== currentMode) {
+        setPulsingMode(mode);
+        setTimeout(() => setPulsingMode(null), 400);
+      }
     },
     [currentMode, onModeChange],
   );
@@ -392,18 +440,19 @@ export default function NavigationBar({
   /* ================================================================ */
 
   if (isMobile) {
-    const mobileTabs: { mode: ModeKey | "notifications" | "me"; labelKey: string }[] = minimal
+    const mobileTabs: { mode: ModeKey | "notifications" | "me" | "help"; labelKey: string; nudgeId?: string }[] = minimal
       ? [
           { mode: "atrium",  labelKey: "mode_atrium" },
           { mode: "library", labelKey: "mode_library" },
           { mode: "3d",      labelKey: "mode_palace" },
         ]
       : [
-          { mode: "atrium",        labelKey: "mode_atrium" },
-          { mode: "library",       labelKey: "mode_library" },
-          { mode: "3d",            labelKey: "mode_palace" },
-          { mode: "notifications", labelKey: "tab_notifications" },
-          { mode: "me",            labelKey: "tab_me" },
+          { mode: "atrium",        labelKey: "mode_atrium",        nudgeId: "atrium_mob_home" },
+          { mode: "library",       labelKey: "mode_library",       nudgeId: "atrium_mob_library" },
+          { mode: "3d",            labelKey: "mode_palace",        nudgeId: "atrium_mob_palace" },
+          { mode: "notifications", labelKey: "tab_notifications",  nudgeId: "atrium_mob_notif" },
+          { mode: "help",          labelKey: "tab_help",           nudgeId: "atrium_mob_help" },
+          { mode: "me",            labelKey: "tab_me",             nudgeId: "atrium_mob_me" },
         ];
 
     return (
@@ -437,41 +486,57 @@ export default function NavigationBar({
           {/* sliding top indicator */}
           <div style={indicatorStyle} aria-hidden />
 
-          {mobileTabs.map(({ mode, labelKey }) => {
+          {mobileTabs.map(({ mode, labelKey, nudgeId }) => {
             const isMe = mode === "me";
+            const isHelp = mode === "help";
             const isNotifications = mode === "notifications";
-            const isSpecial = isMe || isNotifications;
-            const isActive = !isSpecial && mode === currentMode;
+            const isNavMode = !isMe && !isHelp && !isNotifications;
+            const hasSpecialActive = !!(activeTab || nudgeActive);
+            const isActive = isMe ? activeTab === "me"
+              : isNotifications ? activeTab === "notifications"
+              : isHelp ? nudgeActive
+              : hasSpecialActive ? false  /* suppress mode highlight when a special tab is active */
+              : mode === currentMode;
             const color = isActive ? T.color.terracotta : T.color.muted;
-
-            /* Notifications tab renders the existing NotificationBell component */
-            if (isNotifications) {
-              return (
-                <div
-                  key="notifications"
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "0.5rem 0 0.375rem",
-                    minHeight: "2.75rem",
-                  }}
-                >
-                  <NotificationBell />
-                </div>
-              );
-            }
 
             return (
               <button
                 key={mode}
+                data-nudge={nudgeId}
                 ref={(el) => {
-                  if (!isSpecial) buttonRefs.current[mode as ModeKey] = el;
+                  allTabRefs.current[mode] = el;
+                  if (isNavMode) buttonRefs.current[mode as ModeKey] = el;
                 }}
                 onClick={() => {
                   if (isMe) {
-                    onNavigate ? onNavigate("/settings") : (window.location.href = "/settings");
+                    if (onSettings) {
+                      onSettings();
+                    } else {
+                      router.push("/settings");
+                    }
+                  } else if (isHelp) {
+                    // On /settings pages, dispatch a custom event so the
+                    // settings layout can open its own tutorial modal.
+                    if (typeof window !== "undefined" && window.location.pathname.startsWith("/settings")) {
+                      window.dispatchEvent(new CustomEvent("mp:open-settings-tour"));
+                      return;
+                    }
+                    // reset() sets _forceCurrentPage + increments _resetCount,
+                    // which triggers NudgeProvider's useEffect → initPage()
+                    useNudgeStore.getState().reset();
+                    // Check after the useEffect has time to run
+                    setTimeout(() => {
+                      if (!useNudgeStore.getState().isNudging()) {
+                        setHelpToast(true);
+                        setTimeout(() => setHelpToast(false), 3000);
+                      }
+                    }, 200);
+                  } else if (isNotifications) {
+                    if (onNotifications) {
+                      onNotifications();
+                    } else {
+                      useNotificationStore.getState().toggle();
+                    }
                   } else {
                     handleModeChange(mode as ModeKey);
                   }
@@ -498,6 +563,7 @@ export default function NavigationBar({
                   transition: `color 0.3s ${EASE}, opacity 0.3s ${EASE}`,
                   opacity: isActive ? 1 : 0.7,
                   WebkitTapHighlightColor: "transparent",
+                  position: "relative",
                 }}
               >
                 <span
@@ -515,7 +581,11 @@ export default function NavigationBar({
                   }}
                   aria-hidden
                 >
-                  <ModeIcon mode={mode as ModeKey | "me"} active={isActive} size={20} />
+                  {isNotifications ? (
+                    <NotificationIcon size={20} color={color} />
+                  ) : (
+                    <ModeIcon mode={mode as ModeKey | "me" | "help"} active={isActive} size={20} />
+                  )}
                 </span>
                 <span
                   style={{
@@ -528,10 +598,51 @@ export default function NavigationBar({
                 >
                   {t(labelKey)}
                 </span>
+                {/* Notification badge dot */}
+                {isNotifications && notifCount > 0 && (
+                  <span style={{
+                    position: "absolute",
+                    top: "0.25rem",
+                    right: "50%",
+                    transform: "translateX(0.625rem)",
+                    width: "0.5rem",
+                    height: "0.5rem",
+                    borderRadius: "50%",
+                    background: T.color.terracotta,
+                    border: `0.0625rem solid ${T.color.linen}`,
+                  }} />
+                )}
               </button>
             );
           })}
         </nav>
+
+        {/* Help toast — shown when no tutorial available for current page */}
+        {helpToast && (
+          <div
+            onClick={() => setHelpToast(false)}
+            style={{
+              position: "fixed",
+              bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))",
+              left: "50%",
+              transform: "translateX(-50%)",
+              background: T.color.charcoal,
+              color: T.color.white,
+              fontFamily: T.font.body,
+              fontSize: "0.8125rem",
+              fontWeight: 500,
+              padding: "0.75rem 1.25rem",
+              borderRadius: "0.75rem",
+              boxShadow: "0 0.5rem 2rem rgba(44,44,42,0.25)",
+              zIndex: 60,
+              cursor: "pointer",
+              animation: "navSlideUp 0.3s ease both",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {t("noHelpHere") || "You're a pro — no tutorial needed here! 🏛️"}
+          </div>
+        )}
       </>
     );
   }
@@ -576,6 +687,7 @@ export default function NavigationBar({
         {/* ---- mode button group with sliding indicator ---- */}
         <div
           ref={containerRef}
+          data-nudge="atrium_nav_modes"
           style={{
             position: "relative",
             display: "flex",
@@ -594,6 +706,7 @@ export default function NavigationBar({
             return (
               <button
                 key={mode}
+                data-nudge={`nav_${mode}_btn`}
                 ref={(el) => {
                   buttonRefs.current[mode] = el;
                 }}
@@ -665,6 +778,7 @@ export default function NavigationBar({
           <button
             onClick={onToolsClick}
             aria-label={t("tools")}
+            data-nudge="atrium_tools_button"
             style={{
               width: "2.25rem",
               height: "2.25rem",
@@ -690,16 +804,52 @@ export default function NavigationBar({
 
         {/* ---- notification bell ---- */}
         {!minimal && (
-          <div style={{ marginRight: "0.375rem", flexShrink: 0 }}>
+          <div data-nudge="atrium_notifications" style={{ marginRight: "0.375rem", flexShrink: 0 }}>
             <NotificationBell />
           </div>
+        )}
+
+        {/* ---- help / restart tutorial ---- */}
+        {!minimal && (
+          <button
+            data-nudge="atrium_help_button"
+            onClick={() => {
+              // reset() sets _forceCurrentPage + increments _resetCount,
+              // which triggers NudgeProvider's useEffect → initPage()
+              useNudgeStore.getState().reset();
+            }}
+            aria-label={t("helpTutorial")}
+            style={{
+              width: "2.25rem",
+              height: "2.25rem",
+              borderRadius: "50%",
+              border: `0.0625rem solid ${T.color.cream}`,
+              background: "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: `all 0.25s ${EASE}`,
+              marginRight: "0.375rem",
+              flexShrink: 0,
+              fontFamily: T.font.display,
+              fontSize: "0.8125rem",
+              fontWeight: 600,
+              color: T.color.muted,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = T.color.terracotta; e.currentTarget.style.color = T.color.terracotta; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = T.color.cream; e.currentTarget.style.color = T.color.muted; }}
+          >
+            ?
+          </button>
         )}
 
         {/* ---- user avatar ---- */}
         {!minimal && (
           <button
+            data-nudge="atrium_user_settings"
             onClick={() => {
-              onNavigate ? onNavigate("/settings") : (window.location.href = "/settings");
+              onSettings ? onSettings() : router.push("/settings");
             }}
             aria-label={t("user_settings")}
             onMouseEnter={(e) => {

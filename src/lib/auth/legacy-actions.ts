@@ -102,19 +102,37 @@ export async function createLegacyContact(input: {
     }
   }
 
-  const { data, error } = await supabase
+  const basePayload: Record<string, unknown> = {
+    user_id: user.id,
+    contact_name: input.contact_name,
+    contact_email: input.contact_email.toLowerCase(),
+    relationship: input.relationship || null,
+    access_level: input.access_level || "full",
+  };
+  const withAccess = {
+    ...basePayload,
+    wing_access: input.wing_access || [],
+    room_access: input.room_access || [],
+  };
+
+  let { data, error } = await supabase
     .from("legacy_contacts")
-    .insert({
-      user_id: user.id,
-      contact_name: input.contact_name,
-      contact_email: input.contact_email.toLowerCase(),
-      relationship: input.relationship || null,
-      access_level: input.access_level || "full",
-      wing_access: input.wing_access || [],
-      room_access: input.room_access || [],
-    })
+    .insert(withAccess)
     .select()
     .single();
+
+  // Fallback: if the production DB is missing wing_access/room_access columns
+  // (migration 012 not yet applied), retry without them so contact creation
+  // still succeeds.
+  if (error && /wing_access|room_access/i.test(error.message)) {
+    const retry = await supabase
+      .from("legacy_contacts")
+      .insert(basePayload)
+      .select()
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) return { error: error.message };
 

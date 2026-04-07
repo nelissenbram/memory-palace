@@ -543,6 +543,65 @@ export async function cancelFamilyInvite(groupId: string, memberId: string) {
   return { success: true };
 }
 
+/** Update a family member's role (owner/admin only; cannot change owner). */
+export async function updateFamilyMemberRole(
+  groupId: string,
+  targetUserId: string,
+  newRole: "admin" | "member"
+) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { error: "Supabase not configured" };
+  }
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  if (!["admin", "member"].includes(newRole)) {
+    return { error: "Invalid role" };
+  }
+
+  // Permission check: owner/admin or group creator
+  const { data: callerMember } = await supabase
+    .from("family_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", user.id)
+    .single();
+
+  let isCreator = false;
+  if (!callerMember || !["owner", "admin"].includes(callerMember.role)) {
+    const { data: group } = await supabase
+      .from("family_groups")
+      .select("id")
+      .eq("id", groupId)
+      .eq("created_by", user.id)
+      .single();
+    isCreator = !!group;
+  }
+  if (!callerMember || (!["owner", "admin"].includes(callerMember.role) && !isCreator)) {
+    return { error: "You do not have permission to change roles" };
+  }
+
+  // Cannot modify the owner's role
+  const { data: targetMember } = await supabase
+    .from("family_members")
+    .select("role")
+    .eq("group_id", groupId)
+    .eq("user_id", targetUserId)
+    .single();
+  if (!targetMember) return { error: "Member not found" };
+  if (targetMember.role === "owner") return { error: "Cannot change the owner's role" };
+
+  const { error } = await supabase
+    .from("family_members")
+    .update({ role: newRole })
+    .eq("group_id", groupId)
+    .eq("user_id", targetUserId);
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
 export async function getFamilyMembers(groupId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { members: [] };

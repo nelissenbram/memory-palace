@@ -10,7 +10,8 @@ import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
-import SettingsTutorial, { SettingsHelpButton, useSettingsTutorial } from "@/components/ui/SettingsTutorial";
+import SettingsTutorial, { useSettingsTutorial } from "@/components/ui/SettingsTutorial";
+import { useEffect } from "react";
 
 function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
   const s = {
@@ -119,6 +120,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const setNavMode = usePalaceStore((s) => s.setNavMode);
   const [tourOpen, setTourOpen] = useSettingsTutorial();
 
+  // Listen for help button presses from the shared mobile NavigationBar
+  useEffect(() => {
+    const open = () => setTourOpen(true);
+    window.addEventListener("mp:open-settings-tour", open);
+    return () => window.removeEventListener("mp:open-settings-tour", open);
+  }, [setTourOpen]);
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -154,7 +162,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             {tc("settings")}
           </h1>
           <div style={{ flex: 1 }} />
-          <SettingsHelpButton onClick={() => setTourOpen(true)} />
         </header>
       )}
 
@@ -166,15 +173,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           maxWidth: 1100,
           margin: "0 auto",
         }}>
-          {/* Mobile header row: help button */}
-          <div style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            padding: "calc(0.5rem + env(safe-area-inset-top, 0px)) 0.75rem 0.25rem",
-            background: T.color.white,
-          }}>
-            <SettingsHelpButton onClick={() => setTourOpen(true)} />
-          </div>
           {/* Horizontal scrollable tab bar */}
           <nav aria-label={tc("settingsNavigation")} style={{
             overflowX: "auto",
