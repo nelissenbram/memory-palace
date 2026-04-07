@@ -89,7 +89,7 @@ export default function SettingsInline() {
       {/* Mobile: horizontal scrollable tab bar */}
       {isMobile ? (
         <div style={{ display: "flex", flexDirection: "column", maxWidth: 1100, margin: "0 auto" }}>
-          <nav aria-label={tc("settingsNavigation")} style={{
+          <nav data-mp-settings-tabs aria-label={tc("settingsNavigation")} style={{
             overflowX: "auto", whiteSpace: "nowrap",
             borderBottom: `1px solid ${T.color.cream}`,
             background: T.color.white,
@@ -151,7 +151,7 @@ export default function SettingsInline() {
       ) : (
         /* Desktop: sidebar + content */
         <div style={{ display: "flex", maxWidth: 1100, margin: "0 auto", padding: "2rem 1.75rem", gap: "2rem" }}>
-          <nav aria-label={tc("settingsNavigation")} style={{ width: "13.75rem", flexShrink: 0, display: "flex", flexDirection: "column" }}>
+          <nav data-mp-settings-tabs aria-label={tc("settingsNavigation")} style={{ width: "13.75rem", flexShrink: 0, display: "flex", flexDirection: "column" }}>
             <div style={{
               background: T.color.white, borderRadius: "1rem",
               border: `1px solid ${T.color.cream}`, padding: "0.5rem",
