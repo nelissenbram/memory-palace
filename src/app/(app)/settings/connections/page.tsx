@@ -4,17 +4,71 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 // ── Provider definitions ──
+type ProviderIconKey = "photos" | "dropbox" | "cloud" | "folder" | "apple";
+
 interface ProviderDef {
   id: string;
   name: string;
   descKey: string;
-  icon: string;
+  iconKey: ProviderIconKey;
   accentColor: string;
   connectUrl: string;
   browseType: "photos" | "files";
   comingSoon?: boolean;
+}
+
+function ProviderIcon({ name, color, size = 26 }: { name: ProviderIconKey; color: string; size?: number }) {
+  const s = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: color,
+    strokeWidth: 1.6,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  switch (name) {
+    case "photos":
+      return (
+        <svg {...s}>
+          <rect x="3" y="6" width="18" height="14" rx="2" />
+          <circle cx="12" cy="13" r="4" />
+          <path d="M8 6l1.5-2h5L16 6" />
+        </svg>
+      );
+    case "dropbox":
+      return (
+        <svg {...s}>
+          <path d="M7 3l5 3-5 3-5-3 5-3z" />
+          <path d="M17 3l5 3-5 3-5-3 5-3z" />
+          <path d="M7 11l5 3-5 3-5-3 5-3z" />
+          <path d="M17 11l5 3-5 3-5-3 5-3z" />
+          <path d="M7 19l5 3 5-3" />
+        </svg>
+      );
+    case "cloud":
+      return (
+        <svg {...s}>
+          <path d="M17.5 19a4.5 4.5 0 00.5-8.97A6 6 0 006 11a4 4 0 00.5 7.97h11z" />
+        </svg>
+      );
+    case "folder":
+      return (
+        <svg {...s}>
+          <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+        </svg>
+      );
+    case "apple":
+      return (
+        <svg {...s} fill={color} stroke="none">
+          <path d="M16.5 12.5c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.5-.2-2.8.9-3.6.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1.9-4 2.4-1.7 2.9-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3.1 2.4 1.2 0 1.7-.8 3.2-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.5-1-2.6-3.9zM14 5.3c.6-.8 1.1-1.9 1-3-1 .1-2.1.6-2.8 1.4-.6.7-1.2 1.9-1 2.9 1.1.1 2.2-.5 2.8-1.3z" />
+        </svg>
+      );
+  }
 }
 
 const PROVIDERS: ProviderDef[] = [
@@ -22,7 +76,7 @@ const PROVIDERS: ProviderDef[] = [
     id: "google_photos",
     name: "Google Photos",
     descKey: "googlePhotosDesc",
-    icon: "\u{1F4F8}",
+    iconKey: "photos",
     accentColor: "#4285F4",
     connectUrl: "/api/integrations/google/connect",
     browseType: "photos",
@@ -32,7 +86,7 @@ const PROVIDERS: ProviderDef[] = [
     id: "dropbox",
     name: "Dropbox",
     descKey: "dropboxDesc",
-    icon: "\u{1F4E6}",
+    iconKey: "dropbox",
     accentColor: "#0061FF",
     connectUrl: "/api/integrations/dropbox/connect",
     browseType: "files",
@@ -41,7 +95,7 @@ const PROVIDERS: ProviderDef[] = [
     id: "onedrive",
     name: "OneDrive",
     descKey: "onedriveDesc",
-    icon: "\u2601\uFE0F",
+    iconKey: "cloud",
     accentColor: "#0078D4",
     connectUrl: "/api/integrations/onedrive/connect",
     browseType: "files",
@@ -50,7 +104,7 @@ const PROVIDERS: ProviderDef[] = [
     id: "box",
     name: "Box",
     descKey: "boxDesc",
-    icon: "\u{1F4C1}",
+    iconKey: "folder",
     accentColor: "#0061D5",
     connectUrl: "/api/integrations/box/connect",
     browseType: "files",
@@ -60,7 +114,7 @@ const PROVIDERS: ProviderDef[] = [
     id: "apple_photos",
     name: "Apple Photos",
     descKey: "applePhotosDesc",
-    icon: "\u{1F34E}",
+    iconKey: "apple",
     accentColor: "#999999",
     connectUrl: "",
     browseType: "photos",
@@ -89,6 +143,7 @@ export default function ConnectionsPage() {
 function ConnectionsContent() {
   const { t, locale } = useTranslation("connections");
   const { t: tc } = useTranslation("common");
+  const isMobile = useIsMobile();
   const searchParams = useSearchParams();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -186,21 +241,23 @@ function ConnectionsContent() {
         </div>
       )}
 
-      {/* Page header */}
-      <div style={{ marginBottom: "1.75rem" }}>
-        <h2 style={{
-          fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 0.5rem",
-        }}>
-          {t("title")}
-        </h2>
-        <p style={{
-          fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-          margin: 0, lineHeight: 1.5,
-        }}>
-          {t("description")}
-        </p>
-      </div>
+      {/* Page header — desktop only */}
+      {!isMobile && (
+        <div style={{ marginBottom: "1.75rem" }}>
+          <h2 style={{
+            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
+            color: T.color.charcoal, margin: "0 0 0.5rem",
+          }}>
+            {t("title")}
+          </h2>
+          <p style={{
+            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+            margin: 0, lineHeight: 1.5,
+          }}>
+            {t("description")}
+          </p>
+        </div>
+      )}
 
       {/* Provider cards */}
       {loading ? (
@@ -238,10 +295,9 @@ function ConnectionsContent() {
                       ? `${provider.accentColor}12`
                       : T.color.warmStone,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "1.5rem",
                     border: isConnected ? `2px solid ${provider.accentColor}25` : "none",
                   }}>
-                    {provider.icon}
+                    <ProviderIcon name={provider.iconKey} color={isConnected ? provider.accentColor : T.color.muted} size={26} />
                   </div>
 
                   {/* Info */}

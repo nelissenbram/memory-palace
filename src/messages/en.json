@@ -79,6 +79,33 @@
     "a11yBackToHome": "Back to home",
     "a11ySwitchLanguage": "Switch language"
   },
+  "settingsTour": {
+    "help": "Help",
+    "helpAria": "Show Me tutorial",
+    "skip": "Skip",
+    "next": "Next",
+    "done": "Got it",
+    "step1Title": "Welcome to your Me area",
+    "step1Body": "This is your personal space. Use the tab bar above to jump between all the things that belong to you — your profile, family, connections and more.",
+    "step2Title": "Everything in your Me area",
+    "step2Body": "Here's what lives in each tab:",
+    "feat_profile_title": "Profile",
+    "feat_profile_desc": "Your name, avatar, language and account details.",
+    "feat_family_title": "Family",
+    "feat_family_desc": "Create family groups, invite loved ones and share wings of your palace.",
+    "feat_subscription_title": "Subscription",
+    "feat_subscription_desc": "Your plan, storage usage and billing.",
+    "feat_connections_title": "Connections",
+    "feat_connections_desc": "Import memories from Google Photos, Dropbox, OneDrive and more.",
+    "feat_notifications_title": "Notifications",
+    "feat_notifications_desc": "Choose which reminders and updates reach you.",
+    "feat_legacy_title": "Legacy",
+    "feat_legacy_desc": "Digital will, legacy contacts and final messages.",
+    "feat_security_title": "Security & Privacy",
+    "feat_security_desc": "Password, two-factor auth and data export.",
+    "feat_cookies_title": "Cookies",
+    "feat_cookies_desc": "Manage cookie preferences."
+  },
   "auth": {
     "welcomeBack": "Welcome Back",
     "signInSubtitle": "Sign in to your Memory Palace",
@@ -3217,7 +3244,9 @@
     "importQueueTitle": "{count} files queued",
     "importClearAll": "Clear all",
     "importConfirm": "Import {count} files",
-    "importImporting": "Importing..."
+    "importImporting": "Importing...",
+    "importTargetWing": "Wing",
+    "importTargetRoom": "Room"
   },
   "atrium": {
     "goodMorning": "Good morning",

@@ -79,6 +79,33 @@
     "a11yBackToHome": "Terug naar home",
     "a11ySwitchLanguage": "Taal wisselen"
   },
+  "settingsTour": {
+    "help": "Hulp",
+    "helpAria": "Toon Mij-rondleiding",
+    "skip": "Overslaan",
+    "next": "Volgende",
+    "done": "Begrepen",
+    "step1Title": "Welkom in je Mij-gedeelte",
+    "step1Body": "Dit is je persoonlijke ruimte. Gebruik de tabbalk hierboven om te wisselen tussen alles wat van jou is — je profiel, familie, koppelingen en meer.",
+    "step2Title": "Alles in je Mij-gedeelte",
+    "step2Body": "Dit vind je in elk tabblad:",
+    "feat_profile_title": "Profiel",
+    "feat_profile_desc": "Je naam, avatar, taal en accountgegevens.",
+    "feat_family_title": "Familie",
+    "feat_family_desc": "Maak familiegroepen, nodig dierbaren uit en deel vleugels van je paleis.",
+    "feat_subscription_title": "Abonnement",
+    "feat_subscription_desc": "Je plan, opslaggebruik en facturatie.",
+    "feat_connections_title": "Koppelingen",
+    "feat_connections_desc": "Importeer herinneringen uit Google Photos, Dropbox, OneDrive en meer.",
+    "feat_notifications_title": "Meldingen",
+    "feat_notifications_desc": "Kies welke herinneringen en updates je ontvangt.",
+    "feat_legacy_title": "Nalatenschap",
+    "feat_legacy_desc": "Digitale wil, nalatenschapscontacten en laatste berichten.",
+    "feat_security_title": "Beveiliging & Privacy",
+    "feat_security_desc": "Wachtwoord, tweefactor-authenticatie en data-export.",
+    "feat_cookies_title": "Cookies",
+    "feat_cookies_desc": "Beheer cookievoorkeuren."
+  },
   "auth": {
     "welcomeBack": "Welkom terug",
     "signInSubtitle": "Log in bij je Memory Palace",
@@ -3219,7 +3246,9 @@
     "importQueueTitle": "{count} bestanden in wachtrij",
     "importClearAll": "Alles wissen",
     "importConfirm": "Importeer {count} bestanden",
-    "importImporting": "Bezig met importeren..."
+    "importImporting": "Bezig met importeren...",
+    "importTargetWing": "Vleugel",
+    "importTargetRoom": "Kamer"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",

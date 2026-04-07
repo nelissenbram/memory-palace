@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import {
   createFamilyGroup,
   inviteFamilyMember,
@@ -62,6 +63,45 @@ interface FamilyGroup {
 /* ── visual step data for "How it works" ── */
 const STEP_ICONS = ["\u2160", "\u2161", "\u2162", "\u2163"]; // Roman numerals I-IV
 
+/* ── Inline SVG icons (Roman/Tuscan aesthetic) ── */
+function FamilyIcon({ name, size = 20, color = "currentColor" }: { name: "palace" | "link" | "lock"; size?: number; color?: string }) {
+  const s = {
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: color,
+    strokeWidth: 1.7,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
+  switch (name) {
+    case "palace":
+      return (
+        <svg {...s}>
+          <path d="M3 10l9-6 9 6" />
+          <path d="M5 10v10h14V10" />
+          <path d="M9 20v-6h2v6M13 20v-6h2v6" />
+          <path d="M3 20h18" />
+        </svg>
+      );
+    case "link":
+      return (
+        <svg {...s}>
+          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+        </svg>
+      );
+    case "lock":
+      return (
+        <svg {...s}>
+          <rect x="4" y="11" width="16" height="10" rx="2" />
+          <path d="M8 11V8a4 4 0 018 0v3" />
+        </svg>
+      );
+  }
+}
+
 interface FamilyGroupEntry {
   group: FamilyGroup;
   members: FamilyMember[];
@@ -76,6 +116,7 @@ interface PendingInviteEntry {
 export default function FamilyPage() {
   const { t } = useTranslation("familySettings");
   const { t: tp } = useTranslation("palace");
+  const isMobile = useIsMobile();
   // Multi-group state
   const [groups, setGroups] = useState<FamilyGroupEntry[]>([]);
   const [pendingInvites, setPendingInvites] = useState<PendingInviteEntry[]>([]);
@@ -480,11 +521,11 @@ export default function FamilyPage() {
             width: "3rem", height: "3rem", borderRadius: "0.875rem",
             background: `linear-gradient(135deg, ${T.color.gold}25, ${T.color.terracotta}15)`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "1.25rem",
             border: `2px solid ${T.color.gold}30`,
             flexShrink: 0,
+            color: T.color.terracotta,
           }}>
-            {"\u{1F3DB}"}
+            <FamilyIcon name="palace" size={22} color={T.color.terracotta} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h3 style={{
@@ -728,7 +769,7 @@ export default function FamilyPage() {
                     gap: "0.375rem",
                   }}
                 >
-                  <span style={{ fontSize: "0.875rem" }}>{"\u{1F517}"}</span>
+                  <FamilyIcon name="link" size={14} color={T.color.walnut} />
                   {t("copyInviteLink")}
                 </button>
               </div>
@@ -1032,9 +1073,10 @@ export default function FamilyPage() {
         </div>
       )}
 
-      {/* Page header */}
+      {/* Page header — desktop only */}
       <div style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+          {!isMobile && (
           <div style={{ flex: 1 }}>
             <h2 style={{
               fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
@@ -1049,6 +1091,7 @@ export default function FamilyPage() {
               {t("description")}
             </p>
           </div>
+          )}
           <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
             <Link href="/family-tree" style={{
               display: "inline-flex", alignItems: "center", gap: "0.5rem",
@@ -1435,9 +1478,9 @@ export default function FamilyPage() {
                 width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem",
                 background: `linear-gradient(135deg, ${T.color.sage}20, ${T.color.sage}10)`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "1.125rem",
+                color: T.color.sage,
               }}>
-                {"\u{1F3DB}"}
+                <FamilyIcon name="palace" size={18} color={T.color.sage} />
               </div>
               <div>
                 <h3 style={{
@@ -1726,7 +1769,7 @@ export default function FamilyPage() {
             border: `1px solid ${T.color.cream}`,
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.375rem" }}>
-              <span style={{ fontSize: "0.875rem" }}>{"\u{1F512}"}</span>
+              <FamilyIcon name="lock" size={14} color={T.color.walnut} />
               <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal }}>
                 {t("howItWorks")}
               </span>

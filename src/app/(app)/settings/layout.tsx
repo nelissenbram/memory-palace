@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { isNative } from "@/lib/native/platform";
@@ -8,6 +8,9 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { signOut } from "@/lib/auth/actions";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import NavigationBar from "@/components/ui/NavigationBar";
+import { usePalaceStore } from "@/lib/stores/palaceStore";
+import SettingsTutorial, { SettingsHelpButton, useSettingsTutorial } from "@/components/ui/SettingsTutorial";
 
 function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
   const s = {
@@ -110,42 +113,50 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const { scale } = useAccessibility();
   const { t: tc } = useTranslation("common");
 
+  const settingsRouter = useRouter();
   const filteredItems = NAV_ITEMS.filter((item) => !("hideInNative" in item && item.hideInNative && isNative()));
+  const navMode = usePalaceStore((s) => s.navMode);
+  const setNavMode = usePalaceStore((s) => s.setNavMode);
+  const [tourOpen, setTourOpen] = useSettingsTutorial();
 
   return (
     <div style={{
       minHeight: "100vh",
+      paddingBottom: isMobile ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : undefined,
       background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
     }}>
-      {/* Top bar */}
-      <header style={{
-        padding: isMobile ? "0.75rem 1rem" : "1rem 1.75rem",
-        display: "flex",
-        alignItems: "center",
-        gap: "1rem",
-        borderBottom: `1px solid ${T.color.cream}`,
-        background: `${T.color.linen}e0`,
-        backdropFilter: "blur(12px)",
-      }}>
-        <Link href="/palace" style={{
-          display: "flex", alignItems: "center", gap: "0.5rem",
-          textDecoration: "none", color: T.color.muted,
-          fontFamily: T.font.body,
-          fontSize: isMobile ? "0.9375rem" : "0.8125rem",
-          minHeight: isMobile ? "2.75rem" : undefined,
-          transition: "color .2s",
+      {/* Top bar — desktop only (mobile uses bottom NavigationBar) */}
+      {!isMobile && (
+        <header style={{
+          padding: "1rem 1.75rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "1rem",
+          borderBottom: `1px solid ${T.color.cream}`,
+          background: `${T.color.linen}e0`,
+          backdropFilter: "blur(12px)",
         }}>
-          <span style={{ fontSize: isMobile ? "1.25rem" : "1.125rem" }}>{"\u2190"}</span>
-          {tc("backToPalace")}
-        </Link>
-        <div style={{ width: 1, height: "1.25rem", background: T.color.cream }} />
-        <h1 style={{
-          fontFamily: T.font.display, fontSize: `${1.375 * scale}rem`, fontWeight: 500,
-          color: T.color.charcoal, margin: 0,
-        }}>
-          {tc("settings")}
-        </h1>
-      </header>
+          <Link href="/palace" style={{
+            display: "flex", alignItems: "center", gap: "0.5rem",
+            textDecoration: "none", color: T.color.muted,
+            fontFamily: T.font.body,
+            fontSize: "0.8125rem",
+            transition: "color .2s",
+          }}>
+            <span style={{ fontSize: "1.125rem" }}>{"\u2190"}</span>
+            {tc("backToPalace")}
+          </Link>
+          <div style={{ width: 1, height: "1.25rem", background: T.color.cream }} />
+          <h1 style={{
+            fontFamily: T.font.display, fontSize: `${1.375 * scale}rem`, fontWeight: 500,
+            color: T.color.charcoal, margin: 0,
+          }}>
+            {tc("settings")}
+          </h1>
+          <div style={{ flex: 1 }} />
+          <SettingsHelpButton onClick={() => setTourOpen(true)} />
+        </header>
+      )}
 
       {isMobile ? (
         /* ── Mobile layout: tab bar on top + content below ── */
@@ -155,6 +166,15 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           maxWidth: 1100,
           margin: "0 auto",
         }}>
+          {/* Mobile header row: help button */}
+          <div style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            padding: "calc(0.5rem + env(safe-area-inset-top, 0px)) 0.75rem 0.25rem",
+            background: T.color.white,
+          }}>
+            <SettingsHelpButton onClick={() => setTourOpen(true)} />
+          </div>
           {/* Horizontal scrollable tab bar */}
           <nav aria-label={tc("settingsNavigation")} style={{
             overflowX: "auto",
@@ -205,7 +225,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </nav>
 
           {/* Content */}
-          <section style={{ flex: 1, minWidth: 0, padding: "1rem 0.75rem" }}>
+          <section className="mp-settings-mobile-content" style={{ flex: 1, minWidth: 0, padding: "1.25rem 1rem 2rem" }}>
             {children}
           </section>
         </div>
@@ -280,6 +300,39 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             {children}
           </section>
         </div>
+      )}
+      {/* Mobile-specific style overrides — tighter cards, full-width buttons, 16px inputs */}
+      {isMobile && (
+        <style>{`
+          .mp-settings-mobile-content > div > div[style*="border-radius: 1rem"],
+          .mp-settings-mobile-content > div > div[style*="borderRadius: \"1rem\""] {
+            padding: 1.125rem 1rem !important;
+            border-radius: 0.875rem !important;
+            margin-bottom: 1rem !important;
+            box-shadow: none !important;
+          }
+          .mp-settings-mobile-content input[type="text"],
+          .mp-settings-mobile-content input[type="email"],
+          .mp-settings-mobile-content textarea {
+            font-size: 1rem !important;
+            padding: 0.875rem 1rem !important;
+          }
+          .mp-settings-mobile-content button {
+            min-height: 2.75rem;
+          }
+        `}</style>
+      )}
+      {/* Settings tutorial overlay (auto first visit + manual help button) */}
+      <SettingsTutorial open={tourOpen} onClose={() => setTourOpen(false)} />
+      {/* Mobile bottom nav bar — "Me" tab highlighted */}
+      {isMobile && (
+        <NavigationBar
+          currentMode={navMode}
+          onModeChange={(mode) => { setNavMode(mode); settingsRouter.push(`/palace?mode=${mode}`); }}
+          onNotifications={() => settingsRouter.push("/palace?notifications=1")}
+          isMobile={true}
+          activeTab="me"
+        />
       )}
     </div>
   );
