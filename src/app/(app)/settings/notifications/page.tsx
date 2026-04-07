@@ -6,6 +6,8 @@ import { usePushNotificationStore, NotificationPreferences } from "@/lib/stores/
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
+import { seedTestActivities, TEST_ACTIVITY_SAMPLES } from "@/lib/auth/notification-actions";
+import { useNotificationStore } from "@/lib/stores/notificationStore";
 
 // ── Custom SVG Icons (Roman/Tuscan aesthetic) ──
 
@@ -578,20 +580,49 @@ export default function NotificationsPage() {
         <button
           type="button"
           onClick={async () => {
+            let diag: Awaited<ReturnType<typeof seedTestActivities>> | null = null;
             try {
-              const { seedTestActivities } = await import("@/lib/auth/notification-actions");
-              const res = await seedTestActivities();
-              if ("error" in res && res.error) {
-                setToast({ message: t("sendTestFailed"), type: "error" });
-              } else {
-                setToast({ message: t("sentTest"), type: "success" });
-                // Refresh the in-app Activity store immediately
-                try {
-                  const { useNotificationStore } = await import("@/lib/stores/notificationStore");
-                  await useNotificationStore.getState().load();
-                } catch { /* ignore */ }
+              diag = await seedTestActivities();
+              // eslint-disable-next-line no-console
+              console.log("[seedTestActivities]", diag);
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error("[seedTestActivities] threw", err);
+            }
+
+            // Always inject locally so the user SEES something in the bell,
+            // even if the notifications table doesn't exist in this env.
+            try {
+              const store = useNotificationStore.getState();
+              for (const s of TEST_ACTIVITY_SAMPLES) {
+                store.addLocal({
+                  user_id: "",
+                  type: s.type,
+                  message: s.message,
+                  room_id: null,
+                  room_name: null,
+                  wing_id: null,
+                  from_user_id: null,
+                  from_user_name: null,
+                  read: false,
+                });
               }
-            } catch {
+              await store.load();
+            } catch { /* ignore */ }
+
+            // Build a diagnostic toast so we know what happened
+            if (diag) {
+              const parts: string[] = [];
+              parts.push(`DB: ${diag.dbInserted}/${TEST_ACTIVITY_SAMPLES.length}`);
+              parts.push(`Push: ${diag.pushSent}`);
+              parts.push(`Devices: ${diag.subscriptionCount}`);
+              parts.push(`VAPID: ${diag.vapidConfigured ? "✓" : "✗"}`);
+              if (diag.dbError) parts.push(`Err: ${diag.dbError.slice(0, 40)}`);
+              setToast({
+                message: `${t("sentTest")} · ${parts.join(" · ")}`,
+                type: diag.dbError ? "error" : "success",
+              });
+            } else {
               setToast({ message: t("sendTestFailed"), type: "error" });
             }
           }}

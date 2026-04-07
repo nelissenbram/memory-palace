@@ -205,37 +205,108 @@ export async function notifyFamilyJoined(opts: {
   });
 }
 
+export const TEST_ACTIVITY_SAMPLES: { type: string; message: string }[] = [
+  { type: "welcome",          message: "✧ Welcome to your Memory Palace — let's preserve something beautiful." },
+  { type: "achievement",      message: "⚜ Ten memories preserved — you're off to a beautiful start." },
+  { type: "achievement",      message: "❀ First memory in \"Atrium\" — this room just came alive." },
+  { type: "family_invite",    message: "❦ Sofia joined your family palace." },
+  { type: "new_contribution", message: "✎ Marcus added a memory to \"Living Room\"." },
+  { type: "on_this_day",      message: "❧ On this day, 3 years ago — \"Grandpa's 80th birthday\"." },
+  { type: "reminder",         message: "⧗ A quiet nudge: the Library has been patient. Want to add a story?" },
+  { type: "system",           message: "⚜ A new feature has arrived in your palace. Explore the Atrium." },
+];
+
 // ── Seed one of each Activity type for the current user (test helper) ──
-export async function seedTestActivities() {
+// Returns detailed diagnostics so the caller can surface what happened.
+export async function seedTestActivities(): Promise<{
+  ok: boolean;
+  dbInserted: number;
+  pushSent: number;
+  subscriptionCount: number;
+  vapidConfigured: boolean;
+  dbError?: string;
+  samples: { type: string; message: string }[];
+}> {
+  const result = {
+    ok: false,
+    dbInserted: 0,
+    pushSent: 0,
+    subscriptionCount: 0,
+    vapidConfigured: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
+    dbError: undefined as string | undefined,
+    samples: TEST_ACTIVITY_SAMPLES,
+  };
+
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    result.dbError = "Supabase not configured";
+    return result;
   }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const samples: { type: string; message: string }[] = [
-    { type: "welcome",          message: "✧ Welcome to your Memory Palace — let's preserve something beautiful." },
-    { type: "achievement",      message: "⚜ Ten memories preserved — you're off to a beautiful start." },
-    { type: "achievement",      message: "❀ First memory in \"Atrium\" — this room just came alive." },
-    { type: "family_invite",    message: "❦ Sofia joined your family palace." },
-    { type: "new_contribution", message: "✎ Marcus added a memory to \"Living Room\"." },
-    { type: "on_this_day",      message: "❧ On this day, 3 years ago — \"Grandpa's 80th birthday\"." },
-    { type: "reminder",         message: "⧗ A quiet nudge: the Library has been patient. Want to add a story?" },
-    { type: "system",           message: "⚜ A new feature has arrived in your palace. Explore the Atrium to see what's new." },
-  ];
-
-  for (const s of samples) {
-    await createNotification({
-      userId: user.id,
-      type: s.type,
-      message: s.message,
-      pushTitle: "Memory Palace",
-      pushUrl: "/palace?notifications=1",
-    });
+  if (!user) {
+    result.dbError = "Not authenticated";
+    return result;
   }
 
-  return { success: true, count: samples.length };
+  // How many subscribed devices does this user have?
+  try {
+    const { count } = await supabase
+      .from("push_subscriptions")
+      .select("endpoint", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    result.subscriptionCount = count || 0;
+  } catch { /* ignore */ }
+
+  // Insert rows + push
+  for (const s of TEST_ACTIVITY_SAMPLES) {
+    // DB insert with real error capture
+    try {
+      const { error } = await supabase.from("notifications").insert({
+        user_id: user.id,
+        type: s.type,
+        message: s.message,
+        read: false,
+      });
+      if (error) {
+        if (!result.dbError) result.dbError = error.message;
+      } else {
+        result.dbInserted++;
+      }
+    } catch (e) {
+      if (!result.dbError) result.dbError = (e as Error).message;
+    }
+
+    // Push to devices (best-effort)
+    if (result.vapidConfigured && result.subscriptionCount > 0) {
+      try {
+        const { data: subs } = await supabase
+          .from("push_subscriptions")
+          .select("endpoint, keys_p256dh, keys_auth")
+          .eq("user_id", user.id);
+        if (subs) {
+          const { sendPush } = await import("@/lib/push");
+          for (const sub of subs) {
+            const ok = await sendPush(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth } },
+              {
+                title: "Memory Palace",
+                body: s.message,
+                icon: "/apple-touch-icon.png",
+                badge: "/favicon.svg",
+                tag: `activity-test-${s.type}-${Date.now()}`,
+                url: "/palace?notifications=1",
+              },
+            );
+            if (ok) result.pushSent++;
+          }
+        }
+      } catch { /* ignore per-sample push failure */ }
+    }
+  }
+
+  result.ok = true;
+  return result;
 }
 
 // ── Fetch notifications for the current user ──
