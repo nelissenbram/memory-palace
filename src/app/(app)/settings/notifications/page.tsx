@@ -257,42 +257,68 @@ export default function NotificationsPage() {
 
     // Enable: request permission, subscribe, save to server
     setSubscribing(true);
+    let stage = "init";
     try {
+      stage = "requestPermission";
+      if (typeof Notification === "undefined") {
+        setToast({ message: "No Notification API (PWA/HTTPS?)", type: "error" });
+        setSubscribing(false);
+        return;
+      }
       const perm = await Notification.requestPermission();
       setPermission(perm);
 
       if (perm !== "granted") {
-        setToast({ message: t("pushPermissionDenied"), type: "error" });
+        setToast({ message: `Permission: ${perm}`, type: "error" });
         setSubscribing(false);
         return;
       }
 
+      stage = "serviceWorker.ready";
+      if (!("serviceWorker" in navigator)) {
+        setToast({ message: "No service worker support", type: "error" });
+        setSubscribing(false);
+        return;
+      }
       const reg = await navigator.serviceWorker.ready;
+
+      stage = "vapidKey";
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!vapidKey) {
-        setToast({ message: t("pushNotConfigured"), type: "error" });
+        setToast({ message: "NEXT_PUBLIC_VAPID_PUBLIC_KEY missing", type: "error" });
         setSubscribing(false);
         return;
       }
 
+      stage = "pushManager.subscribe";
+      // Unsubscribe any stale local sub first
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) {
+        try { await existing.unsubscribe(); } catch { /* ignore */ }
+      }
       const subscription = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey).buffer as ArrayBuffer,
       });
 
+      stage = "POST /api/notifications/subscribe";
       const res = await fetch("/api/notifications/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subscription: subscription.toJSON() }),
       });
 
-      if (!res.ok) throw new Error("Server rejected subscription");
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(`${res.status} ${body.slice(0, 120)}`);
+      }
 
       setPrefs({ pushEnabled: true });
-      setToast({ message: t("pushEnabled"), type: "success" });
+      setToast({ message: `Subscribed ✓ (${subscription.endpoint.slice(0, 40)}…)`, type: "success" });
     } catch (err) {
       console.error("Failed to subscribe:", err);
-      setToast({ message: t("pushEnableFailed"), type: "error" });
+      const msg = (err as Error).message || String(err);
+      setToast({ message: `Fail @ ${stage}: ${msg.slice(0, 180)}`, type: "error" });
     }
     setSubscribing(false);
   }, [prefs.pushEnabled, setPrefs, t]);
