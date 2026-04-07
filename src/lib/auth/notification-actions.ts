@@ -225,6 +225,7 @@ export async function seedTestActivities(): Promise<{
   subscriptionCount: number;
   vapidConfigured: boolean;
   dbError?: string;
+  pushError?: string;
   samples: { type: string; message: string }[];
 }> {
   const result = {
@@ -234,6 +235,7 @@ export async function seedTestActivities(): Promise<{
     subscriptionCount: 0,
     vapidConfigured: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
     dbError: undefined as string | undefined,
+    pushError: undefined as string | undefined,
     samples: TEST_ACTIVITY_SAMPLES,
   };
 
@@ -285,9 +287,9 @@ export async function seedTestActivities(): Promise<{
           .select("endpoint, keys_p256dh, keys_auth")
           .eq("user_id", user.id);
         if (subs) {
-          const { sendPush } = await import("@/lib/push");
+          const { sendPushDetailed } = await import("@/lib/push");
           for (const sub of subs) {
-            const ok = await sendPush(
+            const r = await sendPushDetailed(
               { endpoint: sub.endpoint, keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth } },
               {
                 title: "Memory Palace",
@@ -298,10 +300,13 @@ export async function seedTestActivities(): Promise<{
                 url: "/palace?notifications=1",
               },
             );
-            if (ok) result.pushSent++;
+            if (r.ok) result.pushSent++;
+            else if (!result.pushError) result.pushError = r.error;
           }
         }
-      } catch { /* ignore per-sample push failure */ }
+      } catch (e) {
+        if (!result.pushError) result.pushError = (e as Error).message;
+      }
     }
   }
 

@@ -122,7 +122,7 @@ export default function NotificationBell() {
         {!loading && notifications.length === 0 && (
           <div style={{ padding: "2rem 1rem", textAlign: "center" }}>
             <div style={{ fontSize: "1.75rem", marginBottom: "0.5rem", opacity: 0.5 }}>
-              {"\uD83D\uDD14"}
+              {"\u2726"}
             </div>
             <div
               style={{
@@ -195,14 +195,14 @@ export default function NotificationBell() {
             >
               {(() => {
                 switch (n.type) {
-                  case "new_contribution": return "\u{1F4DD}";
-                  case "achievement":      return "\u{1F3C6}";
-                  case "family_invite":    return "\u{1F44B}";
-                  case "on_this_day":      return "\u{1F4C5}";
-                  case "welcome":          return "\u{2728}";
-                  case "reminder":         return "\u{23F0}";
-                  case "system":           return "\u{1F3DB}\u{FE0F}";
-                  default:                 return "\u{1F514}";
+                  case "new_contribution": return "\u270E"; // ✎
+                  case "achievement":      return "\u269C"; // ⚜
+                  case "family_invite":    return "\u2766"; // ❦
+                  case "on_this_day":      return "\u2767"; // ❧
+                  case "welcome":          return "\u2727"; // ✧
+                  case "reminder":         return "\u29D7"; // ⧗
+                  case "system":           return "\u2756"; // ❖
+                  default:                 return "\u2726"; // ✦
                 }
               })()}
             </div>

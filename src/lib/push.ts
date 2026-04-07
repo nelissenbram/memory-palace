@@ -54,9 +54,16 @@ export async function sendPush(
   subscription: PushSubscriptionJSON,
   payload: NotificationPayload
 ): Promise<boolean> {
+  const result = await sendPushDetailed(subscription, payload);
+  return result.ok;
+}
+
+export async function sendPushDetailed(
+  subscription: PushSubscriptionJSON,
+  payload: NotificationPayload
+): Promise<{ ok: boolean; error?: string; statusCode?: number }> {
   if (!ensureVapid()) {
-    console.warn("[push] VAPID keys not configured, skipping notification");
-    return false;
+    return { ok: false, error: "VAPID keys not configured" };
   }
 
   try {
@@ -68,14 +75,14 @@ export async function sendPush(
       JSON.stringify(payload),
       { TTL: 60 * 60 * 24 } // 24h
     );
-    return true;
+    return { ok: true };
   } catch (err: unknown) {
-    const statusCode = (err as { statusCode?: number }).statusCode;
-    // 410 Gone or 404 = subscription expired
-    if (statusCode === 410 || statusCode === 404) {
-      return false;
-    }
+    const e = err as { statusCode?: number; body?: string; message?: string };
     console.error("[push] Failed to send notification:", err);
-    return false;
+    return {
+      ok: false,
+      statusCode: e.statusCode,
+      error: `${e.statusCode ?? "?"}: ${e.body || e.message || "unknown"}`,
+    };
   }
 }
