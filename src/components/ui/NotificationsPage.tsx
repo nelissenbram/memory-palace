@@ -19,11 +19,14 @@ function timeAgo(dateStr: string, t: (key: string, params?: Record<string, strin
 }
 
 const EMOJI: Record<string, string> = {
-  family_invite: "\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67\u200D\uD83D\uDC66",
-  share_accepted: "\u2705",
-  achievement: "\uD83C\uDFC6",
-  reminder: "\u23F0",
-  system: "\uD83C\uDFDB\uFE0F",
+  new_contribution: "\u270E", // ✎
+  achievement:      "\u269C", // ⚜
+  family_invite:    "\u2766", // ❦
+  share_accepted:   "\u2766", // ❦
+  on_this_day:      "\u2767", // ❧
+  welcome:          "\u2727", // ✧
+  reminder:         "\u29D7", // ⧗
+  system:           "\u2756", // ❖
 };
 
 export default function NotificationsPage() {
@@ -149,7 +152,7 @@ export default function NotificationsPage() {
               flexShrink: 0,
               marginTop: "0.125rem",
             }}>
-              {EMOJI[n.type] || "\uD83D\uDD14"}
+              {EMOJI[n.type] || "\u2726"}
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{

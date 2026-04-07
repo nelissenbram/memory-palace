@@ -300,8 +300,22 @@ export async function seedTestActivities(): Promise<{
                 url: "/palace?notifications=1",
               },
             );
-            if (r.ok) result.pushSent++;
-            else if (!result.pushError) result.pushError = r.error;
+            if (r.ok) {
+              result.pushSent++;
+            } else {
+              if (!result.pushError) result.pushError = r.error;
+              // Clean up dead subscriptions
+              const isDead =
+                r.statusCode === 404 ||
+                r.statusCode === 410 ||
+                (r.error || "").includes("permanently-removed.invalid") ||
+                (r.error || "").includes("ENOTFOUND");
+              if (isDead) {
+                try {
+                  await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+                } catch { /* ignore */ }
+              }
+            }
           }
         }
       } catch (e) {
