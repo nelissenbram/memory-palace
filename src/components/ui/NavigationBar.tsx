@@ -516,10 +516,8 @@ export default function NavigationBar({
                       router.push("/settings");
                     }
                   } else if (isHelp) {
-                    // On /settings pages, dispatch a custom event so the
-                    // settings layout can open its own tutorial modal.
                     if (typeof window !== "undefined" && window.location.pathname.startsWith("/settings")) {
-                      window.dispatchEvent(new CustomEvent("mp:open-settings-tour"));
+                      useSettingsTourStore.getState().setOpen(true);
                       return;
                     }
                     // reset() sets _forceCurrentPage + increments _resetCount,
