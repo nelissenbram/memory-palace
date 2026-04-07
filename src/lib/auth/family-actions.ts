@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { sendFamilyInviteEmail } from "@/lib/email/send-invite";
 
 export async function createFamilyGroup(name: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -130,6 +131,35 @@ export async function inviteFamilyMember(groupId: string, email: string, role: "
     .select()
     .single();
   if (error) return { error: error.message };
+
+  // Send invitation email (non-blocking: log but don't fail the action)
+  try {
+    const { data: group } = await supabase
+      .from("family_groups")
+      .select("name")
+      .eq("id", groupId)
+      .single();
+    const { data: inviterProfile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .single();
+    const inviterName =
+      (inviterProfile?.display_name as string | undefined) ||
+      user.email?.split("@")[0] ||
+      "A friend";
+    const result = await sendFamilyInviteEmail({
+      inviterName,
+      recipientEmail: normalizedEmail,
+      groupName: (group?.name as string | undefined) || "Family",
+      role: validRole,
+    });
+    if (!result.success) {
+      console.error("[inviteFamilyMember] Email send failed:", result.error);
+    }
+  } catch (e) {
+    console.error("[inviteFamilyMember] Email send exception:", e);
+  }
 
   return { member };
 }

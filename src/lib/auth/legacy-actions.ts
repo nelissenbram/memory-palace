@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { sendTrusteeWelcomeEmail } from "@/lib/email/send-legacy";
 
 // ── Types ──
 
@@ -116,6 +117,32 @@ export async function createLegacyContact(input: {
     .single();
 
   if (error) return { error: error.message };
+
+  // Send welcome email to the new trustee (non-blocking)
+  try {
+    const { data: senderProfile } = await supabase
+      .from("profiles")
+      .select("display_name, locale")
+      .eq("id", user.id)
+      .single();
+    const senderName =
+      (senderProfile?.display_name as string | undefined) ||
+      user.email?.split("@")[0] ||
+      "A friend";
+    const result = await sendTrusteeWelcomeEmail({
+      recipientEmail: input.contact_email.toLowerCase(),
+      recipientName: input.contact_name,
+      senderName,
+      relationship: input.relationship || null,
+      locale: (senderProfile?.locale as string | undefined) || "en",
+    });
+    if (!result.success) {
+      console.error("[createLegacyContact] Email send failed:", result.error);
+    }
+  } catch (e) {
+    console.error("[createLegacyContact] Email send exception:", e);
+  }
+
   return { contact: data as LegacyContact };
 }
 

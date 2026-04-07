@@ -165,18 +165,18 @@ export function generateVerificationEmailHtml(params: VerificationEmailParams): 
   return emailLayout({
     preheader: t.verification.preheader[locale](params.displayName),
     headerHtml: `
-      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:600;color:#B8922E;letter-spacing:0.18em;text-transform:uppercase;">
         ${t.verification.headerLabel[locale]}
       </p>
-      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
+      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond','Playfair Display',Georgia,'Times New Roman',serif;font-size:30px;font-weight:500;color:#2C2C2A;line-height:1.25;">
         ${t.verification.headerTitle[locale](displayName)}
       </h1>`,
     bodyHtml: `
-      <p class="text-primary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
+      <p class="text-primary" style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
         ${t.verification.bodyInactive[locale](params.inactiveDays)}
       </p>
 
-      <p class="text-secondary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;">
+      <p class="text-secondary" style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#8B7355;line-height:1.8;">
         ${t.verification.bodyExplain[locale]}
       </p>
 
@@ -184,7 +184,7 @@ export function generateVerificationEmailHtml(params: VerificationEmailParams): 
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;">
       <tr><td class="section-bg" style="padding:20px 24px;background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;">
-        <p class="text-muted" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#9A9183;line-height:1.7;">
+        <p class="text-muted" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#9A9183;line-height:1.7;">
           ${t.verification.boxWarning[locale]}
         </p>
       </td></tr>
@@ -193,7 +193,7 @@ export function generateVerificationEmailHtml(params: VerificationEmailParams): 
     ctaUrl: verifyUrl,
     locale,
     footerExtra: `
-      <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+      <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#D4C5B2;">
         ${t.verification.footerNote[locale]}
       </p>`,
   });
@@ -229,26 +229,26 @@ export function generateTrustedVerifierEmailHtml(params: TrustedVerifierEmailPar
   return emailLayout({
     preheader: t.verifier.preheader[locale](params.userName),
     headerHtml: `
-      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:600;color:#B8922E;letter-spacing:0.18em;text-transform:uppercase;">
         ${t.verifier.headerLabel[locale]}
       </p>
-      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
+      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond','Playfair Display',Georgia,'Times New Roman',serif;font-size:30px;font-weight:500;color:#2C2C2A;line-height:1.25;">
         ${t.verifier.headerTitle[locale](userName)}
       </h1>`,
     bodyHtml: `
-      <p class="text-primary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
+      <p class="text-primary" style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
         ${t.verifier.greeting[locale](recipientName)}
       </p>
 
-      <p class="text-secondary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;">
+      <p class="text-secondary" style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#8B7355;line-height:1.8;">
         ${t.verifier.bodyDesignated[locale](userName, params.inactiveDays)}
       </p>
 
-      <p class="text-secondary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;">
+      <p class="text-secondary" style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#8B7355;line-height:1.8;">
         ${t.verifier.bodyIfWell[locale](userName)}
       </p>
 
-      <p class="text-secondary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;font-style:italic;">
+      <p class="text-secondary" style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#8B7355;line-height:1.8;font-style:italic;">
         ${t.verifier.bodyIfDeceased[locale](userName)}
       </p>
 
@@ -256,7 +256,7 @@ export function generateTrustedVerifierEmailHtml(params: TrustedVerifierEmailPar
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0 0;">
       <tr><td class="section-bg" style="padding:20px 24px;background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;">
-        <p class="text-muted" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#9A9183;line-height:1.7;">
+        <p class="text-muted" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#9A9183;line-height:1.7;">
           ${t.verifier.boxWarning[locale](userName)}
         </p>
       </td></tr>
@@ -265,7 +265,7 @@ export function generateTrustedVerifierEmailHtml(params: TrustedVerifierEmailPar
     ctaUrl: verifyUrl,
     locale,
     footerExtra: `
-      <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+      <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#D4C5B2;">
         ${t.verifier.footerNote[locale](userName)}
       </p>`,
   });
@@ -309,10 +309,10 @@ export function generateDeliveryEmailHtml(params: LegacyDeliveryEmailParams): st
   return emailLayout({
     preheader: t.delivery.preheader[locale](params.senderName),
     headerHtml: `
-      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:500;color:#C17F59;letter-spacing:2.5px;text-transform:uppercase;">
+      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:600;color:#B8922E;letter-spacing:0.18em;text-transform:uppercase;">
         ${t.delivery.headerLabel[locale]}
       </p>
-      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond',Georgia,serif;font-size:30px;font-weight:400;color:#2C2C2A;line-height:1.3;letter-spacing:-0.3px;">
+      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond','Playfair Display',Georgia,'Times New Roman',serif;font-size:30px;font-weight:500;color:#2C2C2A;line-height:1.25;">
         ${t.delivery.headerTitle[locale](senderName)}
       </h1>
       <p class="header-subtitle" style="margin:14px 0 0;font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;color:#8B7355;line-height:1.6;font-style:italic;">
@@ -322,14 +322,14 @@ export function generateDeliveryEmailHtml(params: LegacyDeliveryEmailParams): st
       <p class="text-primary" style="margin:0 0 8px;font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;color:#2C2C2A;line-height:1.5;">
         ${t.delivery.greeting[locale](recipientName)}
       </p>
-      <p class="text-secondary" style="margin:0 0 20px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;">
+      <p class="text-secondary" style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#8B7355;line-height:1.8;">
         ${t.delivery.bodyIntro[locale](senderName)}
       </p>
 
-      <p class="text-secondary" style="margin:0 0 8px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;font-style:italic;">
+      <p class="text-secondary" style="margin:0 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#8B7355;line-height:1.8;font-style:italic;">
         ${t.delivery.empathyNote[locale]}
       </p>
-      <p class="text-secondary" style="margin:0 0 28px;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:14px;color:#8B7355;line-height:1.8;font-style:italic;">
+      <p class="text-secondary" style="margin:0 0 28px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#8B7355;line-height:1.8;font-style:italic;">
         ${t.delivery.takeYourTime[locale]}
       </p>
 
@@ -340,8 +340,8 @@ export function generateDeliveryEmailHtml(params: LegacyDeliveryEmailParams): st
 
       <!-- The message itself -->
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="section-bg" style="background:#FAFAF7;border-radius:2px;border:1px solid #EEEAE3;margin:0 0 28px;">
-      <tr><td style="padding:28px 32px;border-left:2px solid #C17F59;">
-        <p class="text-primary" style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
+      <tr><td style="padding:28px 32px;border-left:3px solid #D4AF37;">
+        <p class="text-primary" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
           ${messageBody}
         </p>
       </td></tr>
@@ -349,14 +349,14 @@ export function generateDeliveryEmailHtml(params: LegacyDeliveryEmailParams): st
 
       ${ornamentalDivider()}
 
-      <p class="text-muted" style="margin:16px 0 0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:13px;color:#9A9183;line-height:1.7;">
+      <p class="text-muted" style="margin:16px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;color:#9A9183;line-height:1.7;">
         ${t.delivery.sharedMemories[locale](senderName, expiresDate)}
       </p>`,
     ctaText: t.delivery.ctaText[locale],
     ctaUrl: accessUrl,
     locale,
     footerExtra: `
-      <p style="margin:0;font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:11px;color:#D4C5B2;">
+      <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#D4C5B2;">
         ${t.delivery.footerNote[locale]}
       </p>`,
   });
@@ -369,5 +369,87 @@ export async function sendDeliveryEmail(params: LegacyDeliveryEmailParams): Prom
     subject: t.delivery.subject[locale](params.senderName),
     html: generateDeliveryEmailHtml(params),
     tag: "legacy-delivery",
+  });
+}
+
+// ── Trustee welcome email (sent when user assigns a legacy contact) ──
+
+interface TrusteeWelcomeEmailParams {
+  recipientEmail: string;
+  recipientName: string;
+  senderName: string;
+  relationship?: string | null;
+  locale?: string;
+}
+
+export async function sendTrusteeWelcomeEmail(params: TrusteeWelcomeEmailParams): Promise<{ success: boolean; error?: string }> {
+  const locale = resolveLocale(params.locale);
+  const recipientName = escapeHtml(params.recipientName || "there");
+  const senderName = escapeHtml(params.senderName);
+  const relationship = params.relationship ? escapeHtml(params.relationship) : "";
+
+  const en = {
+    preheader: `${params.senderName} named you as a legacy contact in their Memory Palace.`,
+    label: "A Role of Trust",
+    title: `${senderName} has named you as a legacy contact`,
+    greeting: `Dear ${recipientName},`,
+    intro: `<strong>${senderName}</strong> has designated you as one of their <strong>legacy contacts</strong> in The Memory Palace${relationship ? ` — as their ${relationship}` : ""}.`,
+    explain: `A legacy contact is someone ${senderName} trusts to receive their memories, messages and selected parts of their palace if they ever become unable to maintain it themselves. No action is needed from you today.`,
+    whatHappens: `If ${senderName} becomes inactive for an extended period, you will receive a separate email with access to the memories and messages they have prepared for you.`,
+    footer: `You received this because ${senderName} named you a legacy contact. You can opt out by replying to this email.`,
+    cta: "Learn about The Memory Palace",
+    subject: `${params.senderName} has named you as a legacy contact`,
+  };
+  const nl = {
+    preheader: `${params.senderName} heeft u aangewezen als nalatenschapscontact in hun Memory Palace.`,
+    label: "Een rol van vertrouwen",
+    title: `${senderName} heeft u aangewezen als nalatenschapscontact`,
+    greeting: `Beste ${recipientName},`,
+    intro: `<strong>${senderName}</strong> heeft u aangewezen als een van hun <strong>nalatenschapscontacten</strong> in The Memory Palace${relationship ? ` — als hun ${relationship}` : ""}.`,
+    explain: `Een nalatenschapscontact is iemand die ${senderName} vertrouwt om hun herinneringen, berichten en geselecteerde delen van hun paleis te ontvangen mocht ${senderName} dit ooit niet meer zelf kunnen onderhouden. U hoeft vandaag niets te doen.`,
+    whatHappens: `Als ${senderName} gedurende langere tijd inactief wordt, ontvangt u een aparte e-mail met toegang tot de herinneringen en berichten die ${senderName} voor u heeft voorbereid.`,
+    footer: `U ontvangt dit bericht omdat ${senderName} u heeft aangewezen als nalatenschapscontact. U kunt zich afmelden door op deze e-mail te antwoorden.`,
+    cta: "Meer over The Memory Palace",
+    subject: `${params.senderName} heeft u aangewezen als nalatenschapscontact`,
+  };
+  const L = locale === "nl" ? nl : en;
+
+  const html = emailLayout({
+    preheader: L.preheader,
+    headerHtml: `
+      <p style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:13px;font-weight:600;color:#B8922E;letter-spacing:0.18em;text-transform:uppercase;">
+        ${L.label}
+      </p>
+      <h1 class="header-title" style="margin:0;font-family:'Cormorant Garamond','Playfair Display',Georgia,serif;font-size:28px;font-weight:500;color:#2C2C2A;line-height:1.3;">
+        ${L.title}
+      </h1>`,
+    bodyHtml: `
+      <p class="text-primary" style="margin:0 0 16px;font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;color:#2C2C2A;line-height:1.5;">
+        ${L.greeting}
+      </p>
+      <p class="text-primary" style="margin:0 0 18px;font-family:Georgia,'Times New Roman',serif;font-size:15px;color:#2C2C2A;line-height:1.8;">
+        ${L.intro}
+      </p>
+      <p class="text-secondary" style="margin:0 0 18px;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#8B7355;line-height:1.8;">
+        ${L.explain}
+      </p>
+      ${ornamentalDivider()}
+      <p class="text-secondary" style="margin:16px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:14px;color:#8B7355;line-height:1.8;font-style:italic;">
+        ${L.whatHappens}
+      </p>`,
+    ctaText: L.cta,
+    ctaUrl: `${getSiteUrl()}/`,
+    locale,
+    footerExtra: `
+      <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:11px;color:#D4C5B2;">
+        ${L.footer}
+      </p>`,
+  });
+
+  return sendEmail({
+    to: params.recipientEmail,
+    subject: L.subject,
+    html,
+    tag: "legacy-trustee-welcome",
   });
 }

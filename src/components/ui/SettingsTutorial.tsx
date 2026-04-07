@@ -367,12 +367,21 @@ function TourControls({
   );
 }
 
-/** Hook helper: returns [open, setOpen] and auto-opens on first visit. */
+/** Hook helper: returns [open, setOpen] and auto-opens on first visit
+ *  or when the URL contains ?tour=1 (which also resets the "seen" flag).
+ */
 export function useSettingsTutorial(): [boolean, (v: boolean) => void] {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("tour") === "1") {
+        window.localStorage.removeItem(STORAGE_KEY);
+        setOpen(true);
+        window.localStorage.setItem(STORAGE_KEY, "1");
+        return;
+      }
       const seen = window.localStorage.getItem(STORAGE_KEY);
       if (!seen) {
         setOpen(true);
