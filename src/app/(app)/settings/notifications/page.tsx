@@ -631,7 +631,7 @@ export default function NotificationsPage() {
               parts.push(`Devices: ${diag.subscriptionCount}`);
               parts.push(`VAPID: ${diag.vapidConfigured ? "✓" : "✗"}`);
               if (diag.dbError) parts.push(`DBErr: ${diag.dbError.slice(0, 40)}`);
-              if (diag.pushError) parts.push(`PushErr: ${diag.pushError.slice(0, 80)}`);
+              if (diag.pushError) parts.push(`PushErr: ${diag.pushError.slice(0, 200)}`);
               setToast({
                 message: `Added 8 locally · ${parts.join(" · ")}`,
                 type: "success",
