@@ -15,8 +15,8 @@ function lsGet(): NotificationRow[] {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return [];
     const items = JSON.parse(raw) as NotificationRow[];
-    // Filter to last 30 days
-    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    // Filter to last 365 days — activities persist
+    const cutoff = Date.now() - 365 * 24 * 60 * 60 * 1000;
     return items.filter((n) => new Date(n.created_at).getTime() > cutoff);
   } catch {
     return [];

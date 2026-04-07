@@ -70,6 +70,7 @@ export async function createContributionNotification(data: {
 }
 
 // ── Generic: create a notification row (silently ignores missing table) ──
+// Also fires a real-time web push to all of the user's subscribed devices.
 export async function createNotification(input: {
   userId: string;
   type: string;
@@ -79,6 +80,8 @@ export async function createNotification(input: {
   wingId?: string | null;
   fromUserId?: string | null;
   fromUserName?: string | null;
+  pushTitle?: string;
+  pushUrl?: string;
 }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
   try {
@@ -97,19 +100,71 @@ export async function createNotification(input: {
   } catch {
     // Table may not exist — client falls back to localStorage
   }
+
+  // Fire real-time web push (best-effort; silent on failure)
+  try {
+    await pushToUserDevices({
+      userId: input.userId,
+      title: input.pushTitle || "Memory Palace",
+      body: input.message,
+      url: input.pushUrl || "/palace?notifications=1",
+      tag: `activity-${input.type}-${Date.now()}`,
+    });
+  } catch {
+    // Push infrastructure may not be configured
+  }
+}
+
+// ── Real-time web push to all of a user's subscribed devices ──
+async function pushToUserDevices(opts: {
+  userId: string;
+  title: string;
+  body: string;
+  url?: string;
+  tag?: string;
+}) {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
+  const supabase = await createClient();
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("endpoint, keys_p256dh, keys_auth")
+    .eq("user_id", opts.userId);
+  if (!subs || subs.length === 0) return;
+
+  const { sendPush } = await import("@/lib/push");
+  for (const sub of subs) {
+    try {
+      await sendPush(
+        {
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
+        },
+        {
+          title: opts.title,
+          body: opts.body,
+          icon: "/apple-touch-icon.png",
+          badge: "/favicon.svg",
+          tag: opts.tag || "activity",
+          url: opts.url || "/palace",
+        },
+      );
+    } catch {
+      // Ignore individual failures
+    }
+  }
 }
 
 // ── Milestone check after a memory is created ──
 const MILESTONES = [1, 10, 25, 50, 100, 250, 500, 1000];
 const MILESTONE_COPY: Record<number, string> = {
-  1: "🎉 Your very first memory is in the palace!",
-  10: "🏆 10 memories preserved — you're off to a beautiful start.",
-  25: "✨ 25 memories — the palace is taking shape.",
-  50: "🌟 50 memories! You're officially an Archivist.",
-  100: "👑 100 memories preserved — welcome to the Centurion club.",
-  250: "📚 250 memories — your palace is becoming a living archive.",
-  500: "🏛️ 500 memories! Incredible legacy.",
-  1000: "💫 1000 memories — a truly remarkable palace.",
+  1: "✦ Your very first memory is in the palace.",
+  10: "✦ Ten memories preserved — you're off to a beautiful start.",
+  25: "✦ Twenty-five memories — the palace is taking shape.",
+  50: "⚜ Fifty memories. You're officially an Archivist.",
+  100: "⚜ One hundred memories — welcome to the Centurion club.",
+  250: "❦ Two hundred and fifty — your palace is becoming a living archive.",
+  500: "⚜ Five hundred memories. An extraordinary legacy.",
+  1000: "❖ One thousand memories. A truly remarkable palace.",
 };
 
 export async function checkAndNotifyMilestone(opts: {
@@ -131,7 +186,7 @@ export async function notifyFirstInRoom(opts: {
   await createNotification({
     userId: opts.userId,
     type: "achievement",
-    message: `🎨 First memory in "${opts.roomName}" — this room just came alive.`,
+    message: `❀ First memory in "${opts.roomName}" — this room just came alive.`,
     roomId: opts.roomId,
     roomName: opts.roomName,
   });
@@ -145,9 +200,42 @@ export async function notifyFamilyJoined(opts: {
   await createNotification({
     userId: opts.ownerId,
     type: "family_invite",
-    message: `👋 ${opts.joinedName} joined your family palace.`,
+    message: `❦ ${opts.joinedName} joined your family palace.`,
     fromUserName: opts.joinedName,
   });
+}
+
+// ── Seed one of each Activity type for the current user (test helper) ──
+export async function seedTestActivities() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { error: "Supabase not configured" };
+  }
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const samples: { type: string; message: string }[] = [
+    { type: "welcome",          message: "✧ Welcome to your Memory Palace — let's preserve something beautiful." },
+    { type: "achievement",      message: "⚜ Ten memories preserved — you're off to a beautiful start." },
+    { type: "achievement",      message: "❀ First memory in \"Atrium\" — this room just came alive." },
+    { type: "family_invite",    message: "❦ Sofia joined your family palace." },
+    { type: "new_contribution", message: "✎ Marcus added a memory to \"Living Room\"." },
+    { type: "on_this_day",      message: "❧ On this day, 3 years ago — \"Grandpa's 80th birthday\"." },
+    { type: "reminder",         message: "⧗ A quiet nudge: the Library has been patient. Want to add a story?" },
+    { type: "system",           message: "⚜ A new feature has arrived in your palace. Explore the Atrium to see what's new." },
+  ];
+
+  for (const s of samples) {
+    await createNotification({
+      userId: user.id,
+      type: s.type,
+      message: s.message,
+      pushTitle: "Memory Palace",
+      pushUrl: "/palace?notifications=1",
+    });
+  }
+
+  return { success: true, count: samples.length };
 }
 
 // ── Fetch notifications for the current user ──
@@ -159,18 +247,18 @@ export async function fetchNotifications(): Promise<{ notifications: Notificatio
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { notifications: [] };
 
-  // Last 30 days
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  // Last 365 days — activities persist; mark as read instead of deleting
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 365);
 
   try {
     const { data, error } = await supabase
       .from("notifications")
       .select("*")
       .eq("user_id", user.id)
-      .gte("created_at", thirtyDaysAgo.toISOString())
+      .gte("created_at", cutoff.toISOString())
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(200);
 
     if (error) return { notifications: [] };
     return { notifications: (data || []) as NotificationRow[] };

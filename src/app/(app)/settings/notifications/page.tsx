@@ -557,6 +557,58 @@ export default function NotificationsPage() {
         </p>
       </div>
 
+      {/* Test Activities — dev helper */}
+      <div style={{
+        marginTop: "1.5rem", padding: "1.25rem", borderRadius: "0.875rem",
+        background: `${T.color.gold}08`,
+        border: `1px solid ${T.color.gold}25`,
+      }}>
+        <div style={{
+          fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600,
+          color: T.color.charcoal, marginBottom: "0.25rem",
+        }}>
+          {t("testSectionHeader")}
+        </div>
+        <div style={{
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+          marginBottom: "0.875rem", lineHeight: 1.5,
+        }}>
+          {t("testSectionDesc")}
+        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const { seedTestActivities } = await import("@/lib/auth/notification-actions");
+              const res = await seedTestActivities();
+              if ("error" in res && res.error) {
+                setToast({ message: t("sendTestFailed"), type: "error" });
+              } else {
+                setToast({ message: t("sentTest"), type: "success" });
+                // Refresh the in-app Activity store immediately
+                try {
+                  const { useNotificationStore } = await import("@/lib/stores/notificationStore");
+                  await useNotificationStore.getState().load();
+                } catch { /* ignore */ }
+              }
+            } catch {
+              setToast({ message: t("sendTestFailed"), type: "error" });
+            }
+          }}
+          style={{
+            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+            color: "#FFF",
+            background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+            border: "none", borderRadius: "0.625rem",
+            padding: "0.625rem 1.125rem", cursor: "pointer",
+            minHeight: "2.75rem",
+            boxShadow: "0 2px 8px rgba(193,127,89,.2)",
+          }}
+        >
+          {t("sendTest")}
+        </button>
+      </div>
+
     </div>
   );
 }

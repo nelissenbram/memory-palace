@@ -432,7 +432,12 @@
     "digestLanguageDesc": "Kies de taal voor je wekelijkse overzichtsmail",
     "saveFailed": "Voorkeur opslaan mislukt",
     "scheduleNote": "Pushmeldingen worden dagelijks rond 9:00 uur in je lokale tijd verstuurd. Het weekoverzicht komt elke maandagochtend, en de maandelijkse hoogtepunten op de eerste dag van elke maand. Je gegevens worden veilig bewaard en alleen gebruikt voor de meldingen die je hebt gekozen. Je kunt elke voorkeur op elk moment wijzigen.",
-    "infoNote": "Pushmeldingen worden dagelijks rond 9:00 uur verstuurd. De wekelijkse e-mail wordt elke maandagochtend verzonden. Je gegevens worden veilig bewaard en alleen gebruikt voor de meldingen die je hebt gekozen. Je kunt elke melding op elk moment uitschakelen."
+    "infoNote": "Pushmeldingen worden dagelijks rond 9:00 uur verstuurd. De wekelijkse e-mail wordt elke maandagochtend verzonden. Je gegevens worden veilig bewaard en alleen gebruikt voor de meldingen die je hebt gekozen. Je kunt elke melding op elk moment uitschakelen.",
+    "testSectionHeader": "Stuur mij testactiviteiten",
+    "testSectionDesc": "Voeg één van elk Activiteit-type toe aan je feed — zo kun je ze in de bel bekijken.",
+    "sendTest": "Stuur testactiviteiten",
+    "sentTest": "Testactiviteiten verstuurd — open de bel!",
+    "sendTestFailed": "Kon testactiviteiten niet versturen"
   },
   "subscription": {
     "title": "Abonnement",
