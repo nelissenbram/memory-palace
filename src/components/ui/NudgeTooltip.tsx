@@ -178,7 +178,13 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
       : `[data-nudge="${activeNudge}"]`;
 
     const findAndPosition = () => {
-      const el = document.querySelector(targetSelector);
+      // Pick the first visible match — multiple elements may share a data-nudge
+      // (e.g. desktop sidebar + mobile top bar), only one is on-screen at a time.
+      const candidates = Array.from(document.querySelectorAll<HTMLElement>(targetSelector));
+      const el = candidates.find((c) => {
+        const r = c.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      }) || candidates[0];
       if (!el) return false;
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) return false;
