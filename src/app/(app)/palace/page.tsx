@@ -1,7 +1,23 @@
 "use client";
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import PalaceLogo from "@/components/landing/PalaceLogo";
+
+// Warm the browser cache for the heaviest exterior assets as early as possible,
+// in parallel with the MemoryPalace chunk download. This measurably cuts perceived
+// time-to-first-frame when the user taps the Palace mode button.
+const PRELOAD_URLS = [
+  "/textures/hdri/courtyard_1k.hdr",
+  "/textures/hdri/tuscan_landscape_2k.hdr",
+];
+function useWarmPalaceAssets() {
+  useEffect(() => {
+    PRELOAD_URLS.forEach((u) => {
+      try { fetch(u, { cache: "force-cache" }).catch(() => {}); } catch {}
+    });
+  }, []);
+}
 
 function PalaceLoading() {
   const { t } = useTranslation("palace");
@@ -44,5 +60,6 @@ const MemoryPalace = dynamic(() => import("@/components/MemoryPalace"), {
 });
 
 export default function PalacePage() {
+  useWarmPalaceAssets();
   return <MemoryPalace />;
 }

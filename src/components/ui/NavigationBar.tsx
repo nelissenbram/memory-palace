@@ -422,8 +422,10 @@ export default function NavigationBar({
   /* ---- pulse on mode change ---- */
   const handleModeChange = useCallback(
     (mode: ModeKey) => {
-      // Block navigation while nudge sequence is running
-      if (useNudgeStore.getState().isNudging()) return;
+      // If a nudge tour is active, dismiss it first so a single click navigates
+      if (useNudgeStore.getState().isNudging()) {
+        useNudgeStore.getState().skipAll();
+      }
       // Always call onModeChange — parent decides whether to act on it
       // (needed so clicking a mode from notifications/settings clears the overlay)
       onModeChange(mode);

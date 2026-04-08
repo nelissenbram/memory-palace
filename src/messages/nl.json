@@ -2531,7 +2531,9 @@
   },
   "exterior3d": {
     "entranceHall": "Entreehal",
-    "sceneLabel": "Exterieur 3D-sc\u00e8ne \u2014 klik om te interageren"
+    "sceneLabel": "Exterieur 3D-sc\u00e8ne \u2014 klik om te interageren",
+    "rotateHint": "Draai voor een beter zicht",
+    "rotateDismiss": "Sluiten"
   },
   "entranceHall": {
     "unmute": "Muziek dempen opheffen",

@@ -33,8 +33,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
   entranceHallLabelRef.current = entranceHallLabel;
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
   // Camera starts facing entrance (-Z side), low angle showing palace prominently
-  // phi=0.38 ≈ 68° from zenith = low ground-level view, camD=90 for wider framing
-  const camO=useRef({theta:Math.PI*1.5,phi:Math.PI*.38}),camOT=useRef({theta:Math.PI*1.5,phi:Math.PI*.38}),camD=useRef(90);
+  // phi=0.38 ≈ 68° from zenith = low ground-level view, camD=115 for wider framing (more of palace visible at start)
+  const camO=useRef({theta:Math.PI*1.5,phi:Math.PI*.38}),camOT=useRef({theta:Math.PI*1.5,phi:Math.PI*.38}),camD=useRef(115);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
   const onRoomClickRef=useRef(onRoomClick);

@@ -2529,7 +2529,9 @@
   },
   "exterior3d": {
     "entranceHall": "Entrance Hall",
-    "sceneLabel": "Exterior 3D scene — click to interact"
+    "sceneLabel": "Exterior 3D scene — click to interact",
+    "rotateHint": "Rotate for a better view",
+    "rotateDismiss": "Dismiss"
   },
   "entranceHall": {
     "unmute": "Unmute music",
