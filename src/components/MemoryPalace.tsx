@@ -313,12 +313,28 @@ export default function MemoryPalace(){
     if (onboarded && !styleEra && !profileLoading) setShowEraPicker(true);
   }, [onboarded, styleEra, profileLoading]);
 
-  // ── Scene loading overlay — show on view transitions and when entering 3D mode ──
+  // ── Scene loading overlay — show briefly on view transitions. For exterior
+  // the onReady callback from ExteriorScene hides it precisely on first frame;
+  // other views use a short fixed fade. A 4s safety timer avoids a stuck overlay.
   useEffect(() => {
     setSceneLoading(true);
-    const t = setTimeout(() => setSceneLoading(false), 800);
+    const quick = view === "exterior" ? 4000 : 500;
+    const t = setTimeout(() => setSceneLoading(false), quick);
     return () => clearTimeout(t);
   }, [view, navMode]);
+
+  // ── Orientation key — bump on rotate to force NavigationBar remount ──
+  const [orientKey, setOrientKey] = useState(0);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const bump = () => setOrientKey((k) => k + 1);
+    window.addEventListener("orientationchange", bump);
+    if (window.visualViewport) window.visualViewport.addEventListener("resize", bump);
+    return () => {
+      window.removeEventListener("orientationchange", bump);
+      if (window.visualViewport) window.visualViewport.removeEventListener("resize", bump);
+    };
+  }, []);
 
   // ── Force a hard reflow on orientation changes ──
   // Several mobile browsers (Safari, Edge on Android) leave position:fixed
@@ -603,7 +619,7 @@ export default function MemoryPalace(){
   // ── Home mode: render Home dashboard ──
   if (navMode === "atrium" && !walkthroughActive) {
     return (<>
-      <NavigationBar currentMode="atrium" {...navBarProps} />
+      <NavigationBar key={"nav-atrium-"+orientKey} currentMode="atrium" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><HomeView /></Suspense>
       <NudgeProvider page="atrium" />
@@ -614,7 +630,7 @@ export default function MemoryPalace(){
   // ── Library mode: render Library view instead of 3D (skip during walkthrough) ──
   if (navMode === "library" && !walkthroughActive) {
     return (<>
-      <NavigationBar currentMode="library" {...navBarProps} />
+      <NavigationBar key={"nav-library-"+orientKey} currentMode="library" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><LibraryView /></Suspense>
       <NudgeProvider page="library" />
@@ -642,6 +658,7 @@ export default function MemoryPalace(){
 
       {/* NavigationBar — mode switcher (atrium / library / 3D) */}
       <NavigationBar
+        key={"nav-3d-"+orientKey}
         currentMode="3d"
         {...navBarProps}
         hidden={!!selMem || showUpload || showSharing || walkthroughActive}
