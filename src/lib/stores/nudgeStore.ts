@@ -51,7 +51,7 @@ const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
     "atrium_overview", "atrium_go_library",
   ],
   library: [
-    "library_wing_sidebar", "library_room_bar",
+    "library_room_bar",
     "library_search", "library_tools",
     "library_import", "library_overview",
     "library_go_palace",
