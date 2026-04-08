@@ -100,7 +100,7 @@ export default function SettingsTutorial({ open, onClose }: Props) {
         `}</style>
         {targetBox && (
           <>
-            <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, pointerEvents: "auto" }} onClick={onClose}>
+            <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, pointerEvents: "auto" }}>
               <defs>
                 <mask id="mp-settings-cutout">
                   <rect width="100%" height="100%" fill="white" />
@@ -151,7 +151,7 @@ export default function SettingsTutorial({ open, onClose }: Props) {
       position: "fixed", inset: 0, zIndex: 2147483000,
       background: "rgba(0,0,0,0.35)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem",
-    }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    }}>
       <style>{`
         @keyframes mpCardIn { from { opacity:0; transform:scale(0.95);} to { opacity:1; transform:scale(1);} }
       `}</style>

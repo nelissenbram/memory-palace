@@ -211,7 +211,6 @@ export default function NotificationsPage() {
             @keyframes nudgeCardIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
           `}</style>
           <div
-            onClick={closeTutorial}
             style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,0.35)", pointerEvents:"auto" }}
           />
           <div

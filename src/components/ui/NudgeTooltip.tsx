@@ -714,7 +714,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
           <>
             {/* Dark scrim with cutout around target */}
             <div style={{
-              position:"fixed", inset:0, zIndex:57, pointerEvents:"none",
+              position:"fixed", inset:0, zIndex:57, pointerEvents:"auto",
             }}>
               <svg width="100%" height="100%" style={{ display:"block" }}>
                 <defs>
