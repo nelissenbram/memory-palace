@@ -742,37 +742,20 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
         }}>
           <div style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
             <div style={{
-              width:"0.5rem", height:"0.5rem", borderRadius:"50%",
-              background:"radial-gradient(circle, #FFEEBB 0%, #FFD080 60%, transparent 100%)",
-              boxShadow:"0 0 8px rgba(255,224,160,0.5)", flexShrink:0, marginTop:"0.375rem",
+              width:"0.375rem", height:"0.375rem", borderRadius:"50%", flexShrink:0, marginTop:"0.4375rem",
+              background:`linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
             }} />
-            <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:"rgba(250,250,247,0.92)", lineHeight:1.5 }}>
+            <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:"rgba(250,250,247,0.88)", lineHeight:1.5 }}>
               {t(config.messageKey)}
             </span>
           </div>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-              fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:400,
-              color:"rgba(250,250,247,0.45)", background:"none", border:"none",
-              cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
-            }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(250,250,247,0.7)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(250,250,247,0.45)"; }}
-            >
-              {t("skip")}
-            </button>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", marginTop:"0.125rem" }}>
             <button onClick={(e) => { e.stopPropagation(); handleDismiss(); }} style={{
-              fontFamily:T.font.body, fontSize:"0.6875rem", fontWeight:600,
-              color: isBridge ? "#FFF" : T.color.goldLight,
-              background: isBridge ? `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})` : "none",
-              border: isBridge ? "none" : `1px solid ${T.color.goldLight}40`,
-              borderRadius:"0.375rem",
-              padding: isBridge ? "0.3125rem 0.875rem" : "0.25rem 0.75rem",
-              cursor:"pointer", transition:"all .2s", letterSpacing:"0.03em",
-            }}
-              onMouseEnter={(e) => { if (!isBridge) e.currentTarget.style.background = `${T.color.goldLight}15`; }}
-              onMouseLeave={(e) => { if (!isBridge) e.currentTarget.style.background = "none"; }}
-            >
+              fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
+              background:`linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+              border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem",
+              cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
+            }}>
               {ctaLabel}
             </button>
           </div>
