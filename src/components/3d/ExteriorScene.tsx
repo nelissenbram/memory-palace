@@ -2913,6 +2913,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       grassSystem.update();
       wheatFields.forEach(wf => wf.update());
 
+      // Skip GPU render when host is hidden (display:none on portal host).
+      // Saves CPU/GPU while user is in Atrium/Library so main-thread stays free.
+      // offsetParent is null when element or an ancestor has display:none.
+      if (el.offsetParent === null) return;
       composer.render();
       if (!_firstFrameDone) { _firstFrameDone = true; try { onReady?.(); } catch {} console.log("[palace] first frame at", Math.round(performance.now() - _mountStart), "ms"); }
     };
@@ -2948,13 +2952,34 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         const dist=Math.hypot(dx,dy);if(touchStartDist>0){camD.current=Math.max(40,Math.min(180,touchStartCamD*(touchStartDist/dist)));}
       }
     };
+    // Mobile tap model: first tap selects (shows hover glow + label), second
+    // tap on the same target navigates. Tapping a different target re-selects.
+    // Tapping empty space clears the selection.
+    let _mobileSelected: string | null = null;
     const onTE=(e: TouchEvent)=>{
       if(touchTap&&e.changedTouches.length===1){const tc=e.changedTouches[0];const rect=el.getBoundingClientRect();
         mse.current.set(((tc.clientX-rect.left)/rect.width)*2-1,-((tc.clientY-rect.top)/rect.height)*2+1);
         ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);
-        if(hits.length>0){const hitId=hits[0].object.userData.roomId;onRoomHover(hitId);
-          // Brief delay so the lift animation is visible before navigating
-          setTimeout(()=>onRoomClickRef.current(hitId),250);
+        if(hits.length>0){
+          const hitId=hits[0].object.userData.roomId;
+          if(_isMobile){
+            if(_mobileSelected===hitId){
+              // 2nd tap → enter
+              setTimeout(()=>onRoomClickRef.current(hitId),180);
+              _mobileSelected=null;
+            }else{
+              // 1st tap or different target → select (preview only)
+              _mobileSelected=hitId;
+              onRoomHover(hitId);
+            }
+          }else{
+            onRoomHover(hitId);
+            setTimeout(()=>onRoomClickRef.current(hitId),250);
+          }
+        }else if(_isMobile){
+          // tap empty space → clear selection
+          _mobileSelected=null;
+          onRoomHover(null);
         }
       }
     };

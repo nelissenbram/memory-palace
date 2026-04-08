@@ -31,7 +31,30 @@ export default function LandscapeNudge() {
 
   if (!visible) return null;
 
-  return (
+  return (<>
+    {/* Controls hint — left side, small & italic */}
+    <div
+      aria-label={t("controlsHint")}
+      style={{
+        position: "absolute",
+        left: "1rem",
+        bottom: "6rem",
+        zIndex: 45,
+        pointerEvents: "none",
+        maxWidth: "9rem",
+        fontFamily: "'Cormorant Garamond', Georgia, serif",
+        fontSize: "0.75rem",
+        fontStyle: "italic",
+        color: "#F5EFE4",
+        opacity: 0.85,
+        letterSpacing: "0.03em",
+        lineHeight: 1.35,
+        textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.65), 0 0 0.75rem rgba(0,0,0,0.4)",
+        animation: "mpLNFadeIn 0.55s cubic-bezier(0.2,0.8,0.2,1) both",
+      }}
+    >
+      {t("controlsHint")}
+    </div>
     <div
       aria-label={t("rotateHint")}
       style={{
@@ -70,17 +93,19 @@ export default function LandscapeNudge() {
       <span
         style={{
           fontFamily: "'Cormorant Garamond', Georgia, serif",
-          fontSize: "0.8125rem",
+          fontSize: "0.75rem",
           fontStyle: "italic",
           fontWeight: 500,
           color: "#F5EFE4",
-          letterSpacing: "0.08em",
-          textTransform: "lowercase",
+          letterSpacing: "0.04em",
+          textAlign: "center",
+          maxWidth: "7.5rem",
+          lineHeight: 1.25,
           textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.6), 0 0 0.75rem rgba(0,0,0,0.4)",
         }}
       >
         {t("rotateHint")}
       </span>
     </div>
-  );
+  </>);
 }

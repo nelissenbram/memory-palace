@@ -698,37 +698,165 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
   /* ---------------------------------------------------------------- */
 
   if (isMobile) {
-    return (
+    // ── Two-bar system: Level 1 (Palace/Entrance/Wings) + Level 2 (Rooms) ──
+    const activeWingId = wings.find((w) => w.name === wingName)?.id;
+    const activeWing = wings.find((w) => w.id === activeWingId);
+    const roomsOfActiveWing = activeWingId ? (wingRooms[activeWingId] || []) : [];
+    const showBar2 = (view === "corridor" || view === "room") && !!activeWing && roomsOfActiveWing.length > 0;
+    const accent = wingAccent || T.color.gold;
+
+    const pillBase: CSSProperties = {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "0.3125rem",
+      padding: "0.3125rem 0.625rem",
+      borderRadius: "999px",
+      fontSize: "0.75rem",
+      fontFamily: T.font.body,
+      whiteSpace: "nowrap",
+      cursor: "pointer",
+      border: `0.0625rem solid ${T.color.cream}`,
+      background: `${T.color.linen}cc`,
+      color: T.color.charcoal,
+      flexShrink: 0,
+      transition: "all 0.18s ease",
+    };
+    const activePill = (col: string): CSSProperties => ({
+      ...pillBase,
+      border: `0.125rem solid ${col}`,
+      background: `${col}1f`,
+      color: col,
+      fontWeight: 700,
+      boxShadow: `0 0.125rem 0.5rem ${col}33`,
+    });
+    const sectionLabel: CSSProperties = {
+      fontSize: "0.625rem",
+      fontFamily: T.font.display,
+      fontWeight: 700,
+      color: `${T.color.gold}`,
+      opacity: 0.7,
+      letterSpacing: "0.08em",
+      textTransform: "uppercase",
+      padding: "0 0.25rem",
+      flexShrink: 0,
+    };
+    const barCommon: CSSProperties = {
+      position: "fixed",
+      left: 0,
+      right: 0,
+      zIndex: 42,
+      display: "flex",
+      alignItems: "center",
+      gap: "0.25rem",
+      padding: "0 0.5rem",
+      overflowX: "auto",
+      overflowY: "hidden",
+      backdropFilter: "blur(0.75rem)",
+      WebkitBackdropFilter: "blur(0.75rem)",
+      borderBottom: barBorder,
+      transition: "transform 0.25s ease, opacity 0.25s ease",
+    };
+
+    return (<>
+      <style>{dropdownKeyframes}</style>
+      {/* ── Bar 1: Palace · Entrance · Wings ── */}
       <div
         role="navigation"
         aria-label={t("subnavBreadcrumb")}
+        data-nudge="palace_subnav"
         className="hide-scrollbar"
         style={{
-          position: "fixed",
+          ...barCommon,
           top: 0,
-          left: 0,
-          right: 0,
           paddingTop: "env(safe-area-inset-top, 0px)",
-          height: "3rem",
-          zIndex: 42,
-          overflow: "visible",
+          height: "calc(2.75rem + env(safe-area-inset-top, 0px))",
           background: barBackground,
-          backdropFilter: "blur(0.75rem)",
-          WebkitBackdropFilter: "blur(0.75rem)",
-          borderBottom: barBorder,
           boxShadow: barShadow,
-          display: "flex",
-          alignItems: "center",
-          padding: "0 0.5rem",
-          gap: "0.125rem",
-          overflowX: "auto",
-          transition: "transform 0.25s ease, opacity 0.25s ease",
         }}
       >
-        <style>{dropdownKeyframes}</style>
-        {renderBreadcrumbs()}
+        <span style={sectionLabel}>P</span>
+        <button
+          onClick={onExitToPalace}
+          aria-current={view === "exterior" ? "location" : undefined}
+          aria-label={t("palace")}
+          style={view === "exterior" ? activePill(T.color.gold) : pillBase}
+        >
+          <PalaceIcon size={13} color={view === "exterior" ? T.color.gold : T.color.charcoal} />
+          <span>{t("palace")}</span>
+        </button>
+
+        <button
+          onClick={onEntranceHall}
+          aria-current={view === "entrance" ? "location" : undefined}
+          aria-label={t("entranceHall")}
+          style={view === "entrance" ? activePill(T.color.gold) : pillBase}
+        >
+          <TempleIcon size={13} color={view === "entrance" ? T.color.gold : T.color.charcoal} />
+          <span>{t("entranceHall")}</span>
+        </button>
+
+        {wings.length > 0 && (
+          <>
+            <span style={{ width: "0.0625rem", height: "1.25rem", background: `${T.color.gold}44`, flexShrink: 0, margin: "0 0.125rem" }} />
+            <span style={sectionLabel}>W</span>
+            {wings.map((w) => {
+              const isActive = (view === "corridor" || view === "room") && activeWingId === w.id;
+              return (
+                <button
+                  key={w.id}
+                  onClick={() => onSwitchWing(w.id)}
+                  aria-current={isActive ? "location" : undefined}
+                  aria-label={w.name}
+                  style={isActive ? activePill(w.accent) : pillBase}
+                >
+                  <WingIcon wingId={w.id} size={12} color={isActive ? w.accent : T.color.charcoal} />
+                  <span>{w.name}</span>
+                </button>
+              );
+            })}
+          </>
+        )}
       </div>
-    );
+
+      {/* ── Bar 2: Rooms of current wing ── */}
+      {showBar2 && (
+        <div
+          role="navigation"
+          aria-label={t("subnavRooms") || "Rooms"}
+          className="hide-scrollbar"
+          style={{
+            ...barCommon,
+            top: "calc(2.75rem + env(safe-area-inset-top, 0px))",
+            height: "2.5rem",
+            background: `linear-gradient(180deg, ${T.color.warmStone}e6 0%, ${T.color.linen}d9 100%)`,
+          }}
+        >
+          <span style={{ ...sectionLabel, color: accent }}>R</span>
+          <button
+            onClick={() => onSwitchWing(activeWingId!)}
+            aria-current={view === "corridor" ? "location" : undefined}
+            style={view === "corridor" ? activePill(accent) : pillBase}
+          >
+            <span>{t("allRooms") || "All"}</span>
+          </button>
+          {roomsOfActiveWing.map((r) => {
+            const isActive = view === "room" && roomId === r.id;
+            return (
+              <button
+                key={r.id}
+                onClick={() => onNavigateRoom(activeWingId!, r.id)}
+                aria-current={isActive ? "location" : undefined}
+                aria-label={r.name}
+                style={isActive ? activePill(accent) : pillBase}
+              >
+                <RoomIcon roomId={r.id} size={12} color={isActive ? accent : T.color.charcoal} />
+                <span>{r.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </>);
   }
 
   /* ---------------------------------------------------------------- */

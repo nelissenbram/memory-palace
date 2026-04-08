@@ -2532,7 +2532,8 @@
   "exterior3d": {
     "entranceHall": "Entreehal",
     "sceneLabel": "Exterieur 3D-sc\u00e8ne \u2014 klik om te interageren",
-    "rotateHint": "draai",
+    "rotateHint": "draai voor beter zicht",
+    "controlsHint": "sleep om te draaien · knijp om te zoomen",
     "rotateDismiss": "Sluiten"
   },
   "entranceHall": {

@@ -314,14 +314,21 @@ export default function MemoryPalace(){
     if (onboarded && !styleEra && !profileLoading) setShowEraPicker(true);
   }, [onboarded, styleEra, profileLoading]);
 
-  // ── Scene loading overlay — show briefly on view transitions. For exterior
-  // the onReady callback from ExteriorScene hides it precisely on first frame;
-  // other views use a short fixed fade. A 4s safety timer avoids a stuck overlay.
+  // ── Scene loading overlay — only on the VERY FIRST Palace visit. After
+  // that, the persistent warm ExteriorScene portal is already rendered and
+  // switching back from Atrium/Library is instantaneous — no splash at all. ──
+  const firstPalaceVisitRef = useRef(true);
   useEffect(() => {
-    setSceneLoading(true);
-    const quick = view === "exterior" ? 4000 : 500;
-    const t = setTimeout(() => setSceneLoading(false), quick);
-    return () => clearTimeout(t);
+    // Show splash only first time entering exterior, and only briefly
+    if (view === "exterior" && firstPalaceVisitRef.current) {
+      firstPalaceVisitRef.current = false;
+      setSceneLoading(true);
+      // onReady from ExteriorScene will hide it precisely; 2.5s safety.
+      const t = setTimeout(() => setSceneLoading(false), 2500);
+      return () => clearTimeout(t);
+    }
+    // Any other view transition: no splash.
+    setSceneLoading(false);
   }, [view, navMode]);
 
   // ── Persistent Palace portal host — keeps ExteriorScene mounted across
@@ -580,7 +587,6 @@ export default function MemoryPalace(){
     onSettings: () => { setShowSettings(true); setShowNotificationsPage(false); },
     onModeChange: (mode: string) => {
       setShowNotificationsPage(false); setShowSettings(false);
-      if (mode === "3d") setSceneLoading(true);
       setNavMode(mode as any);
     },
   };
@@ -673,7 +679,6 @@ export default function MemoryPalace(){
     onSettings: () => { setShowSettings(true); setShowNotificationsPage(false); },
     onModeChange: (mode: string) => {
       setShowNotificationsPage(false); setShowSettings(false);
-      if (mode === "3d") setSceneLoading(true);
       setNavMode(mode as any);
     },
   };
