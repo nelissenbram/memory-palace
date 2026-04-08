@@ -24,7 +24,7 @@ const WING_SVG_STRINGS: Record<string,string> = {
 };
 
 // ═══ EXTERIOR — Fantasy Castle ═══
-export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman",autoWalkTo}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string,autoWalkTo?: string|null}){
+export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman",autoWalkTo,onReady}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string,autoWalkTo?: string|null,onReady?: () => void}){
   const WINGS = wingsProp || DEFAULT_WINGS;
   const ownerName = useUserStore((s) => s.userName);
   const { t } = useTranslation("exterior3d");
@@ -160,8 +160,12 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Load Rolling Hills HDRI as background panorama — warm sunrise over dry grassy hilltops (Tuscan feel)
     loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});
 
-    // ── POST-PROCESSING (with SSAO) ──
-    const composer=createPostProcessing(ren,scene,camera,"exterior");
+    // ── POST-PROCESSING ──
+    // On mobile, drop SSAO + DOF: they require an extra NormalPass + DOF passes
+    // and roughly double first-frame compile time + per-frame cost. The visual
+    // hit is minimal at small viewport sizes.
+    const _ppMobile = window.innerWidth < 768;
+    const composer=createPostProcessing(ren,scene,camera,"exterior", _ppMobile ? { ssao: false, dof: false } : undefined);
 
     // ── REAL PBR TEXTURES ──
     const stoneTex=loadPlasterWallTextures([4,4]);
@@ -2910,7 +2914,12 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       wheatFields.forEach(wf => wf.update());
 
       composer.render();
-    };animate();
+      if (!_firstFrameDone) { _firstFrameDone = true; try { onReady?.(); } catch {} console.log("[palace] first frame at", Math.round(performance.now() - _mountStart), "ms"); }
+    };
+    let _firstFrameDone = false;
+    const _mountStart = performance.now();
+    console.log("[palace] ExteriorScene mount start");
+    animate();
 
     const onDown=(e: MouseEvent)=>{drag.current=false;prev.current={x:e.clientX,y:e.clientY};};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.current.x,dy=e.clientY-prev.current.y;if(Math.abs(dx)>3||Math.abs(dy)>3)drag.current=true;
