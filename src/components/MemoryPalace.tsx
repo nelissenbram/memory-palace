@@ -488,7 +488,11 @@ export default function MemoryPalace(){
     toolsOpen: showTools,
     onNotifications: () => { setShowNotificationsPage(true); setShowSettings(false); },
     onSettings: () => { setShowSettings(true); setShowNotificationsPage(false); },
-    onModeChange: (mode: string) => { setShowNotificationsPage(false); setShowSettings(false); setNavMode(mode as any); },
+    onModeChange: (mode: string) => {
+      setShowNotificationsPage(false); setShowSettings(false);
+      if (mode === "3d") setSceneLoading(true);
+      setNavMode(mode as any);
+    },
   };
 
   if (showSettings && !walkthroughActive) {
@@ -553,7 +557,11 @@ export default function MemoryPalace(){
     toolsOpen: showTools,
     onNotifications: () => { setShowNotificationsPage(true); setShowSettings(false); },
     onSettings: () => { setShowSettings(true); setShowNotificationsPage(false); },
-    onModeChange: (mode: string) => { setShowNotificationsPage(false); setShowSettings(false); setNavMode(mode as any); },
+    onModeChange: (mode: string) => {
+      setShowNotificationsPage(false); setShowSettings(false);
+      if (mode === "3d") setSceneLoading(true);
+      setNavMode(mode as any);
+    },
   };
 
   // ── Home mode: render Home dashboard ──
