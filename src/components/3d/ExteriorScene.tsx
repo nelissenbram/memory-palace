@@ -2913,10 +2913,11 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       grassSystem.update();
       wheatFields.forEach(wf => wf.update());
 
-      // Skip GPU render when host is hidden (display:none on portal host).
-      // Saves CPU/GPU while user is in Atrium/Library so main-thread stays free.
-      // offsetParent is null when element or an ancestor has display:none.
-      if (el.offsetParent === null) return;
+      // Skip GPU render when host is paused (data-paused="1" on portal host).
+      // Saves CPU/GPU while user is in Atrium/Library, but still renders ONE
+      // warm-up frame on mount so the scene is ready to show on first unhide.
+      const hostEl = el.parentElement;
+      if (_firstFrameDone && hostEl && hostEl.dataset && hostEl.dataset.paused === "1") return;
       composer.render();
       if (!_firstFrameDone) { _firstFrameDone = true; try { onReady?.(); } catch {} console.log("[palace] first frame at", Math.round(performance.now() - _mountStart), "ms"); }
     };
@@ -2945,7 +2946,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const onTM=(e: TouchEvent)=>{
       e.preventDefault();
       if(e.touches.length===1){const t=e.touches[0];const dx=t.clientX-prev.current.x,dy=t.clientY-prev.current.y;
-        if(Math.abs(dx)>3||Math.abs(dy)>3){drag.current=true;touchTap=false;}
+        if(Math.abs(dx)>10||Math.abs(dy)>10){drag.current=true;touchTap=false;}
         camOT.current.theta-=dx*.004;camOT.current.phi=Math.max(.08,Math.min(Math.PI*.44,camOT.current.phi+dy*.004));prev.current={x:t.clientX,y:t.clientY};
       }
       if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;

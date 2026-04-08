@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -332,25 +332,31 @@ export default function MemoryPalace(){
   }, [view, navMode]);
 
   // ── Persistent Palace portal host — keeps ExteriorScene mounted across
-  //    navMode switches so re-entering 3D is instant (no WebGL re-init). ──
+  //    navMode switches. Eagerly mounted on app load so the scene is warm by
+  //    the time the user taps Palace. Uses visibility (not display) to avoid
+  //    layout thrash and blank-frame flashes. ──
   const [palaceHost, setPalaceHost] = useState<HTMLDivElement | null>(null);
-  const [hasVisitedPalace, setHasVisitedPalace] = useState(false);
+  const hasVisitedPalace = true; // eager mount — scene warms in background
   useEffect(() => {
     if (typeof document === "undefined") return;
     const el = document.createElement("div");
     el.setAttribute("data-palace-persistent", "");
-    el.style.cssText = "position:fixed;inset:0;z-index:0;display:none;";
+    // z-index:5 sits above the MemoryPalace main return wrapper (auto) so the
+    // canvas paints over the sandstone bg, but below PalaceSubNav (42) and
+    // NavigationBar (50). Starts hidden + paused so atrium/library are visible.
+    el.style.cssText = "position:fixed;inset:0;z-index:5;visibility:hidden;pointer-events:none;";
+    el.dataset.paused = "1";
     document.body.appendChild(el);
     setPalaceHost(el);
     return () => { try { document.body.removeChild(el); } catch {} };
   }, []);
-  useEffect(() => {
-    if (navMode === "3d") setHasVisitedPalace(true);
-  }, [navMode]);
-  useEffect(() => {
+  // Synchronous toggle before paint — avoids blank-frame on Palace entry.
+  useLayoutEffect(() => {
     if (!palaceHost) return;
     const show = navMode === "3d" && view === "exterior";
-    palaceHost.style.display = show ? "block" : "none";
+    palaceHost.style.visibility = show ? "visible" : "hidden";
+    palaceHost.style.pointerEvents = show ? "auto" : "none";
+    palaceHost.dataset.paused = show ? "0" : "1";
   }, [palaceHost, navMode, view]);
 
   // ── Orientation key — bump on rotate to force NavigationBar remount ──
