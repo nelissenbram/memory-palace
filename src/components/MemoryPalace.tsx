@@ -313,12 +313,12 @@ export default function MemoryPalace(){
     if (onboarded && !styleEra && !profileLoading) setShowEraPicker(true);
   }, [onboarded, styleEra, profileLoading]);
 
-  // ── Scene loading overlay — show on view transitions, fade out after scene builds ──
+  // ── Scene loading overlay — show on view transitions and when entering 3D mode ──
   useEffect(() => {
     setSceneLoading(true);
     const t = setTimeout(() => setSceneLoading(false), 800);
     return () => clearTimeout(t);
-  }, [view]);
+  }, [view, navMode]);
 
   // ── Achievement tracking ──
   const userMems = useMemoryStore((s) => s.userMems);
@@ -592,7 +592,7 @@ export default function MemoryPalace(){
       {view==="exterior"&&<LandscapeNudge />}
 
       {/* Scene loading overlay — fades out after 3D canvas initializes */}
-      {sceneLoading&&<div key={view} style={{position:"absolute",inset:0,zIndex:40,display:"flex",alignItems:"center",justifyContent:"center",background:T.color.warmStone,animation:"sceneLoadFadeOut 0.8s ease-in-out forwards",pointerEvents:"none"}}><span style={{fontFamily:T.font.display,fontSize:"1.3rem",color:T.color.walnut,letterSpacing:"0.04em",animation:"sceneLoadPulse 1.2s ease-in-out infinite"}}>{tPalace("sceneLoading")}</span></div>}
+      {sceneLoading&&<div key={view+"|"+navMode} style={{position:"absolute",inset:0,zIndex:40,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:"1rem",background:`linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 55%, ${T.color.sandstone} 100%)`,animation:"sceneLoadFadeOut 0.8s ease-in-out forwards",pointerEvents:"none"}}><div style={{animation:"sceneLoadPulse 1.4s ease-in-out infinite"}}><PalaceLogo variant="mark" color="dark" size="lg" /></div><span style={{fontFamily:T.font.display,fontSize:"1.15rem",color:T.color.walnut,letterSpacing:"0.04em",animation:"sceneLoadPulse 1.4s ease-in-out infinite"}}>{tPalace("sceneLoading")}</span></div>}
 
       {/* TopBar hidden — replaced by PalaceSubNav */}
 

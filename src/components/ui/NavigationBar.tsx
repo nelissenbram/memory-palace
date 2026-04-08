@@ -415,8 +415,19 @@ export default function NavigationBar({
 
   useEffect(() => {
     updateIndicator();
+    // Re-measure on resize and on orientation change. Some mobile browsers
+    // fire orientationchange before the layout settles, so re-run a few times.
+    const onOrient = () => {
+      updateIndicator();
+      setTimeout(updateIndicator, 60);
+      setTimeout(updateIndicator, 250);
+    };
     window.addEventListener("resize", updateIndicator);
-    return () => window.removeEventListener("resize", updateIndicator);
+    window.addEventListener("orientationchange", onOrient);
+    return () => {
+      window.removeEventListener("resize", updateIndicator);
+      window.removeEventListener("orientationchange", onOrient);
+    };
   }, [updateIndicator]);
 
   /* ---- pulse on mode change ---- */

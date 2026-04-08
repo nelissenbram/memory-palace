@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const STORAGE_KEY = "mp_landscape_nudge_dismissed_v1";
@@ -43,53 +42,77 @@ export default function LandscapeNudge() {
   };
 
   return (
-    <div
+    <button
+      type="button"
       onClick={dismiss}
-      role="button"
       aria-label={t("rotateHint")}
+      title={t("rotateHint")}
       style={{
         position: "absolute",
-        right: "0.75rem",
+        right: "0.875rem",
         bottom: "5.5rem",
         zIndex: 45,
+        width: "3rem",
+        height: "3rem",
         display: "flex",
         alignItems: "center",
-        gap: "0.5rem",
-        padding: "0.5rem 0.75rem",
-        borderRadius: "0.75rem",
+        justifyContent: "center",
+        padding: 0,
+        borderRadius: "50%",
         background: "rgba(42,34,24,0.82)",
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        border: "1px solid rgba(212,175,55,0.25)",
+        border: "1px solid rgba(212,175,55,0.35)",
         boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,0.3)",
-        color: "rgba(250,250,247,0.9)",
-        fontFamily: T.font.body,
-        fontSize: "0.75rem",
-        letterSpacing: "0.02em",
+        color: "#E8C870",
         cursor: "pointer",
         pointerEvents: "auto",
         animation: "mpRotateIn 0.4s ease both",
-        maxWidth: "60vw",
       }}
     >
       <style>{`
-        @keyframes mpRotateIn { from { opacity:0; transform:translateY(0.5rem);} to { opacity:1; transform:translateY(0);} }
-        @keyframes mpRotateWobble { 0%,100% { transform:rotate(0deg);} 50% { transform:rotate(-8deg);} }
-        @keyframes mpRotateIconSpin { 0%,70%,100% { transform:rotate(0deg);} 85% { transform:rotate(-90deg);} }
+        @keyframes mpRotateIn { from { opacity:0; transform:translateY(0.5rem) scale(0.9);} to { opacity:1; transform:translateY(0) scale(1);} }
+        @keyframes mpPhoneRotate {
+          0%, 60% { transform: rotate(0deg); }
+          75% { transform: rotate(-90deg); }
+          90% { transform: rotate(-90deg); }
+          100% { transform: rotate(0deg); }
+        }
+        @keyframes mpArrowPulse {
+          0%, 60%, 100% { opacity: 0.35; }
+          70%, 85% { opacity: 1; }
+        }
       `}</style>
-      <span
-        aria-hidden
-        style={{
-          display: "inline-block",
-          fontSize: "1rem",
-          lineHeight: 1,
-          animation: "mpRotateIconSpin 2.8s ease-in-out infinite",
-          transformOrigin: "center",
-        }}
-      >
-        ⟳
-      </span>
-      <span>{t("rotateHint")}</span>
-    </div>
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-hidden>
+        {/* phone outline that rotates from portrait to landscape */}
+        <g
+          style={{
+            transformOrigin: "16px 16px",
+            animation: "mpPhoneRotate 3s ease-in-out infinite",
+          }}
+        >
+          <rect
+            x="11" y="5" width="10" height="18" rx="1.6"
+            stroke="#E8C870" strokeWidth="1.6" fill="none"
+          />
+          <circle cx="16" cy="20.5" r="0.7" fill="#E8C870" />
+          <line x1="14.5" y1="7.2" x2="17.5" y2="7.2" stroke="#E8C870" strokeWidth="0.9" strokeLinecap="round" />
+        </g>
+        {/* curved rotation arrow underneath, pulses to suggest motion */}
+        <g style={{ animation: "mpArrowPulse 3s ease-in-out infinite" }}>
+          <path
+            d="M6 26 Q 16 30 26 26"
+            stroke="#E8C870"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            fill="none"
+          />
+          <path
+            d="M25 24.4 L26.4 26.2 L24.4 26.6 Z"
+            fill="#E8C870"
+          />
+        </g>
+      </svg>
+    </button>
   );
 }

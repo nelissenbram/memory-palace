@@ -2921,7 +2921,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);if(hits.length>0)onRoomClickRef.current(hits[0].object.userData.roomId);};
     const onWh=(e: WheelEvent)=>{camD.current=Math.max(40,Math.min(180,camD.current+e.deltaY*.05));};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);cachedRem=parseFloat(getComputedStyle(document.documentElement).fontSize);};
-    el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);
+    el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);el.addEventListener("wheel",onWh,{passive:true});window.addEventListener("resize",onRs);const onOrient=()=>{onRs();setTimeout(onRs,80);setTimeout(onRs,300);};window.addEventListener("orientationchange",onOrient);
 
     // ── TOUCH SUPPORT ──
     let touchStartDist=0,touchStartCamD=camD.current,touchTap=true;
@@ -2951,7 +2951,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     };
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});
 
-    return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);
+    return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       if(el.contains(hovLabel))el.removeChild(hovLabel);
       scene.traverse((obj: any) => {
