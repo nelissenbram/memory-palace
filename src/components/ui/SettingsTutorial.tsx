@@ -195,40 +195,21 @@ export default function SettingsTutorial({ open, onClose }: Props) {
 }
 
 function TourControls({
-  step, total, onSkip, onNext, t, lastStep = false, goldLight,
+  onNext, t, lastStep = false,
 }: {
-  step: number; total: number; onSkip: () => void; onNext: () => void;
-  t: (k: string) => string; lastStep?: boolean; goldLight: string;
+  step?: number; total?: number; onSkip?: () => void; onNext: () => void;
+  t: (k: string) => string; lastStep?: boolean; goldLight?: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.125rem", gap: "0.75rem" }}>
-      <button type="button" onClick={(e) => { e.stopPropagation(); onSkip(); }} style={{
-        fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 400,
-        color: "rgba(250,250,247,0.45)", background: "none", border: "none",
-        cursor: "pointer", padding: "0.125rem 0.25rem", letterSpacing: "0.03em",
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginTop: "0.125rem" }}>
+      <button type="button" onClick={(e) => { e.stopPropagation(); onNext(); }} style={{
+        fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, color: "#FFF",
+        background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+        border: "none", borderRadius: "0.5rem", padding: "0.4375rem 1.125rem",
+        cursor: "pointer", transition: "all .2s", letterSpacing: "0.02em",
       }}>
-        {t("skip")}
+        {lastStep ? t("done") : t("next")}
       </button>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-        <div style={{ display: "flex", gap: "0.25rem" }}>
-          {Array.from({ length: total }).map((_, i) => (
-            <span key={i} style={{
-              width: i === step ? "1rem" : "0.375rem", height: "0.25rem",
-              borderRadius: "0.125rem",
-              background: i === step ? goldLight : "rgba(232,200,112,0.25)",
-              transition: "all .2s",
-            }} />
-          ))}
-        </div>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onNext(); }} style={{
-          fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, color: "#FFF",
-          background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-          border: "none", borderRadius: "0.5rem", padding: "0.4375rem 1.125rem",
-          cursor: "pointer", transition: "all .2s", letterSpacing: "0.02em",
-        }}>
-          {lastStep ? t("done") : t("next")}
-        </button>
-      </div>
     </div>
   );
 }

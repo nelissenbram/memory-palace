@@ -3665,6 +3665,7 @@
     "autoWalkingHint": "Automatisch navigeren...",
     "next": "Volgende",
     "tryIt": "Probeer het",
-    "skip": "Tutorial overslaan"
+    "skip": "Tutorial overslaan",
+    "gotIt": "Begrepen"
   }
 }

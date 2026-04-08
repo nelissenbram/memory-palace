@@ -668,24 +668,14 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             <div style={{ fontFamily:T.font.body, fontSize:"0.75rem", color:"rgba(250,250,247,0.5)", fontStyle:"italic", marginTop:"0.125rem" }}>
               {footer}
             </div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
-              <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:400,
-                color:"rgba(250,250,247,0.45)", background:"none", border:"none",
-                cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(250,250,247,0.7)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(250,250,247,0.45)"; }}
-              >
-                {t("skip")}
-              </button>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", marginTop:"0.125rem" }}>
               <button onClick={(e) => { e.stopPropagation(); handleDismiss(); }} style={{
                 fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
                 background:`linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                 border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem",
                 cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
               }}>
-                {ctaLabel}
+                {t("gotIt")}
               </button>
             </div>
           </div>

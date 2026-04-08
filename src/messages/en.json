@@ -3663,6 +3663,7 @@
     "autoWalkingHint": "Navigating automatically...",
     "next": "Next",
     "tryIt": "Try it",
-    "skip": "Skip tutorial"
+    "skip": "Skip tutorial",
+    "gotIt": "Got it"
   }
 }
