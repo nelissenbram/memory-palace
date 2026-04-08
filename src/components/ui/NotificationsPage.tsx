@@ -266,8 +266,18 @@ export default function NotificationsPage() {
                 Activities stay for a year — tap any item to mark it read.
               </div>
               <div style={{
-                display:"flex", alignItems:"center", justifyContent:"flex-end", marginTop:"0.125rem",
+                display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem",
               }}>
+                <button
+                  onClick={closeTutorial}
+                  style={{
+                    fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500, color:"rgba(250,250,247,0.55)",
+                    background:"transparent", border:"none", padding:"0.4375rem 0.5rem",
+                    cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
+                  }}
+                >
+                  Skip
+                </button>
                 <button
                   onClick={closeTutorial}
                   style={{

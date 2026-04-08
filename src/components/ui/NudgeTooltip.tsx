@@ -668,7 +668,14 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             <div style={{ fontFamily:T.font.body, fontSize:"0.75rem", color:"rgba(250,250,247,0.5)", fontStyle:"italic", marginTop:"0.125rem" }}>
               {footer}
             </div>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", marginTop:"0.125rem" }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
+              <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
+                fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500, color:"rgba(250,250,247,0.55)",
+                background:"transparent", border:"none", padding:"0.4375rem 0.5rem",
+                cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
+              }}>
+                {t("skip")}
+              </button>
               <button onClick={(e) => { e.stopPropagation(); handleDismiss(); }} style={{
                 fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
                 background:`linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
@@ -749,7 +756,14 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
               {t(config.messageKey)}
             </span>
           </div>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", marginTop:"0.125rem" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
+            <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
+              fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500, color:"rgba(250,250,247,0.55)",
+              background:"transparent", border:"none", padding:"0.4375rem 0.5rem",
+              cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
+            }}>
+              {t("skip")}
+            </button>
             <button onClick={(e) => { e.stopPropagation(); handleDismiss(); }} style={{
               fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
               background:`linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,

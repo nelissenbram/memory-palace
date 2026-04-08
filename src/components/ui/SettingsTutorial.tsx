@@ -195,13 +195,20 @@ export default function SettingsTutorial({ open, onClose }: Props) {
 }
 
 function TourControls({
-  onNext, t, lastStep = false,
+  onSkip, onNext, t, lastStep = false,
 }: {
   step?: number; total?: number; onSkip?: () => void; onNext: () => void;
   t: (k: string) => string; lastStep?: boolean; goldLight?: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", marginTop: "0.125rem" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.125rem" }}>
+      <button type="button" onClick={(e) => { e.stopPropagation(); onSkip?.(); }} style={{
+        fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500, color: "rgba(250,250,247,0.55)",
+        background: "transparent", border: "none", padding: "0.4375rem 0.5rem",
+        cursor: "pointer", transition: "all .2s", letterSpacing: "0.02em",
+      }}>
+        {t("skip")}
+      </button>
       <button type="button" onClick={(e) => { e.stopPropagation(); onNext(); }} style={{
         fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, color: "#FFF",
         background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
