@@ -46,6 +46,9 @@ export default function NotificationsPage() {
     if (!window.localStorage.getItem(TUTORIAL_KEY)) {
       setTutorialOpen(true);
     }
+    const reopen = () => setTutorialOpen(true);
+    window.addEventListener("mp:open-activity-tutorial", reopen);
+    return () => window.removeEventListener("mp:open-activity-tutorial", reopen);
   }, []);
 
   const closeTutorial = () => {
@@ -203,126 +206,83 @@ export default function NotificationsPage() {
       </div>
 
       {tutorialOpen && typeof document !== "undefined" && createPortal(
-        <div
-          onClick={closeTutorial}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(44,44,42,0.55)",
-            backdropFilter: "blur(4px)",
-            WebkitBackdropFilter: "blur(4px)",
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1.25rem",
-            animation: "fadeIn 0.25s ease",
-          }}
-        >
+        <>
+          <style>{`
+            @keyframes nudgeCardIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+          `}</style>
           <div
-            onClick={(e) => e.stopPropagation()}
+            onClick={closeTutorial}
+            style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,0.35)", pointerEvents:"auto" }}
+          />
+          <div
             style={{
-              maxWidth: "22rem",
-              width: "100%",
-              background: T.color.linen,
-              border: `1px solid ${T.color.cream}`,
-              borderRadius: "1rem",
-              padding: "1.5rem 1.375rem 1.25rem",
-              boxShadow: "0 20px 60px rgba(44,44,42,0.25)",
-              fontFamily: T.font.body,
+              position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:1001,
+              width: isMobile ? "calc(100vw - 2rem)" : "22rem", maxWidth:"24rem",
+              maxHeight: "calc(100dvh - 4rem)", overflowY: "auto",
+              animation: "nudgeCardIn .3s ease both",
             }}
           >
-            <div
-              style={{
-                fontFamily: T.font.display,
-                fontSize: "1.125rem",
-                fontWeight: 600,
-                color: T.color.charcoal,
-                marginBottom: "0.5rem",
-              }}
-            >
-              Your Activity feed
-            </div>
-            <div
-              style={{
-                fontSize: "0.8125rem",
-                color: T.color.muted,
-                lineHeight: 1.5,
-                marginBottom: "0.875rem",
-              }}
-            >
-              A quiet stream of meaningful moments in your palace. Tap any item to mark it read.
-            </div>
-
-            {[
-              { g: "\u2727", label: "Welcome & milestones as your palace grows" },
-              { g: "\u2767", label: '"On this day" — memories from years past' },
-              { g: "\u2766", label: "Family joining or contributing to shared rooms" },
-              { g: "\u270E", label: "New memories added by people you share with" },
-              { g: "\u29D7", label: "Gentle nudges for quiet rooms" },
-              { g: "\u2756", label: "New features and palace updates" },
-            ].map((item, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "0.625rem",
-                  padding: "0.375rem 0",
-                  fontSize: "0.75rem",
-                  color: T.color.charcoal,
-                  lineHeight: 1.45,
-                }}
-              >
-                <span
+            <div style={{
+              background:"rgba(42,34,24,0.94)",
+              backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
+              borderRadius:"1rem", padding:"1.25rem 1.25rem 1rem",
+              border:"1px solid rgba(212,175,55,0.25)",
+              boxShadow:"0 1rem 3rem rgba(0,0,0,0.4)",
+              display:"flex", flexDirection:"column", gap:"0.75rem",
+            }}>
+              <div style={{
+                fontFamily:T.font.display, fontSize:"0.9375rem", fontWeight:600,
+                color:T.color.goldLight, letterSpacing:"0.02em",
+              }}>
+                Your Activity feed
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:"0.4375rem" }}>
+                {[
+                  "Welcome messages & palace milestones as your collection grows",
+                  '"On this day" — memories from years past, re-surfaced',
+                  "Family members joining or contributing to shared rooms",
+                  "New memories added by people you share rooms with",
+                  "Gentle nudges when a room has been quiet for a while",
+                  "New features and palace updates",
+                ].map((text, i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
+                    <div style={{
+                      width:"0.375rem", height:"0.375rem", borderRadius:"50%", flexShrink:0, marginTop:"0.4375rem",
+                      background:`linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
+                    }} />
+                    <span style={{
+                      fontFamily:T.font.body, fontSize:"0.8125rem",
+                      color:"rgba(250,250,247,0.88)", lineHeight:1.5,
+                    }}>
+                      {text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                fontFamily:T.font.body, fontSize:"0.75rem",
+                color:"rgba(250,250,247,0.5)", fontStyle:"italic", marginTop:"0.125rem",
+              }}>
+                Activities stay for a year — tap any item to mark it read.
+              </div>
+              <div style={{
+                display:"flex", alignItems:"center", justifyContent:"flex-end", marginTop:"0.125rem",
+              }}>
+                <button
+                  onClick={closeTutorial}
                   style={{
-                    width: "1.25rem",
-                    textAlign: "center",
-                    color: T.color.terracotta,
-                    fontSize: "0.9375rem",
-                    flexShrink: 0,
+                    fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
+                    background:`linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                    border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem",
+                    cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
                   }}
                 >
-                  {item.g}
-                </span>
-                <span>{item.label}</span>
+                  Got it
+                </button>
               </div>
-            ))}
-
-            <div
-              style={{
-                fontSize: "0.6875rem",
-                color: T.color.muted,
-                fontStyle: "italic",
-                marginTop: "0.875rem",
-                marginBottom: "1rem",
-                lineHeight: 1.4,
-              }}
-            >
-              Activities stay for a year — nothing is ever lost in the noise.
             </div>
-
-            <button
-              onClick={closeTutorial}
-              style={{
-                width: "100%",
-                fontFamily: T.font.body,
-                fontSize: "0.8125rem",
-                fontWeight: 600,
-                color: "#FFF",
-                background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                border: "none",
-                borderRadius: "0.625rem",
-                padding: "0.75rem",
-                cursor: "pointer",
-                minHeight: "2.75rem",
-                boxShadow: "0 2px 8px rgba(193,127,89,0.25)",
-              }}
-            >
-              Got it
-            </button>
           </div>
-        </div>,
+        </>,
         document.body,
       )}
     </div>

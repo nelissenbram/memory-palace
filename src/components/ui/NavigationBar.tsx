@@ -522,6 +522,11 @@ export default function NavigationBar({
                       useSettingsTourStore.getState().setOpen(true);
                       return;
                     }
+                    // Activity tab tutorial — dispatch custom event
+                    if (activeTab === "notifications") {
+                      window.dispatchEvent(new Event("mp:open-activity-tutorial"));
+                      return;
+                    }
                     // reset() sets _forceCurrentPage + increments _resetCount,
                     // which triggers NudgeProvider's useEffect → initPage()
                     useNudgeStore.getState().reset();
@@ -821,6 +826,10 @@ export default function NavigationBar({
             onClick={() => {
               if (isSettingsRoute) {
                 useSettingsTourStore.getState().setOpen(true);
+                return;
+              }
+              if (activeTab === "notifications") {
+                window.dispatchEvent(new Event("mp:open-activity-tutorial"));
                 return;
               }
               // reset() sets _forceCurrentPage + increments _resetCount,
