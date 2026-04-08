@@ -2530,7 +2530,7 @@
   "exterior3d": {
     "entranceHall": "Entrance Hall",
     "sceneLabel": "Exterior 3D scene — click to interact",
-    "rotateHint": "Rotate for a better view",
+    "rotateHint": "rotate",
     "rotateDismiss": "Dismiss"
   },
   "entranceHall": {

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
@@ -323,6 +324,28 @@ export default function MemoryPalace(){
     return () => clearTimeout(t);
   }, [view, navMode]);
 
+  // ── Persistent Palace portal host — keeps ExteriorScene mounted across
+  //    navMode switches so re-entering 3D is instant (no WebGL re-init). ──
+  const [palaceHost, setPalaceHost] = useState<HTMLDivElement | null>(null);
+  const [hasVisitedPalace, setHasVisitedPalace] = useState(false);
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const el = document.createElement("div");
+    el.setAttribute("data-palace-persistent", "");
+    el.style.cssText = "position:fixed;inset:0;z-index:0;display:none;";
+    document.body.appendChild(el);
+    setPalaceHost(el);
+    return () => { try { document.body.removeChild(el); } catch {} };
+  }, []);
+  useEffect(() => {
+    if (navMode === "3d") setHasVisitedPalace(true);
+  }, [navMode]);
+  useEffect(() => {
+    if (!palaceHost) return;
+    const show = navMode === "3d" && view === "exterior";
+    palaceHost.style.display = show ? "block" : "none";
+  }, [palaceHost, navMode, view]);
+
   // ── Orientation key — bump on rotate to force NavigationBar remount ──
   const [orientKey, setOrientKey] = useState(0);
   useEffect(() => {
@@ -346,13 +369,28 @@ export default function MemoryPalace(){
     if (typeof window === "undefined") return;
     const reflow = () => {
       const html = document.documentElement;
-      const prev = html.style.overflow;
-      html.style.overflow = "hidden";
-      // force layout
+      const body = document.body;
+      const h = window.innerHeight;
+      const w = window.innerWidth;
+      // Pin html+body to an explicit pixel height so fixed-positioned bars
+      // (top nav, bottom nav) recompute against the new viewport. Some mobile
+      // browsers otherwise hold onto pre-rotation layout until a real event.
+      html.style.height = `${h}px`;
+      body.style.height = `${h}px`;
+      html.style.width = `${w}px`;
+      body.style.width = `${w}px`;
+      // force synchronous layout
       void html.offsetHeight;
-      html.style.overflow = prev;
       window.scrollTo(0, 0);
       window.dispatchEvent(new Event("resize"));
+      // release back to dynamic values a beat later
+      setTimeout(() => {
+        html.style.height = "";
+        body.style.height = "";
+        html.style.width = "";
+        body.style.width = "";
+        window.dispatchEvent(new Event("resize"));
+      }, 320);
     };
     const onChange = () => {
       reflow();
@@ -547,8 +585,31 @@ export default function MemoryPalace(){
     },
   };
 
+  // ── Warm, persistent ExteriorScene via body-level portal (keeps scene alive). ──
+  const warmPalaceScene = (palaceHost && hasVisitedPalace)
+    ? createPortal(
+        <ExteriorScene
+          key={dlKey}
+          onReady={() => setSceneLoading(false)}
+          onRoomHover={setHovWing}
+          onRoomClick={(wingId: string) => {
+            if (walkthroughActive && wingId !== "__entrance__") return;
+            if (wingId === "__entrance__") { if (nudgeHL.entrance) nudgeDismiss(); enterEntrance(); }
+            else { enterCorridor(wingId); }
+          }}
+          hoveredRoom={hovWing}
+          wings={allWings}
+          highlightDoor={(walkthroughActive && walkthroughPhase === 0 ? "__entrance__" : null) || nudgeHL.entrance || null}
+          styleEra={styleEra || "roman"}
+          autoWalkTo={autoWalking && nudgeHL.entrance ? nudgeHL.entrance : undefined}
+        />,
+        palaceHost
+      )
+    : null;
+
   if (showSettings && !walkthroughActive) {
     return (<>
+      {warmPalaceScene}
       <NavigationBar currentMode={navMode} {...earlyNavBarProps} activeTab="me" />
       <SettingsInline />
     </>);
@@ -556,6 +617,7 @@ export default function MemoryPalace(){
 
   if (showNotificationsPage && !walkthroughActive) {
     return (<>
+      {warmPalaceScene}
       <NavigationBar currentMode={navMode} {...earlyNavBarProps} activeTab="notifications" />
       <NotificationsPage />
     </>);
@@ -619,6 +681,7 @@ export default function MemoryPalace(){
   // ── Home mode: render Home dashboard ──
   if (navMode === "atrium" && !walkthroughActive) {
     return (<>
+      {warmPalaceScene}
       <NavigationBar key={"nav-atrium-"+orientKey} currentMode="atrium" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><HomeView /></Suspense>
@@ -630,6 +693,7 @@ export default function MemoryPalace(){
   // ── Library mode: render Library view instead of 3D (skip during walkthrough) ──
   if (navMode === "library" && !walkthroughActive) {
     return (<>
+      {warmPalaceScene}
       <NavigationBar key={"nav-library-"+orientKey} currentMode="library" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><LibraryView /></Suspense>
@@ -643,7 +707,8 @@ export default function MemoryPalace(){
       <TuscanStyles />
       <style>{`*{box-sizing:border-box;margin:0}@keyframes sceneLoadFadeOut{0%{opacity:1}50%{opacity:1}100%{opacity:0}}@keyframes sceneLoadPulse{0%,100%{opacity:.5}50%{opacity:1}}@keyframes fadeIn{from{opacity:0;transform:translateY(0.75rem)}to{opacity:1;transform:translateY(0)}}@keyframes fadeUp{from{opacity:0;transform:translateY(0.5rem)}to{opacity:1;transform:translateY(0)}}@keyframes portalFlash{0%{opacity:0}30%{opacity:1}100%{opacity:0}}.era-btn:focus-visible{outline:0.125rem solid ${T.color.gold};outline-offset:0.125rem}.era-btn{transition:all .2s ease;}.era-btn:hover{background:${T.color.warmStone} !important;border-color:${T.color.gold} !important;transform:translateY(-0.0625rem)}.layout-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238B7355'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 0.25rem center;padding-right:1rem !important}.layout-select:focus-visible{outline:0.125rem solid ${T.color.gold};outline-offset:0.0625rem;border-color:${T.color.gold} !important}`}</style>
       <div role="application" aria-label={tPalace("sceneAriaLabel")} className="no-overscroll" style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease",touchAction:"none"}}>
-        {view==="exterior"&&<ExteriorScene key={dlKey} onReady={()=>setSceneLoading(false)} onRoomHover={setHovWing} onRoomClick={(wingId: string)=>{if(walkthroughActive&&wingId!=="__entrance__")return;if(wingId==="__entrance__"){if(nudgeHL.entrance)nudgeDismiss();enterEntrance();}else{enterCorridor(wingId);}}} hoveredRoom={hovWing} wings={allWings} highlightDoor={(walkthroughActive&&walkthroughPhase===0?"__entrance__":null)||nudgeHL.entrance||null} styleEra={styleEra||"roman"} autoWalkTo={autoWalking && nudgeHL.entrance ? nudgeHL.entrance : undefined}/>}
+        {/* ExteriorScene mounted persistently via body-level portal (see warmPalaceScene) */}
+        {warmPalaceScene}
         {view==="entrance"&&<EntranceHallScene key={dlKey} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/>}
         {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>:view==="corridor"&&activeWing&&wingData&&<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/>}
         {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={dlKey+"|"+roomMemsKey+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} wingData={wingData||undefined} styleEra={styleEra||"roman"}/>}
