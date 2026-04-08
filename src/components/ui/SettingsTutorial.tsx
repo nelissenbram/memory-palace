@@ -178,7 +178,7 @@ export default function SettingsTutorial({ open, onClose }: Props) {
                   background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
                 }} />
                 <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "rgba(250,250,247,0.88)", lineHeight: 1.5 }}>
-                  <strong style={{ color: goldLight, fontWeight: 600 }}>{it.title}</strong> — {it.desc}
+                  {it.title} — {it.desc}
                 </span>
               </div>
             ))}
