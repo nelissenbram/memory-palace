@@ -10,6 +10,7 @@ export interface Mem {
   dataUrl?: string | null;
   thumbnailUrl?: string | null;
   videoBlob?: boolean;
+  rotation?: 0 | 90 | 180 | 270; // manual rotation override for video playback (degrees clockwise)
   voiceBlob?: boolean;
   documentBlob?: boolean;
   revealDate?: string; // ISO date string, e.g. "2027-01-01"
@@ -18,6 +19,8 @@ export interface Mem {
   lng?: number;
   locationName?: string; // e.g. "Rome, Italy"
   displayed?: boolean; // whether this memory is shown as a 3D object in the room (default true for first N items)
+  displayUnit?: string; // which display unit this memory is assigned to (e.g. "frame", "screen", "vinyl")
+  displayOrder?: number; // position index within the display unit (used for exhibition/peristylium individual painting slots)
   historicalContext?: string; // AI-generated historical context for the memory's time period
   resolution?: { goal: string; targetDate?: string; progress?: number; reminders?: boolean; }; // goal/resolution tracking for time capsules
   visibility?: "private" | "shared" | "family" | "public"; // memory visibility level (default: "shared" if room is shared, else "private")
@@ -51,7 +54,7 @@ export const ROOM_MEMS: Record<string, Mem[]> = {
     {id:"f4",title:"Winter family gathering",titleKey:"memSummerLakeHouse",hue:195,s:40,l:68,type:"photo",dataUrl:DEMO_IMG.starryNight,createdAt:"2023-06-15T14:20:00.000Z"},
     {id:"f7",title:"Gift exchange",titleKey:"memGiftExchange",hue:350,s:50,l:60,type:"photo",dataUrl:DEMO_IMG.birthday,createdAt:"2024-12-25T09:00:00.000Z"},
     {id:"f8",title:"Family singalong",titleKey:"memFamilySingalong",hue:30,s:45,l:62,type:"audio",dataUrl:"/demo/singalong.wav",createdAt:"2024-12-25T20:00:00.000Z"},
-    {id:"f9",title:"Opening presents",titleKey:"memOpeningPresents",hue:10,s:55,l:58,type:"video",dataUrl:DEMO_IMG.wanderer,createdAt:"2024-12-25T10:30:00.000Z"},
+    {id:"f9",title:"Opening presents",titleKey:"memOpeningPresents",hue:10,s:55,l:58,type:"video",dataUrl:DEMO_IMG.wanderer,thumbnailUrl:DEMO_IMG.wanderer,videoBlob:false,createdAt:"2024-12-25T10:30:00.000Z"},
   ],
 };
 

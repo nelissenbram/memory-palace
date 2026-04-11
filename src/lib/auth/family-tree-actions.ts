@@ -12,6 +12,7 @@ export interface FamilyTreePerson {
   gender: "male" | "female" | "other" | null;
   photo_path: string | null;
   notes: string | null;
+  is_self: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -21,7 +22,7 @@ export interface FamilyTreeRelationship {
   user_id: string;
   person_id: string;
   related_person_id: string;
-  relationship_type: "parent" | "child" | "spouse" | "sibling";
+  relationship_type: "parent" | "child" | "spouse" | "sibling" | "ex-spouse";
   created_at: string;
 }
 
@@ -68,6 +69,7 @@ export async function addPerson(data: {
   death_date?: string;
   gender?: "male" | "female" | "other";
   notes?: string;
+  is_self?: boolean;
 }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { error: "Supabase not configured" };
@@ -88,6 +90,7 @@ export async function addPerson(data: {
       death_date: data.death_date || null,
       gender: data.gender || null,
       notes: data.notes?.trim() || null,
+      is_self: data.is_self ?? false,
     })
     .select()
     .single();
@@ -151,10 +154,20 @@ export async function deletePerson(id: string) {
   return { success: true };
 }
 
+function getReverseType(type: "parent" | "child" | "spouse" | "sibling" | "ex-spouse"): "parent" | "child" | "spouse" | "sibling" | "ex-spouse" {
+  switch (type) {
+    case "parent": return "child";
+    case "child": return "parent";
+    case "spouse": return "spouse";
+    case "sibling": return "sibling";
+    case "ex-spouse": return "ex-spouse";
+  }
+}
+
 export async function addRelationship(
   personId: string,
   relatedPersonId: string,
-  type: "parent" | "child" | "spouse" | "sibling"
+  type: "parent" | "child" | "spouse" | "sibling" | "ex-spouse"
 ) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { error: "Supabase not configured" };
@@ -165,6 +178,7 @@ export async function addRelationship(
 
   if (personId === relatedPersonId) return { error: "Cannot relate a person to themselves" };
 
+  // Insert the forward relationship
   const { data: rel, error } = await supabase
     .from("family_tree_relationships")
     .insert({
@@ -177,6 +191,30 @@ export async function addRelationship(
     .single();
 
   if (error) return { error: error.message };
+
+  // Insert the reverse relationship (upsert-style: check if it already exists first)
+  const reverseType = getReverseType(type);
+
+  const { data: existing } = await supabase
+    .from("family_tree_relationships")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("person_id", relatedPersonId)
+    .eq("related_person_id", personId)
+    .eq("relationship_type", reverseType)
+    .maybeSingle();
+
+  if (!existing) {
+    await supabase
+      .from("family_tree_relationships")
+      .insert({
+        user_id: user.id,
+        person_id: relatedPersonId,
+        related_person_id: personId,
+        relationship_type: reverseType,
+      });
+  }
+
   return { relationship: rel as FamilyTreeRelationship };
 }
 
@@ -188,6 +226,15 @@ export async function removeRelationship(id: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  // Fetch the relationship first so we can find and remove its reverse
+  const { data: rel } = await supabase
+    .from("family_tree_relationships")
+    .select("person_id, related_person_id, relationship_type")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  // Delete the forward relationship
   const { error } = await supabase
     .from("family_tree_relationships")
     .delete()
@@ -195,5 +242,18 @@ export async function removeRelationship(id: string) {
     .eq("user_id", user.id);
 
   if (error) return { error: error.message };
+
+  // Delete the reverse relationship if the original was found
+  if (rel) {
+    const reverseType = getReverseType(rel.relationship_type as "parent" | "child" | "spouse" | "sibling" | "ex-spouse");
+    await supabase
+      .from("family_tree_relationships")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("person_id", rel.related_person_id)
+      .eq("related_person_id", rel.person_id)
+      .eq("relationship_type", reverseType);
+  }
+
   return { success: true };
 }

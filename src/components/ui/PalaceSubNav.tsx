@@ -28,6 +28,13 @@ interface RoomItem {
   icon: string;
 }
 
+export type PalacePending =
+  | { kind: "palace" }
+  | { kind: "entrance" }
+  | { kind: "wing"; wingId: string }
+  | { kind: "room"; wingId: string; roomId: string }
+  | null;
+
 export interface PalaceSubNavProps {
   view: "exterior" | "entrance" | "corridor" | "room";
   wingName?: string;
@@ -41,6 +48,9 @@ export interface PalaceSubNavProps {
   sharedWings?: SharedWingItem[];
   hidden?: boolean;
   isMobile: boolean;
+  /** Controlled pending selection (lifted so ExteriorScene taps can set it). */
+  pending?: PalacePending;
+  onPendingChange?: (p: PalacePending) => void;
   // Navigation callbacks
   onExitToPalace: () => void;
   onEntranceHall: () => void;
@@ -713,6 +723,8 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
         barBackground={barBackground}
         barBorder={barBorder}
         barShadow={barShadow}
+        controlledPending={props.pending}
+        onPendingChange={props.onPendingChange}
       />
     );
   }
@@ -784,14 +796,11 @@ interface MobileThreeBarNavProps {
   barBackground: string;
   barBorder: string;
   barShadow: string;
+  controlledPending?: PalacePending;
+  onPendingChange?: (p: PalacePending) => void;
 }
 
-type Pending =
-  | { kind: "palace" }
-  | { kind: "entrance" }
-  | { kind: "wing"; wingId: string }
-  | { kind: "room"; wingId: string; roomId: string }
-  | null;
+type Pending = PalacePending;
 
 function MobileThreeBarNav(props: MobileThreeBarNavProps) {
   const { view, wingName, wingAccent, roomId, wings, wingRooms,
@@ -801,7 +810,12 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
 
   const currentWingId = wings.find((w) => w.name === wingName)?.id;
   // Bar 2 shows rooms for whichever wing is "in focus": pending > current > first
-  const [pending, setPending] = useState<Pending>(null);
+  const [internalPending, setInternalPending] = useState<Pending>(null);
+  const pending = props.controlledPending !== undefined ? props.controlledPending : internalPending;
+  const setPending = (p: Pending) => {
+    if (props.onPendingChange) props.onPendingChange(p);
+    if (props.controlledPending === undefined) setInternalPending(p);
+  };
   // The wing whose rooms are displayed in Bar 3
   const focusWingId =
     pending?.kind === "wing" ? pending.wingId
@@ -881,10 +895,14 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     padding: "0 0.25rem",
     flexShrink: 0,
   };
+  const ENTER_W = "4rem";
+  const safeL = "env(safe-area-inset-left, 0px)";
+  const safeR = "env(safe-area-inset-right, 0px)";
+  const safeT = "env(safe-area-inset-top, 0px)";
   const barCommon: CSSProperties = {
     position: "fixed",
     left: 0,
-    right: "3rem", // leave room for Enter button column
+    right: `calc(${ENTER_W} + ${safeR})`,
     zIndex: 42,
     display: "flex",
     alignItems: "center",
@@ -904,11 +922,10 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
   };
 
   const BAR_H = "2.5rem";
-  const topOffset = "env(safe-area-inset-top, 0px)";
-  const bar1Top = `calc(${topOffset})`;
-  const bar2Top = `calc(${topOffset} + ${BAR_H})`;
-  const bar3Top = `calc(${topOffset} + ${BAR_H} * 2)`;
-  const totalH = `calc(${topOffset} + ${BAR_H} * 3)`;
+  const bar1Top = safeT;
+  const bar2Top = `calc(${safeT} + ${BAR_H})`;
+  const bar3Top = `calc(${safeT} + ${BAR_H} * 2)`;
+  const totalH = `calc(${safeT} + ${BAR_H} * 3)`;
 
   return (<>
     <style>{`
@@ -923,6 +940,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
       role="navigation"
       aria-label={t("palace")}
       data-nudge="palace_subnav"
+      data-mp-palace-bars="1"
       className="hide-scrollbar"
       style={{
         ...barCommon,
@@ -932,14 +950,14 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         boxShadow: barShadow,
       }}
     >
-      <span style={sectionLabel}>{t("palace")}</span>
+      <span style={sectionLabel}>P</span>
       <button
         onClick={() => setPending({ kind: "palace" })}
         style={pillFor({ kind: "palace" }, T.color.gold)}
         aria-current={view === "exterior" ? "location" : undefined}
       >
         <PalaceIcon size={13} color={T.color.gold} />
-        <span>{t("palace") || "Palace"}</span>
+        <span>{t("palaceLabel")}</span>
       </button>
       <button
         onClick={() => setPending({ kind: "entrance" })}
@@ -947,7 +965,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         aria-current={view === "entrance" ? "location" : undefined}
       >
         <TempleIcon size={13} color={T.color.gold} />
-        <span>{t("entranceHall")}</span>
+        <span>{t("entranceHallLabel")}</span>
       </button>
     </div>
 
@@ -955,6 +973,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     <div
       role="navigation"
       aria-label="Wings"
+      data-mp-palace-bars="2"
       className="hide-scrollbar"
       style={{
         ...barCommon,
@@ -986,6 +1005,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     <div
       role="navigation"
       aria-label="Rooms"
+      data-mp-palace-bars="3"
       className="hide-scrollbar"
       style={{
         ...barCommon,
@@ -1018,41 +1038,77 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
       })}
     </div>
 
-    {/* Enter button: fixed on right, spans 3 bars */}
+    {/* Enter button: fixed on right, spans 3 bars — Tuscan arched portico */}
     <button
       onClick={commitEnter}
       disabled={!pending}
-      aria-label="Enter"
+      data-mp-palace-enter="1"
+      aria-label={t("enterAction") || "Enter"}
       style={{
         position: "fixed",
         top: bar1Top,
-        right: 0,
-        width: "3rem",
+        right: safeR,
+        width: ENTER_W,
         height: `calc(${BAR_H} * 3)`,
         zIndex: 43,
         border: "none",
-        borderLeft: `0.0625rem solid ${T.color.gold}44`,
+        borderLeft: `0.125rem solid ${pending ? T.color.gold : `${T.color.gold}55`}`,
         background: pending
-          ? `linear-gradient(180deg, ${T.color.gold}, ${T.color.terracotta})`
-          : `linear-gradient(180deg, ${T.color.linen}cc, ${T.color.warmStone}cc)`,
-        color: pending ? "#fff" : T.color.muted,
+          ? `radial-gradient(ellipse at 50% 30%, ${T.color.gold} 0%, ${T.color.terracotta} 55%, ${T.color.walnut} 100%)`
+          : `linear-gradient(180deg, ${T.color.linen}d6, ${T.color.warmStone}d6)`,
+        color: pending ? T.color.cream : `${T.color.walnut}99`,
         cursor: pending ? "pointer" : "not-allowed",
         display: "flex",
+        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        fontFamily: T.font.body,
+        gap: "0.25rem",
+        padding: "0.5rem 0",
+        fontFamily: T.font.display,
         fontSize: "0.6875rem",
-        fontWeight: 700,
-        letterSpacing: "0.08em",
+        fontWeight: 600,
+        fontStyle: "italic",
+        letterSpacing: "0.16em",
         textTransform: "uppercase",
-        boxShadow: pending ? `inset 0.25rem 0 0.75rem rgba(0,0,0,0.15)` : "none",
-        transition: "all 0.2s ease",
+        boxShadow: pending
+          ? `inset 0.125rem 0 0.625rem rgba(0,0,0,0.25), inset 0 0.25rem 0.5rem rgba(255,240,200,0.18), -0.25rem 0 1.25rem ${T.color.gold}55`
+          : `inset 0.125rem 0 0.375rem rgba(0,0,0,0.06)`,
+        transition: "all 0.3s ease",
+        overflow: "hidden",
       }}
     >
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-        <path d="M5 12h14" />
-        <path d="M12 5l7 7-7 7" />
+      {/* Decorative top ornament — Tuscan rosette */}
+      <span aria-hidden style={{
+        position: "absolute", top: "0.375rem", left: "50%", transform: "translateX(-50%)",
+        width: "0.75rem", height: "0.75rem", borderRadius: "50%",
+        background: pending ? `radial-gradient(circle, ${T.color.cream} 0%, ${T.color.gold}00 70%)` : "transparent",
+        opacity: pending ? 0.8 : 0,
+        boxShadow: pending ? `0 0 0.5rem ${T.color.cream}aa` : "none",
+      }} />
+
+      {/* Classical arched portico icon — larger, ornate */}
+      <svg width="40" height="46" viewBox="0 0 40 46" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ marginTop: "0.375rem" }}>
+        {/* Stepped stylobate (base) */}
+        <line x1="1" y1="44" x2="39" y2="44" strokeWidth="2" />
+        <line x1="3" y1="42" x2="37" y2="42" strokeWidth="1.2" opacity="0.75" />
+        <line x1="5" y1="40" x2="35" y2="40" strokeWidth="1" opacity="0.55" />
+
+        {/* Outer arched frame with cornice */}
+        <path d="M5 40 L5 16 Q5 4 20 4 Q35 4 35 16 L35 40" strokeWidth="1.6" />
+        {/* Cornice line */}
+        <path d="M3 16 Q20 10 37 16" strokeWidth="1" opacity="0.55" />
+
+        {/* Inner arch */}
+        <path d="M9 40 L9 17 Q9 8 20 8 Q31 8 31 17 L31 40" strokeWidth="1.1" opacity="0.5" />
+
+        {/* Keystone at apex */}
+        <path d="M18 7 L22 7 L21.5 10 L18.5 10 Z" strokeWidth="0.9" opacity="0.7" />
+
+        {/* Forward-through arrow */}
+        <path d="M14 26 L26 26" strokeWidth="2.2" />
+        <path d="M21 20 L27 26 L21 32" strokeWidth="2.2" />
       </svg>
+      <span style={{ marginTop: "0.125rem" }}>{t("enterAction") || "Enter"}</span>
     </button>
 
     {/* Spacer to push 3d content below the 3 bars — MemoryPalace's main tree

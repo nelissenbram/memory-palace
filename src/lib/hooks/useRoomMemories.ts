@@ -30,7 +30,7 @@ export function useRoomMemories() {
     }
     return true;
   });
-  const roomMemsKey = JSON.stringify(roomMems.map((m) => m.id));
+  const roomMemsKey = JSON.stringify(roomMems.map((m) => `${m.id}:${m.displayUnit||""}:${m.displayed??""}`));
 
   // Wrappers that bind activeRoomId
   const handleAddMemory = (mem: Mem) => {

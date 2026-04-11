@@ -10,6 +10,7 @@ import { ROOM_MEMS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { WINGS } from "@/lib/constants/wings";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import { WingIcon, RoomIcon } from "@/components/ui/WingRoomIcons";
 
 export interface CorridorPaintingOverride {
   url?: string;
@@ -55,8 +56,8 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
   const [sourceFilter, setSourceFilter] = useState<"all" | "wing" | "upload">("all");
 
-  // Painting slots — 1 per 2 doors (every other gap between adjacent doors)
-  const slots = rooms.filter((_, i) => i % 2 === 0 && i < rooms.length - 1).map((r) => r.id);
+  // Painting slots — 1 per room (one painting next to each door)
+  const slots = rooms.map((r) => r.id);
 
   // Get all memories with images from ALL wings (not just current wing)
   const allMems: { mem: Mem; room: WingRoom; wingName: string }[] = [];
@@ -87,7 +88,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
     setPaintings(next);
     saveCorridorPaintings(wing.id, next);
     onPaintingsChange(next);
-    setPickingSlot(null);
+    // Keep picker open so user can change selection or pick for next painting.
   }, [paintings, wing.id, onPaintingsChange]);
 
   const handleUpload = useCallback((slotRoomId: string) => {
@@ -135,9 +136,11 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
         position: "absolute", right: 0, top: 0, bottom: 0,
         width: isMobile ? "100%" : "min(27.5rem, 92vw)",
-        background: `${T.color.linen}f8`,
-        backdropFilter: "blur(20px)",
-        borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`,
+        background: "rgba(255,255,255,0.82)",
+        backdropFilter: "blur(1.5rem) saturate(1.4)",
+        WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
+        borderLeft: isMobile ? "none" : `0.0625rem solid ${T.color.cream}`,
+        boxShadow: `-1rem 0 2.5rem rgba(44,44,42,0.12), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
         padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem",
         overflowY: "auto",
         animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)",
@@ -146,9 +149,20 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
-          <div>
-            <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
-            <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>{wing.icon} {wing.name} {t("wing")}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div style={{
+              width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem",
+              background: `${accent}18`,
+              border: `0.0625rem solid ${accent}35`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+            }}>
+              <WingIcon wingId={wing.id} size={26} color={accent} />
+            </div>
+            <div>
+              <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>{wing.name} {t("wing")}</p>
+            </div>
           </div>
           <button onClick={onClose} aria-label={t("close")} style={{
             width: isMobile ? "2.5rem" : "2rem", height: isMobile ? "2.5rem" : "2rem", borderRadius: isMobile ? "1.25rem" : "1rem",
@@ -176,143 +190,217 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
           </button>
         )}
 
-        {/* Painting slots */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+        {/* Painting slots — compact grid of tiles. Clicking a tile opens a single picker modal. */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(${isMobile ? 2 : 2}, 1fr)`,
+          gap: "0.75rem",
+        }}>
           {slots.map((roomId, idx) => {
-            const room = rooms.find((r) => r.id === roomId);
-            if (!room) return null;
             const override = paintings[roomId];
             const isPicking = pickingSlot === roomId;
-
             return (
-              <div key={roomId} style={{
-                background: T.color.white, borderRadius: "0.875rem",
-                border: `1px solid ${isPicking ? accent : T.color.cream}`,
-                padding: "0.875rem 0.875rem", transition: "all .15s",
-              }}>
-                {/* Slot header */}
-                <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: isPicking ? "0.75rem" : 0 }}>
-                  {/* Thumbnail preview */}
-                  <div style={{
-                    width: "3.5rem", height: "2.5rem", borderRadius: "0.5rem", flexShrink: 0,
-                    border: `1px solid ${T.color.cream}`,
-                    overflow: "hidden", position: "relative",
-                    background: override?.url
-                      ? `url(${override.url}) center/cover no-repeat`
-                      : `linear-gradient(135deg, hsl(${room.coverHue},40%,35%), hsl(${(room.coverHue + 30) % 360},30%,22%))`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {!override?.url && (
-                      <span style={{ fontSize: "1.125rem" }}>{room.icon}</span>
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 500, color: T.color.charcoal }}>
-                      {t("painting")} {idx + 1}
-                    </div>
-                    <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {override?.title ? override.title : `${room.icon} ${room.name} ${t("default")}`}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ display: "flex", gap: "0.375rem", flexShrink: 0 }}>
-                    {override && (
-                      <button onClick={() => handleClear(roomId)} title={t("removeOverride")} aria-label={t("removeOverride")} style={{
-                        width: "2.75rem", height: "2.75rem", borderRadius: "0.5rem",
-                        border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
-                        color: T.color.muted, fontSize: "0.75rem", cursor: "pointer",
+              <button
+                key={roomId}
+                onClick={() => setPickingSlot(roomId)}
+                style={{
+                  background: "rgba(255,255,255,0.72)",
+                  backdropFilter: "blur(0.75rem) saturate(1.3)",
+                  WebkitBackdropFilter: "blur(0.75rem) saturate(1.3)",
+                  borderRadius: "1rem",
+                  border: `0.0625rem solid ${isPicking ? accent + "70" : T.color.cream}`,
+                  boxShadow: isPicking
+                    ? `0 0.5rem 1.5rem ${accent}25, inset 0 0.0625rem 0 rgba(255,255,255,0.7)`
+                    : `0 0.125rem 0.5rem rgba(44,44,42,0.05), inset 0 0.0625rem 0 rgba(255,255,255,0.5)`,
+                  padding: "0.625rem",
+                  transition: "all 0.3s cubic-bezier(0.22, 1, 0.36, 1)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                  position: "relative",
+                }}
+              >
+                <div style={{
+                  width: "100%", aspectRatio: "4 / 3", borderRadius: "0.625rem",
+                  border: `0.0625rem solid ${T.color.cream}`,
+                  overflow: "hidden", position: "relative",
+                  background: override?.url
+                    ? `url(${override.url}) center/cover no-repeat`
+                    : `linear-gradient(135deg, ${accent}35, ${accent}15)`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {!override?.url && (
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.7 }}>
+                      <rect x="3" y="4" width="18" height="14" rx="1.5"/>
+                      <circle cx="8.5" cy="9.5" r="1.5"/>
+                      <path d="M21 15l-5-5L5 18"/>
+                    </svg>
+                  )}
+                  {override && (
+                    <span
+                      role="button"
+                      aria-label={t("removeOverride")}
+                      onClick={(e) => { e.stopPropagation(); handleClear(roomId); }}
+                      style={{
+                        position: "absolute", top: "0.3125rem", right: "0.3125rem",
+                        width: "1.5rem", height: "1.5rem", borderRadius: "50%",
+                        background: "rgba(42,34,24,0.75)", color: "#FFF",
                         display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>{"\u2715"}</button>
-                    )}
-                    <button onClick={() => setPickingSlot(isPicking ? null : roomId)} style={{
-                      padding: "0.375rem 0.75rem", borderRadius: "0.5rem", minHeight: "2.75rem",
-                      border: `1px solid ${isPicking ? accent : T.color.cream}`,
-                      background: isPicking ? `${accent}15` : T.color.warmStone,
-                      fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
-                      color: isPicking ? accent : T.color.walnut, cursor: "pointer",
-                    }}>
-                      {isPicking ? t("cancel") : t("choose")}
-                    </button>
+                        fontSize: "0.75rem", cursor: "pointer",
+                      }}
+                    >{"\u2715"}</span>
+                  )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem", minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {t("painting")} {idx + 1}
+                  </div>
+                  <div style={{
+                    fontFamily: T.font.body, fontSize: "0.625rem",
+                    color: override ? accent : T.color.muted,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {override?.title || t("tapToChoose")}
                   </div>
                 </div>
-
-                {/* Memory picker */}
-                {isPicking && (
-                  <div>
-                    {/* Upload + source filter */}
-                    <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.625rem", flexWrap: "wrap" }}>
-                      <button onClick={() => handleUpload(roomId)} style={{
-                        padding: "0.375rem 0.75rem", borderRadius: "0.5rem", minHeight: "2.75rem",
-                        border: `1px solid ${accent}`, background: `${accent}15`,
-                        fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
-                        color: accent, cursor: "pointer",
-                      }}>
-                        {t("uploadImage")}
-                      </button>
-                      <button onClick={() => setSourceFilter("all")} style={{
-                        padding: "0.3125rem 0.625rem", borderRadius: "0.5rem", minHeight: "2.75rem",
-                        border: `1px solid ${sourceFilter === "all" ? accent : T.color.cream}`,
-                        background: sourceFilter === "all" ? `${accent}15` : T.color.warmStone,
-                        fontFamily: T.font.body, fontSize: "0.625rem", color: sourceFilter === "all" ? accent : T.color.muted,
-                        cursor: "pointer",
-                      }}>{t("allWings")}</button>
-                      <button onClick={() => setSourceFilter("wing")} style={{
-                        padding: "0.3125rem 0.625rem", borderRadius: "0.5rem", minHeight: "2.75rem",
-                        border: `1px solid ${sourceFilter === "wing" ? accent : T.color.cream}`,
-                        background: sourceFilter === "wing" ? `${accent}15` : T.color.warmStone,
-                        fontFamily: T.font.body, fontSize: "0.625rem", color: sourceFilter === "wing" ? accent : T.color.muted,
-                        cursor: "pointer",
-                      }}>{t("thisWing")}</button>
-                    </div>
-                    {filteredMems.length === 0 ? (
-                      <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, textAlign: "center", padding: "1rem 0" }}>
-                        {t("noPhotos")}
-                      </p>
-                    ) : (
-                      <div style={{
-                        display: "grid",
-                        gridTemplateColumns: `repeat(${isMobile ? 3 : 4}, 1fr)`,
-                        gap: "0.5rem", maxHeight: "15rem", overflowY: "auto",
-                        padding: "0.125rem",
-                      }}>
-                        {filteredMems.map(({ mem, room: memRoom, wingName }) => (
-                          <button key={mem.id} onClick={() => handleAssign(roomId, mem, memRoom.id)} style={{
-                            border: paintings[roomId]?.memId === mem.id ? `2px solid ${accent}` : `1px solid ${T.color.cream}`,
-                            borderRadius: "0.625rem", overflow: "hidden", cursor: "pointer",
-                            padding: 0, background: T.color.warmStone,
-                            aspectRatio: "4/3", position: "relative",
-                            transition: "all .15s",
-                          }}>
-                            <div style={{
-                              width: "100%", height: "100%",
-                              background: `url(${mem.dataUrl}) center/cover no-repeat`,
-                            }} />
-                            <div style={{
-                              position: "absolute", bottom: 0, left: 0, right: 0,
-                              background: "linear-gradient(transparent, rgba(42,34,24,.7))",
-                              padding: "0.75rem 0.375rem 0.25rem",
-                            }}>
-                              <div style={{
-                                fontFamily: T.font.body, fontSize: "0.5625rem", color: "#FFF",
-                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                              }}>{mem.title}</div>
-                              <div style={{
-                                fontFamily: T.font.body, fontSize: "0.5rem", color: "rgba(255,255,255,.6)",
-                              }}>{memRoom.icon} {memRoom.name} — {wingName}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              </button>
             );
           })}
         </div>
+
+        {/* Single picker modal — opens when a slot is tapped */}
+        {pickingSlot && (
+          <div
+            onClick={() => setPickingSlot(null)}
+            style={{
+              position: "fixed", inset: 0, zIndex: 60,
+              background: "rgba(42,34,24,0.55)",
+              backdropFilter: "blur(0.75rem)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              padding: "1rem",
+              animation: "fadeIn .2s ease",
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "rgba(255,255,255,0.95)",
+                backdropFilter: "blur(1.5rem) saturate(1.4)",
+                WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
+                borderRadius: "1.25rem",
+                border: `0.0625rem solid ${T.color.cream}`,
+                boxShadow: `0 1.5rem 3rem rgba(44,44,42,0.25), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
+                padding: "1.25rem",
+                width: "min(40rem, 100%)",
+                maxHeight: "85vh",
+                display: "flex", flexDirection: "column", gap: "0.875rem",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500, color: T.color.charcoal }}>
+                  {t("painting")} {slots.indexOf(pickingSlot) + 1}
+                </div>
+                <button
+                  onClick={() => setPickingSlot(null)}
+                  aria-label={t("close")}
+                  style={{
+                    width: "2.25rem", height: "2.25rem", borderRadius: "50%",
+                    border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone,
+                    color: T.color.muted, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                >{"\u2715"}</button>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <button onClick={() => handleUpload(pickingSlot)} style={{
+                  padding: "0.5rem 0.875rem", borderRadius: "0.625rem", minHeight: "2.5rem",
+                  border: `0.0625rem solid ${accent}`, background: `${accent}15`,
+                  fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
+                  color: accent, cursor: "pointer",
+                }}>{t("uploadImage")}</button>
+                <div style={{ flex: 1 }} />
+                <button onClick={() => setSourceFilter("all")} style={{
+                  padding: "0.5rem 0.875rem", borderRadius: "0.625rem", minHeight: "2.5rem",
+                  border: `0.0625rem solid ${sourceFilter === "all" ? accent : T.color.cream}`,
+                  background: sourceFilter === "all" ? `${accent}15` : T.color.warmStone,
+                  fontFamily: T.font.body, fontSize: "0.6875rem",
+                  color: sourceFilter === "all" ? accent : T.color.muted,
+                  cursor: "pointer",
+                }}>{t("allWings")}</button>
+                <button onClick={() => setSourceFilter("wing")} style={{
+                  padding: "0.5rem 0.875rem", borderRadius: "0.625rem", minHeight: "2.5rem",
+                  border: `0.0625rem solid ${sourceFilter === "wing" ? accent : T.color.cream}`,
+                  background: sourceFilter === "wing" ? `${accent}15` : T.color.warmStone,
+                  fontFamily: T.font.body, fontSize: "0.6875rem",
+                  color: sourceFilter === "wing" ? accent : T.color.muted,
+                  cursor: "pointer",
+                }}>{t("thisWing")}</button>
+              </div>
+              {filteredMems.length === 0 ? (
+                <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, textAlign: "center", padding: "2rem 0" }}>
+                  {t("noPhotos")}
+                </p>
+              ) : (
+                <div style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                  overflowY: "auto",
+                  paddingRight: "0.25rem",
+                  minHeight: 0,
+                  flex: 1,
+                }}>
+                  {filteredMems.map(({ mem, room: memRoom, wingName }) => {
+                    const selected = paintings[pickingSlot]?.memId === mem.id;
+                    return (
+                      <button key={mem.id} onClick={() => handleAssign(pickingSlot, mem, memRoom.id)} style={{
+                        display: "flex", alignItems: "center", gap: "0.75rem",
+                        width: "100%", height: "4.5rem", flexShrink: 0,
+                        border: selected ? `0.125rem solid ${accent}` : `0.0625rem solid ${T.color.cream}`,
+                        borderRadius: "0.75rem", overflow: "hidden", cursor: "pointer",
+                        padding: "0.375rem", background: selected ? `${accent}12` : "rgba(255,255,255,0.7)",
+                        textAlign: "left", transition: "all .15s",
+                      }}>
+                        <div style={{
+                          width: "5rem", height: "100%", flexShrink: 0,
+                          borderRadius: "0.5rem",
+                          background: `url(${mem.dataUrl}) center/cover no-repeat ${T.color.warmStone}`,
+                        }} />
+                        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "0.1875rem" }}>
+                          <div style={{
+                            fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>{mem.title}</div>
+                          <div style={{
+                            fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            display: "flex", alignItems: "center", gap: "0.3125rem",
+                          }}>
+                            <RoomIcon roomId={memRoom.id} size={12} color={T.color.muted} />
+                            <span>{memRoom.name} · {wingName}</span>
+                          </div>
+                        </div>
+                        {selected && (
+                          <div style={{
+                            width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+                            background: accent, color: "#FFF", flexShrink: 0,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: "0.75rem", marginRight: "0.25rem",
+                          }}>{"\u2713"}</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Footer hint */}
         <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginTop: "1.25rem", textAlign: "center", lineHeight: 1.5 }}>

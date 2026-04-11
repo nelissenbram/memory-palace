@@ -39,7 +39,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     scene.fog=new THREE.FogExp2(wing.wall,.008*dlPreset.fogDensity);
     const camera=new THREE.PerspectiveCamera(55,w/h,0.1,80);
     const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.8*dlPreset.exposure;
+    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.8*dlPreset.exposure;
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
@@ -54,7 +54,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const composer=createPostProcessing(ren,scene,camera,"corridor",{ssao:false});
 
     scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#C4B8A0",.55*dlPreset.ambientIntensity/0.5));
-    const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.5*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.5*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=60;sun.shadow.camera.left=-20;sun.shadow.camera.right=20;sun.shadow.camera.top=20;sun.shadow.camera.bottom=-20;
     scene.add(sun);
     const fill=new THREE.DirectionalLight(dlPreset.fillColor,.35*dlPreset.fillIntensity/0.35);fill.position.set(-6,10,4);scene.add(fill);
@@ -92,7 +92,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     const MS={
       wall:new THREE.MeshStandardMaterial({color:wing.wall,roughness:.85,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3),envMapIntensity:.5}),
       wallD:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.8,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
-      floor:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.45,metalness:.1,map:floorTileTex.map,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:floorTileTex.roughnessMap,aoMap:floorTileTex.aoMap,aoMapIntensity:.7,envMapIntensity:.6}),
+      floor:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.7,metalness:.02,map:floorTileTex.map,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:floorTileTex.roughnessMap,aoMap:floorTileTex.aoMap,aoMapIntensity:.7,envMapIntensity:.15}),
       floorL:new THREE.MeshStandardMaterial({color:"#D0C0A0",roughness:.5,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       floorD:new THREE.MeshStandardMaterial({color:"#8A7858",roughness:.5,metalness:.08,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
       ceil:new THREE.MeshStandardMaterial({color:"#F0EAE0",roughness:.92}),
@@ -524,27 +524,53 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
     else{scene.add(mk(new THREE.CylinderGeometry(.1,.15,.65,8),MS.statue,0,pH2+.33,sZ));scene.add(mk(new THREE.SphereGeometry(.14,8,8),MS.statue,0,pH2+.8,sZ));}
     const sL=new THREE.SpotLight("#FFF5E0",.7,5,Math.PI/6,.5,1);sL.position.set(0,cH-.1,sZ);sL.target.position.set(0,pH2,sZ);scene.add(sL);scene.add(sL.target);
 
-    // ═══ INTERACTIVE PAINTING/MEDIA SLOTS — 1 painting per 2 doors ═══
+    // ═══ INTERACTIVE PAINTING/MEDIA SLOTS — 1 painting per door ═══
     const paintingClickMeshes: {mesh: THREE.Mesh, slotKey: string}[] = [];
     let paintingSlotIdx = 0;
-    for(let i=0;i<rooms.length-1;i+=2){
-      const pz=cL/2-5.5-i*C.sp-C.sp/2;
+    const PAINT_Y = 2.05; // lowered below sconce zone (sconces span y=2.8..3.45)
+    // Precompute sconce z positions on side=-1 so we can shift paintings off them.
+    // Mirrors the sconce loop constants (see Roman section below).
+    const _sconceSpacing = 3.2;
+    const _sconceCount = Math.max(1, Math.floor(cL / _sconceSpacing) - 1);
+    const sconceZsSideMinus: number[] = [];
+    for (let si = 1; si <= _sconceCount; si++) {
+      const sz = -cL / 2 + si * _sconceSpacing;
+      const sSide = si % 2 === 0 ? -1 : 1;
+      if (sSide === -1) sconceZsSideMinus.push(sz);
+    }
+    for(let i=0;i<rooms.length;i+=1){
+      // Place painting midway after the i-th door (between door i and door i+1, or past last).
+      // This gives exactly N paintings for N rooms.
+      let pz=cL/2-5.5-i*C.sp-C.sp/2;
       if(pz>cL/2-3||pz<-cL/2+3)continue;
-      const s=i%2===0?-1:1;
-      const fx=s*(cW/2-.005);
+      // Always side=-1: Roman era has an open colonnade on side=1 (pillars would clip the
+      // painting). Renaissance has solid walls on both sides but we keep a single side for
+      // consistency + to dodge the bust niches that live on side=1 there.
+      const s=-1;
+      // Shift painting if it's too close to a sconce on side=-1 (sconces span y=2.8..3.45,
+      // but their wall-plate & candelabra arms also flare out near the painting's z-range).
+      const paintingHalfLen = 0.72; // fw/2 + a small buffer
+      for (const sz of sconceZsSideMinus) {
+        if (Math.abs(pz - sz) < paintingHalfLen + 0.35) {
+          // Shift away from nearest sconce along z
+          pz += (pz >= sz ? 1 : -1) * (paintingHalfLen + 0.4 - Math.abs(pz - sz));
+        }
+      }
+      if(pz>cL/2-3||pz<-cL/2+3)continue;
+      const fx=s*(cW/2-.05);
       // Use room ID as key to match CorridorGalleryPanel's slot keys
       const slotKey=rooms[i]?.id || `corridor-${wingId}-painting-${i}`;
       const paintingData=corridorPaintings?.[slotKey];
       paintingSlotIdx++;
-      const fw=1.3,fh=1.0,frameW=0.07;
+      const fw=1.3,fh=0.9,frameW=0.07;
       // Gold frame — ornate border
-      scene.add(mk(new THREE.BoxGeometry(.03,frameW,fw+frameW*2),MS.gold,fx,2.8+fh/2+frameW/2,pz)); // top
-      scene.add(mk(new THREE.BoxGeometry(.03,frameW,fw+frameW*2),MS.gold,fx,2.8-fh/2-frameW/2,pz)); // bottom
-      scene.add(mk(new THREE.BoxGeometry(.03,fh,frameW),MS.gold,fx,2.8,pz-fw/2-frameW/2)); // left
-      scene.add(mk(new THREE.BoxGeometry(.03,fh,frameW),MS.gold,fx,2.8,pz+fw/2+frameW/2)); // right
+      scene.add(mk(new THREE.BoxGeometry(.03,frameW,fw+frameW*2),MS.gold,fx,PAINT_Y+fh/2+frameW/2,pz)); // top
+      scene.add(mk(new THREE.BoxGeometry(.03,frameW,fw+frameW*2),MS.gold,fx,PAINT_Y-fh/2-frameW/2,pz)); // bottom
+      scene.add(mk(new THREE.BoxGeometry(.03,fh,frameW),MS.gold,fx,PAINT_Y,pz-fw/2-frameW/2)); // left
+      scene.add(mk(new THREE.BoxGeometry(.03,fh,frameW),MS.gold,fx,PAINT_Y,pz+fw/2+frameW/2)); // right
       // Inner frame accent
-      scene.add(mk(new THREE.BoxGeometry(.025,frameW*.4,fw+frameW),MS.trim,fx-(s*.002),2.8+fh/2+frameW*.15,pz));
-      scene.add(mk(new THREE.BoxGeometry(.025,frameW*.4,fw+frameW),MS.trim,fx-(s*.002),2.8-fh/2-frameW*.15,pz));
+      scene.add(mk(new THREE.BoxGeometry(.025,frameW*.4,fw+frameW),MS.trim,fx-(s*.002),PAINT_Y+fh/2+frameW*.15,pz));
+      scene.add(mk(new THREE.BoxGeometry(.025,frameW*.4,fw+frameW),MS.trim,fx-(s*.002),PAINT_Y-fh/2-frameW*.15,pz));
       // Canvas / painting surface
       if(paintingData?.url){
         // If there's an actual image, load it as texture
@@ -555,26 +581,26 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
           const canvasMat=new THREE.MeshStandardMaterial({map:tex,roughness:.65});
           const canvasMesh=new THREE.Mesh(new THREE.PlaneGeometry(fw-.04,fh-.04),canvasMat);
           canvasMesh.rotation.y=s*(-Math.PI/2);
-          canvasMesh.position.set(fx-(s*.008),2.8,pz);
+          canvasMesh.position.set(fx-(s*.025),PAINT_Y,pz);
           scene.add(canvasMesh);
         });
       }else{
         // Empty slot — subtle warm canvas placeholder inviting interaction
         const emptyMat=new THREE.MeshStandardMaterial({color:"#C8BCA0",roughness:.85,emissive:"#C8BCA0",emissiveIntensity:.03});
-        const emptyCanvas=mk(new THREE.BoxGeometry(.008,fh-.06,fw-.06),emptyMat,fx-(s*.008),2.8,pz);
+        const emptyCanvas=mk(new THREE.BoxGeometry(.008,fh-.06,fw-.06),emptyMat,fx-(s*.025),PAINT_Y,pz);
         scene.add(emptyCanvas);
         // Small "+" hint in center
-        scene.add(mk(new THREE.BoxGeometry(.006,.2,.03),MS.trim,fx-(s*.01),2.8,pz));
-        scene.add(mk(new THREE.BoxGeometry(.006,.03,.2),MS.trim,fx-(s*.01),2.8,pz));
+        scene.add(mk(new THREE.BoxGeometry(.006,.2,.03),MS.trim,fx-(s*.01),PAINT_Y,pz));
+        scene.add(mk(new THREE.BoxGeometry(.006,.03,.2),MS.trim,fx-(s*.01),PAINT_Y,pz));
       }
       // Small gold ornament at top center of frame
-      scene.add(mk(new THREE.BoxGeometry(.035,.06,.15),MS.gold,fx-(s*.003),2.8+fh/2+frameW+.01,pz));
+      scene.add(mk(new THREE.BoxGeometry(.035,.06,.15),MS.gold,fx-(s*.003),PAINT_Y+fh/2+frameW+.01,pz));
       // Invisible click target for painting interaction
       const paintClick=new THREE.Mesh(
         new THREE.BoxGeometry(.3,fh+frameW*2,fw+frameW*2),
         new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false})
       );
-      paintClick.position.set(fx,2.8,pz);
+      paintClick.position.set(fx,PAINT_Y,pz);
       paintClick.userData={isPaintingSlot:true,slotKey};
       scene.add(paintClick);
       paintingClickMeshes.push({mesh:paintClick,slotKey});
@@ -764,87 +790,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         }
       }
 
-      // ── INTERACTIVE PAINTING FRAMES between doors (renaissance era) ──
-      const paintColors = ["#C8A040", "#A0522D", "#6B7B4E", "#8B6B4A", "#7A6840", "#A08060"];
-      let paintIdx = 0;
-      dMeshes.forEach((d, di) => {
-        if (di < dMeshes.length - 1 && dMeshes[di + 1].side === d.side) {
-          const pz = (d.z + dMeshes[di + 1].z) / 2;
-          const pSide = d.side;
-          const px = pSide * (cW / 2 - 0.02);
-          const fw = 1.2, fh = 0.8, fb = 0.08;
-          const rSlotKey = `corridor-${wingId}-ren-painting-${paintIdx}`;
-          const rPaintData = corridorPaintings?.[rSlotKey];
-          // Gold frame border (4 strips)
-          scene.add(mk(new THREE.BoxGeometry(0.03, fb, fw + fb * 2), MS.gold, px, 2.2 + fh / 2 + fb / 2, pz)); // top
-          scene.add(mk(new THREE.BoxGeometry(0.03, fb, fw + fb * 2), MS.gold, px, 2.2 - fh / 2 - fb / 2, pz)); // bottom
-          scene.add(mk(new THREE.BoxGeometry(0.03, fh, fb), MS.gold, px, 2.2, pz - fw / 2 - fb / 2)); // left
-          scene.add(mk(new THREE.BoxGeometry(0.03, fh, fb), MS.gold, px, 2.2, pz + fw / 2 + fb / 2)); // right
-          // Canvas inset — use corridorPaintings if available
-          if (rPaintData?.url) {
-            const loader2 = new THREE.TextureLoader();
-            loader2.load(rPaintData.url, (tex: THREE.Texture) => {
-              tex.colorSpace = THREE.SRGBColorSpace;
-              const cMat2 = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65 });
-              const canvas2 = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), cMat2);
-              canvas2.rotation.y = pSide * (-Math.PI / 2);
-              canvas2.position.set(px + pSide * 0.01, 2.2, pz);
-              scene.add(canvas2);
-            });
-          } else {
-            const canvasMat = new THREE.MeshStandardMaterial({ color: paintColors[paintIdx % paintColors.length], roughness: 0.75 });
-            scene.add(mk(new THREE.BoxGeometry(0.01, fh, fw), canvasMat, px + pSide * 0.01, 2.2, pz));
-          }
-          // Click target for painting interaction
-          const rPaintClick = new THREE.Mesh(
-            new THREE.BoxGeometry(0.3, fh + fb * 2, fw + fb * 2),
-            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-          );
-          rPaintClick.position.set(px, 2.2, pz);
-          rPaintClick.userData = { isPaintingSlot: true, slotKey: rSlotKey };
-          scene.add(rPaintClick);
-          paintingClickMeshes.push({ mesh: rPaintClick, slotKey: rSlotKey });
-          paintIdx++;
-        }
-      });
-      // Extra paintings on walls without adjacent same-side doors
-      for (let ep = 0; ep < 3; ep++) {
-        const epz = -cL / 2 + 3 + ep * (cL / 4);
-        const epSide = ep % 2 === 0 ? 1 : -1;
-        const epx = epSide * (cW / 2 - 0.02);
-        const tooClose2 = dMeshes.some(d => Math.abs(d.z - epz) < 2 && d.side === epSide);
-        if (!tooClose2) {
-          const epSlotKey = `corridor-${wingId}-ren-extra-${ep}`;
-          const epPaintData = corridorPaintings?.[epSlotKey];
-          scene.add(mk(new THREE.BoxGeometry(0.03, 0.08, 1.36), MS.gold, epx, 2.64, epz));
-          scene.add(mk(new THREE.BoxGeometry(0.03, 0.08, 1.36), MS.gold, epx, 1.76, epz));
-          scene.add(mk(new THREE.BoxGeometry(0.03, 0.8, 0.08), MS.gold, epx, 2.2, epz - 0.68));
-          scene.add(mk(new THREE.BoxGeometry(0.03, 0.8, 0.08), MS.gold, epx, 2.2, epz + 0.68));
-          if (epPaintData?.url) {
-            const loader3 = new THREE.TextureLoader();
-            loader3.load(epPaintData.url, (tex: THREE.Texture) => {
-              tex.colorSpace = THREE.SRGBColorSpace;
-              const eMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65 });
-              const eCanvas = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), eMat);
-              eCanvas.rotation.y = epSide * (-Math.PI / 2);
-              eCanvas.position.set(epx + epSide * 0.01, 2.2, epz);
-              scene.add(eCanvas);
-            });
-          } else {
-            const cMat = new THREE.MeshStandardMaterial({ color: paintColors[(paintIdx + ep) % paintColors.length], roughness: 0.75 });
-            scene.add(mk(new THREE.BoxGeometry(0.01, 0.8, 1.2), cMat, epx + epSide * 0.01, 2.2, epz));
-          }
-          // Click target
-          const epClick = new THREE.Mesh(
-            new THREE.BoxGeometry(0.3, 0.96, 1.52),
-            new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
-          );
-          epClick.position.set(epx, 2.2, epz);
-          epClick.userData = { isPaintingSlot: true, slotKey: epSlotKey };
-          scene.add(epClick);
-          paintingClickMeshes.push({ mesh: epClick, slotKey: epSlotKey });
-        }
-      }
+      // Renaissance-era inline painting frames removed — unified new loop above handles all eras.
 
       // ── DIAMOND FLOOR PATTERN (InstancedMesh) ──
       const tileSz = 0.6;
@@ -1373,7 +1319,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
 
     // ── CAMERA + CONTROLS ──
     camera.position.set(0,1.7,cL/2-1);
-    const lookA={yaw:-0.5,pitch:0},lookT={yaw:-0.5,pitch:0};
+    const lookA={yaw:0,pitch:0},lookT={yaw:0,pitch:0};
     const pos=camera.position.clone(),posT=pos.clone();
     const keys: Record<string,boolean>={},drag={v:false},prev={x:0,y:0};let hovDoor: string|null=null;
 
@@ -1454,7 +1400,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       let inlHov=false;
       inlayClickMeshes.forEach(im=>{const hits=_rc.intersectObject(im);if(hits.length>0&&hits[0].distance<5)inlHov=true;});
       let paintHov=false;
-      paintingClickMeshes.forEach(pm=>{const hits=_rc.intersectObject(pm.mesh);if(hits.length>0&&hits[0].distance<5)paintHov=true;});
+      paintingClickMeshes.forEach(pm=>{const hits=_rc.intersectObject(pm.mesh);if(hits.length>0)paintHov=true;});
       hovDoor=found;el.style.cursor=(found||portalHov||inlHov||paintHov)?"pointer":"grab";onDoorHover(found||(portalHov?"__portal__":null));
       if((inlHov||paintHov)&&!found&&!portalHov)el.style.cursor="pointer";};
     const onCk=()=>{
@@ -1465,7 +1411,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
         let inlHit=false;inlayClickMeshes.forEach(im=>{const h=_rc.intersectObject(im);if(h.length>0&&h[0].distance<5)inlHit=true;});
         if(inlHit){onInlayClick?.();return;}
         // Check painting slot clicks
-        paintingClickMeshes.forEach(pm=>{const h=_rc.intersectObject(pm.mesh);if(h.length>0&&h[0].distance<5){onPaintingClick?.();}});
+        paintingClickMeshes.forEach(pm=>{const h=_rc.intersectObject(pm.mesh);if(h.length>0){onPaintingClick?.();}});
       }};
 
     const onKD=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};
@@ -1560,6 +1506,7 @@ export default function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoor
       envMapProc.dispose();
       // HDRI textures managed by cache — do not dispose
       composer.dispose();
+      try{ren.forceContextLoss();}catch{}
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[wingId]);
   return <div ref={mountRef} role="application" aria-label={t("sceneLabel")} style={{width:"100%",height:"100%"}}/>;

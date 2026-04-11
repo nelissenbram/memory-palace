@@ -120,6 +120,7 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
     <div
       ref={outerRef}
       role="application"
+      data-mp-joystick="1"
       aria-label={t("joystickLabel")}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

@@ -696,7 +696,7 @@ export default function LibraryView() {
       || (m.historicalContext || "").toLowerCase().includes(q)
       || m.type.toLowerCase().includes(q)
     );
-    if (filterType) mems = mems.filter(m => m.type === filterType);
+    if (filterType) mems = mems.filter(m => normalizeDisplayType(m.type) === filterType);
     // Sort (P1 #7)
     mems = [...mems].sort((a, b) => {
       switch (sortMode) {
@@ -737,10 +737,17 @@ export default function LibraryView() {
   }, [q, selectedRoom, wings, getWingRooms, getMemsForRoom]);
 
   // Get unique types in room for filter chips + counts
+  // Normalize display types for consistent categorization
+  const normalizeDisplayType = (type: string) => {
+    if (type === "painting") return "photo";
+    if (type === "voice") return "interview";
+    return type;
+  };
+
   const roomTypes = useMemo(() => {
     if (!selectedRoom) return [];
     const mems = getMemsForRoom(selectedRoom);
-    return [...new Set(mems.map(m => m.type))];
+    return [...new Set(mems.map(m => normalizeDisplayType(m.type)))];
   }, [selectedRoom, getMemsForRoom]);
 
   const roomTypeCounts = useMemo(() => {
@@ -748,8 +755,7 @@ export default function LibraryView() {
     const mems = getMemsForRoom(selectedRoom);
     const counts: Record<string, number> = {};
     for (const m of mems) {
-      // Normalize legacy "voice" type to "interview"
-      const type = m.type === "voice" ? "interview" : m.type;
+      const type = normalizeDisplayType(m.type);
       counts[type] = (counts[type] || 0) + 1;
     }
     return counts;
@@ -1438,7 +1444,7 @@ export default function LibraryView() {
               </p>
               <div role="list" style={{
                 display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(17rem, 1fr))",
+                gridTemplateColumns: "1fr",
                 gap: "1.25rem",
               }}>
                 {crossWingResults.slice(0, 50).map(({ wing, room, mem }, i) => (
@@ -1956,7 +1962,7 @@ export default function LibraryView() {
                 viewMode === "grid" ? (
                   <div role="list" style={{
                   display: "grid",
-                  gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(15rem, 1fr))",
+                  gridTemplateColumns: "1fr",
                   gap: "1.25rem",
                 }}>
                   {filteredRoomMems.slice(0, visibleMemCount).map((mem, i) => (

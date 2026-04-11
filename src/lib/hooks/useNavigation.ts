@@ -1,6 +1,7 @@
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { useCallback } from "react";
 
 export interface Crumb {
@@ -12,6 +13,7 @@ export function useNavigation() {
   const { view, activeWing, activeRoomId, hovWing,
     exitToPalace, exitToCorridor, exitToEntrance, enterRoom } = usePalaceStore();
   const { setSelMem, setShowUpload } = useMemoryStore();
+  const { setShowGallery, setGalleryInitialMemId, setGalleryInitialTab } = useUIPanelStore();
   const { getWingRooms, getWings } = useRoomStore();
 
   const allWings = getWings();
@@ -48,12 +50,12 @@ export function useNavigation() {
   if (activeRoomData)
     crumbs.push({ label: `${activeRoomData.icon} ${activeRoomData.name}`, action: null });
 
-  // InteriorScene sends "__back__" or "__upload__" as special clicks
+  // InteriorScene sends "__back__" or "__upload__" as special clicks, or a memory object
   const handleMemClick = useCallback((m: any) => {
     if (m === "__back__") exitToCorridor();
-    else if (m === "__upload__") setShowUpload(true);
-    else setSelMem(m);
-  }, [exitToCorridor, setSelMem, setShowUpload]);
+    else if (m === "__upload__") { setGalleryInitialMemId(null); setGalleryInitialTab("library"); setShowGallery(true); }
+    else { setGalleryInitialMemId(null); setGalleryInitialTab("gallery"); setShowGallery(true); }
+  }, [exitToCorridor, setShowGallery, setGalleryInitialMemId, setGalleryInitialTab]);
 
   return { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings };
 }

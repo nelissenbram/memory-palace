@@ -164,7 +164,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // On mobile, drop SSAO + DOF: they require an extra NormalPass + DOF passes
     // and roughly double first-frame compile time + per-frame cost. The visual
     // hit is minimal at small viewport sizes.
-    const _ppMobile = window.innerWidth < 768;
+    const _ppMobile = window.innerWidth < 768 || window.innerHeight < 500;
     const composer=createPostProcessing(ren,scene,camera,"exterior", _ppMobile ? { ssao: false, dof: false } : undefined);
 
     // ── REAL PBR TEXTURES ──
@@ -2742,7 +2742,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const _wingWindowSetCache=new Map<string,Set<any>>();
     const _sectionGroupMap=new Map<string,any>();
     sectionGroups.forEach((sg: any)=>_sectionGroupMap.set(sg.id,sg));
-    const _isMobile=window.innerWidth<768;
+    const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
     let _lastHovId:string|null=null;
     const animate=()=>{
@@ -2953,33 +2953,17 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         const dist=Math.hypot(dx,dy);if(touchStartDist>0){camD.current=Math.max(40,Math.min(180,touchStartCamD*(touchStartDist/dist)));}
       }
     };
-    // Mobile tap model: first tap selects (shows hover glow + label), second
-    // tap on the same target navigates. Tapping a different target re-selects.
-    // Tapping empty space clears the selection.
-    let _mobileSelected: string | null = null;
+    // Single-tap model: tap shows glow + calls onRoomClick (parent decides
+    // whether to navigate or only set a pending selection on mobile).
     const onTE=(e: TouchEvent)=>{
       if(touchTap&&e.changedTouches.length===1){const tc=e.changedTouches[0];const rect=el.getBoundingClientRect();
         mse.current.set(((tc.clientX-rect.left)/rect.width)*2-1,-((tc.clientY-rect.top)/rect.height)*2+1);
         ray.current.setFromCamera(mse.current,camera);const hits=ray.current.intersectObjects(clickTargets);
         if(hits.length>0){
           const hitId=hits[0].object.userData.roomId;
-          if(_isMobile){
-            if(_mobileSelected===hitId){
-              // 2nd tap → enter
-              setTimeout(()=>onRoomClickRef.current(hitId),180);
-              _mobileSelected=null;
-            }else{
-              // 1st tap or different target → select (preview only)
-              _mobileSelected=hitId;
-              onRoomHover(hitId);
-            }
-          }else{
-            onRoomHover(hitId);
-            setTimeout(()=>onRoomClickRef.current(hitId),250);
-          }
-        }else if(_isMobile){
-          // tap empty space → clear selection
-          _mobileSelected=null;
+          onRoomHover(hitId);
+          onRoomClickRef.current(hitId);
+        }else{
           onRoomHover(null);
         }
       }
@@ -3010,6 +2994,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       cropDispMap.dispose();
       envMapProc.dispose();
       composer.dispose();
+      try{ren.forceContextLoss();}catch{}
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
   },[]);
   return <div ref={mountRef} role="application" aria-label={t("sceneLabel")} style={{width:"100%",height:"100%",cursor:hoveredRoom?"pointer":"grab"}}/>;

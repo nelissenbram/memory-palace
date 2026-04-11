@@ -5,7 +5,7 @@ import React from "react";
 type PalaceLogoProps = {
   variant?: "full" | "mark";
   color?: "dark" | "light";
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   style?: React.CSSProperties;
 };
 
@@ -13,6 +13,7 @@ const SIZES = {
   sm: { icon: "1.5rem", fontSize: "0.875rem", gap: "0.375rem", letterSpacing: "0.12em" },
   md: { icon: "2rem", fontSize: "1.125rem", gap: "0.5rem", letterSpacing: "0.14em" },
   lg: { icon: "3rem", fontSize: "1.625rem", gap: "0.75rem", letterSpacing: "0.16em" },
+  xl: { icon: "4.5rem", fontSize: "2rem", gap: "1rem", letterSpacing: "0.18em" },
 } as const;
 
 const COLORS = {

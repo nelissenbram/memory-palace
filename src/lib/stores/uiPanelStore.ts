@@ -19,6 +19,12 @@ interface UIPanelState {
   showStoragePlayer: boolean;
   showWingManager: boolean;
 
+  // Gallery initial memory — when clicking a 3D object, open gallery at that memory
+  galleryInitialMemId: string | null;
+  // Gallery initial tab — "gallery" when clicking furniture in 3D, "library" otherwise
+  galleryInitialTab: "library" | "gallery";
+  setGalleryInitialTab: (tab: "library" | "gallery") => void;
+
   // Setters
   setShowMemoryMap: (v: boolean) => void;
   setShowTimeline: (v: boolean) => void;
@@ -36,6 +42,7 @@ interface UIPanelState {
   setShowRoomShare: (v: boolean) => void;
   setShowStoragePlayer: (v: boolean) => void;
   setShowWingManager: (v: boolean) => void;
+  setGalleryInitialMemId: (id: string | null) => void;
 
   // Convenience: close all panels
   closeAllPanels: () => void;
@@ -48,6 +55,9 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
   showStatistics: false,
   showMassImport: false,
   showGallery: false,
+  galleryInitialMemId: null,
+  galleryInitialTab: "library" as "library" | "gallery",
+  setGalleryInitialTab: (tab) => set({ galleryInitialTab: tab }),
   showBustBuilder: false,
   showInvites: false,
   showSharedWithMe: false,
@@ -65,7 +75,8 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
   setShowTimeline: (v) => set({ showTimeline: v }),
   setShowStatistics: (v) => set({ showStatistics: v }),
   setShowMassImport: (v) => set({ showMassImport: v }),
-  setShowGallery: (v) => set({ showGallery: v }),
+  setShowGallery: (v) => set({ showGallery: v, ...(v ? {} : { galleryInitialMemId: null, galleryInitialTab: "library" as "library" | "gallery" }) }),
+  setGalleryInitialMemId: (id) => set({ galleryInitialMemId: id }),
   setShowBustBuilder: (v) => set({ showBustBuilder: v }),
   setShowInvites: (v) => set({ showInvites: v }),
   setShowSharedWithMe: (v) => set({ showSharedWithMe: v }),
@@ -86,6 +97,8 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
       showStatistics: false,
       showMassImport: false,
       showGallery: false,
+      galleryInitialMemId: null,
+      galleryInitialTab: "library" as "library" | "gallery",
       showBustBuilder: false,
       showInvites: false,
       showSharedWithMe: false,

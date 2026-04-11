@@ -171,7 +171,7 @@ export default function FamilyPage() {
         setExpandedGroupId((result.groups[0].group as unknown as FamilyGroup).id);
       }
     } catch {
-      // Server action may fail silently; keep current state
+      showToast(t("loadError"), "error");
     } finally {
       setLoading(false);
     }
@@ -179,12 +179,17 @@ export default function FamilyPage() {
   }, []);
 
   const loadWingShares = useCallback(async () => {
-    const [myRes, withMeRes] = await Promise.all([
-      getMyWingShares(),
-      getWingsSharedWithMe(),
-    ]);
-    setMyWingShares((myRes.shares || []) as WingShare[]);
-    setSharedWithMe((withMeRes.shares || []) as WingShare[]);
+    try {
+      const [myRes, withMeRes] = await Promise.all([
+        getMyWingShares(),
+        getWingsSharedWithMe(),
+      ]);
+      setMyWingShares((myRes.shares || []) as WingShare[]);
+      setSharedWithMe((withMeRes.shares || []) as WingShare[]);
+    } catch {
+      showToast(t("loadWingSharesError"), "error");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { loadGroups(); }, [loadGroups]);
@@ -209,7 +214,10 @@ export default function FamilyPage() {
   };
 
   const handleInvite = async (groupId: string) => {
-    if (!inviteEmail.trim() || !inviteEmail.includes("@")) return;
+    if (!inviteEmail.trim() || !inviteEmail.includes("@")) {
+      if (inviteEmail.trim()) showToast(t("inviteInvalidEmail"), "error");
+      return;
+    }
     setInviting(true);
     const result = await inviteFamilyMember(groupId, inviteEmail.trim(), inviteRole);
     setInviting(false);
@@ -224,20 +232,31 @@ export default function FamilyPage() {
 
   const handleResendInvite = async (groupId: string, member: FamilyMember) => {
     setResendingId(member.id);
-    // Remove existing invite then re-invite
-    if (member.user_id) {
-      await removeFamilyMember(groupId, member.user_id);
-    } else {
-      // Invited members have no user_id — cancel by member row id
-      await cancelFamilyInvite(groupId, member.id);
-    }
-    const result = await inviteFamilyMember(groupId, member.email, member.role === "owner" ? "member" : member.role);
-    setResendingId(null);
-    if (result.error) {
-      showToast(result.error, "error");
-    } else {
-      showToast(t("inviteResent", { email: member.email }), "success");
-      await loadGroups();
+    try {
+      // Remove existing invite then re-invite
+      let cancelResult: { error?: string };
+      if (member.user_id) {
+        cancelResult = await removeFamilyMember(groupId, member.user_id);
+      } else {
+        // Invited members have no user_id — cancel by member row id
+        cancelResult = await cancelFamilyInvite(groupId, member.id);
+      }
+      if (cancelResult.error) {
+        showToast(cancelResult.error, "error");
+        setResendingId(null);
+        return;
+      }
+      const result = await inviteFamilyMember(groupId, member.email, member.role === "owner" ? "member" : member.role);
+      if (result.error) {
+        showToast(result.error, "error");
+      } else {
+        showToast(t("inviteResent", { email: member.email }), "success");
+        await loadGroups();
+      }
+    } catch {
+      showToast(t("loadError"), "error");
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -281,7 +300,7 @@ export default function FamilyPage() {
     if (result.error) {
       showToast(result.error, "error");
     } else {
-      showToast(t("roleUpdated") || "Role updated", "success");
+      showToast(t("roleUpdated"), "success");
       await loadGroups();
     }
   };
@@ -300,7 +319,10 @@ export default function FamilyPage() {
   };
 
   const handleShareWing = async () => {
-    if (!shareMemberEmail.trim() || !shareMemberEmail.includes("@")) return;
+    if (!shareMemberEmail.trim() || !shareMemberEmail.includes("@")) {
+      if (shareMemberEmail.trim()) showToast(t("inviteInvalidEmail"), "error");
+      return;
+    }
     setSharingWing(true);
     const result = await shareWing(shareWingId, shareMemberEmail.trim(), sharePermission);
     setSharingWing(false);
@@ -863,7 +885,7 @@ export default function FamilyPage() {
                           <button
                             onClick={() => handleCancelInvite(grp.id, member.id, member.email)}
                             aria-label={t("removeMember", { email: member.email })}
-                            title={t("cancel")}
+                            title={t("cancelInvite")}
                             style={{
                               width: "2rem", height: "2rem", borderRadius: "0.5rem",
                               border: `1px solid ${T.color.cream}`,
@@ -888,6 +910,18 @@ export default function FamilyPage() {
 
             {/* Active members list */}
             <label style={labelStyle}>{t("members")}</label>
+            {activeMembers.length === 0 && (
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+                margin: "0 0 1rem", lineHeight: 1.5, fontStyle: "italic",
+                padding: "1rem 1.25rem",
+                background: T.color.linen,
+                borderRadius: "0.75rem",
+                border: `1px solid ${T.color.cream}`,
+              }}>
+                {t("noActiveMembers")}
+              </p>
+            )}
             <div role="list" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {activeMembers.map((member) => (
                 <div key={member.id} role="listitem" style={{
@@ -979,7 +1013,7 @@ export default function FamilyPage() {
                     {canManage && member.role !== "owner" && member.user_id && (
                       <button
                         onClick={() => handleToggleRole(grp.id, member.user_id!, member.role)}
-                        title={member.role === "admin" ? (t("makeMember") || "Make member") : (t("makeAdmin") || "Make admin")}
+                        title={member.role === "admin" ? t("makeMember") : t("makeAdmin")}
                         style={{
                           padding: "0.375rem 0.625rem", borderRadius: "0.5rem",
                           border: `1px solid ${T.color.terracotta}30`,
@@ -990,7 +1024,7 @@ export default function FamilyPage() {
                           minHeight: "2.75rem",
                         }}
                       >
-                        {member.role === "admin" ? (t("makeMember") || "Make member") : (t("makeAdmin") || "Make admin")}
+                        {member.role === "admin" ? t("makeMember") : t("makeAdmin")}
                       </button>
                     )}
                     {canManage && member.role !== "owner" && member.user_id && (

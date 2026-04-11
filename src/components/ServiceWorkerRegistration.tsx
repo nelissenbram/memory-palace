@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 // Version stamp — change on each deploy to force SW update detection
-const APP_VERSION = "2026-03-15-v2";
+const APP_VERSION = "2026-04-10-v4";
 
 export default function ServiceWorkerRegistration() {
   useEffect(() => {

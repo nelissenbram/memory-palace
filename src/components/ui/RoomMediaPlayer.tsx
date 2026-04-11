@@ -179,7 +179,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
           </div>
         );
 
-      case "video":
+      case "video": {
         return (
           <div style={{
             width: "100%", height: "100%",
@@ -190,15 +190,28 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 key={mem.id}
                 controls
                 autoPlay
+                muted
                 playsInline
-                preload="metadata"
-                src={mem.dataUrl}
+                preload="auto"
+                src={mem.dataUrl?.startsWith("/api/media/") ? mem.dataUrl + (mem.dataUrl.includes("?") ? "&" : "?") + "stream=1" : mem.dataUrl}
                 style={{
                   maxWidth: "92%", maxHeight: "88%",
                   borderRadius: "0.5rem",
                   boxShadow: "0 0.5rem 2rem rgba(0,0,0,0.4)",
                 }}
               />
+            ) : mem.thumbnailUrl ? (
+              <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" }}>
+                <img
+                  src={mem.thumbnailUrl || mem.dataUrl!}
+                  alt={mem.title}
+                  style={{ maxWidth: "92%", maxHeight: "88%", objectFit: "contain", borderRadius: "0.5rem", boxShadow: "0 0.5rem 2rem rgba(0,0,0,0.4)" }}
+                  draggable={false}
+                />
+                <div style={{ position: "absolute", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", padding: "0.375rem 0.875rem", borderRadius: "1rem", background: "rgba(0,0,0,0.6)", color: "rgba(255,255,255,0.7)", fontFamily: T.font.body, fontSize: "0.75rem" }}>
+                  {t("videoThumbnailOnly") || "Thumbnail only"}
+                </div>
+              </div>
             ) : (
               <div style={{
                 display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem",
@@ -210,6 +223,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
             )}
           </div>
         );
+      }
 
       case "audio":
         return (

@@ -482,7 +482,7 @@ export default function NavigationBar({
             position: "fixed",
             bottom: 0,
             left: 0,
-            right: 0,
+            right: "env(safe-area-inset-right, 0px)",
             zIndex: 50,
             background: `${T.color.linen}E0`,
             backdropFilter: "blur(1.5rem) saturate(180%)",
@@ -538,6 +538,11 @@ export default function NavigationBar({
                     // Activity tab tutorial — dispatch custom event
                     if (activeTab === "notifications") {
                       window.dispatchEvent(new Event("mp:open-activity-tutorial"));
+                      return;
+                    }
+                    // Palace exterior (3D) tutorial
+                    if (currentMode === "3d") {
+                      window.dispatchEvent(new Event("mp:open-palace-tutorial"));
                       return;
                     }
                     // reset() sets _forceCurrentPage + increments _resetCount,
@@ -843,6 +848,10 @@ export default function NavigationBar({
               }
               if (activeTab === "notifications") {
                 window.dispatchEvent(new Event("mp:open-activity-tutorial"));
+                return;
+              }
+              if (currentMode === "3d") {
+                window.dispatchEvent(new Event("mp:open-palace-tutorial"));
                 return;
               }
               // reset() sets _forceCurrentPage + increments _resetCount,

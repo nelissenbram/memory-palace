@@ -245,8 +245,8 @@ export default function EntranceHallScene({
       doorFrame: new THREE.MeshPhysicalMaterial({ color: "#E8C84A", roughness: 0.1, metalness: 0.95, envMapIntensity: 1.8, emissive: "#E8C84A", emissiveIntensity: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.05 }),
       dome: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.2, .2) }),
       domeGold: new THREE.MeshPhysicalMaterial({ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
-      floor: new THREE.MeshPhysicalMaterial({ color: "#E8DDD0", roughness: 0.06, metalness: 0.05, envMapIntensity: 1.2, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.4, clearcoatRoughness: 0.1, reflectivity: 0.8 }),
-      floorDark: new THREE.MeshPhysicalMaterial({ color: "#C4B8A0", roughness: 0.08, metalness: 0.03, envMapIntensity: 1.0, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.2, .2), clearcoat: 0.3, clearcoatRoughness: 0.15 }),
+      floor: new THREE.MeshPhysicalMaterial({ color: "#E8DDD0", roughness: 0.35, metalness: 0.02, envMapIntensity: 0.2, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.15, clearcoatRoughness: 0.4, reflectivity: 0.25 }),
+      floorDark: new THREE.MeshPhysicalMaterial({ color: "#C4B8A0", roughness: 0.4, metalness: 0.02, envMapIntensity: 0.18, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.2, .2), clearcoat: 0.1, clearcoatRoughness: 0.45, reflectivity: 0.2 }),
       floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.12, metalness: 0.05, envMapIntensity: 0.9 }),
       bust: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.7, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.15, .15) }),
       bronze: new THREE.MeshPhysicalMaterial({ color: "#8A7050", roughness: 0.25, metalness: 0.8, envMapIntensity: 1.1, clearcoat: 0.2, clearcoatRoughness: 0.3 }),
@@ -2212,6 +2212,7 @@ export default function EntranceHallScene({
       allTexSets.forEach(disposePBRSet);
       envMapProc.dispose();
       composer.dispose();
+      try{ren.forceContextLoss();}catch{}
       if (el.contains(ren.domElement)) el.removeChild(ren.domElement);
       ren.dispose();
     };

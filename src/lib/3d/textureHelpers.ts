@@ -70,10 +70,10 @@ export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title:
   ctx.textAlign = "center"; ctx.shadowColor = "rgba(0,0,0,0.3)"; ctx.shadowBlur = 4;
   ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.font = "500 20px Georgia,serif";
   ctx.fillText(m.title, w / 2, h / 2 + 4);
+  tex.needsUpdate = true;
+
   if (m.dataUrl) {
-    const img = new Image();
-    if (m.dataUrl.startsWith("http")) img.crossOrigin = "anonymous";
-    img.onload = () => {
+    const drawImg = (img: HTMLImageElement) => {
       ctx.clearRect(0, 0, w, h);
       const iw = img.width, ih = img.height, scale = Math.max(w / iw, h / ih);
       const sw = iw * scale, sh = ih * scale;
@@ -83,8 +83,20 @@ export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title:
       ctx.fillStyle = v2; ctx.fillRect(0, 0, w, h);
       tex.needsUpdate = true;
     };
-    img.onerror = () => { tex.needsUpdate = true; };
-    img.src = m.dataUrl;
+    // Fetch as blob via ?stream=1 to avoid cross-origin redirect (tainted canvas blocks WebGL)
+    const streamUrl = m.dataUrl.startsWith("/api/media/")
+      ? m.dataUrl + (m.dataUrl.includes("?") ? "&" : "?") + "stream=1"
+      : m.dataUrl;
+    fetch(streamUrl, { credentials: "same-origin" })
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
+      .then(blob => {
+        const objUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => { drawImg(img); URL.revokeObjectURL(objUrl); };
+        img.onerror = () => URL.revokeObjectURL(objUrl);
+        img.src = objUrl;
+      })
+      .catch(() => {});
   }
   return tex;
 }

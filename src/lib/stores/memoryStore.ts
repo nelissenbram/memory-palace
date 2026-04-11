@@ -78,6 +78,8 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         ...(m.lat != null ? { lat: m.lat } : {}),
         ...(m.lng != null ? { lng: m.lng } : {}),
         ...(m.created_at ? { createdAt: m.created_at } : {}),
+        ...(m.displayed != null ? { displayed: m.displayed } : {}),
+        ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
       }));
       set((s) => ({ userMems: { ...s.userMems, [roomId]: mapped } }));
 
@@ -264,7 +266,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       } catch (e) { console.error("Edit upload error:", e); }
     }
 
-    await updateMemoryAction(memId, {
+    const supaUpdates = {
       ...(updates.title !== undefined ? { title: updates.title } : {}),
       ...(updates.desc !== undefined ? { description: updates.desc } : {}),
       ...(updates.type !== undefined ? { type: updates.type } : {}),
@@ -274,7 +276,14 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
       ...(updates.locationName !== undefined ? { location_name: updates.locationName } : {}),
       ...(updates.lat !== undefined ? { lat: updates.lat } : {}),
       ...(updates.lng !== undefined ? { lng: updates.lng } : {}),
-    });
+      ...("displayed" in updates ? { displayed: updates.displayed ?? null } : {}),
+      ...("displayUnit" in updates ? { display_unit: updates.displayUnit ?? null } : {}),
+    };
+    try {
+      await updateMemoryAction(memId, supaUpdates);
+    } catch (e) {
+      console.error("Supabase update failed:", e);
+    }
   },
 
   deleteMemory: async (roomId, memId) => {

@@ -1,7 +1,7 @@
 // Service Worker — clears old caches and serves fresh content
 // Generated to replace stale PWA cache from previous builds
 
-const CACHE_VERSION = 'v2026-04-07t';
+const CACHE_VERSION = 'v2026-04-10b';
 
 // Activate immediately, take control
 self.addEventListener('install', (event) => {

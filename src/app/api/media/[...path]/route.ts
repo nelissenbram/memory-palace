@@ -122,7 +122,15 @@ export async function GET(
   const useR2 = matchedViaThumbnail
     ? isR2Configured()
     : (memory.storage_backend || "supabase") === "r2" && isR2Configured();
+
+  // ?stream=1 forces direct streaming (no redirect) — needed for WebGL canvas textures
+  // which can't use cross-origin redirected images (tainted canvas)
+  const wantsStream = request.nextUrl.searchParams.get("stream") === "1";
+
   if (useR2) {
+    if (wantsStream) {
+      return streamFromR2(request, bucket, filePath);
+    }
     return redirectToR2(bucket, filePath);
   }
 
@@ -150,6 +158,34 @@ async function redirectToR2(
     });
   } catch (err) {
     console.error("[media] R2 presign error:", err);
+    return NextResponse.json({ error: "Storage error" }, { status: 500 });
+  }
+}
+
+/** Download from R2 and serve directly (same-origin — avoids canvas tainting for WebGL). */
+async function streamFromR2(
+  request: NextRequest,
+  bucket: "memories" | "busts",
+  filePath: string,
+): Promise<NextResponse> {
+  try {
+    const { r2Download } = await import("@/lib/storage/r2");
+    const rangeHeader = request.headers.get("range") || undefined;
+    const { data, contentType, contentLength, contentRange } = await r2Download(bucket, filePath, rangeHeader);
+    const ct = contentType || inferContentType(filePath);
+    const headers: Record<string, string> = {
+      "Content-Type": ct,
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "private, max-age=604800",
+      "X-Content-Type-Options": "nosniff",
+    };
+    if (contentLength != null) headers["Content-Length"] = String(contentLength);
+    if (contentRange) headers["Content-Range"] = contentRange;
+    // 206 for range responses, 200 for full downloads
+    const status = contentRange ? 206 : 200;
+    return new NextResponse(data as unknown as BodyInit, { status, headers });
+  } catch (err) {
+    console.error("[media] R2 stream error:", err);
     return NextResponse.json({ error: "Storage error" }, { status: 500 });
   }
 }

@@ -32,6 +32,14 @@ interface PalaceState {
   setRoomLayout: (roomId: string, layoutId: string) => void;
 }
 
+function loadRoomLayouts(): Record<string, string> {
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("mp_room_layouts") : null;
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
 function loadNavMode(): NavMode {
   // Always start in atrium on fresh page load.
   // localStorage is still written on mode switch (for mid-session nav)
@@ -49,7 +57,7 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
   opacity: 1,
   portalAnim: false,
   _timer: null,
-  roomLayouts: {},
+  roomLayouts: loadRoomLayouts(),
   libraryTarget: null,
 
   setNavMode: (mode) => {
@@ -104,9 +112,11 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
     get().fade(() => set({ view: "corridor", activeRoomId: null, opacity: 1 }));
   },
 
-  setRoomLayout: (roomId, layoutId) => set((s) => ({
-    roomLayouts: { ...s.roomLayouts, [roomId]: layoutId },
-  })),
+  setRoomLayout: (roomId, layoutId) => set((s) => {
+    const updated = { ...s.roomLayouts, [roomId]: layoutId };
+    try { localStorage.setItem("mp_room_layouts", JSON.stringify(updated)); } catch {}
+    return { roomLayouts: updated };
+  }),
 
   switchWing: (id) => {
     const { activeWing, view } = get();

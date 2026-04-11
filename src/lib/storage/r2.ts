@@ -50,16 +50,21 @@ export async function r2Upload(
 export async function r2Download(
   bucket: "memories" | "busts",
   path: string,
-): Promise<{ data: ReadableStream; contentType: string }> {
+  range?: string,
+): Promise<{ data: ReadableStream; contentType: string; contentLength?: number; contentRange?: string }> {
   const s3 = getClient();
   if (!s3) throw new Error("R2 not configured");
-  const res = await s3.send(new GetObjectCommand({
-    Bucket: getBucket(bucket),
-    Key: path,
-  }));
+  const cmd: any = { Bucket: getBucket(bucket), Key: path };
+  if (range) cmd.Range = range;
+  const res = await s3.send(new GetObjectCommand(cmd));
   if (!res.Body) throw new Error("Empty response from R2");
   const stream = res.Body as ReadableStream;
-  return { data: stream, contentType: res.ContentType || "application/octet-stream" };
+  return {
+    data: stream,
+    contentType: res.ContentType || "application/octet-stream",
+    contentLength: res.ContentLength,
+    contentRange: res.ContentRange,
+  };
 }
 
 export async function r2Remove(
