@@ -25,39 +25,49 @@ interface PersonPanelProps {
   onSelectPerson?: (person: FamilyTreePerson) => void;
   isMobile?: boolean;
   isCurrentUser?: boolean;
+  onRecenter?: (person: FamilyTreePerson) => void;
 }
 
 /* ── Relationship types ── */
-const REL_TYPES = ["parent", "child", "spouse", "sibling", "ex-spouse"] as const;
+const REL_TYPES = ["parent", "child", "spouse", "ex-spouse", "stepparent", "stepchild", "half-sibling"] as const;
 type RelType = (typeof REL_TYPES)[number];
 
-/* ── Gender icon helper ── */
+/* ── Gender icon helper (Roman-inspired symbols) ── */
 function GenderIcon({ gender }: { gender: string | null }) {
+  const c = T.color.walnut;
   if (gender === "male")
     return (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <circle cx="6.5" cy="9.5" r="4" stroke={T.color.walnut} strokeWidth="1.5" />
-        <line x1="9.5" y1="6.5" x2="14" y2="2" stroke={T.color.walnut} strokeWidth="1.5" />
-        <line x1="11" y1="2" x2="14" y2="2" stroke={T.color.walnut} strokeWidth="1.5" />
-        <line x1="14" y1="2" x2="14" y2="5" stroke={T.color.walnut} strokeWidth="1.5" />
+        {/* Mars symbol with laurel hint */}
+        <circle cx="6.5" cy="9.5" r="4" stroke={c} strokeWidth="1.5" />
+        <line x1="9.5" y1="6.5" x2="14" y2="2" stroke={c} strokeWidth="1.5" />
+        <line x1="11" y1="2" x2="14" y2="2" stroke={c} strokeWidth="1.5" />
+        <line x1="14" y1="2" x2="14" y2="5" stroke={c} strokeWidth="1.5" />
+        {/* Laurel leaf accents */}
+        <path d="M3.5 7 Q4.5 6 5 7.5" stroke={c} strokeWidth="0.5" opacity="0.3" fill="none" />
+        <path d="M3.5 12 Q4.5 13 5 11.5" stroke={c} strokeWidth="0.5" opacity="0.3" fill="none" />
       </svg>
     );
   if (gender === "female")
     return (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <circle cx="8" cy="6" r="4" stroke={T.color.walnut} strokeWidth="1.5" />
-        <line x1="8" y1="10" x2="8" y2="15" stroke={T.color.walnut} strokeWidth="1.5" />
-        <line x1="5.5" y1="12.5" x2="10.5" y2="12.5" stroke={T.color.walnut} strokeWidth="1.5" />
+        {/* Venus symbol with stola hint */}
+        <circle cx="8" cy="6" r="4" stroke={c} strokeWidth="1.5" />
+        <line x1="8" y1="10" x2="8" y2="15" stroke={c} strokeWidth="1.5" />
+        <line x1="5.5" y1="12.5" x2="10.5" y2="12.5" stroke={c} strokeWidth="1.5" />
+        {/* Hair wave accent */}
+        <path d="M5 4 Q6 2.5 8 2.5 Q10 2.5 11 4" stroke={c} strokeWidth="0.5" opacity="0.3" fill="none" />
       </svg>
     );
   if (gender === "other")
     return (
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <circle cx="8" cy="8" r="4" stroke={T.color.walnut} strokeWidth="1.5" />
-        <line x1="8" y1="12" x2="8" y2="15.5" stroke={T.color.walnut} strokeWidth="1.5" />
-        <line x1="11" y1="5" x2="14" y2="2" stroke={T.color.walnut} strokeWidth="1.5" />
-        <line x1="11.5" y1="2" x2="14" y2="2" stroke={T.color.walnut} strokeWidth="1.5" />
-        <line x1="14" y1="2" x2="14" y2="4.5" stroke={T.color.walnut} strokeWidth="1.5" />
+        {/* Column/neutral symbol */}
+        <rect x="6" y="2" width="4" height="1" rx="0.3" stroke={c} strokeWidth="0.8" fill="none" />
+        <rect x="6.5" y="3" width="3" height="9" rx="0.3" stroke={c} strokeWidth="1.2" fill="none" />
+        <rect x="5.5" y="12" width="5" height="1" rx="0.3" stroke={c} strokeWidth="0.8" fill="none" />
+        {/* Fluting lines */}
+        <line x1="8" y1="3.5" x2="8" y2="11.5" stroke={c} strokeWidth="0.4" opacity="0.3" />
       </svg>
     );
   return null;
@@ -69,6 +79,109 @@ function MailIcon() {
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <rect x="1.5" y="3" width="13" height="10" rx="2" stroke={T.color.sage} strokeWidth="1.3" />
       <path d="M1.5 5l6.5 4 6.5-4" stroke={T.color.sage} strokeWidth="1.3" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* ── Age category helper ── */
+function getAgeCategory(birthDate: string | null, deathDate: string | null): "baby" | "child" | "teen" | "adult" | "elder" {
+  if (!birthDate) return "adult";
+  const refDate = deathDate ? new Date(deathDate) : new Date();
+  const birth = new Date(birthDate);
+  let age = refDate.getFullYear() - birth.getFullYear();
+  const m = refDate.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && refDate.getDate() < birth.getDate())) age--;
+  if (age < 4) return "baby";
+  if (age < 13) return "child";
+  if (age < 18) return "teen";
+  if (age < 65) return "adult";
+  return "elder";
+}
+
+/* ── Roman silhouette avatar (age/gender aware, Tuscan-inspired) ── */
+function SilhouetteAvatar({ gender, size = 24, birthDate, deathDate }: {
+  gender: string | null; size?: number;
+  birthDate?: string | null; deathDate?: string | null;
+}) {
+  const age = getAgeCategory(birthDate || null, deathDate || null);
+  const isDead = !!deathDate;
+  const c = isDead ? T.color.muted : T.color.walnut;
+  const opacity = isDead ? 0.3 : 0.45;
+
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={c} opacity={opacity} style={{ display: "block" }}>
+      {age === "baby" ? (
+        /* Baby: swaddled Roman infant */
+        <>
+          <circle cx="12" cy="7.5" r="3.2" />
+          <ellipse cx="12" cy="16" rx="5" ry="5.5" />
+          <path d="M8.5 13 Q12 11 15.5 13" fill="none" stroke={c} strokeWidth="0.6" opacity="0.4" />
+          <path d="M9 15.5 Q12 13.5 15 15.5" fill="none" stroke={c} strokeWidth="0.5" opacity="0.3" />
+          <path d="M9.5 18 Q12 16 14.5 18" fill="none" stroke={c} strokeWidth="0.5" opacity="0.3" />
+        </>
+      ) : age === "child" ? (
+        /* Child: small toga figure */
+        <>
+          <circle cx="12" cy="7" r="3.2" />
+          <path d="M12 10.2 C8 10.2 6.5 14.5 6.5 19 L17.5 19 C17.5 14.5 16 10.2 12 10.2Z" />
+          <path d="M8 12 Q10 10.8 12 11.2 Q14 10.8 15.5 12" fill="none" stroke={c} strokeWidth="0.6" opacity="0.35" />
+          <path d="M9 14.5 L9 18" fill="none" stroke={c} strokeWidth="0.4" opacity="0.25" />
+        </>
+      ) : age === "elder" ? (
+        /* Elder: stooped figure with toga drape */
+        gender === "female" ? (
+          <>
+            <circle cx="12" cy="6.5" r="3.4" />
+            <ellipse cx="12" cy="4.2" rx="2" ry="1.2" fill={c} opacity="0.3" />
+            <path d="M12.5 10 C6 10.5 3.5 15.5 3.5 20.5 L20.5 20.5 C20.5 15.5 17.5 10 12.5 10Z" />
+            <path d="M6 12 Q9 10 12 11 Q15 10 18 12" fill="none" stroke={c} strokeWidth="0.7" opacity="0.4" />
+            <path d="M10 14 L9.5 20" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14 14 L14.5 20" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+          </>
+        ) : (
+          <>
+            <circle cx="12" cy="6.5" r="3.4" />
+            <path d="M8.5 5.5 Q10 3.5 12 3.8 Q14 3.5 15.5 5.5" fill="none" stroke={c} strokeWidth="0.6" opacity="0.35" />
+            <path d="M12.5 10 C6 10 4 15 4 20.5 L20 20.5 C20 15 18 10 12.5 10Z" />
+            <path d="M7 12 Q10 10.5 12 11.5 Q14 10.5 17 12" fill="none" stroke={c} strokeWidth="0.7" opacity="0.4" />
+            <path d="M10 13 L9 20" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14 13 L15 20" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+          </>
+        )
+      ) : (
+        /* Adult: refined Roman silhouette */
+        gender === "female" ? (
+          <>
+            <circle cx="12" cy="6.5" r="3.6" />
+            <ellipse cx="12" cy="4" rx="2.2" ry="1.3" fill={c} opacity="0.3" />
+            <path d="M12 10 C6 10 4 16 4 21 L20 21 C20 16 18 10 12 10Z" />
+            <path d="M6.5 12 Q9 10 12 11 Q15 10 17.5 12" fill="none" stroke={c} strokeWidth="0.7" opacity="0.4" />
+            <path d="M10 13 L9 20.5" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14 13 L15 20.5" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+          </>
+        ) : gender === "male" ? (
+          <>
+            <circle cx="12" cy="6" r="3.6" />
+            <path d="M7.8 5 Q9.5 2.5 12 3 Q14.5 2.5 16.2 5" fill="none" stroke={c} strokeWidth="0.7" opacity="0.4" />
+            <path d="M12 9.5 C6 9.5 4 15.5 4 21 L20 21 C20 15.5 18 9.5 12 9.5Z" />
+            <path d="M6 11.5 Q9.5 9.5 12 11 Q14 12 17 11" fill="none" stroke={c} strokeWidth="0.7" opacity="0.4" />
+            <path d="M9.5 12.5 L8.5 20.5" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14.5 12.5 L15.5 20.5" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+          </>
+        ) : (
+          /* Other/Unknown: Classical column */
+          <>
+            <rect x="8" y="3" width="8" height="2" rx="0.5" fill={c} opacity="0.6" />
+            <rect x="7" y="2.5" width="10" height="1.2" rx="0.3" fill={c} opacity="0.4" />
+            <rect x="8.5" y="5" width="7" height="13" rx="0.5" />
+            <path d="M9.8 5 L9.8 18" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+            <path d="M12 5 L12 18" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14.2 5 L14.2 18" fill="none" stroke={c} strokeWidth="0.4" opacity="0.2" />
+            <rect x="7.5" y="18" width="9" height="1.2" rx="0.3" fill={c} opacity="0.5" />
+            <rect x="7" y="19" width="10" height="1.5" rx="0.4" fill={c} opacity="0.6" />
+          </>
+        )
+      )}
     </svg>
   );
 }
@@ -100,6 +213,7 @@ export default function PersonPanel({
   onSelectPerson,
   isMobile = false,
   isCurrentUser = false,
+  onRecenter,
 }: PersonPanelProps) {
   const { t, locale } = useTranslation("familyTree");
   const { containerRef, handleKeyDown: trapKeyDown } = useFocusTrap(true);
@@ -139,10 +253,21 @@ export default function PersonPanel({
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
 
-  /* ── Relationships involving this person ── */
-  const personRels = relationships.filter(
-    (r) => r.person_id === person.id || r.related_person_id === person.id
-  );
+  /* ── Relationships involving this person (deduplicated) ── */
+  const personRels = useMemo(() => {
+    const raw = relationships.filter(
+      (r) => r.person_id === person.id || r.related_person_id === person.id
+    );
+    // Deduplicate forward+reverse pairs (e.g. A→B parent + B→A child)
+    const seen = new Set<string>();
+    return raw.filter((r) => {
+      const otherId = r.person_id === person.id ? r.related_person_id : r.person_id;
+      const pairKey = [person.id, otherId].sort().join("|");
+      if (seen.has(pairKey)) return false;
+      seen.add(pairKey);
+      return true;
+    });
+  }, [relationships, person.id]);
 
   const getPersonById = (id: string) => allPersons.find((x) => x.id === id);
 
@@ -150,6 +275,125 @@ export default function PersonPanel({
     const p = getPersonById(id);
     return p ? `${p.first_name}${p.last_name ? " " + p.last_name : ""}` : t("unknown");
   };
+
+  /* ── Issue 4d: Auto-derived siblings (share at least one parent) ── */
+  const derivedSiblings = useMemo(() => {
+    // Find all parents of this person
+    const myParentIds = new Set<string>();
+    for (const r of relationships) {
+      if (r.relationship_type === "parent" && r.related_person_id === person.id) {
+        myParentIds.add(r.person_id);
+      }
+      if (r.relationship_type === "child" && r.person_id === person.id) {
+        myParentIds.add(r.related_person_id);
+      }
+    }
+    if (myParentIds.size === 0) return [];
+    // Find all other persons who share at least one parent
+    const siblingIds = new Set<string>();
+    for (const r of relationships) {
+      if (r.relationship_type === "parent" && myParentIds.has(r.person_id) && r.related_person_id !== person.id) {
+        siblingIds.add(r.related_person_id);
+      }
+      if (r.relationship_type === "child" && myParentIds.has(r.related_person_id) && r.person_id !== person.id) {
+        siblingIds.add(r.person_id);
+      }
+    }
+    return Array.from(siblingIds).map((id) => allPersons.find((p) => p.id === id)).filter(Boolean) as FamilyTreePerson[];
+  }, [relationships, person.id, allPersons]);
+
+  /* ── Issue 7: Compute relationship path to self ── */
+  const relationToSelf = useMemo(() => {
+    const selfPerson = allPersons.find((p) => p.is_self);
+    if (!selfPerson || selfPerson.id === person.id) return selfPerson?.id === person.id ? t("relSelf") : null;
+
+    // BFS from self to this person through relationships
+    type QueueItem = { personId: string; path: { type: string; toId: string; toGender: string | null }[] };
+    const queue: QueueItem[] = [{ personId: selfPerson.id, path: [] }];
+    const visited = new Set<string>([selfPerson.id]);
+
+    // Build adjacency from relationships
+    const adj = new Map<string, { otherId: string; type: string }[]>();
+    for (const r of relationships) {
+      if (!adj.has(r.person_id)) adj.set(r.person_id, []);
+      adj.get(r.person_id)!.push({ otherId: r.related_person_id, type: r.relationship_type });
+    }
+
+    let foundPath: { type: string; toId: string; toGender: string | null }[] | null = null;
+
+    while (queue.length > 0 && !foundPath) {
+      const current = queue.shift()!;
+      const edges = adj.get(current.personId) || [];
+      for (const edge of edges) {
+        if (visited.has(edge.otherId)) continue;
+        const targetPerson = allPersons.find((p) => p.id === edge.otherId);
+        const newPath = [...current.path, { type: edge.type, toId: edge.otherId, toGender: targetPerson?.gender || null }];
+        if (edge.otherId === person.id) {
+          foundPath = newPath;
+          break;
+        }
+        visited.add(edge.otherId);
+        if (newPath.length < 8) { // limit depth
+          queue.push({ personId: edge.otherId, path: newPath });
+        }
+      }
+    }
+
+    if (!foundPath) return t("relDistantRelative");
+
+    // Convert path to human-readable label
+    // Normalize: "child" from self means "my child", "parent" means "my parent"
+    const steps = foundPath.map((s) => s.type);
+    const lastGender = foundPath[foundPath.length - 1].toGender;
+
+    // Simple cases
+    if (steps.length === 1) {
+      if (steps[0] === "child") return lastGender === "female" ? t("relDaughter") : lastGender === "male" ? t("relSon") : t("relDescChild");
+      if (steps[0] === "parent") return lastGender === "female" ? t("relMother") : lastGender === "male" ? t("relFather") : t("relDescParent");
+      if (steps[0] === "spouse") return t("relSpouse");
+      if (steps[0] === "sibling") return lastGender === "female" ? t("relDescSibling") : t("relDescSibling");
+    }
+    // Grandparent / grandchild
+    if (steps.length === 2 && steps[0] === "parent" && steps[1] === "parent") {
+      return lastGender === "female" ? t("relGrandmother") : lastGender === "male" ? t("relGrandfather") : t("relDescParent");
+    }
+    if (steps.length === 2 && steps[0] === "child" && steps[1] === "child") {
+      return lastGender === "female" ? t("relGranddaughter") : lastGender === "male" ? t("relGrandson") : t("relDescChild");
+    }
+    // Uncle / aunt: parent -> sibling or parent -> parent -> child
+    if (steps.length === 2 && steps[0] === "parent" && (steps[1] === "sibling" || steps[1] === "child")) {
+      // parent's sibling = uncle/aunt; parent's child could be sibling (if not self)
+      if (steps[1] === "sibling") return lastGender === "female" ? t("relAunt") : t("relUncle");
+    }
+    if (steps.length === 3 && steps[0] === "parent" && steps[1] === "parent" && steps[2] === "child") {
+      return lastGender === "female" ? t("relAunt") : t("relUncle");
+    }
+    // Nephew / niece: sibling -> child
+    if (steps.length === 2 && (steps[0] === "sibling" || steps[0] === "child") && steps[1] === "child") {
+      if (steps[0] === "sibling") return lastGender === "female" ? t("relNiece") : t("relNephew");
+    }
+    // Cousin: parent -> sibling -> child OR parent -> parent -> child -> child
+    if (steps.length === 3 && steps[0] === "parent" && steps[1] === "sibling" && steps[2] === "child") {
+      return t("relCousin");
+    }
+    if (steps.length === 4 && steps[0] === "parent" && steps[1] === "parent" && steps[2] === "child" && steps[3] === "child") {
+      return t("relCousin");
+    }
+    // Great-grandparent
+    if (steps.length >= 3 && steps.every((s) => s === "parent")) {
+      const greats = steps.length - 2;
+      const prefix = t("relGreatPrefix").repeat(greats);
+      return prefix + (lastGender === "female" ? t("relGrandmother") : t("relGrandfather"));
+    }
+    // Great-grandchild
+    if (steps.length >= 3 && steps.every((s) => s === "child")) {
+      const greats = steps.length - 2;
+      const prefix = t("relGreatPrefix").repeat(greats);
+      return prefix + (lastGender === "female" ? t("relGranddaughter") : t("relGrandson"));
+    }
+
+    return t("relDistantRelative");
+  }, [allPersons, relationships, person.id, t]);
 
   /** Format an ISO date string in a human-friendly way using the active locale */
   const formatDateHuman = (d: string | null): string => {
@@ -226,8 +470,10 @@ export default function PersonPanel({
     try {
       const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setPhotoError(t("photoUploadError")); setUploading(false); return; }
       const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `family-tree/${person.id}_${Date.now()}.${ext}`;
+      const path = `${user.id}/family-tree/${person.id}_${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("memories")
         .upload(path, file, { upsert: true, contentType: file.type });
@@ -319,35 +565,44 @@ export default function PersonPanel({
   const displayPhoto = photoPreview || person.photo_path;
 
   /* ── Rel type i18n maps ── */
-  const relTypeLabel = (rt: RelType): string => {
-    const map: Record<RelType, string> = {
+  const relTypeLabel = (rt: RelType | string): string => {
+    const map: Record<string, string> = {
       parent: t("relDescParent"),
       child: t("relDescChild"),
       spouse: t("relDescSpouse"),
       sibling: t("relDescSibling"),
       "ex-spouse": t("exSpouse"),
+      stepparent: t("stepparent"),
+      stepchild: t("stepchild"),
+      "half-sibling": t("halfSibling"),
     };
     return map[rt] || rt;
   };
 
   const relOfNameLabel = (rt: RelType): string => {
-    const map: Record<RelType, string> = {
+    const map: Record<string, string> = {
       parent: t("parentOfName", { name: person.first_name }),
       child: t("childOfName", { name: person.first_name }),
       spouse: t("spouseOfName", { name: person.first_name }),
       sibling: t("siblingOfName", { name: person.first_name }),
       "ex-spouse": t("exSpouseOfName", { name: person.first_name }),
+      stepparent: t("relStepparentOfName", { name: person.first_name }),
+      stepchild: t("relStepchildOfName", { name: person.first_name }),
+      "half-sibling": t("relHalfSiblingOfName", { name: person.first_name }),
     };
     return map[rt] || rt;
   };
 
   const relPreviewKey = (rt: RelType): string => {
-    const map: Record<RelType, string> = {
+    const map: Record<string, string> = {
       parent: t("relPreviewParent"),
       child: t("relPreviewChild"),
       spouse: t("relPreviewSpouse"),
       sibling: t("relPreviewSibling"),
       "ex-spouse": t("relPreviewExSpouse"),
+      stepparent: t("relPreviewStepparent"),
+      stepchild: t("relPreviewStepchild"),
+      "half-sibling": t("relPreviewHalfSibling"),
     };
     return map[rt] || rt;
   };
@@ -485,32 +740,48 @@ export default function PersonPanel({
           background: "rgba(255,255,255,0.3)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <h2
-            style={{
-              fontFamily: T.font.display,
-              fontSize: "1.375rem",
-              fontWeight: 600,
-              color: T.color.charcoal,
-              margin: 0,
-            }}
-          >
-            {fullName}
-          </h2>
-          {isCurrentUser && (
-            <span
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <h2
               style={{
-                fontFamily: T.font.body,
-                fontSize: "0.6875rem",
+                fontFamily: T.font.display,
+                fontSize: "1.375rem",
                 fontWeight: 600,
-                color: T.color.sage,
-                background: `${T.color.sage}18`,
-                padding: "0.125rem 0.5rem",
-                borderRadius: "999rem",
+                color: T.color.charcoal,
+                margin: 0,
               }}
             >
-              {t("isYou")}
-            </span>
+              {fullName}
+            </h2>
+            {isCurrentUser && (
+              <span
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.6875rem",
+                  fontWeight: 600,
+                  color: T.color.sage,
+                  background: `${T.color.sage}18`,
+                  padding: "0.125rem 0.5rem",
+                  borderRadius: "999rem",
+                }}
+              >
+                {t("isYou")}
+              </span>
+            )}
+          </div>
+          {/* Relationship to user */}
+          {relationToSelf && !isCurrentUser && (
+            <div
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.75rem",
+                color: T.color.muted,
+                fontStyle: "italic",
+                marginTop: "0.125rem",
+              }}
+            >
+              {t("relationToYou", { relation: relationToSelf })}
+            </div>
           )}
         </div>
         <button
@@ -601,12 +872,8 @@ export default function PersonPanel({
                   sizes="80px"
                   style={{ objectFit: "cover" }}
                 />
-              ) : person.gender === "female" ? (
-                "\u{1F469}"
-              ) : person.gender === "male" ? (
-                "\u{1F468}"
               ) : (
-                "\u{1F9D1}"
+                <SilhouetteAvatar gender={person.gender} size={36} birthDate={person.birth_date} deathDate={person.death_date} />
               )}
             </div>
 
@@ -856,18 +1123,22 @@ export default function PersonPanel({
               {/* Name row */}
               <div style={{ display: "flex", gap: "0.75rem" }}>
                 <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>{t("firstNameLabel")}</label>
+                  <label htmlFor={`edit-first-${person.id}`} style={labelStyle}>{t("firstNameLabel")}</label>
                   <input
+                    id={`edit-first-${person.id}`}
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
+                    autoComplete="off"
                     style={inputStyle}
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={labelStyle}>{t("lastNameLabel")}</label>
+                  <label htmlFor={`edit-last-${person.id}`} style={labelStyle}>{t("lastNameLabel")}</label>
                   <input
+                    id={`edit-last-${person.id}`}
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
+                    autoComplete="off"
                     style={inputStyle}
                   />
                 </div>
@@ -996,6 +1267,44 @@ export default function PersonPanel({
           </button>
         )}
 
+        {/* View This Tree button — re-center tree on this person */}
+        {onRecenter && !isCurrentUser && (
+          <button
+            onClick={() => {
+              onRecenter(person);
+              onClose();
+            }}
+            style={{
+              width: "100%",
+              padding: "0.625rem 1rem",
+              borderRadius: "0.75rem",
+              fontFamily: T.font.body,
+              fontSize: "0.875rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              background: `${T.color.sage}18`,
+              color: T.color.sage,
+              border: `1px solid ${T.color.sage}40`,
+              marginBottom: "1rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "0.5rem",
+              minHeight: "2.75rem",
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.color.sage} strokeWidth="2" strokeLinecap="round">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="3" />
+              <line x1="12" y1="2" x2="12" y2="6" />
+              <line x1="12" y1="18" x2="12" y2="22" />
+              <line x1="2" y1="12" x2="6" y2="12" />
+              <line x1="18" y1="12" x2="22" y2="12" />
+            </svg>
+            {t("viewThisTree")}
+          </button>
+        )}
+
         <GoldDivider />
 
         {/* ── Relationships ── */}
@@ -1044,6 +1353,9 @@ export default function PersonPanel({
                   spouse: t("relDescSpouse"),
                   sibling: t("relDescSibling"),
                   "ex-spouse": t("exSpouse"),
+                  stepparent: t("stepparent"),
+                  stepchild: t("stepchild"),
+                  "half-sibling": t("halfSibling"),
                 };
                 const relDesc = relDescMap[rawLabel] || rawLabel;
 
@@ -1098,12 +1410,8 @@ export default function PersonPanel({
                               sizes="32px"
                               style={{ objectFit: "cover" }}
                             />
-                          ) : otherPerson.gender === "female" ? (
-                            "\u{1F469}"
-                          ) : otherPerson.gender === "male" ? (
-                            "\u{1F468}"
                           ) : (
-                            "\u{1F9D1}"
+                            <SilhouetteAvatar gender={otherPerson.gender} size={20} birthDate={otherPerson.birth_date} deathDate={otherPerson.death_date} />
                           )}
                         </div>
                       )}
@@ -1190,6 +1498,96 @@ export default function PersonPanel({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* ── Auto-derived siblings (Issue 4d) ── */}
+          {derivedSiblings.length > 0 && (
+            <div style={{ marginTop: "0.75rem" }}>
+              <div
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.6875rem",
+                  fontWeight: 600,
+                  color: T.color.muted,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  marginBottom: "0.375rem",
+                }}
+              >
+                {t("siblings")}
+                <span
+                  style={{
+                    fontWeight: 400,
+                    fontStyle: "italic",
+                    textTransform: "none",
+                    marginLeft: "0.375rem",
+                    fontSize: "0.625rem",
+                  }}
+                >
+                  ({t("siblingAutoDesc")})
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                {derivedSiblings.map((sib) => {
+                  const sibName = `${sib.first_name}${sib.last_name ? " " + sib.last_name : ""}`;
+                  return (
+                    <div
+                      key={sib.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.625rem",
+                        padding: "0.5rem 0.875rem",
+                        borderRadius: "0.75rem",
+                        background: `${T.color.sage}08`,
+                        border: `1px solid ${T.color.sage}20`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "1.75rem",
+                          height: "1.75rem",
+                          borderRadius: "0.875rem",
+                          border: `2px solid ${T.color.sage}60`,
+                          background: `linear-gradient(135deg, ${T.color.warmStone}, ${T.color.sandstone})`,
+                          overflow: "hidden",
+                          flexShrink: 0,
+                          position: "relative",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {sib.photo_path ? (
+                          <Image src={sib.photo_path} alt={sibName} fill sizes="28px" style={{ objectFit: "cover" }} />
+                        ) : (
+                          <SilhouetteAvatar gender={sib.gender} size={16} birthDate={sib.birth_date} deathDate={sib.death_date} />
+                        )}
+                      </div>
+                      <button
+                        onClick={() => onSelectPerson && onSelectPerson(sib)}
+                        disabled={!onSelectPerson}
+                        style={{
+                          fontFamily: T.font.display,
+                          fontSize: "0.875rem",
+                          fontWeight: 600,
+                          color: onSelectPerson ? T.color.terracotta : T.color.charcoal,
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          cursor: onSelectPerson ? "pointer" : "default",
+                          textDecoration: onSelectPerson ? "underline" : "none",
+                          textDecorationColor: `${T.color.terracotta}40`,
+                          textUnderlineOffset: "0.125rem",
+                        }}
+                      >
+                        {sibName}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -1395,12 +1793,8 @@ export default function PersonPanel({
                                   sizes="28px"
                                   style={{ objectFit: "cover" }}
                                 />
-                              ) : p.gender === "female" ? (
-                                "\u{1F469}"
-                              ) : p.gender === "male" ? (
-                                "\u{1F468}"
                               ) : (
-                                "\u{1F9D1}"
+                                <SilhouetteAvatar gender={p.gender} size={16} birthDate={p.birth_date} deathDate={p.death_date} />
                               )}
                             </div>
                             <span>{pName}</span>
@@ -1458,7 +1852,7 @@ export default function PersonPanel({
                     >
                       {person.photo_path ? (
                         <Image src={person.photo_path} alt={person.first_name} fill sizes="32px" style={{ objectFit: "cover" }} />
-                      ) : person.gender === "female" ? "\u{1F469}" : person.gender === "male" ? "\u{1F468}" : "\u{1F9D1}"}
+                      ) : <SilhouetteAvatar gender={person.gender} size={20} birthDate={person.birth_date} deathDate={person.death_date} />}
                     </div>
                     <div
                       style={{
@@ -1493,7 +1887,7 @@ export default function PersonPanel({
                         >
                           {op?.photo_path ? (
                             <Image src={op.photo_path} alt={getPersonName(relPersonId)} fill sizes="32px" style={{ objectFit: "cover" }} />
-                          ) : op?.gender === "female" ? "\u{1F469}" : op?.gender === "male" ? "\u{1F468}" : "\u{1F9D1}"}
+                          ) : <SilhouetteAvatar gender={op?.gender || null} size={20} birthDate={op?.birth_date} deathDate={op?.death_date} />}
                         </div>
                       );
                     })()}
@@ -1676,6 +2070,12 @@ function reverseRelType(type: string): string {
       return "sibling";
     case "ex-spouse":
       return "ex-spouse";
+    case "stepparent":
+      return "stepchild";
+    case "stepchild":
+      return "stepparent";
+    case "half-sibling":
+      return "half-sibling";
     default:
       return type;
   }

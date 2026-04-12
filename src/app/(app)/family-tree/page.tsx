@@ -16,6 +16,7 @@ import type {
 } from "@/lib/auth/family-tree-actions";
 import { hierarchy, tree as d3tree } from "d3-hierarchy";
 import PersonPanel from "./PersonPanel";
+import FanChart from "./FanChart";
 
 /* ────────────────────────────────────────────── helpers ── */
 
@@ -111,7 +112,7 @@ function buildForest(
         if (sp) {
           spouse = sp;
           consumedAsSpouse.add(sid);
-          visited.add(sid); // don't create separate node
+          visited.add(sid); // prevent duplicate rendering
           break;
         }
       }
@@ -156,14 +157,14 @@ function buildForest(
   const forest: TreeNode[] = [];
 
   for (const r of roots) {
-    if (visited.has(r.id)) continue;
+    if (visited.has(r.id) || consumedAsSpouse.has(r.id)) continue;
     const node = buildNode(r.id);
     if (node) forest.push(node);
   }
 
-  // Add any orphans not visited
+  // Add any orphans not visited (skip consumed spouses)
   for (const p of persons) {
-    if (!visited.has(p.id)) {
+    if (!visited.has(p.id) && !consumedAsSpouse.has(p.id)) {
       forest.push({
         id: p.id,
         name: `${p.first_name}${p.last_name ? " " + p.last_name : ""}`,
@@ -200,8 +201,7 @@ function exportGedcom(
   lines.push("0 HEAD");
   lines.push("1 SOUR MemoryPalace");
   lines.push("1 GEDC");
-  lines.push("2 VERS 5.5");
-  lines.push("1 CHAR UTF-8");
+  lines.push("2 VERS 7.0");
 
   for (const p of persons) {
     lines.push(`0 @I${p.id.slice(0, 8)}@ INDI`);
@@ -501,32 +501,132 @@ function CloseIcon({ size = 18, color = T.color.muted }: { size?: number; color?
   );
 }
 
-/** Gender silhouette icon for empty photo */
-function GenderIcon({ gender, size, color }: { gender: string | null; size: number; color: string }) {
+/** Compute age category from birth/death dates */
+function getAgeCategory(birthDate: string | null, deathDate: string | null): "baby" | "child" | "teen" | "adult" | "elder" {
+  if (!birthDate) return "adult";
+  const refDate = deathDate ? new Date(deathDate) : new Date();
+  const birth = new Date(birthDate);
+  let age = refDate.getFullYear() - birth.getFullYear();
+  const m = refDate.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && refDate.getDate() < birth.getDate())) age--;
+  if (age < 4) return "baby";
+  if (age < 13) return "child";
+  if (age < 18) return "teen";
+  if (age < 65) return "adult";
+  return "elder";
+}
+
+/** Roman Tuscan age/gender silhouette icon for empty photo */
+function GenderIcon({ gender, size, color, birthDate, deathDate }: {
+  gender: string | null; size: number; color: string;
+  birthDate?: string | null; deathDate?: string | null;
+}) {
+  const age = getAgeCategory(birthDate || null, deathDate || null);
+  const isDead = !!deathDate;
+  const fillColor = isDead ? T.color.muted : color;
+  const fillOpacity = isDead ? 0.3 : 0.5;
+  const strokeC = isDead ? T.color.muted : color;
+
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill={color}
-      opacity={0.5}
-      style={{ display: "block" }}
-    >
-      {gender === "female" ? (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fillColor} opacity={fillOpacity} style={{ display: "block" }}>
+      {age === "baby" ? (
+        /* Baby: swaddled Roman infant */
         <>
-          <circle cx="12" cy="8" r="4" />
-          <path d="M12 12 C6 12 4 17 4 20 L20 20 C20 17 18 12 12 12Z" />
+          <circle cx="12" cy="7.5" r="3.2" />
+          {/* Swaddling wrap */}
+          <ellipse cx="12" cy="16" rx="5" ry="5.5" />
+          <path d="M8.5 13 Q12 11 15.5 13" fill="none" stroke={strokeC} strokeWidth="0.6" opacity="0.4" />
+          <path d="M9 15.5 Q12 13.5 15 15.5" fill="none" stroke={strokeC} strokeWidth="0.5" opacity="0.3" />
+          <path d="M9.5 18 Q12 16 14.5 18" fill="none" stroke={strokeC} strokeWidth="0.5" opacity="0.3" />
         </>
-      ) : gender === "male" ? (
+      ) : age === "child" ? (
+        /* Child: small toga figure */
         <>
-          <circle cx="12" cy="7" r="4" />
-          <path d="M12 11 C6 11 4 16 4 20 L20 20 C20 16 18 11 12 11Z" />
+          <circle cx="12" cy="7" r="3.2" />
+          {/* Small toga body */}
+          <path d="M12 10.2 C8 10.2 6.5 14.5 6.5 19 L17.5 19 C17.5 14.5 16 10.2 12 10.2Z" />
+          {/* Toga drape detail */}
+          <path d="M8 12 Q10 10.8 12 11.2 Q14 10.8 15.5 12" fill="none" stroke={strokeC} strokeWidth="0.6" opacity="0.35" />
+          <path d="M9 14.5 L9 18" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.25" />
         </>
+      ) : age === "elder" ? (
+        /* Elder: stooped figure with toga drape details */
+        gender === "female" ? (
+          <>
+            <circle cx="12" cy="6.5" r="3.4" />
+            {/* Hair bun detail */}
+            <ellipse cx="12" cy="4.2" rx="2" ry="1.2" fill={fillColor} opacity="0.3" />
+            {/* Stola body, slightly stooped */}
+            <path d="M12.5 10 C6 10.5 3.5 15.5 3.5 20.5 L20.5 20.5 C20.5 15.5 17.5 10 12.5 10Z" />
+            {/* Palla drape across shoulder */}
+            <path d="M6 12 Q9 10 12 11 Q15 10 18 12" fill="none" stroke={strokeC} strokeWidth="0.7" opacity="0.4" />
+            <path d="M7 14.5 Q9 12.5 11 14" fill="none" stroke={strokeC} strokeWidth="0.5" opacity="0.3" />
+            {/* Vertical fold lines */}
+            <path d="M10 14 L9.5 20" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14 14 L14.5 20" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+          </>
+        ) : (
+          <>
+            <circle cx="12" cy="6.5" r="3.4" />
+            {/* Laurel hint on elder male */}
+            <path d="M8.5 5.5 Q10 3.5 12 3.8 Q14 3.5 15.5 5.5" fill="none" stroke={strokeC} strokeWidth="0.6" opacity="0.35" />
+            {/* Toga body, stooped */}
+            <path d="M12.5 10 C6 10 4 15 4 20.5 L20 20.5 C20 15 18 10 12.5 10Z" />
+            {/* Toga fold draping */}
+            <path d="M7 12 Q10 10.5 12 11.5 Q14 10.5 17 12" fill="none" stroke={strokeC} strokeWidth="0.7" opacity="0.4" />
+            <path d="M7.5 14 Q9.5 12 11.5 14" fill="none" stroke={strokeC} strokeWidth="0.5" opacity="0.3" />
+            <path d="M10 13 L9 20" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14 13 L15 20" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+          </>
+        )
       ) : (
-        <>
-          <circle cx="12" cy="8" r="3.5" />
-          <path d="M12 11.5 C7 11.5 5 16 5 20 L19 20 C19 16 17 11.5 12 11.5Z" />
-        </>
+        /* Adult: refined Roman silhouette */
+        gender === "female" ? (
+          <>
+            <circle cx="12" cy="6.5" r="3.6" />
+            {/* Elegant hair piled up */}
+            <ellipse cx="12" cy="4" rx="2.2" ry="1.3" fill={fillColor} opacity="0.3" />
+            {/* Stola body - flowing Roman dress */}
+            <path d="M12 10 C6 10 4 16 4 21 L20 21 C20 16 18 10 12 10Z" />
+            {/* Palla draped across */}
+            <path d="M6.5 12 Q9 10 12 11 Q15 10 17.5 12" fill="none" stroke={strokeC} strokeWidth="0.7" opacity="0.4" />
+            {/* Fabric fold lines */}
+            <path d="M10 13 L9 20.5" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14 13 L15 20.5" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+            <path d="M12 12 L12 20.5" fill="none" stroke={strokeC} strokeWidth="0.3" opacity="0.15" />
+          </>
+        ) : gender === "male" ? (
+          <>
+            <circle cx="12" cy="6" r="3.6" />
+            {/* Laurel wreath outline */}
+            <path d="M7.8 5 Q9.5 2.5 12 3 Q14.5 2.5 16.2 5" fill="none" stroke={strokeC} strokeWidth="0.7" opacity="0.4" />
+            <path d="M8.5 4.2 L9 5.2" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.3" />
+            <path d="M15.5 4.2 L15 5.2" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.3" />
+            {/* Toga body */}
+            <path d="M12 9.5 C6 9.5 4 15.5 4 21 L20 21 C20 15.5 18 9.5 12 9.5Z" />
+            {/* Toga drape from left shoulder */}
+            <path d="M6 11.5 Q9.5 9.5 12 11 Q14 12 17 11" fill="none" stroke={strokeC} strokeWidth="0.7" opacity="0.4" />
+            {/* Toga folds */}
+            <path d="M8 13 Q10 11 12 13" fill="none" stroke={strokeC} strokeWidth="0.5" opacity="0.3" />
+            <path d="M9.5 12.5 L8.5 20.5" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14.5 12.5 L15.5 20.5" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+          </>
+        ) : (
+          /* Other/Unknown: Classical column silhouette */
+          <>
+            {/* Column capital (top) */}
+            <rect x="8" y="3" width="8" height="2" rx="0.5" fill={fillColor} opacity="0.6" />
+            <rect x="7" y="2.5" width="10" height="1.2" rx="0.3" fill={fillColor} opacity="0.4" />
+            {/* Column shaft with fluting */}
+            <rect x="8.5" y="5" width="7" height="13" rx="0.5" />
+            <path d="M9.8 5 L9.8 18" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+            <path d="M12 5 L12 18" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+            <path d="M14.2 5 L14.2 18" fill="none" stroke={strokeC} strokeWidth="0.4" opacity="0.2" />
+            {/* Column base */}
+            <rect x="7.5" y="18" width="9" height="1.2" rx="0.3" fill={fillColor} opacity="0.5" />
+            <rect x="7" y="19" width="10" height="1.5" rx="0.4" fill={fillColor} opacity="0.6" />
+          </>
+        )
       )}
     </svg>
   );
@@ -541,12 +641,14 @@ function PersonCard({
   nodeWPx,
   nodeHPx,
   isSelf,
+  onQuickAdd,
 }: {
   person: FamilyTreePerson;
   onSelect: (p: FamilyTreePerson) => void;
   nodeWPx: number;
   nodeHPx: number;
   isSelf?: boolean;
+  onQuickAdd?: (person: FamilyTreePerson, x: number, y: number) => void;
 }) {
   const firstName = person.first_name || "";
   const lastName = person.last_name || "";
@@ -699,6 +801,8 @@ function PersonCard({
             gender={person.gender}
             size={photoR * 1.2}
             color={T.color.walnut}
+            birthDate={person.birth_date}
+            deathDate={person.death_date}
           />
         </foreignObject>
       )}
@@ -772,6 +876,42 @@ function PersonCard({
           {"\u271D"}
         </text>
       )}
+
+      {/* Quick-add (+) button */}
+      {onQuickAdd && (
+        <g
+          style={{ cursor: "pointer" }}
+          onClick={(e) => {
+            e.stopPropagation();
+            const svg = (e.target as SVGElement).closest("svg");
+            const rect = svg?.getBoundingClientRect();
+            if (rect) {
+              onQuickAdd(person, e.clientX, e.clientY);
+            } else {
+              onQuickAdd(person, 0, 0);
+            }
+          }}
+        >
+          <circle
+            cx={nodeWPx - 12}
+            cy={nodeHPx - 12}
+            r={10}
+            fill={T.color.sage}
+            opacity={0.85}
+          />
+          <text
+            x={nodeWPx - 12}
+            y={nodeHPx - 8}
+            textAnchor="middle"
+            fontFamily={T.font.body}
+            fontSize={14}
+            fontWeight={700}
+            fill={T.color.white}
+          >
+            +
+          </text>
+        </g>
+      )}
     </g>
   );
 }
@@ -787,6 +927,7 @@ function CoupleNode({
   nodeWPx,
   nodeHPx,
   spouseGapPx,
+  onQuickAdd,
 }: {
   x: number;
   y: number;
@@ -795,6 +936,7 @@ function CoupleNode({
   nodeWPx: number;
   nodeHPx: number;
   spouseGapPx: number;
+  onQuickAdd?: (person: FamilyTreePerson, x: number, y: number) => void;
 }) {
   const hasSpouse = !!node.spouse;
   const totalW = hasSpouse ? nodeWPx * 2 + spouseGapPx : nodeWPx;
@@ -809,39 +951,33 @@ function CoupleNode({
           nodeWPx={nodeWPx}
           nodeHPx={nodeHPx}
           isSelf={node.isSelf}
+          onQuickAdd={onQuickAdd}
         />
       </g>
 
       {/* Spouse bond line + spouse card (current spouses only) */}
       {node.spouse && (
         <>
-          {/* Horizontal bond line between cards */}
-          <line
-            x1={nodeWPx}
-            y1={nodeHPx / 2}
-            x2={nodeWPx + spouseGapPx}
-            y2={nodeHPx / 2}
-            stroke={T.color.terracotta}
-            strokeWidth={2}
-            strokeDasharray="4 3"
-            opacity={0.7}
-          />
-          {/* Small bond ring on line */}
-          <circle
-            cx={nodeWPx + spouseGapPx / 2}
-            cy={nodeHPx / 2}
-            r={4}
-            fill="none"
-            stroke={T.color.terracotta}
-            strokeWidth={1.5}
-            opacity={0.6}
-          />
+          {/* Heart icon between spouse cards */}
+          {(() => {
+            const cx = nodeWPx + spouseGapPx / 2;
+            const cy = nodeHPx / 2;
+            const s = 6; // heart half-size
+            return (
+              <path
+                d={`M ${cx} ${cy + s * 0.6} C ${cx - s * 0.1} ${cy + s * 0.3} ${cx - s} ${cy + s * 0.1} ${cx - s} ${cy - s * 0.3} C ${cx - s} ${cy - s * 0.8} ${cx - s * 0.4} ${cy - s} ${cx} ${cy - s * 0.45} C ${cx + s * 0.4} ${cy - s} ${cx + s} ${cy - s * 0.8} ${cx + s} ${cy - s * 0.3} C ${cx + s} ${cy + s * 0.1} ${cx + s * 0.1} ${cy + s * 0.3} ${cx} ${cy + s * 0.6} Z`}
+                fill={T.color.terracotta}
+                opacity={0.6}
+              />
+            );
+          })()}
           <g transform={`translate(${nodeWPx + spouseGapPx}, 0)`}>
             <PersonCard
               person={node.spouse}
               onSelect={onSelect}
               nodeWPx={nodeWPx}
               nodeHPx={nodeHPx}
+              onQuickAdd={onQuickAdd}
             />
           </g>
         </>
@@ -853,6 +989,31 @@ function CoupleNode({
 /* ──────────────────────── Zoom/pan sessionStorage ── */
 
 const STORAGE_KEY = "family-tree-view";
+const VIEW_MODE_KEY = "family-tree-mode";
+const ROOT_PERSON_KEY = "family-tree-root";
+
+function loadViewMode(): "portrait" | "fan" {
+  try {
+    const v = sessionStorage.getItem(VIEW_MODE_KEY);
+    if (v === "fan") return "fan";
+  } catch { /* ignore */ }
+  return "portrait";
+}
+
+function saveViewMode(mode: "portrait" | "fan") {
+  try { sessionStorage.setItem(VIEW_MODE_KEY, mode); } catch { /* ignore */ }
+}
+
+function loadRootPerson(): string | null {
+  try { return sessionStorage.getItem(ROOT_PERSON_KEY); } catch { return null; }
+}
+
+function saveRootPerson(id: string | null) {
+  try {
+    if (id) sessionStorage.setItem(ROOT_PERSON_KEY, id);
+    else sessionStorage.removeItem(ROOT_PERSON_KEY);
+  } catch { /* ignore */ }
+}
 
 function loadViewState(): { pan: { x: number; y: number }; zoom: number } | null {
   try {
@@ -926,9 +1087,9 @@ function AddPersonForm({
   ];
 
   const handleSubmit = () => {
-    if (!first.trim()) return;
+    const name = first.trim() || t("unknownPerson");
     onAdd({
-      first_name: first.trim(),
+      first_name: name,
       last_name: last.trim() || undefined,
       birth_date: birthDate || undefined,
       death_date: deathDate || undefined,
@@ -1074,7 +1235,7 @@ function AddPersonForm({
             marginRight: "0.25rem",
           }}
         >
-          {t("genderPills")}
+          {t("gender")}
         </span>
         {genderPills.map((gp) => (
           <button
@@ -1102,64 +1263,140 @@ function AddPersonForm({
 
       {/* Relate to existing person */}
       {persons.length > 0 && (
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 10rem", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+          {/* Relationship type pills */}
+          <div>
             <label
-              htmlFor="family-tree-relate"
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.75rem",
                 color: T.color.muted,
+                marginBottom: "0.25rem",
+                display: "block",
               }}
             >
-              {t("relateToExisting")}
+              {t("relationshipType")}
             </label>
-            <select
-              id="family-tree-relate"
-              value={relatedTo}
-              onChange={(e) => setRelatedTo(e.target.value)}
-              style={{ ...inputStyle, appearance: "auto" }}
-            >
-              <option value="">{t("selectRelation")}</option>
-              {persons.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.first_name} {p.last_name || ""}
-                </option>
-              ))}
-            </select>
+            <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
+              {(["parent", "child", "spouse", "ex-spouse", "stepparent", "stepchild", "half-sibling"] as const).map((rt) => {
+                const isSubdued = rt === "ex-spouse";
+                const labelMap: Record<string, string> = {
+                  parent: t("relDescParent"),
+                  child: t("relDescChild"),
+                  spouse: t("relDescSpouse"),
+                  "ex-spouse": t("relDescExSpouse"),
+                  stepparent: t("stepparent"),
+                  stepchild: t("stepchild"),
+                  "half-sibling": t("halfSibling"),
+                };
+                return (
+                  <button
+                    key={rt}
+                    type="button"
+                    onClick={() => setRelationType(relationType === rt ? "" : rt)}
+                    style={{
+                      padding: "0.375rem 0.875rem",
+                      borderRadius: "1.25rem",
+                      border: `1px solid ${relationType === rt
+                        ? isSubdued ? T.color.muted : T.color.walnut
+                        : T.color.sandstone}`,
+                      background: relationType === rt
+                        ? isSubdued ? T.color.muted : T.color.walnut
+                        : T.color.white,
+                      fontFamily: T.font.body,
+                      fontSize: "0.8125rem",
+                      color: relationType === rt ? T.color.white : T.color.walnut,
+                      cursor: "pointer",
+                      minHeight: "2.75rem",
+                      fontWeight: relationType === rt ? 600 : 400,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {labelMap[rt] || rt}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          {relatedTo && (
-            <div style={{ flex: "1 1 8.75rem", display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+
+          {/* Person search / select */}
+          {relationType && (
+            <div>
               <label
-                htmlFor="family-tree-rel-type"
                 style={{
                   fontFamily: T.font.body,
                   fontSize: "0.75rem",
                   color: T.color.muted,
+                  marginBottom: "0.25rem",
+                  display: "block",
                 }}
               >
-                {t("relationshipType")}
+                {t("relateToExisting")}
               </label>
-              <select
-                id="family-tree-rel-type"
-                value={relationType}
-                onChange={(e) => setRelationType(e.target.value)}
-                style={{ ...inputStyle, appearance: "auto" }}
-              >
-                <option value="">{t("selectRelation")}</option>
-                <option value="parent">{t("relDescParent")}</option>
-                <option value="child">{t("relDescChild")}</option>
-                <option value="spouse">{t("relDescSpouse")}</option>
-                <option value="ex-spouse">{t("relDescExSpouse")}</option>
-                <option value="sibling">{t("relDescSibling")}</option>
-              </select>
+              <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
+                {persons.map((p) => {
+                  const isSelected = relatedTo === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setRelatedTo(isSelected ? "" : p.id)}
+                      style={{
+                        padding: "0.375rem 0.75rem",
+                        borderRadius: "1.25rem",
+                        border: `1px solid ${isSelected ? T.color.terracotta : T.color.sandstone}`,
+                        background: isSelected ? `${T.color.terracotta}18` : T.color.white,
+                        fontFamily: T.font.body,
+                        fontSize: "0.8125rem",
+                        color: isSelected ? T.color.terracotta : T.color.charcoal,
+                        cursor: "pointer",
+                        minHeight: "2.75rem",
+                        fontWeight: isSelected ? 600 : 400,
+                        transition: "all 0.15s ease",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.375rem",
+                      }}
+                    >
+                      {p.first_name} {p.last_name || ""}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
       )}
 
       {/* Action buttons */}
-      <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", flexWrap: "wrap" }}>
+        <button
+          onClick={() => {
+            onAdd({
+              first_name: t("unknownPerson"),
+              last_name: undefined,
+              birth_date: undefined,
+              death_date: undefined,
+              gender: undefined,
+              relatedToId: relatedTo || undefined,
+              relationType: relationType || undefined,
+            });
+          }}
+          style={{
+            padding: "0.625rem 1.25rem",
+            borderRadius: "0.75rem",
+            fontFamily: T.font.body,
+            fontSize: "0.875rem",
+            fontWeight: 600,
+            cursor: "pointer",
+            border: `1px solid ${T.color.sandstone}`,
+            background: "transparent",
+            color: T.color.walnut,
+            minHeight: "2.75rem",
+          }}
+        >
+          {t("addUnknown")}
+        </button>
         <button
           onClick={onCancel}
           style={{
@@ -1179,16 +1416,15 @@ function AddPersonForm({
         </button>
         <button
           onClick={handleSubmit}
-          disabled={!first.trim()}
           style={{
             padding: "0.625rem 1.25rem",
             borderRadius: "0.75rem",
             fontFamily: T.font.body,
             fontSize: "0.875rem",
             fontWeight: 600,
-            cursor: first.trim() ? "pointer" : "default",
+            cursor: "pointer",
             border: "none",
-            background: first.trim() ? T.color.sage : T.color.sandstone,
+            background: T.color.sage,
             color: T.color.white,
             minHeight: "2.75rem",
             display: "inline-flex",
@@ -1215,12 +1451,16 @@ export default function FamilyTreePage() {
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [toast, setToast] = useState<ToastData | null>(null);
+  const [showImportExport, setShowImportExport] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [initialFitDone, setInitialFitDone] = useState(false);
+  const [viewMode, setViewMode] = useState<"portrait" | "fan">("portrait");
+  const [rootPersonId, setRootPersonId] = useState<string | null>(null);
+  const [quickAddTarget, setQuickAddTarget] = useState<{ person: FamilyTreePerson; x: number; y: number } | null>(null);
   const [selfPersonId, setSelfPersonId] = useState<string | undefined>(undefined);
   const dragRef = useRef<{
     startX: number;
@@ -1255,6 +1495,9 @@ export default function FamilyTreePage() {
 
   useEffect(() => {
     loadData();
+    setViewMode(loadViewMode());
+    const savedRoot = loadRootPerson();
+    if (savedRoot) setRootPersonId(savedRoot);
   }, [loadData]);
 
   // When data changes, update selectedPerson reference
@@ -1275,7 +1518,6 @@ export default function FamilyTreePage() {
     relatedToId?: string;
     relationType?: string;
   }) => {
-    if (!data.first_name.trim()) return;
     const result = await addPerson({
       first_name: data.first_name,
       last_name: data.last_name,
@@ -1292,7 +1534,7 @@ export default function FamilyTreePage() {
     if (data.relatedToId && data.relationType && "person" in result && result.person) {
       try {
         const { addRelationship } = await import("@/lib/auth/family-tree-actions");
-        await addRelationship(result.person.id, data.relatedToId, data.relationType as "parent" | "child" | "spouse" | "sibling");
+        await addRelationship(result.person.id, data.relatedToId, data.relationType as "parent" | "child" | "spouse" | "sibling" | "ex-spouse" | "stepparent" | "stepchild" | "half-sibling");
       } catch {
         // Relationship creation may fail, but person is still added
       }
@@ -1371,10 +1613,102 @@ export default function FamilyTreePage() {
   const contentW = contentMaxX - contentMinX;
   const contentH = contentMaxY - contentMinY;
 
-  // Find self node position for auto-centering
-  const selfNode = selfPersonId
-    ? allNodes.find((n) => n.data.id === selfPersonId || n.data.isSelf)
-    : null;
+  // ── Issue 1: Compute cross-tree links for parent-child pairs not in D3 links ──
+  const crossTreeLinks = useMemo(() => {
+    if (allNodes.length === 0) return [];
+    // Build a map of person id → node position
+    const posMap = new Map<string, { x: number; y: number }>();
+    for (const n of allNodes) {
+      posMap.set(n.data.id, { x: n.x, y: n.y });
+      // Map spouse to actual visual x offset (couple is centered on n.x)
+      if (n.data.spouse) {
+        posMap.set(n.data.spouse.id, { x: n.x + (nodeWPx + spouseGapPx) / 2, y: n.y });
+      }
+    }
+    // Build set of existing D3 link pairs
+    const existingPairs = new Set<string>();
+    for (const tree of layoutData) {
+      for (const link of tree.links) {
+        // Find source/target node ids
+        const srcNode = tree.nodes.find((n) => n.x === link.sx && n.y === link.sy);
+        const tgtNode = tree.nodes.find((n) => n.x === link.tx && n.y === link.ty);
+        if (srcNode && tgtNode) {
+          existingPairs.add(`${srcNode.data.id}|${tgtNode.data.id}`);
+          if (srcNode.data.spouse) existingPairs.add(`${srcNode.data.spouse.id}|${tgtNode.data.id}`);
+        }
+      }
+    }
+    // Find all parent-child relationships
+    const extra: { sx: number; sy: number; tx: number; ty: number }[] = [];
+    for (const rel of relationships) {
+      let parentId: string | null = null;
+      let childId: string | null = null;
+      if (rel.relationship_type === "parent") {
+        parentId = rel.person_id;
+        childId = rel.related_person_id;
+      } else if (rel.relationship_type === "child") {
+        parentId = rel.related_person_id;
+        childId = rel.person_id;
+      }
+      if (!parentId || !childId) continue;
+      if (existingPairs.has(`${parentId}|${childId}`)) continue;
+      const pPos = posMap.get(parentId);
+      const cPos = posMap.get(childId);
+      if (pPos && cPos) {
+        extra.push({ sx: pPos.x, sy: pPos.y, tx: cPos.x, ty: cPos.y });
+        existingPairs.add(`${parentId}|${childId}`); // prevent duplicates
+      }
+    }
+    return extra;
+  }, [allNodes, layoutData, relationships, nodeWPx, spouseGapPx]);
+
+  // ── Ex-spouse links (dashed grey arcs) ──
+  const exSpouseLinks = useMemo(() => {
+    if (allNodes.length === 0) return [];
+    const posMap = new Map<string, { x: number; y: number }>();
+    for (const n of allNodes) {
+      posMap.set(n.data.id, { x: n.x, y: n.y });
+      if (n.data.spouse) posMap.set(n.data.spouse.id, { x: n.x + nodeWPx + spouseGapPx, y: n.y });
+    }
+    const links: { x1: number; y1: number; x2: number; y2: number }[] = [];
+    const seen = new Set<string>();
+    for (const rel of relationships) {
+      if ((rel.relationship_type as string) !== "ex-spouse") continue;
+      const key = [rel.person_id, rel.related_person_id].sort().join("|");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const p1 = posMap.get(rel.person_id);
+      const p2 = posMap.get(rel.related_person_id);
+      if (p1 && p2) links.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y });
+    }
+    return links;
+  }, [allNodes, relationships, nodeWPx, spouseGapPx]);
+
+  // ── Issue 2: Compute generation bars ──
+  const generationBars = useMemo(() => {
+    if (allNodes.length === 0) return [];
+    // Find the self-node y position as generation 0
+    const selfN = allNodes.find((n) => n.data.isSelf || n.data.id === selfPersonId);
+    const selfY = selfN ? selfN.y : 0;
+    // Collect all unique y-levels
+    const yLevels = new Set<number>();
+    for (const n of allNodes) yLevels.add(n.y);
+    // Sort and assign generation numbers relative to self
+    const sorted = Array.from(yLevels).sort((a, b) => a - b);
+    // The node size vertical step
+    const step = nodeHPx + vertGapPx;
+    return sorted.map((y) => {
+      const gen = step > 0 ? Math.round((y - selfY) / step) : 0;
+      return { y, gen };
+    });
+  }, [allNodes, selfPersonId, nodeHPx, vertGapPx]);
+
+  // Find center node for auto-centering (rootPersonId takes priority over self)
+  const centerTargetNode = rootPersonId
+    ? allNodes.find((n) => n.data.id === rootPersonId)
+    : selfPersonId
+      ? allNodes.find((n) => n.data.id === selfPersonId || n.data.isSelf)
+      : null;
 
   // Auto-fit on first load (center on self if possible)
   useEffect(() => {
@@ -1403,10 +1737,10 @@ export default function FamilyTreePage() {
     let centerX: number;
     let centerY: number;
 
-    if (selfNode) {
-      // Center on self node
-      centerX = selfNode.x;
-      centerY = selfNode.y;
+    if (centerTargetNode) {
+      // Center on target node (rootPerson or self)
+      centerX = centerTargetNode.x;
+      centerY = centerTargetNode.y;
     } else {
       centerX = (contentMinX + contentMaxX) / 2;
       centerY = (contentMinY + contentMaxY) / 2;
@@ -1421,7 +1755,7 @@ export default function FamilyTreePage() {
     setZoom(fitZoom);
     saveViewState(newPan, fitZoom);
     setInitialFitDone(true);
-  }, [loading, initialFitDone, allNodes.length, contentW, contentH, contentMinX, contentMaxX, contentMinY, contentMaxY, selfNode]);
+  }, [loading, initialFitDone, allNodes.length, contentW, contentH, contentMinX, contentMaxX, contentMinY, contentMaxY, centerTargetNode]);
 
   // Fit-to-view action
   const handleFitView = useCallback(() => {
@@ -1635,7 +1969,7 @@ export default function FamilyTreePage() {
         if (parentIds.length === 2) {
           try {
             const relType = fam.divorced ? "ex-spouse" : "spouse";
-            await addRelationship(parentIds[0], parentIds[1], relType as "parent" | "child" | "spouse" | "sibling");
+            await addRelationship(parentIds[0], parentIds[1], relType as "parent" | "child" | "spouse" | "sibling" | "ex-spouse" | "stepparent" | "stepchild" | "half-sibling");
           } catch {
             errorCount++;
           }
@@ -1710,6 +2044,42 @@ export default function FamilyTreePage() {
     boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.08)`,
   };
 
+  // Switch view mode
+  const handleViewMode = (mode: "portrait" | "fan") => {
+    setViewMode(mode);
+    saveViewMode(mode);
+  };
+
+  // Re-center tree on a specific person
+  const handleRecenter = useCallback((person: FamilyTreePerson) => {
+    setRootPersonId(person.id);
+    saveRootPerson(person.id);
+    setInitialFitDone(false); // trigger re-fit
+    setToast({ message: t("recentered", { name: person.first_name }), type: "success" });
+  }, [t]);
+
+  // Quick-add: add person with pre-filled relation
+  const handleQuickAdd = async (relationType: "parent" | "child" | "spouse", targetPerson: FamilyTreePerson) => {
+    setQuickAddTarget(null);
+    const result = await addPerson({
+      first_name: t("unknownPerson"),
+    });
+    if ("error" in result && result.error) {
+      setToast({ message: result.error, type: "error" });
+      return;
+    }
+    if ("person" in result && result.person) {
+      try {
+        const { addRelationship } = await import("@/lib/auth/family-tree-actions");
+        await addRelationship(result.person.id, targetPerson.id, relationType);
+      } catch { /* relationship may fail */ }
+    }
+    loadData();
+  };
+
+  // Effective root for fan chart (selfPersonId as fallback)
+  const effectiveRootId = rootPersonId || selfPersonId || persons[0]?.id;
+
   /** Generate a smooth cubic bezier path from parent center-bottom to child center-top */
   function makeLink(link: {
     sx: number;
@@ -1723,6 +2093,27 @@ export default function FamilyTreePage() {
     const endY = link.ty - halfH;
     const midY = (startY + endY) / 2;
     return `M ${link.sx} ${startY} C ${link.sx} ${midY}, ${link.tx} ${midY}, ${link.tx} ${endY}`;
+  }
+
+  /** Two intertwined paths from each parent to child — they cross once in the middle */
+  function makeCoupleLinkPaths(link: {
+    sx: number;
+    sy: number;
+    tx: number;
+    ty: number;
+  }): [string, string] {
+    const halfH = nodeHPx / 2;
+    const halfSpouse = (nodeWPx + spouseGapPx) / 2;
+    const startY = link.sy + halfH;
+    const endY = link.ty - halfH;
+    const midY = (startY + endY) / 2;
+    // Left parent starts left of couple center, right parent starts right
+    const lx = link.sx - halfSpouse * 0.4;
+    const rx = link.sx + halfSpouse * 0.4;
+    // They cross at midY and converge at child
+    const pathL = `M ${lx} ${startY} C ${lx} ${midY - 10}, ${rx} ${midY + 10}, ${link.tx} ${endY}`;
+    const pathR = `M ${rx} ${startY} C ${rx} ${midY - 10}, ${lx} ${midY + 10}, ${link.tx} ${endY}`;
+    return [pathL, pathR];
   }
 
   return (
@@ -1807,7 +2198,67 @@ export default function FamilyTreePage() {
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+          {/* View mode switcher */}
+          {persons.length > 0 && (
+            <div style={{
+              display: "flex",
+              borderRadius: "0.75rem",
+              border: `1px solid ${T.color.sandstone}40`,
+              overflow: "hidden",
+            }}>
+              <button
+                onClick={() => handleViewMode("portrait")}
+                aria-label={t("viewPortrait")}
+                title={t("viewPortrait")}
+                style={{
+                  width: "2.75rem",
+                  height: "2.75rem",
+                  border: "none",
+                  background: viewMode === "portrait" ? `${T.color.terracotta}18` : "transparent",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={viewMode === "portrait" ? T.color.terracotta : T.color.walnut} strokeWidth="2" strokeLinecap="round">
+                  <line x1="12" y1="22" x2="12" y2="8" />
+                  <path d="M12 14 Q8 12 5 8" />
+                  <circle cx="5" cy="6" r="2" fill={viewMode === "portrait" ? T.color.terracotta : T.color.walnut} opacity={0.3} />
+                  <path d="M12 14 Q16 12 19 8" />
+                  <circle cx="19" cy="6" r="2" fill={viewMode === "portrait" ? T.color.terracotta : T.color.walnut} opacity={0.3} />
+                  <circle cx="12" cy="6" r="2.5" fill={viewMode === "portrait" ? T.color.terracotta : T.color.walnut} opacity={0.4} />
+                </svg>
+              </button>
+              <button
+                onClick={() => handleViewMode("fan")}
+                aria-label={t("viewFan")}
+                title={t("viewFan")}
+                style={{
+                  width: "2.75rem",
+                  height: "2.75rem",
+                  border: "none",
+                  borderLeft: `1px solid ${T.color.sandstone}40`,
+                  background: viewMode === "fan" ? `${T.color.terracotta}18` : "transparent",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={viewMode === "fan" ? T.color.terracotta : T.color.walnut} strokeWidth="1.5">
+                  <path d="M12 20 A8 8 0 0 1 4 12" />
+                  <path d="M12 20 A12 12 0 0 1 0 8" />
+                  <path d="M12 20 A8 8 0 0 0 20 12" />
+                  <path d="M12 20 A12 12 0 0 0 24 8" />
+                  <circle cx="12" cy="20" r="2" fill={viewMode === "fan" ? T.color.terracotta : T.color.walnut} opacity={0.5} />
+                </svg>
+              </button>
+            </div>
+          )}
           <button
             onClick={() => setShowAddForm(true)}
             style={{
@@ -1819,35 +2270,104 @@ export default function FamilyTreePage() {
           >
             {t("addPerson")}
           </button>
-          <button
-            onClick={handleExport}
-            disabled={persons.length === 0}
-            style={{
-              ...btnStyle,
-              background: `${T.color.white}E0`,
-              backdropFilter: "blur(8px)",
-              color: T.color.walnut,
-              border: `1px solid ${T.color.sandstone}40`,
-              opacity: persons.length === 0 ? 0.5 : 1,
-              boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.06)`,
-            }}
-          >
-            {t("exportGedcom")}
-          </button>
-          <button
-            onClick={() => importRef.current?.click()}
-            disabled={importing}
-            style={{
-              ...btnStyle,
-              background: `${T.color.white}E0`,
-              backdropFilter: "blur(8px)",
-              color: T.color.walnut,
-              border: `1px solid ${T.color.sandstone}40`,
-              boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.06)`,
-            }}
-          >
-            {importing ? t("importing") : t("importGedcom")}
-          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowImportExport(!showImportExport)}
+              style={{
+                ...btnStyle,
+                background: `${T.color.white}E0`,
+                backdropFilter: "blur(8px)",
+                color: T.color.walnut,
+                border: `1px solid ${T.color.sandstone}40`,
+                boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.06)`,
+              }}
+            >
+              {importing ? t("importing") : t("importExport")}
+            </button>
+            {showImportExport && (
+              <>
+                <div
+                  onClick={() => setShowImportExport(false)}
+                  style={{ position: "fixed", inset: 0, zIndex: 9 }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    right: 0,
+                    marginTop: "0.25rem",
+                    background: T.color.white,
+                    borderRadius: "0.75rem",
+                    border: `1px solid ${T.color.sandstone}40`,
+                    boxShadow: "0 0.5rem 1.5rem rgba(44,44,42,.12)",
+                    padding: "0.375rem",
+                    zIndex: 10,
+                    minWidth: "10rem",
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setShowImportExport(false);
+                      handleExport();
+                    }}
+                    disabled={persons.length === 0}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      padding: "0.625rem 0.875rem",
+                      borderRadius: "0.5rem",
+                      border: "none",
+                      background: "transparent",
+                      fontFamily: T.font.body,
+                      fontSize: "0.8125rem",
+                      color: persons.length === 0 ? T.color.muted : T.color.charcoal,
+                      cursor: persons.length === 0 ? "default" : "pointer",
+                      textAlign: "left",
+                      minHeight: "2.75rem",
+                    }}
+                  >
+                    {t("exportFile")}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowImportExport(false);
+                      importRef.current?.click();
+                    }}
+                    disabled={importing}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      padding: "0.625rem 0.875rem",
+                      borderRadius: "0.5rem",
+                      border: "none",
+                      background: "transparent",
+                      fontFamily: T.font.body,
+                      fontSize: "0.8125rem",
+                      color: T.color.charcoal,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      minHeight: "2.75rem",
+                    }}
+                  >
+                    {t("importFile")}
+                  </button>
+                  <div
+                    style={{
+                      padding: "0.375rem 0.875rem 0.5rem",
+                      fontFamily: T.font.body,
+                      fontSize: "0.625rem",
+                      color: T.color.muted,
+                      fontStyle: "italic",
+                      borderTop: `1px solid ${T.color.cream}`,
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    {t("gedcomHint")}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
           <input
             ref={importRef}
             type="file"
@@ -1873,6 +2393,7 @@ export default function FamilyTreePage() {
         ref={containerRef}
         style={{
           flex: 1,
+          minHeight: 0,
           position: "relative",
           overflow: "hidden",
           cursor: dragRef.current ? "grabbing" : "grab",
@@ -1970,6 +2491,18 @@ export default function FamilyTreePage() {
               {t("addFirstPerson")}
             </button>
           </div>
+        ) : viewMode === "fan" && effectiveRootId ? (
+          <FanChart
+            persons={persons}
+            relationships={relationships}
+            rootPersonId={effectiveRootId}
+            onSelectPerson={setSelectedPerson}
+            isMobile={isMobile}
+            pan={pan}
+            zoom={zoom}
+            onPanChange={setPan}
+            onZoomChange={setZoom}
+          />
         ) : (
           <svg
             ref={svgRef}
@@ -2010,19 +2543,85 @@ export default function FamilyTreePage() {
               </filter>
             </defs>
             <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-              {/* Links */}
-              {layoutData.map((tree, ti) =>
-                tree.links.map((link, li) => (
-                  <path
-                    key={`link-${ti}-${li}`}
-                    d={makeLink(link)}
-                    fill="none"
-                    stroke="url(#link-gradient)"
-                    strokeWidth={2}
-                    strokeLinecap="round"
+              {/* Generation bars (behind everything) */}
+              {generationBars.map((bar) => (
+                <g key={`gen-${bar.gen}`}>
+                  <line
+                    x1={contentMinX}
+                    y1={bar.y}
+                    x2={contentMaxX}
+                    y2={bar.y}
+                    stroke={T.color.sandstone}
+                    strokeWidth={1}
+                    strokeDasharray="8 6"
+                    opacity={0.25}
                   />
-                ))
+                  <text
+                    x={contentMinX + 8}
+                    y={bar.y - 6}
+                    fontFamily={T.font.body}
+                    fontSize={11}
+                    fill={T.color.sandstone}
+                    opacity={0.5}
+                  >
+                    {t("generation")} {bar.gen > 0 ? `+${bar.gen}` : bar.gen}
+                    {bar.gen === 0 ? ` (${t("generationYou")})` : ""}
+                  </text>
+                </g>
+              ))}
+              {/* D3 hierarchy links — intertwined for couples, simple bezier otherwise */}
+              {layoutData.map((tree, ti) =>
+                tree.links.map((link, li) => {
+                  if (link.hasSpouse) {
+                    const [pathL, pathR] = makeCoupleLinkPaths(link);
+                    return (
+                      <g key={`link-${ti}-${li}`}>
+                        <path d={pathL} fill="none" stroke="url(#link-gradient)" strokeWidth={2} strokeLinecap="round" />
+                        <path d={pathR} fill="none" stroke="url(#link-gradient)" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
+                      </g>
+                    );
+                  }
+                  return (
+                    <path
+                      key={`link-${ti}-${li}`}
+                      d={makeLink(link)}
+                      fill="none"
+                      stroke="url(#link-gradient)"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                    />
+                  );
+                })
               )}
+              {/* Cross-tree links (dashed, for parent-child pairs not in D3 hierarchy) */}
+              {crossTreeLinks.map((link, i) => (
+                <path
+                  key={`xlink-${i}`}
+                  d={makeLink({ ...link, hasSpouse: false })}
+                  fill="none"
+                  stroke={T.color.sandstone}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeDasharray="6 4"
+                  opacity={0.5}
+                />
+              ))}
+              {/* Ex-spouse links (dashed grey arcs) */}
+              {exSpouseLinks.map((link, i) => {
+                const midX = (link.x1 + link.x2) / 2;
+                const midY = Math.min(link.y1, link.y2) - 30;
+                return (
+                  <path
+                    key={`ex-${i}`}
+                    d={`M ${link.x1} ${link.y1} Q ${midX} ${midY}, ${link.x2} ${link.y2}`}
+                    fill="none"
+                    stroke={T.color.muted}
+                    strokeWidth={1.5}
+                    strokeDasharray="6 4"
+                    opacity={0.35}
+                  />
+                );
+              })}
               {/* Nodes (couples) */}
               {layoutData.map((tree, ti) =>
                 tree.nodes.map((n, ni) => (
@@ -2035,6 +2634,7 @@ export default function FamilyTreePage() {
                     nodeWPx={nodeWPx}
                     nodeHPx={nodeHPx}
                     spouseGapPx={spouseGapPx}
+                    onQuickAdd={(person, cx, cy) => setQuickAddTarget({ person, x: cx, y: cy })}
                   />
                 ))
               )}
@@ -2057,6 +2657,7 @@ export default function FamilyTreePage() {
               flexDirection: "column",
               gap: "0.375rem",
               zIndex: 40,
+              pointerEvents: "auto",
             }}
           >
             <button
@@ -2096,6 +2697,54 @@ export default function FamilyTreePage() {
         )}
       </div>
 
+      {/* Quick-add popup menu */}
+      {quickAddTarget && (
+        <>
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 98 }}
+            onClick={() => setQuickAddTarget(null)}
+          />
+          <div
+            style={{
+              position: "fixed",
+              left: quickAddTarget.x,
+              top: quickAddTarget.y,
+              transform: "translate(-50%, -100%)",
+              zIndex: 99,
+              background: T.color.white,
+              borderRadius: "0.75rem",
+              border: `1px solid ${T.color.sandstone}40`,
+              boxShadow: "0 0.5rem 1.5rem rgba(44,44,42,.15)",
+              padding: "0.375rem",
+              minWidth: "9rem",
+            }}
+          >
+            {(["parent", "child", "spouse"] as const).map((rel) => (
+              <button
+                key={rel}
+                onClick={() => handleQuickAdd(rel, quickAddTarget.person)}
+                style={{
+                  display: "block",
+                  width: "100%",
+                  padding: "0.625rem 0.875rem",
+                  borderRadius: "0.5rem",
+                  border: "none",
+                  background: "transparent",
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  color: T.color.charcoal,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  minHeight: "2.75rem",
+                }}
+              >
+                {rel === "parent" ? t("quickAddParent") : rel === "child" ? t("quickAddChild") : t("quickAddSpouse")}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       {/* Person detail panel */}
       {selectedPerson && (
         <>
@@ -2109,6 +2758,7 @@ export default function FamilyTreePage() {
             onClick={() => setSelectedPerson(null)}
           />
           <PersonPanel
+            key={selectedPerson.id}
             person={selectedPerson}
             allPersons={persons}
             relationships={relationships}
@@ -2116,6 +2766,8 @@ export default function FamilyTreePage() {
             onUpdate={loadData}
             onSelectPerson={setSelectedPerson}
             isMobile={isMobile}
+            isCurrentUser={selectedPerson.id === selfPersonId}
+            onRecenter={handleRecenter}
           />
         </>
       )}
