@@ -68,10 +68,7 @@ export function clearModelCache() {
  */
 export const ERA_MODELS = {
   roman: {
-    amphora: "/models/roman/amphora.glb",
-    oilLamp: "/models/roman/oil_lamp.glb",
-    couch: "/models/roman/roman_couch.glb",
-    columnFragment: "/models/roman/column_fragment.glb",
+    // Placeholder — no Roman-era GLB assets currently shipped
   },
   renaissance: {
     candelabra: "/models/renaissance/candelabra.glb",

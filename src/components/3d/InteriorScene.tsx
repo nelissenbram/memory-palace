@@ -1,5 +1,6 @@
 "use client";
-import { useRef, useEffect, useMemo, useState } from "react";
+import { useRef, useEffect, useMemo, useState, memo } from "react";
+import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
@@ -10,8 +11,12 @@ import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
-import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
+import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
+import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { useUserStore } from "@/lib/stores/userStore";
 import { useRoomMediaBarStore } from "@/lib/stores/roomMediaBarStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
@@ -19,20 +24,23 @@ import { T } from "@/lib/theme";
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
 // wall, screen, vinyl player, vitrine, orbs. Layout varies size & décor.
-export default function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman"}: {roomId: any,actualRoomId?: string,layoutOverride?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string}){
+function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ}: {roomId: any,actualRoomId?: string,layoutOverride?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number}){
   const { t } = useTranslation("interior3d");
   const { getWingRooms } = useRoomStore();
+  const userName = useUserStore((s) => s.userName);
   const roomMediaBarOpen = useRoomMediaBarStore(s => s.open);
   const setRoomMediaBarOpen = useRoomMediaBarStore(s => s.setOpen);
   const currentRoomName = getWingRooms(roomId).find(r => r.id === (actualRoomId || roomId))?.name || "";
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
+  const camDebugRef = useRef<HTMLPreElement | null>(null);
+  const camDebug = false; // set true to show camera debug overlay
   const lookA=useRef({yaw:0,pitch:0}),lookT=useRef({yaw:0,pitch:0});
   const pos=useRef(new THREE.Vector3()),posT=useRef(new THREE.Vector3());
   const _rc=useRef(new THREE.Raycaster()),_mouse=useRef(new THREE.Vector2());
   const _dir=useRef(new THREE.Vector3()),_yAxis=useRef(new THREE.Vector3(0,1,0));
   const _ld=useRef(new THREE.Vector3()),_lookTarget=useRef(new THREE.Vector3());
   const _vinylPos=useRef(new THREE.Vector3()),_screenPos=useRef(new THREE.Vector3());
-  const keys=useRef<Record<string,boolean>>({}),drag=useRef(false),prev=useRef({x:0,y:0}),hovMem=useRef<any>(null),memMeshes=useRef<THREE.Mesh[]>([]),hitAreaMeshes=useRef<THREE.Mesh[]>([]);
+  const keys=useRef<Record<string,boolean>>({}),drag=useRef(false),prev=useRef({x:0,y:0}),hovMem=useRef<any>(null),memMeshes=useRef<THREE.Mesh[]>([]),hitAreaMeshes=useRef<THREE.Mesh[]>([]),allClickableRef=useRef<THREE.Object3D[]>([]);
   const videoElRef=useRef<HTMLVideoElement|null>(null),audioElRef=useRef<HTMLAudioElement|null>(null);
   const volOverride=useRef<{video:number|null,audio:number|null}>({video:null,audio:null});
   const vidAnimEntry=useRef<any>(null); // ref to the animTex video entry for track switching
@@ -46,6 +54,14 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
   const [mutedPlaying,setMutedPlaying]=useState(false);
   const allVideoMems=useRef<any[]>([]);
   const allAudioMems=useRef<any[]>([]);
+  const onboardingModeRef=useRef(onboardingMode);
+  useEffect(()=>{onboardingModeRef.current=onboardingMode;},[onboardingMode]);
+  const onOnboardingLookDoneRef=useRef(onOnboardingLookDone);
+  useEffect(()=>{onOnboardingLookDoneRef.current=onOnboardingLookDone;},[onOnboardingLookDone]);
+  const onCinematicStepRef=useRef(onCinematicStep);
+  useEffect(()=>{onCinematicStepRef.current=onCinematicStep;},[onCinematicStep]);
+  const onMemoryClickRef=useRef(onMemoryClick);
+  useEffect(()=>{onMemoryClickRef.current=onMemoryClick;},[onMemoryClick]);
   const wing=wingDataProp||DEFAULT_WINGS.find(r=>r.id===roomId),mems=memories||[];
 
   // ── FINGERPRINT: split structural vs display to avoid unnecessary full rebuilds ──
@@ -93,8 +109,9 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     };
     const scene=new THREE.Scene();scene.background=new THREE.Color(layout.isExhibition?"#87CEEB":dlPreset.fogColor);
     const camera=new THREE.PerspectiveCamera(58,w/h,0.1,layout.isExhibition?120:60);
-    const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.7*dlPreset.exposure;
+    const Q=getQuality();
+    const ren=borrowRenderer(w,h);
+    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.7*dlPreset.exposure;
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
@@ -103,9 +120,9 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     scene.environment=envMapProc;
     scene.environmentIntensity=0.8;
     let envMapHDRI: THREE.Texture|null=null;
-    loadHDRI(ren,HDRI_INTERIOR).then((hdr)=>{if(!alive){hdr.dispose();return;}envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.8;}).catch(()=>{});
+    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{if(!alive)return;scene.environment=p;scene.environmentIntensity=0.7;},onFull:(hdr)=>{if(!alive){hdr.dispose();return;}envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.8;}}).catch(()=>{});}
 
-    // ── POST-PROCESSING (with SSAO) ──
+    // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     const composer=createPostProcessing(ren,scene,camera,"interior",{ssao:false});
 
     // ── ATMOSPHERIC FOG ──
@@ -114,7 +131,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     scene.fog=new THREE.Fog(isExhibition?"#B8D8E8":dlPreset.fogColor,isExhibition?8:3,fogFar);
 
     scene.add(new THREE.HemisphereLight(isExhibition?"#87CEEB":dlPreset.ambientColor,isExhibition?"#D4C8A8":"#C4B8A0",isExhibition?.7:.4*dlPreset.ambientIntensity/0.5));
-    const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.1*dlPreset.sunIntensity);sun.position.set(isExhibition?18:10,isExhibition?20:14,-4);sun.castShadow=true;sun.shadow.mapSize.set(isExhibition?2048:1024,isExhibition?2048:1024);
+    const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.1*dlPreset.sunIntensity);sun.position.set(isExhibition?18:10,isExhibition?20:14,-4);sun.castShadow=true;sun.shadow.mapSize.set(Math.min(Q.shadowMapSize,isExhibition?2048:1024),Math.min(Q.shadowMapSize,isExhibition?2048:1024));
     const shCam=isExhibition?20:12;
     sun.shadow.camera.near=0.5;sun.shadow.camera.far=isExhibition?60:30;sun.shadow.camera.left=-shCam;sun.shadow.camera.right=shCam;sun.shadow.camera.top=shCam;sun.shadow.camera.bottom=-shCam;
     scene.add(sun);
@@ -142,7 +159,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       leatherD:new THREE.MeshStandardMaterial({color:"#4A2818",roughness:.5,metalness:.04,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.12,.12)}),
       button:new THREE.MeshStandardMaterial({color:"#3A1E10",roughness:.3,metalness:.1}),
       bronze:new THREE.MeshStandardMaterial({color:"#8A7050",roughness:.32,metalness:.48}),
-      marble:new THREE.MeshPhysicalMaterial({color:"#E8E2DA",roughness:.15,metalness:.06,map:marbleTex.map,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:marbleTex.roughnessMap,aoMap:marbleTex.aoMap,aoMapIntensity:.8,clearcoat:.3,clearcoatRoughness:.2,reflectivity:.6}),
+      marble:mkPhys(THREE,{color:"#E8E2DA",roughness:.15,metalness:.06,map:marbleTex.map,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:marbleTex.roughnessMap,aoMap:marbleTex.aoMap,aoMapIntensity:.8,clearcoat:.3,clearcoatRoughness:.2,reflectivity:.6}),
       brick:new THREE.MeshStandardMaterial({color:"#8A5040",roughness:.9}),
       brickD:new THREE.MeshStandardMaterial({color:"#6A3830",roughness:.85}),
       iron:new THREE.MeshStandardMaterial({color:"#3A3A3A",roughness:.5,metalness:.4}),
@@ -158,14 +175,14 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       vinylL:new THREE.MeshStandardMaterial({color:wing?.accent||"#C17F59",roughness:.3}),
       pot:new THREE.MeshStandardMaterial({color:"#B8926A",roughness:.6}),
       plant:new THREE.MeshStandardMaterial({color:"#4A7838",roughness:.85}),
-      curtain:new THREE.MeshPhysicalMaterial({color:"#8A6848",roughness:.95,side:THREE.DoubleSide,sheen:0.3,sheenRoughness:0.8,sheenColor:new THREE.Color("#D4B896"),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
+      curtain:mkPhys(THREE,{color:"#8A6848",roughness:.95,side:THREE.DoubleSide,sheen:0.3,sheenRoughness:0.8,sheenColor:new THREE.Color("#D4B896"),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
       fG:new THREE.MeshStandardMaterial({color:"#B89850",roughness:.28,metalness:.65}),
       fB:new THREE.MeshStandardMaterial({color:"#7A6040",roughness:.38,metalness:.5}),
       matF:new THREE.MeshStandardMaterial({color:"#F2EDE4",roughness:.95}),
       lamp:new THREE.MeshStandardMaterial({color:"#E8D8C0",roughness:.7,transparent:true,opacity:.8}),
       lampG:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity}),
-      handle:new THREE.MeshPhysicalMaterial({color:"#C8A858",roughness:.18,metalness:.85,clearcoat:.4,clearcoatRoughness:.1}),
-      glass:new THREE.MeshPhysicalMaterial({color:"#E8F0F0",transparent:true,opacity:.15,roughness:.02,metalness:.0,transmission:.85,ior:1.5,thickness:.5}),
+      handle:mkPhys(THREE,{color:"#C8A858",roughness:.18,metalness:.85,clearcoat:.4,clearcoatRoughness:.1}),
+      glass:mkPhys(THREE,{color:"#E8F0F0",transparent:true,opacity:.15,roughness:.02,metalness:.0,transmission:.85,ior:1.5,thickness:.5}),
     };
     const fMats=[MS.fG,MS.fB,MS.gold];
     memMeshes.current=[];hitAreaMeshes.current=[];
@@ -192,7 +209,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       const terraLightMat=new THREE.MeshStandardMaterial({color:"#D4A06A",roughness:.7,metalness:.03});
       const stoneMat=new THREE.MeshStandardMaterial({color:"#E0D8C8",roughness:.55,metalness:.06,map:marbleTex.map,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.2,.2)});
       const stoneWarmMat=new THREE.MeshStandardMaterial({color:"#E8DCC8",roughness:.6,metalness:.04});
-      const waterMat=new THREE.MeshPhysicalMaterial({color:"#4A7A8A",roughness:.05,metalness:.15,transparent:true,opacity:.7,clearcoat:1,clearcoatRoughness:.05});
+      const waterMat=mkPhys(THREE,{color:"#4A7A8A",roughness:.05,metalness:.15,transparent:true,opacity:.7,clearcoat:1,clearcoatRoughness:.05});
       const mosaicDarkMat=new THREE.MeshStandardMaterial({color:"#8A6040",roughness:.6});
       const mosaicLightMat=new THREE.MeshStandardMaterial({color:"#E8D8B8",roughness:.55});
       const hedgeMat=new THREE.MeshStandardMaterial({color:"#3A6828",roughness:.9});
@@ -269,7 +286,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       }
 
       // ── OPEN SKY (no ceiling in center) — use a sky-colored plane far above ──
-      const skyMat=new THREE.MeshBasicMaterial({color:"#87CEEB",side:THREE.DoubleSide});
+      const skyMat=new THREE.MeshBasicMaterial({color:"#87CEEB"});
       const sky=new THREE.Mesh(new THREE.PlaneGeometry(rW+20,rL+20),skyMat);
       sky.rotation.x=Math.PI/2;sky.position.y=rH+8;scene.add(sky);
       // Soft cloud wisps
@@ -379,7 +396,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       scene.add(mk(new THREE.CylinderGeometry(0.03,0.06,0.10,8),MS.bronze,0,1.58,0));
       scene.add(mk(new THREE.SphereGeometry(0.04,8,8),MS.bronze,0,1.65,0));
       // Subtle water shimmer light
-      const fountainLight=new THREE.PointLight("#B0D8E8",0.2,4);fountainLight.position.set(0,1.1,0);scene.add(fountainLight);
+      if(!isMobileGPU()){const fountainLight=new THREE.PointLight("#B0D8E8",0.2,4);fountainLight.position.set(0,1.1,0);scene.add(fountainLight);}
 
       // ── GARDEN ELEMENTS: potted plants, low hedges, small statues ──
       // Low hedges along the courtyard inner perimeter
@@ -812,7 +829,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       // emissive warm glow
       scene.add(mk(new THREE.SphereGeometry(0.012,4,4),new THREE.MeshBasicMaterial({color:"#FFAA44"}),lampX+0.09,lampY+0.02,lampZ2));
       // point light
-      const oilLight=new THREE.PointLight("#FF9930",0.3,3);oilLight.position.set(lampX+0.09,lampY+0.05,lampZ2);scene.add(oilLight);
+      if(!isMobileGPU()){const oilLight=new THREE.PointLight("#FF9930",0.3,3);oilLight.position.set(lampX+0.09,lampY+0.05,lampZ2);scene.add(oilLight);}
 
       // ─── ROMAN CEILING BEAMS ───
       const beamCount=7;
@@ -835,7 +852,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     scene.add(mk(new THREE.BoxGeometry(.2,1.1,.3),MS.brick,fpX+.9,.55,fpZ));
     scene.add(mk(new THREE.BoxGeometry(2,.18,.3),MS.brick,fpX,1.19,fpZ));
     scene.add(mk(new THREE.BoxGeometry(2.6,.06,.6),MS.marble,fpX,.03,fpZ+.15));
-    const fireL=new THREE.PointLight("#FF8030",.6,5);fireL.position.set(fpX,.5,fpZ+.2);scene.add(fireL);
+    const fireL=new THREE.PointLight("#FF8030",isMobileGPU()?0:.6,5);fireL.position.set(fpX,.5,fpZ+.2);if(!isMobileGPU())scene.add(fireL);
     animTex.push({type:"fire",light:fireL});
     for(let l=0;l<3;l++){const log=mk(new THREE.CylinderGeometry(.06,.07,.5+Math.random()*.3,6),MS.dkW,fpX-.25+l*.25,.12,fpZ+.1);log.rotation.z=Math.PI/2+Math.random()*.2;scene.add(log);}
     for(let f=0;f<5;f++){const fl2=new THREE.Mesh(new THREE.ConeGeometry(.06+Math.random()*.04,.2+Math.random()*.15,4),f%2?MS.fire:MS.fireG);fl2.position.set(fpX-.2+f*.1,.2+Math.random()*.1,fpZ+.1);animTex.push({type:"flame",mesh:fl2,baseY:.2+Math.random()*.1,phase:Math.random()*6});scene.add(fl2);}
@@ -849,25 +866,35 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     // ═══════════════════════════════════════════
     const sofaZ=rL/2-3.5;
     if(!isExhibition){
-    scene.add(mk(new THREE.BoxGeometry(2.4,.35,.9),MS.leather,0,.175,sofaZ));
-    scene.add(mk(new THREE.BoxGeometry(2.4,.55,.12),MS.leatherD,0,.55,sofaZ+.39));
-    for(let s=-1;s<=1;s+=2)scene.add(mk(new THREE.BoxGeometry(.14,.45,.8),MS.leatherD,s*1.13,.35,sofaZ));
-    for(let bx=-3;bx<=3;bx++)for(let by=0;by<2;by++){scene.add(mk(new THREE.SphereGeometry(.02,6,6),MS.button,bx*.3,.45+by*.18,sofaZ+.44));}
-    for(let lx of[-1,1])for(let lz of[-1,1])scene.add(mk(new THREE.SphereGeometry(.04,6,6),MS.dkW,lx*1,.04,sofaZ+lz*.35));
+    // Sofa legs (raised off floor to avoid z-fighting)
+    for(let lx of[-1,1])for(let lz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.04,.045,.12,6),MS.dkW,lx*1,.06,sofaZ+lz*.35));
+    // Seat base
+    scene.add(mk(new THREE.BoxGeometry(2.4,.25,.9),MS.leather,0,.245,sofaZ));
+    // Back
+    scene.add(mk(new THREE.BoxGeometry(2.4,.48,.12),MS.leatherD,0,.6,sofaZ+.39));
+    // Arms
+    for(let s=-1;s<=1;s+=2)scene.add(mk(new THREE.BoxGeometry(.14,.38,.8),MS.leatherD,s*1.13,.39,sofaZ));
+    // Buttons
+    for(let bx=-3;bx<=3;bx++)for(let by=0;by<2;by++){scene.add(mk(new THREE.SphereGeometry(.02,6,6),MS.button,bx*.3,.5+by*.18,sofaZ+.44));}
     scene.add(mk(new THREE.BoxGeometry(.45,.22,.35),new THREE.MeshStandardMaterial({color:"#8A5838",roughness:.8}),-0.7,.48,sofaZ-.15));
     scene.add(mk(new THREE.BoxGeometry(.4,.2,.32),new THREE.MeshStandardMaterial({color:wing?.accent||"#C17F59",roughness:.85}),.8,.46,sofaZ-.12));
     } // end !isExhibition sofa
 
     // ═══════════════════════════════════════════
-    // ARMCHAIRS (flanking fireplace)
+    // ARMCHAIRS (flanking fireplace — skip left if reading chair present)
     // ═══════════════════════════════════════════
     if(!isExhibition){
     for(let s=-1;s<=1;s+=2){
+      if(s===-1&&layout.readingChair)continue; // reading chair occupies this spot
       const ax=s*Math.min(3.5,rW/2-2.5),az=fpZ+2.5;
-      scene.add(mk(new THREE.BoxGeometry(1,.3,.8),MS.leather,ax,.15,az));
-      scene.add(mk(new THREE.BoxGeometry(1,.45,.1),MS.leatherD,ax,.45,az+.35));
-      for(let as=-1;as<=1;as+=2)scene.add(mk(new THREE.BoxGeometry(.12,.35,.7),MS.leatherD,ax+as*.44,.3,az));
-      for(let abx of[-1,1])for(let abz of[-1,1])scene.add(mk(new THREE.SphereGeometry(.03,6,6),MS.dkW,ax+abx*.4,.03,az+abz*.3));
+      // Legs (cylinders raised off floor)
+      for(let abx of[-1,1])for(let abz of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.03,.035,.18,6),MS.dkW,ax+abx*.4,.09,az+abz*.3));
+      // Seat
+      scene.add(mk(new THREE.BoxGeometry(1,.12,.8),MS.leather,ax,.24,az));
+      // Back
+      scene.add(mk(new THREE.BoxGeometry(1,.42,.1),MS.leatherD,ax,.48,az+.35));
+      // Arms
+      for(let as=-1;as<=1;as+=2)scene.add(mk(new THREE.BoxGeometry(.12,.3,.7),MS.leatherD,ax+as*.44,.36,az));
     }
     } // end !isExhibition armchairs
 
@@ -898,7 +925,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     for(let cx2 of[-1,1])for(let cz2 of[-1,1])scene.add(mk(new THREE.CylinderGeometry(.022,.022,.43,6),MS.dkW,dkX+cx2*.18,.23,chZ+cz2*.17));
     scene.add(mk(new THREE.CylinderGeometry(.03,.05,.3,6),MS.bronze,dkX-.6,.93,dkZ-.15));
     const dkShade=mk(new THREE.CylinderGeometry(.05,.09,.12,8,1,true),MS.lamp,dkX-.6,1.12,dkZ-.15);scene.add(dkShade);
-    const dkLight=new THREE.PointLight("#FFE8C0",.25,3);dkLight.position.set(dkX-.6,1.15,dkZ-.15);scene.add(dkLight);
+    if(!isMobileGPU()){const dkLight=new THREE.PointLight("#FFE8C0",.25,3);dkLight.position.set(dkX-.6,1.15,dkZ-.15);scene.add(dkLight);}
     } // end !isExhibition desk
     // Clickable hit area for desk (opens upload when empty — placed after memory routing below)
 
@@ -1003,7 +1030,8 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
           scene.add(mk(new THREE.BoxGeometry(0.08,paintH+0.18,paintW+0.18),MS.fG,px-facingSign*0.02,py,pz));
           scene.add(mk(new THREE.BoxGeometry(0.02,paintH+0.04,paintW+0.04),MS.gold,px-facingSign*0.06,py,pz));
         }
-        // Warm spotlight
+        // Warm spotlight (skip on mobile)
+        if(!isMobileGPU()){
         const pSpot=new THREE.SpotLight("#FFF5E0",0.5,5,Math.PI/8,0.5,1.2);
         if(isZ){
           pSpot.position.set(px,rH-0.3,pz+facingSign*1);
@@ -1012,7 +1040,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
           pSpot.position.set(px+facingSign*1,rH-0.3,pz);
           pSpot.target.position.set(px,py,pz);
         }
-        scene.add(pSpot);scene.add(pSpot.target);
+        scene.add(pSpot);scene.add(pSpot.target);}
         // Canvas or empty station
         const mem=exPaintings[paintIdx];
         if(mem){
@@ -1112,10 +1140,31 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       // Frame only shown when there's actual content
       scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
       scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.gold,fpX,2.4,fpZ+.08));
-      const fpSp=new THREE.SpotLight("#FFF5E0",.8,5,Math.PI/7,.5,1.2);fpSp.position.set(fpX,rH-.2,fpZ+.5);fpSp.target.position.set(fpX,2.4,fpZ);scene.add(fpSp);scene.add(fpSp.target);
+      if(!isMobileGPU()){const fpSp=new THREE.SpotLight("#FFF5E0",.8,5,Math.PI/7,.5,1.2);fpSp.position.set(fpX,rH-.2,fpZ+.5);fpSp.target.position.set(fpX,2.4,fpZ);scene.add(fpSp);scene.add(fpSp.target);}
       const om=bigPaintMem;const t=paintTex(om);
       const omc=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),new THREE.MeshStandardMaterial({map:t,roughness:.8}));
       omc.position.set(fpX,2.4,fpZ+.12);omc.userData={memory:om};scene.add(omc);memMeshes.current.push(omc);
+    }else if((actualRoomId||roomId)==="ro1"){
+      // "Me, Over Time" placeholder — ornate frame with personalised title
+      scene.add(mk(new THREE.BoxGeometry(1.8,1.3,.1),MS.fG,fpX,2.4,fpZ+.02));
+      scene.add(mk(new THREE.BoxGeometry(1.65,1.15,.02),MS.gold,fpX,2.4,fpZ+.08));
+      if(!isMobileGPU()){const fpSp2=new THREE.SpotLight("#FFF5E0",.6,5,Math.PI/7,.5,1.2);fpSp2.position.set(fpX,rH-.2,fpZ+.5);fpSp2.target.position.set(fpX,2.4,fpZ);scene.add(fpSp2);scene.add(fpSp2.target);}
+      const cvs=document.createElement("canvas");cvs.width=512;cvs.height=352;
+      const ctx=cvs.getContext("2d")!;
+      ctx.fillStyle="#F5F0E6";ctx.fillRect(0,0,512,352);
+      for(let i=0;i<800;i++){ctx.fillStyle=`rgba(180,160,130,${Math.random()*0.04})`;ctx.fillRect(Math.random()*512,Math.random()*352,2,2);}
+      ctx.textAlign="center";ctx.textBaseline="middle";
+      const displayName=userName||"Your";
+      const now=new Date();const month=now.toLocaleString("en",{month:"long"});const year=now.getFullYear();
+      ctx.fillStyle="#8B7355";ctx.font="italic 22px Georgia, serif";
+      ctx.fillText(`${displayName}'s Beautiful Smile`,256,150);
+      ctx.fillStyle="#A09889";ctx.font="italic 16px Georgia, serif";
+      ctx.fillText(`anno ${month} ${year}`,256,195);
+      ctx.strokeStyle="#C8B898";ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(160,225);ctx.lineTo(352,225);ctx.stroke();
+      const tex=new THREE.CanvasTexture(cvs);tex.colorSpace=THREE.SRGBColorSpace;
+      const placeholderMat=new THREE.MeshStandardMaterial({map:tex,roughness:.85});
+      const phMesh=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.1),placeholderMat);
+      phMesh.position.set(fpX,2.4,fpZ+.12);phMesh.userData={isUploadPainting:true};scene.add(phMesh);hitAreaMeshes.current.push(phMesh);
     }
 
     // ── PHOTO FRAMES: small fireplace frame ──
@@ -1318,7 +1367,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       const vidEntry={type:"video",canvas:vc,ctx:vctx,tex:vtex,mem:vm,w:384,h:256,phase:Math.random()*100,screenImg:()=>screenImg,videoEl:()=>videoEl};
       animTex.push(vidEntry);
       vidAnimEntry.current=vidEntry;
-      const scrGl=new THREE.PointLight(`hsl(${vm.hue},40%,60%)`,isExhibition?.3:.15,isExhibition?8:4);scrGl.position.set(isExhibition?scrX:scrX-.5,scrY,isExhibition?scrZ+1:scrZ);scene.add(scrGl);
+      if(!isMobileGPU()){const scrGl=new THREE.PointLight(`hsl(${vm.hue},40%,60%)`,isExhibition?.3:.15,isExhibition?8:4);scrGl.position.set(isExhibition?scrX:scrX-.5,scrY,isExhibition?scrZ+1:scrZ);scene.add(scrGl);}
     }else{
       const idleC=document.createElement("canvas");idleC.width=384;idleC.height=256;const ic=idleC.getContext("2d")!;
       ic.fillStyle="#1A1A1A";ic.fillRect(0,0,384,256);ic.fillStyle="#333";ic.font="24px Georgia,serif";ic.textAlign="center";ic.fillText(t("noVideos"),192,128);
@@ -1362,10 +1411,10 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     } // end !isExhibition vinyl
 
     // ═══════════════════════════════════════════
-    // VITRINE / GLASS DISPLAY CASE (right wall, between screen and vinyl)
+    // VITRINE / GLASS DISPLAY CASE (left of fireplace, against back wall)
     // ═══════════════════════════════════════════
     if(!isExhibition){
-    const vtX=rW/2-1.2, vtZ=-rL/2+2;
+    const vtX=-rW/2+2, vtZ=-rL/2+0.7;
     const vtW=1.4, vtD=0.7, vtBaseH=0.55, vtGlassH=1.0;
     const vtBrassMat=new THREE.MeshStandardMaterial({color:"#B8963E",roughness:.22,metalness:.7});
     const vtVelvet=new THREE.MeshStandardMaterial({color:"#1A0A2E",roughness:.95,metalness:0});
@@ -1384,9 +1433,9 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     scene.add(mk(new THREE.BoxGeometry(vtW+.1,.015,vtD+.1),vtBrassMat,vtX,vtBaseH+.02,vtZ));
     scene.add(mk(new THREE.BoxGeometry(vtW-.06,.01,vtD-.06),vtVelvet,vtX,vtBaseH+.03,vtZ));
     const vtGBot=vtBaseH+.04;
-    const vtGlassMat=new THREE.MeshPhysicalMaterial({color:"#E0EEF0",transparent:true,opacity:.07,roughness:.02,metalness:.03,transmission:.94,ior:1.5,thickness:.3,side:THREE.DoubleSide});
+    const vtGlassMat=mkPhys(THREE,{color:"#E0EEF0",transparent:true,opacity:.07,roughness:.02,metalness:.03,transmission:.94,ior:1.5,thickness:.3,side:THREE.DoubleSide});
     const vtMidY=vtGBot+vtGlassH*.5;
-    scene.add(mk(new THREE.BoxGeometry(vtW-.1,.012,vtD-.1),new THREE.MeshPhysicalMaterial({color:"#E8F4F4",transparent:true,opacity:.1,roughness:.01,metalness:0,transmission:.95,ior:1.5,thickness:.15}),vtX,vtMidY,vtZ));
+    scene.add(mk(new THREE.BoxGeometry(vtW-.1,.012,vtD-.1),mkPhys(THREE,{color:"#E8F4F4",transparent:true,opacity:.1,roughness:.01,metalness:0,transmission:.95,ior:1.5,thickness:.15}),vtX,vtMidY,vtZ));
     const vtTopY=vtGBot+vtGlassH;
     scene.add(mk(new THREE.BoxGeometry(vtW+.04,.05,vtD+.04),MS.dkW,vtX,vtTopY,vtZ));
     scene.add(mk(new THREE.BoxGeometry(vtW+.08,.015,vtD+.08),vtBrassMat,vtX,vtTopY+.025,vtZ));
@@ -1405,8 +1454,8 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     scene.add(mk(new THREE.BoxGeometry(.025,.02,vtD),vtBrassMat,vtX+vtW/2-.015,vtTopY-.01,vtZ));
     scene.add(mk(new THREE.BoxGeometry(vtW,.02,.025),vtBrassMat,vtX,vtGBot+.01,vtZ+vtD/2-.015));
     scene.add(mk(new THREE.BoxGeometry(vtW,.02,.025),vtBrassMat,vtX,vtGBot+.01,vtZ-vtD/2+.015));
-    const vtLight=new THREE.PointLight("#FFF5E0",.8,3);vtLight.position.set(vtX,vtTopY-.06,vtZ);scene.add(vtLight);
-    const vtLight2=new THREE.PointLight("#FFF0D0",.4,1.5);vtLight2.position.set(vtX,vtMidY-.05,vtZ);scene.add(vtLight2);
+    if(!isMobileGPU()){const vtLight=new THREE.PointLight("#FFF5E0",.8,3);vtLight.position.set(vtX,vtTopY-.06,vtZ);scene.add(vtLight);
+    const vtLight2=new THREE.PointLight("#FFF0D0",.4,1.5);vtLight2.position.set(vtX,vtMidY-.05,vtZ);scene.add(vtLight2);}
     caseMems.slice(0,3).forEach((m: any,i: any)=>{
       const recTex=paintTex(m);
       const rec=new THREE.Mesh(new THREE.PlaneGeometry(.45,.45),new THREE.MeshStandardMaterial({map:recTex,roughness:.4,metalness:.05}));
@@ -1455,12 +1504,12 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     // TABLE LAMPS
     // ═══════════════════════════════════════════
     if(!isExhibition){
-    for(const[lx,lz] of [[-rW/2+1.5,rL/2-2],[rW/2-1.5,-rL/2+2]]){
+    for(const[lx,lz] of [[rW/2-1.5,-rL/2+1.5]]){
       scene.add(mk(new THREE.CylinderGeometry(.2,.25,.6,8),MS.dkW,lx,.3,lz));
       scene.add(mk(new THREE.CylinderGeometry(.28,.28,.04,10),MS.gold,lx,.62,lz));
       scene.add(mk(new THREE.CylinderGeometry(.04,.06,.4,6),MS.bronze,lx,.82,lz));
       const shade=mk(new THREE.CylinderGeometry(.08,.14,.2,8,1,true),MS.lamp,lx,1.1,lz);scene.add(shade);
-      const lampL=new THREE.PointLight("#FFE8C0",.35,4);lampL.position.set(lx,1.2,lz);scene.add(lampL);
+      if(!isMobileGPU()){const lampL=new THREE.PointLight("#FFE8C0",.35,4);lampL.position.set(lx,1.2,lz);scene.add(lampL);}
       const halo=new THREE.Mesh(new THREE.SphereGeometry(.25,8,8),MS.lampG);halo.position.set(lx,1.1,lz);scene.add(halo);
     }
     } // end !isExhibition table lamps
@@ -1483,7 +1532,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
         scene.add(mk(new THREE.CylinderGeometry(.06,.04,.05,8),MS.bronze,sx2,sconceH+.12,sz2+dir*0.04));
         // Flame
         const fl3=new THREE.Mesh(new THREE.SphereGeometry(.025,5,5),MS.glassG);fl3.position.set(sx2,sconceH+.18,sz2+dir*0.04);scene.add(fl3);
-        const sl3=new THREE.PointLight("#FFE0B0",.15,3.5);sl3.position.set(sx2,sconceH+.1,sz2+dir*0.15);scene.add(sl3);
+        if(!isMobileGPU()){const sl3=new THREE.PointLight("#FFE0B0",.15,3.5);sl3.position.set(sx2,sconceH+.1,sz2+dir*0.15);scene.add(sl3);}
       };
       // Back wall sconces (z=-rL/2): skip center screen zone (|x|<3)
       for(const bsx of [-10,-5,5,10]){
@@ -1501,22 +1550,22 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
           scene.add(mk(new THREE.CylinderGeometry(.05,.05,.02,8),MS.gold,sx3,sconceH-.08,fsz));
           scene.add(mk(new THREE.CylinderGeometry(.06,.04,.05,8),MS.bronze,sx3+s*0.04,sconceH+.12,fsz));
           const fl4=new THREE.Mesh(new THREE.SphereGeometry(.025,5,5),MS.glassG);fl4.position.set(sx3+s*0.04,sconceH+.18,fsz);scene.add(fl4);
-          const sl4=new THREE.PointLight("#FFE0B0",.12,3);sl4.position.set(sx3+s*0.12,sconceH+.1,fsz);scene.add(sl4);
+          if(!isMobileGPU()){const sl4=new THREE.PointLight("#FFE0B0",.12,3);sl4.position.set(sx3+s*0.12,sconceH+.1,fsz);scene.add(sl4);}
         }
       }
       // Sunlight pouring into the open courtyard — bright directional fill
-      const courtyardSun=new THREE.DirectionalLight("#FFF5E0",0.8);
+      if(!isMobileGPU()){const courtyardSun=new THREE.DirectionalLight("#FFF5E0",0.8);
       courtyardSun.position.set(5,rH+6,-3);courtyardSun.target.position.set(0,0,0);
-      scene.add(courtyardSun);scene.add(courtyardSun.target);
+      scene.add(courtyardSun);scene.add(courtyardSun.target);}
       // Warm ambient uplighting from courtyard floor
-      const courtAmbient=new THREE.PointLight("#FFE8D0",0.3,15);courtAmbient.position.set(0,1,0);scene.add(courtAmbient);
+      if(!isMobileGPU()){const courtAmbient=new THREE.PointLight("#FFE8D0",0.3,15);courtAmbient.position.set(0,1,0);scene.add(courtAmbient);}
     }else{
     for(let s=-1;s<=1;s+=2){
       for(const sz of[-2,2]){
         scene.add(mk(new THREE.BoxGeometry(.07,.15,.07),MS.sconce,s*(rW/2-.04),sconceH,sz));
         scene.add(mk(new THREE.CylinderGeometry(.045,.03,.07,6),MS.sconce,s*(rW/2-.08),sconceH+.15,sz));
         const bl=new THREE.Mesh(new THREE.SphereGeometry(.03,6,6),MS.glassG);bl.position.set(s*(rW/2-.08),sconceH+.22,sz);scene.add(bl);
-        const sl=new THREE.PointLight("#FFE0B0",.2,3);sl.position.set(s*(rW/2-.15),sconceH+.1,sz);scene.add(sl);
+        if(!isMobileGPU()){const sl=new THREE.PointLight("#FFE0B0",.2,3);sl.position.set(s*(rW/2-.15),sconceH+.1,sz);scene.add(sl);}
       }
     }
     if(layout.extraSconces){
@@ -1524,7 +1573,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
         scene.add(mk(new THREE.BoxGeometry(.07,.15,.07),MS.sconce,sx,sconceH,-rL/2+.04));
         scene.add(mk(new THREE.CylinderGeometry(.045,.03,.07,6),MS.sconce,sx,sconceH+.15,-rL/2+.08));
         const bl2=new THREE.Mesh(new THREE.SphereGeometry(.03,6,6),MS.glassG);bl2.position.set(sx,sconceH+.22,-rL/2+.08);scene.add(bl2);
-        const sl2=new THREE.PointLight("#FFE0B0",.15,3);sl2.position.set(sx,sconceH+.1,-rL/2+.15);scene.add(sl2);
+        if(!isMobileGPU()){const sl2=new THREE.PointLight("#FFE0B0",.15,3);sl2.position.set(sx,sconceH+.1,-rL/2+.15);scene.add(sl2);}
       }
     }
     } // end sconce block
@@ -1558,9 +1607,9 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       const c1=new THREE.Mesh(new THREE.PlaneGeometry(.45,2.2),MS.curtain);c1.position.set(winX-.85,winH,winZ+wDir*.06);scene.add(c1);
       const c2=new THREE.Mesh(new THREE.PlaneGeometry(.45,2.2),MS.curtain);c2.position.set(winX+.85,winH,winZ+wDir*.06);scene.add(c2);
       // Strong directional light through window
-      const winSp=new THREE.SpotLight(dlPreset.sunColor,.8*dlPreset.sunIntensity,12,Math.PI/4,.5,1.2);winSp.position.set(winX,winH+.4,winZ+wDir*.5);winSp.target.position.set(winX,.5,winZ+wDir*3);scene.add(winSp);scene.add(winSp.target);
+      if(!isMobileGPU()){const winSp=new THREE.SpotLight(dlPreset.sunColor,.8*dlPreset.sunIntensity,12,Math.PI/4,.5,1.2);winSp.position.set(winX,winH+.4,winZ+wDir*.5);winSp.target.position.set(winX,.5,winZ+wDir*3);scene.add(winSp);scene.add(winSp.target);}
       // Light shaft particles effect (warm glow on floor)
-      const shaftGeo=new THREE.PlaneGeometry(1.5,4);const shaftMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.06*dlPreset.sunIntensity,side:THREE.DoubleSide});
+      const shaftGeo=new THREE.PlaneGeometry(1.5,4);const shaftMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.06*dlPreset.sunIntensity});
       const shaft=new THREE.Mesh(shaftGeo,shaftMat);shaft.position.set(winX,1.5,winZ+wDir*2);shaft.rotation.x=wDir*(-.6);scene.add(shaft);
       }
     }
@@ -1708,7 +1757,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     scene.add(mk(new THREE.BoxGeometry(1,.3,.85),MS.leather,rcX,.15,rcZ));
     scene.add(mk(new THREE.BoxGeometry(1,.7,.1),MS.leatherD,rcX,.55,rcZ+.38));
     for(let ws=-1;ws<=1;ws+=2)scene.add(mk(new THREE.BoxGeometry(.08,.5,.4),MS.leatherD,rcX+ws*.48,.45,rcZ+.2));
-    for(let lx of[-1,1])for(let lz of[-1,1])scene.add(mk(new THREE.SphereGeometry(.035,6,6),MS.dkW,rcX+lx*.4,.03,rcZ+lz*.35));
+    for(let lx of[-1,1])for(let lz of[-1,1])scene.add(mk(new THREE.SphereGeometry(.035,6,6),MS.dkW,rcX+lx*.4,.05,rcZ+lz*.35));
     for(let bx2=-1;bx2<=1;bx2++)for(let by2=0;by2<3;by2++){scene.add(mk(new THREE.SphereGeometry(.015,6,6),MS.button,rcX+bx2*.25,.4+by2*.18,rcZ+.42));}
     }
 
@@ -1734,7 +1783,8 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       const star=new THREE.Mesh(new THREE.OctahedronGeometry(.1,0),starMat);
       star.position.set(txX,3.08,txZ);star.rotation.y=Math.PI/4;scene.add(star);
       // Subtle star light halo
-      const starLight=new THREE.PointLight("#FFF0C0",.6,4);starLight.position.set(txX,3.1,txZ);scene.add(starLight);
+      let starLight: THREE.PointLight|null=null;
+      if(!isMobileGPU()){starLight=new THREE.PointLight("#FFF0C0",.6,4);starLight.position.set(txX,3.1,txZ);scene.add(starLight);}
       // ── Ornaments — matte glass baubles, muted palette ──
       const ornDefs=[
         {c:"#8B1A1A",e:"#5A1010",tier:0},{c:"#C8A858",e:"#8A7030",tier:0},{c:"#8B1A1A",e:"#5A1010",tier:0},
@@ -1773,8 +1823,9 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       scene.add(mk(new THREE.BoxGeometry(.18,.14,.18),presentMat1,txX+.08,.07,txZ+.5));
       scene.add(mk(new THREE.BoxGeometry(.2,.02,.03),ribbonMat,txX+.08,.14,txZ+.5));
       // ── Warm ambient glow — like the tree is lit from within ──
-      const treeLight=new THREE.PointLight("#FFE0A0",.8,6);treeLight.position.set(txX,1.5,txZ);scene.add(treeLight);
-      const treeLight2=new THREE.PointLight("#FFF5D0",.4,4);treeLight2.position.set(txX,2.5,txZ);scene.add(treeLight2);
+      let treeLight: THREE.PointLight|null=null;
+      if(!isMobileGPU()){treeLight=new THREE.PointLight("#FFE0A0",.8,6);treeLight.position.set(txX,1.5,txZ);scene.add(treeLight);
+      const treeLight2=new THREE.PointLight("#FFF5D0",.4,4);treeLight2.position.set(txX,2.5,txZ);scene.add(treeLight2);}
       animTex.push({type:"xmasTree" as any,mesh:star as any,light:treeLight,star:starLight as any,x:txX,z:txZ});
     }
 
@@ -1819,7 +1870,8 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       else{orbMat=new THREE.MeshStandardMaterial({color:`hsl(${m.hue},${m.s}%,${m.l}%)`,emissive:`hsl(${m.hue},${m.s}%,${m.l-15}%)`,emissiveIntensity:.4,transparent:true,opacity:.85,roughness:.1,metalness:.2});}
       const sphere=new THREE.Mesh(new THREE.SphereGeometry(.16,14,14),orbMat);sphere.position.set(ox,oy,oz);sphere.userData={memory:m};scene.add(sphere);memMeshes.current.push(sphere);
       const inner=new THREE.Mesh(new THREE.SphereGeometry(.08,10,10),new THREE.MeshBasicMaterial({color:`hsl(${m.hue},${m.s+10}%,${m.l+15}%)`,transparent:true,opacity:.5}));inner.position.set(ox,oy,oz);scene.add(inner);
-      const ol=new THREE.PointLight(`hsl(${m.hue},${m.s}%,${m.l}%)`,.3,2.5);ol.position.set(ox,oy,oz);scene.add(ol);
+      let ol: THREE.PointLight|null=null;
+      if(!isMobileGPU()){ol=new THREE.PointLight(`hsl(${m.hue},${m.s}%,${m.l}%)`,.3,2.5);ol.position.set(ox,oy,oz);scene.add(ol);}
       animTex.push({type:"orb",mesh:sphere,inner,light:ol,baseY:oy,phase:Math.random()*Math.PI*2});
     });
 
@@ -1875,12 +1927,12 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     }
     // Transom arch glow (semicircular light above doors, facing into room)
     const tranGeo=new THREE.CircleGeometry(.6,16,0,Math.PI);
-    const tranMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity,side:THREE.DoubleSide});
+    const tranMat=new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity});
     const transom=new THREE.Mesh(tranGeo,tranMat);
     transom.rotation.y=Math.PI;// face into room (towards -Z)
     transom.position.set(0,3.02,bdZ-.02);scene.add(transom);
     // Warm light spilling from corridor
-    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.04*dlPreset.sunIntensity,side:THREE.DoubleSide}));
+    const bdGlow=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.8),new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.04*dlPreset.sunIntensity}));
     bdGlow.position.set(0,1.9,bdZ);scene.add(bdGlow);
     animTex.push({type:"doorGlow",mesh:bdGlow});
     const bdLight=new THREE.SpotLight("#FFE0B0",.5,6,Math.PI/5,.6,1);
@@ -1905,8 +1957,8 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     rdG.setAttribute("position",new THREE.BufferAttribute(rdP,3));
     scene.add(new THREE.Points(rdG,new THREE.PointsMaterial({color:dlPreset.sunColor,size:.03,transparent:true,opacity:.25*dlPreset.sunIntensity,blending:THREE.AdditiveBlending,depthWrite:false})));
 
-    const camY=isExhibition?1.8:1.7;
-    const camZ=isExhibition?rL/2-4:rL/2-2.5;
+    const camY=isExhibition?2.1:2.0;
+    const camZ=initialCameraZ!=null?initialCameraZ:isExhibition?rL/2-4:rL/2-2.5;
     pos.current.set(0,camY,camZ);posT.current.set(0,camY,camZ);
     lookT.current={yaw:0,pitch:0};lookA.current={yaw:0,pitch:0};
 
@@ -1914,20 +1966,88 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     const dust=createDustParticles({count:isExhibition?250:100,bounds:{x:rW/2-.5,y:rH/2,z:rL/2-.5},center:new THREE.Vector3(0,rH/2,0),opacity:0.25,size:isExhibition?0.035:0.025});
     scene.add(dust.points);
 
+    // ── Optimize: deduplicate materials to reduce GPU state changes ──
+    optimizeMaterials(scene);
+
     const clock=new THREE.Clock();
+    const _isMobile=window.innerWidth<768||window.innerHeight<500;
+    let _frameCount=0;
+    let _cinStep=-1;
     const animate=()=>{
       if(!alive)return;
-      frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();
+      frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();_frameCount++;
       lookA.current.yaw+=(lookT.current.yaw-lookA.current.yaw)*.08;lookA.current.pitch+=(lookT.current.pitch-lookA.current.pitch)*.08;
+      // ── Onboarding cinematic: multi-step waypoint sequence ──
+      // On mobile, each step gets +0.5s extra for readability
+      if (onboardingModeRef.current) {
+        const ot = clock.getElapsedTime();
+        const d=isMobileProp?0.5:0;
+        if(ot<=1.0+d){
+          // Step 0: look down
+          if(_cinStep!==0){_cinStep=0;onCinematicStepRef.current?.(0);}
+          const p=Math.min(ot/(1.0+d),1);const ease=p*p*(3-2*p);
+          lookT.current.yaw=0;lookT.current.pitch=-0.3390*ease;
+        }else if(ot<=2.5+d*2){
+          // Step 1: pause looking down
+          if(_cinStep!==1){_cinStep=1;onCinematicStepRef.current?.(1);}
+          lookT.current.pitch=-0.3390;
+        }else if(ot<=4.5+d*3){
+          // Step 2: look right
+          if(_cinStep!==2){_cinStep=2;onCinematicStepRef.current?.(2);}
+          const dur=2.0+d;const p=Math.min((ot-(2.5+d*2))/dur,1);const ease=p*p*(3-2*p);
+          lookT.current.yaw=1.3020*ease;
+          lookT.current.pitch=-0.3390+(-0.0540-(-0.3390))*ease;
+        }else if(ot<=7.0+d*4){
+          // Step 3: pause looking right
+          if(_cinStep!==3){_cinStep=3;onCinematicStepRef.current?.(3);}
+          lookT.current.yaw=1.3020;lookT.current.pitch=-0.0540;
+        }else if(ot<=11.0+d*5){
+          // Step 4: look left
+          if(_cinStep!==4){_cinStep=4;onCinematicStepRef.current?.(4);}
+          const dur=4.0+d;const p=Math.min((ot-(7.0+d*4))/dur,1);const ease=p*p*(3-2*p);
+          lookT.current.yaw=1.3020+(-1.2720-1.3020)*ease;
+          lookT.current.pitch=-0.0540+(-0.1290-(-0.0540))*ease;
+        }else if(ot<=13.5+d*6){
+          // Step 5: pause looking left
+          if(_cinStep!==5){_cinStep=5;onCinematicStepRef.current?.(5);}
+          lookT.current.yaw=-1.2720;lookT.current.pitch=-0.1290;
+        }else if(ot<=15.5+d*7){
+          // Step 6: look straight
+          if(_cinStep!==6){_cinStep=6;onCinematicStepRef.current?.(6);}
+          const dur=2.0+d;const p=Math.min((ot-(13.5+d*6))/dur,1);const ease=p*p*(3-2*p);
+          lookT.current.yaw=-1.2720*(1-ease);
+          lookT.current.pitch=-0.1290*(1-ease);
+        }else if(ot<=16.0+d*8){
+          // Step 7: brief pause
+          if(_cinStep!==7){_cinStep=7;onCinematicStepRef.current?.(7);}
+          lookT.current.yaw=0;lookT.current.pitch=0;
+        }else if(ot<=18.0+d*9){
+          // Step 8: walk forward to painting
+          if(_cinStep!==8){_cinStep=8;onCinematicStepRef.current?.(8);}
+          const dur=2.0+d;const p=Math.min((ot-(16.0+d*8))/dur,1);const ease=p*p*(3-2*p);
+          posT.current.z=2.0+(-1.5-2.0)*ease;
+          lookT.current.yaw=0;lookT.current.pitch=0;
+        }else{
+          // Step 9: waiting for painting click
+          if(_cinStep!==9){_cinStep=9;onCinematicStepRef.current?.(9);}
+          posT.current.z=-1.5;lookT.current.yaw=0;lookT.current.pitch=0;
+        }
+        // Skip normal movement when in onboarding mode
+      } else {
       const spd=2.5*dt;_dir.current.set(0,0,0);
       const k=keys.current;
       if(k["w"]||k["arrowup"])_dir.current.z-=1;if(k["s"]||k["arrowdown"])_dir.current.z+=1;
       if(k["a"]||k["arrowleft"])_dir.current.x-=1;if(k["d"]||k["arrowright"])_dir.current.x+=1;
       if(_dir.current.length()>0){_dir.current.normalize().multiplyScalar(spd);_dir.current.applyAxisAngle(_yAxis.current,-lookA.current.yaw);posT.current.add(_dir.current);}
       posT.current.x=Math.max(-rW/2+1,Math.min(rW/2-1,posT.current.x));posT.current.z=Math.max(-rL/2+1,Math.min(rL/2-1.5,posT.current.z));
+      }
       pos.current.lerp(posT.current,.1);camera.position.copy(pos.current);
       _ld.current.set(Math.sin(lookA.current.yaw)*Math.cos(lookA.current.pitch),Math.sin(lookA.current.pitch),-Math.cos(lookA.current.yaw)*Math.cos(lookA.current.pitch));
       _lookTarget.current.copy(camera.position).add(_ld.current);camera.lookAt(_lookTarget.current);
+      // ── Camera debug overlay ──
+      if (camDebugRef.current) {
+        camDebugRef.current.textContent = `yaw: ${lookA.current.yaw.toFixed(4)}\npitch: ${lookA.current.pitch.toFixed(4)}\npos: ${pos.current.x.toFixed(1)}, ${pos.current.y.toFixed(1)}, ${pos.current.z.toFixed(1)}`;
+      }
       animTex.forEach(a=>{
         if(a.type==="fire"){a.light.intensity=.5+Math.sin(t*5)*.15+Math.sin(t*7.3)*.1;}
         if(a.type==="doorGlow"){a.mesh.material.opacity=.03+Math.sin(t*2)*.02;}
@@ -1944,30 +2064,38 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
           const vEl=a.videoEl?a.videoEl():null;
           if(vEl&&!vEl.muted){const vo=volOverride.current.video;vEl.volume=vo!==null?vo:Math.max(0,Math.min(1,1-pos.current.distanceTo(_screenPos.current.set(scrX,scrY,scrZ))/(isExhibition?20:10)));}
           const sImg=a.screenImg?a.screenImg():null;
+          let videoFrameChanged=false;
           if(vEl&&vEl.readyState>=2){
-            let iw=vEl.videoWidth||cw,ih=vEl.videoHeight||ch;
-            // Determine rotation: explicit mem.rotation wins; otherwise auto-rotate
-            // portrait-oriented video onto the landscape cinema screen.
-            let rot: number = (m.rotation ?? 0) as number;
-            if(rot===0 && ih>iw){ rot = 90; }
-            cx.fillStyle="#0A0804";cx.fillRect(0,0,cw,ch);
-            cx.save();
-            cx.translate(cw/2,ch/2);
-            if(rot) cx.rotate((rot*Math.PI)/180);
-            // effective target box swaps if rotated 90/270
-            const tw = (rot===90||rot===270) ? ch : cw;
-            const th = (rot===90||rot===270) ? cw : ch;
-            const scale=Math.max(tw/iw,th/ih);
-            const sw=iw*scale,sh=ih*scale;
-            cx.drawImage(vEl,-sw/2,-sh/2,sw,sh);
-            cx.restore();
+            const ct=vEl.currentTime;
+            if(ct!==(a as any)._lastVT){
+              (a as any)._lastVT=ct;
+              videoFrameChanged=true;
+              let iw=vEl.videoWidth||cw,ih=vEl.videoHeight||ch;
+              // Determine rotation: explicit mem.rotation wins; otherwise auto-rotate
+              // portrait-oriented video onto the landscape cinema screen.
+              let rot: number = (m.rotation ?? 0) as number;
+              if(rot===0 && ih>iw){ rot = 90; }
+              cx.fillStyle="#0A0804";cx.fillRect(0,0,cw,ch);
+              cx.save();
+              cx.translate(cw/2,ch/2);
+              if(rot) cx.rotate((rot*Math.PI)/180);
+              // effective target box swaps if rotated 90/270
+              const tw = (rot===90||rot===270) ? ch : cw;
+              const th = (rot===90||rot===270) ? cw : ch;
+              const scale=Math.max(tw/iw,th/ih);
+              const sw=iw*scale,sh=ih*scale;
+              cx.drawImage(vEl,-sw/2,-sh/2,sw,sh);
+              cx.restore();
+            }
           }else if(sImg){
+            videoFrameChanged=true;
             const iw=sImg.width,ih=sImg.height,scale=Math.max(cw/iw,ch/ih);
             const sw=iw*scale,sh=ih*scale;
             cx.drawImage(sImg,(cw-sw)/2,(ch-sh)/2,sw,sh);
             for(let sl=0;sl<ch;sl+=3){cx.fillStyle=`rgba(0,0,0,.015)`;cx.fillRect(0,sl,cw,1);}
             cx.fillStyle=`hsla(${(m.hue+Math.floor(t*10))%360},20%,50%,.03)`;cx.fillRect(0,0,cw,ch);
           }else{
+            videoFrameChanged=true;
             const scT=Math.floor(ph*.3)%5;const h1=(m.hue+scT*30)%360,h2=(m.hue+scT*30+40)%360;
             const g=cx.createLinearGradient(0,0,cw,ch);
             g.addColorStop(0,`hsl(${h1},${m.s}%,${m.l-5+Math.sin(ph*2)*8}%)`);
@@ -1976,12 +2104,20 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
             cx.fillStyle=g;cx.fillRect(0,0,cw,ch);
             for(let s=0;s<4;s++){cx.fillStyle=`hsla(${m.hue+s*25},${m.s+10}%,${m.l+10}%,.1)`;const sx=cw*.2+Math.sin(ph+s*1.5)*cw*.3;cx.beginPath();cx.arc(sx,ch*.3+Math.cos(ph*.7+s)*ch*.2,20+s*10,0,Math.PI*2);cx.fill();}
           }
-          cx.fillStyle="rgba(0,0,0,.35)";cx.fillRect(0,ch-28,cw,28);cx.fillStyle="rgba(255,255,255,.85)";cx.font="13px Georgia,serif";cx.textAlign="center";cx.fillText(m.title,cw/2,ch-9);
-          a.tex.needsUpdate=true;
+          if(videoFrameChanged){
+            cx.fillStyle="rgba(0,0,0,.35)";cx.fillRect(0,ch-28,cw,28);cx.fillStyle="rgba(255,255,255,.85)";cx.font="13px Georgia,serif";cx.textAlign="center";cx.fillText(m.title,cw/2,ch-9);
+            a.tex.needsUpdate=true;
+          }
         }
       });
-      const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>rH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;
-      dust.update(t,dt);
+      // Animate particles — throttle to every 2nd frame on mobile for performance
+      const _doParticles=!_isMobile||(_frameCount&1)===0;
+      if(_doParticles){
+        const dp=rdG.attributes.position.array;for(let i=0;i<rdN;i++){dp[i*3+1]+=Math.sin(t*.2+i*.5)*.002;if(dp[i*3+1]>rH)dp[i*3+1]=.5;}rdG.attributes.position.needsUpdate=true;(rdG.attributes.position as any).updateRange={offset:0,count:rdN*3};
+        dust.update(t,dt);
+      }
+      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
+      if(document.hidden)return;
       composer.render();
     };animate();
 
@@ -1990,19 +2126,19 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
 
     const onDown=(e: MouseEvent)=>{drag.current=false;prev.current={x:e.clientX,y:e.clientY};};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.current.x,dy=e.clientY-prev.current.y;if(Math.abs(dx)>2||Math.abs(dy)>2)drag.current=true;
-      if(e.buttons===1){lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.5,Math.min(.5,lookT.current.pitch+dy*.003));prev.current={x:e.clientX,y:e.clientY};}
+      if(e.buttons===1){lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.85,Math.min(.5,lookT.current.pitch+dy*.003));prev.current={x:e.clientX,y:e.clientY};}
       const rect=el.getBoundingClientRect();_mouse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);_rc.current.setFromCamera(_mouse.current,camera);
       // Unified raycast — sorted by distance. Hit area boxes block distant items
       // but specific items inside a hit area (within 1 unit behind the face) take priority.
-      const allClickable=[...memMeshes.current,...hitAreaMeshes.current];
-      const hits=_rc.current.intersectObjects(allClickable).filter(h=>h.distance<4);
+      if(allClickableRef.current.length!==memMeshes.current.length+hitAreaMeshes.current.length){allClickableRef.current=[...memMeshes.current,...hitAreaMeshes.current];}
+      const hits=_rc.current.intersectObjects(allClickableRef.current).filter(h=>h.distance<4);
       let found=false;let hitAreaFallback: any=null;let hitAreaDist=Infinity;
       for(const hit of hits){
         const ud=hit.object.userData;
         if(ud.isBackDoor){hovMem.current=ud;found=true;break;}
         // Specific item (not a hit area) — always wins
-        if((ud.memory||ud.isStation)&&!ud.isHitArea){
-          if(ud.isStation)hovMem.current=ud;else hovMem.current=ud.memory;found=true;break;
+        if((ud.memory||ud.isStation||ud.isUploadPainting)&&!ud.isHitArea){
+          if(ud.isStation||ud.isUploadPainting)hovMem.current=ud;else hovMem.current=ud.memory;found=true;break;
         }
         // Hit area — remember as fallback, keep looking for specific items within 1 unit behind
         if(ud.isHitArea&&!hitAreaFallback){hitAreaFallback=ud;hitAreaDist=hit.distance;continue;}
@@ -2010,14 +2146,20 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
         if(hitAreaFallback&&hit.distance>hitAreaDist+1)break;
       }
       if(!found&&hitAreaFallback){
-        if(hitAreaFallback.isStation)hovMem.current=hitAreaFallback;else if(hitAreaFallback.memory)hovMem.current=hitAreaFallback.memory;
+        if(hitAreaFallback.isStation||hitAreaFallback.isUploadPainting)hovMem.current=hitAreaFallback;else if(hitAreaFallback.memory)hovMem.current=hitAreaFallback.memory;
         found=!!hovMem.current;
       }
-      if(found){el.style.cursor="pointer";}else{hovMem.current=null;el.style.cursor="grab";}};
+      const newCur=found?"pointer":"grab";if(el.style.cursor!==newCur)el.style.cursor=newCur;if(!found)hovMem.current=null;};
     const onCk=()=>{if(!drag.current&&hovMem.current){
-      if(hovMem.current.isBackDoor)onMemoryClick("__back__");
-      else if(hovMem.current.isStation)onMemoryClick("__upload__");
-      else onMemoryClick(hovMem.current);
+      // During onboarding, only painting click is allowed
+      if(onboardingModeRef.current){
+        if(hovMem.current.isUploadPainting)onMemoryClickRef.current("__upload_painting__");
+        return;
+      }
+      if(hovMem.current.isBackDoor)onMemoryClickRef.current("__back__");
+      else if(hovMem.current.isUploadPainting)onMemoryClickRef.current("__upload_painting__");
+      else if(hovMem.current.isStation)onMemoryClickRef.current("__upload__");
+      else onMemoryClickRef.current(hovMem.current);
     }};
     const onKD=(e: KeyboardEvent)=>{keys.current[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};const onKU=(e: KeyboardEvent)=>{keys.current[e.key.toLowerCase()]=false;};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
@@ -2051,7 +2193,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
         }else if(t.identifier===touchLookId2){
           const dx=t.clientX-prev.current.x,dy=t.clientY-prev.current.y;
           if(Math.abs(dx)>10||Math.abs(dy)>10){drag.current=true;touchTap2=false;}
-          lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.5,Math.min(.5,lookT.current.pitch+dy*.003));
+          lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.85,Math.min(.5,lookT.current.pitch+dy*.003));
           prev.current={x:t.clientX,y:t.clientY};
         }
       }
@@ -2065,21 +2207,32 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
             const rect=el.getBoundingClientRect();_mouse.current.set(((t.clientX-rect.left)/rect.width)*2-1,-((t.clientY-rect.top)/rect.height)*2+1);
             _rc.current.setFromCamera(_mouse.current,camera);
             // Unified raycast — specific items win over hit areas within 1 unit
-            const allClickable2=[...memMeshes.current,...hitAreaMeshes.current];
-            const hits=_rc.current.intersectObjects(allClickable2).filter(h2=>h2.distance<4);
+            if(allClickableRef.current.length!==memMeshes.current.length+hitAreaMeshes.current.length){allClickableRef.current=[...memMeshes.current,...hitAreaMeshes.current];}
+            const hits=_rc.current.intersectObjects(allClickableRef.current).filter(h2=>h2.distance<4);
             let tapped=false;let tHitAreaFallback: any=null;let tHitAreaDist=Infinity;
+            // During onboarding, only painting click is allowed
+            if(onboardingModeRef.current){
+              for(const hit of hits){
+                const ud=hit.object.userData;
+                if(ud.isUploadPainting&&!ud.isHitArea){onMemoryClickRef.current("__upload_painting__");tapped=true;break;}
+                if(ud.isHitArea&&ud.isUploadPainting){tHitAreaFallback=ud;continue;}
+              }
+              if(!tapped&&tHitAreaFallback)onMemoryClickRef.current("__upload_painting__");
+            }else{
             for(const hit of hits){
               const ud=hit.object.userData;
-              if(ud.isBackDoor){onMemoryClick("__back__");tapped=true;break;}
-              if((ud.memory||ud.isStation)&&!ud.isHitArea){
-                if(ud.isStation)onMemoryClick("__upload__");else onMemoryClick(ud.memory);tapped=true;break;
+              if(ud.isBackDoor){onMemoryClickRef.current("__back__");tapped=true;break;}
+              if((ud.memory||ud.isStation||ud.isUploadPainting)&&!ud.isHitArea){
+                if(ud.isUploadPainting)onMemoryClickRef.current("__upload_painting__");else if(ud.isStation)onMemoryClickRef.current("__upload__");else onMemoryClickRef.current(ud.memory);tapped=true;break;
               }
               if(ud.isHitArea&&!tHitAreaFallback){tHitAreaFallback=ud;tHitAreaDist=hit.distance;continue;}
               if(tHitAreaFallback&&hit.distance>tHitAreaDist+1)break;
             }
             if(!tapped&&tHitAreaFallback){
-              if(tHitAreaFallback.isStation)onMemoryClick("__upload__");
-              else if(tHitAreaFallback.memory)onMemoryClick(tHitAreaFallback.memory);
+              if(tHitAreaFallback.isUploadPainting)onMemoryClickRef.current("__upload_painting__");
+              else if(tHitAreaFallback.isStation)onMemoryClickRef.current("__upload__");
+              else if(tHitAreaFallback.memory)onMemoryClickRef.current(tHitAreaFallback.memory);
+            }
             }
           }
           touchLookId2=null;
@@ -2110,15 +2263,16 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       try{useRoomMediaBarStore.getState().setOpen(null);}catch{}
       if(vinylAudio){vinylAudio.pause();vinylAudio.src="";}
       animTex.forEach(a=>{if(a.type==="video"){const vEl=a.videoEl?a.videoEl():null;if(vEl){vEl.pause();vEl.src="";if(vEl.parentNode)vEl.parentNode.removeChild(vEl);}}});
+      const _cachedSet=buildCachedTextureSet();
       scene.traverse((obj: any) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
           const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
           materials.forEach((m: any) => {
-            if (m.map && !isCachedTexture(m.map)) m.map.dispose();
-            if (m.normalMap && !isCachedTexture(m.normalMap)) m.normalMap.dispose();
-            if (m.roughnessMap && !isCachedTexture(m.roughnessMap)) m.roughnessMap.dispose();
-            if (m.emissiveMap && !isCachedTexture(m.emissiveMap)) m.emissiveMap.dispose();
+            if (m.map && !_cachedSet.has(m.map)) m.map.dispose();
+            if (m.normalMap && !_cachedSet.has(m.normalMap)) m.normalMap.dispose();
+            if (m.roughnessMap && !_cachedSet.has(m.roughnessMap)) m.roughnessMap.dispose();
+            if (m.emissiveMap && !_cachedSet.has(m.emissiveMap)) m.emissiveMap.dispose();
             m.dispose();
           });
         }
@@ -2131,14 +2285,9 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
       // texture that must be freed to avoid GPU memory leaks).
       if(envMapHDRI){envMapHDRI.dispose();envMapHDRI=null;}
       composer.dispose();
-      // Force WebGL context loss BEFORE removing the canvas. Three.js dispose()
-      // does NOT release the WebGL context — it only cleans internal state. Without
-      // explicitly losing the context, the browser keeps counting it towards the
-      // hard limit of ~8–16 active WebGL contexts. When that limit is exceeded
-      // (from rapid scene rebuilds when toggling display in RoomMediaPanel), the
-      // next renderer gets a lost context and renders pitch black.
-      try{ren.forceContextLoss();}catch{}
-      if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();
+      // Return renderer to pool for reuse (avoids WebGL context creation on next scene)
+      if(el.contains(ren.domElement))el.removeChild(ren.domElement);
+      returnRenderer(ren);
       // Null out scene references to help GC reclaim GPU-backed objects sooner
       scene.environment=null;scene.background=null;scene.fog=null;};
   },[roomId,actualRoomId,layoutOverride,displayFingerprint]);
@@ -2233,6 +2382,7 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
   return (
     <div role="application" aria-label={t("sceneLabel")} style={{ position: "relative", width: "100%", height: "100%" }}>
       <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
+      {camDebug && createPortal(<pre ref={camDebugRef} onClick={() => { if (camDebugRef.current) navigator.clipboard.writeText(camDebugRef.current.textContent || ""); }} style={{ position: "fixed", bottom: "6rem", left: "1rem", zIndex: 99999, background: "rgba(0,0,0,0.85)", color: "#0f0", padding: "0.75rem 1rem", borderRadius: "0.5rem", fontFamily: "monospace", fontSize: "0.8125rem", cursor: "pointer", border: "1px solid #0f03", lineHeight: 1.6, userSelect: "all" as const }} />, document.body)}
 
       {hasMedia && activeType && (
         <div
@@ -2327,3 +2477,5 @@ export default function InteriorScene({roomId,actualRoomId,layoutOverride,memori
     </div>
   );
 }
+
+export default memo(InteriorScene);

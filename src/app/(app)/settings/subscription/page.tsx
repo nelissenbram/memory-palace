@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/constants/plans";
-import { isNative } from "@/lib/native/platform";
+import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 
@@ -29,7 +30,7 @@ interface UsageData {
 export default function SubscriptionPage() {
   const { t, locale } = useTranslation("subscription");
   const { t: tp } = useTranslation("plans");
-  const nativeApp = isNative();
+  const nativeApp = isAndroid();
   const isMobile = useIsMobile();
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
@@ -106,7 +107,7 @@ export default function SubscriptionPage() {
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        if (isIOS()) { await openInExternalBrowser(data.url); } else { window.location.href = data.url; }
       } else {
         showToast(data.error || t("billingError"), "error");
       }
@@ -127,7 +128,7 @@ export default function SubscriptionPage() {
       });
       const data = await res.json();
       if (data.url) {
-        window.location.href = data.url;
+        if (isIOS()) { await openInExternalBrowser(data.url); } else { window.location.href = data.url; }
       } else {
         showToast(data.error || t("checkoutError"), "error");
         setUpgradeLoading(null);
@@ -243,7 +244,7 @@ export default function SubscriptionPage() {
           <p style={{ fontFamily: F.body, fontSize: "0.8125rem", color: C.muted, marginBottom: "1rem" }}>
             {sub.status === "trialing" ? t("trialEnds") : t("nextBilling")}:{" "}
             <strong style={{ color: C.charcoal }}>
-              {new Date(sub.current_period_end).toLocaleDateString(locale === "nl" ? "nl-NL" : "en-GB", {
+              {new Date(sub.current_period_end).toLocaleDateString(localeDateCodes[locale as Locale], {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -721,7 +722,7 @@ export default function SubscriptionPage() {
                             marginBottom: "1.25rem",
                           }}
                         >
-                          {upgradeLoading === planId ? t("upgrading") : (plan.trial ? t("startFreeTrial") : t("upgradePlanShort"))}
+                          {upgradeLoading === planId ? t("upgrading") : t("upgradePlanShort")}
                         </button>
                       ) : (
                         <div style={{ marginBottom: "1.25rem" }} />

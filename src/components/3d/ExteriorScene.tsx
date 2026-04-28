@@ -1,5 +1,6 @@
 "use client";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, memo, useState } from "react";
+import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
 import type { Wing } from "@/lib/constants/wings";
@@ -8,23 +9,25 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { loadHDRI, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
+import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
+import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ── Wing SVG icon strings for hover labels (matches WingRoomIcons.tsx) ──
 const WING_SVG_STRINGS: Record<string,string> = {
-  family: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,14 12,4 21,14"/><line x1="6" y1="14" x2="6" y2="20"/><line x1="18" y1="14" x2="18" y2="20"/><line x1="3" y1="20" x2="21" y2="20"/><path d="M10,20 L10,16 Q12,13 14,16 L14,20"/></svg>`,
+  roots: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,14 12,4 21,14"/><line x1="6" y1="14" x2="6" y2="20"/><line x1="18" y1="14" x2="18" y2="20"/><line x1="3" y1="20" x2="21" y2="20"/><path d="M10,20 L10,16 Q12,13 14,16 L14,20"/></svg>`,
   travel: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="12,3 13,10 12,11 11,10" fill="currentColor" fill-opacity="0.15" stroke="currentColor"/><polygon points="12,21 11,14 12,13 13,14" fill="currentColor" fill-opacity="0.08" stroke="currentColor"/><polygon points="3,12 10,11 11,12 10,13" fill="currentColor" fill-opacity="0.08" stroke="currentColor"/><polygon points="21,12 14,13 13,12 14,11" fill="currentColor" fill-opacity="0.08" stroke="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor" fill-opacity="0.3"/></svg>`,
-  childhood: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="7"/><path d="M7,9 Q7,7 12,7 Q17,7 17,9 L12,20 Z" fill="currentColor" fill-opacity="0.06"/><ellipse cx="12" cy="10" rx="5" ry="1.5"/><circle cx="12" cy="20" r="0.6" fill="currentColor" fill-opacity="0.25"/></svg>`,
-  career: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10,20 Q4,16 4,10 Q4,6 8,4" fill="none"/><path d="M6,14 Q8,13 8,11"/><path d="M5,11 Q7,10.5 7.5,8.5"/><path d="M5.5,8 Q7.5,7.5 8,5.5"/><path d="M14,20 Q20,16 20,10 Q20,6 16,4" fill="none"/><path d="M18,14 Q16,13 16,11"/><path d="M19,11 Q17,10.5 16.5,8.5"/><path d="M18.5,8 Q16.5,7.5 16,5.5"/><path d="M10,20 L12,21 L14,20"/></svg>`,
-  creativity: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8,20 L8,18 Q8,16 10,15 L14,15 Q16,16 16,18 L16,20"/><line x1="7" y1="20" x2="17" y2="20"/><path d="M8,18 Q5,14 6,8 Q6.5,5 9,4" fill="none"/><path d="M16,18 Q19,14 18,8 Q17.5,5 15,4" fill="none"/><line x1="7" y1="7" x2="17" y2="7"/><line x1="10" y1="7" x2="10" y2="15"/><line x1="12" y1="7" x2="12" y2="15"/><line x1="14" y1="7" x2="14" y2="15"/></svg>`,
+  nest: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="7"/><path d="M7,9 Q7,7 12,7 Q17,7 17,9 L12,20 Z" fill="currentColor" fill-opacity="0.06"/><ellipse cx="12" cy="10" rx="5" ry="1.5"/><circle cx="12" cy="20" r="0.6" fill="currentColor" fill-opacity="0.25"/></svg>`,
+  craft: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10,20 Q4,16 4,10 Q4,6 8,4" fill="none"/><path d="M6,14 Q8,13 8,11"/><path d="M5,11 Q7,10.5 7.5,8.5"/><path d="M5.5,8 Q7.5,7.5 8,5.5"/><path d="M14,20 Q20,16 20,10 Q20,6 16,4" fill="none"/><path d="M18,14 Q16,13 16,11"/><path d="M19,11 Q17,10.5 16.5,8.5"/><path d="M18.5,8 Q16.5,7.5 16,5.5"/><path d="M10,20 L12,21 L14,20"/></svg>`,
+  passions: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8,20 L8,18 Q8,16 10,15 L14,15 Q16,16 16,18 L16,20"/><line x1="7" y1="20" x2="17" y2="20"/><path d="M8,18 Q5,14 6,8 Q6.5,5 9,4" fill="none"/><path d="M16,18 Q19,14 18,8 Q17.5,5 15,4" fill="none"/><line x1="7" y1="7" x2="17" y2="7"/><line x1="10" y1="7" x2="10" y2="15"/><line x1="12" y1="7" x2="12" y2="15"/><line x1="14" y1="7" x2="14" y2="15"/></svg>`,
   attic: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="3" ry="1"/><path d="M9,5 Q9,8 8,9" fill="none"/><path d="M15,5 Q15,8 16,9" fill="none"/><path d="M8,9 Q5,12 6,16 Q7,20 12,21 Q17,20 18,16 Q19,12 16,9" fill="currentColor" fill-opacity="0.05"/><path d="M8,9 Q4,10 5.5,14" fill="none"/><path d="M16,9 Q20,10 18.5,14" fill="none"/></svg>`,
 };
 
 // ═══ EXTERIOR — Fantasy Castle ═══
-export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman",autoWalkTo,onReady}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string,autoWalkTo?: string|null,onReady?: () => void}){
+function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,highlightDoor,styleEra="roman",autoWalkTo,onReady,onboardingMode,onCinematicPause,cinematicResumed}: {onRoomHover: any,onRoomClick: any,hoveredRoom: any,wings?: Wing[],highlightDoor?: string|null,styleEra?: string,autoWalkTo?: string|null,onReady?: () => void,onboardingMode?: boolean,onCinematicPause?: () => void,cinematicResumed?: boolean}){
   const WINGS = wingsProp || DEFAULT_WINGS;
   const ownerName = useUserStore((s) => s.userName);
   const { t } = useTranslation("exterior3d");
@@ -32,30 +35,54 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
   const entranceHallLabelRef = useRef(entranceHallLabel);
   entranceHallLabelRef.current = entranceHallLabel;
   const mountRef=useRef<HTMLDivElement|null>(null),frameRef=useRef<number|null>(null);
-  // Camera starts facing entrance (-Z side), low angle showing palace prominently
-  // phi=0.38 ≈ 68° from zenith = low ground-level view, camD=115 for wider framing (more of palace visible at start)
-  const camO=useRef({theta:Math.PI*1.5,phi:Math.PI*.38}),camOT=useRef({theta:Math.PI*1.5,phi:Math.PI*.38}),camD=useRef(115);
+  const camDebugRef=useRef<HTMLPreElement|null>(null);
+  const camDebug=false; // set true to show camera debug overlay
+  // Cinematic pause: camera holds at WP1, parent shows prompt, sets cinematicResumed=true to continue
+  const cinematicPauseFiredRef = useRef(false);
+  const cinematicResumeTimeRef = useRef<number|null>(null);
+  const cinematicResumedRef = useRef(!!cinematicResumed);
+  useEffect(() => { cinematicResumedRef.current = !!cinematicResumed; }, [cinematicResumed]);
+  const onCinematicPauseRef = useRef(onCinematicPause);
+  useEffect(() => { onCinematicPauseRef.current = onCinematicPause; }, [onCinematicPause]);
+  // Camera starts at waypoint 1 of the cinematic trajectory
+  const camO=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camOT=useRef({theta:Math.PI*1.4987,phi:Math.PI*0.4387}),camD=useRef(180);
   const drag=useRef(false),prev=useRef({x:0,y:0}),mse=useRef(new THREE.Vector2()),ray=useRef(new THREE.Raycaster());
   const hoveredRoomRef=useRef(hoveredRoom);
   const onRoomClickRef=useRef(onRoomClick);
   const highlightDoorRef=useRef(highlightDoor);
   const autoWalkToRef=useRef(autoWalkTo);
+  const onboardingModeRef=useRef(onboardingMode);
 
   // Keep refs in sync so event listeners always read the latest value
   useEffect(()=>{hoveredRoomRef.current=hoveredRoom;},[hoveredRoom]);
   useEffect(()=>{onRoomClickRef.current=onRoomClick;},[onRoomClick]);
   useEffect(()=>{highlightDoorRef.current=highlightDoor;},[highlightDoor]);
   useEffect(()=>{autoWalkToRef.current=autoWalkTo;},[autoWalkTo]);
+  useEffect(()=>{onboardingModeRef.current=onboardingMode;},[onboardingMode]);
+
+  // Set initial camera to cinematic start when in onboarding mode
+  useEffect(()=>{
+    if(onboardingMode){
+      camO.current={theta:Math.PI*1.4987,phi:Math.PI*0.4387};
+      camOT.current={theta:Math.PI*1.4987,phi:Math.PI*0.4387};
+      camD.current=180;
+    }
+  },[]);// eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
     const dlPreset=getLightingPreset();
+    const Q=getQuality();
+    const isMobileQ=Q.maxEagerTextureSets<=6;
     const scene=new THREE.Scene();scene.fog=new THREE.FogExp2(dlPreset.fogColor,.0018*dlPreset.fogDensity);
     // ── PHOTOREALISTIC TUSCAN GOLDEN HOUR SKY ──
-    const skyGeo=new THREE.SphereGeometry(500,64,40);
-    const skyC=document.createElement("canvas");skyC.width=2048;skyC.height=1024;
+    // Mobile: 512x256 (4x fewer pixels), Desktop: 2048x1024
+    const skyGeo=new THREE.SphereGeometry(500,Q.skyCanvasWidth>=2048?64:24,Q.skyCanvasHeight>=1024?40:16);
+    const skyC=document.createElement("canvas");skyC.width=Q.skyCanvasWidth;skyC.height=Q.skyCanvasHeight;
     const skx=skyC.getContext("2d")!;
-    skx.scale(0.5,0.5); // draw at half resolution — all coordinates stay as original 4096x2048 space
+    // Scale factor: coordinates are authored at 4096x2048 virtual space
+    const skyScaleX=Q.skyCanvasWidth/4096;const skyScaleY=Q.skyCanvasHeight/2048;
+    skx.scale(skyScaleX,skyScaleY);
     // Base gradient — warm Tuscan golden hour with subtle atmospheric scattering
     const skyG=skx.createLinearGradient(0,0,0,2048);
     skyG.addColorStop(0,"#0D1B38");skyG.addColorStop(.04,"#152848");skyG.addColorStop(.1,"#1E3A60");
@@ -71,33 +98,37 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     hazeG.addColorStop(.6,"rgba(235,200,155,0.15)");hazeG.addColorStop(1,"rgba(220,185,140,0.2)");
     skx.fillStyle=hazeG;skx.fillRect(0,1400,4096,648);
     // High cirrus clouds — delicate wispy streaks
-    for(let layer=0;layer<6;layer++){
+    // Mobile: 2 layers x 10 clouds; Desktop: 6 layers x 40 clouds
+    const cirrusLayers=isMobileQ?2:6,cirrusPer=isMobileQ?10:40;
+    for(let layer=0;layer<cirrusLayers;layer++){
       const yBase=80+layer*65,alpha=.025+layer*.01;
-      for(let ci=0;ci<40;ci++){
+      for(let ci=0;ci<cirrusPer;ci++){
         const cx2=Math.random()*4096,cy=yBase+Math.random()*50;
         const cw=80+Math.random()*200,ch2=2+Math.random()*5;
         skx.fillStyle=`rgba(255,${250-layer*8},${238-layer*12},${alpha+Math.random()*.02})`;
         skx.beginPath();skx.ellipse(cx2,cy,cw,ch2,Math.random()*.2-.1,0,Math.PI*2);skx.fill();
-        // Sub-wisps for texture
-        for(let sw=0;sw<3;sw++){
+        // Sub-wisps for texture (skip on mobile)
+        if(!isMobileQ){for(let sw=0;sw<3;sw++){
           skx.fillStyle=`rgba(255,${248-layer*8},${235-layer*10},${alpha*.4})`;
           skx.beginPath();skx.ellipse(cx2+Math.random()*cw-cw/2,cy+Math.random()*8-4,cw*.4,ch2*.6,Math.random()*.15,0,Math.PI*2);skx.fill();
-        }
+        }}
       }
     }
     // Mid-level cumulus clouds — softer, more voluminous
-    for(let ci=0;ci<18;ci++){
+    const cumulusCount=isMobileQ?4:18;
+    for(let ci=0;ci<cumulusCount;ci++){
       const cx2=Math.random()*4096,cy=400+Math.random()*250;
       const baseW=100+Math.random()*160;
-      // Build cloud from overlapping ovals
-      for(let p=0;p<8;p++){
+      const cumulusParts=isMobileQ?3:8;
+      for(let p=0;p<cumulusParts;p++){
         const pw=baseW*(0.4+Math.random()*.6),ph=(8+Math.random()*12)*(1-p*.05);
         skx.fillStyle=`rgba(255,${250-p*2},${240-p*4},${.03+Math.random()*.015})`;
         skx.beginPath();skx.ellipse(cx2+Math.random()*baseW*.6-baseW*.3,cy+Math.random()*15-7,pw,ph,Math.random()*.1,0,Math.PI*2);skx.fill();
       }
     }
     // Low horizon clouds — backlit golden edges
-    for(let ci=0;ci<25;ci++){
+    const horizonCloudCount=isMobileQ?6:25;
+    for(let ci=0;ci<horizonCloudCount;ci++){
       const cx2=Math.random()*4096,cy=1500+Math.random()*200;
       const cw=60+Math.random()*180;
       // Dark underside
@@ -109,8 +140,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     }
     // Sun with realistic glow layers and atmospheric diffusion
     const sunX=2800,sunY=1560;
-    // Outer atmospheric glow
-    for(let r=0;r<8;r++){
+    // Outer atmospheric glow — fewer layers on mobile
+    const sunGlowLayers=isMobileQ?3:8;
+    for(let r=0;r<sunGlowLayers;r++){
       const rad=60+r*80,a=.08-.008*r;
       const sg=skx.createRadialGradient(sunX,sunY,0,sunX,sunY,rad);
       sg.addColorStop(0,`rgba(255,250,230,${a})`);sg.addColorStop(.3,`rgba(255,235,190,${a*.7})`);
@@ -122,15 +154,17 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     sunCore.addColorStop(0,"rgba(255,255,248,0.9)");sunCore.addColorStop(.4,"rgba(255,248,220,0.6)");
     sunCore.addColorStop(1,"rgba(255,230,180,0)");
     skx.fillStyle=sunCore;skx.fillRect(sunX-60,sunY-60,120,120);
-    // God rays — longer, more varied, softer
-    for(let gr=0;gr<14;gr++){
+    // God rays — fewer on mobile
+    const godRayCount=isMobileQ?4:14;
+    for(let gr=0;gr<godRayCount;gr++){
       const angle=-Math.PI*.7+gr*.11+Math.random()*.04;const len=300+Math.random()*300;
       skx.strokeStyle=`rgba(255,235,190,${.01+Math.random()*.015})`;
       skx.lineWidth=10+Math.random()*20;skx.beginPath();
       skx.moveTo(sunX,sunY);skx.lineTo(sunX+Math.cos(angle)*len,sunY+Math.sin(angle)*len);skx.stroke();
     }
-    // Stars in deep sky
-    for(let si=0;si<120;si++){
+    // Stars in deep sky — fewer on mobile
+    const starCount=isMobileQ?20:120;
+    for(let si=0;si<starCount;si++){
       const sy=Math.random()*500;
       skx.fillStyle=`rgba(255,255,245,${.02+Math.random()*.04*(1-sy/500)})`;
       skx.beginPath();skx.arc(Math.random()*4096,sy,Math.random()*1.2,.0,Math.PI*2);skx.fill();
@@ -142,9 +176,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const skySphere=new THREE.Mesh(skyGeo,new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide}));
     scene.add(skySphere);
 
-    const camera=new THREE.PerspectiveCamera(32,w/h,0.1,600);
-    const ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap;ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.4*dlPreset.exposure;
+    const camera=new THREE.PerspectiveCamera(32,w/h,1.0,300);
+    const ren=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,Q.maxPixelRatio));
+    ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=2048?THREE.PCFSoftShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.4*dlPreset.exposure;
     ren.outputColorSpace=THREE.SRGBColorSpace;
     el.appendChild(ren.domElement);
 
@@ -156,29 +190,32 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     scene.environment=envMapProc;
     scene.environmentIntensity=0.6;
     let envMapHDRI: THREE.Texture|null=null;
-    loadHDRI(ren,HDRI_EXTERIOR).then((hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.7;}).catch(()=>{});
+    let bgMapHDRI: THREE.Texture|null=null;
+    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_EXTERIOR,{onProcedural:(p)=>{scene.environment=p;scene.environmentIntensity=0.6;},onFull:(hdr)=>{envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.7;}}).catch(()=>{});}
     // Load Rolling Hills HDRI as background panorama — warm sunrise over dry grassy hilltops (Tuscan feel)
-    loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});
+    // Skipped on mobile (6.5 MB) — the procedural sky sphere provides adequate background
+    if(Q.loadBackgroundHDRI){loadHDRI(ren,HDRI_TUSCAN_LANDSCAPE).then((hdr)=>{bgMapHDRI=hdr;scene.background=hdr;scene.backgroundIntensity=0.4;scene.backgroundBlurriness=0.03;skySphere.visible=false;}).catch(()=>{});}
 
     // ── POST-PROCESSING ──
-    // On mobile, drop SSAO + DOF: they require an extra NormalPass + DOF passes
-    // and roughly double first-frame compile time + per-frame cost. The visual
-    // hit is minimal at small viewport sizes.
-    const _ppMobile = window.innerWidth < 768 || window.innerHeight < 500;
-    const composer=createPostProcessing(ren,scene,camera,"exterior", _ppMobile ? { ssao: false, dof: false } : undefined);
+    // Quality tier from mobilePerf.ts automatically disables SSAO/DOF/Bloom/SMAA on mobile
+    const composer=createPostProcessing(ren,scene,camera,"exterior");
 
     // ── REAL PBR TEXTURES ──
+    // On mobile, load only critical texture sets eagerly (walls, roof, door, ground).
+    // Landscape textures (grass, crops, gravel) are deferred — they use the same
+    // plaster/travertine base textures anyway and are tinted via material color.
     const stoneTex=loadPlasterWallTextures([4,4]);
-    const wornPlasterTex=loadWornPlasterTextures([3,3]);
     const clayPlasterTex=loadClayPlasterTextures([2,2]);
     const paintedPlasterTex=loadPlasterWallTextures([2,2]);
     const roofTileTex=loadTerracottaTileTextures([3,3]);
     const woodDoorTex=loadDarkWoodTextures([2,3]);
-    const grassTex=loadGrassTextures([12,12]);
-    const groundTex=loadGroundTextures([8,8]);
-    const cropTex=loadCropTextures([6,6]);
-    const whiteGravelTex=loadWhiteGravelTextures([4,4]);
-    const roadTex=loadGravelRoadTextures([3,3]);
+    // Deferred on mobile — these are stand-in textures (plaster/travertine) tinted via vertex colors
+    const wornPlasterTex=isMobileQ?paintedPlasterTex:loadWornPlasterTextures([3,3]);
+    const grassTex=isMobileQ?paintedPlasterTex:loadGrassTextures([12,12]);
+    const groundTex=isMobileQ?paintedPlasterTex:loadGroundTextures([8,8]);
+    const cropTex=isMobileQ?paintedPlasterTex:loadCropTextures([6,6]);
+    const whiteGravelTex=isMobileQ?stoneTex:loadWhiteGravelTextures([4,4]);
+    const roadTex=isMobileQ?stoneTex:loadGravelRoadTextures([3,3]);
     const allTexSets: PBRTextureSet[]=[stoneTex,wornPlasterTex,clayPlasterTex,paintedPlasterTex,roofTileTex,woodDoorTex,grassTex,groundTex,cropTex,whiteGravelTex,roadTex];
 
     // Hover label overlay
@@ -189,13 +226,13 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Dramatic golden-hour lighting
     scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#8A7858",0.6*dlPreset.ambientIntensity/0.5));
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,3.2*dlPreset.sunIntensity);sun.position.set(dlPreset.sunPosition[0],dlPreset.sunPosition[1],dlPreset.sunPosition[2]);sun.castShadow=true;
-    const shadowRes=window.innerWidth>=768?2048:1024;sun.shadow.mapSize.set(shadowRes,shadowRes);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
+    sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);sun.shadow.camera.near=1;sun.shadow.camera.far=200;
     sun.shadow.camera.left=-80;sun.shadow.camera.right=80;sun.shadow.camera.top=80;sun.shadow.camera.bottom=-80;sun.shadow.bias=-0.0003;scene.add(sun);
     const fill=new THREE.DirectionalLight(dlPreset.fillColor,0.4*dlPreset.fillIntensity/0.35);fill.position.set(-25,20,-15);scene.add(fill);
-    const rim=new THREE.DirectionalLight(dlPreset.sunColor,0.8*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);
+    if(!isMobileGPU()){const rim=new THREE.DirectionalLight(dlPreset.sunColor,0.8*dlPreset.sunIntensity);rim.position.set(-15,30,30);scene.add(rim);}
     // Warm uplight for drama
-    const uplight=new THREE.PointLight(dlPreset.fillColor,.4*dlPreset.fillIntensity/0.35,80);uplight.position.set(0,2,0);scene.add(uplight);
-    const porticoWarm=new THREE.SpotLight("#FFE0A0",0.3,60,Math.PI*0.3);porticoWarm.position.set(0,2,-20);porticoWarm.target.position.set(0,5,0);scene.add(porticoWarm);scene.add(porticoWarm.target);
+    if(!isMobileGPU()){const uplight=new THREE.PointLight(dlPreset.fillColor,.4*dlPreset.fillIntensity/0.35,80);uplight.position.set(0,2,0);scene.add(uplight);}
+    if(!isMobileGPU()){const porticoWarm=new THREE.SpotLight("#FFE0A0",0.3,60,Math.PI*0.3);porticoWarm.position.set(0,2,-20);porticoWarm.target.position.set(0,5,0);scene.add(porticoWarm);scene.add(porticoWarm.target);}
 
     const M={
       // ── WALLS — warm golden Tuscan ochre stucco with subtle plaster normalMap
@@ -206,10 +243,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       stoneDk:new THREE.MeshStandardMaterial({color:"#D8B050",roughness:.82,metalness:0,map:paintedPlasterTex.map,normalMap:clayPlasterTex.normalMap,normalScale:new THREE.Vector2(1,1),roughnessMap:clayPlasterTex.roughnessMap}),
       // ── TRIM — pietra serena (cool blue-grey sandstone) & aged gold
       trim:new THREE.MeshStandardMaterial({color:"#EDE4D4",roughness:.60,metalness:0,envMapIntensity:.6,normalMap:stoneTex.normalMap,normalScale:new THREE.Vector2(.15,.15)}),
-      gold:new THREE.MeshPhysicalMaterial({color:"#B8973A",roughness:.35,metalness:.92,emissive:"#3D3010",emissiveIntensity:.08,clearcoat:.15,clearcoatRoughness:.4,envMapIntensity:1.0}),
-      goldBright:new THREE.MeshPhysicalMaterial({color:"#CFB53B",roughness:.18,metalness:.95,emissive:"#4A3A10",emissiveIntensity:.12,clearcoat:.35,clearcoatRoughness:.08,envMapIntensity:1.5}),
-      bronze:new THREE.MeshPhysicalMaterial({color:"#6B5238",roughness:.3,metalness:.82,emissive:"#2A1E10",emissiveIntensity:.06,clearcoat:.2,clearcoatRoughness:.3,envMapIntensity:1.0}),
-      copper:new THREE.MeshPhysicalMaterial({color:"#5A9A80",roughness:.55,metalness:.30,emissive:"#1A3028",emissiveIntensity:.05,clearcoat:0,envMapIntensity:.7}),
+      gold:mkPhys(THREE,{color:"#B8973A",roughness:.35,metalness:.92,emissive:"#3D3010",emissiveIntensity:.08,clearcoat:.15,clearcoatRoughness:.4,envMapIntensity:1.0}),
+      goldBright:mkPhys(THREE,{color:"#CFB53B",roughness:.18,metalness:.95,emissive:"#4A3A10",emissiveIntensity:.12,clearcoat:.35,clearcoatRoughness:.08,envMapIntensity:1.5}),
+      bronze:mkPhys(THREE,{color:"#6B5238",roughness:.3,metalness:.82,emissive:"#2A1E10",emissiveIntensity:.06,clearcoat:.2,clearcoatRoughness:.3,envMapIntensity:1.0}),
+      copper:mkPhys(THREE,{color:"#5A9A80",roughness:.55,metalness:.30,emissive:"#1A3028",emissiveIntensity:.05,clearcoat:0,envMapIntensity:.7}),
       // ── ROOFS — aged terracotta coppo tiles with PBR textures (muted brown)
       roof:new THREE.MeshStandardMaterial({color:"#A87860",roughness:.82,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:roofTileTex.roughnessMap,aoMap:roofTileTex.aoMap,aoMapIntensity:.4,envMapIntensity:.3}),
       roofD:new THREE.MeshStandardMaterial({color:"#7A6458",roughness:.88,metalness:0,map:roofTileTex.map,normalMap:roofTileTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:roofTileTex.roughnessMap,envMapIntensity:.2}),
@@ -220,8 +257,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       marble:new THREE.MeshStandardMaterial({color:"#E0D8C8",roughness:.52,metalness:0,envMapIntensity:.25}),
       marbleVein:new THREE.MeshStandardMaterial({color:"#D8D0C0",roughness:.58,metalness:0,envMapIntensity:.25}),
       // ── WINDOWS — old glass with warm interior glow (IOR 1.52 = soda-lime glass)
-      win:new THREE.MeshPhysicalMaterial({color:"#FFF8E7",emissive:"#FFAA44",emissiveIntensity:.25,roughness:.08,transparent:true,opacity:.7,transmission:.6,ior:1.52}),
-      winBlue:new THREE.MeshPhysicalMaterial({color:"#D8E8F0",emissive:"#88AACC",emissiveIntensity:.12,roughness:.1,transparent:true,opacity:.65,transmission:.5,ior:1.52}),
+      win:mkPhys(THREE,{color:"#FFF8E7",emissive:"#FFAA44",emissiveIntensity:.25,roughness:.08,transparent:true,opacity:.7,transmission:.6,ior:1.52}),
+      winBlue:mkPhys(THREE,{color:"#D8E8F0",emissive:"#88AACC",emissiveIntensity:.12,roughness:.1,transparent:true,opacity:.65,transmission:.5,ior:1.52}),
       // ── WOODWORK — aged walnut/chestnut with grain textures
       door:new THREE.MeshStandardMaterial({color:"#5C3A1E",roughness:.65,metalness:0,map:woodDoorTex.map,normalMap:woodDoorTex.normalMap,normalScale:new THREE.Vector2(.4,.4),roughnessMap:woodDoorTex.roughnessMap,aoMap:woodDoorTex.aoMap,aoMapIntensity:.5}),
       doorRich:new THREE.MeshStandardMaterial({color:"#6B4226",roughness:.6,metalness:0,map:woodDoorTex.map,normalMap:woodDoorTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:woodDoorTex.roughnessMap,aoMap:woodDoorTex.aoMap,aoMapIntensity:.4}),
@@ -575,7 +612,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
       // Distance: Arno river
       const arnoGeo = new THREE.PlaneGeometry(200, 15);
-      const arnoMat = new THREE.MeshPhysicalMaterial({ color: "#5A8A7A", roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6, envMapIntensity: 1.0 });
+      const arnoMat = mkPhys(THREE,{ color: "#5A8A7A", roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.6, envMapIntensity: 1.0 });
       const arno = new THREE.Mesh(arnoGeo, arnoMat);
       arno.rotation.x = -Math.PI / 2;
       arno.position.set(0, getHeightAt(0,-85)+0.1, -85);
@@ -844,7 +881,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       const tymGeo = new THREE.ShapeGeometry(tymShape);
       const tymMat = new THREE.MeshStandardMaterial({
         color: "#D8B458", roughness: 0.75, metalness: 0,
-        side: THREE.DoubleSide, normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
+        normalMap: clayPlasterTex.normalMap, normalScale: new THREE.Vector2(.6, .6),
       });
       const tymMesh = new THREE.Mesh(tymGeo, tymMat);
       tymMesh.position.set(0, pedBaseY + 0.05, vestZ - 1.11);
@@ -913,10 +950,10 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     for (const [x, y] of [[-8, vH * 0.4 + 1.3], [-3, vH * 0.4 + 1.3], [3, vH * 0.4 + 1.3], [8, vH * 0.4 + 1.3]] as [number, number][]) {
       // Sconce bracket
       centralGroup.add(mk(new THREE.BoxGeometry(0.15, 0.08, 0.4), M.bronze, x, y, -(vD / 2 + 0.15)));
-      // Warm glow (small point light)
-      const sconce = new THREE.PointLight("#FFD080", 0.08, 6);
+      // Warm glow (small point light, skip on mobile)
+      if(!isMobileGPU()){const sconce = new THREE.PointLight("#FFD080", 0.08, 6);
       sconce.position.set(x, y + 0.4, -(vD / 2 + 0.4));
-      centralGroup.add(sconce);
+      centralGroup.add(sconce);}
     }
 
     // ── HANGING LANTERNS — vestibulum portico ceiling ──
@@ -928,18 +965,18 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       centralGroup.add(mk(new THREE.BoxGeometry(0.25, 0.3, 0.01), M.win, lx, 6.5, vestZ - 0.15));
       centralGroup.add(mk(new THREE.BoxGeometry(0.01, 0.3, 0.25), M.win, lx + 0.15, 6.5, vestZ));
       centralGroup.add(mk(new THREE.BoxGeometry(0.01, 0.3, 0.25), M.win, lx - 0.15, 6.5, vestZ));
-      // Warm lantern light
-      const lantern = new THREE.PointLight("#FFE0A0", 0.12, 8);
+      // Warm lantern light (skip on mobile)
+      if(!isMobileGPU()){const lantern = new THREE.PointLight("#FFE0A0", 0.12, 8);
       lantern.position.set(lx, 6.5, vestZ);
-      centralGroup.add(lantern);
+      centralGroup.add(lantern);}
     }
 
-    // ── GROUND-LEVEL UPLIGHTS — outermost vestibulum column bases ──
-    for (const ux of [-5, 5]) {
+    // ── GROUND-LEVEL UPLIGHTS — outermost vestibulum column bases (skip on mobile) ──
+    if(!isMobileGPU()){for (const ux of [-5, 5]) {
       const uplight = new THREE.PointLight("#FFE8C0", 0.06, 5);
       uplight.position.set(ux, 1.5, vestZ);
       centralGroup.add(uplight);
-    }
+    }}
 
     // ── OPEN ATRIUM (Center) — impluvium ──
     // Impluvium: sunken marble pool, recessed 0.4
@@ -1950,8 +1987,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // (terrain already created above via createTuscanTerrain)
 
     // ── INSTANCED GRASS — dense wind-animated shader grass on the hilltop ──
+    // Mobile: 25% density (3750 blades), Desktop: 15000 blades
     const grassSystem = createGrassSystem(scene, {
-      count: 15000,
+      count: Math.round(15000*Q.vegetationDensity),
       radius: 90,
       innerRadius: 38,
       bladeHeight: 1.4,
@@ -2026,7 +2064,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── NEAR-PALACE VINEYARD — organized rows on south-east slope ──
     const vineRowMat=new THREE.MeshStandardMaterial({color:"#3A5828",roughness:.84});
-    for(let row=0;row<14;row++){
+    const vineRowCount=isMobileQ?5:14;
+    for(let row=0;row<vineRowCount;row++){
       const vx=35+row*2.2;const vz=35+Math.sin(row*.3)*3;
       const vBaseY=getHeightAt(vx,vz);
       const vr=mk(new THREE.BoxGeometry(.35,.6,16),vineRowMat,vx,vBaseY+.3,vz);
@@ -2059,8 +2098,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const wheatTints=["#D8B848","#C8A848","#E0C060","#B8A040","#C8B050","#E4C868","#D0B048","#CCB258","#D4B450","#C0A048","#DAC058","#C4A838","#E2C468","#D6B850","#CCAA48"];
     const greenTints=["#8A9848","#7A8840","#909850"];
     const earthTints=["#B0A070","#A09060","#B8A878"];
-    // VERY dense field coverage — 500 patches for a sea of golden wheat
-    for(let fi=0;fi<500;fi++){
+    // VERY dense field coverage — 500 patches for a sea of golden wheat (60 on mobile)
+    const fieldPatchCount=isMobileQ?60:500;
+    for(let fi=0;fi<fieldPatchCount;fi++){
       const angle=Math.random()*Math.PI*2;
       const dist=65+Math.random()*480;
       const fx=Math.cos(angle)*dist,fz=Math.sin(angle)*dist-40;
@@ -2101,7 +2141,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── VINEYARDS: organized rows on gentle slopes ──
     const vineM=[new THREE.MeshStandardMaterial({color:"#3A5828",roughness:.85}),new THREE.MeshStandardMaterial({color:"#4A6830",roughness:.82})];
-    for(let vi=0;vi<14;vi++){
+    const vineyardCount=isMobileQ?3:14;
+    for(let vi=0;vi<vineyardCount;vi++){
       const vAngle=Math.random()*Math.PI*2;
       const vDist=90+vi*28+Math.random()*25;
       const vx=Math.cos(vAngle)*vDist,vz=Math.sin(vAngle)*vDist-40;
@@ -2118,30 +2159,34 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     }
 
     // ── CYPRESS TREES: dense Tuscan signature ──
+    // Mobile: ~75% fewer trees (only road avenue + 8 hilltop clusters)
     const cypressPositions: number[][]=[];
     // Along winding road — dense avenue
-    for(let ri=0;ri<50;ri++){
+    const roadCypressCount=isMobileQ?15:50;
+    for(let ri=0;ri<roadCypressCount;ri++){
       const rz=-45-ri*7;const rx=Math.sin(ri*.22)*28;
       if(Math.random()>.3)cypressPositions.push([rx-4.5+Math.random()*1.5,rz+Math.random()*2]);
       if(Math.random()>.3)cypressPositions.push([rx+4.5+Math.random()*1.5,rz+Math.random()*2]);
     }
     // Hilltop clusters
-    for(let ci=0;ci<35;ci++){
-      const angle=Math.random()*Math.PI*2,dist=55+Math.random()*280;
+    const hilltopClusterCount=isMobileQ?8:35;
+    for(let ci=0;ci<hilltopClusterCount;ci++){
+      const angle=Math.random()*Math.PI*2,dist=55+Math.random()*(isMobileQ?120:280);
       cypressPositions.push([Math.cos(angle)*dist,Math.sin(angle)*dist-50]);
     }
-    // Iconic ridge lines of 4-8 trees
-    for(let g=0;g<12;g++){
+    // Iconic ridge lines of 4-8 trees (skip on mobile)
+    if(!isMobileQ){for(let g=0;g<12;g++){
       const gx=-250+Math.random()*500,gz=-60-Math.random()*320;
       const gCount=4+Math.floor(Math.random()*5);
       const gAngle=Math.random()*Math.PI;
       for(let t=0;t<gCount;t++){
         cypressPositions.push([gx+Math.cos(gAngle)*t*4+Math.random()*1.5,gz+Math.sin(gAngle)*t*4+Math.random()*1.5]);
       }
-    }
-    // Farmhouse accompaniment
-    for(let f=0;f<20;f++){
-      const angle=Math.random()*Math.PI*2,dist=100+Math.random()*250;
+    }}
+    // Farmhouse accompaniment (fewer on mobile)
+    const farmCypressCount=isMobileQ?5:20;
+    for(let f=0;f<farmCypressCount;f++){
+      const angle=Math.random()*Math.PI*2,dist=100+Math.random()*(isMobileQ?120:250);
       for(let t=0;t<2+Math.floor(Math.random()*3);t++){
         cypressPositions.push([Math.cos(angle)*dist+Math.random()*6-3,Math.sin(angle)*dist-50+Math.random()*6-3]);
       }
@@ -2165,7 +2210,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     });
 
     // ── OLIVE GROVES: silver-green, gnarled ──
-    for(let oi=0;oi<40;oi++){
+    const oliveCount=isMobileQ?10:40;
+    for(let oi=0;oi<oliveCount;oi++){
       const angle=Math.random()*Math.PI*2,dist=38+Math.random()*120;
       const ox=Math.cos(angle)*dist,oz=Math.sin(angle)*dist-20;
       if(Math.sqrt(ox*ox+oz*oz)<48)continue;
@@ -2178,7 +2224,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     }
 
     // ── STONE PINES (umbrella pines) ──
-    for(let pi=0;pi<18;pi++){
+    const stonePineCount=isMobileQ?4:18;
+    for(let pi=0;pi<stonePineCount;pi++){
       const angle=Math.random()*Math.PI*2,dist=70+Math.random()*200;
       const px=Math.cos(angle)*dist,pz=Math.sin(angle)*dist-50;
       if(Math.sqrt(px*px+(pz+50)*(pz+50))<55)continue;
@@ -2192,9 +2239,11 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     }
 
     // ── FARMHOUSES & VILLAS: warm stone, terracotta roofs, shutters ──
-    const farmPositions=[[-110,-140],[135,-120],[-55,-200],[95,-230],[-170,-110],[190,-160],[-35,-270],[65,-290],
+    const farmPositionsAll=[[-110,-140],[135,-120],[-55,-200],[95,-230],[-170,-110],[190,-160],[-35,-270],[65,-290],
       [-150,-195],[165,-215],[-85,-280],[105,-165],[-195,-140],[225,-110],[-125,-250],[155,-275],
       [-40,-150],[130,-190],[-90,-110],[180,-250],[-210,-200],[250,-180],[-160,-300],[200,-310]];
+    // Mobile: only the closest 6 farmhouses
+    const farmPositions=isMobileQ?farmPositionsAll.slice(0,6):farmPositionsAll;
     farmPositions.forEach(([fx,fz])=>{
       const d=Math.sqrt(fx*fx+fz*fz);
       const fh=2+Math.random()*2.5;const fw=3.5+Math.random()*3;const fd=fw*.65+Math.random();
@@ -2221,8 +2270,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         scene.add(mk(new THREE.BoxGeometry(ew,eh,fd*.8),new THREE.MeshStandardMaterial({color:wallCol,roughness:.78}),fx+fw*.5+ew*.4,farmBaseY+eh/2+.3,fz));
         scene.add(mk(new THREE.BoxGeometry(ew+.5,.2,fd*.8+.4),new THREE.MeshStandardMaterial({color:roofCol,roughness:.6}),fx+fw*.5+ew*.4,farmBaseY+eh+.5,fz));
       }
-      // Warm window glow
-      if(d<250){
+      // Warm window glow (skip on mobile)
+      if(!isMobileGPU()&&d<250){
         const wl=new THREE.PointLight("#FFE0A0",.15,8);wl.position.set(fx,farmBaseY+fh*.6,fz+fd/2+1);scene.add(wl);
       }
     });
@@ -2284,29 +2333,31 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     }
 
     // Main strada bianca — winding south through wheat fields
-    for(let ri=0;ri<75;ri++){
+    const mainRoadSegs=isMobileQ?20:75;
+    for(let ri=0;ri<mainRoadSegs;ri++){
       const rz=-110-ri*6;const rx=Math.sin(ri*.18)*35+Math.cos(ri*.07)*15;
       mkStrada(rx,rz,3.5,7,Math.atan2(Math.cos(ri*.18)*.18*35,1)*.1);
     }
-    // East branch strada
-    for(let ri=0;ri<45;ri++){
+    // East branch strada (skip on mobile)
+    if(!isMobileQ){for(let ri=0;ri<45;ri++){
       const baseAngle=Math.PI*0.3;
       const rDist=70+ri*7;
       const rx2=Math.cos(baseAngle)*rDist+Math.sin(ri*.15)*18;
       const rz2=-Math.sin(baseAngle)*rDist+Math.cos(ri*.12)*8-55;
       mkStrada(rx2,rz2,3.0,7.5,baseAngle*.3);
-    }
-    // West branch strada
-    for(let ri=0;ri<40;ri++){
+    }}
+    // West branch strada (skip on mobile)
+    if(!isMobileQ){for(let ri=0;ri<40;ri++){
       const baseAngle=-Math.PI*0.35;
       const rDist=75+ri*7;
       const rx3=Math.cos(baseAngle)*rDist+Math.sin(ri*.12)*15;
       const rz3=-65-ri*6;
       mkStrada(rx3,rz3,2.8,7,0);
-    }
+    }}
 
     // ── ROMAN AQUEDUCT — Pont du Gard-style two-tier structure ──
-    if(!isRenaissance){
+    // Skipped on mobile — hundreds of geometry pieces, very far from camera
+    if(!isRenaissance&&!isMobileQ){
     const aqZ=220; // behind palace, far in background
     const aqSpans=12;
     const aqSpacing=10;
@@ -2528,8 +2579,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     // Bridge walls
     scene.add(mk(new THREE.BoxGeometry(.3,.5,3.5),M.stoneD,14.5,bridgeBaseY+1.2,bridgeZ));
     scene.add(mk(new THREE.BoxGeometry(.3,.5,3.5),M.stoneD,21.5,bridgeBaseY+1.2,bridgeZ));
-    // Winding stream — longer, more natural
-    for(let si=0;si<30;si++){
+    // Winding stream — longer, more natural (fewer segments on mobile)
+    const streamSegments=isMobileQ?10:30;
+    for(let si=0;si<streamSegments;si++){
       const sx=8+si*2.5+Math.sin(si*.3)*4;const sz=bridgeZ+Math.sin(si*.35)*6-si*.5;
       const sw=new THREE.Mesh(new THREE.BoxGeometry(2.5+Math.random()*.5,.04,2.2),M.water);
       sw.position.set(sx,getHeightAt(sx,sz)+.12,sz);sw.rotation.y=Math.atan2(Math.cos(si*.35)*6*.35,2.5)+Math.random()*.2;
@@ -2540,7 +2592,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
 
     // ── SUNFLOWER/WHEAT FIELDS: dense textured golden patches ──
     const sunflowerTones=["#D8B848","#C8A840","#E4C050","#B89838","#D0B048","#DCC058","#C4A040","#E0C460"];
-    for(let sf=0;sf<25;sf++){
+    const sunflowerCount=isMobileQ?4:25;
+    for(let sf=0;sf<sunflowerCount;sf++){
       const angle=Math.random()*Math.PI*2,dist=100+Math.random()*180;
       const sx=Math.cos(angle)*dist,sz=Math.sin(angle)*dist-30;
       if(Math.sqrt(sx*sx+(sz+30)*(sz+30))<80)continue;
@@ -2579,8 +2632,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       [-200, -300, 50, 38], [170, -310, 45, 32], [-80, -360, 48, 35],
       [50, -380, 42, 30], [-160, -340, 50, 38],
     ];
-    // Add many procedurally generated fields across wider area
-    for(let extra=0;extra<35;extra++){
+    // Add many procedurally generated fields across wider area (skip on mobile)
+    const extraFieldCount=isMobileQ?0:35;
+    for(let extra=0;extra<extraFieldCount;extra++){
       const angle=Math.random()*Math.PI*2;
       const dist=120+Math.random()*250;
       const wx2=Math.cos(angle)*dist;
@@ -2588,10 +2642,13 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       if(Math.sqrt(wx2*wx2+(wz2+60)*(wz2+60))<90)continue;
       wheatPositions.push([wx2,wz2,30+Math.random()*25,20+Math.random()*18]);
     }
-    wheatPositions.forEach(([wx, wz, ww, wd], i) => {
+    // On mobile, skip far wheat fields entirely and reduce near-field density
+    const wheatSubset=isMobileQ?wheatPositions.slice(0,8):wheatPositions;
+    wheatSubset.forEach(([wx, wz, ww, wd], i) => {
       const isFar = i >= 16;
+      const baseCount=isFar ? 600 : (1500 + Math.floor(Math.random() * 1000));
       wheatFields.push(createWheatField(scene, {
-        count: isFar ? 600 : (1500 + Math.floor(Math.random() * 1000)),
+        count: Math.round(baseCount*Q.vegetationDensity),
         centerX: wx, centerZ: wz, width: ww, depth: wd,
         stalkHeight: 1.4 + Math.random() * 0.9,
         color: `hsl(${42 + Math.random() * 15}, ${45 + Math.random() * 20}%, ${58 + Math.random() * 14}%)`,
@@ -2601,7 +2658,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     });
 
     // ── STONE WALLS: dry stone walls between fields ──
-    for(let sw=0;sw<20;sw++){
+    const stoneWallCount=isMobileQ?5:20;
+    for(let sw=0;sw<stoneWallCount;sw++){
       const angle=Math.random()*Math.PI*2,dist=60+Math.random()*200;
       const wx=Math.cos(angle)*dist,wz=Math.sin(angle)*dist-40;
       if(Math.sqrt(wx*wx+(wz+40)*(wz+40))<70)continue;
@@ -2715,8 +2773,8 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     });
 
     scene.add(palace);
-    scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(-5).translateY(HILL_Y+5).translateZ(0));
-    scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(5).translateY(HILL_Y+5).translateZ(0));
+    if(!isMobileGPU()){scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(-5).translateY(HILL_Y+5).translateZ(0));
+    scene.add(new THREE.PointLight("#FFD080",0.15,15).translateX(5).translateY(HILL_Y+5).translateZ(0));}
 
     // ── WALKTHROUGH HIGHLIGHT — golden glow on target wing/entrance meshes ──
     const hlLights: Map<string,THREE.PointLight>=new Map();
@@ -2742,6 +2800,9 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     const _wingWindowSetCache=new Map<string,Set<any>>();
     const _sectionGroupMap=new Map<string,any>();
     sectionGroups.forEach((sg: any)=>_sectionGroupMap.set(sg.id,sg));
+    // ── Optimize: deduplicate materials to reduce GPU state changes ──
+    optimizeMaterials(scene);
+
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
     let _lastHovId:string|null=null;
@@ -2763,6 +2824,72 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
           }
         });
       }
+      // ── Onboarding cinematic: WP1 (hold + prompt) → WP2-5 flyover → zoom to entrance ──
+      if (onboardingModeRef.current && !autoWalkToRef.current && !camDebugRef.current) {
+        const rawT = clock.getElapsedTime();
+        const HOLD_DUR = 1.5; // seconds to drift to WP1 before showing prompt
+
+        // Detect cinematicResumed prop becoming true → capture clock time
+        if (cinematicResumedRef.current && cinematicResumeTimeRef.current === null && cinematicPauseFiredRef.current) {
+          cinematicResumeTimeRef.current = rawT;
+        }
+
+        // Phase 0: drift to waypoint 1 & fire pause callback
+        if (cinematicResumeTimeRef.current === null) {
+          camOT.current.theta = Math.PI * 1.4987;
+          camOT.current.phi   = Math.PI * 0.4387;
+          camD.current += (180 - camD.current) * 0.05;
+          if (rawT >= HOLD_DUR && !cinematicPauseFiredRef.current) {
+            cinematicPauseFiredRef.current = true;
+            if (onCinematicPauseRef.current) onCinematicPauseRef.current();
+          }
+        } else {
+          // Resumed — compute time since resume
+          const ot = rawT - cinematicResumeTimeRef.current;
+          // 5 waypoints, Catmull-Rom interpolated
+          const WP: [number,number,number][] = [
+            [Math.PI*1.4987, Math.PI*0.4387, 180.0], // 1: wide establishing shot
+            [Math.PI*1.6197, Math.PI*0.3967, 175.0], // 2: pan right & up
+            [Math.PI*1.4910, Math.PI*0.3471, 150.0], // 3: sweep left, higher angle
+            [Math.PI*1.3854, Math.PI*0.4336, 150.0], // 4: continue left, drop down
+            [Math.PI*1.4809, Math.PI*0.4400, 115.0], // 5: settle front, closer
+          ];
+          const FLY_DUR = 7.0;
+          const ZOOM_DUR = 3.8; // extended zoom for dramatic effect
+
+          if (ot < FLY_DUR) {
+            const progress = ot / FLY_DUR;
+            const n = WP.length - 1;
+            const scaled = progress * n;
+            const seg = Math.min(Math.floor(scaled), n - 1);
+            const local = scaled - seg;
+            const lt = local * local * (3 - 2 * local);
+            const p0 = WP[Math.max(seg - 1, 0)];
+            const p1 = WP[seg];
+            const p2 = WP[Math.min(seg + 1, n)];
+            const p3 = WP[Math.min(seg + 2, n)];
+            const cr = (a: number, b: number, c: number, d: number, tt: number) =>
+              0.5*((2*b)+(-a+c)*tt+(2*a-5*b+4*c-d)*tt*tt+(-a+3*b-3*c+d)*tt*tt*tt);
+            camOT.current.theta = cr(p0[0],p1[0],p2[0],p3[0],lt);
+            camOT.current.phi   = cr(p0[1],p1[1],p2[1],p3[1],lt);
+            camD.current += (cr(p0[2],p1[2],p2[2],p3[2],lt) - camD.current) * 0.08;
+          } else {
+            const p = Math.min((ot - FLY_DUR) / ZOOM_DUR, 1.0);
+            const accel = p * p * p;
+            const lastWP = WP[WP.length - 1];
+            const entrTheta = Math.PI * 1.5;
+            const entrPhi = Math.PI * 0.22;
+            const entrD = 35;
+            camOT.current.theta = lastWP[0] + (entrTheta - lastWP[0]) * accel;
+            camOT.current.phi   = lastWP[1] + (entrPhi   - lastWP[1]) * accel;
+            camD.current += ((entrD + (lastWP[2] - entrD) * (1 - accel)) - camD.current) * 0.08;
+            if (camD.current < 40) {
+              onboardingModeRef.current = false;
+              onRoomClickRef.current("__entrance__");
+            }
+          }
+        }
+      }
       // Auto-walk: zoom toward entrance (fast exponential approach)
       if(autoWalkToRef.current==="__entrance__"){
         camOT.current.theta=Math.PI*1.5;
@@ -2773,12 +2900,18 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
           onRoomClickRef.current("__entrance__");
         }
       }
-      const camLerp=autoWalkToRef.current?0.02:0.04;
+      const camLerp=onboardingModeRef.current?0.015:autoWalkToRef.current?0.02:0.04;
       camO.current.theta+=(camOT.current.theta-camO.current.theta)*camLerp;
       camO.current.phi+=(camOT.current.phi-camO.current.phi)*camLerp;
       const r=camD.current;
       camera.position.set(r*Math.sin(camO.current.phi)*Math.cos(camO.current.theta),r*Math.cos(camO.current.phi)+5,r*Math.sin(camO.current.phi)*Math.sin(camO.current.theta));
       camera.lookAt(0,HILL_Y+8,0);
+
+      // ── Camera debug overlay (activated via ?cam=debug) ──
+      if(camDebugRef.current){
+        const el=camDebugRef.current;
+        el.textContent=`theta: Math.PI * ${(camO.current.theta/Math.PI).toFixed(4)}\nphi: Math.PI * ${(camO.current.phi/Math.PI).toFixed(4)}\ndistance: ${camD.current.toFixed(1)}`;
+      }
 
       // Subtle water opacity animation
       if (pool) (pool.material as THREE.MeshStandardMaterial).opacity=.5+Math.sin(t*.8)*.03;
@@ -2886,7 +3019,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         // Animate dust motes
         const dp=dG.attributes.position.array;
         for(let i=0;i<dustN;i++){dp[i*3]+=Math.sin(t*.08+i*.3)*.012;dp[i*3+1]+=Math.sin(t*.12+i*.5)*.006;if(dp[i*3+1]>27)dp[i*3+1]=2;}
-        dG.attributes.position.needsUpdate=true;
+        dG.attributes.position.needsUpdate=true;(dG.attributes.position as any).updateRange={offset:0,count:dustN*3};
 
         // Animate floating orbs (gentle rise and drift)
         const op=orbG.attributes.position.array;
@@ -2895,7 +3028,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
           op[i*3+1]+=Math.sin(t*.08+i*2.3)*.008;
           op[i*3+2]+=Math.cos(t*.06+i*1.1)*.012;
         }
-        orbG.attributes.position.needsUpdate=true;
+        orbG.attributes.position.needsUpdate=true;(orbG.attributes.position as any).updateRange={offset:0,count:orbN*3};
 
         // Animate mist drift
         mistMeshes.forEach((mm,i)=>{
@@ -2906,7 +3039,7 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
         // Animate birds
         const bp=birdG.attributes.position.array;
         for(let i=0;i<birdN;i++){bp[i*3]+=.02;bp[i*3+1]+=Math.sin(t*3+i)*.01;if(bp[i*3]>60)bp[i*3]=-60;}
-        birdG.attributes.position.needsUpdate=true;
+        birdG.attributes.position.needsUpdate=true;(birdG.attributes.position as any).updateRange={offset:0,count:birdN*3};
       }
 
       // Update grass and wheat wind animation
@@ -2973,15 +3106,16 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
     return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);el.removeEventListener("wheel",onWh);window.removeEventListener("resize",onRs);window.removeEventListener("orientationchange",onOrient);
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       if(el.contains(hovLabel))el.removeChild(hovLabel);
+      const _cachedSet=buildCachedTextureSet();
       scene.traverse((obj: any) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
           const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
           materials.forEach((m: any) => {
-            if (m.map && !isCachedTexture(m.map)) m.map.dispose();
-            if (m.normalMap && !isCachedTexture(m.normalMap)) m.normalMap.dispose();
-            if (m.roughnessMap && !isCachedTexture(m.roughnessMap)) m.roughnessMap.dispose();
-            if (m.emissiveMap && !isCachedTexture(m.emissiveMap)) m.emissiveMap.dispose();
+            if (m.map && !_cachedSet.has(m.map)) m.map.dispose();
+            if (m.normalMap && !_cachedSet.has(m.normalMap)) m.normalMap.dispose();
+            if (m.roughnessMap && !_cachedSet.has(m.roughnessMap)) m.roughnessMap.dispose();
+            if (m.emissiveMap && !_cachedSet.has(m.emissiveMap)) m.emissiveMap.dispose();
             m.dispose();
           });
         }
@@ -2993,9 +3127,17 @@ export default function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings
       wheatFields.forEach(wf => wf.dispose());
       cropDispMap.dispose();
       envMapProc.dispose();
+      if(envMapHDRI){envMapHDRI.dispose();envMapHDRI=null;}
+      if(bgMapHDRI){bgMapHDRI.dispose();bgMapHDRI=null;}
       composer.dispose();
       try{ren.forceContextLoss();}catch{}
-      if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();};
+      if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();
+      scene.environment=null;scene.background=null;scene.fog=null;};
   },[]);
-  return <div ref={mountRef} role="application" aria-label={t("sceneLabel")} style={{width:"100%",height:"100%",cursor:hoveredRoom?"pointer":"grab"}}/>;
+  return (<>
+    <div ref={mountRef} role="application" aria-label={t("sceneLabel")} style={{width:"100%",height:"100%",cursor:hoveredRoom?"pointer":"grab"}}/>
+    {camDebug && createPortal(<pre ref={camDebugRef} onClick={()=>{if(camDebugRef.current)navigator.clipboard.writeText(camDebugRef.current.textContent||"");}} style={{position:"fixed",bottom:"6rem",left:"1rem",zIndex:99999,background:"rgba(0,0,0,0.85)",color:"#0f0",padding:"0.75rem 1rem",borderRadius:"0.5rem",fontFamily:"monospace",fontSize:"0.8125rem",cursor:"pointer",border:"1px solid #0f03",lineHeight:1.6,userSelect:"all"}}/>,document.body)}
+  </>);
 }
+
+export default memo(ExteriorScene);

@@ -1,5 +1,6 @@
 "use client";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, memo } from "react";
+import { createPortal } from "react-dom";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { WINGS as DEFAULT_WINGS } from "@/lib/constants/wings";
@@ -9,16 +10,19 @@ import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
-import { loadHDRI, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { loadBustModel, type BustStyle, type BustGender } from "@/lib/3d/bustBuilder";
 import type { BustPedestalData } from "@/lib/stores/userStore";
+import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
+import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
+import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 
 /** Shared wing data from wing_shares table */
 export interface SharedWingDoor {
   shareId: string;
-  wingId: string;       // slug: "family", "travel", etc.
+  wingId: string;       // slug: "roots", "travel", etc.
   ownerName: string;
   ownerId: string;
   permission: string;
@@ -29,13 +33,13 @@ export interface SharedWingDoor {
 
 // ═══ ENTRANCE HALL — Grand Roman Senate / Pantheon Chamber ═══
 const HALL_DOORS = [
-  { id: "family",     locked: false },
+  { id: "roots",      locked: false },
   { id: "locked1",    locked: true  },
   { id: "travel",     locked: false },
-  { id: "childhood",  locked: false },
+  { id: "nest",       locked: false },
   { id: "locked2",    locked: true  },
-  { id: "career",     locked: false },
-  { id: "creativity", locked: false },
+  { id: "craft",      locked: false },
+  { id: "passions",   locked: false },
 ];
 const NUM_HALL_DOORS = HALL_DOORS.length; // 7
 // Door angles pre-computed for column skip logic
@@ -127,7 +131,7 @@ function createNamePlaqueTexture(name: string): THREE.CanvasTexture {
 }
 
 
-export default function EntranceHallScene({
+function EntranceHallScene({
   onDoorClick,
   wings: wingsProp,
   highlightDoor,
@@ -142,12 +146,14 @@ export default function EntranceHallScene({
   bustGender,
   sharedWings,
   autoWalkTo,
+  onboardingMode,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
   highlightDoor?: string | null;
   styleEra?: string;
   autoWalkTo?: string | null;
+  onboardingMode?: boolean;
   onInlayClick?: () => void;
   onBustClick?: (pedestalIndex: number) => void;
   bustPedestals?: Record<number, BustPedestalData>;
@@ -169,8 +175,15 @@ export default function EntranceHallScene({
   useEffect(() => { highlightDoorRef.current = highlightDoor; }, [highlightDoor]);
   const autoWalkToRef = useRef(autoWalkTo);
   useEffect(() => { autoWalkToRef.current = autoWalkTo; }, [autoWalkTo]);
+  const onboardingModeRef = useRef(onboardingMode);
+  useEffect(() => { onboardingModeRef.current = onboardingMode; }, [onboardingMode]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [muted, setMuted] = useState(false);
+  const camDebugRef = useRef<HTMLPreElement | null>(null);
+  const camDebug = false; // set true to show camera debug overlay
+  const [blinkOpacity, setBlinkOpacity] = useState(0);
+  const blinkRef = useRef(0); // updated every frame, React state synced periodically
+  const entranceCinematicRef = useRef(!!onboardingMode); // only play cinematic in onboarding
+  const [cinematicActive, setCinematicActive] = useState(!!onboardingMode);
 
   // First-person camera refs (matching InteriorScene pattern)
   const lookA = useRef({ yaw: 0, pitch: 0 });
@@ -195,14 +208,18 @@ export default function EntranceHallScene({
     scene.background = new THREE.Color(dlPreset.fogColor);
     scene.fog = new THREE.FogExp2(dlPreset.fogColor, 0.006 * dlPreset.fogDensity);
 
+    const Q = getQuality();
+    let alive = true;
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
-    const ren = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
-    ren.setSize(w, h);
-    ren.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    ren.shadowMap.enabled = true;
-    ren.shadowMap.type = THREE.PCFSoftShadowMap;
+    const ren = borrowRenderer(w, h);
+    ren.shadowMap.enabled = Q.shadowsEnabled;
+    if (Q.shadowsEnabled) {
+      ren.shadowMap.type = Q.shadowMapSize >= 1024 ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
+      ren.shadowMap.autoUpdate = false;
+      ren.shadowMap.needsUpdate = true;
+    }
     ren.toneMapping = THREE.ACESFilmicToneMapping;
-    ren.toneMappingExposure = 1.1 * dlPreset.exposure;
+    ren.toneMappingExposure = 0.7 * dlPreset.exposure; // eerie filmic: noticeably underexposed for atmosphere
     ren.outputColorSpace = THREE.SRGBColorSpace;
     ren.localClippingEnabled = true;
     el.appendChild(ren.domElement);
@@ -210,19 +227,20 @@ export default function EntranceHallScene({
     // ── ENVIRONMENT MAP (IBL) — procedural immediate, real HDRI async ──
     const envMapProc = createInteriorEnvMap(ren, { warmth: dlPreset.envWarmth, brightness: dlPreset.envBrightness });
     scene.environment = envMapProc;
-    scene.environmentIntensity = 0.6;
+    scene.environmentIntensity = 0.35;
     let envMapHDRI: THREE.Texture | null = null;
-    loadHDRI(ren, HDRI_INTERIOR).then((hdr) => {
-      envMapHDRI = hdr;
-      scene.environment = hdr;
-      scene.environmentIntensity = 0.6;
-    }).catch(() => {}); // keep procedural fallback
+    if (Q.loadEnvHDRI) {
+      loadHDRIProgressive(ren, HDRI_INTERIOR, {
+        onProcedural: (p) => { if (!alive) return; scene.environment = p; scene.environmentIntensity = 0.35; },
+        onFull: (hdr) => { if (!alive) { hdr.dispose(); return; } envMapHDRI = hdr; scene.environment = hdr; scene.environmentIntensity = 0.35; },
+      }).catch(() => {}); // keep procedural fallback
+    }
 
-    // ── POST-PROCESSING (with SSAO) ──
+    // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     const composer = createPostProcessing(ren, scene, camera, "entrance", {
-      ssao: false, // disabled for performance
-      bloom: { luminanceThreshold: 0.5, luminanceSmoothing: 0.6, intensity: 0.3 },
-      vignette: { darkness: 0.3, offset: 0.3 },
+      ssao: false, // disabled for performance even on desktop
+      bloom: { luminanceThreshold: 0.25, luminanceSmoothing: 0.5, intensity: 0.9 },
+      vignette: { darkness: 0.7, offset: 0.15 },
     });
 
     // ── REAL PBR TEXTURES (from Poly Haven) ──
@@ -234,24 +252,24 @@ export default function EntranceHallScene({
 
     // ── MATERIALS (PBR-upgraded with real textures + env map) ──
     const MS = {
-      marble: new THREE.MeshPhysicalMaterial({ color: "#F5F0E8", roughness: 0.12, metalness: 0.0, envMapIntensity: 1.0, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.4, .4), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.3, clearcoatRoughness: 0.15, reflectivity: 0.7 }),
-      marbleWarm: new THREE.MeshPhysicalMaterial({ color: "#EDE5D8", roughness: 0.18, metalness: 0.0, envMapIntensity: 0.9, map: floorTileTex.map, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: floorTileTex.roughnessMap, aoMap: floorTileTex.aoMap, aoMapIntensity: 0.7, clearcoat: 0.2, clearcoatRoughness: 0.2 }),
+      marble: mkPhys(THREE,{ color: "#F5F0E8", roughness: 0.12, metalness: 0.0, envMapIntensity: 1.0, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.4, .4), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.3, clearcoatRoughness: 0.15, reflectivity: 0.7 }),
+      marbleWarm: mkPhys(THREE,{ color: "#EDE5D8", roughness: 0.18, metalness: 0.0, envMapIntensity: 0.9, map: floorTileTex.map, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: floorTileTex.roughnessMap, aoMap: floorTileTex.aoMap, aoMapIntensity: 0.7, clearcoat: 0.2, clearcoatRoughness: 0.2 }),
       marbleDark: new THREE.MeshStandardMaterial({ color: "#C8B89A", roughness: 0.25, metalness: 0.0, envMapIntensity: 0.8, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.2, .2) }),
-      gold: new THREE.MeshPhysicalMaterial({ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, emissive: "#D4AF37", emissiveIntensity: 0.15, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
+      gold: mkPhys(THREE,{ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, emissive: "#D4AF37", emissiveIntensity: 0.15, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
       goldDark: new THREE.MeshStandardMaterial({ color: "#B8922E", roughness: 0.25, metalness: 0.85, envMapIntensity: 1.2, emissive: "#B8922E", emissiveIntensity: 0.1 }),
-      goldBright: new THREE.MeshPhysicalMaterial({ color: "#E8C84A", roughness: 0.1, metalness: 0.95, envMapIntensity: 1.8, emissive: "#E8C84A", emissiveIntensity: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.05 }),
+      goldBright: mkPhys(THREE,{ color: "#E8C84A", roughness: 0.1, metalness: 0.95, envMapIntensity: 1.8, emissive: "#E8C84A", emissiveIntensity: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.05 }),
       column: new THREE.MeshStandardMaterial({ color: "#F0E8DC", roughness: 0.2, metalness: 0.0, envMapIntensity: 0.9, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.3, .3) }),
       door: new THREE.MeshStandardMaterial({ color: "#8B5E3C", roughness: 0.40, metalness: 0.0, emissive: "#5A3E28", emissiveIntensity: 0.25, map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(.4, .4), roughnessMap: woodDoorTex.roughnessMap, aoMap: woodDoorTex.aoMap, aoMapIntensity: 0.6 }),
-      doorFrame: new THREE.MeshPhysicalMaterial({ color: "#E8C84A", roughness: 0.1, metalness: 0.95, envMapIntensity: 1.8, emissive: "#E8C84A", emissiveIntensity: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.05 }),
+      doorFrame: mkPhys(THREE,{ color: "#E8C84A", roughness: 0.1, metalness: 0.95, envMapIntensity: 1.8, emissive: "#E8C84A", emissiveIntensity: 0.25, clearcoat: 0.4, clearcoatRoughness: 0.05 }),
       dome: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.2, .2) }),
-      domeGold: new THREE.MeshPhysicalMaterial({ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
-      floor: new THREE.MeshPhysicalMaterial({ color: "#E8DDD0", roughness: 0.35, metalness: 0.02, envMapIntensity: 0.2, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.15, clearcoatRoughness: 0.4, reflectivity: 0.25 }),
-      floorDark: new THREE.MeshPhysicalMaterial({ color: "#C4B8A0", roughness: 0.4, metalness: 0.02, envMapIntensity: 0.18, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.2, .2), clearcoat: 0.1, clearcoatRoughness: 0.45, reflectivity: 0.2 }),
+      domeGold: mkPhys(THREE,{ color: "#D4AF37", roughness: 0.15, metalness: 0.95, envMapIntensity: 1.5, clearcoat: 0.3, clearcoatRoughness: 0.1 }),
+      floor: mkPhys(THREE,{ color: "#E8DDD0", roughness: 0.35, metalness: 0.02, envMapIntensity: 0.2, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.15, clearcoatRoughness: 0.4, reflectivity: 0.25 }),
+      floorDark: mkPhys(THREE,{ color: "#C4B8A0", roughness: 0.4, metalness: 0.02, envMapIntensity: 0.18, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.2, .2), clearcoat: 0.1, clearcoatRoughness: 0.45, reflectivity: 0.2 }),
       floorAccent: new THREE.MeshStandardMaterial({ color: "#A89878", roughness: 0.12, metalness: 0.05, envMapIntensity: 0.9 }),
       bust: new THREE.MeshStandardMaterial({ color: "#E8E0D4", roughness: 0.35, metalness: 0.0, envMapIntensity: 0.7, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.15, .15) }),
-      bronze: new THREE.MeshPhysicalMaterial({ color: "#8A7050", roughness: 0.25, metalness: 0.8, envMapIntensity: 1.1, clearcoat: 0.2, clearcoatRoughness: 0.3 }),
+      bronze: mkPhys(THREE,{ color: "#8A7050", roughness: 0.25, metalness: 0.8, envMapIntensity: 1.1, clearcoat: 0.2, clearcoatRoughness: 0.3 }),
       wall: new THREE.MeshStandardMaterial({ color: "#F5F0E8", roughness: 0.15, metalness: 0.0, envMapIntensity: 0.8, side: THREE.BackSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.2, .2), roughnessMap: wallTex.roughnessMap }),
-      lightBeam: new THREE.MeshBasicMaterial({ color: dlPreset.sunColor, transparent: true, opacity: 0.06 * dlPreset.sunIntensity, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+      lightBeam: new THREE.MeshBasicMaterial({ color: dlPreset.sunColor, transparent: true, opacity: 0.06 * dlPreset.sunIntensity, depthWrite: false, blending: THREE.AdditiveBlending }),
       atticDoor: new THREE.MeshStandardMaterial({ color: "#6A5040", roughness: 0.6, metalness: 0.0, map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: woodDoorTex.roughnessMap }),
       frescoPanel: new THREE.MeshStandardMaterial({ color: "#C4A070", roughness: 0.5, metalness: 0.05, envMapIntensity: 0.5 }),
     };
@@ -272,12 +290,12 @@ export default function EntranceHallScene({
 
     // ── LIGHTING (dramatic PBR upgrade) ──
     // Hemisphere: warm sky / cool dark ground for contrast
-    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor, "#2A1A0A", 0.3 * dlPreset.ambientIntensity / 0.5));
-    // Main oculus directional light — dramatic and intense
-    const sunLight = new THREE.DirectionalLight(dlPreset.sunColor, 3.5 * dlPreset.sunIntensity);
+    scene.add(new THREE.HemisphereLight(dlPreset.ambientColor, "#1A0F05", 0.15 * dlPreset.ambientIntensity / 0.5));
+    // Main oculus directional light — filmic: dramatic but not blown out
+    const sunLight = new THREE.DirectionalLight(dlPreset.sunColor, 2.4 * dlPreset.sunIntensity);
     sunLight.position.set(0, TOTAL_H + 10, 0);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(1024, 1024);
+    sunLight.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
     sunLight.shadow.camera.near = 1;
     sunLight.shadow.camera.far = 60;
     sunLight.shadow.camera.left = -12;
@@ -290,16 +308,16 @@ export default function EntranceHallScene({
     const fillLight = new THREE.DirectionalLight(dlPreset.fillColor, 0.2 * dlPreset.fillIntensity / 0.35);
     fillLight.position.set(-10, 8, 5);
     scene.add(fillLight);
-    // Main oculus spotlight — very dramatic beam
-    const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, 3.5 * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
+    // Main oculus spotlight — filmic beam
+    const oculusSpot = new THREE.SpotLight(dlPreset.sunColor, 2.4 * dlPreset.sunIntensity, 50, Math.PI / 4, 0.5, 0.8);
     oculusSpot.position.set(0, TOTAL_H - 1, 0);
     oculusSpot.target.position.set(0, 0, 0);
     oculusSpot.castShadow = true;
-    oculusSpot.shadow.mapSize.set(1024, 1024);
+    oculusSpot.shadow.mapSize.set(Q.shadowMapSize, Q.shadowMapSize);
     scene.add(oculusSpot);
     scene.add(oculusSpot.target);
     // Secondary warm fill from oculus
-    const oculusFill = new THREE.PointLight(dlPreset.fillColor, 1.2 * dlPreset.sunIntensity, 40);
+    const oculusFill = new THREE.PointLight(dlPreset.fillColor, 0.7 * dlPreset.sunIntensity, 40);
     oculusFill.position.set(0, TOTAL_H - 2, 0);
     scene.add(oculusFill);
 
@@ -476,7 +494,7 @@ export default function EntranceHallScene({
 
     // Oculus opening
     const oculusGeo = new THREE.CircleGeometry(OCULUS_R, 32);
-    const oculusMat = new THREE.MeshBasicMaterial({ color: "#F0E8D8", side: THREE.DoubleSide });
+    const oculusMat = new THREE.MeshBasicMaterial({ color: "#F0E8D8" });
     const oculusMesh = new THREE.Mesh(oculusGeo, oculusMat);
     oculusMesh.rotation.x = Math.PI / 2;
     oculusMesh.position.y = TOTAL_H - 0.3;
@@ -617,8 +635,8 @@ export default function EntranceHallScene({
       // Door recess / alcove — flat plane only (no side walls that protrude)
       const recessGeo = new THREE.PlaneGeometry(DOOR_W + 0.8, DOOR_H + 0.6);
       const recessMat = isUnlocked
-        ? new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide })
-        : new THREE.MeshStandardMaterial({ color: "#D8D0C4", roughness: 0.35, metalness: 0.0, side: THREE.DoubleSide, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.15, .15) });
+        ? new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 })
+        : new THREE.MeshStandardMaterial({ color: "#D8D0C4", roughness: 0.35, metalness: 0.0, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.15, .15) });
       const recessMesh = mk(recessGeo, recessMat,
         dx - inN.x * 0.15, (DOOR_H + 0.6) / 2, dz - inN.z * 0.15);
       recessMesh.lookAt(0, (DOOR_H + 0.6) / 2, 0);
@@ -772,7 +790,7 @@ export default function EntranceHallScene({
         // Small mount plate
         const handlePlate = new THREE.Mesh(
           new THREE.CircleGeometry(0.06, 10),
-          new THREE.MeshStandardMaterial({ color: "#8A7040", roughness: 0.3, metalness: 0.7, side: THREE.DoubleSide })
+          new THREE.MeshStandardMaterial({ color: "#8A7040", roughness: 0.3, metalness: 0.7 })
         );
         handlePlate.position.set(
           dx + handleLat.x + inN.x * 0.41,
@@ -845,7 +863,6 @@ export default function EntranceHallScene({
       const lockMedallionMat = new THREE.MeshStandardMaterial({
         color: "#C8B080", roughness: 0.25, metalness: 0.7,
         emissive: "#C8B080", emissiveIntensity: 0.05,
-        side: THREE.DoubleSide,
       });
       const lockMedallion = new THREE.Mesh(lockMedallionGeo, lockMedallionMat);
       lockMedallion.position.set(
@@ -859,7 +876,7 @@ export default function EntranceHallScene({
       // Lock keyhole shape (small dark circle + triangle below)
       const keyholeCircle = new THREE.Mesh(
         new THREE.CircleGeometry(0.06, 12),
-        new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide })
+        new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0 })
       );
       keyholeCircle.position.set(
         dx + inN.x * 0.21,
@@ -871,7 +888,7 @@ export default function EntranceHallScene({
       // Keyhole slot (small narrow rect below circle)
       const keyholeSlot = new THREE.Mesh(
         new THREE.PlaneGeometry(0.035, 0.1),
-        new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0, side: THREE.DoubleSide })
+        new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0 })
       );
       keyholeSlot.position.set(
         dx + inN.x * 0.21,
@@ -888,12 +905,14 @@ export default function EntranceHallScene({
       doorFill.position.set(dx + inN.x * 2.5, DOOR_H * 0.5, dz + inN.z * 2.5);
       scene.add(doorFill);
 
-      // Spotlight on door face (dimmer for locked niches)
-      const doorFaceSpot = new THREE.SpotLight(isSharedDoor ? sharedAccent : dlPreset.sunColor, (isUnlocked ? 2.0 : 0.6) * dlPreset.sunIntensity, 16, Math.PI / 4.5, 0.4, 0.7);
-      doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
-      doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
-      scene.add(doorFaceSpot);
-      scene.add(doorFaceSpot.target);
+      // Spotlight on door face (dimmer for locked niches, skip on mobile)
+      if (!isMobileGPU()) {
+        const doorFaceSpot = new THREE.SpotLight(isSharedDoor ? sharedAccent : dlPreset.sunColor, (isUnlocked ? 2.0 : 0.6) * dlPreset.sunIntensity, 16, Math.PI / 4.5, 0.4, 0.7);
+        doorFaceSpot.position.set(dx + inN.x * 6.0, DOOR_H * 0.55, dz + inN.z * 6.0);
+        doorFaceSpot.target.position.set(dx, DOOR_H * 0.42, dz);
+        scene.add(doorFaceSpot);
+        scene.add(doorFaceSpot.target);
+      }
 
       // ── ELEGANT WING NAME LABEL (upper portion of door/niche) ──
       const effectiveLabel = isSharedDoor
@@ -1242,10 +1261,12 @@ export default function EntranceHallScene({
               cx + perpX, branchY + 0.06, cz + perpZ));
           }
 
-          // PointLight per candelabra
-          const candleLight = new THREE.PointLight("#FFF5E0", 0.3, 4);
-          candleLight.position.set(cx, baseY + 0.5, cz);
-          scene.add(candleLight);
+          // PointLight per candelabra (skip on mobile)
+          if (!isMobileGPU()) {
+            const candleLight = new THREE.PointLight("#FFF5E0", 0.3, 4);
+            candleLight.position.set(cx, baseY + 0.5, cz);
+            scene.add(candleLight);
+          }
         });
       }
 
@@ -1254,7 +1275,7 @@ export default function EntranceHallScene({
 
       // ── Grand Impluvium: recessed pool 7×5 ──
       const implW = 7, implD = 5, implDepth = 0.35;
-      const waterMat = new THREE.MeshPhysicalMaterial({
+      const waterMat = mkPhys(THREE,{
         color: "#4A8A7A", roughness: 0.02, metalness: 0.1, transparent: true, opacity: 0.65,
         envMapIntensity: 1.4, clearcoat: 0.6, clearcoatRoughness: 0.05,
       });
@@ -1512,10 +1533,12 @@ export default function EntranceHallScene({
           // Emissive glow on dish
           scene.add(mk(new THREE.SphereGeometry(0.04, 6, 4), lampGlowMat, inwardX, lY + 0.05, inwardZ));
 
-          // PointLight per lamp
-          const lampLight = new THREE.PointLight("#FF9040", 0.4, 6);
-          lampLight.position.set(inwardX, lY + 0.15, inwardZ);
-          scene.add(lampLight);
+          // PointLight per lamp (skip on mobile)
+          if (!isMobileGPU()) {
+            const lampLight = new THREE.PointLight("#FF9040", 0.4, 6);
+            lampLight.position.set(inwardX, lY + 0.15, inwardZ);
+            scene.add(lampLight);
+          }
         }
       }
 
@@ -1655,7 +1678,7 @@ export default function EntranceHallScene({
     // Bright outdoor light plane (sky visible through opening)
     const portalGlow = new THREE.Mesh(
       new THREE.PlaneGeometry(EXIT_W - 0.4, EXIT_H - 0.5),
-      new THREE.MeshBasicMaterial({ color: dlPreset.sunColor, transparent: true, opacity: 0.08 * dlPreset.sunIntensity, side: THREE.DoubleSide })
+      new THREE.MeshBasicMaterial({ color: dlPreset.sunColor, transparent: true, opacity: 0.08 * dlPreset.sunIntensity })
     );
     portalGlow.position.set(exitX, EXIT_H / 2, exitZ);
     portalGlow.lookAt(0, EXIT_H / 2, 0);
@@ -1729,7 +1752,7 @@ export default function EntranceHallScene({
     skyTex.colorSpace = THREE.SRGBColorSpace;
     const skyPlane = new THREE.Mesh(
       new THREE.PlaneGeometry(EXIT_W - 0.6, EXIT_H - 0.5),
-      new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.DoubleSide, transparent: true, opacity: 0.6 })
+      new THREE.MeshBasicMaterial({ map: skyTex, transparent: true, opacity: 0.6 })
     );
     skyPlane.position.set(exitX + exitInN.x * 0.05, EXIT_H / 2, exitZ + exitInN.z * 0.05);
     skyPlane.lookAt(0, EXIT_H / 2, 0);
@@ -1745,14 +1768,15 @@ export default function EntranceHallScene({
     scene.add(portalHit);
 
     // Strong outdoor light streaming in
-    const portalLight = new THREE.PointLight(dlPreset.sunColor, 1.2 * dlPreset.sunIntensity, 12);
+    let portalLight: THREE.PointLight | null = null;
+    if(!isMobileGPU()){portalLight = new THREE.PointLight(dlPreset.sunColor, 1.2 * dlPreset.sunIntensity, 12);
     portalLight.position.set(exitX - exitInN.x * 1.0, EXIT_H * 0.6, exitZ - exitInN.z * 1.0);
-    scene.add(portalLight);
-    const portalSpot = new THREE.SpotLight(dlPreset.sunColor, 1.5 * dlPreset.sunIntensity, 18, Math.PI / 5, 0.5, 0.7);
+    scene.add(portalLight);}
+    if(!isMobileGPU()){const portalSpot = new THREE.SpotLight(dlPreset.sunColor, 1.5 * dlPreset.sunIntensity, 18, Math.PI / 5, 0.5, 0.7);
     portalSpot.position.set(exitX + exitInN.x * 3, EXIT_H * 0.5, exitZ + exitInN.z * 3);
     portalSpot.target.position.set(exitX - exitInN.x * 4, 0, exitZ - exitInN.z * 4);
     scene.add(portalSpot);
-    scene.add(portalSpot.target);
+    scene.add(portalSpot.target);}
 
     // ── ENVIRONMENT MAP (critical for PBR reflections) ──
     const pmrem = new THREE.PMREMGenerator(ren);
@@ -1767,14 +1791,11 @@ export default function EntranceHallScene({
     // From angle A on the circle, direction to center is (-cos(A), 0, -sin(A)),
     // so the correct yaw to face inward is A - PI/2.
     const startAngle = exitAngle - Math.PI / 2;
-    pos.current.set(
-      Math.cos(exitAngle) * (RADIUS - 3),
-      1.7,
-      Math.sin(exitAngle) * (RADIUS - 3)
-    );
-    posT.current.copy(pos.current);
-    lookT.current = { yaw: startAngle, pitch: 0 };
-    lookA.current = { yaw: startAngle, pitch: 0 };
+    // Always start with entrance cinematic position
+    pos.current.set(0, 2.0, 7.3);
+    posT.current.set(0, 2.0, 7.3);
+    lookT.current = { yaw: 0.0270, pitch: 0.0360 };
+    lookA.current = { yaw: 0.0270, pitch: 0.0360 };
 
     // Store collision obstacles: column positions
     const colPositions: { x: number; z: number; r: number }[] = [];
@@ -1806,13 +1827,21 @@ export default function EntranceHallScene({
     const oculusBeam = createLightBeam({ position: new THREE.Vector3(0, TOTAL_H, 0), direction: new THREE.Vector3(0, -1, 0), length: TOTAL_H - 1, radius: 3.5, color: dlPreset.sunColor, opacity: 0.04 * dlPreset.sunIntensity });
     scene.add(oculusBeam.mesh);
 
+    // Footstep sounds removed
+
+    // ── Optimize: deduplicate materials to reduce GPU state changes ──
+    optimizeMaterials(scene);
+
     const clock = new THREE.Clock();
     let hoveredWing: string | null = null;
+    const _isMobile = window.innerWidth < 768 || window.innerHeight < 500;
+    let _frameCount = 0;
 
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate);
       const dt = Math.min(clock.getDelta(), 0.05);
       const t = clock.getElapsedTime();
+      _frameCount++;
 
       // Walkthrough highlight — pulse golden emissive on target door
       const hlTarget=highlightDoorRef.current;
@@ -1827,6 +1856,97 @@ export default function EntranceHallScene({
         if(hlTarget===id)light.intensity=3+Math.sin(t*2)*1.5;
         else light.intensity+=(0-light.intensity)*.05;
       });
+
+      // ── Entrance cinematic (onboarding only): look around → walk to roots door ──
+      if (entranceCinematicRef.current && !autoWalkToRef.current) {
+        const ot = clock.getElapsedTime();
+        // Single blink helper — slow, deliberate (x2 original speed: close 0.4s, hold 0.2s, open 0.4s)
+        const singleBlink = (localT: number): number => {
+          const bClose = 0.4, bHold = 0.2, bOpen = 0.4, bTotal = bClose + bHold + bOpen;
+          if (localT < 0 || localT >= bTotal) return 0;
+          if (localT < bClose) return localT / bClose;
+          if (localT < bClose + bHold) return 1;
+          return (bTotal - localT) / bOpen;
+        };
+        // Two blinks with gap
+        const twoBlinks = (localT: number): number => {
+          const gap = 0.5; // gap between blinks
+          return Math.min(Math.max(singleBlink(localT), singleBlink(localT - 1.0 - gap)), 1);
+        };
+        // Timings: settle(0.8) → look left(1.5) → blink 2x(2.5) → look right(1.5) → blink 1x(1.0) → center(0.4)
+        const T1 = 0.8, T2 = T1 + 1.5, T3 = T2 + 2.5, T4 = T3 + 1.5, T5 = T4 + 1.0, T6 = T5 + 0.4;
+        const LOOK_DUR = T6; // ~7.7s
+        const WALK_DUR = 12.0; // x3 slower walk to door
+        // Smoothstep helper
+        const ss = (a: number, b: number, p: number) => { const t2 = p * p * (3 - 2 * p); return a + (b - a) * t2; };
+
+        if (ot < LOOK_DUR) {
+          // Step 1 (0-0.8s): arrive at initial gaze, settle in
+          if (ot < T1) {
+            lookT.current.yaw = 0.0270;
+            lookT.current.pitch = 0.0360;
+          }
+          // Step 2 (0.8-2.3s): slowly look left
+          else if (ot < T2) {
+            const p = Math.min((ot - T1) / 1.5, 1);
+            lookT.current.yaw = ss(0.0270, -0.9090, p);
+            lookT.current.pitch = ss(0.0360, 0.3240, p);
+          }
+          // Step 3 (2.3-4.8s): blink twice while holding left gaze
+          else if (ot < T3) {
+            lookT.current.yaw = -0.9090;
+            lookT.current.pitch = 0.3240;
+            blinkRef.current = twoBlinks(ot - T2);
+          }
+          // Step 4 (4.8-6.3s): slowly look right
+          else if (ot < T4) {
+            blinkRef.current = 0;
+            const p = Math.min((ot - T3) / 1.5, 1);
+            lookT.current.yaw = ss(-0.9090, 1.0380, p);
+            lookT.current.pitch = ss(0.3240, 0.3510, p);
+          }
+          // Step 5 (6.3-7.3s): blink once while holding right gaze
+          else if (ot < T5) {
+            lookT.current.yaw = 1.0380;
+            lookT.current.pitch = 0.3510;
+            blinkRef.current = singleBlink(ot - T4);
+          }
+          // Step 6 (7.3-7.7s): readjust gaze to center
+          else {
+            blinkRef.current = 0;
+            const p = Math.min((ot - T5) / 0.4, 1);
+            lookT.current.yaw = ss(1.0380, 0.0360, p);
+            lookT.current.pitch = ss(0.3510, 0.0540, p);
+          }
+          // Sync blink opacity to React state
+          setBlinkOpacity(blinkRef.current);
+        }
+        // Walk phase: slow walk to roots door (12s)
+        else if (ot < LOOK_DUR + WALK_DUR) {
+          blinkRef.current = 0;
+          setBlinkOpacity(0);
+          const rootsDoorAngle = (0 / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
+          const approachR = RADIUS - 4;
+          const targetX = Math.cos(rootsDoorAngle) * approachR;
+          const targetZ = Math.sin(rootsDoorAngle) * approachR;
+          const wp = Math.min((ot - LOOK_DUR) / WALK_DUR, 1);
+          const wEase = wp * wp * (3 - 2 * wp);
+          posT.current.x = ss(0, targetX, wEase);
+          posT.current.z = ss(7.3, targetZ, wEase);
+          const faceDoorAngle = Math.atan2(targetX - posT.current.x, -(targetZ - posT.current.z));
+          lookT.current.yaw += (faceDoorAngle - lookT.current.yaw) * 0.04;
+          lookT.current.pitch += (0 - lookT.current.pitch) * 0.03;
+        } else {
+          blinkRef.current = 0;
+          setBlinkOpacity(0);
+          entranceCinematicRef.current = false;
+          setCinematicActive(false);
+          if (onboardingModeRef.current) {
+            onboardingModeRef.current = false;
+            onDoorClickRef.current("roots");
+          }
+        }
+      }
 
       // ── Smooth look interpolation ──
       lookA.current.yaw += (lookT.current.yaw - lookA.current.yaw) * 0.08;
@@ -1895,7 +2015,7 @@ export default function EntranceHallScene({
         }
       }
       // Keep at eye level
-      posT.current.y = 1.7;
+      posT.current.y = 2.0;
 
       // Smooth position interpolation
       pos.current.lerp(posT.current, 0.1);
@@ -1909,6 +2029,11 @@ export default function EntranceHallScene({
       );
       _lookTarget.current.copy(camera.position).add(_ld.current);
       camera.lookAt(_lookTarget.current);
+
+      // ── Camera debug overlay ──
+      if (camDebugRef.current) {
+        camDebugRef.current.textContent = `yaw: ${lookA.current.yaw.toFixed(4)}\npitch: ${lookA.current.pitch.toFixed(4)}\npos: ${pos.current.x.toFixed(1)}, ${pos.current.y.toFixed(1)}, ${pos.current.z.toFixed(1)}`;
+      }
 
       // ── Distance-based door glow (strong baseline) ──
       doorMeshes.forEach(d => {
@@ -1932,28 +2057,33 @@ export default function EntranceHallScene({
 
       // Portal pulse
       portalGlow.material.opacity = 0.03 + Math.sin(t * 2) * 0.015;
-      portalLight.intensity = 0.35 + Math.sin(t * 1.5) * 0.1;
+      if(portalLight)portalLight.intensity = 0.35 + Math.sin(t * 1.5) * 0.1;
 
-      // Dust float (upward drift, stronger in beam area)
-      const dp = dustGeo.attributes.position.array as Float32Array;
-      for (let i = 0; i < dustN; i++) {
-        const px = dp[i * 3], pz = dp[i * 3 + 2];
-        const distFromCenter = Math.sqrt(px * px + pz * pz);
-        const inBeamArea = distFromCenter < OCULUS_R * 2;
-        const upDrift = inBeamArea ? 0.0025 : 0.0006;
-        dp[i * 3] += Math.sin(t * 0.15 + i * 0.7) * 0.002;
-        dp[i * 3 + 1] += Math.sin(t * 0.2 + i * 0.5) * 0.001 + upDrift;
-        dp[i * 3 + 2] += Math.cos(t * 0.15 + i * 0.3) * 0.002;
-        if (dp[i * 3 + 1] > TOTAL_H - 1) dp[i * 3 + 1] = 1;
+      // Animate particles — throttle to every 2nd frame on mobile for performance
+      const _doParticles = !_isMobile || (_frameCount & 1) === 0;
+      if (_doParticles) {
+        // Dust float (upward drift, stronger in beam area)
+        const dp = dustGeo.attributes.position.array as Float32Array;
+        for (let i = 0; i < dustN; i++) {
+          const px = dp[i * 3], pz = dp[i * 3 + 2];
+          const distFromCenter = Math.sqrt(px * px + pz * pz);
+          const inBeamArea = distFromCenter < OCULUS_R * 2;
+          const upDrift = inBeamArea ? 0.0025 : 0.0006;
+          dp[i * 3] += Math.sin(t * 0.15 + i * 0.7) * 0.002;
+          dp[i * 3 + 1] += Math.sin(t * 0.2 + i * 0.5) * 0.001 + upDrift;
+          dp[i * 3 + 2] += Math.cos(t * 0.15 + i * 0.3) * 0.002;
+          if (dp[i * 3 + 1] > TOTAL_H - 1) dp[i * 3 + 1] = 1;
+        }
+        dustGeo.attributes.position.needsUpdate = true;
+        dust.update(t, dt);
       }
-      dustGeo.attributes.position.needsUpdate = true;
 
       // Light beam breathing
       (beamMesh.material as THREE.MeshBasicMaterial).opacity = 0.05 + Math.sin(t * 0.5) * 0.02;
-
-      dust.update(t, dt);
       oculusBeam.update(t);
 
+      // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
+      if (document.hidden) return;
       composer.render();
     };
     animate();
@@ -2167,6 +2297,7 @@ export default function EntranceHallScene({
     } catch (_) {}
 
     return () => {
+      alive = false;
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
       el.removeEventListener("mousedown", onDown);
       el.removeEventListener("mousemove", onMove);
@@ -2194,15 +2325,16 @@ export default function EntranceHallScene({
       }
       envRT.texture.dispose();
       envRT.dispose();
+      const _cachedSet=buildCachedTextureSet();
       scene.traverse((obj: any) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
           const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
           materials.forEach((m: any) => {
-            if (m.map && !isCachedTexture(m.map)) m.map.dispose();
-            if (m.normalMap && !isCachedTexture(m.normalMap)) m.normalMap.dispose();
-            if (m.roughnessMap && !isCachedTexture(m.roughnessMap)) m.roughnessMap.dispose();
-            if (m.emissiveMap && !isCachedTexture(m.emissiveMap)) m.emissiveMap.dispose();
+            if (m.map && !_cachedSet.has(m.map)) m.map.dispose();
+            if (m.normalMap && !_cachedSet.has(m.normalMap)) m.normalMap.dispose();
+            if (m.roughnessMap && !_cachedSet.has(m.roughnessMap)) m.roughnessMap.dispose();
+            if (m.emissiveMap && !_cachedSet.has(m.emissiveMap)) m.emissiveMap.dispose();
             m.dispose();
           });
         }
@@ -2211,53 +2343,116 @@ export default function EntranceHallScene({
       oculusBeam.dispose();
       allTexSets.forEach(disposePBRSet);
       envMapProc.dispose();
+      if(envMapHDRI){envMapHDRI.dispose();envMapHDRI=null;}
       composer.dispose();
-      try{ren.forceContextLoss();}catch{}
       if (el.contains(ren.domElement)) el.removeChild(ren.domElement);
-      ren.dispose();
+      returnRenderer(ren);
+      scene.environment=null;scene.background=null;scene.fog=null;
     };
   }, []);
 
-  // Handle mute toggle
+  // Handle audio ref muting (always unmuted now — mute button removed)
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.muted = muted;
+    if (audioRef.current) audioRef.current.muted = false;
+  }, []);
+
+  const skipCinematic = () => {
+    entranceCinematicRef.current = false;
+    setCinematicActive(false);
+    blinkRef.current = 0;
+    setBlinkOpacity(0);
+    if (onboardingModeRef.current) {
+      onboardingModeRef.current = false;
+      onDoorClickRef.current("roots");
     }
-  }, [muted]);
+  };
 
   return (
     <div role="application" aria-label={t("sceneLabel")} style={{ width: "100%", height: "100%", position: "relative" }}>
       <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
-      {/* Mute/unmute button overlay */}
-      <button
-        onClick={() => setMuted(m => !m)}
-        style={{
-          position: "absolute",
-          top: "3.5rem",
-          right: "1rem",
-          width: "2.25rem",
-          height: "2.25rem",
-          borderRadius: "1.125rem",
-          border: "1px solid rgba(200, 168, 104, 0.3)",
-          background: "rgba(250, 245, 235, 0.7)",
-          backdropFilter: "blur(8px)",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "1rem",
-          color: T.color.walnut,
-          zIndex: 30,
-          transition: "opacity 0.3s",
-          opacity: 0.7,
-        }}
-        onMouseEnter={e => { (e.target as HTMLElement).style.opacity = "1"; }}
-        onMouseLeave={e => { (e.target as HTMLElement).style.opacity = "0.7"; }}
-        aria-label={muted ? t("unmute") : t("mute")}
-        title={muted ? t("unmute") : t("mute")}
-      >
-        {muted ? "\uD83D\uDD07" : "\uD83D\uDD0A"}
-      </button>
+      {/* Blink overlay — black curtain for eye-blink effect */}
+      {blinkOpacity > 0.01 && <div style={{ position: "absolute", inset: 0, background: "#000", opacity: blinkOpacity, pointerEvents: "none", zIndex: 20, transition: "opacity 0.03s linear" }} />}
+      {/* Cinematic title overlay — matches exterior palace onboarding style */}
+      {cinematicActive && (
+        <>
+          {/* Bottom shadow gradient for text readability over 3D scene */}
+          <div aria-hidden="true" style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 24 }} />
+          <div style={{
+            position: "absolute", bottom: "15%", left: 0, right: 0,
+            display: "flex", flexDirection: "column", alignItems: "center",
+            pointerEvents: "none", zIndex: 25,
+          }}>
+            {/* Decorative divider — same as exterior */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: "0.625rem",
+              marginBottom: "0.625rem",
+              animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
+            }}>
+              <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
+              <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
+              <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
+            </div>
+            {/* "WELCOME" label — same as exterior */}
+            <p style={{
+              fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
+              color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
+              margin: "0 0 0.625rem",
+              textShadow: "0 2px 8px rgba(0,0,0,0.7)",
+              animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
+            }}>
+              {t("welcomeLabel")}
+            </p>
+            {/* Title — gold gradient shimmer */}
+            <h1 style={{
+              fontFamily: T.font.display,
+              fontSize: "clamp(2rem, 5vw, 3.5rem)",
+              fontWeight: 300, color: "#F2EDE7",
+              lineHeight: 1.05, margin: 0,
+              letterSpacing: "0.04em",
+              animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
+              backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
+              backgroundSize: "200% 100%",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
+            }}>
+              {t("title")}
+            </h1>
+            {/* Subtitle — same font/style as exterior */}
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.9375rem",
+              color: "#D4CBC0", margin: "0.75rem 0 0",
+              lineHeight: 1.5,
+              textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+              animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
+            }}>
+              {t("subtitle")}
+            </p>
+          </div>
+          {/* Skip intro button — top right */}
+          <button
+            onClick={skipCinematic}
+            aria-label={t("skipIntro")}
+            style={{
+              position: "absolute", top: "1.5rem", right: "1.5rem", zIndex: 30,
+              fontFamily: T.font.body, fontSize: "0.8125rem",
+              color: "rgba(255,255,255,0.85)", background: "rgba(0,0,0,0.45)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
+              cursor: "pointer", backdropFilter: "blur(8px)", minHeight: "2.75rem",
+              minWidth: "2.75rem",
+              pointerEvents: "auto",
+              textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+            }}
+          >
+            {t("skipIntro")}
+          </button>
+        </>
+      )}
+      {camDebug && createPortal(<pre ref={camDebugRef} onClick={() => { if (camDebugRef.current) navigator.clipboard.writeText(camDebugRef.current.textContent || ""); }} style={{ position: "fixed", bottom: "6rem", left: "1rem", zIndex: 99999, background: "rgba(0,0,0,0.85)", color: "#0f0", padding: "0.75rem 1rem", borderRadius: "0.5rem", fontFamily: "monospace", fontSize: "0.8125rem", cursor: "pointer", border: "1px solid #0f03", lineHeight: 1.6, userSelect: "all" as const }} />, document.body)}
     </div>
   );
 }
+
+export default memo(EntranceHallScene);

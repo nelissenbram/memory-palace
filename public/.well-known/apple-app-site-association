@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["L3H3AK7C38.ai.thememorypalace.app"],
+        "components": [
+          { "/": "/auth/callback", "comment": "OAuth callback" },
+          { "/": "/invite/*", "comment": "Family invites" },
+          { "/": "/palace/*", "comment": "Palace deep links" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["L3H3AK7C38.ai.thememorypalace.app"]
+  }
+}

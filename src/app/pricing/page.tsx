@@ -7,8 +7,9 @@ import { T } from "@/lib/theme";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
-import { isNative } from "@/lib/native/platform";
+import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 
 const F = T.font;
@@ -25,11 +26,11 @@ export default function PricingPage() {
   const { t: tp } = useTranslation("plans");
   const { t: tc } = useTranslation("common");
 
-  // Redirect away from pricing page in native app — Google Play forbids
-  // directing users to external payment flows
+  // Redirect away from pricing page on Android — Google Play forbids
+  // directing users to external payment flows. iOS allowed via External Purchase Link entitlement.
   useEffect(() => {
-    if (isNative()) {
-      router.replace("/palace");
+    if (isAndroid()) {
+      router.replace("/atrium");
     }
   }, [router]);
 
@@ -49,7 +50,11 @@ export default function PricingPage() {
       const data = await res.json();
 
       if (data.url) {
-        window.location.href = data.url;
+        if (isIOS()) {
+          await openInExternalBrowser(data.url);
+        } else {
+          window.location.href = data.url;
+        }
       } else if (res.status === 401) {
         // Not logged in, redirect to register
         window.location.href = "/register";
@@ -66,7 +71,6 @@ export default function PricingPage() {
     { q: t("faq1q"), a: t("faq1a") },
     { q: t("faq2q"), a: t("faq2a") },
     { q: t("faq3q"), a: t("faq3a") },
-    { q: t("faq4q"), a: t("faq4a") },
   ];
 
   return (
@@ -127,14 +131,17 @@ export default function PricingPage() {
           </Link>
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button onClick={() => setLocale(locale === "en" ? "nl" : "en")} aria-label={tc("a11ySwitchLanguage")} style={{
+          <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
             background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
             padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
             fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
             textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
+            appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",
+            backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+            backgroundRepeat: "no-repeat", backgroundPosition: "right 0.375rem center",
           }}>
-            {locale === "en" ? "NL" : "EN"}
-          </button>
+            {locales.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+          </select>
           {!isSmall && (
             <Link
               href="/login"
@@ -342,6 +349,11 @@ export default function PricingPage() {
                     </>
                   )}
                 </div>
+                {!isFree && (
+                  <p style={{ fontSize: 12, color: C.muted, marginTop: -16, marginBottom: 8 }}>
+                    {t("billedYearly")}
+                  </p>
+                )}
 
                 {/* CTA */}
                 <button
@@ -371,7 +383,7 @@ export default function PricingPage() {
                     ? t("redirecting")
                     : isFree
                       ? t("getStartedBtn")
-                      : t("startFreeTrial")}
+                      : t("subscribe")}
                 </button>
 
                 {/* Features */}
