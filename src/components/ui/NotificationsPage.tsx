@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useNotificationStore } from "@/lib/stores/notificationStore";
+import type { NotificationRow } from "@/lib/auth/notification-actions";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 const TUTORIAL_KEY = "mp_activity_tutorial_v1";
@@ -31,6 +32,75 @@ const EMOJI: Record<string, string> = {
   reminder:         "\u29D7", // ⧗
   system:           "\u2756", // ❖
 };
+
+/**
+ * Re-translate a notification message using the viewer's current locale.
+ * Uses the notification `type` plus stored fields (from_user_name, room_name)
+ * to reconstruct a translated string from the i18n keys.
+ * Falls back to the pre-rendered `n.message` when no template exists.
+ */
+function getTranslatedMessage(
+  n: NotificationRow,
+  t: (key: string, params?: Record<string, string>) => string,
+): string {
+  const name = n.from_user_name || "";
+  const room = n.room_name || "";
+
+  switch (n.type) {
+    case "new_contribution":
+      if (name && room) return t("msg_new_contribution", { name, room });
+      break;
+    case "achievement": {
+      // Achievement messages may be milestone or first-in-room.
+      // Try first-in-room if room_name is present.
+      if (room) return t("msg_first_in_room", { room });
+      // Generic achievement fallback
+      const achKey = "msg_achievement";
+      const achMsg = t(achKey);
+      if (achMsg !== achKey) return achMsg;
+      break;
+    }
+    case "family_invite":
+      if (name) return t("msg_family_invite", { name });
+      break;
+    case "share_accepted":
+      if (name) return t("msg_share_accepted", { name });
+      break;
+    case "on_this_day": {
+      // Try to extract {years} and {title} from the pre-rendered English message.
+      // Pattern: "On this day, X years ago — "Title"."
+      // Also handle other locale patterns loosely.
+      const otdMatch = n.message.match(
+        /(\d+)\s+(?:years?|jaar|Jahren?|años?|ans?)\s.*[—–-]\s*"?(.+?)"?\.?\s*$/i,
+      );
+      if (otdMatch) {
+        return t("msg_on_this_day", { years: otdMatch[1], title: otdMatch[2] });
+      }
+      break;
+    }
+    case "welcome": {
+      const wKey = "msg_welcome";
+      const wMsg = t(wKey);
+      if (wMsg !== wKey) return wMsg;
+      break;
+    }
+    case "reminder": {
+      const rKey = "msg_reminder";
+      const rMsg = t(rKey);
+      if (rMsg !== rKey) return rMsg;
+      break;
+    }
+    case "system": {
+      const sKey = "msg_system";
+      const sMsg = t(sKey);
+      if (sMsg !== sKey) return sMsg;
+      break;
+    }
+  }
+
+  // Fallback: return the pre-rendered message from the DB
+  return n.message;
+}
 
 export default function NotificationsPage() {
   const { t } = useTranslation("notificationBell");
@@ -181,7 +251,7 @@ export default function NotificationsPage() {
                 margin: 0,
                 lineHeight: 1.4,
               }}>
-                {n.message}
+                {getTranslatedMessage(n, t)}
               </p>
               <p style={{
                 fontSize: "0.75rem",
@@ -233,16 +303,16 @@ export default function NotificationsPage() {
                 fontFamily:T.font.display, fontSize:"0.9375rem", fontWeight:600,
                 color:T.color.goldLight, letterSpacing:"0.02em",
               }}>
-                Your Activity feed
+                {t("tutorialTitle")}
               </div>
               <div style={{ display:"flex", flexDirection:"column", gap:"0.4375rem" }}>
                 {[
-                  "Welcome messages & palace milestones as your collection grows",
-                  '"On this day" — memories from years past, re-surfaced',
-                  "Family members joining or contributing to shared rooms",
-                  "New memories added by people you share rooms with",
-                  "Gentle nudges when a room has been quiet for a while",
-                  "New features and palace updates",
+                  t("tutorialBullet1"),
+                  t("tutorialBullet2"),
+                  t("tutorialBullet3"),
+                  t("tutorialBullet4"),
+                  t("tutorialBullet5"),
+                  t("tutorialBullet6"),
                 ].map((text, i) => (
                   <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
                     <div style={{
@@ -262,7 +332,7 @@ export default function NotificationsPage() {
                 fontFamily:T.font.body, fontSize:"0.75rem",
                 color:"rgba(250,250,247,0.5)", fontStyle:"italic", marginTop:"0.125rem",
               }}>
-                Activities stay for a year — tap any item to mark it read.
+                {t("tutorialFooter")}
               </div>
               <div style={{
                 display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem",
@@ -275,7 +345,7 @@ export default function NotificationsPage() {
                     cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
                   }}
                 >
-                  Skip
+                  {t("tutorialSkip")}
                 </button>
                 <button
                   onClick={closeTutorial}
@@ -286,7 +356,7 @@ export default function NotificationsPage() {
                     cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
                   }}
                 >
-                  Got it
+                  {t("tutorialGotIt")}
                 </button>
               </div>
             </div>

@@ -42,17 +42,26 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }
-    const { photoIds, roomId } = body as { photoIds: string[]; roomId: string };
+    const { photoIds, mediaItems, roomId } = body as {
+      photoIds?: string[];
+      mediaItems?: Array<{ id: string; baseUrl: string; mimeType: string; filename: string }>;
+      roomId: string;
+    };
 
-    if (!photoIds || !Array.isArray(photoIds) || photoIds.length === 0) {
-      return NextResponse.json({ error: "photoIds required" }, { status: 400 });
+    // Support both legacy photoIds (Library API) and new mediaItems (Picker API)
+    const usePickerFlow = Array.isArray(mediaItems) && mediaItems.length > 0;
+
+    if (!usePickerFlow && (!photoIds || !Array.isArray(photoIds) || photoIds.length === 0)) {
+      return NextResponse.json({ error: "photoIds or mediaItems required" }, { status: 400 });
     }
     if (!roomId || typeof roomId !== "string") {
       return NextResponse.json({ error: "roomId required" }, { status: 400 });
     }
 
+    const itemCount = usePickerFlow ? mediaItems!.length : photoIds!.length;
+
     // Batch limit
-    if (photoIds.length > MAX_IMPORT_BATCH_SIZE) {
+    if (itemCount > MAX_IMPORT_BATCH_SIZE) {
       return NextResponse.json(
         { error: `Too many files. Maximum ${MAX_IMPORT_BATCH_SIZE} per request.` },
         { status: 400 },
@@ -72,14 +81,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Storage quota exceeded", limit: storageCheck.limit, current: storageCheck.current }, { status: 403 });
     }
 
-    // Check for duplicates: find which photoIds are already imported for this user
+    // Build the list of IDs to check for duplicates
+    const allIds = usePickerFlow
+      ? mediaItems!.map((m) => m.id)
+      : photoIds!;
+
+    // Check for duplicates: find which IDs are already imported for this user
     const { data: existingMemories, error: dupCheckError } = await supabase
       .from("memories")
       .select("metadata")
       .eq("user_id", user.id)
       .in(
         "metadata->>originalId",
-        photoIds,
+        allIds,
       );
 
     if (dupCheckError) {
@@ -96,7 +110,12 @@ export async function POST(request: NextRequest) {
     const results: Array<{ id: string; success: boolean; error?: string; memoryId?: string }> = [];
     let tokenRefreshed = false;
 
-    for (const photoId of photoIds) {
+    // Build a unified iteration list
+    const iterationItems = usePickerFlow
+      ? mediaItems!.map((m) => ({ id: m.id, pickerItem: m }))
+      : photoIds!.map((id) => ({ id, pickerItem: undefined as undefined }));
+
+    for (const { id: photoId, pickerItem } of iterationItems) {
       // Skip duplicates
       if (alreadyImportedIds.has(photoId)) {
         results.push({ id: photoId, success: false, error: "Already imported" });
@@ -104,27 +123,89 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        const downloaded = await downloadWithRetry(token, photoId, async () => {
-          if (tokenRefreshed) return null; // Only retry once
-          try {
-            token = await ensureValidToken(account.id, "google_photos", {
-              accessToken: token,
-              refreshToken: account.refresh_token,
-              expiresAt: null, // Force refresh
-            });
-            tokenRefreshed = true;
-            return token;
-          } catch {
-            return null;
+        let data: ArrayBuffer;
+        let rawMimeType: string;
+        let filename: string;
+
+        if (pickerItem) {
+          // Picker flow: download directly from baseUrl
+          const isVideo = pickerItem.mimeType.startsWith("video/");
+          const suffixedUrl = isVideo
+            ? `${pickerItem.baseUrl}=dv`
+            : `${pickerItem.baseUrl}=d`;
+
+          // Picker API baseUrls require OAuth token for download
+          const authHeaders = { Authorization: `Bearer ${token}` };
+
+          // Try with =d suffix first, fall back to raw baseUrl
+          let downloadRes = await fetch(suffixedUrl, { headers: authHeaders });
+          let usedFallback = false;
+          if (!downloadRes.ok) {
+            console.log(`[Google Import] Suffixed URL failed (${downloadRes.status}), trying raw baseUrl`);
+            downloadRes = await fetch(pickerItem.baseUrl, { headers: authHeaders });
+            usedFallback = true;
           }
-        });
+          if (!downloadRes.ok) {
+            results.push({ id: photoId, success: false, error: `Download failed (${downloadRes.status})` });
+            continue;
+          }
 
-        if (!downloaded) {
-          results.push({ id: photoId, success: false, error: "Authentication expired. Please reconnect." });
-          continue;
+          // Verify we got actual media, not an error page
+          const contentType = downloadRes.headers.get("content-type") || "";
+          if (contentType.includes("text/html")) {
+            results.push({ id: photoId, success: false, error: "Download returned HTML instead of media — baseUrl may have expired" });
+            continue;
+          }
+
+          data = await downloadRes.arrayBuffer();
+
+          // Log download details for diagnostics
+          console.log(`[Google Import] Downloaded ${data.byteLength} bytes, content-type: ${contentType}, fallback: ${usedFallback}`);
+
+          // Reject error responses disguised as successful downloads
+          if (data.byteLength < 100) {
+            const snippet = new TextDecoder().decode(new Uint8Array(data).slice(0, 200));
+            console.error(`[Google Import] Tiny response (${data.byteLength}B): ${snippet}`);
+            results.push({ id: photoId, success: false, error: `Download returned only ${data.byteLength} bytes — not a valid file` });
+            continue;
+          }
+
+          // Reject JSON/XML error bodies from Google
+          if (contentType.includes("application/json") || contentType.includes("text/xml") || contentType.includes("application/xml")) {
+            const snippet = new TextDecoder().decode(new Uint8Array(data).slice(0, 500));
+            console.error(`[Google Import] Error response (${contentType}): ${snippet}`);
+            results.push({ id: photoId, success: false, error: `Download returned ${contentType} instead of media` });
+            continue;
+          }
+
+          rawMimeType = pickerItem.mimeType;
+          filename = pickerItem.filename || `photo_${photoId}`;
+        } else {
+          // Legacy Library API flow
+          const downloaded = await downloadWithRetry(token, photoId, async () => {
+            if (tokenRefreshed) return null; // Only retry once
+            try {
+              token = await ensureValidToken(account.id, "google_photos", {
+                accessToken: token,
+                refreshToken: account.refresh_token,
+                expiresAt: null, // Force refresh
+              });
+              tokenRefreshed = true;
+              return token;
+            } catch {
+              return null;
+            }
+          });
+
+          if (!downloaded) {
+            results.push({ id: photoId, success: false, error: "Authentication expired. Please reconnect." });
+            continue;
+          }
+
+          data = downloaded.data;
+          rawMimeType = downloaded.mimeType;
+          filename = downloaded.filename;
         }
-
-        const { data, mimeType: rawMimeType, filename } = downloaded;
 
         // Google Photos may return application/octet-stream — infer from extension
         const mimeType = rawMimeType === "application/octet-stream"
@@ -220,7 +301,9 @@ export async function POST(request: NextRequest) {
         if (err instanceof TokenExpiredError) {
           results.push({ id: photoId, success: false, error: "Authentication expired. Please reconnect." });
           // Stop processing remaining items — token is dead
-          for (const remainingId of photoIds.slice(photoIds.indexOf(photoId) + 1)) {
+          const currentIdx = iterationItems.findIndex((item) => item.id === photoId);
+          for (const remaining of iterationItems.slice(currentIdx + 1)) {
+            const remainingId = remaining.id;
             results.push({ id: remainingId, success: false, error: "Skipped: authentication expired" });
           }
           break;
@@ -241,7 +324,7 @@ export async function POST(request: NextRequest) {
         .eq("id", account.id);
     }
 
-    return NextResponse.json({ results, summary: { total: photoIds.length, succeeded, failed } }, {
+    return NextResponse.json({ results, summary: { total: itemCount, succeeded, failed } }, {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (err: unknown) {

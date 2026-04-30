@@ -3,12 +3,34 @@ import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
-import { ROOM_MEMS } from "@/lib/constants/defaults";
+import { getAllDemoMems } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
-import Image from "next/image";
+import { translateRoomName } from "@/lib/constants/wings";
+import { RoomIcon } from "@/components/ui/WingRoomIcons";
+import { DateInputAssisted } from "@/app/(app)/family-tree/DateInputAssisted";
+import { syncSettingsToServer } from "@/lib/stores/settingsSync";
+
+/** Thumbnail with fallback — uses plain <img> to avoid Next.js Image optimization issues */
+function TimelineThumbnail({ src, roomId, wingId, color }: {
+  src: string; roomId: string; wingId: string; color: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <RoomIcon roomId={roomId} wingId={wingId} size={14} color={color} />;
+  return (
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "0.5rem", display: "block" }}
+    />
+  );
+}
 
 const MONTH_KEYS = ["january","february","march","april","may","june","july","august","september","october","november","december"];
 
@@ -136,6 +158,7 @@ function loadImportantDates(): ImportantDate[] {
 
 function saveImportantDates(dates: ImportantDate[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(dates));
+  syncSettingsToServer();
 }
 
 /** Generate recurring instances of an important date — only forward-looking from the original date */
@@ -210,10 +233,22 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("memoryTimeline");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
-  const { userMems, setSelMem } = useMemoryStore();
+  const { userMems, setSelMem, fetchRoomMemories } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Prefetch all room memories on mount (same pattern as LibraryView)
+  useEffect(() => {
+    const wings = getWings();
+    for (const w of wings) {
+      for (const r of getWingRooms(w.id)) {
+        fetchRoomMemories(r.id);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [importantDates, setImportantDates] = useState<ImportantDate[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -296,13 +331,13 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
         roomToWing[room.id] = {
           wingId: wing.id,
           wingAccent: wing.accent,
-          roomName: room.name,
+          roomName: translateRoomName(room, tWings),
           roomIcon: room.icon,
         };
       }
     }
 
-    const merged: Record<string, Mem[]> = { ...ROOM_MEMS };
+    const merged: Record<string, Mem[]> = { ...getAllDemoMems() };
     for (const [k, v] of Object.entries(userMems)) {
       merged[k] = v;
     }
@@ -313,7 +348,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
       const info = roomToWing[roomId];
       if (!info) continue;
       for (const mem of mems) {
-        if (!mem.createdAt) continue;
+        const dateStr = mem.createdAt || (mem as unknown as Record<string, unknown>).created_at as string | undefined || new Date().toISOString();
         mixedEntries.push({
           kind: "memory",
           entry: {
@@ -323,7 +358,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
             roomIcon: info.roomIcon,
             wingId: info.wingId,
             wingAccent: info.wingAccent,
-            date: new Date(mem.createdAt),
+            date: new Date(dateStr),
           },
         });
       }
@@ -354,7 +389,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
       if (mixed.kind === "memory") current.memoryCount++;
     }
     return grouped;
-  }, [userMems, getWings, getWingRooms, importantDates]);
+  }, [userMems, getWings, getWingRooms, importantDates, tWings]);
 
   // Year navigation: collect unique years
   const years = useMemo(() => {
@@ -418,7 +453,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
         <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal }}>
           {t("dateDate")}
         </label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
+        <DateInputAssisted id="tl-imp-date" value={date} onChange={setDate} isMobile={isMobile} />
 
         <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.charcoal }}>
           {t("dateDesc")}
@@ -659,7 +694,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
         )}
 
         {/* Scrollable content */}
-        <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", padding: "0" }}>
+        <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", padding: "0", contain: "layout" }}>
 
           {/* Inline add date form */}
           {showAddForm && (
@@ -927,7 +962,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                   )}
                                   <span style={{ color: T.color.sandstone }}>{"\u00B7"}</span>
                                   <span>
-                                    {date.toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", {
+                                    {date.toLocaleDateString(localeDateCodes[locale as Locale], {
                                       month: "short",
                                       day: "numeric",
                                       year: "numeric",
@@ -1101,17 +1136,18 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                               border: "none",
                               cursor: "pointer",
                               padding: 0,
+                              position: "relative",
                             }}
                           >
-                            {entry.mem.dataUrl ? (
-                              <Image
-                                src={entry.mem.dataUrl!}
-                                alt=""
-                                width={36} height={36}
-                                style={{ objectFit: "cover", borderRadius: "0.5rem" }}
+                            {(entry.mem.dataUrl || entry.mem.thumbnailUrl) ? (
+                              <TimelineThumbnail
+                                src={(entry.mem.thumbnailUrl || entry.mem.dataUrl)!}
+                                roomId={entry.roomId}
+                                wingId={entry.wingId}
+                                color={entry.wingAccent || T.color.muted}
                               />
                             ) : (
-                              <span style={{ fontSize: "0.875rem", opacity: 0.7 }}>{entry.roomIcon}</span>
+                              <RoomIcon roomId={entry.roomId} wingId={entry.wingId} size={14} color={entry.wingAccent || T.color.muted} />
                             )}
                           </button>
 
@@ -1152,11 +1188,11 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
                                 gap: "0.25rem",
                               }}
                             >
-                              <span>{entry.roomIcon}</span>
+                              <RoomIcon roomId={entry.roomId} wingId={entry.wingId} size={10} color={entry.wingAccent || T.color.muted} />
                               <span>{entry.roomName}</span>
                               <span style={{ color: T.color.sandstone }}>{"\u00B7"}</span>
                               <span>
-                                {entry.date.toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", {
+                                {entry.date.toLocaleDateString(localeDateCodes[locale as Locale], {
                                   month: "short",
                                   day: "numeric",
                                 })}

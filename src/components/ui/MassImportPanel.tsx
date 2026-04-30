@@ -112,7 +112,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         // Read as dataUrl
         const maxLabel = item.file.type.startsWith("video/") ? "100 MB" : "50 MB";
         const fileTooLargeMsg = t("fileTooLarge", { size: (item.file.size / (1024 * 1024)).toFixed(1), max: maxLabel });
-        const dataUrl = await readFileAsDataUrl(item.file, fileTooLargeMsg);
+        const readErrorMsg = t("readError");
+        const dataUrl = await readFileAsDataUrl(item.file, fileTooLargeMsg, readErrorMsg);
         const previewUrl = await generateThumbnail(item.file) || (item.file.type.startsWith("image/") ? URL.createObjectURL(item.file) : null);
 
         store.updateItem(item.localId, { status: "extracting", dataUrl, previewUrl });
@@ -776,14 +777,14 @@ function filteredItems(items: ImportItem[], tab: string): ImportItem[] {
   }
 }
 
-function readFileAsDataUrl(file: File, fileTooLargeMsg?: string): Promise<string> {
+function readFileAsDataUrl(file: File, fileTooLargeMsg: string, readErrorMsg: string): Promise<string> {
   if (isFileTooLarge(file)) {
-    return Promise.reject(new Error(fileTooLargeMsg || "File too large"));
+    return Promise.reject(new Error(fileTooLargeMsg));
   }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(new Error(fileTooLargeMsg || "Read error"));
+    reader.onerror = () => reject(new Error(readErrorMsg));
     reader.readAsDataURL(file);
   });
 }

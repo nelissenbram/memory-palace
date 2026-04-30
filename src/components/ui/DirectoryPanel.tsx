@@ -20,9 +20,12 @@ interface DirectoryPanelProps {
 export default function DirectoryPanel({onClose, onNavigateSharedWing}: DirectoryPanelProps){
   const { t } = useTranslation("directoryPanel");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const isMobile = useIsMobile();
   const { containerRef, handleKeyDown } = useFocusTrap(true);
+  const [localQuery,setLocalQuery]=useState("");
   const [query,setQuery]=useState("");
+  useEffect(()=>{const t=setTimeout(()=>setQuery(localQuery),300);return()=>clearTimeout(t);},[localQuery]);
   const [expanded,setExpanded]=useState<Record<string,boolean>>({});
   const { userMems, setSelMem } = useMemoryStore();
   const { enterWing, enterRoom, activeWing, activeRoomId } = usePalaceStore();
@@ -154,9 +157,9 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
         <div style={{padding:"0 1.5rem",marginBottom:"1rem"}}>
           <div style={{background:T.color.white,borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,padding:"0.5rem 0.75rem",display:"flex",alignItems:"center",gap:"0.5rem"}}>
             <span style={{fontSize:"0.8125rem",opacity:.5}}>{"\uD83D\uDD0D"}</span>
-            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder={t("searchPlaceholder")}
+            <input value={localQuery} onChange={e=>setLocalQuery(e.target.value)} placeholder={t("searchPlaceholder")}
               style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.charcoal,outline:"none"}}/>
-            {query&&<button onClick={()=>setQuery("")} aria-label={tc("clearSearch")} style={{background:"none",border:"none",color:T.color.muted,fontSize:"0.75rem",cursor:"pointer"}}>&#x2715;</button>}
+            {localQuery&&<button onClick={()=>setLocalQuery("")} aria-label={tc("clearSearch")} style={{background:"none",border:"none",color:T.color.muted,fontSize:"0.75rem",cursor:"pointer"}}>&#x2715;</button>}
           </div>
         </div>
 
@@ -177,7 +180,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
                   <span style={{fontSize:"0.625rem",color:T.color.muted,transition:"transform .2s",transform:wingExpanded?"rotate(90deg)":"rotate(0)"}}>&#x25B6;</span>
                   <span style={{fontSize:"1.125rem"}}>{wing.icon}</span>
                   <div style={{flex:1}}>
-                    <div style={{fontFamily:T.font.display,fontSize:"0.875rem",fontWeight:500,color:isActive?wing.accent:T.color.charcoal}}>{wing.name}</div>
+                    <div style={{fontFamily:T.font.display,fontSize:"0.875rem",fontWeight:500,color:isActive?wing.accent:T.color.charcoal}}>{tWings(wing.nameKey) || wing.name}</div>
                     <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.muted}}>{t("wingSummary", { rooms: String(wing.rooms.length), memories: String(wing.totalMems) })}</div>
                   </div>
                 </button>
@@ -199,7 +202,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
                             <span style={{fontSize:"0.5625rem",color:T.color.muted,transition:"transform .2s",transform:roomExpanded?"rotate(90deg)":"rotate(0)"}}>&#x25B6;</span>
                             <span style={{fontSize:"0.875rem"}}>{room.icon}</span>
                             <div style={{flex:1}}>
-                              <div style={{fontFamily:T.font.body,fontSize:"0.75rem",fontWeight:isRoomActive?600:400,color:isRoomActive?wing.accent:T.color.charcoal}}>{room.name}</div>
+                              <div style={{fontFamily:T.font.body,fontSize:"0.75rem",fontWeight:isRoomActive?600:400,color:isRoomActive?wing.accent:T.color.charcoal}}>{(room.nameKey && tWings(room.nameKey)) || room.name}</div>
                               <div style={{fontFamily:T.font.body,fontSize:"0.5625rem",color:T.color.muted}}>{t("roomMemories", { count: String(room.mems.length) })}{room.shared?` · ${t("shared")}`:""}</div>
                             </div>
                           </button>

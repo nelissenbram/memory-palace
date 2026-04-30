@@ -16,6 +16,7 @@ import { getDemoMems } from "@/lib/constants/defaults";
 import { TRACKS } from "@/lib/constants/tracks";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 
 import AtriumHero from "@/components/ui/AtriumHero";
 import {
@@ -38,6 +39,7 @@ import PersonaSelector from "./PersonaSelector";
 
 import TuscanCard from "./TuscanCard";
 import TuscanStyles from "./TuscanStyles";
+import { useRouter } from "next/navigation";
 
 /* ═══════════════════════════════════════════════════════════
    P2-1: SKELETON SHIMMER BLOCK
@@ -179,11 +181,13 @@ export interface EnrichedMemory {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════ */
 export default function HomeView() {
+  const router = useRouter();
   const isMobile = useIsMobile();
   const { t } = useTranslation("atrium");
   const { t: tTracks } = useTranslation("tracksPanel");
   const { t: tAch } = useTranslation("achievementsPanel");
   const { t: tPersona } = useTranslation("persona" as "common");
+  const { t: tWings } = useTranslation("wings");
   const { userName } = useUserStore();
   const { navMode, setNavMode, enterEntrance } = usePalaceStore();
   const { getWings, getWingRooms } = useRoomStore();
@@ -213,7 +217,11 @@ export default function HomeView() {
     setShowInterview: setShowInterview,
     startSession: startInterviewSession,
   } = useInterviewStore();
-  const { setShowMemoryMap, setShowTimeline, setShowStatistics, setShowMassImport, setShowSharedWithMe } = useUIPanelStore();
+  const setShowMemoryMap = useUIPanelStore((s) => s.setShowMemoryMap);
+  const setShowTimeline = useUIPanelStore((s) => s.setShowTimeline);
+  const setShowStatistics = useUIPanelStore((s) => s.setShowStatistics);
+  const setShowSharedWithMe = useUIPanelStore((s) => s.setShowSharedWithMe);
+  const setShowFamilyTree = useUIPanelStore((s) => s.setShowFamilyTree);
 
 
   const { startTransition, transitionProps } = useModeTransition();
@@ -360,7 +368,7 @@ export default function HomeView() {
         color: track.color,
       };
     });
-  }, [trackProgressMap, getTrackProgress]);
+  }, [trackProgressMap, getTrackProgress, tTracks]);
 
   // Achievement data — mapped to expected {id, name, icon, earnedAt?}
   const achievementProgress = getAchievementProgress();
@@ -373,7 +381,7 @@ export default function HomeView() {
       category: ach.category,
       earnedAt: earnedDates[ach.id] ?? undefined,
     }));
-  }, [earnedIds, earnedDates]);
+  }, [earnedIds, earnedDates, tAch]);
 
   /* P2-4: Memory creation streak */
   const memoryStreak = useMemo(() => {
@@ -406,9 +414,9 @@ export default function HomeView() {
   /* ─── WINGS DATA FOR PERSONAL PROFILE ─── */
 
   const wingsData = useMemo(() => wings.map(w => ({
-    id: w.id, name: w.name, icon: w.icon,
+    id: w.id, name: translateWingName(w, tWings), icon: w.icon,
     memoryCount: allMemories.filter(m => m.wing.id === w.id).length,
-  })), [wings, allMemories]);
+  })), [wings, allMemories, tWings]);
 
   /* ─── MODE SWITCHING ─── */
 
@@ -624,7 +632,7 @@ export default function HomeView() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {lastVisitedRoom.name}
+                    {(() => { const wr = wings.flatMap(w => getWingRooms(w.id)).find(r => r.id === lastVisitedRoom.id); return wr ? translateRoomName(wr, tWings) : lastVisitedRoom.name; })()}
                   </p>
                 </div>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}>
@@ -645,9 +653,7 @@ export default function HomeView() {
               onMemoryMap={() => setShowMemoryMap(true)}
               onTimeline={() => setShowTimeline(true)}
               onStatistics={() => setShowStatistics(true)}
-              onFamilyTree={() => {
-                window.location.href = "/family-tree";
-              }}
+              onFamilyTree={() => setShowFamilyTree(true)}
               isMobile={isMobile}
             />
           </div>
@@ -788,7 +794,7 @@ export default function HomeView() {
                 });
               }}
               onSetupGallery={() => handleNavigateLibrary()}
-              onCreateFamilyGroup={() => { window.location.href = "/settings/family"; }}
+              onCreateFamilyGroup={() => { router.push("/settings/family"); }}
               onCreateTimeCapsule={() => {
                 localStorage.setItem("mp_upload_time_capsule", "true");
                 handleNavigateLibrary();
@@ -841,8 +847,8 @@ export default function HomeView() {
               <RecentMemories
                 memories={recentMemories.map(({ mem, wing, room }) => ({
                   mem,
-                  wingName: wing.name,
-                  roomName: room.name,
+                  wingName: translateWingName(wing, tWings),
+                  roomName: translateRoomName(room, tWings),
                   wingId: wing.id,
                 }))}
                 onMemoryClick={(mem, wingId, roomId) => handleMemoryClick(mem)}
@@ -883,7 +889,7 @@ export default function HomeView() {
               <OnThisDayCard
                 memories={onThisDayMemories.map(({ mem, wing }) => ({
                   mem,
-                  wingName: wing.name,
+                  wingName: translateWingName(wing, tWings),
                   year: mem.createdAt ? new Date(mem.createdAt).getFullYear() : 0,
                 }))}
                 onMemoryClick={handleMemoryClick}
@@ -1071,8 +1077,8 @@ export default function HomeView() {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => { localStorage.setItem("mp_legacy_tab", "messages"); window.location.href = "/settings/legacy"; }}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); localStorage.setItem("mp_legacy_tab", "messages"); window.location.href = "/settings/legacy"; } }}
+                  onClick={() => { localStorage.setItem("mp_legacy_tab", "messages"); router.push("/settings/legacy"); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); localStorage.setItem("mp_legacy_tab", "messages"); router.push("/settings/legacy"); } }}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -1139,8 +1145,8 @@ export default function HomeView() {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => { localStorage.setItem("mp_legacy_tab", "settings"); window.location.href = "/settings/legacy"; }}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); localStorage.setItem("mp_legacy_tab", "settings"); window.location.href = "/settings/legacy"; } }}
+                  onClick={() => { localStorage.setItem("mp_legacy_tab", "settings"); router.push("/settings/legacy"); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); localStorage.setItem("mp_legacy_tab", "settings"); router.push("/settings/legacy"); } }}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -1206,8 +1212,8 @@ export default function HomeView() {
                 <div
                   role="button"
                   tabIndex={0}
-                  onClick={() => { localStorage.setItem("mp_legacy_tab", "settings"); window.location.href = "/settings/legacy"; }}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); localStorage.setItem("mp_legacy_tab", "settings"); window.location.href = "/settings/legacy"; } }}
+                  onClick={() => { localStorage.setItem("mp_legacy_tab", "settings"); router.push("/settings/legacy"); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); localStorage.setItem("mp_legacy_tab", "settings"); router.push("/settings/legacy"); } }}
                   style={{
                     display: "flex",
                     alignItems: "center",

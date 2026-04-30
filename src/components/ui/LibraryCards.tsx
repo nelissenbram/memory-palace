@@ -5,6 +5,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 
 import type { Mem } from "@/lib/constants/defaults";
 import type { WingRoom } from "@/lib/constants/wings";
+import { translateRoomName } from "@/lib/constants/wings";
 import Image from "next/image";
 import { TuscanSectionHeader } from "./TuscanCard";
 import { RoomIcon } from "./WingRoomIcons";
@@ -91,6 +92,7 @@ export interface LibraryRoomCardProps {
 
 export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCount, thumbUrl, accent, onClick, onAdd, animationIndex }: LibraryRoomCardProps & { animationIndex?: number }) {
   const { t } = useTranslation("library");
+  const { t: tWings } = useTranslation("wings");
   const [hovered, setHovered] = useState(false);
   const [addHovered, setAddHovered] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
@@ -121,7 +123,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
       <KeyframesStyle />
       <div
         role="button"
-        aria-label={room.name}
+        aria-label={translateRoomName(room, tWings)}
         tabIndex={0}
         onClick={onClick}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
@@ -311,7 +313,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
             lineHeight: 1.3,
           }}>
             <span style={{ fontWeight: 400, color: T.color.muted, fontSize: "0.8125rem", marginRight: "0.25rem" }}>{t("room")}</span>
-            {room.name}
+            {translateRoomName(room, tWings)}
           </p>
           <p style={{
             fontFamily: T.font.body,
@@ -502,7 +504,8 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
           overflow: "hidden",
           borderRadius: "1rem 1rem 0 0",
           background: hasImage && !imgFailed ? T.color.cream : bgGradient,
-          minHeight: hasImage && !imgFailed ? "8rem" : "7rem",
+          aspectRatio: "4 / 3",
+          minHeight: "7rem",
         }}>
           {/* --- Photo / Image --- */}
           {hasImage && !imgFailed ? (

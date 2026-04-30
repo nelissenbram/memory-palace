@@ -9,6 +9,8 @@ import {
   sendTrustedVerifierEmail,
   sendDeliveryEmail,
 } from "@/lib/email/send-legacy";
+import { sendDripEmail } from "@/lib/email/send-drip";
+import { sendRenewalEmail } from "@/lib/email/send-renewal";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
         { roomName: "Family Holidays", contributorName: "Sofia", memoryCount: 4 },
       ],
       trackProgress: {
-        trackName: "Family Wing",
+        trackName: "Roots Wing",
         percentComplete: 62,
         icon: "❦",
         nextStepHint: "Add three more childhood photos",
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
       inviterName: "Sofia Rinaldi",
       recipientEmail: to,
       roomName: "Christmas at the lake house",
-      wingName: "Family",
+      wingName: "Roots",
       shareId: "preview-share-id",
       permission: "contribute",
       personalMessage: "Bram, I added some photos from last year — would love your help filling in the stories.",
@@ -146,6 +148,57 @@ export async function GET(request: NextRequest) {
       inactiveDays: 60,
       verificationToken: "preview-token",
       locale: "en",
+    })),
+  });
+
+  // ── Drip emails (day 1, 3, 7, 14) ──
+
+  for (const dripDay of [1, 3, 7, 14] as const) {
+    results.push({
+      template: `drip-day-${dripDay}`,
+      ...(await sendDripEmail({
+        recipientEmail: to,
+        displayName: "Bram",
+        locale: "nl",
+        dripDay,
+      })),
+    });
+  }
+
+  // ── Pre-renewal email (14-day reminder) ──
+
+  const renewalDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+
+  results.push({
+    template: "pre-renewal",
+    ...(await sendRenewalEmail({
+      recipientEmail: to,
+      displayName: "Bram",
+      locale: "nl",
+      planName: "keeper",
+      renewalDate,
+      stats: {
+        memories: 42,
+        rooms: 6,
+        familyMembers: 3,
+        storageMb: 128,
+      },
+    })),
+  });
+
+  // ── Re-engagement email ──
+
+  results.push({
+    template: "re-engagement",
+    ...(await sendReminderEmail({
+      type: "re_engagement",
+      recipientEmail: to,
+      displayName: "Bram",
+      locale: "nl",
+      daysSinceLogin: 21,
+      memoryCount: 42,
     })),
   });
 

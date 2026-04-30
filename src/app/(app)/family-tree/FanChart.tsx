@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type {
@@ -13,6 +13,7 @@ interface FanChartProps {
   relationships: FamilyTreeRelationship[];
   rootPersonId: string;
   onSelectPerson: (p: FamilyTreePerson) => void;
+  onRootChange?: (personId: string) => void;
   isMobile: boolean;
   pan: { x: number; y: number };
   zoom: number;
@@ -20,19 +21,18 @@ interface FanChartProps {
   onZoomChange: (zoom: number) => void;
 }
 
-/* ── Colors for 4 grandparent lineages ── */
 const LINEAGE_COLORS = [
-  "#A0B8D4", // paternal-father (blue)
-  "#8BB89A", // paternal-mother (green)
-  "#D4A0A0", // maternal-father (rose)
-  "#C9B87B", // maternal-mother (gold)
+  "#A0B8D4",
+  "#8BB89A",
+  "#D4A0A0",
+  "#C9B87B",
 ];
 
 interface AncestorSlot {
-  gen: number; // 0 = root, 1 = parents, 2 = grandparents...
-  index: number; // position within generation (0-based, left to right)
+  gen: number;
+  index: number;
   person: FamilyTreePerson | null;
-  colorIdx: number; // which lineage color
+  colorIdx: number;
 }
 
 export default function FanChart({
@@ -40,6 +40,7 @@ export default function FanChart({
   relationships,
   rootPersonId,
   onSelectPerson,
+  onRootChange,
   isMobile,
   pan,
   zoom,
@@ -48,8 +49,103 @@ export default function FanChart({
 }: FanChartProps) {
   const { t } = useTranslation("familyTree");
   const [maxGen, setMaxGen] = useState(4);
+  const containerDivRef = useRef<HTMLDivElement>(null);
 
-  // Build parent lookup: child -> [parent1, parent2]
+  // Measure container to compute fill-height scale
+  const [cSize, setCSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = containerDivRef.current;
+    if (!el) return;
+    const measure = () => {
+      const { width, height } = el.getBoundingClientRect();
+      setCSize({ w: width, h: height });
+    };
+    measure();
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  /* ── Pan/zoom/pinch handlers ── */
+  const dragRef = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
+  const pinchRef = useRef<{ startDist: number; startZoom: number; startPan: { x: number; y: number }; startCenter: { x: number; y: number } } | null>(null);
+
+  const clampZoom = (z: number) => Math.max(0.3, Math.min(3, z));
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    onZoomChange(clampZoom(zoom * delta));
+  }, [zoom, onZoomChange]);
+
+  // Mouse/single-pointer drag for panning
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.button !== 0 || e.pointerType === "touch") return; // touch handled separately
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, panX: pan.x, panY: pan.y };
+  }, [pan]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current || e.pointerType === "touch") return;
+    onPanChange({
+      x: dragRef.current.panX + (e.clientX - dragRef.current.startX),
+      y: dragRef.current.panY + (e.clientY - dragRef.current.startY),
+    });
+  }, [onPanChange]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === "touch") return;
+    dragRef.current = null;
+  }, []);
+
+  // Touch: 1 finger = pan, 2 fingers = pinch zoom
+  const touchDragRef = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
+
+  const dist = (t1: React.Touch, t2: React.Touch) =>
+    Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Start pinch
+      touchDragRef.current = null;
+      const d = dist(e.touches[0], e.touches[1]);
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      pinchRef.current = { startDist: d, startZoom: zoom, startPan: { ...pan }, startCenter: { x: cx, y: cy } };
+    } else if (e.touches.length === 1) {
+      // Start single-finger drag
+      pinchRef.current = null;
+      touchDragRef.current = { startX: e.touches[0].clientX, startY: e.touches[0].clientY, panX: pan.x, panY: pan.y };
+    }
+  }, [zoom, pan]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault();
+      const d = dist(e.touches[0], e.touches[1]);
+      const scale = d / pinchRef.current.startDist;
+      const newZoom = clampZoom(pinchRef.current.startZoom * scale);
+      onZoomChange(newZoom);
+      // Pan to keep center stable
+      const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      onPanChange({
+        x: pinchRef.current.startPan.x + (cx - pinchRef.current.startCenter.x),
+        y: pinchRef.current.startPan.y + (cy - pinchRef.current.startCenter.y),
+      });
+    } else if (e.touches.length === 1 && touchDragRef.current && !pinchRef.current) {
+      onPanChange({
+        x: touchDragRef.current.panX + (e.touches[0].clientX - touchDragRef.current.startX),
+        y: touchDragRef.current.panY + (e.touches[0].clientY - touchDragRef.current.startY),
+      });
+    }
+  }, [onPanChange, onZoomChange]);
+
+  const handleTouchEnd = useCallback(() => {
+    pinchRef.current = null;
+    touchDragRef.current = null;
+  }, []);
+
   const parentMap = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const r of relationships) {
@@ -72,11 +168,8 @@ export default function FanChart({
     return m;
   }, [persons]);
 
-  // Build ancestor slots for fan chart
   const slots = useMemo(() => {
     const result: AncestorSlot[] = [];
-    // BFS: gen 0 = root, gen 1 = parents, etc.
-    // Each slot at gen g, index i has parents at gen g+1, indices 2i and 2i+1
     interface QueueItem { personId: string | null; gen: number; index: number; colorIdx: number; }
     const queue: QueueItem[] = [{ personId: rootPersonId, gen: 0, index: 0, colorIdx: -1 }];
 
@@ -85,22 +178,16 @@ export default function FanChart({
       if (item.gen > maxGen) continue;
 
       const person = item.personId ? personMap.get(item.personId) ?? null : null;
-      const colorIdx = item.gen >= 2
-        ? item.index % 4
+      const colorIdx = item.gen === 0
+        ? -1
         : item.gen === 1
           ? item.index * 2
-          : -1;
+          : Math.floor(item.index / Math.pow(2, item.gen - 2)) % 4;
 
-      result.push({
-        gen: item.gen,
-        index: item.index,
-        person,
-        colorIdx: item.gen >= 1 ? (item.gen >= 2 ? colorIdx : item.index * 2) : -1,
-      });
+      result.push({ gen: item.gen, index: item.index, person, colorIdx });
 
       if (item.gen < maxGen) {
         const parents = item.personId ? parentMap.get(item.personId) ?? [] : [];
-        // Sort parents: father first (male), then mother
         const sorted = [...parents].sort((a, b) => {
           const pa = personMap.get(a);
           const pb = personMap.get(b);
@@ -108,30 +195,62 @@ export default function FanChart({
           if (pa?.gender !== "male" && pb?.gender === "male") return 1;
           return 0;
         });
-        const fatherId = sorted[0] ?? null;
-        const motherId = sorted[1] ?? null;
-        queue.push({ personId: fatherId, gen: item.gen + 1, index: item.index * 2, colorIdx: 0 });
-        queue.push({ personId: motherId, gen: item.gen + 1, index: item.index * 2 + 1, colorIdx: 0 });
+        queue.push({ personId: sorted[0] ?? null, gen: item.gen + 1, index: item.index * 2, colorIdx });
+        queue.push({ personId: sorted[1] ?? null, gen: item.gen + 1, index: item.index * 2 + 1, colorIdx });
       }
     }
     return result;
   }, [rootPersonId, parentMap, personMap, maxGen]);
 
-  // SVG dimensions
-  const size = isMobile ? 360 : 600;
-  const cx = size / 2;
-  const cy = size * 0.92; // root at bottom-center
-  const minR = isMobile ? 50 : 80; // inner radius
-  const bandW = isMobile ? 42 : 58; // width of each generation band
-  const gapAngle = 0.8; // degrees gap between segments
+  // SVG geometry
+  const minR = isMobile ? 50 : 80;
+  const bandW = isMobile ? 42 : 58;
+  const gapAngle = 0.8;
+  const outerRadius = minR + maxGen * bandW;
+  const padding = 10;
+  const rootR = minR * 0.55;
+
+  const vbW = (outerRadius + padding) * 2;
+  const vbH = outerRadius + padding + rootR + 5;
+  const cx = vbW / 2;
+  const cy = vbH - 5;
+
+  // CSS scale: the SVG uses preserveAspectRatio="xMidYMax meet" which fits to
+  // the smaller dimension (width on portrait). We apply an additional CSS scale
+  // so the fan fills the container height. This keeps the SVG content un-clipped
+  // (unlike "slice") — arcs extend naturally past the screen edges.
+  const fillScale = useMemo(() => {
+    if (cSize.w === 0 || cSize.h === 0) return 1;
+    // With "meet", the SVG scales to fit the smaller dimension.
+    const meetScale = Math.min(cSize.w / vbW, cSize.h / vbH);
+    // We want it to fill the height instead.
+    const fillH = cSize.h / vbH;
+    // Additional CSS scale needed on top of the meet scale:
+    return fillH / meetScale;
+  }, [cSize, vbW, vbH]);
+
+  useEffect(() => {
+    onZoomChange(1);
+    onPanChange({ x: 0, y: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxGen]);
+
+  const sortedPersons = useMemo(() =>
+    [...persons].sort((a, b) => {
+      const nameA = `${a.first_name ?? ""} ${a.last_name ?? ""}`.trim().toLowerCase();
+      const nameB = `${b.first_name ?? ""} ${b.last_name ?? ""}`.trim().toLowerCase();
+      return nameA.localeCompare(nameB);
+    }),
+    [persons],
+  );
 
   const rootPerson = personMap.get(rootPersonId);
   const year = (d: string | null) => {
     if (!d) return "";
-    try { return new Date(d).getFullYear().toString(); } catch { return ""; }
+    const m = d.match(/^(\d{4})/);
+    if (m) return m[1];
   };
 
-  // Render arc segment for each ancestor
   function arcPath(innerR: number, outerR: number, startAngle: number, endAngle: number): string {
     const toRad = (deg: number) => (deg * Math.PI) / 180;
     const x1 = cx + innerR * Math.cos(toRad(startAngle));
@@ -153,7 +272,6 @@ export default function FanChart({
     ].join(" ");
   }
 
-  // Text along arc midpoint
   function arcMidpoint(r: number, startAngle: number, endAngle: number): { x: number; y: number; angle: number } {
     const midAngle = (startAngle + endAngle) / 2;
     const toRad = (deg: number) => (deg * Math.PI) / 180;
@@ -164,71 +282,201 @@ export default function FanChart({
     };
   }
 
-  // Fan spans from 180° (left) to 360° (right) — a semicircle above the root
   const fanStart = 180;
   const fanEnd = 360;
 
-  return (
-    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-      {/* Generation control */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.75rem",
-        padding: "0.5rem 1rem",
-        position: "absolute",
-        top: isMobile ? "0.5rem" : "1rem",
-        left: "50%",
-        transform: "translateX(-50%)",
-        zIndex: 10,
-        background: `${T.color.linen}E0`,
-        backdropFilter: "blur(12px)",
-        borderRadius: "0.75rem",
-        border: `1px solid ${T.color.sandstone}40`,
-        boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.08)`,
-      }}>
-        <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted }}>
-          {t("fanGenerations")}
-        </span>
-        {[4, 5, 6, 7].map((g) => (
-          <button
-            key={g}
-            onClick={() => setMaxGen(g)}
-            style={{
-              width: "2rem",
-              height: "2rem",
-              borderRadius: "0.5rem",
-              border: maxGen === g ? `2px solid ${T.color.terracotta}` : `1px solid ${T.color.sandstone}60`,
-              background: maxGen === g ? `${T.color.terracotta}18` : "transparent",
-              fontFamily: T.font.body,
-              fontSize: "0.875rem",
-              fontWeight: maxGen === g ? 700 : 400,
-              color: maxGen === g ? T.color.terracotta : T.color.charcoal,
-              cursor: "pointer",
-            }}
-          >
-            {g}
-          </button>
-        ))}
-      </div>
+  // Combined transform: fillScale fills height, then user zoom/pan on top
+  const totalScale = fillScale * zoom;
 
+  return (
+    <div
+      ref={containerDivRef}
+      style={{
+        position: "absolute",
+        inset: 0,
+        overflow: "visible",
+        touchAction: "none",
+        cursor: dragRef.current ? "grabbing" : "grab",
+      }}
+      onWheel={handleWheel}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+    >
+      {/* Generation control — compact on mobile */}
+      {isMobile ? (
+        <div style={{
+          position: "absolute",
+          top: "0.5rem",
+          left: "0.5rem",
+          right: "0.5rem",
+          zIndex: 10,
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.375rem",
+          background: `${T.color.linen}E0`,
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderRadius: "0.75rem",
+          border: `1px solid ${T.color.sandstone}40`,
+          boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.08)`,
+          padding: "0.5rem 0.625rem",
+        }}>
+          {/* Row 1: generation buttons */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+            <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginRight: "auto" }}>
+              {t("fanGenerations")}
+            </span>
+            {[4, 5, 6, 7].map((g) => (
+              <button
+                key={g}
+                onClick={() => setMaxGen(g)}
+                style={{
+                  width: "2rem",
+                  height: "2rem",
+                  borderRadius: "0.375rem",
+                  border: maxGen === g ? `2px solid ${T.color.terracotta}` : `1px solid ${T.color.sandstone}60`,
+                  background: maxGen === g ? `${T.color.terracotta}18` : "transparent",
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  fontWeight: maxGen === g ? 700 : 400,
+                  color: maxGen === g ? T.color.terracotta : T.color.charcoal,
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
+          {/* Row 2: focus person */}
+          {onRootChange && (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, flexShrink: 0 }}>
+                {t("fanFocusPerson")}
+              </span>
+              <select
+                value={rootPersonId}
+                onChange={(e) => onRootChange(e.target.value)}
+                style={{
+                  flex: 1,
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  color: T.color.charcoal,
+                  background: `${T.color.white}B0`,
+                  border: `1px solid ${T.color.sandstone}60`,
+                  borderRadius: "0.375rem",
+                  padding: "0.3125rem 0.375rem",
+                  cursor: "pointer",
+                  outline: "none",
+                  minWidth: 0,
+                }}
+              >
+                {sortedPersons.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {`${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "—"}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem",
+          padding: "0.5rem 1rem",
+          position: "absolute",
+          top: "1rem",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 10,
+          background: `${T.color.linen}E0`,
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderRadius: "0.75rem",
+          border: `1px solid ${T.color.sandstone}40`,
+          boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.08)`,
+        }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted }}>
+            {t("fanGenerations")}
+          </span>
+          {[4, 5, 6, 7].map((g) => (
+            <button
+              key={g}
+              onClick={() => setMaxGen(g)}
+              style={{
+                width: "2.75rem",
+                height: "2.75rem",
+                borderRadius: "0.5rem",
+                border: maxGen === g ? `2px solid ${T.color.terracotta}` : `1px solid ${T.color.sandstone}60`,
+                background: maxGen === g ? `${T.color.terracotta}18` : "transparent",
+                fontFamily: T.font.body,
+                fontSize: "0.875rem",
+                fontWeight: maxGen === g ? 700 : 400,
+                color: maxGen === g ? T.color.terracotta : T.color.charcoal,
+                cursor: "pointer",
+              }}
+            >
+              {g}
+            </button>
+          ))}
+          {onRootChange && (
+            <>
+              <div style={{ width: 1, height: "1.5rem", background: `${T.color.sandstone}50` }} />
+              <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, whiteSpace: "nowrap" }}>
+                {t("fanFocusPerson")}
+              </label>
+              <select
+                value={rootPersonId}
+                onChange={(e) => onRootChange(e.target.value)}
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  color: T.color.charcoal,
+                  background: `${T.color.white}B0`,
+                  border: `1px solid ${T.color.sandstone}60`,
+                  borderRadius: "0.5rem",
+                  padding: "0.375rem 0.5rem",
+                  cursor: "pointer",
+                  maxWidth: "12rem",
+                  outline: "none",
+                }}
+              >
+                {sortedPersons.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {`${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || "—"}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Fan SVG — uses "meet" so nothing is clipped, CSS scale fills the height */}
       <svg
         width="100%"
         height="100%"
-        viewBox={`0 0 ${size} ${size}`}
+        viewBox={`0 0 ${vbW} ${vbH}`}
+        preserveAspectRatio="xMidYMax meet"
         style={{
-          maxWidth: `${size}px`,
-          flex: 1,
-          marginTop: isMobile ? "3rem" : "3.5rem",
-          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-          transformOrigin: "center center",
+          display: "block",
+          overflow: "visible",
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${totalScale})`,
+          transformOrigin: "center bottom",
         }}
       >
-        {/* Root person circle at bottom-center */}
         <circle
           cx={cx}
           cy={cy}
-          r={minR * 0.55}
+          r={rootR}
           fill={T.color.white}
           stroke={T.color.gold}
           strokeWidth={2.5}
@@ -237,43 +485,23 @@ export default function FanChart({
         />
         {rootPerson && (
           <>
-            <text
-              x={cx}
-              y={cy - 8}
-              textAnchor="middle"
-              fontFamily={T.font.display}
-              fontSize={isMobile ? 11 : 13}
-              fontWeight={600}
-              fill={T.color.charcoal}
-            >
+            <text x={cx} y={cy - 8} textAnchor="middle" fontFamily={T.font.display}
+              fontSize={isMobile ? 11 : 13} fontWeight={600} fill={T.color.charcoal}>
               {rootPerson.first_name}
             </text>
             {rootPerson.last_name && (
-              <text
-                x={cx}
-                y={cy + 6}
-                textAnchor="middle"
-                fontFamily={T.font.display}
-                fontSize={isMobile ? 9 : 11}
-                fill={T.color.muted}
-              >
+              <text x={cx} y={cy + 6} textAnchor="middle" fontFamily={T.font.display}
+                fontSize={isMobile ? 9 : 11} fill={T.color.muted}>
                 {rootPerson.last_name}
               </text>
             )}
-            <text
-              x={cx}
-              y={cy + 18}
-              textAnchor="middle"
-              fontFamily={T.font.body}
-              fontSize={9}
-              fill={T.color.muted}
-            >
+            <text x={cx} y={cy + 18} textAnchor="middle" fontFamily={T.font.body}
+              fontSize={9} fill={T.color.muted}>
               {year(rootPerson.birth_date)}{rootPerson.birth_date || rootPerson.death_date ? "\u2013" : ""}{year(rootPerson.death_date)}
             </text>
           </>
         )}
 
-        {/* Ancestor arcs (gen 1+) */}
         {slots
           .filter((s) => s.gen >= 1)
           .map((slot) => {
@@ -288,7 +516,6 @@ export default function FanChart({
             const mid = arcMidpoint(midR, startAngle, endAngle);
             const color = slot.colorIdx >= 0 ? LINEAGE_COLORS[slot.colorIdx % 4] : T.color.sandstone;
 
-            // Rotate text to be readable
             let textAngle = mid.angle + 90;
             if (textAngle > 90 && textAngle < 270) textAngle += 180;
 
@@ -302,16 +529,12 @@ export default function FanChart({
                   style={{ cursor: slot.person ? "pointer" : "default" }}
                   onClick={() => slot.person && onSelectPerson(slot.person)}
                 />
-                {slot.person && (endAngle - startAngle) > 5 && (
+                {slot.person && (endAngle - startAngle) > 2 && (
                   <text
-                    x={mid.x}
-                    y={mid.y}
-                    textAnchor="middle"
-                    dominantBaseline="central"
+                    x={mid.x} y={mid.y} textAnchor="middle" dominantBaseline="central"
                     fontFamily={T.font.display}
                     fontSize={Math.max(7, Math.min(11, (endAngle - startAngle) * 0.6))}
-                    fontWeight={500}
-                    fill={T.color.charcoal}
+                    fontWeight={500} fill={T.color.charcoal}
                     transform={`rotate(${textAngle}, ${mid.x}, ${mid.y})`}
                     style={{ pointerEvents: "none" }}
                   >

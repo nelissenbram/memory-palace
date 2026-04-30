@@ -1,14 +1,15 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { serverError } from "@/lib/i18n/server-errors";
 
 const supabaseReady = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export async function startInterview(templateId: string) {
-  if (!supabaseReady) return { error: "Supabase not configured" };
+  if (!supabaseReady) { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { data: session, error } = await supabase
     .from("interview_sessions")
@@ -32,10 +33,10 @@ export async function saveResponse(
   audioUrl: string | null,
   transcript: string
 ) {
-  if (!supabaseReady) return { error: "Supabase not configured" };
+  if (!supabaseReady) { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   // Fetch current responses
   const { data: session } = await supabase
@@ -45,7 +46,7 @@ export async function saveResponse(
     .eq("user_id", user.id)
     .single();
 
-  if (!session) return { error: "Session not found" };
+  if (!session) { const t = await serverError(); return { error: t("sessionNotFound") }; }
 
   const responses = [...(session.responses || [])];
   responses.push({
@@ -66,10 +67,10 @@ export async function saveResponse(
 }
 
 export async function completeInterview(sessionId: string, narrativeSummary: string) {
-  if (!supabaseReady) return { error: "Supabase not configured" };
+  if (!supabaseReady) { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { error } = await supabase
     .from("interview_sessions")
@@ -102,10 +103,10 @@ export async function fetchInterviewSessions() {
 }
 
 export async function fetchInterviewSession(sessionId: string) {
-  if (!supabaseReady) return { error: "Supabase not configured" };
+  if (!supabaseReady) { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { data: session, error } = await supabase
     .from("interview_sessions")
@@ -119,10 +120,10 @@ export async function fetchInterviewSession(sessionId: string) {
 }
 
 export async function updateInterviewMemoryId(sessionId: string, memoryId: string) {
-  if (!supabaseReady) return { error: "Supabase not configured" };
+  if (!supabaseReady) { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { error } = await supabase
     .from("interview_sessions")

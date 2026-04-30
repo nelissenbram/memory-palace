@@ -145,6 +145,96 @@ export async function downloadPhoto(
   };
 }
 
+/* ------------------------------------------------------------------ */
+/*  Google Photos Picker API                                          */
+/* ------------------------------------------------------------------ */
+
+const PICKER_BASE_URL = "https://photospicker.googleapis.com/v1";
+
+export interface PickerSession {
+  id: string;
+  pickerUri: string;
+  expireTime: string;
+  mediaItemsSet?: boolean;
+}
+
+export interface PickerMediaItem {
+  id: string;
+  mediaFile: {
+    baseUrl: string;
+    mimeType: string;
+    filename: string;
+  };
+}
+
+export interface PickerMediaItemsResult {
+  mediaItems: PickerMediaItem[];
+  nextPageToken?: string;
+}
+
+/**
+ * Create a new Picker session. The user should be redirected to `pickerUri`.
+ */
+export async function createPickerSession(token: string): Promise<PickerSession> {
+  const res = await fetch(`${PICKER_BASE_URL}/sessions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    assertNotUnauthorized(res, err);
+    throw new Error(`Picker API error (${res.status}): ${err}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Poll an existing Picker session to check if the user has finished picking.
+ */
+export async function getPickerSession(token: string, sessionId: string): Promise<PickerSession> {
+  const res = await fetch(`${PICKER_BASE_URL}/sessions/${encodeURIComponent(sessionId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    assertNotUnauthorized(res, err);
+    throw new Error(`Picker API error (${res.status}): ${err}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Retrieve the media items the user picked (paginated).
+ */
+export async function getPickerMediaItems(
+  token: string,
+  sessionId: string,
+  pageToken?: string,
+): Promise<PickerMediaItemsResult> {
+  const url = new URL(`${PICKER_BASE_URL}/mediaItems`);
+  url.searchParams.set("sessionId", sessionId);
+  if (pageToken) url.searchParams.set("pageToken", pageToken);
+
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    assertNotUnauthorized(res, err);
+    throw new Error(`Picker API error (${res.status}): ${err}`);
+  }
+
+  return res.json();
+}
+
 /**
  * Get user info from Google (email, name).
  */

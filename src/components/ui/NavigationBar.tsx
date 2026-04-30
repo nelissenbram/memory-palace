@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -8,6 +8,7 @@ import NotificationBell from "@/components/ui/NotificationBell";
 import { useNudgeStore } from "@/lib/stores/nudgeStore";
 import { useSettingsTourStore } from "@/components/ui/SettingsTutorial";
 import { useNotificationStore } from "@/lib/stores/notificationStore";
+import { hapticLight } from "@/lib/native/haptics";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -114,29 +115,19 @@ function PalaceIcon({ color = "currentColor", size = 16 }: { color?: string; siz
     <svg
       width={size}
       height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke={color}
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="0 0 100 100"
+      fill={color}
       aria-hidden
     >
-      {/* pediment / roof triangle */}
-      <path d="M2.5 5.5 L8 1.5 L13.5 5.5" />
-      {/* architrave / horizontal beam */}
-      <line x1="2.5" y1="5.5" x2="13.5" y2="5.5" />
-      {/* base / steps */}
-      <line x1="2" y1="13" x2="14" y2="13" />
-      <line x1="2.5" y1="12" x2="13.5" y2="12" strokeWidth="1" />
-      {/* columns — outer pair wider, inner pair narrower for perspective depth */}
-      <line x1="3.5" y1="5.5" x2="3.5" y2="12" />
-      <line x1="12.5" y1="5.5" x2="12.5" y2="12" />
-      {/* inner columns — slightly inset for depth */}
-      <line x1="6" y1="5.5" x2="6" y2="12" strokeWidth="1" />
-      <line x1="10" y1="5.5" x2="10" y2="12" strokeWidth="1" />
-      {/* center column accent */}
-      <line x1="8" y1="5.5" x2="8" y2="12" strokeWidth="0.8" strokeDasharray="1.5 1" />
+      <path d="M10 32 L50 12 L90 32 L88 40 L12 40 Z" />
+      <rect x="18" y="40" width="8" height="32" />
+      <rect x="32" y="40" width="8" height="32" />
+      <rect x="46" y="40" width="8" height="32" />
+      <rect x="60" y="40" width="8" height="32" />
+      <ellipse cx="78" cy="56" rx="4" ry="14" opacity="0.7" />
+      <rect x="10" y="72" width="80" height="4" />
+      <rect x="6" y="78" width="88" height="4" />
+      <rect x="2" y="84" width="96" height="4" />
     </svg>
   );
 }
@@ -258,50 +249,23 @@ const KEYFRAMES = `
 /*  Active-mode styling helpers                                        */
 /* ------------------------------------------------------------------ */
 
-function activeIndicatorBg(mode: ModeKey): string {
-  switch (mode) {
-    case "atrium":
-      return `linear-gradient(135deg, ${T.color.gold} 0%, ${T.color.terracotta} 100%)`;
-    case "library":
-      return `linear-gradient(135deg, ${T.color.warmStone} 0%, ${T.color.cream} 100%)`;
-    case "3d":
-      return `linear-gradient(135deg, ${T.color.charcoal} 0%, ${T.color.charcoal}ee 100%)`;
-    default:
-      return "transparent";
-  }
+function activeIndicatorBg(_mode: ModeKey | "me"): string {
+  return `linear-gradient(135deg, ${T.color.gold} 0%, ${T.color.terracotta} 100%)`;
 }
 
-function activeTextColor(mode: ModeKey): string {
-  switch (mode) {
-    case "atrium":
-      return T.color.white;
-    case "library":
-      return T.color.charcoal;
-    case "3d":
-      return T.color.linen;
-    default:
-      return T.color.walnut;
-  }
+function activeTextColor(_mode: ModeKey | "me"): string {
+  return T.color.white;
 }
 
-function activeIndicatorShadow(mode: ModeKey): string {
-  switch (mode) {
-    case "atrium":
-      return "0 0.125rem 0.75rem rgba(209,175,55,0.3), 0 0.0625rem 0.25rem rgba(193,127,89,0.2)";
-    case "library":
-      return "0 0.125rem 0.5rem rgba(139,115,85,0.12)";
-    case "3d":
-      return "0 0.125rem 0.75rem rgba(44,44,42,0.3)";
-    default:
-      return "none";
-  }
+function activeIndicatorShadow(_mode: ModeKey | "me"): string {
+  return "0 0.125rem 0.75rem rgba(209,175,55,0.3), 0 0.0625rem 0.25rem rgba(193,127,89,0.2)";
 }
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
-export default function NavigationBar({
+function NavigationBar({
   currentMode,
   onModeChange,
   isMobile,
@@ -330,21 +294,24 @@ export default function NavigationBar({
   useEffect(() => {
     router.prefetch("/settings");
     router.prefetch("/palace");
+    router.prefetch("/family-tree");
+    router.prefetch("/settings/profile");
   }, [router]);
 
   /* ---- refs for sliding indicator ---- */
   const containerRef = useRef<HTMLDivElement>(null);
-  const buttonRefs = useRef<Record<ModeKey, HTMLButtonElement | null>>({
+  const buttonRefs = useRef<Record<ModeKey | "me", HTMLButtonElement | null>>({
     atrium: null,
     library: null,
     "3d": null,
+    me: null,
   });
   const allTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({});
   const [mounted, setMounted] = useState(false);
   const [pulsingMode, setPulsingMode] = useState<ModeKey | null>(null);
-  const [hoveringMode, setHoveringMode] = useState<ModeKey | null>(null);
+  const [hoveringMode, setHoveringMode] = useState<ModeKey | "me" | null>(null);
   const [scrollShrunk, setScrollShrunk] = useState(false);
 
   /* ---- mount entrance ---- */
@@ -394,22 +361,8 @@ export default function NavigationBar({
         boxShadow: `0 0.125rem 0.5rem rgba(193,127,89,0.35)`,
       });
     } else {
-      const btn = buttonRefs.current[currentMode];
-      if (!btn) return;
-      const cRect = container.getBoundingClientRect();
-      const bRect = btn.getBoundingClientRect();
-      setIndicatorStyle({
-        position: "absolute" as const,
-        top: `${bRect.top - cRect.top}px`,
-        left: `${bRect.left - cRect.left}px`,
-        width: `${bRect.width}px`,
-        height: `${bRect.height}px`,
-        background: activeIndicatorBg(currentMode),
-        borderRadius: "1.5rem",
-        boxShadow: activeIndicatorShadow(currentMode),
-        transition: `all 0.35s ${EASE_SPRING}`,
-        pointerEvents: "none" as const,
-      });
+      // Desktop: pill is rendered directly on the active button (no separate indicator)
+      setIndicatorStyle({});
     }
   }, [currentMode, isMobile, activeTab, nudgeActive]);
 
@@ -441,6 +394,7 @@ export default function NavigationBar({
       // (needed so clicking a mode from notifications/settings clears the overlay)
       onModeChange(mode);
       if (mode !== currentMode) {
+        hapticLight();
         setPulsingMode(mode);
         setTimeout(() => setPulsingMode(null), 400);
       }
@@ -466,9 +420,10 @@ export default function NavigationBar({
           { mode: "atrium",        labelKey: "mode_atrium",        nudgeId: "atrium_mob_home" },
           { mode: "library",       labelKey: "mode_library",       nudgeId: "atrium_mob_library" },
           { mode: "3d",            labelKey: "mode_palace",        nudgeId: "atrium_mob_palace" },
+          { mode: "me",            labelKey: "tab_me",             nudgeId: "atrium_mob_me" },
+          { mode: "_spacer" as any, labelKey: "" },
           { mode: "notifications", labelKey: "tab_notifications",  nudgeId: "atrium_mob_notif" },
           { mode: "help",          labelKey: "tab_help",           nudgeId: "atrium_mob_help" },
-          { mode: "me",            labelKey: "tab_me",             nudgeId: "atrium_mob_me" },
         ];
 
     return (
@@ -485,8 +440,8 @@ export default function NavigationBar({
             right: "env(safe-area-inset-right, 0px)",
             zIndex: 50,
             background: `${T.color.linen}E0`,
-            backdropFilter: "blur(1.5rem) saturate(180%)",
-            WebkitBackdropFilter: "blur(1.5rem) saturate(180%)",
+            backdropFilter: isMobile ? "blur(0.75rem)" : "blur(1.5rem) saturate(180%)",
+            WebkitBackdropFilter: isMobile ? "blur(0.75rem)" : "blur(1.5rem) saturate(180%)",
             borderTop: `0.0625rem solid rgba(238,234,227,0.6)`,
             display: "flex",
             alignItems: "stretch",
@@ -503,6 +458,18 @@ export default function NavigationBar({
           <div style={indicatorStyle} aria-hidden />
 
           {mobileTabs.map(({ mode, labelKey, nudgeId }) => {
+            if (mode === ("_spacer" as any)) {
+              return (
+                <div key="_spacer" aria-hidden style={{
+                  width: "0.0625rem",
+                  alignSelf: "center",
+                  height: "1.25rem",
+                  background: `linear-gradient(180deg, transparent, ${T.color.sandstone}44, transparent)`,
+                  margin: "0 0.125rem",
+                  flexShrink: 0,
+                }} />
+              );
+            }
             const isMe = mode === "me";
             const isHelp = mode === "help";
             const isNotifications = mode === "notifications";
@@ -613,11 +580,12 @@ export default function NavigationBar({
                 </span>
                 <span
                   style={{
-                    maxHeight: isActive ? "1rem" : "0",
-                    overflow: "hidden",
                     opacity: isActive ? 1 : 0,
-                    transform: isActive ? "translateY(0)" : "translateY(-0.125rem)",
-                    transition: `all 0.3s ${EASE}`,
+                    transform: isActive ? "scaleY(1) translateY(0)" : "scaleY(0) translateY(-0.125rem)",
+                    transformOrigin: "top center",
+                    height: isActive ? "1rem" : "0",
+                    overflow: "hidden",
+                    transition: `opacity 0.3s ${EASE}, transform 0.3s ${EASE}`,
                   }}
                 >
                   {t(labelKey)}
@@ -668,7 +636,7 @@ export default function NavigationBar({
               whiteSpace: "nowrap",
             }}
           >
-            {t("noHelpHere") || "You're a pro — no tutorial needed here! 🏛️"}
+            {t("noHelpHere")}
           </div>
         )}
       </>
@@ -704,31 +672,29 @@ export default function NavigationBar({
             ? "0 0.25rem 2rem rgba(44,44,42,0.1), 0 0.0625rem 0.25rem rgba(44,44,42,0.04)"
             : "0 0.25rem 1.5rem rgba(44,44,42,0.07), 0 0.0625rem 0.125rem rgba(44,44,42,0.03)",
           borderRadius: "2.25rem",
-          padding: "0.25rem",
-          height: "3.25rem",
+          padding: "0.375rem",
+          height: "3.5rem",
           fontFamily: T.font.body,
           opacity: hidden ? 0 : 1,
           transition: `transform 0.4s ${EASE}, opacity 0.3s ${EASE}, box-shadow 0.4s ${EASE}`,
           animation: mounted ? `navSlideDown 0.55s ${EASE_OUT} both` : "none",
         }}
       >
-        {/* ---- mode button group with sliding indicator ---- */}
+        {/* ---- nav button group ---- */}
         <div
           ref={containerRef}
           data-nudge="atrium_nav_modes"
           style={{
-            position: "relative",
-            display: "flex",
+            display: "inline-flex",
             alignItems: "center",
-            gap: "0.125rem",
+            gap: "0.25rem",
+            flexShrink: 0,
           }}
         >
-          {/* animated indicator pill behind active button */}
-          <div style={indicatorStyle} aria-hidden />
-
+          {/* Mode buttons: Atrium, Library, Palace */}
           {MODES.map((mode) => {
             const labelKey = MODE_LABEL[mode];
-            const isActive = mode === currentMode;
+            const isActive = !activeTab && mode === currentMode;
             const isHovered = hoveringMode === mode;
 
             return (
@@ -743,18 +709,18 @@ export default function NavigationBar({
                 onMouseEnter={() => setHoveringMode(mode)}
                 onMouseLeave={() => setHoveringMode(null)}
                 style={{
-                  position: "relative",
-                  zIndex: 1,
-                  display: "flex",
+                  display: "inline-flex",
                   alignItems: "center",
                   gap: "0.375rem",
-                  padding: "0.5rem 1.375rem",
+                  padding: "0.5rem 0.875rem",
                   borderRadius: "1.5rem",
                   border: "none",
-                  background:
-                    !isActive && isHovered
+                  background: isActive
+                    ? activeIndicatorBg(mode)
+                    : isHovered
                       ? "rgba(44,44,42,0.06)"
                       : "transparent",
+                  boxShadow: isActive ? activeIndicatorShadow(mode) : "none",
                   color: isActive ? activeTextColor(mode) : T.color.walnut,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
@@ -762,7 +728,8 @@ export default function NavigationBar({
                   letterSpacing: "0.01em",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
-                  transition: `color 0.3s ${EASE}, background 0.3s ${EASE}, font-weight 0.3s ${EASE}`,
+                  flexShrink: 0,
+                  transition: `color 0.3s ${EASE}, background 0.35s ${EASE}, box-shadow 0.35s ${EASE}, font-weight 0.3s ${EASE}`,
                   animation:
                     pulsingMode === mode ? `navPulse 0.35s ${EASE_SPRING}` : "none",
                   opacity: !isActive && !isHovered ? 0.75 : 1,
@@ -774,7 +741,10 @@ export default function NavigationBar({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    width: "1rem",
+                    height: "1rem",
                     lineHeight: 1,
+                    flexShrink: 0,
                     transition: `transform 0.3s ${EASE_SPRING}`,
                     transform: isActive ? "scale(1.1)" : "scale(1)",
                   }}
@@ -785,6 +755,70 @@ export default function NavigationBar({
               </button>
             );
           })}
+
+          {/* Me button — 4th nav item, same pill styling */}
+          {!minimal && (() => {
+            const isMeActive = activeTab === "me";
+            const isMeHovered = hoveringMode === "me";
+            return (
+              <button
+                data-nudge="nav_me_btn"
+                ref={(el) => { buttonRefs.current.me = el; }}
+                onClick={() => {
+                  if (onSettings) {
+                    onSettings();
+                  } else {
+                    router.push("/settings");
+                  }
+                }}
+                aria-current={isMeActive ? "page" : undefined}
+                onMouseEnter={() => setHoveringMode("me")}
+                onMouseLeave={() => setHoveringMode(null)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.375rem",
+                  padding: "0.5rem 0.875rem",
+                  borderRadius: "1.5rem",
+                  border: "none",
+                  background: isMeActive
+                    ? activeIndicatorBg("me")
+                    : isMeHovered
+                      ? "rgba(44,44,42,0.06)"
+                      : "transparent",
+                  boxShadow: isMeActive ? activeIndicatorShadow("me") : "none",
+                  color: isMeActive ? activeTextColor("me") : T.color.walnut,
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  fontWeight: isMeActive ? 600 : 500,
+                  letterSpacing: "0.01em",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  transition: `color 0.3s ${EASE}, background 0.35s ${EASE}, box-shadow 0.35s ${EASE}, font-weight 0.3s ${EASE}`,
+                  opacity: !isMeActive && !isMeHovered ? 0.75 : 1,
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "1rem",
+                    height: "1rem",
+                    lineHeight: 1,
+                    flexShrink: 0,
+                    transition: `transform 0.3s ${EASE_SPRING}`,
+                    transform: isMeActive ? "scale(1.1)" : "scale(1)",
+                  }}
+                >
+                  <ModeIcon mode="me" active={isMeActive} size={16} color={isMeActive ? activeTextColor("me") : undefined} />
+                </span>
+                <span>{t("tab_me")}</span>
+              </button>
+            );
+          })()}
         </div>
 
         {/* ---- divider ---- */}
@@ -795,39 +829,10 @@ export default function NavigationBar({
               width: "0.0625rem",
               height: "1.25rem",
               background: `linear-gradient(180deg, transparent, ${T.color.sandstone}44, transparent)`,
-              margin: "0 0.625rem",
+              margin: "0 0.5rem",
               flexShrink: 0,
             }}
           />
-        )}
-
-        {/* ---- tools button ---- */}
-        {!minimal && onToolsClick && (
-          <button
-            onClick={onToolsClick}
-            aria-label={t("tools")}
-            data-nudge="atrium_tools_button"
-            style={{
-              width: "2.25rem",
-              height: "2.25rem",
-              borderRadius: "50%",
-              border: `0.0625rem solid ${toolsOpen ? T.color.gold : T.color.cream}`,
-              background: toolsOpen ? `${T.color.gold}15` : "transparent",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: `all 0.25s ${EASE}`,
-              marginRight: "0.375rem",
-              flexShrink: 0,
-              fontSize: "0.875rem",
-              color: toolsOpen ? T.color.gold : T.color.walnut,
-            }}
-            onMouseEnter={e => { if (!toolsOpen) { e.currentTarget.style.background = `${T.color.gold}08`; e.currentTarget.style.borderColor = T.color.goldLight; }}}
-            onMouseLeave={e => { if (!toolsOpen) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = T.color.cream; }}}
-          >
-            {toolsOpen ? "\u00D7" : "+"}
-          </button>
         )}
 
         {/* ---- notification bell ---- */}
@@ -884,63 +889,10 @@ export default function NavigationBar({
           </button>
         )}
 
-        {/* ---- user avatar ---- */}
-        {!minimal && (
-          <button
-            data-nudge="atrium_user_settings"
-            onClick={() => {
-              onSettings ? onSettings() : router.push("/settings");
-            }}
-            aria-label={t("user_settings")}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.08)";
-              e.currentTarget.style.boxShadow =
-                "0 0.125rem 0.75rem rgba(209,175,55,0.2)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-              e.currentTarget.style.boxShadow = "none";
-            }}
-            style={{
-              width: "2.25rem",
-              height: "2.25rem",
-              borderRadius: "50%",
-              border: `0.0625rem solid ${T.color.cream}`,
-              background: userInitial
-                ? `linear-gradient(135deg, ${T.color.gold}40, ${T.color.terracotta}50)`
-                : "rgba(242,237,231,0.6)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              fontFamily: T.font.display,
-              fontSize: "0.8125rem",
-              fontWeight: 700,
-              color: T.color.walnut,
-              transition: `transform 0.25s ${EASE_SPRING}, box-shadow 0.25s ${EASE}, border-color 0.25s ${EASE}`,
-              marginRight: "0.1875rem",
-              flexShrink: 0,
-            }}
-          >
-            {userInitial ?? (
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
-            )}
-          </button>
-        )}
+        {/* user avatar removed — Me button is now in the nav pill group */}
       </nav>
     </>
   );
 }
+
+export default memo(NavigationBar);

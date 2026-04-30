@@ -73,9 +73,9 @@ export async function GET(request: Request) {
 
         const { data: profile } = await supabase
           .from("profiles")
-          .select("onboarded")
+          .select("onboarded, preferred_locale")
           .eq("id", user.id)
-          .single<{ onboarded: boolean }>();
+          .single<{ onboarded: boolean; preferred_locale: string | null }>();
 
         // Send welcome email for new users (not yet onboarded)
         if (!profile?.onboarded && user.email) {
@@ -83,6 +83,7 @@ export async function GET(request: Request) {
           sendWelcomeEmail({
             recipientEmail: user.email,
             displayName,
+            locale: profile?.preferred_locale || undefined,
           }).catch((e) => {
             console.error("Welcome email error:", e);
           });

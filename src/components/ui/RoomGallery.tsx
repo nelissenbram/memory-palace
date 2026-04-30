@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
@@ -165,7 +166,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: "auto", padding: "0 1.5rem 1.25rem" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "0 1.5rem 1.25rem", contain: "layout" }}>
           {/* ═══ DISPLAY MANAGER ═══ */}
           {showDisplayMgr && (
             <div style={{
@@ -366,6 +367,8 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                       else setPlaying(false);
                     }}
                     playsInline
+                    preload="metadata"
+                    poster={playerMem.thumbnailUrl || undefined}
                     style={{ width: "100%", maxHeight: "26.25rem", objectFit: "contain", display: "block" }}
                   />
                 ) : playerMem.type === "audio" || playerMem.voiceBlob ? (
@@ -378,6 +381,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                       key={playerMem.id}
                       src={playerMem.dataUrl || ""}
                       controls
+                      preload="none"
                       autoPlay={playing}
                       onEnded={() => {
                         if (playerIdx < filtered.length - 1) setPlayerIdx(playerIdx + 1);
@@ -450,7 +454,7 @@ export default function RoomGallery({ mems, wing, room, onClose, onUpdate, onSel
                   </div>
                   <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
                     {t("playerPosition", { current: String(playerIdx + 1), total: String(filtered.length) })} {filter ? t(`type_${filter}_plural`) : t("memories")}
-                    {playerMem.createdAt && ` · ${new Date(playerMem.createdAt).toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US")}`}
+                    {playerMem.createdAt && ` · ${new Date(playerMem.createdAt).toLocaleDateString(localeDateCodes[locale as Locale])}`}
                   </div>
                 </div>
 

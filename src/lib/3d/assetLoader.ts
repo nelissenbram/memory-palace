@@ -31,6 +31,19 @@ export function isCachedTexture(tex: THREE.Texture): boolean {
   return false;
 }
 
+/** Build a Set of all cached textures for O(1) lookup during scene cleanup.
+ *  Call once at the start of cleanup instead of calling isCachedTexture per texture. */
+export function buildCachedTextureSet(): Set<THREE.Texture> {
+  const s = new Set<THREE.Texture>();
+  for (const set of pbrCache.values()) {
+    if (set.map) s.add(set.map);
+    if (set.normalMap) s.add(set.normalMap);
+    if (set.roughnessMap) s.add(set.roughnessMap);
+    if (set.aoMap) s.add(set.aoMap);
+  }
+  return s;
+}
+
 // ════════════════════════════════════════════
 // KTX2 COMPRESSED TEXTURES
 // ════════════════════════════════════════════

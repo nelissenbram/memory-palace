@@ -197,15 +197,23 @@ export async function GET(request: Request) {
     }) => [s.id, s])
   );
 
-  // ── 4. Get auth user emails (only for users that need processing) ──
+  // ── 4. Get auth user emails (batch-fetch to avoid N+1 API calls) ──
   const emailMap = new Map<string, string | undefined>();
-  for (const userId of userIds) {
-    const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
-    if (authError) {
-      console.error("[Legacy Cron] Failed to fetch auth user", userId, ":", authError.message);
-      continue;
+  let authPage = 1;
+  while (true) {
+    const { data: authListData, error: authListError } = await supabase.auth.admin.listUsers({ perPage: 1000, page: authPage });
+    if (authListError) {
+      console.error("[Legacy Cron] Failed to list auth users (page", authPage, "):", authListError.message);
+      break;
     }
-    emailMap.set(userId, authData?.user?.email);
+    if (!authListData?.users?.length) break;
+    for (const authUser of authListData.users) {
+      if (userIds.includes(authUser.id)) {
+        emailMap.set(authUser.id, authUser.email);
+      }
+    }
+    if (authListData.users.length < 1000) break;
+    authPage++;
   }
 
   // ── 5. Process each user for inactivity ──

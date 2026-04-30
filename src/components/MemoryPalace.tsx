@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo, laz
 import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
+import { syncSettingsFromServer } from "@/lib/stores/settingsSync";
 import PalaceLoadingScreen from "@/components/ui/PalaceLoadingScreen";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
@@ -10,52 +11,55 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useAchievementStore } from "@/lib/stores/achievementStore";
+import { requestAppRating } from "@/lib/native/rating";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useNavigation } from "@/lib/hooks/useNavigation";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomMemories } from "@/lib/hooks/useRoomMemories";
-import OnboardingWizard from "@/components/ui/OnboardingWizard";
-import LandscapeNudge from "@/components/ui/LandscapeNudge";
+const OnboardingWizard = lazy(() => import("@/components/ui/OnboardingWizard"));
+const LandscapeNudge = lazy(() => import("@/components/ui/LandscapeNudge"));
 // TopBar removed — replaced by PalaceSubNav
 import { WingTooltip, DoorTooltip } from "@/components/ui/HoverTooltip";
 // SearchBar removed — search is no longer shown in room view
-import UploadPanel from "@/components/ui/UploadPanel";
-import SharingPanel from "@/components/ui/SharingPanel";
-import MemoryDetail from "@/components/ui/MemoryDetail";
+const UploadPanel = lazy(() => import("@/components/ui/UploadPanel"));
+const SharingPanel = lazy(() => import("@/components/ui/SharingPanel"));
+const MemoryDetail = lazy(() => import("@/components/ui/MemoryDetail"));
 import NavigationBar from "@/components/ui/NavigationBar";
 import NotificationsPage from "@/components/ui/NotificationsPage";
 import SettingsInline from "@/components/ui/SettingsInline";
-import RoomManagerPanel from "@/components/ui/RoomManagerPanel";
-import WingManagerPanel from "@/components/ui/WingManagerPanel";
-import AchievementsPanel from "@/components/ui/AchievementsPanel";
+const RoomManagerPanel = lazy(() => import("@/components/ui/RoomManagerPanel"));
+const WingManagerPanel = lazy(() => import("@/components/ui/WingManagerPanel"));
+const AchievementsPanel = lazy(() => import("@/components/ui/AchievementsPanel"));
 import { AchievementIcon } from "@/components/ui/AtriumWidgets";
 import TracksPanel from "@/components/ui/TracksPanel";
 import TrackDetailPanel from "@/components/ui/TrackDetailPanel";
 import LegacyPanel from "@/components/ui/LegacyPanel";
 import PointsDisplay from "@/components/ui/PointsDisplay";
 import FloatingPoints from "@/components/ui/FloatingPoints";
-import ExteriorScene from "@/components/3d/ExteriorScene";
-import EntranceHallScene from "@/components/3d/EntranceHallScene";
-import InteriorScene from "@/components/3d/InteriorScene";
-import CorridorScene from "@/components/3d/CorridorScene";
+const ExteriorScene = lazy(() => import("@/components/3d/ExteriorScene"));
+const EntranceHallScene = lazy(() => import("@/components/3d/EntranceHallScene"));
+const InteriorScene = lazy(() => import("@/components/3d/InteriorScene"));
+const CorridorScene = lazy(() => import("@/components/3d/CorridorScene"));
 import { useDaylight } from "@/components/providers/DaylightProvider";
 import ShareCard from "@/components/ui/ShareCard";
 const MemoryMap = lazy(() => import("@/components/ui/MemoryMap"));
+const FamilyTreePanel = lazy(() => import("@/app/(app)/family-tree/page"));
 import OnThisDay from "@/components/ui/OnThisDay";
 import TimeCapsuleReveal from "@/components/ui/TimeCapsuleReveal";
 const MemoryTimeline = lazy(() => import("@/components/ui/MemoryTimeline"));
 const StatisticsPanel = lazy(() => import("@/components/ui/StatisticsPanel"));
-const MassImportPanel = lazy(() => import("@/components/ui/MassImportPanel"));
+// MassImportPanel removed — all import flows now use ImportHub in Library mode
 import RoomGallery from "@/components/ui/RoomGallery";
-import RoomMediaPanel from "@/components/ui/RoomMediaPanel";
+const RoomMediaPanel = lazy(() => import("@/components/ui/RoomMediaPanel"));
 import StoragePlayerPanel from "@/components/ui/StoragePlayerPanel";
 import InviteNotificationsPanel from "@/components/ui/InviteNotificationsPanel";
-import SharedWithMePanel from "@/components/ui/SharedWithMePanel";
-import SharingSettingsPanel from "@/components/ui/SharingSettingsPanel";
+const SharedWithMePanel = lazy(() => import("@/components/ui/SharedWithMePanel"));
+const SharingSettingsPanel = lazy(() => import("@/components/ui/SharingSettingsPanel"));
 const InterviewPanel = lazy(() => import("@/components/ui/InterviewPanel"));
-import InterviewLibraryPanel from "@/components/ui/InterviewLibraryPanel";
-import InterviewHistoryPanel from "@/components/ui/InterviewHistoryPanel";
-import CorridorGalleryPanel, { loadCorridorPaintings, type CorridorPaintings } from "@/components/ui/CorridorGalleryPanel";
+const InterviewLibraryPanel = lazy(() => import("@/components/ui/InterviewLibraryPanel"));
+const InterviewHistoryPanel = lazy(() => import("@/components/ui/InterviewHistoryPanel"));
+const CorridorGalleryPanel = lazy(() => import("@/components/ui/CorridorGalleryPanel"));
+import { loadCorridorPaintings, type CorridorPaintings } from "@/components/ui/CorridorGalleryPanel";
 import TouchControlsOverlay from "@/components/ui/TouchControlsOverlay";
 import MobileJoystick from "@/components/ui/MobileJoystick";
 // ActionMenu removed — replaced by PalaceSubNav
@@ -65,9 +69,10 @@ import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 import { useTutorialStore } from "@/lib/stores/tutorialStore";
 import TutorialOverlay from "@/components/ui/TutorialOverlay";
 import FeatureSpotlight, { allSpotlightsSeen } from "@/components/ui/FeatureSpotlight";
-import GettingStartedChecklist, { setOnboardDate, markChecklistItem } from "@/components/ui/GettingStartedChecklist";
+const GettingStartedChecklist = lazy(() => import("@/components/ui/GettingStartedChecklist"));
+import { setOnboardDate, markChecklistItem } from "@/components/ui/GettingStartedChecklist";
 import ContextualTooltip from "@/components/ui/ContextualTooltip";
-import FirstMemoryPrompt from "@/components/ui/FirstMemoryPrompt";
+const FirstMemoryPrompt = lazy(() => import("@/components/ui/FirstMemoryPrompt"));
 import CinematicWalkthrough from "@/components/ui/CinematicWalkthrough";
 import DiscoveryMenu from "@/components/ui/DiscoveryMenu";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
@@ -79,9 +84,14 @@ const HomeView = lazy(() => import("@/components/ui/HomeView"));
 import UniversalActions from "@/components/ui/UniversalActions";
 import { useActions } from "@/lib/hooks/useActions";
 import PalaceSubNav, { type PalacePending } from "@/components/ui/PalaceSubNav";
-import PalaceExteriorTutorial, { usePalaceTourStore } from "@/components/ui/PalaceExteriorTutorial";
-import EntranceHallTutorial, { useEntranceTourStore } from "@/components/ui/EntranceHallTutorial";
-import CorridorTutorial, { useCorridorTourStore } from "@/components/ui/CorridorTutorial";
+const PalaceExteriorTutorial = lazy(() => import("@/components/ui/PalaceExteriorTutorial"));
+import { usePalaceTourStore } from "@/components/ui/PalaceExteriorTutorial";
+const EntranceHallTutorial = lazy(() => import("@/components/ui/EntranceHallTutorial"));
+import { useEntranceTourStore } from "@/components/ui/EntranceHallTutorial";
+const CorridorTutorial = lazy(() => import("@/components/ui/CorridorTutorial"));
+import { useCorridorTourStore } from "@/components/ui/CorridorTutorial";
+const RoomTutorial = lazy(() => import("@/components/ui/RoomTutorial"));
+import { useRoomTourStore } from "@/components/ui/RoomTutorial";
 import NudgeProvider, { getNudgeHighlight } from "@/components/ui/NudgeTooltip";
 import { RoomIcon } from "@/components/ui/WingRoomIcons";
 import { useNudgeStore } from "@/lib/stores/nudgeStore";
@@ -89,6 +99,14 @@ import TuscanCard from "@/components/ui/TuscanCard";
 import TuscanStyles from "@/components/ui/TuscanStyles";
 import { getWingsSharedWithMe, getSharedWingData, getSharedRoomMemories } from "@/lib/auth/sharing-actions";
 import type { SharedWingDoor } from "@/components/3d/EntranceHallScene";
+
+// ── Delayed spinner fallback — avoids flash for fast lazy loads ──
+function DelayedFallback() {
+  const [show, setShow] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t); }, []);
+  if (!show) return null;
+  return <div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,background:"rgba(0,0,0,.3)",backdropFilter:"blur(0.25rem)"}}><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style><div style={{width:"2.5rem",height:"2.5rem",border:"0.1875rem solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite"}} /></div>;
+}
 
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
@@ -98,9 +116,13 @@ export default function MemoryPalace(){
   const { t: tAction } = useTranslation("actionMenu");
   const { t: tPalace } = useTranslation("palace");
   const { t: tRoom } = useTranslation("roomMedia");
+  const { t: tWings } = useTranslation("wings");
+  const { t: tLayout } = useTranslation("roomLayouts");
   const { daylightEnabled, daylightMode, resolvedHour } = useDaylight();
   // Key fragment for scene remounting when daylight mode changes manually
-  const dlKey = daylightEnabled ? `dl_${daylightMode}${daylightMode !== "auto" ? "_" + resolvedHour : ""}` : "dl_off";
+  // Only remount scene when daylight is toggled on/off or mode changes — NOT on slider changes.
+  // The 3D scene reads resolvedHour via the global setDaylightHour() helper (no remount needed).
+  const dlKey = daylightEnabled ? `dl_${daylightMode}` : "dl_off";
 
   // ── Stores (individual selectors to avoid unnecessary re-renders) ──
   const profileLoading = useUserStore((s) => s.profileLoading);
@@ -189,16 +211,20 @@ export default function MemoryPalace(){
   const hasUsedMassImport = useTrackStore((s) => s.hasUsedMassImport);
   const legacyReviewed = useTrackStore((s) => s.legacyReviewed);
 
+  const showFamilyTree = useUIPanelStore((s) => s.showFamilyTree);
+  const setShowFamilyTree = useUIPanelStore((s) => s.setShowFamilyTree);
   const showMemoryMap = useUIPanelStore((s) => s.showMemoryMap);
   const setShowMemoryMap = useUIPanelStore((s) => s.setShowMemoryMap);
   const showTimeline = useUIPanelStore((s) => s.showTimeline);
   const setShowTimeline = useUIPanelStore((s) => s.setShowTimeline);
-  const showMassImport = useUIPanelStore((s) => s.showMassImport);
-  const setShowMassImport = useUIPanelStore((s) => s.setShowMassImport);
+  const showImportHub = useUIPanelStore((s) => s.showImportHub);
+  const setShowImportHub = useUIPanelStore((s) => s.setShowImportHub);
   const showGallery = useUIPanelStore((s) => s.showGallery);
   const setShowGallery = useUIPanelStore((s) => s.setShowGallery);
   const galleryInitialMemId = useUIPanelStore((s) => s.galleryInitialMemId);
   const galleryInitialTab = useUIPanelStore((s) => s.galleryInitialTab);
+  const galleryAutoAssignUnit = useUIPanelStore((s) => s.galleryAutoAssignUnit);
+  const setGalleryAutoAssignUnit = useUIPanelStore((s) => s.setGalleryAutoAssignUnit);
   const showInvites = useUIPanelStore((s) => s.showInvites);
   const setShowInvites = useUIPanelStore((s) => s.setShowInvites);
   const showSharedWithMe = useUIPanelStore((s) => s.showSharedWithMe);
@@ -244,6 +270,7 @@ export default function MemoryPalace(){
   const walkthroughTargetWing = useWalkthroughStore((s) => s.targetWing);
   const walkthroughTargetRoom = useWalkthroughStore((s) => s.targetRoom);
   const [sceneLoading, setSceneLoading] = useState(true);
+  const sceneLoadFromLibraryRef = useRef(false); // true when loading overlay is for Library→3D transition
   const sceneReadyRef = useRef(false); // tracks if ExteriorScene.onReady() already fired
   // searchBarVisible / searchHideTimer removed (SearchBar deleted from room view)
   const showInterviewLibrary = useInterviewStore((s) => s.showLibrary);
@@ -270,9 +297,9 @@ export default function MemoryPalace(){
 
   // Build wingRooms map for PalaceSubNav room dropdowns
   const wingRoomsMap = useMemo(() => {
-    const map: Record<string, { id: string; name: string; icon: string }[]> = {};
+    const map: Record<string, { id: string; name: string; nameKey?: string; icon: string }[]> = {};
     for (const w of allWings) {
-      map[w.id] = getWingRooms(w.id).map(r => ({ id: r.id, name: r.name, icon: r.icon }));
+      map[w.id] = getWingRooms(w.id).map(r => ({ id: r.id, name: r.name, nameKey: r.nameKey, icon: r.icon }));
     }
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -281,27 +308,57 @@ export default function MemoryPalace(){
   // ── Universal Actions (available in all modes) ──
   const actionGroups = useActions({
     onAddMemory: () => { setShowTools(false); setShowUpload(true); },
-    onUploadPhotos: () => { setShowTools(false); setShowMassImport(true); },
+    onUploadPhotos: () => { setShowTools(false); setShowImportHub(true); setNavMode("library"); },
     onRecordInterview: () => { setShowTools(false); setShowInterviewLibrary(true); },
     onWriteStory: () => { setShowTools(false); setShowUpload(true); },
     onMemoryMap: () => { setShowTools(false); setShowMemoryMap(true); },
     onTimeline: () => { setShowTools(false); setShowTimeline(true); },
     onStatistics: () => { setShowTools(false); setShowStatistics(true); },
-    onFamilyTree: () => { setShowTools(false); /* Family tree panel — future feature */ },
+    onFamilyTree: () => { setShowTools(false); setShowFamilyTree(true); },
     onShareRoom: () => { setShowTools(false); setShowSharing(true); },
     onInvites: () => { setShowTools(false); setShowInvites(true); },
     onSharedWithMe: () => { setShowTools(false); setShowSharedWithMe(true); },
   });
 
   // Load profile on mount + heartbeat for legacy inactivity detection
+  // Also preload shared 3D assets (PBR textures) so first scene loads faster
   useEffect(()=>{
     loadProfile();
+    // Preload shared 3D assets during idle time (desktop only; mobile defers)
+    import("@/lib/3d/scenePreloader").then(m => m.preloadSharedAssets()).catch(() => {});
     // Update last_seen_at once per session (throttled via sessionStorage)
     if (!sessionStorage.getItem("mp_heartbeat")) {
       sessionStorage.setItem("mp_heartbeat", "1");
       import("@/lib/auth/heartbeat-action").then(m => m.updateLastSeen()).catch(() => {});
     }
-  },[loadProfile]);
+    // Kep deep-link: navigate to wing+room after creation
+    try {
+      const raw = sessionStorage.getItem("kep_navigate");
+      if (raw) {
+        sessionStorage.removeItem("kep_navigate");
+        const { wingId, roomId } = JSON.parse(raw);
+        if (wingId) {
+          enterCorridor(wingId);
+          if (roomId) setTimeout(() => enterRoom(roomId), 600);
+        }
+      }
+    } catch { /* ignore */ }
+  },[loadProfile, enterCorridor, enterRoom]);
+
+  // Safety timeout: force profileLoading off after 3s to prevent infinite loading
+  useEffect(() => {
+    if (!profileLoading) return;
+    const t = setTimeout(() => useUserStore.setState({ profileLoading: false }), 3000);
+    return () => clearTimeout(t);
+  }, [profileLoading]);
+
+  // Sync localStorage settings from server (cross-device consistency)
+  // Then bulk-fetch all memories so stats/map/timeline are consistent across devices
+  useEffect(() => {
+    syncSettingsFromServer().then(() => {
+      useMemoryStore.getState().fetchAllRoomMemories();
+    });
+  }, []);
 
   // Fetch shared wings from family members
   useEffect(() => {
@@ -326,11 +383,30 @@ export default function MemoryPalace(){
     if (onboarded && !styleEra && !profileLoading) setShowEraPicker(true);
   }, [onboarded, styleEra, profileLoading]);
 
-  // ── Scene loading overlay — only on the VERY FIRST Palace visit. After
-  // that, the persistent warm ExteriorScene portal is already rendered and
-  // switching back from Atrium/Library is instantaneous — no splash at all. ──
+  // ── Scene loading overlay — shown on the VERY FIRST Palace visit AND
+  // when navigating from Library into a 3D corridor/room scene (where
+  // lazy-loaded CorridorScene / InteriorScene need time to mount). ──
   const firstPalaceVisitRef = useRef(true);
+  const prevNavModeForLoadingRef = useRef(navMode);
   useEffect(() => {
+    const cameFromLibrary = prevNavModeForLoadingRef.current === "library" && navMode === "3d";
+    prevNavModeForLoadingRef.current = navMode;
+
+    // Library → 3D corridor/room: show loading while scene JS loads & mounts.
+    // Checked first because enterCorridor/enterRoom use fade() which delays
+    // the view change by 500ms — so view may still be "exterior" and would
+    // otherwise fall into the first-palace-visit branch below.
+    if (cameFromLibrary) {
+      firstPalaceVisitRef.current = false; // skip the first-visit splash later
+      sceneLoadFromLibraryRef.current = true;
+      setSceneLoading(true);
+      // Use a non-cleanup timeout so it survives the view change that
+      // fires 500ms later (palaceStore fade). The ref guard in the
+      // fallthrough prevents premature clearing.
+      setTimeout(() => { sceneLoadFromLibraryRef.current = false; setSceneLoading(false); }, 1800);
+      return;
+    }
+
     // Show splash only first time entering exterior, and only if the warm
     // ExteriorScene hasn't already signalled ready (onReady fires on first
     // rendered frame, which usually happens well before the user taps Palace).
@@ -346,8 +422,22 @@ export default function MemoryPalace(){
       const t = setTimeout(() => setSceneLoading(false), 2500);
       return () => clearTimeout(t);
     }
-    // Any other view transition: no splash.
-    setSceneLoading(false);
+
+    // Any other view transition: no splash — but don't interrupt an active
+    // Library→3D loading overlay (view changes mid-transition due to fade).
+    if (!sceneLoadFromLibraryRef.current) {
+      setSceneLoading(false);
+    }
+  }, [view, navMode]);
+
+  // ── Scene preloading — when a scene is active, preload the NEXT scene's
+  //    JS module so React.lazy() resolves instantly on transition. ──
+  useEffect(() => {
+    if (navMode !== "3d") return;
+    const sceneId = view === "exterior" ? "exterior" : view === "entrance" ? "entrance" : view === "corridor" ? "corridor" : view === "room" ? "room" : null;
+    if (sceneId) {
+      import("@/lib/3d/scenePreloader").then(({ preloadNextScene }) => preloadNextScene(sceneId));
+    }
   }, [view, navMode]);
 
   // ── Persistent Palace portal host — keeps ExteriorScene mounted across
@@ -362,14 +452,38 @@ export default function MemoryPalace(){
   const setEntranceTourOpen = useEntranceTourStore((s) => s.setOpen);
   const corridorTourOpen = useCorridorTourStore((s) => s.open);
   const setCorridorTourOpen = useCorridorTourStore((s) => s.setOpen);
+  const roomTourOpen = useRoomTourStore((s) => s.open);
+  const setRoomTourOpen = useRoomTourStore((s) => s.setOpen);
+  // Consolidate tour flag reads into a single localStorage pass at mount
+  const tourFlags = useRef<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      for (const key of ["mp_corridor_tour_seen_v1", "mp_entrance_tour_seen_v1", "mp_palace_tour_seen_v1", "mp_room_tour_seen_v1"]) {
+        tourFlags.current[key] = !!window.localStorage.getItem(key);
+      }
+    } catch {}
+  }, []);
+
+  // Auto-open room tutorial on first room visit
+  useEffect(() => {
+    if (view !== "room") return;
+    try {
+      const key = "mp_room_tour_seen_v1";
+      if (typeof window !== "undefined" && !tourFlags.current[key]) {
+        setTimeout(() => setRoomTourOpen(true), 800);
+        window.localStorage.setItem(key, "1");
+        tourFlags.current[key] = true;
+      }
+    } catch {}
+  }, [view, setRoomTourOpen]);
 
   useEffect(() => {
     if (navMode !== "3d" || view !== "corridor") return;
     try {
-      const seen = window.localStorage.getItem("mp_corridor_tour_seen_v1");
-      if (!seen) {
+      if (!tourFlags.current["mp_corridor_tour_seen_v1"]) {
         setCorridorTourOpen(true);
         window.localStorage.setItem("mp_corridor_tour_seen_v1", "1");
+        tourFlags.current["mp_corridor_tour_seen_v1"] = true;
       }
     } catch {}
   }, [navMode, view, setCorridorTourOpen]);
@@ -381,40 +495,39 @@ export default function MemoryPalace(){
   }, [setEntranceTourOpen]);
 
   useEffect(() => {
-    if (!isMobile) return;
     if (navMode !== "3d" || view !== "entrance") return;
     try {
-      const seen = window.localStorage.getItem("mp_entrance_tour_seen_v1");
-      if (!seen) {
+      if (!tourFlags.current["mp_entrance_tour_seen_v1"]) {
         setEntranceTourOpen(true);
         window.localStorage.setItem("mp_entrance_tour_seen_v1", "1");
+        tourFlags.current["mp_entrance_tour_seen_v1"] = true;
       }
     } catch {}
-  }, [isMobile, navMode, view, setEntranceTourOpen]);
+  }, [navMode, view, setEntranceTourOpen]);
 
   // Listen for help-button-triggered palace tour open
   useEffect(() => {
     const h = () => {
-      if (view === "entrance") setEntranceTourOpen(true);
+      if (view === "room") setRoomTourOpen(true);
+      else if (view === "entrance") setEntranceTourOpen(true);
       else if (view === "corridor") setCorridorTourOpen(true);
       else setPalaceTourOpen(true);
     };
     window.addEventListener("mp:open-palace-tutorial", h);
     return () => window.removeEventListener("mp:open-palace-tutorial", h);
-  }, [setPalaceTourOpen, setEntranceTourOpen, setCorridorTourOpen, view]);
+  }, [setPalaceTourOpen, setEntranceTourOpen, setCorridorTourOpen, setRoomTourOpen, view]);
 
-  // Auto-open the tour on first visit to the mobile palace exterior
+  // Auto-open the tour on first visit to the palace exterior
   useEffect(() => {
-    if (!isMobile) return;
     if (navMode !== "3d" || view !== "exterior") return;
     try {
-      const seen = window.localStorage.getItem("mp_palace_tour_seen_v1");
-      if (!seen) {
+      if (!tourFlags.current["mp_palace_tour_seen_v1"]) {
         setPalaceTourOpen(true);
         window.localStorage.setItem("mp_palace_tour_seen_v1", "1");
+        tourFlags.current["mp_palace_tour_seen_v1"] = true;
       }
     } catch {}
-  }, [isMobile, navMode, view, setPalaceTourOpen]);
+  }, [navMode, view, setPalaceTourOpen]);
   const hasVisitedPalace = true; // eager mount — scene warms in background
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -432,11 +545,11 @@ export default function MemoryPalace(){
   // Synchronous toggle before paint — avoids blank-frame on Palace entry.
   useLayoutEffect(() => {
     if (!palaceHost) return;
-    const show = navMode === "3d" && view === "exterior";
+    const show = navMode === "3d" && view === "exterior" && !showNotificationsPage && !showSettings;
     palaceHost.style.visibility = show ? "visible" : "hidden";
     palaceHost.style.pointerEvents = show ? "auto" : "none";
     palaceHost.dataset.paused = show ? "0" : "1";
-  }, [palaceHost, navMode, view]);
+  }, [palaceHost, navMode, view, showNotificationsPage, showSettings]);
 
   // ── Orientation key — bump on rotate to force NavigationBar remount ──
   const [orientKey, setOrientKey] = useState(0);
@@ -514,25 +627,62 @@ export default function MemoryPalace(){
     return () => clearTimeout(t);
   }, [userMems, customRooms, roomLayouts, roomSharingData, checkAchievements]);
 
+  // ── In-app rating prompt (after 3rd achievement or 25th memory) ──
+  const earnedAchCount = useAchievementStore((s) => s.earnedIds.length);
+  useEffect(() => {
+    if (achToast && earnedAchCount >= 3) {
+      requestAppRating();
+    }
+  }, [achToast, earnedAchCount]);
+
+  // ── URL ↔ navMode mapping ──
+  const modeToPath = (mode: string, settings?: boolean) => {
+    if (settings) return "/me";
+    return mode === "3d" ? "/palace" : mode === "library" ? "/library" : "/atrium";
+  };
+  const pathToMode = (p: string): "atrium" | "library" | "3d" | null => {
+    if (p === "/atrium" || p === "/me") return "atrium";
+    if (p === "/library") return "library";
+    if (p === "/palace") return "3d";
+    return null;
+  };
+
   // ── Browser back button: push mode changes to history ──
   const prevNavModeRef = useRef(navMode);
+  const prevShowSettingsRef = useRef(showSettings);
   useEffect(() => {
-    if (navMode !== prevNavModeRef.current) {
-      window.history.pushState({ navMode }, "", window.location.pathname);
+    if (navMode !== prevNavModeRef.current || showSettings !== prevShowSettingsRef.current) {
+      window.history.pushState({ navMode, showSettings }, "", modeToPath(navMode, showSettings));
       prevNavModeRef.current = navMode;
+      prevShowSettingsRef.current = showSettings;
     }
-  }, [navMode]);
+  }, [navMode, showSettings]);
 
   useEffect(() => {
     const onPopState = (e: PopStateEvent) => {
-      const mode = e.state?.navMode;
+      const mode = e.state?.navMode || pathToMode(window.location.pathname);
       if (mode && (mode === "atrium" || mode === "library" || mode === "3d")) {
         setNavMode(mode);
         prevNavModeRef.current = mode;
       }
+      const settings = e.state?.showSettings || window.location.pathname === "/me";
+      setShowSettings(!!settings);
+      prevShowSettingsRef.current = !!settings;
     };
+    // Detect initial state from URL path
+    const initialPath = window.location.pathname;
+    const isMe = initialPath === "/me";
+    const initialMode = pathToMode(initialPath);
+    if (initialMode && initialMode !== navMode) {
+      setNavMode(initialMode);
+      prevNavModeRef.current = initialMode;
+    }
+    if (isMe) {
+      setShowSettings(true);
+      prevShowSettingsRef.current = true;
+    }
     // Seed current state so first Back works
-    window.history.replaceState({ navMode }, "", window.location.pathname);
+    window.history.replaceState({ navMode: initialMode || navMode, showSettings: isMe }, "", modeToPath(initialMode || navMode, isMe));
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -581,6 +731,7 @@ export default function MemoryPalace(){
 
   useEffect(() => {
     if (!achToast) return;
+    import("@/lib/native/haptics").then(({ hapticSuccess }) => hapticSuccess()).catch(() => {});
     const t = setTimeout(dismissAchToast, 4000);
     return () => clearTimeout(t);
   }, [achToast, dismissAchToast]);
@@ -640,12 +791,17 @@ export default function MemoryPalace(){
   // Track that we just finished onboarding — suppress tutorial auto-start
   const justOnboardedRef = useRef(false);
 
-  const handleFinishOnboarding=async()=>{
+  const handleFinishOnboarding=async(memoryUploaded?: boolean)=>{
     await finishOnboarding();
     setOnboardDate();
     justOnboardedRef.current = true;
-    // Land on Atrium — nudge system guides user through Atrium → Library → Palace
+    // Mark checklist item if user uploaded during onboarding
+    if (memoryUploaded) markChecklistItem("upload_first_memory");
+    // Land on Atrium — auto-trigger the nudge tutorial after a short delay
     setNavMode("atrium");
+    setTimeout(() => {
+      useNudgeStore.getState().initPage("atrium", isMobile);
+    }, 800);
   };
 
   // ── Early returns for Settings / Notifications (before profileLoading gate
@@ -666,7 +822,7 @@ export default function MemoryPalace(){
   // ── Warm, persistent ExteriorScene via body-level portal (keeps scene alive). ──
   const warmPalaceScene = (palaceHost && hasVisitedPalace)
     ? createPortal(
-        <ExteriorScene
+        <Suspense fallback={null}><ExteriorScene
           key={dlKey}
           onReady={() => { sceneReadyRef.current = true; setSceneLoading(false); }}
           onRoomHover={setHovWing}
@@ -686,7 +842,7 @@ export default function MemoryPalace(){
           highlightDoor={(walkthroughActive && walkthroughPhase === 0 ? "__entrance__" : null) || nudgeHL.entrance || null}
           styleEra={styleEra || "roman"}
           autoWalkTo={autoWalking && nudgeHL.entrance ? nudgeHL.entrance : undefined}
-        />,
+        /></Suspense>,
         palaceHost
       )
     : null;
@@ -719,28 +875,29 @@ export default function MemoryPalace(){
   const bottomBarHeight = isMobile ? 64 : 0;
   const safeBottom = isMobile ? bottomBarHeight + 8 : 70;
 
-  /* ── Lazy-load spinner fallback ── */
-  const lazyFallback = <div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,background:"rgba(0,0,0,.3)",backdropFilter:"blur(0.25rem)"}}><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style><div style={{width:"2.5rem",height:"2.5rem",border:"0.1875rem solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite"}} /></div>;
+  /* ── Lazy-load spinner fallback (300ms delay to avoid flash) ── */
+  const lazyFallback = <DelayedFallback />;
 
   /* ── Shared panel overlays — rendered in ALL modes (atrium, library, 3D) ── */
   const sharedPanelOverlays = (<>
     {showTimeline&&<Suspense fallback={lazyFallback}><MemoryTimeline onClose={()=>setShowTimeline(false)} onNavigateLibrary={()=>{setShowTimeline(false);setNavMode("library");}}/></Suspense>}
     {showStatistics&&<Suspense fallback={lazyFallback}><StatisticsPanel onClose={()=>setShowStatistics(false)}/></Suspense>}
-    {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
-    {showMassImport&&<Suspense fallback={lazyFallback}><MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/></Suspense>}
+    {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
+    {showFamilyTree&&<Suspense fallback={lazyFallback}><FamilyTreePanel onClose={()=>setShowFamilyTree(false)}/></Suspense>}
+    {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
     {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)} highlightId={achHighlightId}/>}
     {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowMassImport(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowMassImport(true);break;case "room":{const wing=activeWing||"family";const prefix:{[k:string]:string}={family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"fr"}1`),600);break;}case "corridor":{const wing=activeWing||"family";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"family";const prefix:{[k:string]:string}={family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"};const roomId=`${prefix[wing]||"fr"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"family";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
+    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"ro"}1`),600);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
     {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
     {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
     {showInterview&&<Suspense fallback={lazyFallback}><InterviewPanel onClose={()=>{setShowInterviewPanel(false);markChecklistItem("complete_interview");}} onCreateMemory={(mem, wingId)=>{
-      const targetWing = wingId === "general" ? "family" : wingId;
-      const prefix = {family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"}[targetWing]||"fr";
+      const targetWing = wingId === "general" ? "roots" : wingId;
+      const prefix = {roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"}[targetWing]||"ro";
       const roomId = `${prefix}1`;
       addMemoryToRoom(roomId, mem);
     }}/></Suspense>}
     {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
-    {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";setNavMode("3d");enterCorridor(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
+    {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setNavMode("3d");enterCorridor(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
   </>);
 
   // ── Helper: shared NavigationBar props ──
@@ -788,18 +945,19 @@ export default function MemoryPalace(){
       <div role="application" aria-label={tPalace("sceneAriaLabel")} className="no-overscroll" style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease",touchAction:"none"}}>
         {/* ExteriorScene mounted persistently via body-level portal (see warmPalaceScene) */}
         {warmPalaceScene}
-        {view==="entrance"&&<EntranceHallScene key={dlKey} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/>}
-        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/>:view==="corridor"&&activeWing&&wingData&&<CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/>}
-        {view==="room"&&activeWing&&activeRoomId&&<InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} onMemoryUpdate={handleUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/>}
+        {view==="entrance"&&<Suspense fallback={null}><EntranceHallScene key={dlKey} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>}
+        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
+        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} onMemoryUpdate={handleUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/></Suspense>}
       </div>
 
       {view==="exterior"&&<LandscapeNudge />}
-      {isMobile&&view==="exterior"&&<PalaceExteriorTutorial open={palaceTourOpen} onClose={()=>setPalaceTourOpen(false)} />}
-      {isMobile&&view==="entrance"&&<EntranceHallTutorial open={entranceTourOpen} onClose={()=>setEntranceTourOpen(false)} />}
+      {view==="exterior"&&<PalaceExteriorTutorial open={palaceTourOpen} onClose={()=>setPalaceTourOpen(false)} />}
+      {view==="entrance"&&<EntranceHallTutorial open={entranceTourOpen} onClose={()=>setEntranceTourOpen(false)} />}
       {view==="corridor"&&<CorridorTutorial open={corridorTourOpen} onClose={()=>setCorridorTourOpen(false)} />}
+      {view==="room"&&<RoomTutorial open={roomTourOpen} onClose={()=>setRoomTourOpen(false)} />}
 
       {/* Scene loading overlay — fades out after 3D canvas initializes */}
-      {sceneLoading&&<PalaceLoadingScreen overlay />}
+      {sceneLoading&&<PalaceLoadingScreen overlay fadeDelay={sceneLoadFromLibraryRef.current ? 1 : 0} />}
 
       {/* TopBar hidden — replaced by PalaceSubNav */}
 
@@ -813,10 +971,10 @@ export default function MemoryPalace(){
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <PalaceSubNav
         view={view as "exterior" | "entrance" | "corridor" | "room"}
-        wingName={wingData?.name}
+        wingName={wingData?.nameKey ? (tWings(wingData.nameKey) || wingData.name) : wingData?.name}
         wingAccent={wingData?.accent}
         wingIcon={wingData?.icon}
-        roomName={activeRoomData?.name}
+        roomName={activeRoomData?.nameKey ? (tWings(activeRoomData.nameKey) || activeRoomData.name) : activeRoomData?.name}
         roomId={activeRoomId || undefined}
         roomIcon={activeRoomData?.icon}
         wings={allWings}
@@ -838,7 +996,7 @@ export default function MemoryPalace(){
         onWingManager={() => setShowWingManager(true)}
         onRoomManager={() => setShowRoomManager(true)}
         onCorridorGallery={() => setShowCorridorGallery(true)}
-        onMassImport={() => setShowMassImport(true)}
+        onMassImport={() => { setShowImportHub(true); setNavMode("library"); }}
         onShare={() => setShowSharing(true)}
         onSharingSettings={() => setShowSharingSettings(true)}
         onBack={() => { view === "room" ? exitToCorridor() : view === "corridor" ? exitToEntrance() : exitToPalace(); }}
@@ -855,30 +1013,7 @@ export default function MemoryPalace(){
 
       {/* Bottom hints removed — replaced by PalaceSubNav */}
 
-      {/* Room info strip (room view) — SearchBar removed */}
-      {!walkthroughActive&&view==="room"&&activeRoomData&&activeRoomId&&<>
-        {!isMobile && (()=>{const rs=currentSharing(activeRoomId);return <div style={{position:"absolute",top:"8.25rem",right:"1.125rem",zIndex:30,animation:"fadeIn .5s ease .4s both",display:"flex",gap:"0.375rem",alignItems:"center"}}>
-          {/* Compact room info strip */}
-          <div data-nudge="palace_room_info" style={{background:`${T.color.white}e6`,backdropFilter:"blur(0.75rem)",WebkitBackdropFilter:"blur(0.75rem)",borderRadius:"1rem",padding:"0.375rem 0.75rem",border:`1px solid ${T.color.cream}`,display:"flex",alignItems:"center",gap:"0.375rem",boxShadow:"0 0.125rem 0.75rem rgba(44,44,42,.06)"}}>
-            <span style={{display:"inline-flex",lineHeight:1}}><RoomIcon roomId={activeRoomId} wingId={activeWing||undefined} size={16} color={wingData?.accent||T.color.terracotta} /></span>
-            <span style={{fontFamily:T.font.display,fontSize:"0.8125rem",fontWeight:500,color:T.color.charcoal}}>{activeRoomData.name}</span>
-            <span style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.muted}}>{allRoomMems.length}</span>
-            <div style={{width:"0.0625rem",height:"0.875rem",background:T.color.cream}} />
-            <select className="layout-select" data-nudge="palace_room_layout" value={roomLayouts[activeRoomId]||""} onChange={e=>setRoomLayout(activeRoomId,e.target.value)} style={{background:`${T.color.warmStone}66`,border:`1px solid ${T.color.cream}`,borderRadius:"0.375rem",fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.walnut,cursor:"pointer",outline:"none",padding:"0.25rem 1rem 0.25rem 0.375rem"}}>
-              <option value="">{tAction("auto")}</option>
-              {ROOM_LAYOUTS.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-            <div style={{width:"0.0625rem",height:"0.875rem",background:T.color.cream}} />
-            <button data-nudge="palace_room_share" onClick={()=>setShowSharing(true)} style={{background:"transparent",border:"none",display:"flex",alignItems:"center",gap:"0.25rem",cursor:"pointer",padding:"0.375rem 0.5rem",borderRadius:"0.375rem",transition:"background .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=`${T.color.warmStone}88`;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-              {rs.shared?<><div style={{width:"0.375rem",height:"0.375rem",borderRadius:"0.1875rem",background:T.color.sage}}/><span style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.sage,fontWeight:500}}>{tAction("shareStatus")}</span></>
-              :<span style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.muted}}>{tAction("shareAction")}</span>}
-            </button>
-            <button onClick={()=>setShowRoomShare(true)} title={tAction("shareAsCard")} style={{background:"transparent",border:"none",cursor:"pointer",fontSize:"0.875rem",lineHeight:1,padding:"0.375rem 0.5rem",display:"flex",alignItems:"center",borderRadius:"0.375rem",transition:"background .15s"}} onMouseEnter={e=>{e.currentTarget.style.background=`${T.color.warmStone}88`;}} onMouseLeave={e=>{e.currentTarget.style.background="transparent";}}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-            </button>
-          </div>
-        </div>;})()}
-      </>}
+      {/* Room info strip removed — room name shown in PalaceSubNav breadcrumbs, layout/sharing accessible via tools */}
 
       {/* OnThisDay — floating card in exterior view */}
       {!walkthroughActive&&view==="exterior"&&<OnThisDay onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
@@ -897,7 +1032,7 @@ export default function MemoryPalace(){
       {/* Visible mobile joystick — room, corridor & entrance views */}
       {isMobile && (view === "room" || view === "corridor" || view === "entrance") && (
         <MobileJoystick
-          visible={!selMem && !showUpload && !showSharing && !moreMenuOpen}
+          visible={roomTourOpen || (!selMem && !showUpload && !showSharing && !moreMenuOpen)}
           onMove={() => {}}
         />
       )}
@@ -909,6 +1044,9 @@ export default function MemoryPalace(){
         const wasFirst = Object.values(userMems).every(a => a.length === 0) && allRoomMems.length === 0;
         handleAddMemory(mem);
         markChecklistItem("upload_memory");
+        // Rating prompt after 25th memory
+        const totalMems = Object.values(userMems).reduce((n, a) => n + a.length, 0) + allRoomMems.length + 1;
+        if (totalMems >= 25) requestAppRating();
         if (wasFirst && !walkthroughCompleted) {
           // Don't show if already shown
           try { if (localStorage.getItem("mp_discovery_menu_shown") === "true") return; } catch {}
@@ -919,12 +1057,13 @@ export default function MemoryPalace(){
       {showRoomManager&&activeWing&&wingData&&<RoomManagerPanel wing={wingData} onClose={()=>{setShowRoomManager(false);markChecklistItem("customize_room");}} onEnterRoom={enterRoom}/>}
       {showWingManager&&<WingManagerPanel onClose={()=>setShowWingManager(false)}/>}
       {selMem&&<MemoryDetail mem={selMem} room={activeRoomData} wing={wingData} onClose={()=>setSelMem(null)} onDelete={handleDeleteMemory} onUpdate={handleUpdateMemory}/>}
-      {showRoomShare&&activeRoomData&&wingData&&<ShareCard roomName={activeRoomData.name} roomIcon={activeRoomData.icon} wingName={wingData.name} wingIcon={wingData.icon} memCount={allRoomMems.length} accent={wingData.accent} onClose={()=>setShowRoomShare(false)}/>}
+      {showRoomShare&&activeRoomData&&wingData&&<ShareCard roomName={activeRoomData.name} roomIcon={activeRoomData.icon} wingName={wingData.nameKey ? (tWings(wingData.nameKey) || wingData.name) : wingData.name} wingIcon={wingData.icon} memCount={allRoomMems.length} accent={wingData.accent} onClose={()=>setShowRoomShare(false)}/>}
       {showTimeline&&<Suspense fallback={lazyFallback}><MemoryTimeline onClose={()=>setShowTimeline(false)} onNavigateLibrary={()=>{setShowTimeline(false);setNavMode("library");}}/></Suspense>}
       {showStatistics&&<Suspense fallback={lazyFallback}><StatisticsPanel onClose={()=>setShowStatistics(false)}/></Suspense>}
-      {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
-      {showMassImport&&<Suspense fallback={lazyFallback}><MassImportPanel onClose={()=>setShowMassImport(false)} initialWingId={activeWing} initialRoomId={activeRoomId}/></Suspense>}
-      {showGallery&&activeRoomId&&<RoomMediaPanel mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>setShowGallery(false)} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={handleAddMemory} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} initialMemId={galleryInitialMemId} initialTab={galleryInitialTab} roomLayout={roomLayouts[activeRoomId]||""} onRoomLayoutChange={(id)=>setRoomLayout(activeRoomId,id)}/>}
+      {showMemoryMap&&<Suspense fallback={lazyFallback}><MemoryMap userMems={userMems} onClose={()=>setShowMemoryMap(false)} onNavigateLibrary={()=>{setShowMemoryMap(false);setNavMode("library");}} onNavigateToMemory={(wingId,roomId,memoryId)=>{setShowMemoryMap(false);setLibraryTarget({wingId,roomId,memoryId});setNavMode("library");}} onNavigate={(roomId)=>{setShowMemoryMap(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setLibraryTarget({wingId,roomId});setNavMode("library");}}/></Suspense>}
+      {showFamilyTree&&<Suspense fallback={lazyFallback}><FamilyTreePanel onClose={()=>setShowFamilyTree(false)}/></Suspense>}
+      {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
+      {showGallery&&activeRoomId&&<RoomMediaPanel mems={allRoomMems} wing={wingData} room={activeRoomData} onClose={()=>{setShowGallery(false);setGalleryAutoAssignUnit(null);}} onUpdate={handleUpdateMemory} onDelete={handleDeleteMemory} onAdd={(mem)=>{handleAddMemory(mem);if(galleryAutoAssignUnit){setTimeout(()=>{handleUpdateMemory(mem.id,{displayed:true,displayUnit:galleryAutoAssignUnit});setGalleryAutoAssignUnit(null);},100);}}} onSelect={(mem)=>{setShowGallery(false);setSelMem(mem);}} initialMemId={galleryInitialMemId} initialTab={galleryInitialTab} roomLayout={roomLayouts[activeRoomId]||""} onRoomLayoutChange={(id)=>setRoomLayout(activeRoomId,id)}/>}
       {/* ─── AV remote pill — opens media playback bar ─── */}
       {view==="room"&&wingData&&!showGallery&&roomMediaBarOpen===null&&(()=>{
         const hasVideo=allRoomMems.some((m:any)=>m.type==="video");
@@ -934,7 +1073,7 @@ export default function MemoryPalace(){
           <button
             data-mp-room-av-toggle="1"
             onClick={()=>setRoomMediaBarOpen(hasVideo?"video":"audio")}
-            aria-label="AV controls"
+            aria-label={tPalace("ariaAvControls")}
             style={{
               position:"fixed",
               right:`calc(1rem + env(safe-area-inset-right, 0px))`,
@@ -969,7 +1108,7 @@ export default function MemoryPalace(){
         <button
           data-mp-room-media="1"
           onClick={()=>setShowGallery(true)}
-          aria-label="Open room media"
+          aria-label={tRoom("ariaOpenRoomMedia")}
           style={{
             position:"fixed",
             right:`calc(1rem + env(safe-area-inset-right, 0px))`,
@@ -1006,8 +1145,8 @@ export default function MemoryPalace(){
         <button
           data-mp-corridor-media="1"
           onClick={()=>setShowCorridorGallery(true)}
-          aria-label="Edit corridor paintings"
-          title="Edit corridor paintings"
+          aria-label={tPalace("ariaEditCorridorPaintings")}
+          title={tPalace("ariaEditCorridorPaintings")}
           style={{
             position:"fixed",
             right:`calc(1rem + env(safe-area-inset-right, 0px))`,
@@ -1047,7 +1186,7 @@ export default function MemoryPalace(){
 
       {/* Feature spotlight — shown once after onboarding completes */}
       {showSpotlight && !tutorialActive && !walkthroughActive && <FeatureSpotlight
-        onImport={() => { setShowSpotlight(false); setShowMassImport(true); }}
+        onImport={() => { setShowSpotlight(false); setShowImportHub(true); setNavMode("library"); }}
         onInterview={() => { setShowSpotlight(false); setShowInterviewLibrary(true); }}
         onTimeCapsule={() => { setShowSpotlight(false); /* Navigate to a room to create time capsule */ }}
         onShare={() => { setShowSpotlight(false); if (activeRoomId) setShowSharing(true); }}
@@ -1056,9 +1195,9 @@ export default function MemoryPalace(){
       {/* Getting Started checklist — disabled, replaced by NudgeTooltip system */}
       {/* <GettingStartedChecklist ... /> */}
 
-      {/* First memory prompt — shown in empty rooms when upload panel is closed */}
-      {view==="room"&&activeRoomId&&allRoomMems.length===0&&!showUpload&&!selMem&&!showSharing&&!tutorialActive&&
-        <FirstMemoryPrompt wing={wingData} room={activeRoomData} onUpload={()=>setShowUpload(true)} />}
+      {/* First memory prompt — disabled, onboarding + nudge system handles guidance */}
+      {/* {view==="room"&&activeRoomId&&allRoomMems.length===0&&!showUpload&&!selMem&&!showSharing&&!tutorialActive&&
+        <FirstMemoryPrompt wing={wingData} room={activeRoomData} onUpload={()=>setShowUpload(true)} />} */}
 
       {/* Contextual tooltips — shown once per context */}
       <ContextualTooltip tooltipId="corridor_click_door" show={view==="corridor"&&!tutorialActive&&!showSpotlight&&!walkthroughActive} />
@@ -1070,7 +1209,7 @@ export default function MemoryPalace(){
 
       {/* Discovery menu — shown after first memory upload */}
       {showDiscoveryMenu && <DiscoveryMenu
-        onMassImport={() => setShowMassImport(true)}
+        onMassImport={() => { setShowImportHub(true); setNavMode("library"); }}
         onInterview={() => setShowInterviewLibrary(true)}
         onTimeCapsule={() => {/* navigate to room for time capsule */}}
         onShare={() => { if (activeRoomId) setShowSharing(true); }}
@@ -1110,14 +1249,21 @@ export default function MemoryPalace(){
         onClick={()=>setShowUpgradePrompt(false)}>
         <TuscanCard variant="elevated" padding="2rem 2.25rem" style={{maxWidth:"23.75rem",textAlign:"center",borderRadius:"1.125rem"}} animate>
           <div role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{if(e.key==="Escape")setShowUpgradePrompt(false);}} onClick={e=>e.stopPropagation()}>
-            <div style={{fontSize:"2.5rem",marginBottom:"0.75rem"}}>{"🔒"}</div>
+            <div style={{fontSize:"2.5rem",marginBottom:"0.75rem"}}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" stroke={T.color.terracotta} strokeWidth="1.5"/><path d="M7 11V7a5 5 0 1 1 10 0v4" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="16.5" r="1.5" fill={T.color.terracotta}/></svg></div>
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,marginBottom:"0.5rem"}}>{view==="entrance"?tPalace("lockedWing"):tPalace("lockedRoom")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,lineHeight:1.5,marginBottom:"1.25rem"}}>{view==="entrance"?tPalace("upgradeWing"):tPalace("upgradeRoom")}</p>
-            <button onClick={()=>setShowUpgradePrompt(false)}
-              style={{fontFamily:T.font.body,fontSize:"0.9375rem",fontWeight:600,padding:"0.75rem 2rem",borderRadius:"0.625rem",border:"none",
-                background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer"}}>
-              {tPalace("gotIt")}
-            </button>
+            <div style={{display:"flex",flexDirection:"column",gap:"0.5rem"}}>
+              <button onClick={()=>{setShowUpgradePrompt(false);window.open("/pricing","_blank");}}
+                style={{fontFamily:T.font.body,fontSize:"0.9375rem",fontWeight:600,padding:"0.75rem 2rem",borderRadius:"0.625rem",border:"none",
+                  background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer",width:"100%"}}>
+                {tPalace("viewPlans")}
+              </button>
+              <button onClick={()=>setShowUpgradePrompt(false)}
+                style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:400,padding:"0.5rem",border:"none",
+                  background:"none",color:T.color.muted,cursor:"pointer"}}>
+                {tPalace("gotIt")}
+              </button>
+            </div>
           </div>
         </TuscanCard>
       </div>}
@@ -1138,7 +1284,7 @@ export default function MemoryPalace(){
 
       {/* Invite & shared panels */}
       {showInvites&&<InviteNotificationsPanel onClose={()=>setShowInvites(false)}/>}
-      {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("fr")?"family":roomId.startsWith("tr")?"travel":roomId.startsWith("cr")?"childhood":roomId.startsWith("kr")?"career":roomId.startsWith("rr")?"creativity":"family";setNavMode("3d");enterCorridor(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
+      {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setNavMode("3d");enterCorridor(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
       {showSharingSettings&&<SharingSettingsPanel open={showSharingSettings} onClose={()=>setShowSharingSettings(false)}/>}
 
       {/* Interview panels */}
@@ -1146,15 +1292,15 @@ export default function MemoryPalace(){
       {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
       {showInterview&&<Suspense fallback={lazyFallback}><InterviewPanel onClose={()=>{setShowInterviewPanel(false);markChecklistItem("complete_interview");}} onCreateMemory={(mem, wingId)=>{
         // Place interview memory in the first room of the relevant wing (or attic if general)
-        const targetWing = wingId === "general" ? "family" : wingId;
-        const prefix = {family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"}[targetWing]||"fr";
+        const targetWing = wingId === "general" ? "roots" : wingId;
+        const prefix = {roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"}[targetWing]||"ro";
         const roomId = `${prefix}1`;
         addMemoryToRoom(roomId, mem);
       }}/></Suspense>}
 
       {/* Track panels */}
       {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowMassImport(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowMassImport(true);break;case "room":{const wing=activeWing||"family";const prefix:{[k:string]:string}={family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"fr"}1`),600);break;}case "corridor":{const wing=activeWing||"family";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"family";const prefix:{[k:string]:string}={family:"fr",travel:"tr",childhood:"cr",career:"kr",creativity:"rr"};const roomId=`${prefix[wing]||"fr"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"family";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
+      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"ro"}1`),600);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
       {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
 
       {/* Track step completion toast */}
@@ -1185,11 +1331,11 @@ export default function MemoryPalace(){
         palaceView={view}
         onNavigateEntrance={() => { enterEntrance(); }}
         onNavigateCorridor={() => {
-          const firstWingId = allWings[0]?.id || "family";
+          const firstWingId = allWings[0]?.id || "roots";
           enterCorridor(firstWingId);
         }}
         onNavigateRoom={() => {
-          const firstWingId = allWings[0]?.id || "family";
+          const firstWingId = allWings[0]?.id || "roots";
           const firstRoom = getWingRooms(firstWingId)[0];
           if (firstRoom) enterRoom(firstRoom.id);
         }}

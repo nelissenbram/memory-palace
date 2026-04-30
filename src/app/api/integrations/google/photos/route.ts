@@ -55,6 +55,21 @@ export async function GET(request: NextRequest) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Internal error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[Google Photos browse] Error:", message);
+
+    // Re-check token scopes for debug output
+    let grantedScopes = "unknown";
+    try {
+      const account = await getConnectedAccount((await getAuthenticatedUser()).user.id, "google_photos");
+      if (account) {
+        const tir = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(account.access_token)}`);
+        if (tir.ok) {
+          const ti = await tir.json();
+          grantedScopes = ti.scope || "none";
+        }
+      }
+    } catch { /* ignore */ }
+
+    return NextResponse.json({ error: message, grantedScopes }, { status: 500 });
   }
 }

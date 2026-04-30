@@ -10,6 +10,7 @@ import { generateThumbnail } from "@/lib/utils/thumbnail";
 import { UPLOAD_DEMOS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import { translateRoomName } from "@/lib/constants/wings";
 import Image from "next/image";
 import { TypeIcon } from "@/lib/constants/type-icons";
 
@@ -28,6 +29,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("uploadPanel");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const isOnline = useOnlineStatus();
   const [savedOffline,setSavedOffline]=useState(false);
@@ -164,7 +166,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.5rem"}}>
           <div>
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,margin:0}}>{t("addMemory")}</h3>
-            <p style={{fontFamily:T.font.body,fontSize:"0.75rem",color:accent,margin:"0.25rem 0 0"}}>{room?.icon} {room?.name}</p>
+            <p style={{fontFamily:T.font.body,fontSize:"0.75rem",color:accent,margin:"0.25rem 0 0"}}>{room?.icon} {room ? translateRoomName(room, tWings) : ""}</p>
           </div>
           <button onClick={onClose} aria-label={tc("close")} style={{width:isMobile?"2.5rem":"2rem",height:isMobile?"2.5rem":"2rem",borderRadius:isMobile?"1.25rem":"1rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,color:T.color.muted,fontSize:isMobile?"1rem":"0.875rem",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",minWidth:"2.75rem",minHeight:"2.75rem"}}>✕</button>
         </div>
@@ -262,8 +264,8 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
 
         {/* Preview */}
         {preview&&<div style={{borderRadius:"0.75rem",overflow:"hidden",marginBottom:"1rem",border:`1px solid ${T.color.cream}`}}>
-          {isVideo?<video src={preview} style={{width:"100%",maxHeight:"10rem",objectFit:"cover",display:"block"}} autoPlay muted loop playsInline/>
-            :<img src={preview} style={{width:"100%",maxHeight:"10rem",objectFit:"cover",display:"block"}} alt="" onError={e=>{(e.target as HTMLElement).style.display="none";}}/>}
+          {isVideo?<video src={preview} style={{width:"100%",maxHeight:"10rem",objectFit:"cover",display:"block"}} autoPlay muted loop playsInline preload="metadata"/>
+            :<img src={preview} loading="lazy" decoding="async" style={{width:"100%",maxHeight:"10rem",objectFit:"cover",display:"block"}} alt="" onError={e=>{(e.target as HTMLElement).style.display="none";}}/>}
         </div>}
 
         {/* Title */}
@@ -375,7 +377,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
         </div>}
         {/* Submit */}
         <button onClick={submit} disabled={!title.trim()||!capsuleValid||savedOffline} style={{width:"100%",padding:isMobile?"1rem":"0.875rem",borderRadius:"0.75rem",border:"none",background:title.trim()&&capsuleValid&&!savedOffline?`linear-gradient(135deg,${accent},${T.color.walnut})`:`${T.color.sandstone}40`,color:title.trim()&&capsuleValid&&!savedOffline?"#FFF":T.color.muted,fontFamily:T.font.body,fontSize:isMobile?"1rem":"0.875rem",fontWeight:600,cursor:title.trim()&&capsuleValid&&!savedOffline?"pointer":"default",transition:"all .2s",minHeight:"3rem"}}>
-          {savedOffline?t("saved"):timeCapsule&&revealDate?t("sealCapsule", { date: new Date(revealDate+"T00:00:00").toLocaleDateString(locale==="nl"?"nl-NL":"en-US",{month:"short",day:"numeric",year:"numeric"}) }):t("addToRoom", { room: room?.name||"room" })} {savedOffline?"":timeCapsule?"🔒":"✨"}
+          {savedOffline?t("saved"):timeCapsule&&revealDate?t("sealCapsule", { date: new Date(revealDate+"T00:00:00").toLocaleDateString(locale==="nl"?"nl-NL":"en-US",{month:"short",day:"numeric",year:"numeric"}) }):t("addToRoom", { room: room ? translateRoomName(room, tWings) : "room" })} {savedOffline?"":timeCapsule?"🔒":"✨"}
         </button>
       </div>
     </div>

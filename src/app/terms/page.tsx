@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 
 const F = T.font;
@@ -101,14 +102,17 @@ export default function TermsOfServicePage() {
             </span>
           </Link>
         </div>
-        <button onClick={() => setLocale(locale === "en" ? "nl" : "en")} aria-label={tc("a11ySwitchLanguage")} style={{
+        <select value={locale} onChange={(e) => setLocale(e.target.value as typeof locale)} aria-label={tc("a11ySwitchLanguage")} style={{
           background: "none", border: `1px solid ${C.sandstone}60`, borderRadius: "0.375rem",
           padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: F.body,
           fontWeight: 600, color: C.walnut, cursor: "pointer", letterSpacing: "0.5px",
           textTransform: "uppercase", transition: "border-color 0.2s, color 0.2s",
+          appearance: "none", WebkitAppearance: "none", paddingRight: "1.25rem",
+          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+          backgroundRepeat: "no-repeat", backgroundPosition: "right 0.375rem center",
         }}>
-          {locale === "en" ? "NL" : "EN"}
-        </button>
+          {locales.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+        </select>
       </nav>
 
       {/* Content */}

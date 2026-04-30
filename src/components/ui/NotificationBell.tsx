@@ -54,6 +54,16 @@ export default function NotificationBell() {
     };
   }, [open, setOpen]);
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open, setOpen]);
+
   /* ── Shared dropdown content (header + list) ── */
   const dropdownContent = (
     <>
@@ -88,6 +98,11 @@ export default function NotificationBell() {
               border: "none",
               cursor: "pointer",
               padding: "0.125rem 0.375rem",
+              minHeight: "2.75rem",
+              minWidth: "2.75rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               borderRadius: "0.375rem",
               transition: "background .15s",
             }}
@@ -104,7 +119,7 @@ export default function NotificationBell() {
       </div>
 
       {/* List */}
-      <div style={{ overflowY: "auto", maxHeight: isMobile ? "60dvh" : "21.25rem", padding: "0.25rem 0" }}>
+      <div style={{ overflowY: "auto", maxHeight: isMobile ? "60dvh" : "21.25rem", padding: "0.25rem 0", contain: "layout" }}>
         {loading && notifications.length === 0 && (
           <div
             style={{
@@ -202,6 +217,7 @@ export default function NotificationBell() {
                   case "welcome":          return "\u2727"; // ✧
                   case "reminder":         return "\u29D7"; // ⧗
                   case "system":           return "\u2756"; // ❖
+                  case "kep_capture":      return "\uD83D\uDCF8"; // 📸
                   default:                 return "\u2726"; // ✦
                 }
               })()}
@@ -337,6 +353,7 @@ export default function NotificationBell() {
       {open && isMobile && createPortal(
         <>
           <div
+            role="presentation"
             onClick={() => setOpen(false)}
             style={{
               position: "fixed",
@@ -347,6 +364,9 @@ export default function NotificationBell() {
           />
           <div
             ref={dropdownRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("title")}
             style={{
               position: "fixed",
               bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))",
@@ -378,6 +398,8 @@ export default function NotificationBell() {
       {/* Desktop dropdown — rendered inline */}
       {open && !isMobile && (
         <div
+          role="dialog"
+          aria-label={t("title")}
           style={{
             position: "absolute",
             top: "2.75rem",

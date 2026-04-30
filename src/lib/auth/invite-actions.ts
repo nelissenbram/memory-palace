@@ -2,6 +2,8 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
+import { serverT, getServerLocale } from "@/lib/i18n/server";
+import { serverError } from "@/lib/i18n/server-errors";
 
 // ── Helper: resolve local room ID to display name ──
 function roomDisplayName(dbName: string): string {
@@ -41,9 +43,10 @@ async function getWingDisplayForRoom(
 // ── Public: get invite details for a ROOM share landing page (no auth required) ──
 export async function getInviteDetails(shareId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Not configured" };
+    { const t = await serverError(); return { error: t("notConfigured") }; }
   }
   const admin = createAdminClient();
+  const t = await serverError();
 
   const { data: share, error } = await admin
     .from("room_shares")
@@ -51,11 +54,11 @@ export async function getInviteDetails(shareId: string) {
     .eq("id", shareId)
     .single();
 
-  if (error || !share) return { error: "Invitation not found" };
+  if (error || !share) return { error: t("invitationNotFound") };
 
   // Check status
-  if (share.status === "declined") return { error: "This invitation was declined" };
-  if (share.status === "expired") return { error: "This invitation has expired" };
+  if (share.status === "declined") return { error: t("invitationDeclined") };
+  if (share.status === "expired") return { error: t("invitationExpired") };
 
   // Get inviter profile
   const { data: inviter } = await admin
@@ -86,6 +89,7 @@ export async function getInviteDetails(shareId: string) {
     .select("id", { count: "exact", head: true })
     .eq("room_id", share.room_id);
 
+  const locale = await getServerLocale();
   return {
     invite: {
       id: share.id,
@@ -96,11 +100,11 @@ export async function getInviteDetails(shareId: string) {
       recipientEmail: share.shared_with_email,
     },
     inviter: {
-      name: inviter?.display_name || "Someone",
+      name: inviter?.display_name || serverT("someone", locale),
       avatarUrl: inviter?.avatar_url || null,
     },
     room: {
-      name: room?.name || "A Memory Room",
+      name: room?.name || serverT("aMemoryRoom", locale),
     },
     wing: {
       name: wingName,
@@ -113,9 +117,10 @@ export async function getInviteDetails(shareId: string) {
 // ── Public: get invite details for a WING share landing page (no auth required) ──
 export async function getWingInviteDetails(shareId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Not configured" };
+    { const t = await serverError(); return { error: t("notConfigured") }; }
   }
   const admin = createAdminClient();
+  const t = await serverError();
 
   const { data: share, error } = await admin
     .from("wing_shares")
@@ -123,10 +128,10 @@ export async function getWingInviteDetails(shareId: string) {
     .eq("id", shareId)
     .single();
 
-  if (error || !share) return { error: "Invitation not found" };
+  if (error || !share) return { error: t("invitationNotFound") };
 
-  if (share.status === "declined") return { error: "This invitation was declined" };
-  if (share.status === "expired") return { error: "This invitation has expired" };
+  if (share.status === "declined") return { error: t("invitationDeclined") };
+  if (share.status === "expired") return { error: t("invitationExpired") };
 
   // Get inviter profile
   const { data: inviter } = await admin
@@ -173,6 +178,7 @@ export async function getWingInviteDetails(shareId: string) {
     }
   }
 
+  const locale2 = await getServerLocale();
   return {
     invite: {
       id: share.id,
@@ -186,7 +192,7 @@ export async function getWingInviteDetails(shareId: string) {
       canDelete: share.can_delete,
     },
     inviter: {
-      name: inviter?.display_name || "Someone",
+      name: inviter?.display_name || serverT("someone", locale2),
       avatarUrl: inviter?.avatar_url || null,
     },
     wing: {
@@ -202,11 +208,12 @@ export async function getWingInviteDetails(shareId: string) {
 // ── Accept a ROOM invite (requires auth) ──
 export async function acceptInvite(shareId: string, placedInWingId?: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Not configured" };
+    { const t = await serverError(); return { error: t("notConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
   const admin = createAdminClient();
 
@@ -217,10 +224,10 @@ export async function acceptInvite(shareId: string, placedInWingId?: string) {
     .eq("id", shareId)
     .single();
 
-  if (!share) return { error: "Invitation not found" };
-  if (share.status === "accepted") return { error: "Already accepted", alreadyAccepted: true };
-  if (share.status === "declined") return { error: "This invitation was declined" };
-  if (share.status === "expired") return { error: "This invitation has expired" };
+  if (!share) return { error: t("invitationNotFound") };
+  if (share.status === "accepted") return { error: t("alreadyAccepted"), alreadyAccepted: true };
+  if (share.status === "declined") return { error: t("invitationDeclined") };
+  if (share.status === "expired") return { error: t("invitationExpired") };
 
   // Verify the email matches (or shared_with_id was already linked)
   const userEmail = user.email?.toLowerCase();
@@ -228,7 +235,7 @@ export async function acceptInvite(shareId: string, placedInWingId?: string) {
     share.shared_with_email?.toLowerCase() !== userEmail &&
     share.shared_with_id !== user.id
   ) {
-    return { error: "This invitation was sent to a different email address" };
+    return { error: t("invitationWrongEmail") };
   }
 
   // Accept (use admin client to bypass RLS update policy)
@@ -254,11 +261,12 @@ export async function acceptInvite(shareId: string, placedInWingId?: string) {
 // ── Accept a WING invite (requires auth) ──
 export async function acceptWingInvite(shareId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Not configured" };
+    { const t = await serverError(); return { error: t("notConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
   const admin = createAdminClient();
 
@@ -269,10 +277,10 @@ export async function acceptWingInvite(shareId: string) {
     .eq("id", shareId)
     .single();
 
-  if (!share) return { error: "Invitation not found" };
-  if (share.status === "accepted") return { error: "Already accepted", alreadyAccepted: true };
-  if (share.status === "declined") return { error: "This invitation was declined" };
-  if (share.status === "expired") return { error: "This invitation has expired" };
+  if (!share) return { error: t("invitationNotFound") };
+  if (share.status === "accepted") return { error: t("alreadyAccepted"), alreadyAccepted: true };
+  if (share.status === "declined") return { error: t("invitationDeclined") };
+  if (share.status === "expired") return { error: t("invitationExpired") };
 
   // Verify the email matches or shared_with_id was already linked
   const userEmail = user.email?.toLowerCase();
@@ -280,7 +288,7 @@ export async function acceptWingInvite(shareId: string) {
     share.shared_with_email?.toLowerCase() !== userEmail &&
     share.shared_with_id !== user.id
   ) {
-    return { error: "This invitation was sent to a different email address" };
+    return { error: t("invitationWrongEmail") };
   }
 
   const { error } = await admin
@@ -299,11 +307,12 @@ export async function acceptWingInvite(shareId: string) {
 // ── Decline an invite (requires auth) ──
 export async function declineInvite(shareId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Not configured" };
+    { const t = await serverError(); return { error: t("notConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
   const admin = createAdminClient();
 
@@ -315,13 +324,13 @@ export async function declineInvite(shareId: string) {
     .eq("id", shareId)
     .single();
 
-  if (!share) return { error: "Invitation not found" };
+  if (!share) return { error: t("invitationNotFound") };
 
   if (
     share.shared_with_email?.toLowerCase() !== userEmail &&
     share.shared_with_id !== user.id
   ) {
-    return { error: "Not authorized to decline this invitation" };
+    return { error: t("notAuthorizedDecline") };
   }
 
   const { error } = await admin
@@ -369,6 +378,7 @@ export async function getPendingInvites() {
   (roomShares || []).forEach((s) => ownerIds.add(s.owner_id));
   (wingShares || []).forEach((s) => ownerIds.add(s.owner_id));
 
+  const loc = await getServerLocale();
   const nameMap: Record<string, { name: string; avatar: string | null }> = {};
   if (ownerIds.size > 0) {
     const { data: profiles } = await admin
@@ -377,7 +387,7 @@ export async function getPendingInvites() {
       .in("id", Array.from(ownerIds));
     (profiles || []).forEach((p: { id: string; display_name: string | null; avatar_url: string | null }) => {
       nameMap[p.id] = {
-        name: p.display_name || "Someone",
+        name: p.display_name || serverT("someone", loc),
         avatar: p.avatar_url || null,
       };
     });
@@ -400,7 +410,7 @@ export async function getPendingInvites() {
         wingIcon = wingDisplay.icon;
       }
 
-      const inviter = nameMap[share.owner_id] || { name: "Someone", avatar: null };
+      const inviter = nameMap[share.owner_id] || { name: serverT("someone", loc), avatar: null };
 
       return {
         id: share.id,
@@ -410,7 +420,7 @@ export async function getPendingInvites() {
         createdAt: share.created_at,
         inviterName: inviter.name,
         inviterAvatar: inviter.avatar,
-        roomName: room?.name || "A room",
+        roomName: room?.name || serverT("aRoom", loc),
         wingName,
         wingIcon,
       };
@@ -420,7 +430,7 @@ export async function getPendingInvites() {
   // Enrich wing invites
   const enrichedWings = (wingShares || []).map((share) => {
     const wingDisplay = resolveWingDisplay(share.wing_id);
-    const inviter = nameMap[share.owner_id] || { name: "Someone", avatar: null };
+    const inviter = nameMap[share.owner_id] || { name: serverT("someone", loc), avatar: null };
 
     return {
       id: share.id,
@@ -475,6 +485,7 @@ export async function getAcceptedShares() {
   (roomShares || []).forEach((s) => ownerIds.add(s.owner_id));
   (wingShares || []).forEach((s) => ownerIds.add(s.owner_id));
 
+  const loc2 = await getServerLocale();
   const nameMap: Record<string, { name: string; avatar: string | null }> = {};
   if (ownerIds.size > 0) {
     const { data: profiles } = await admin
@@ -483,7 +494,7 @@ export async function getAcceptedShares() {
       .in("id", Array.from(ownerIds));
     (profiles || []).forEach((p: { id: string; display_name: string | null; avatar_url: string | null }) => {
       nameMap[p.id] = {
-        name: p.display_name || "Someone",
+        name: p.display_name || serverT("someone", loc2),
         avatar: p.avatar_url || null,
       };
     });
@@ -511,7 +522,7 @@ export async function getAcceptedShares() {
         .select("id", { count: "exact", head: true })
         .eq("room_id", share.room_id);
 
-      const owner = nameMap[share.owner_id] || { name: "Someone", avatar: null };
+      const owner = nameMap[share.owner_id] || { name: serverT("someone", loc2), avatar: null };
 
       return {
         id: share.id,
@@ -521,7 +532,7 @@ export async function getAcceptedShares() {
         acceptedAt: share.accepted_at,
         ownerName: owner.name,
         ownerAvatar: owner.avatar,
-        roomName: room ? roomDisplayName(room.name) : "A room",
+        roomName: room ? roomDisplayName(room.name) : serverT("aRoom", loc2),
         wingName,
         wingIcon,
         memoryCount: count || 0,
@@ -537,7 +548,7 @@ export async function getAcceptedShares() {
   const enrichedWings = await Promise.all(
     (wingShares || []).map(async (share) => {
       const wingDisplay = resolveWingDisplay(share.wing_id);
-      const owner = nameMap[share.owner_id] || { name: "Someone", avatar: null };
+      const owner = nameMap[share.owner_id] || { name: serverT("someone", loc2), avatar: null };
 
       // Fetch the owner's wing UUID from slug + owner_id
       const { data: wing } = await admin

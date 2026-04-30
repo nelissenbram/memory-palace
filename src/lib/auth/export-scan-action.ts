@@ -2,11 +2,13 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
+import { serverT, getServerLocale } from "@/lib/i18n/server";
 
 export interface ExportRoomNode {
   roomId: string;
   localId: string;
   name: string;
+  nameKey?: string;
   icon: string;
   memoryCount: number;
   photoCount: number;
@@ -40,6 +42,14 @@ function roomDisplayName(dbName: string): string {
     if (match) return match.name;
   }
   return dbName;
+}
+
+function roomDisplayNameKey(dbName: string): string | undefined {
+  for (const rooms of Object.values(WING_ROOMS)) {
+    const match = rooms.find((r: { id: string; nameKey?: string }) => r.id === dbName);
+    if (match?.nameKey) return match.nameKey;
+  }
+  return undefined;
 }
 
 function roomDisplayIcon(dbName: string): string {
@@ -96,6 +106,7 @@ export async function scanExportTree(): Promise<ExportTree> {
       roomId: r.id,
       localId: r.name,
       name: roomDisplayName(r.name),
+      nameKey: roomDisplayNameKey(r.name),
       icon: r.icon || roomDisplayIcon(r.name),
       memoryCount: memCountByRoom[r.id] || 0,
       photoCount: photoCountByRoom[r.id] || 0,
@@ -119,6 +130,7 @@ export async function scanExportTree(): Promise<ExportTree> {
     .eq("shared_with_id", uid)
     .eq("status", "accepted");
 
+  const expLocale = await getServerLocale();
   const shared: ExportSharedWingNode[] = [];
   if (wingShares && wingShares.length > 0) {
     // Resolve owner names
@@ -130,7 +142,7 @@ export async function scanExportTree(): Promise<ExportTree> {
         .select("id, display_name")
         .in("id", ownerIds);
       for (const p of profiles || []) {
-        nameMap[p.id] = p.display_name || "Someone";
+        nameMap[p.id] = p.display_name || serverT("someone", expLocale);
       }
     }
 
@@ -174,11 +186,12 @@ export async function scanExportTree(): Promise<ExportTree> {
         wingSlug: share.wing_id,
         wingName: wingDef?.name || share.wing_id.charAt(0).toUpperCase() + share.wing_id.slice(1),
         wingIcon: wingDef?.icon || "",
-        ownerName: nameMap[share.owner_id] || "Someone",
+        ownerName: nameMap[share.owner_id] || serverT("someone", expLocale),
         rooms: (rooms || []).map((r: { id: string; name: string; icon: string }) => ({
           roomId: r.id,
           localId: r.name,
           name: roomDisplayName(r.name),
+          nameKey: roomDisplayNameKey(r.name),
           icon: r.icon || roomDisplayIcon(r.name),
           memoryCount: sharedMemsByRoom[r.id]?.total || 0,
           photoCount: sharedMemsByRoom[r.id]?.photos || 0,

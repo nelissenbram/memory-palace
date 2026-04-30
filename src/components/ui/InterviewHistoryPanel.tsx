@@ -47,7 +47,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
   };
 
   return (
-    <div onClick={onClose} style={{
+    <div role="presentation" onClick={onClose} style={{
       position: "fixed", inset: 0, background: "rgba(42,34,24,.5)",
       backdropFilter: "blur(8px)", zIndex: 56,
       opacity: fadeIn ? 1 : 0, transition: "opacity 0.3s ease",
@@ -76,7 +76,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
               {completedSessions.length} {t("completed")} {completedSessions.length === 1 ? t("completedInterview") : t("completedInterviews")}
             </p>
           </div>
-          <button onClick={onClose} style={{
+          <button onClick={onClose} aria-label={t("close") || "Close"} style={{
             width: isMobile ? "2.75rem" : "2.25rem", height: isMobile ? "2.75rem" : "2.25rem",
             borderRadius: isMobile ? "1.375rem" : "1.125rem",
             border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
@@ -102,7 +102,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
               {inProgressSessions.map((session) => {
                 const template = getTemplate(session.templateId);
                 return (
-                  <div key={session.id} onClick={() => handleResume(session)} style={{
+                  <div key={session.id} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} onClick={() => handleResume(session)} style={{
                     padding: "0.875rem 1rem", borderRadius: "0.75rem",
                     border: `1px solid ${T.color.terracotta}30`,
                     background: `${T.color.terracotta}06`,
@@ -150,7 +150,7 @@ export default function InterviewHistoryPanel({ onClose }: InterviewHistoryPanel
                   transition: "border-color 0.2s",
                 }}>
                   {/* Summary row */}
-                  <div onClick={() => setExpandedId(isExpanded ? null : session.id)} style={{
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} onClick={() => setExpandedId(isExpanded ? null : session.id)} style={{
                     padding: "0.875rem 1rem", cursor: "pointer",
                     display: "flex", alignItems: "center", gap: "0.75rem",
                   }}>

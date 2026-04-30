@@ -143,7 +143,7 @@ export default function PalacePreview({
         onClick={onEnterPalace}
         role="button"
         tabIndex={0}
-        aria-label={t("enterPalace") || "Enter your palace"}
+        aria-label={t("enterPalace")}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onEnterPalace(); }}
       >
         {/* ── parallax wrapper ─────────────────────── */}
@@ -460,7 +460,7 @@ export default function PalacePreview({
                     <span style={{ marginRight: "0.35rem" }}>{wing.icon}</span>
                     <strong>{wing.name}</strong>
                     <span style={{ marginLeft: "0.35rem", opacity: 0.7 }}>
-                      {wing.memoryCount} {t("memories") || "memories"}
+                      {wing.memoryCount} {t("memories")}
                     </span>
                     {/* caret */}
                     <div
@@ -487,7 +487,7 @@ export default function PalacePreview({
             position: "absolute",
             inset: 0,
             background: showOverlay
-              ? `linear-gradient(180deg, transparent 30%, ${T.color.charcoal}99 100%)`
+              ? `linear-gradient(180deg, transparent 20%, ${T.color.charcoal}b3 80%, ${T.color.charcoal}cc 100%)`
               : "transparent",
             transition: "background 0.4s ease",
             display: "flex",
@@ -523,19 +523,20 @@ export default function PalacePreview({
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
                 animation: "ppShimmer 4s linear infinite",
+                filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.5))",
               }}
             >
-              {t("enterPalace") || "Enter Your Palace"}
+              {t("enterPalace")}
             </span>
             <span
               style={{
                 fontFamily: T.font.body,
                 fontSize: isMobile ? "0.7rem" : "0.8rem",
-                color: `${T.color.cream}BB`,
-                textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.4)",
+                color: `${T.color.cream}DD`,
+                textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.6)",
               }}
             >
-              {totalRooms} {t("rooms") || "rooms"} &middot; {wings.length} {t("wings") || "wings"}
+              {totalRooms} {t("rooms")} &middot; {wings.length} {t("wings")}
             </span>
           </div>
         </div>

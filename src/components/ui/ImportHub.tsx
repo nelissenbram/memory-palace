@@ -4,6 +4,7 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 
 /* ═══════════════════════════════════════════════════════
    SVG Icons — Roman / Tuscan style line-art
@@ -88,6 +89,8 @@ interface ImportHubProps {
   onImportFiles: (files: QueuedFile[], roomId?: string) => Promise<void> | void;
   onOpenCloudProvider: (provider: string) => void;
   initialRoomId?: string | null;
+  /** When true, hide wing/room selectors — used in onboarding */
+  lockRoom?: boolean;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -117,20 +120,17 @@ function makeId() {
    ═══════════════════════════════════════════════════════ */
 
 // Disabled providers are faded out — to be reactivated later
-const DISABLED_PROVIDERS = new Set(["googlePhotos", "applePhotos", "onedrive"]);
+const DISABLED_PROVIDERS = new Set<string>([]);
 
 const CLOUD_PROVIDERS = [
-  { key: "googlePhotos", icon: (
+  { key: "google_photos", labelKey: "googlePhotos", icon: (
     <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none"><path d="M12 7.5V1.5A4.5 4.5 0 007.5 6v1.5H12z" fill="#EA4335"/><path d="M16.5 12H22.5A4.5 4.5 0 0018 7.5H16.5V12z" fill="#4285F4"/><path d="M12 16.5V22.5A4.5 4.5 0 0016.5 18V16.5H12z" fill="#34A853"/><path d="M7.5 12H1.5A4.5 4.5 0 006 16.5H7.5V12z" fill="#FBBC05"/></svg>
   )},
-  { key: "dropbox", icon: (
-    <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none"><path d="M12 2L6 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4z" fill="#0061FE"/><path d="M6 6l6 4-6 4" fill="#0061FE" opacity="0.7"/><path d="M18 6l-6 4 6 4" fill="#0061FE" opacity="0.7"/></svg>
-  )},
-  { key: "onedrive", icon: (
+  { key: "onedrive", labelKey: "onedrive", icon: (
     <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none"><path d="M9 17h10a4 4 0 000-8 5 5 0 00-9.5-1A4 4 0 005 12.5 3.5 3.5 0 005 19" stroke="#0078D4" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>
   )},
-  { key: "applePhotos", icon: (
-    <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#999" strokeWidth="1.5" fill="none"/><circle cx="12" cy="10" r="3.5" fill="#999"/><path d="M12 14.5c-4 0-6 2-6 4h12c0-2-2-4-6-4z" fill="#999"/></svg>
+  { key: "dropbox", labelKey: "dropbox", icon: (
+    <svg width="1.25rem" height="1.25rem" viewBox="0 0 24 24" fill="none"><path d="M12 2L6 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4z" fill="#0061FE"/><path d="M6 6l6 4-6 4" fill="#0061FE" opacity="0.7"/><path d="M18 6l-6 4 6 4" fill="#0061FE" opacity="0.7"/></svg>
   )},
 ];
 
@@ -138,10 +138,11 @@ const CLOUD_PROVIDERS = [
    Component
    ═══════════════════════════════════════════════════════ */
 
-export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider, initialRoomId }: ImportHubProps) {
+export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider, initialRoomId, lockRoom = false }: ImportHubProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const roomStore = useRoomStore();
   const allWings = roomStore.getWings();
 
@@ -305,7 +306,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
   const handleClipboardPaste = useCallback(async () => {
     try {
       if (!navigator.clipboard?.read) {
-        alert(t("importClipboardUnsupported") || "Clipboard access not supported in this browser");
+        alert(t("importClipboardUnsupported"));
         return;
       }
       const items = await navigator.clipboard.read();
@@ -320,10 +321,10 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
           }
         }
       }
-      alert(t("importClipboardEmpty") || "No image found on clipboard");
+      alert(t("importClipboardEmpty"));
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Clipboard access denied";
-      alert(`${t("importClipboardError") || "Could not read clipboard"}: ${msg}`);
+      const msg = err instanceof Error ? err.message : t("importClipboardDenied");
+      alert(`${t("importClipboardError")}: ${msg}`);
     }
   }, [addFiles, t]);
 
@@ -494,7 +495,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
           <div style={{ padding: isMobile ? "0.75rem 1rem" : "1.5rem 1.75rem" }}>
 
             {/* ═══ DESTINATION SELECTOR ═══ */}
-            <div style={{
+            {!lockRoom && <div style={{
               display: "flex", gap: isMobile ? "0.75rem" : "1rem",
               marginBottom: isMobile ? "1rem" : "1.5rem",
               flexDirection: isMobile ? "column" : "row",
@@ -509,7 +510,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                   fontSize: isMobile ? "0.8125rem" : "0.875rem",
                   fontWeight: 600, color: T.color.walnut,
                   marginBottom: "0.375rem",
-                }}>{t("importTargetWing") || "Wing"}</label>
+                }}>{t("importTargetWing")}</label>
                 <select
                   value={targetWingId}
                   onChange={(e) => setTargetWingId(e.target.value)}
@@ -531,7 +532,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                   }}
                 >
                   {allWings.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name || w.id}</option>
+                    <option key={w.id} value={w.id}>{translateWingName(w, tWings) || w.id}</option>
                   ))}
                 </select>
               </div>
@@ -541,7 +542,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                   fontSize: isMobile ? "0.8125rem" : "0.875rem",
                   fontWeight: 600, color: T.color.walnut,
                   marginBottom: "0.375rem",
-                }}>{t("importTargetRoom") || "Room"}</label>
+                }}>{t("importTargetRoom")}</label>
                 <select
                   value={targetRoomId}
                   onChange={(e) => setTargetRoomId(e.target.value)}
@@ -563,11 +564,11 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                   }}
                 >
                   {targetRooms.map((r) => (
-                    <option key={r.id} value={r.id}>{r.name || r.id}</option>
+                    <option key={r.id} value={r.id}>{translateRoomName(r, tWings) || r.id}</option>
                   ))}
                 </select>
               </div>
-            </div>
+            </div>}
 
             {/* ═══ A. DRAG & DROP ZONE (desktop only — mobile uses file picker directly) ═══ */}
             {!isMobile && (
@@ -677,10 +678,10 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               </p>
               <div style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                gridTemplateColumns: "1fr 1fr 1fr",
                 gap: isMobile ? "0.375rem" : "0.5rem",
               }}>
-                {CLOUD_PROVIDERS.map(({ key, icon }) => {
+                {CLOUD_PROVIDERS.map(({ key, labelKey, icon }) => {
                   const disabled = DISABLED_PROVIDERS.has(key);
                   return (
                   <button
@@ -715,7 +716,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                     }}
                   >
                     {icon}
-                    <span>{t(key)}{disabled && <span style={{ fontSize: "0.5625rem", color: T.color.muted, marginLeft: "0.25rem" }}>{t("comingSoon") || "soon"}</span>}</span>
+                    <span>{t(labelKey)}{disabled && <span style={{ fontSize: "0.5625rem", color: T.color.muted, marginLeft: "0.25rem" }}>{t("comingSoon")}</span>}</span>
                   </button>
                   );
                 })}
@@ -892,15 +893,20 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
         </div>
       </div>
 
-      {/* Hidden file input — broad accept for mobile compatibility */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={`${ACCEPT_ALL},image/*,video/*,audio/*`}
-        multiple
-        onChange={handleFileSelect}
-        style={{ display: "none" }}
-      />
+      {/* Hidden file inputs — broad accept for mobile compatibility */}
+      {/* Wrapped in a portal-like fixed div to prevent click events from bubbling
+          to parent backdrops (RoomMediaPanel) when the file picker closes on mobile */}
+      <div onClick={(e) => e.stopPropagation()} style={{ position: "fixed", zIndex: 8002, pointerEvents: "none" }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={`${ACCEPT_ALL},image/*,video/*,audio/*`}
+          multiple
+          onChange={handleFileSelect}
+          onClick={(e) => e.stopPropagation()}
+          style={{ display: "none" }}
+        />
+      </div>
     </>
   );
 }

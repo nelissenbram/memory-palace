@@ -245,6 +245,7 @@ export default function LegacyView({ data }: { data: LegacyData }) {
                               <video
                                 src={memory.media_url}
                                 controls
+                                preload="metadata"
                                 aria-label={t("videoMemory", { title: memory.title })}
                                 style={styles.mediaImage}
                               />
@@ -255,6 +256,7 @@ export default function LegacyView({ data }: { data: LegacyData }) {
                               <audio
                                 src={memory.media_url}
                                 controls
+                                preload="none"
                                 aria-label={t("audioMemory", { title: memory.title })}
                                 style={styles.audioElement}
                               />

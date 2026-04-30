@@ -7,10 +7,12 @@ import { updateProfile, requestPasswordReset, deleteAccount } from "@/lib/auth/p
 import MFASetup from "@/components/settings/MFASetup";
 import ExportPanel from "@/components/settings/ExportPanel";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { locales, localeNames } from "@/i18n/config";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import Image from "next/image";
 import { useDaylight } from "@/components/providers/DaylightProvider";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useRouter } from "next/navigation";
 
 interface ProfileData {
   display_name: string;
@@ -38,7 +40,7 @@ export default function ProfilePage() {
   const { t, locale, setLocale } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
   const { t: tA11y } = useTranslation("accessibility");
-  const { accessibilityMode, toggleAccessibility } = useAccessibility();
+  const { scaleLevel, setScaleLevel } = useAccessibility();
   const { daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour } = useDaylight();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +57,7 @@ export default function ProfilePage() {
   const [aiSaving, setAiSaving] = useState(false);
   const [personaType, setPersonaType] = useState<string | null>(null);
   const { t: tPersona } = useTranslation("persona" as "common");
+  const router = useRouter();
   const isMobile = useIsMobile();
 
   // Load persona from localStorage
@@ -462,7 +465,7 @@ export default function ProfilePage() {
                   {t("noPersonaYet")}
                 </span>
                 <button
-                  onClick={() => { window.location.href = "/palace"; }}
+                  onClick={() => { router.push("/atrium"); }}
                   style={{
                     fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                     color: T.color.terracotta, background: "none",
@@ -700,47 +703,32 @@ export default function ProfilePage() {
         }}>
           {tc("language")}
         </h3>
-        <div style={{ display: "flex", gap: "0.625rem" }}>
-          <button
-            onClick={() => setLocale("en")}
-            aria-pressed={locale === "en"}
-            style={{
-              padding: "0.875rem 1.5rem",
-              borderRadius: "0.75rem",
-              border: `2px solid ${locale === "en" ? T.color.terracotta : T.color.cream}`,
-              background: locale === "en" ? `${T.color.terracotta}12` : T.color.linen,
-              cursor: "pointer",
-              fontFamily: T.font.body,
-              fontSize: "0.9375rem",
-              fontWeight: locale === "en" ? 600 : 400,
-              color: locale === "en" ? T.color.terracotta : T.color.charcoal,
-              transition: "all .2s",
-            }}
-          >
-            {tc("english")} (EN)
-          </button>
-          <button
-            onClick={() => setLocale("nl")}
-            aria-pressed={locale === "nl"}
-            style={{
-              padding: "0.875rem 1.5rem",
-              borderRadius: "0.75rem",
-              border: `2px solid ${locale === "nl" ? T.color.terracotta : T.color.cream}`,
-              background: locale === "nl" ? `${T.color.terracotta}12` : T.color.linen,
-              cursor: "pointer",
-              fontFamily: T.font.body,
-              fontSize: "0.9375rem",
-              fontWeight: locale === "nl" ? 600 : 400,
-              color: locale === "nl" ? T.color.terracotta : T.color.charcoal,
-              transition: "all .2s",
-            }}
-          >
-            {tc("dutch")} (NL)
-          </button>
+        <div style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap" }}>
+          {locales.map((l) => (
+            <button
+              key={l}
+              onClick={() => setLocale(l)}
+              aria-pressed={locale === l}
+              style={{
+                padding: "0.875rem 1.5rem",
+                borderRadius: "0.75rem",
+                border: `2px solid ${locale === l ? T.color.terracotta : T.color.cream}`,
+                background: locale === l ? `${T.color.terracotta}12` : T.color.linen,
+                cursor: "pointer",
+                fontFamily: T.font.body,
+                fontSize: "0.9375rem",
+                fontWeight: locale === l ? 600 : 400,
+                color: locale === l ? T.color.terracotta : T.color.charcoal,
+                transition: "all .2s",
+              }}
+            >
+              {localeNames[l]} ({l.toUpperCase()})
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ── Accessibility ── */}
+      {/* ── Text Size (Accessibility) ── */}
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
@@ -751,63 +739,83 @@ export default function ProfilePage() {
       }}>
         <h3 style={{
           fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 1rem",
+          color: T.color.charcoal, margin: "0 0 0.25rem",
         }}>
           {tA11y("title")}
         </h3>
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-          background: T.color.linen,
-          border: `1px solid ${T.color.cream}`,
+        <p style={{
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+          margin: "0 0 1rem", lineHeight: 1.4,
         }}>
-          <div>
-            <div style={{
-              fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-              color: T.color.charcoal,
-            }}>
-              {tA11y("mode")}
-            </div>
-            <div style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-              marginTop: "0.25rem", lineHeight: 1.4,
-            }}>
-              {tA11y("modeDescription")}
-            </div>
-          </div>
-          <button
-            role="switch"
-            aria-checked={accessibilityMode}
-            onClick={() => {
-              toggleAccessibility();
-              showToast(accessibilityMode ? tA11y("disabled") : tA11y("enabled"), "success");
-            }}
-            style={{
-              width: "3.25rem",
-              height: "1.75rem",
-              borderRadius: "0.875rem",
-              border: "none",
-              background: accessibilityMode
-                ? T.color.sage
-                : T.color.sandstone,
-              cursor: "pointer",
-              position: "relative",
-              transition: "background .2s",
-              flexShrink: 0,
-            }}
-          >
-            <span style={{
-              position: "absolute",
-              top: "0.1875rem",
-              left: accessibilityMode ? "1.6875rem" : "0.1875rem",
-              width: "1.375rem",
-              height: "1.375rem",
-              borderRadius: "0.6875rem",
-              background: T.color.white,
-              boxShadow: "0 1px 4px rgba(0,0,0,.15)",
-              transition: "left .2s",
-            }} />
-          </button>
+          {tA11y("subtitle")}
+        </p>
+        <div
+          role="radiogroup"
+          aria-label={tA11y("title")}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "0.75rem",
+          }}
+        >
+          {(["standard", "comfortable", "large"] as const).map((level) => {
+            const isSelected = scaleLevel === level;
+            const previewSize = { standard: "1rem", comfortable: "1.125rem", large: "1.25rem" }[level];
+            return (
+              <button
+                key={level}
+                role="radio"
+                aria-checked={isSelected}
+                onClick={() => {
+                  setScaleLevel(level);
+                  showToast(tA11y("changed", { level: tA11y(level) }), "success");
+                }}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  padding: "1rem 0.75rem",
+                  borderRadius: "0.75rem",
+                  border: isSelected ? `2px solid ${T.color.sage}` : `1px solid ${T.color.cream}`,
+                  background: isSelected ? `${T.color.sage}0a` : T.color.linen,
+                  cursor: "pointer",
+                  transition: "all .2s",
+                  position: "relative",
+                }}
+              >
+                {isSelected && (
+                  <span style={{
+                    position: "absolute", top: "0.5rem", right: "0.5rem",
+                    width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+                    background: T.color.sage, display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.color.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2.5 6l2.5 2.5 4.5-5" />
+                    </svg>
+                  </span>
+                )}
+                <span style={{
+                  fontFamily: T.font.display, fontSize: previewSize, fontWeight: 600,
+                  color: isSelected ? T.color.charcoal : T.color.walnut,
+                }}>
+                  Aa
+                </span>
+                <span style={{
+                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                  color: isSelected ? T.color.charcoal : T.color.walnut,
+                }}>
+                  {tA11y(level)}
+                </span>
+                <span style={{
+                  fontFamily: T.font.body, fontSize: "0.75rem",
+                  color: T.color.muted, lineHeight: 1.3,
+                }}>
+                  {tA11y(`${level}Desc`)}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { sendTrusteeWelcomeEmail } from "@/lib/email/send-legacy";
+import { serverError } from "@/lib/i18n/server-errors";
 
 // ── Types ──
 
@@ -78,7 +79,7 @@ export async function createLegacyContact(input: {
   room_access?: string[];
 }) {
   const { supabase, user } = await getAuthUser();
-  if (!supabase || !user) return { error: "Not authenticated" };
+  if (!supabase || !user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   // Validate wing_access and room_access IDs belong to this user
   if (input.wing_access && input.wing_access.length > 0) {
@@ -88,7 +89,7 @@ export async function createLegacyContact(input: {
       .eq("user_id", user.id)
       .in("id", input.wing_access);
     if (!wings || wings.length !== input.wing_access.length) {
-      return { error: "Invalid wing or room access" };
+      { const t = await serverError(); return { error: t("invalidWingOrRoomAccess") }; }
     }
   }
   if (input.room_access && input.room_access.length > 0) {
@@ -98,7 +99,7 @@ export async function createLegacyContact(input: {
       .eq("user_id", user.id)
       .in("id", input.room_access);
     if (!rooms || rooms.length !== input.room_access.length) {
-      return { error: "Invalid wing or room access" };
+      { const t = await serverError(); return { error: t("invalidWingOrRoomAccess") }; }
     }
   }
 
@@ -176,7 +177,7 @@ export async function updateLegacyContact(
   }
 ) {
   const { supabase, user } = await getAuthUser();
-  if (!supabase || !user) return { error: "Not authenticated" };
+  if (!supabase || !user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   // Validate wing_access and room_access IDs belong to this user
   if (updates.wing_access && updates.wing_access.length > 0) {
@@ -186,7 +187,7 @@ export async function updateLegacyContact(
       .eq("user_id", user.id)
       .in("id", updates.wing_access);
     if (!wings || wings.length !== updates.wing_access.length) {
-      return { error: "Invalid wing or room access" };
+      { const t = await serverError(); return { error: t("invalidWingOrRoomAccess") }; }
     }
   }
   if (updates.room_access && updates.room_access.length > 0) {
@@ -196,7 +197,7 @@ export async function updateLegacyContact(
       .eq("user_id", user.id)
       .in("id", updates.room_access);
     if (!rooms || rooms.length !== updates.room_access.length) {
-      return { error: "Invalid wing or room access" };
+      { const t = await serverError(); return { error: t("invalidWingOrRoomAccess") }; }
     }
   }
 
@@ -208,7 +209,7 @@ export async function updateLegacyContact(
   if (updates.wing_access !== undefined) payload.wing_access = updates.wing_access;
   if (updates.room_access !== undefined) payload.room_access = updates.room_access;
 
-  if (Object.keys(payload).length === 0) return { error: "No fields to update" };
+  if (Object.keys(payload).length === 0) { const t = await serverError(); return { error: t("noFieldsToUpdate") }; }
 
   const { data, error } = await supabase
     .from("legacy_contacts")
@@ -224,8 +225,9 @@ export async function updateLegacyContact(
 
 export async function deleteLegacyContact(contactId: string) {
   const { supabase, user } = await getAuthUser();
-  if (!supabase || !user) return { error: "Not authenticated" };
+  if (!supabase || !user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
+  const t = await serverError();
   // Guard: block deletion of last active contact while delivery is pending
   const { data: settings } = await supabase
     .from("legacy_settings")
@@ -241,7 +243,7 @@ export async function deleteLegacyContact(contactId: string) {
       .eq("is_active", true);
 
     if ((count ?? 0) <= 1) {
-      return { error: "Cannot delete last contact while legacy delivery is pending" };
+      return { error: t("cannotDeleteLastContact") };
     }
   }
 
@@ -299,7 +301,7 @@ export async function createLegacyMessage(input: {
   deliver_date?: string;
 }) {
   const { supabase, user } = await getAuthUser();
-  if (!supabase || !user) return { error: "Not authenticated" };
+  if (!supabase || !user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { data, error } = await supabase
     .from("legacy_messages")
@@ -329,7 +331,7 @@ export async function updateLegacyMessage(
   }
 ) {
   const { supabase, user } = await getAuthUser();
-  if (!supabase || !user) return { error: "Not authenticated" };
+  if (!supabase || !user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const payload: Record<string, unknown> = {};
   if (updates.recipient_email !== undefined) payload.recipient_email = updates.recipient_email.toLowerCase();
@@ -338,7 +340,7 @@ export async function updateLegacyMessage(
   if (updates.deliver_on !== undefined) payload.deliver_on = updates.deliver_on;
   if (updates.deliver_date !== undefined) payload.deliver_date = updates.deliver_date;
 
-  if (Object.keys(payload).length === 0) return { error: "No fields to update" };
+  if (Object.keys(payload).length === 0) { const t = await serverError(); return { error: t("noFieldsToUpdate") }; }
 
   const { data, error } = await supabase
     .from("legacy_messages")
@@ -354,7 +356,7 @@ export async function updateLegacyMessage(
 
 export async function deleteLegacyMessage(messageId: string) {
   const { supabase, user } = await getAuthUser();
-  if (!supabase || !user) return { error: "Not authenticated" };
+  if (!supabase || !user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { error } = await supabase
     .from("legacy_messages")
@@ -387,10 +389,11 @@ export async function upsertLegacySettings(updates: {
   trusted_verifier_name?: string | null;
 }) {
   const { supabase, user } = await getAuthUser();
-  if (!supabase || !user) return { error: "Not authenticated" };
+  if (!supabase || !user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
+  const tLeg = await serverError();
   if (updates.inactivity_trigger_months !== undefined && (updates.inactivity_trigger_months < 1 || updates.inactivity_trigger_months > 60)) {
-    return { error: "Inactivity period must be between 1 and 60 months" };
+    return { error: tLeg("inactivityPeriodRange") };
   }
 
   const payload: Record<string, unknown> = { id: user.id };

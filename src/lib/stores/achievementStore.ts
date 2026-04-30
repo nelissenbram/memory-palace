@@ -105,11 +105,33 @@ function saveJSON(key: string, val: unknown) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch { /* noop */ }
 }
 
+const _saveTimers: Record<string, ReturnType<typeof setTimeout>> = {};
+function debouncedSaveJSON(key: string, val: unknown, delay = 500) {
+  if (_saveTimers[key]) clearTimeout(_saveTimers[key]);
+  _saveTimers[key] = setTimeout(() => saveJSON(key, val), delay);
+}
+
 const today = () => new Date().toISOString().slice(0, 10);
 
+// Batch-load all achievement-related keys in one pass to minimise localStorage reads
+const _initData = (() => {
+  if (typeof window === "undefined") return { earnedIds: [] as string[], earnedDates: {} as Record<string, string>, visitedWings: [] as string[], visitedRooms: [] as string[], activeDays: [] as string[] };
+  const keys = ["mp_achievements", "mp_achievement_dates", "mp_visited_wings", "mp_visited_rooms", "mp_active_days"] as const;
+  const raw: Record<string, string | null> = {};
+  try { for (const k of keys) raw[k] = localStorage.getItem(k); } catch { /* noop */ }
+  function parse<T>(key: string, fallback: T): T { try { return raw[key] ? JSON.parse(raw[key]!) : fallback; } catch { return fallback; } }
+  return {
+    earnedIds: parse<string[]>("mp_achievements", []),
+    earnedDates: parse<Record<string, string>>("mp_achievement_dates", {}),
+    visitedWings: parse<string[]>("mp_visited_wings", []),
+    visitedRooms: parse<string[]>("mp_visited_rooms", []),
+    activeDays: parse<string[]>("mp_active_days", []),
+  };
+})();
+
 export const useAchievementStore = create<AchievementState>((set, get) => ({
-  earnedIds: loadJSON<string[]>("mp_achievements", []),
-  earnedDates: loadJSON<Record<string, string>>("mp_achievement_dates", {}),
+  earnedIds: _initData.earnedIds,
+  earnedDates: _initData.earnedDates,
   lastCheck: "",
   toast: null,
   stats: {
@@ -120,9 +142,9 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
   },
   showPanel: false,
   highlightId: null,
-  visitedWings: loadJSON<string[]>("mp_visited_wings", []),
-  visitedRooms: loadJSON<string[]>("mp_visited_rooms", []),
-  activeDays: loadJSON<string[]>("mp_active_days", []),
+  visitedWings: _initData.visitedWings,
+  visitedRooms: _initData.visitedRooms,
+  activeDays: _initData.activeDays,
 
   trackWingVisit: (wingId) => {
     const { visitedWings, activeDays } = get();
@@ -134,8 +156,8 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
     if (!newDays.includes(d)) { newDays.push(d); changed = true; }
     if (changed) {
       set({ visitedWings: newWings, activeDays: newDays });
-      saveJSON("mp_visited_wings", newWings);
-      saveJSON("mp_active_days", newDays);
+      debouncedSaveJSON("mp_visited_wings", newWings);
+      debouncedSaveJSON("mp_active_days", newDays);
     }
   },
 
@@ -144,7 +166,7 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
     if (!visitedRooms.includes(roomId)) {
       const newRooms = [...visitedRooms, roomId];
       set({ visitedRooms: newRooms });
-      saveJSON("mp_visited_rooms", newRooms);
+      debouncedSaveJSON("mp_visited_rooms", newRooms);
     }
   },
 

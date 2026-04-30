@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { createServerClient } from "@supabase/ssr";
 import PublicGallery from "./PublicGallery";
+import { serverT, getServerLocale } from "@/lib/i18n/server";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -59,7 +60,7 @@ async function getShareData(slug: string) {
     roomName: room.name,
     wingSlug: wing?.slug || null,
     wingName: wing?.name || null,
-    ownerName: owner?.display_name || "Someone",
+    ownerName: owner?.display_name || serverT("someone", await getServerLocale()),
   };
 }
 

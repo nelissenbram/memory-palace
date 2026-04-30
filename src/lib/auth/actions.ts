@@ -3,18 +3,20 @@
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { sendResetEmail } from "@/lib/email/send-reset";
+import { serverError } from "@/lib/i18n/server-errors";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
+  const t = await serverError();
 
   const rawEmail = formData.get("email");
   const rawPassword = formData.get("password");
 
   if (typeof rawEmail !== "string" || !rawEmail.trim()) {
-    return { error: "Email is required." };
+    return { error: t("emailRequired") };
   }
   if (typeof rawPassword !== "string" || !rawPassword) {
-    return { error: "Password is required." };
+    return { error: t("passwordRequired") };
   }
 
   const email = rawEmail.trim();
@@ -23,11 +25,11 @@ export async function signUp(formData: FormData) {
   // Basic email format validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return { error: "Please enter a valid email address." };
+    return { error: t("invalidEmail") };
   }
 
   if (password.length < 8) {
-    return { error: "Password must be at least 8 characters long." };
+    return { error: t("passwordTooShort") };
   }
 
   const displayName = (formData.get("displayName") as string) || "";
@@ -36,7 +38,7 @@ export async function signUp(formData: FormData) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
     || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
   const baseCallbackUrl = `${siteUrl}/auth/callback`;
-  const callbackUrl = redirectTo && redirectTo.startsWith("/invite/")
+  const callbackUrl = redirectTo && (redirectTo.startsWith("/invite/") || redirectTo.startsWith("/kep/"))
     ? `${baseCallbackUrl}?redirect=${encodeURIComponent(redirectTo)}`
     : baseCallbackUrl;
 
@@ -58,15 +60,16 @@ export async function signUp(formData: FormData) {
 
 export async function signIn(formData: FormData) {
   const supabase = await createClient();
+  const t = await serverError();
 
   const rawEmail = formData.get("email");
   const rawPassword = formData.get("password");
 
   if (typeof rawEmail !== "string" || !rawEmail.trim()) {
-    return { error: "Email is required." };
+    return { error: t("emailRequired") };
   }
   if (typeof rawPassword !== "string" || !rawPassword) {
-    return { error: "Password is required." };
+    return { error: t("passwordRequired") };
   }
 
   const email = rawEmail.trim();
@@ -74,7 +77,7 @@ export async function signIn(formData: FormData) {
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return { error: "Please enter a valid email address." };
+    return { error: t("invalidEmail") };
   }
 
   const redirectTo = formData.get("redirect") as string | null;
@@ -105,11 +108,11 @@ export async function signIn(formData: FormData) {
   }
 
   // No MFA needed — redirect as usual
-  if (redirectTo && redirectTo.startsWith("/invite/")) {
+  if (redirectTo && (redirectTo.startsWith("/invite/") || redirectTo.startsWith("/kep/"))) {
     redirect(redirectTo);
   }
 
-  redirect("/palace");
+  redirect("/atrium");
 }
 
 export async function signOut() {
@@ -122,16 +125,17 @@ export async function signOut() {
 }
 
 export async function resetPassword(formData: FormData) {
+  const t = await serverError();
   const rawEmail = formData.get("email");
   if (typeof rawEmail !== "string" || !rawEmail.trim()) {
-    return { error: "Email is required." };
+    return { error: t("emailRequired") };
   }
 
   const email = rawEmail.trim();
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return { error: "Please enter a valid email address." };
+    return { error: t("invalidEmail") };
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
@@ -157,10 +161,24 @@ export async function resetPassword(formData: FormData) {
   // Supabase generateLink returns properties.action_link with the full link
   const actionLink = data.properties?.action_link;
   if (actionLink) {
+    // Look up user's preferred locale for email i18n
+    let locale: string | undefined;
+    try {
+      const userId = data.user?.id;
+      if (userId) {
+        const { data: profile } = await admin.from("profiles")
+          .select("preferred_locale")
+          .eq("id", userId)
+          .single<{ preferred_locale: string | null }>();
+        locale = profile?.preferred_locale || undefined;
+      }
+    } catch { /* non-critical — fall back to English */ }
+
     // Send branded email via Resend
     const result = await sendResetEmail({
       recipientEmail: email,
       resetLink: actionLink,
+      locale,
     });
     if (!result.success) {
       console.error("Reset email send error:", result.error);
@@ -172,15 +190,16 @@ export async function resetPassword(formData: FormData) {
 
 export async function updatePassword(formData: FormData) {
   const supabase = await createClient();
+  const t = await serverError();
 
   const rawPassword = formData.get("password");
   if (typeof rawPassword !== "string" || !rawPassword) {
-    return { error: "Password is required." };
+    return { error: t("passwordRequired") };
   }
 
   const password = rawPassword;
   if (password.length < 8) {
-    return { error: "Password must be at least 8 characters long." };
+    return { error: t("passwordTooShort") };
   }
 
   const { error } = await supabase.auth.updateUser({ password });
@@ -188,5 +207,5 @@ export async function updatePassword(formData: FormData) {
     return { error: error.message };
   }
 
-  redirect("/palace");
+  redirect("/atrium");
 }

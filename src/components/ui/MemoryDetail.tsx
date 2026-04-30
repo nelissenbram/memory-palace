@@ -3,12 +3,17 @@ import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react"
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 const ImageEditor = lazy(() => import("@/components/ui/ImageEditor"));
 import ShareCard from "@/components/ui/ShareCard";
 import { geocodeLocationName, geocodeAutocomplete } from "@/lib/geocode";
+import { useMemoryStore } from "@/lib/stores/memoryStore";
+import { useRoomStore } from "@/lib/stores/roomStore";
+import { WingIcon, RoomIcon } from "@/components/ui/WingRoomIcons";
 import type { GeocodeSuggestion } from "@/lib/geocode";
 
 /* ═══════════════════════════════════════════════════════════
@@ -216,8 +221,8 @@ function ActionCard({ id, icon, title, value, isOpen, onToggle, accent, children
       <div
         id={`action-${id}`}
         style={{
-          height: `${height}px`, overflow: "hidden",
-          transition: "height .25s cubic-bezier(.23,1,.32,1)",
+          maxHeight: isOpen ? "62.5rem" : "0", overflow: "hidden",
+          transition: "max-height .25s cubic-bezier(.23,1,.32,1)",
         }}
       >
         <div ref={contentRef} style={{ padding: "0 1rem 1rem" }}>
@@ -245,6 +250,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("memoryDetail");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const accent = wing?.accent || T.color.terracotta;
 
@@ -281,6 +287,10 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const [aiLabelLoading, setAiLabelLoading] = useState(false);
   const [aiLabelError, setAiLabelError] = useState<string | null>(null);
   const [aiLabelResult, setAiLabelResult] = useState<string | null>(null);
+  const [expandedMoveWing, setExpandedMoveWing] = useState<string | null>(null);
+  const [movedToast, setMovedToast] = useState(false);
+  const { moveMemory } = useMemoryStore();
+  const { getWings, getWingRooms } = useRoomStore();
   const [newPerson, setNewPerson] = useState("");
   const [revealDate, setRevealDate] = useState(mem.revealDate || "");
   const [resolutionGoal, setResolutionGoal] = useState(mem.resolution?.goal || "");
@@ -615,7 +625,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                     ? t("opensTomorrow")
                     : daysUntilReveal <= 30
                       ? t("opensInDays", { count: String(daysUntilReveal) })
-                      : t("opensOn", { date: new Date(mem.revealDate! + "T00:00:00").toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", { month: "long", day: "numeric", year: "numeric" }) })}
+                      : t("opensOn", { date: new Date(mem.revealDate! + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "long", day: "numeric", year: "numeric" }) })}
                 </div>
                 <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
                   {t("capsuleSealed")}
@@ -630,7 +640,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       fontFamily: T.font.body, fontSize: "0.75rem", fontStyle: "italic",
                       color: T.color.walnut, lineHeight: 1.5,
                     }}>
-                      {t("resolutionGoal", { date: new Date(mem.revealDate! + "T00:00:00").toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", { month: "long", day: "numeric", year: "numeric" }) })}
+                      {t("resolutionGoal", { date: new Date(mem.revealDate! + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "long", day: "numeric", year: "numeric" }) })}
                     </div>
                   </div>
                 )}
@@ -650,7 +660,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                     fontFamily: T.font.display, fontSize: "1.625rem", color: T.color.charcoal,
                     background: "transparent", border: "none", borderBottom: `2px solid ${accent}`,
                     width: "100%", outline: "none", padding: "0.25rem 0",
-                    marginBottom: "0.75rem", boxSizing: "border-box",
+                    marginBottom: "0.5rem", boxSizing: "border-box",
                   }}
                 />
               ) : (
@@ -659,20 +669,24 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   title={t("clickToEdit")}
                   style={{
                     fontFamily: T.font.display, fontSize: "1.625rem", fontWeight: 600,
-                    color: T.color.charcoal, margin: "0 0 0.75rem 0",
+                    color: T.color.charcoal, margin: "0 0 0.5rem 0",
                     cursor: "text", lineHeight: 1.3,
                     borderBottom: "2px solid transparent",
                     transition: "border-color .15s",
+                    display: "flex", alignItems: "baseline", gap: "0.5rem",
                   }}
                   onMouseEnter={e => (e.currentTarget.style.borderColor = T.color.cream)}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = "transparent")}
                 >
                   {mem.title}
+                  <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke={T.color.sandstone} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.5 }}>
+                    <path d="M3 17l4-4"/><path d="M7 13L15 3c1.5-1.5 3.5-.5 3 2L14 13c-.5 1-1.5 1.5-3 1.5H7z"/>
+                  </svg>
                 </h2>
               )
             )}
 
-            {/* ── B. Description/Story — expandable ── */}
+            {/* ── B. Description/Story — always visible ── */}
             {!isLocked && (
               editingDesc ? (
                 <textarea
@@ -680,14 +694,14 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   onChange={e => setDesc(e.target.value)}
                   onBlur={saveDesc}
                   placeholder={t("descriptionPlaceholder")}
-                  rows={4}
+                  rows={6}
                   autoFocus
                   style={{
-                    width: "100%", padding: "0.75rem", borderRadius: "0.625rem",
+                    width: "100%", padding: "1rem", borderRadius: "0.75rem",
                     border: `1px solid ${accent}40`, background: T.color.white,
-                    fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
-                    outline: "none", boxSizing: "border-box", marginBottom: "1rem",
-                    resize: "vertical", lineHeight: 1.7, minHeight: "6rem",
+                    fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.charcoal,
+                    outline: "none", boxSizing: "border-box", marginBottom: "1.25rem",
+                    resize: "vertical", lineHeight: 1.8, minHeight: "8rem",
                   }}
                 />
               ) : (
@@ -695,19 +709,28 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   onClick={() => setEditingDesc(true)}
                   title={t("clickToEdit")}
                   style={{
-                    fontFamily: T.font.body, fontSize: "0.875rem",
-                    color: (mem.desc || desc) ? T.color.walnut : T.color.muted,
-                    lineHeight: 1.7, marginBottom: "1rem", cursor: "text",
-                    padding: "0.5rem 0.75rem", borderRadius: "0.625rem",
-                    border: `1px dashed ${(mem.desc || desc) ? "transparent" : T.color.cream}`,
+                    fontFamily: T.font.body, fontSize: "0.9375rem",
+                    color: (mem.desc || desc) ? T.color.charcoal : T.color.muted,
+                    lineHeight: 1.8, marginBottom: "1.25rem", cursor: "text",
+                    padding: "0.875rem 1rem", borderRadius: "0.75rem",
+                    background: (mem.desc || desc) ? `${accent}06` : T.color.white,
+                    border: `1px solid ${(mem.desc || desc) ? `${accent}15` : T.color.cream}`,
                     fontStyle: (mem.desc || desc) ? "normal" : "italic",
-                    transition: "border-color .15s, background .15s",
-                    minHeight: "2.5rem",
+                    transition: "border-color .2s, background .2s, box-shadow .2s",
+                    minHeight: (mem.desc || desc) ? "auto" : "3rem",
+                    position: "relative",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = T.color.cream; e.currentTarget.style.background = T.color.white; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = (mem.desc || desc) ? "transparent" : T.color.cream; e.currentTarget.style.background = "transparent"; }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${accent}30`; e.currentTarget.style.boxShadow = `0 2px 8px ${accent}08`; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = (mem.desc || desc) ? `${accent}15` : T.color.cream; e.currentTarget.style.boxShadow = "none"; }}
                 >
-                  {(mem.desc || desc) || t("descriptionPlaceholder")}
+                  {(mem.desc || desc) ? (
+                    <>
+                      {(mem.desc || desc)}
+                      <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke={T.color.sandstone} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "inline-block", marginLeft: "0.375rem", opacity: 0.4, verticalAlign: "middle" }}>
+                        <path d="M3 17l4-4"/><path d="M7 13L15 3c1.5-1.5 3.5-.5 3 2L14 13c-.5 1-1.5 1.5-3 1.5H7z"/>
+                      </svg>
+                    </>
+                  ) : t("descriptionPlaceholder")}
                 </div>
               )
             )}
@@ -731,7 +754,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   }}>
                     <span>{t("target")}</span>
                     <span style={{ fontWeight: 600, color: T.color.walnut }}>
-                      {new Date(mem.resolution.targetDate + "T00:00:00").toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {new Date(mem.resolution.targetDate + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "short", day: "numeric", year: "numeric" })}
                     </span>
                     {(() => {
                       const d = Math.ceil((new Date(mem.resolution.targetDate! + "T00:00:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24));
@@ -856,7 +879,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   icon={<CalendarIcon color={openAction === "date" ? accent : T.color.gold} />}
                   title={t("dateLabel")}
                   value={memDate
-                    ? new Date(memDate + "T00:00:00").toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", { month: "short", day: "numeric", year: "numeric" })
+                    ? new Date(memDate + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "short", day: "numeric", year: "numeric" })
                     : t("addDateCta")}
                   isOpen={openAction === "date"}
                   onToggle={() => toggleAction("date")}
@@ -1279,17 +1302,72 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   id="moveRoom"
                   icon={<DoorIcon color={openAction === "moveRoom" ? accent : T.color.gold} />}
                   title={t("moveToRoom")}
-                  value={room ? room.name : t("unknownRoom")}
+                  value={room ? translateRoomName(room, tWings) : t("unknownRoom")}
                   isOpen={openAction === "moveRoom"}
                   onToggle={() => toggleAction("moveRoom")}
                   accent={accent}
                 >
-                  <div style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-                    fontStyle: "italic",
-                  }}>
-                    {t("moveRoomDesc")}
+                  <div style={{ maxHeight: "16rem", overflowY: "auto" }}>
+                    {getWings().map(w => {
+                      const wRooms = getWingRooms(w.id);
+                      const isExpanded = expandedMoveWing === w.id;
+                      return (
+                        <div key={w.id}>
+                          <button
+                            onClick={() => setExpandedMoveWing(isExpanded ? null : w.id)}
+                            style={{
+                              width: "100%", padding: "0.5rem 0.75rem",
+                              background: isExpanded ? `${w.accent}0A` : "transparent",
+                              border: "none", cursor: "pointer",
+                              display: "flex", alignItems: "center", gap: "0.5rem",
+                              fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                              color: T.color.charcoal,
+                            }}
+                          >
+                            <WingIcon wingId={w.id} size={16} color={w.accent} />
+                            <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(w, tWings)}</span>
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round"
+                              style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
+                              <path d="M4 2l4 4-4 4" />
+                            </svg>
+                          </button>
+                          {isExpanded && wRooms.map(r => {
+                            const isCurrent = r.id === room?.id;
+                            return (
+                              <button key={r.id}
+                                onClick={() => {
+                                  if (!isCurrent && room) {
+                                    moveMemory(room.id, r.id, mem.id);
+                                    setMovedToast(true);
+                                    setTimeout(() => { setMovedToast(false); onClose(); }, 1500);
+                                  }
+                                }}
+                                disabled={isCurrent}
+                                style={{
+                                  width: "100%", padding: "0.375rem 0.75rem 0.375rem 2.25rem",
+                                  background: isCurrent ? `${w.accent}08` : "transparent",
+                                  border: "none", cursor: isCurrent ? "default" : "pointer",
+                                  display: "flex", alignItems: "center", gap: "0.375rem",
+                                  fontFamily: T.font.body, fontSize: "0.75rem",
+                                  color: isCurrent ? T.color.muted : T.color.walnut,
+                                  opacity: isCurrent ? 0.6 : 1,
+                                }}
+                              >
+                                <RoomIcon roomId={r.id} size={14} color={w.accent} />
+                                <span style={{ flex: 1, textAlign: "left" }}>{translateRoomName(r, tWings)}</span>
+                                {isCurrent && <span style={{ fontSize: "0.5625rem", fontWeight: 500, color: w.accent, textTransform: "uppercase" as const }}>{t("currentRoom")}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
                   </div>
+                  {movedToast && (
+                    <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, color: accent, marginTop: "0.5rem" }}>
+                      {t("memoryMoved")}
+                    </div>
+                  )}
                 </ActionCard>
 
                 {/* 10. Time Capsule */}
@@ -1298,7 +1376,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   icon={<HourglassIcon color={openAction === "timeCapsule" ? accent : T.color.gold} />}
                   title={t("timeCapsuleTitle")}
                   value={revealDate
-                    ? new Date(revealDate + "T00:00:00").toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", { month: "short", day: "numeric", year: "numeric" })
+                    ? new Date(revealDate + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "short", day: "numeric", year: "numeric" })
                     : t("setRevealDate")}
                   isOpen={openAction === "timeCapsule"}
                   onToggle={() => toggleAction("timeCapsule")}

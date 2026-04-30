@@ -10,10 +10,15 @@ import {
   NormalPass,
   DepthOfFieldEffect,
 } from "postprocessing";
+import { getQuality } from "./mobilePerf";
 
 /**
  * Enhanced post-processing pipeline with SSAO.
  * Replaces the per-scene boilerplate with a single setup call.
+ *
+ * On mobile devices, expensive effects (SSAO, DOF, Bloom, SMAA) are
+ * automatically disabled based on the quality tier from mobilePerf.ts.
+ * Only a lightweight vignette pass is kept for visual polish.
  */
 
 export interface PostProcessingConfig {
@@ -21,7 +26,7 @@ export interface PostProcessingConfig {
     luminanceThreshold?: number;
     luminanceSmoothing?: number;
     intensity?: number;
-  };
+  } | false;
   vignette?: {
     darkness?: number;
     offset?: number;
@@ -37,6 +42,8 @@ export interface PostProcessingConfig {
     focalLength?: number;
     bokehScale?: number;
   } | false;
+  /** Set false to skip SMAA. Overridden by quality tier on mobile. */
+  smaa?: boolean;
 }
 
 const SCENE_PRESETS: Record<string, PostProcessingConfig> = {
@@ -69,7 +76,18 @@ export function createPostProcessing(
   preset: string = "interior",
   overrides?: Partial<PostProcessingConfig>
 ): EffectComposer {
-  const config = { ...SCENE_PRESETS[preset] || SCENE_PRESETS.interior, ...overrides };
+  const q = getQuality();
+  const baseConfig = { ...SCENE_PRESETS[preset] || SCENE_PRESETS.interior, ...overrides };
+
+  // Apply quality-tier overrides — on mobile, strip heavy effects
+  const config: PostProcessingConfig = {
+    ...baseConfig,
+    ssao: q.ssao ? baseConfig.ssao : false,
+    dof: q.dof ? baseConfig.dof : false,
+    bloom: q.bloom ? baseConfig.bloom : false,
+    smaa: baseConfig.smaa !== false ? q.smaa : false,
+  };
+
   const composer = new EffectComposer(renderer);
 
   // Render pass
@@ -119,7 +137,7 @@ export function createPostProcessing(
     );
   }
 
-  // Vignette
+  // Vignette (kept on all devices — very cheap, adds visual polish)
   if (config.vignette) {
     effects.push(
       new VignetteEffect({
@@ -129,8 +147,10 @@ export function createPostProcessing(
     );
   }
 
-  // SMAA (always last)
-  effects.push(new SMAAEffect());
+  // SMAA (skipped on mobile to save a full-screen pass)
+  if (config.smaa !== false) {
+    effects.push(new SMAAEffect());
+  }
 
   if (effects.length > 0) {
     composer.addPass(new EffectPass(camera, ...effects));

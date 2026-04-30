@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 
 // Max rooms per wing (corridor can grow but keep it sensible)
 export const MAX_ROOMS_PER_WING = 8;
@@ -27,12 +28,12 @@ interface RoomState {
   // Actions
   renameRoom: (wingId: string, roomId: string, name: string) => void;
   changeRoomIcon: (wingId: string, roomId: string, icon: string) => void;
-  addRoom: (wingId: string, name: string, icon: string) => void;
+  addRoom: (wingId: string, name: string, icon: string, defaultName?: string) => void;
   deleteRoom: (wingId: string, roomId: string) => void;
   reorderRoom: (wingId: string, roomId: string, direction: -1 | 1) => void;
 }
 
-// Generate next room ID for a wing (e.g., "fr4", "tr5")
+// Generate next room ID for a wing (e.g., "ro4", "tv5")
 function nextRoomId(wingId: string, rooms: WingRoom[]): string {
   const prefix = wingId.slice(0, 2);
   let max = 0;
@@ -57,6 +58,12 @@ function saveCustomRooms(rooms: Record<string, WingRoom[]>) {
   try { localStorage.setItem("mp_custom_rooms", JSON.stringify(rooms)); } catch {}
 }
 
+let _roomSaveTimer: ReturnType<typeof setTimeout> | null = null;
+function debouncedSaveRooms(rooms: Record<string, WingRoom[]>) {
+  if (_roomSaveTimer) clearTimeout(_roomSaveTimer);
+  _roomSaveTimer = setTimeout(() => { saveCustomRooms(rooms); syncSettingsToServer(); }, 500);
+}
+
 function loadCustomWings(): Record<string, WingCustom> {
   if (typeof window === "undefined") return {};
   try {
@@ -68,6 +75,12 @@ function loadCustomWings(): Record<string, WingCustom> {
 function saveCustomWings(wings: Record<string, WingCustom>) {
   if (typeof window === "undefined") return;
   try { localStorage.setItem("mp_custom_wings", JSON.stringify(wings)); } catch {}
+}
+
+let _wingSaveTimer: ReturnType<typeof setTimeout> | null = null;
+function debouncedSaveWings(wings: Record<string, WingCustom>) {
+  if (_wingSaveTimer) clearTimeout(_wingSaveTimer);
+  _wingSaveTimer = setTimeout(() => { saveCustomWings(wings); syncSettingsToServer(); }, 500);
 }
 
 function applyWingCustom(wing: Wing, custom?: WingCustom): Wing {
@@ -104,25 +117,25 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   renameWing: (wingId, name) => {
     const customWings = { ...get().customWings, [wingId]: { ...get().customWings[wingId], name: name.trim() || undefined } };
     set({ customWings });
-    saveCustomWings(customWings);
+    debouncedSaveWings(customWings);
   },
 
   changeWingIcon: (wingId, icon) => {
     const customWings = { ...get().customWings, [wingId]: { ...get().customWings[wingId], icon } };
     set({ customWings });
-    saveCustomWings(customWings);
+    debouncedSaveWings(customWings);
   },
 
   changeWingAccent: (wingId, accent) => {
     const customWings = { ...get().customWings, [wingId]: { ...get().customWings[wingId], accent } };
     set({ customWings });
-    saveCustomWings(customWings);
+    debouncedSaveWings(customWings);
   },
 
   changeWingDesc: (wingId, desc) => {
     const customWings = { ...get().customWings, [wingId]: { ...get().customWings[wingId], desc: desc.trim() || undefined } };
     set({ customWings });
-    saveCustomWings(customWings);
+    debouncedSaveWings(customWings);
   },
 
   renameRoom: (wingId, roomId, name) => {
@@ -132,7 +145,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     rooms[idx] = { ...rooms[idx], name: name.trim() || rooms[idx].name };
     const customRooms = { ...get().customRooms, [wingId]: rooms };
     set({ customRooms });
-    saveCustomRooms(customRooms);
+    debouncedSaveRooms(customRooms);
   },
 
   changeRoomIcon: (wingId, roomId, icon) => {
@@ -142,24 +155,24 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     rooms[idx] = { ...rooms[idx], icon };
     const customRooms = { ...get().customRooms, [wingId]: rooms };
     set({ customRooms });
-    saveCustomRooms(customRooms);
+    debouncedSaveRooms(customRooms);
   },
 
-  addRoom: (wingId, name, icon) => {
+  addRoom: (wingId, name, icon, defaultName) => {
     const rooms = [...get().getWingRooms(wingId)];
     if (rooms.length >= MAX_ROOMS_PER_WING) return;
     const id = nextRoomId(wingId, rooms);
     rooms.push({
       id,
-      name: name.trim() || "New Room",
-      icon: icon || "fr1",
+      name: name.trim() || defaultName || "New Room",
+      icon: icon || "ro1",
       shared: false,
       sharedWith: [],
       coverHue: Math.floor(Math.random() * 360),
     });
     const customRooms = { ...get().customRooms, [wingId]: rooms };
     set({ customRooms });
-    saveCustomRooms(customRooms);
+    debouncedSaveRooms(customRooms);
   },
 
   deleteRoom: (wingId, roomId) => {
@@ -167,7 +180,7 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     if (rooms.length === 0) return; // Must have at least 1 room
     const customRooms = { ...get().customRooms, [wingId]: rooms };
     set({ customRooms });
-    saveCustomRooms(customRooms);
+    debouncedSaveRooms(customRooms);
   },
 
   reorderRoom: (wingId, roomId, direction) => {
@@ -178,6 +191,16 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     [rooms[idx], rooms[newIdx]] = [rooms[newIdx], rooms[idx]];
     const customRooms = { ...get().customRooms, [wingId]: rooms };
     set({ customRooms });
-    saveCustomRooms(customRooms);
+    debouncedSaveRooms(customRooms);
   },
 }));
+
+// Re-read localStorage when cross-device sync completes
+if (typeof window !== "undefined") {
+  window.addEventListener("mp-settings-synced", () => {
+    useRoomStore.setState({
+      customRooms: loadCustomRooms(),
+      customWings: loadCustomWings(),
+    });
+  });
+}

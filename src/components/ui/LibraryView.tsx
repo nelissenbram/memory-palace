@@ -7,9 +7,11 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useThumbnailBackfill } from "@/lib/hooks/useThumbnailBackfill";
+import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 import { getDemoMems, demosVisible, setDemosHidden } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
+import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import MemoryDetail from "@/components/ui/MemoryDetail";
 import RoomMediaPlayer from "@/components/ui/RoomMediaPlayer";
 import UploadPanel from "@/components/ui/UploadPanel";
@@ -65,15 +67,14 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [currentPath, setCurrentPath] = useState<string>("");
 
-  const providerConfig: Record<string, { browseUrl: string; connectUrl: string }> = {
-    googlePhotos: { browseUrl: "/api/integrations/google/photos", connectUrl: "/api/integrations/google/connect" },
-    dropbox: { browseUrl: "/api/integrations/dropbox/browse", connectUrl: "/api/integrations/dropbox/connect" },
-    onedrive: { browseUrl: "/api/integrations/onedrive/browse", connectUrl: "/api/integrations/onedrive/connect" },
-    applePhotos: { browseUrl: "", connectUrl: "/settings/connections" },
+  const providerConfig: Record<string, { browseUrl: string; connectUrl: string; labelKey: string }> = {
+    google_photos: { browseUrl: "/api/integrations/google/photos", connectUrl: "/api/integrations/google/connect", labelKey: "googlePhotos" },
+    dropbox: { browseUrl: "/api/integrations/dropbox/browse", connectUrl: "/api/integrations/dropbox/connect", labelKey: "dropbox" },
+    onedrive: { browseUrl: "/api/integrations/onedrive/browse", connectUrl: "/api/integrations/onedrive/connect", labelKey: "onedrive" },
   };
 
-  const config = providerConfig[provider] || { browseUrl: "", connectUrl: "" };
-  const providerLabel = t(provider as "googlePhotos" | "dropbox" | "onedrive" | "applePhotos");
+  const config = providerConfig[provider] || { browseUrl: "", connectUrl: "", labelKey: provider };
+  const providerLabel = t(config.labelKey);
 
   const fetchItems = useCallback(async (path: string) => {
     if (!config.browseUrl) {
@@ -89,6 +90,8 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
         return;
       }
       if (!res.ok) {
+        const errBody = await res.text().catch(() => "");
+        console.error(`[CloudBrowser] ${provider} browse failed (${res.status}):`, errBody);
         setStatus("error");
         return;
       }
@@ -247,7 +250,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: "auto", padding: "1.25rem 1.5rem" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "1.25rem 1.5rem", contain: "layout" }}>
           {status === "loading" && (
             <div style={{ textAlign: "center", padding: "3rem 0" }}>
               <div style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>{t("cloudBrowseLoading")}</div>
@@ -329,7 +332,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
                       transition: "all .15s", padding: 0,
                     }}>
                     {item.thumbnailUrl ? (
-                      <img src={item.thumbnailUrl} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                      <img src={item.thumbnailUrl} alt={item.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                     ) : (
                       <svg width="2rem" height="2rem" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="1.5" style={{ opacity: 0.3 }}>
                         <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -391,6 +394,7 @@ export default function LibraryView() {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const { getWings, getWingRooms } = useRoomStore();
   const { userMems, fetchRoomMemories } = useMemoryStore();
   const { setNavMode, enterCorridor, enterRoom, activeWing: storeActiveWing } = usePalaceStore();
@@ -398,7 +402,7 @@ export default function LibraryView() {
   const { addMemory, updateMemory, deleteMemory, moveMemory } = useMemoryStore();
 
   const wings = getWings();
-  const [selectedWing, setSelectedWing] = useState<string>(wings[0]?.id || "family");
+  const [selectedWing, setSelectedWing] = useState<string>(wings[0]?.id || "roots");
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
@@ -417,6 +421,11 @@ export default function LibraryView() {
     return "grid";
   });
   const [cloudBrowserProvider, setCloudBrowserProvider] = useState<string | null>(null);
+  const [pickerStatus, setPickerStatus] = useState<"idle" | "opening" | "waiting" | "importing" | "done" | "error">("idle");
+  const [pickerError, setPickerError] = useState<string>("");
+  const [pickerUri, setPickerUri] = useState<string>("");
+  const [pickerImportCount, setPickerImportCount] = useState(0);
+  const pickerPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [showImportHub, setShowImportHub] = useState(false);
   const [showDemos, setShowDemos] = useState(() => demosVisible());
   const [activeToolPanel, setActiveToolPanel] = useState<"writeStory" | "aiLabel" | "addLocation" | null>(null);
@@ -522,9 +531,150 @@ export default function LibraryView() {
     setShowManualSortBanner(false);
   }, []);
 
-  const handleCloudProvider = useCallback((provider: string) => {
+  const handleCloudProvider = useCallback(async (provider: string) => {
     setShowImportHub(false);
+
+    // Google Photos uses the Picker API (popup/tab flow) instead of CloudBrowser
+    if (provider === "google_photos") {
+      setPickerStatus("opening");
+      setPickerError("");
+      try {
+        // 1. Create picker session
+        const sessionRes = await fetch("/api/integrations/google/picker/session", { method: "POST" });
+        if (!sessionRes.ok) {
+          const err = await sessionRes.json().catch(() => ({ error: t("gpConnectionFailed") }));
+          if (sessionRes.status === 404) {
+            window.location.href = "/api/integrations/google/connect";
+            return;
+          }
+          setPickerError(err.error || t("gpOpenFailed"));
+          setPickerStatus("error");
+          return;
+        }
+        const { sessionId, pickerUri: uri } = await sessionRes.json();
+
+        // Save session to localStorage so we can resume if page reloads
+        localStorage.setItem("gphoto_picker_session", JSON.stringify({
+          sessionId, roomId: selectedRoom, ts: Date.now(),
+        }));
+
+        // 2. Show picker link in overlay — user opens it themselves
+        setPickerUri(uri);
+        setPickerStatus("waiting");
+
+        // 3. Start polling
+        startPickerPolling(sessionId, selectedRoom);
+      } catch (err) {
+        setPickerError(err instanceof Error ? err.message : t("gpUnknownError"));
+        setPickerStatus("error");
+      }
+      return;
+    }
+
     setCloudBrowserProvider(provider);
+  }, [selectedRoom, fetchRoomMemories, t]);
+
+  // Picker polling logic — extracted so it can be called on mount (resume) and on click
+  const startPickerPolling = useCallback((sessionId: string, roomId: string | null) => {
+    if (pickerPollRef.current) clearInterval(pickerPollRef.current);
+    const maxPollTime = Date.now() + 10 * 60 * 1000;
+    pickerPollRef.current = setInterval(async () => {
+      if (Date.now() > maxPollTime) {
+        clearInterval(pickerPollRef.current!);
+        pickerPollRef.current = null;
+        localStorage.removeItem("gphoto_picker_session");
+        setPickerStatus("idle");
+        return;
+      }
+      // Poll — swallow transient network errors so polling continues
+      let pollData: { mediaItemsSet?: boolean };
+      try {
+        const pollRes = await fetch(`/api/integrations/google/picker/poll?sessionId=${sessionId}`);
+        if (!pollRes.ok) return;
+        pollData = await pollRes.json();
+      } catch {
+        return; // Transient poll error — retry next interval
+      }
+      if (!pollData.mediaItemsSet) return;
+
+      // User finished selecting — stop polling and import
+      clearInterval(pickerPollRef.current!);
+      pickerPollRef.current = null;
+      localStorage.removeItem("gphoto_picker_session");
+      setPickerStatus("importing");
+
+      try {
+        const itemsRes = await fetch(`/api/integrations/google/picker/items?sessionId=${sessionId}`);
+        if (!itemsRes.ok) {
+          const errBody = await itemsRes.json().catch(() => ({ error: `HTTP ${itemsRes.status}` }));
+          setPickerError(errBody.error || `Failed (${itemsRes.status})`);
+          setPickerStatus("error");
+          return;
+        }
+        const { items } = await itemsRes.json();
+        if (!items || items.length === 0) {
+          setPickerStatus("idle");
+          return;
+        }
+
+        const targetRoom = roomId;
+        if (!targetRoom) {
+          setPickerError(t("googlePhotosPickerNoRoom"));
+          setPickerStatus("error");
+          return;
+        }
+        const importRes = await fetch("/api/integrations/google/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mediaItems: items, roomId: targetRoom }),
+        });
+        const importData = await importRes.json().catch(() => null);
+        if (!importRes.ok) {
+          setPickerError(importData?.error || t("gpImportFailed"));
+          setPickerStatus("error");
+          return;
+        }
+        const succeeded = importData?.summary?.succeeded ?? items.length;
+        const failedResults = (importData?.results || []).filter((r: { success: boolean }) => !r.success);
+        if (succeeded === 0 && failedResults.length > 0) {
+          setPickerError(failedResults.map((r: { error?: string }) => r.error).join(", "));
+          setPickerStatus("error");
+          return;
+        }
+        await fetchRoomMemories(targetRoom);
+        setPickerImportCount(succeeded);
+        setPickerStatus("done");
+      } catch (err) {
+        console.error("[Google Picker] Import/refresh error:", err);
+        setPickerError(err instanceof Error ? err.message : t("gpImportFailed"));
+        setPickerStatus("error");
+      }
+    }, 3000);
+  }, [t, fetchRoomMemories]);
+
+  // On mount: resume polling if there's a pending picker session (user navigated away and back)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("gphoto_picker_session");
+      if (!saved) return;
+      const { sessionId, roomId, ts } = JSON.parse(saved);
+      // Only resume if session is less than 10 minutes old
+      if (Date.now() - ts > 10 * 60 * 1000) {
+        localStorage.removeItem("gphoto_picker_session");
+        return;
+      }
+      setPickerStatus("waiting");
+      startPickerPolling(sessionId, roomId);
+    } catch {
+      localStorage.removeItem("gphoto_picker_session");
+    }
+  }, [startPickerPolling]);
+
+  // Cleanup picker polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pickerPollRef.current) clearInterval(pickerPollRef.current);
+    };
   }, []);
 
   // Helper: read file as data URL with timeout (prevents Samsung browser hangs)
@@ -542,7 +692,7 @@ export default function LibraryView() {
   }, []);
 
   const handleImportFiles = useCallback(async (files: QueuedFile[], explicitRoomId?: string) => {
-    // Prefer explicit room from ImportHub selector; fall back to current selection
+    // Prefer explicit room from import selector; fall back to current selection
     let targetRoom = explicitRoomId || selectedRoom;
     if (!targetRoom) {
       const rooms = selectedWing === "__all__" ? wings.flatMap(w => getWingRooms(w.id)) : getWingRooms(selectedWing);
@@ -788,6 +938,16 @@ export default function LibraryView() {
   }, [wings, getWingRooms]);
 
   const { setShowSharedWithMe } = useUIPanelStore();
+  const globalShowImportHub = useUIPanelStore((s) => s.showImportHub);
+  const setGlobalShowImportHub = useUIPanelStore((s) => s.setShowImportHub);
+
+  // Open ImportHub when triggered from another view (e.g. 3D palette)
+  useEffect(() => {
+    if (globalShowImportHub) {
+      setShowImportHub(true);
+      setGlobalShowImportHub(false);
+    }
+  }, [globalShowImportHub, setGlobalShowImportHub]);
 
   const sharedCount = useMemo(() => {
     let count = 0;
@@ -878,6 +1038,7 @@ export default function LibraryView() {
   return (
     <div style={{
       width: "100vw", height: "100dvh", display: "flex", flexDirection: isMobile ? "column" : "row",
+      paddingTop: isMobile ? undefined : "4.5rem",
       background: `linear-gradient(175deg, ${T.color.linen} 0%, ${T.color.warmStone} 55%, ${T.color.cream} 100%)`, fontFamily: T.font.body, overflow: "hidden",
     }}>
       <LibraryStyles />
@@ -908,8 +1069,8 @@ export default function LibraryView() {
                 isMobile={isMobile}
                 onAddWing={() => setShowWingManager(true)}
                 onAddRoom={() => setShowRoomManager(true)}
-                selectedWingName={currentWing.id === "attic" ? t("storageRoom") : currentWing.name}
-                selectedRoomName={selectedRoom ? (wingRooms.find(r => r.id === selectedRoom)?.name || undefined) : undefined}
+                selectedWingName={currentWing.id === "attic" ? t("storageRoom") : translateWingName(currentWing, tWings)}
+                selectedRoomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
                 sharedCount={sharedCount}
                 onSharedClick={() => setShowSharedWithMe(true)}
               />
@@ -926,15 +1087,15 @@ export default function LibraryView() {
           isMobile={isMobile}
           onAddWing={() => setShowWingManager(true)}
           onAddRoom={() => setShowRoomManager(true)}
-          selectedWingName={currentWing.id === "attic" ? t("storageRoom") : currentWing.name}
-          selectedRoomName={selectedRoom ? (wingRooms.find(r => r.id === selectedRoom)?.name || undefined) : undefined}
+          selectedWingName={currentWing.id === "attic" ? t("storageRoom") : translateWingName(currentWing, tWings)}
+          selectedRoomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
           sharedCount={sharedCount}
           onSharedClick={() => setShowSharedWithMe(true)}
         />
       )}
 
       {/* ═══ MAIN CONTENT ═══ */}
-      <main style={{
+      <main data-nudge="library_room_bar" style={{
         flex: 1, display: "flex", flexDirection: "column",
         overflow: "hidden", minWidth: 0,
         animation: "libFadeIn 0.4s ease both",
@@ -1017,11 +1178,38 @@ export default function LibraryView() {
                       color: isActive ? w.accent : T.color.charcoal,
                       whiteSpace: "nowrap",
                     }}>
-                      {w.id === "attic" ? t("storageRoom") : w.name}
+                      {w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings)}
                     </span>
                   </button>
                 );
               })}
+              {/* Shared with me pill */}
+              {(sharedCount ?? 0) > 0 && (
+                <button
+                  onClick={() => setShowSharedWithMe(true)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "0.25rem",
+                    padding: "0.375rem 0.75rem",
+                    borderRadius: "1rem",
+                    border: `0.0625rem solid ${T.color.sage}55`,
+                    background: `${T.color.sage}10`,
+                    cursor: "pointer", flexShrink: 0,
+                    minHeight: "2.125rem",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.color.sage} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                  </svg>
+                  <span style={{
+                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                    color: T.color.sage, whiteSpace: "nowrap",
+                  }}>
+                    {sharedCount}
+                  </span>
+                </button>
+              )}
               {/* Add wing pill */}
               <button
                 onClick={() => setShowWingManager(true)}
@@ -1104,7 +1292,7 @@ export default function LibraryView() {
                       color: isActive ? currentWing.accent : T.color.charcoal,
                       whiteSpace: "nowrap",
                     }}>
-                      {room.name}
+                      {translateRoomName(room, tWings)}
                     </span>
                   </button>
                 );
@@ -1144,6 +1332,24 @@ export default function LibraryView() {
                   isMobile={isMobile}
                 />
               </div>
+              {/* Enter Palace button */}
+              <button
+                onClick={handleEnter3D}
+                aria-label={t("enterPalace")}
+                style={{
+                  width: "2.5rem", height: "2.5rem", borderRadius: "0.75rem",
+                  border: `0.0625rem solid ${currentWing.accent}44`,
+                  background: `${currentWing.accent}08`,
+                  cursor: "pointer", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={currentWing.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+              </button>
               {/* Sort settings button */}
               <button
                 onClick={() => setMobileSortOpen(prev => !prev)}
@@ -1215,9 +1421,9 @@ export default function LibraryView() {
               <LibraryHeader
                 wingIcon={currentWing.icon}
                 wingId={currentWing.id}
-                wingName={currentWing.name}
+                wingName={translateWingName(currentWing, tWings)}
                 wingDesc={currentWing.desc}
-                roomName={selectedRoom ? (wingRooms.find(r => r.id === selectedRoom)?.name || undefined) : undefined}
+                roomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
                 accent={currentWing.accent}
                 onBack={selectedRoom ? handleBackToRooms : undefined}
                 onAdd={selectedRoom ? () => setShowUploadFor({ wingId: selectedWing, roomId: selectedRoom }) : undefined}
@@ -1337,7 +1543,7 @@ export default function LibraryView() {
                 </span>
               </div>
               <button
-                onClick={() => { setDemosHidden(true); setShowDemos(false); }}
+                onClick={() => { setDemosHidden(true); setShowDemos(false); syncSettingsToServer(); }}
                 style={{
                   flexShrink: 0,
                   padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
@@ -1449,11 +1655,11 @@ export default function LibraryView() {
               }}>
                 {crossWingResults.slice(0, 50).map(({ wing, room, mem }, i) => (
                   <div key={mem.id} role="listitem" style={{
-                    animation: `libCardEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${0.05 + i * 0.035}s both`,
+                    animation: `libCardEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${Math.min(0.05 + i * 0.035, 0.25)}s both`,
                   }}>
                     <LibraryMemoryCard
                       mem={mem}
-                      subtitle={`${wing.icon} ${wing.name} / ${room.icon} ${room.name}`}
+                      subtitle={`${wing.icon} ${translateWingName(wing, tWings)} / ${room.icon} ${translateRoomName(room, tWings)}`}
                       accent={wing.accent}
                       searchQuery={query || undefined}
                       animationIndex={i}
@@ -1634,7 +1840,7 @@ export default function LibraryView() {
                     fontWeight: 600, color: T.color.charcoal,
                     letterSpacing: "0.03em",
                   }}>
-                    {selectedWing === "__all__" ? t("allRooms") : currentWing.id === "attic" ? t("storageRoom") : currentWing.name}
+                    {selectedWing === "__all__" ? t("allRooms") : currentWing.id === "attic" ? t("storageRoom") : translateWingName(currentWing, tWings)}
                   </span>
                 </div>
                 <div style={{
@@ -1655,7 +1861,7 @@ export default function LibraryView() {
                     const thumbMem = mems.find(m => m.dataUrl && m.type === "photo") || mems.find(m => m.dataUrl);
                     return (
                       <div key={room.id} style={{
-                        animation: `libCardEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${0.1 + i * 0.06}s both`,
+                        animation: `libCardEnter 0.4s cubic-bezier(0.22, 1, 0.36, 1) ${Math.min(0.1 + i * 0.06, 0.25)}s both`,
                       }}>
                         <LibraryRoomCard
                           room={room}
@@ -1931,7 +2137,7 @@ export default function LibraryView() {
                       borderRadius: "1rem",
                       background: "rgba(255,255,255,0.5)",
                       overflow: "hidden",
-                      animation: `libFadeIn 0.3s ease ${i * 0.05}s both`,
+                      animation: `libFadeIn 0.3s ease ${Math.min(i * 0.05, 0.25)}s both`,
                     }}>
                       <div style={{
                         aspectRatio: "3 / 2",
@@ -1962,12 +2168,12 @@ export default function LibraryView() {
                 viewMode === "grid" ? (
                   <div role="list" style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr",
+                  gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(15rem, 1fr))",
                   gap: "1.25rem",
                 }}>
                   {filteredRoomMems.slice(0, visibleMemCount).map((mem, i) => (
                     <div key={mem.id} role="listitem" style={{
-                      animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${0.03 + i * 0.03}s both`,
+                      animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${Math.min(0.03 + i * 0.03, 0.25)}s both`,
                       position: "relative",
                     }}>
                       {/* Select checkbox overlay (P1 #6) */}
@@ -2030,7 +2236,7 @@ export default function LibraryView() {
                         textAlign: "left",
                         fontFamily: T.font.body,
                         transition: "all 0.2s ease",
-                        animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${0.03 + i * 0.03}s both`,
+                        animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${Math.min(0.03 + i * 0.03, 0.25)}s both`,
                       }}
                     >
                       {selectMode && (
@@ -2095,7 +2301,7 @@ export default function LibraryView() {
                       const showDate = dateStr !== lastDate;
                       if (showDate) lastDate = dateStr;
                       return (
-                        <div key={mem.id} style={{ marginBottom: "0.75rem", animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${0.03 + i * 0.03}s both` }}>
+                        <div key={mem.id} style={{ marginBottom: "0.75rem", animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${Math.min(0.03 + i * 0.03, 0.25)}s both` }}>
                           {showDate && dateStr && (
                             <div style={{
                               display: "flex", alignItems: "center", gap: "0.5rem",
@@ -2387,6 +2593,7 @@ export default function LibraryView() {
             setMediaPlayerIndex(null);
             setDetailMem({ mem, wingId: selectedWing, roomId: selectedRoom });
           }}
+          onUpdate={(memId, updates) => updateMemory(selectedRoom, memId, updates)}
         />
       )}
 
@@ -2440,6 +2647,148 @@ export default function LibraryView() {
           onImportFiles={handleImportFiles}
           onOpenCloudProvider={handleCloudProvider}
         />
+      )}
+
+      {/* ═══ GOOGLE PHOTOS PICKER OVERLAY ═══ */}
+      {pickerStatus !== "idle" && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(44,44,42,.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            background: "rgba(255,255,255,.96)", borderRadius: "1.25rem",
+            boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18)", border: `0.0625rem solid ${T.color.cream}`,
+            padding: "2rem 2.5rem", textAlign: "center", maxWidth: "24rem", width: "min(24rem, 88vw)",
+          }}>
+            {pickerStatus === "opening" && (
+              <>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="10" width="40" height="28" rx="4" stroke={T.color.terracotta} strokeWidth="2.5" fill="none"/>
+                    <circle cx="24" cy="24" r="8" stroke={T.color.terracotta} strokeWidth="2.5" fill="none"/>
+                    <circle cx="24" cy="24" r="3.5" fill={T.color.terracotta} opacity="0.3"/>
+                    <rect x="16" y="6" width="16" height="6" rx="2" stroke={T.color.terracotta} strokeWidth="2" fill="none"/>
+                    <circle cx="36" cy="16" r="2" fill={T.color.terracotta} opacity="0.5"/>
+                    <style>{`@keyframes gpPulse{0%,100%{opacity:.3}50%{opacity:.7}} [data-gp-pulse]{animation:gpPulse 2s ease-in-out infinite}`}</style>
+                    <circle cx="24" cy="24" r="3.5" fill={T.color.terracotta} data-gp-pulse=""/>
+                  </svg>
+                </div>
+                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+                  {t("googlePhotosPickerOpening")}
+                </p>
+              </>
+            )}
+            {pickerStatus === "waiting" && (
+              <>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="10" width="40" height="28" rx="4" stroke={T.color.terracotta} strokeWidth="2.5" fill="none"/>
+                    <circle cx="24" cy="24" r="8" stroke={T.color.terracotta} strokeWidth="2.5" fill="none"/>
+                    <circle cx="24" cy="24" r="3.5" fill={T.color.terracotta} opacity="0.4"/>
+                    <rect x="16" y="6" width="16" height="6" rx="2" stroke={T.color.terracotta} strokeWidth="2" fill="none"/>
+                    <circle cx="36" cy="16" r="2" fill={T.color.terracotta} opacity="0.5"/>
+                  </svg>
+                </div>
+                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.75rem" }}>
+                  Google Photos
+                </p>
+                <a
+                  href={pickerUri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-block", padding: "0.625rem 1.5rem", borderRadius: "0.5rem",
+                    background: T.color.terracotta, color: T.color.white,
+                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                    textDecoration: "none", marginBottom: "1rem",
+                  }}
+                >
+                  {t("googlePhotosPickerOpenBtn")}
+                </a>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, margin: 0 }}>
+                  {t("googlePhotosPickerWaiting")}
+                </p>
+                <button
+                  onClick={() => { setPickerStatus("idle"); localStorage.removeItem("gphoto_picker_session"); if (pickerPollRef.current) { clearInterval(pickerPollRef.current); pickerPollRef.current = null; } }}
+                  style={{
+                    marginTop: "1rem", padding: "0.375rem 1rem", borderRadius: "0.375rem",
+                    background: "transparent", border: `0.0625rem solid ${T.color.cream}`,
+                    cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                  }}
+                >
+                  {tc("cancel")}
+                </button>
+              </>
+            )}
+            {pickerStatus === "importing" && (
+              <>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <style>{`@keyframes gpSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+                    <circle cx="24" cy="24" r="18" stroke={T.color.cream} strokeWidth="3" fill="none"/>
+                    <path d="M24 6a18 18 0 0 1 18 18" stroke={T.color.terracotta} strokeWidth="3" strokeLinecap="round" fill="none" style={{ transformOrigin: "center", animation: "gpSpin 1s linear infinite" }}/>
+                    <path d="M18 20l-2 8h4l-2 8 10-12h-6l4-8h-8z" fill={T.color.terracotta} opacity="0.6"/>
+                  </svg>
+                </div>
+                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+                  {t("googlePhotosPickerImporting")}
+                </p>
+              </>
+            )}
+            {pickerStatus === "done" && (
+              <>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="24" cy="24" r="20" fill={T.color.terracotta} opacity="0.1"/>
+                    <circle cx="24" cy="24" r="18" stroke={T.color.terracotta} strokeWidth="2.5" fill="none"/>
+                    <path d="M15 24l6 6 12-12" stroke={T.color.terracotta} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                  </svg>
+                </div>
+                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.5rem" }}>
+                  {t("googlePhotosPickerDone", { count: String(pickerImportCount) })}
+                </p>
+                <button
+                  onClick={() => setPickerStatus("idle")}
+                  style={{
+                    marginTop: "0.5rem", padding: "0.5rem 1.5rem", borderRadius: "0.5rem",
+                    background: T.color.terracotta, color: T.color.white,
+                    border: "none", cursor: "pointer",
+                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                  }}
+                >
+                  {tc("close")}
+                </button>
+              </>
+            )}
+            {pickerStatus === "error" && (
+              <>
+                <div style={{ marginBottom: "0.75rem" }}>
+                  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M24 6L44 40H4L24 6z" stroke={T.color.terracotta} strokeWidth="2.5" strokeLinejoin="round" fill="none"/>
+                    <path d="M24 6L44 40H4L24 6z" fill={T.color.terracotta} opacity="0.08"/>
+                    <line x1="24" y1="18" x2="24" y2="30" stroke={T.color.terracotta} strokeWidth="3" strokeLinecap="round"/>
+                    <circle cx="24" cy="35" r="1.75" fill={T.color.terracotta}/>
+                  </svg>
+                </div>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.terracotta, margin: "0 0 1rem" }}>
+                  {pickerError}
+                </p>
+                <button
+                  onClick={() => setPickerStatus("idle")}
+                  style={{
+                    padding: "0.5rem 1.5rem", borderRadius: "0.5rem",
+                    background: T.color.terracotta, color: T.color.white,
+                    border: "none", cursor: "pointer",
+                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                  }}
+                >
+                  {tc("close")}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {/* ═══ CLOUD BROWSER MODAL ═══ */}
@@ -2506,6 +2855,7 @@ export default function LibraryView() {
           <img
             src={lightboxMem.dataUrl}
             alt={lightboxMem.title}
+            decoding="async"
             onClick={e => e.stopPropagation()}
             style={{
               maxWidth: "90vw", maxHeight: "80vh", borderRadius: "0.75rem",
@@ -2583,7 +2933,7 @@ export default function LibraryView() {
             <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${T.color.cream}`, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
-                  {t("writeStoryTitle", { room: wingRooms.find(r => r.id === selectedRoom)?.name || "" })}
+                  {t("writeStoryTitle", { room: (() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : ""; })() })}
                 </h3>
                 <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>{t("writeStoryDesc")}</p>
               </div>
@@ -2960,7 +3310,7 @@ export default function LibraryView() {
                       onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = isExpanded ? `${wing.accent}0A` : "transparent"; }}
                     >
                       <WingIcon wingId={wing.id} size={18} color={wing.accent} />
-                      <span style={{ flex: 1, textAlign: "left" }}>{wing.name}</span>
+                      <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(wing, tWings)}</span>
                       <span style={{
                         fontSize: "0.6875rem", color: T.color.muted,
                         fontWeight: 400,
@@ -3009,7 +3359,7 @@ export default function LibraryView() {
                           onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = isCurrent ? `${wing.accent}08` : "transparent"; }}
                         >
                           <RoomIcon roomId={room.id} size={15} color={wing.accent} />
-                          <span style={{ flex: 1, textAlign: "left" }}>{room.name}</span>
+                          <span style={{ flex: 1, textAlign: "left" }}>{translateRoomName(room, tWings)}</span>
                           {isCurrent && (
                             <span style={{
                               fontSize: "0.625rem",
@@ -3131,7 +3481,7 @@ export default function LibraryView() {
                       onMouseLeave={e => { e.currentTarget.style.background = isExpanded ? `${wing.accent}0A` : "transparent"; }}
                     >
                       <WingIcon wingId={wing.id} size={18} color={wing.accent} />
-                      <span style={{ flex: 1, textAlign: "left" }}>{wing.name}</span>
+                      <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(wing, tWings)}</span>
                       <span style={{ fontSize: "0.6875rem", color: T.color.muted, fontWeight: 400 }}>{wRooms.length}</span>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round"
                         style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease", flexShrink: 0 }}
@@ -3158,7 +3508,7 @@ export default function LibraryView() {
                           onMouseLeave={e => { e.currentTarget.style.background = isCurrent ? `${wing.accent}08` : "transparent"; }}
                         >
                           <RoomIcon roomId={room.id} size={15} color={wing.accent} />
-                          <span style={{ flex: 1, textAlign: "left" }}>{room.name}</span>
+                          <span style={{ flex: 1, textAlign: "left" }}>{translateRoomName(room, tWings)}</span>
                           {isCurrent && (
                             <span style={{
                               fontSize: "0.625rem", fontWeight: 500, color: wing.accent,

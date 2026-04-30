@@ -1,36 +1,46 @@
 {
   "name": "The Memory Palace",
   "short_name": "Memory Palace",
-  "description": "A beautiful 3D sanctuary to preserve your photos, videos, and stories.",
+  "description": "Your memories, given a home.",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "any",
-  "theme_color": "#FAFAF7",
   "background_color": "#FAFAF7",
+  "theme_color": "#9B5A38",
+  "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icons/icon-pwa-192.png",
+      "src": "/icons/android-chrome-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-pwa-512.png",
+      "src": "/icons/android-chrome-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/icon-maskable-512x512.png",
+      "src": "/icons/pwa-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/share-receive",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "media",
+          "accept": ["image/*", "video/*"]
+        }
+      ]
+    }
+  }
 }

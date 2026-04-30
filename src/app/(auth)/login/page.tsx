@@ -36,23 +36,28 @@ function LoginContent() {
     setLoading(true);
     const formData = new FormData(e.currentTarget);
     if (redirect) formData.set("redirect", redirect);
-    const result = await signIn(formData);
+    try {
+      const result = await signIn(formData);
 
-    if (result?.mfaRequired) {
-      // Switch to MFA challenge screen
-      setMfaFactorId(result.factorId);
-      setMfaRedirect(result.redirect ?? null);
-      setMfaStep(true);
-      setLoading(false);
-      setTimeout(() => mfaInputRefs.current[0]?.focus(), 100);
-      return;
-    }
+      if (result?.mfaRequired) {
+        // Switch to MFA challenge screen
+        setMfaFactorId(result.factorId);
+        setMfaRedirect(result.redirect ?? null);
+        setMfaStep(true);
+        setLoading(false);
+        setTimeout(() => mfaInputRefs.current[0]?.focus(), 100);
+        return;
+      }
 
-    // If signIn succeeds it redirects, so we only get here on error
-    if (result?.error) {
-      setError(result.error);
-      setLoading(false);
+      // If signIn succeeds it redirects, so we only get here on error
+      if (result?.error) {
+        setError(result.error);
+      }
+    } catch {
+      // redirect() throws NEXT_REDIRECT — this is expected on success.
+      // If the navigation doesn't happen, fall through to clear loading.
     }
+    setLoading(false);
   }
 
   function handleMfaCodeChange(index: number, value: string) {
@@ -127,7 +132,7 @@ function LoginContent() {
     if (mfaRedirect && mfaRedirect.startsWith("/invite/")) {
       window.location.href = mfaRedirect;
     } else {
-      window.location.href = "/palace";
+      window.location.href = "/atrium";
     }
   }
 

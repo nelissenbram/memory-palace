@@ -2,16 +2,19 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { sendFamilyInviteEmail } from "@/lib/email/send-invite";
+import { serverT, getServerLocale } from "@/lib/i18n/server";
+import { serverError } from "@/lib/i18n/server-errors";
 
 export async function createFamilyGroup(name: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
-  if (!name.trim()) return { error: "Group name is required" };
+  if (!name.trim()) return { error: t("groupNameRequired") };
 
   // Create the group
   const { data: group, error } = await supabase
@@ -49,22 +52,31 @@ export async function createFamilyGroup(name: string) {
 
 export async function inviteFamilyMember(groupId: string, email: string, role: "admin" | "member" = "member") {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
-  if (!email.trim() || !email.includes("@")) return { error: "Valid email is required" };
+  if (!email.trim() || !email.includes("@")) return { error: t("validEmailRequired") };
   const normalizedEmail = email.trim().toLowerCase();
 
-  // Check user has permission (owner or admin)
-  const { data: callerMember } = await supabase
-    .from("family_members")
-    .select("role")
-    .eq("group_id", groupId)
-    .eq("user_id", user.id)
-    .single();
+  // Check caller permission and existing membership in parallel (both are read-only)
+  const [{ data: callerMember }, { data: existingMember }] = await Promise.all([
+    supabase
+      .from("family_members")
+      .select("role")
+      .eq("group_id", groupId)
+      .eq("user_id", user.id)
+      .single(),
+    supabase
+      .from("family_members")
+      .select("id")
+      .eq("group_id", groupId)
+      .eq("email", normalizedEmail)
+      .single(),
+  ]);
 
   // Fallback: if the membership row is missing or RLS blocked the SELECT,
   // check if the user is the group creator (created_by) on family_groups.
@@ -96,18 +108,12 @@ export async function inviteFamilyMember(groupId: string, email: string, role: "
           joined_at: new Date().toISOString(),
         });
     } else {
-      return { error: "You do not have permission to invite members" };
+      return { error: t("noPermissionInvite") };
     }
   }
 
-  // Check if already a member
-  const { data: existingMember } = await supabase
-    .from("family_members")
-    .select("id")
-    .eq("group_id", groupId)
-    .eq("email", normalizedEmail)
-    .single();
-  if (existingMember) return { error: "This person is already in the group" };
+  // Check if already a member (result fetched in parallel above)
+  if (existingMember) return { error: t("alreadyInGroup") };
 
   // Look up if invitee has an account
   const { data: inviteeProfile } = await supabase
@@ -134,24 +140,28 @@ export async function inviteFamilyMember(groupId: string, email: string, role: "
 
   // Send invitation email (non-blocking: log but don't fail the action)
   try {
-    const { data: group } = await supabase
-      .from("family_groups")
-      .select("name")
-      .eq("id", groupId)
-      .single();
-    const { data: inviterProfile } = await supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .single();
+    // Fetch group name, inviter profile, and locale in parallel (independent queries)
+    const [{ data: group }, { data: inviterProfile }, famLocale] = await Promise.all([
+      supabase
+        .from("family_groups")
+        .select("name")
+        .eq("id", groupId)
+        .single(),
+      supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .single(),
+      getServerLocale(),
+    ]);
     const inviterName =
       (inviterProfile?.display_name as string | undefined) ||
       user.email?.split("@")[0] ||
-      "A friend";
+      serverT("aFriend", famLocale);
     const result = await sendFamilyInviteEmail({
       inviterName,
       recipientEmail: normalizedEmail,
-      groupName: (group?.name as string | undefined) || "Family",
+      groupName: (group?.name as string | undefined) || serverT("family", famLocale),
       role: validRole,
     });
     if (!result.success) {
@@ -166,11 +176,12 @@ export async function inviteFamilyMember(groupId: string, email: string, role: "
 
 export async function acceptFamilyInvite(groupId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
   // Find the invite by email
   const { data: invite } = await supabase
@@ -181,7 +192,7 @@ export async function acceptFamilyInvite(groupId: string) {
     .eq("status", "invited")
     .single();
 
-  if (!invite) return { error: "No pending invite found" };
+  if (!invite) return { error: t("noPendingInvite") };
 
   const { error } = await supabase
     .from("family_members")
@@ -207,7 +218,8 @@ export async function acceptFamilyInvite(groupId: string) {
         .select("display_name")
         .eq("id", user.id)
         .single();
-      const joinedName = profile?.display_name || user.email || "Someone";
+      const joinLocale = await getServerLocale();
+      const joinedName = profile?.display_name || user.email || serverT("someone", joinLocale);
       const { notifyFamilyJoined } = await import("@/lib/auth/notification-actions");
       await notifyFamilyJoined({ ownerId: group.created_by, joinedName });
     }
@@ -220,11 +232,12 @@ export async function acceptFamilyInvite(groupId: string) {
 
 export async function removeFamilyMember(groupId: string, userId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
   // Check caller has permission (owner or admin)
   const { data: callerMember } = await supabase
@@ -246,13 +259,13 @@ export async function removeFamilyMember(groupId: string, userId: string) {
     isCreatorForRemove = !!group;
   }
 
-  if (!userId) return { error: "Invalid user ID" };
+  if (!userId) { const t = await serverError(); return { error: t("invalidUserId") }; }
 
   // Allow self-removal or owner/admin removal
   const isSelf = userId === user.id;
   const isPrivileged = callerMember && ["owner", "admin"].includes(callerMember.role);
   if (!isSelf && !isPrivileged && !isCreatorForRemove) {
-    return { error: "You do not have permission to remove members" };
+    return { error: t("noPermissionRemove") };
   }
 
   // Prevent owner from being removed
@@ -263,7 +276,7 @@ export async function removeFamilyMember(groupId: string, userId: string) {
     .eq("user_id", userId)
     .single();
   if (targetMember?.role === "owner" && !isSelf) {
-    return { error: "Cannot remove the group owner" };
+    return { error: t("cannotRemoveOwner") };
   }
 
   const { error } = await supabase
@@ -307,13 +320,14 @@ export async function removeFamilyMember(groupId: string, userId: string) {
 
 export async function updateFamilyGroup(groupId: string, updates: { name: string }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
-  if (!updates.name?.trim()) return { error: "Group name is required" };
+  if (!updates.name?.trim()) return { error: t("groupNameRequired") };
 
   // Check caller has permission (owner or admin)
   const { data: callerMember } = await supabase
@@ -336,7 +350,7 @@ export async function updateFamilyGroup(groupId: string, updates: { name: string
   }
 
   if (!callerMember || (!["owner", "admin"].includes(callerMember.role) && !isCreator)) {
-    return { error: "You do not have permission to rename this group" };
+    return { error: t("noPermissionRename") };
   }
 
   const { error } = await supabase
@@ -350,11 +364,12 @@ export async function updateFamilyGroup(groupId: string, updates: { name: string
 
 export async function deleteFamilyGroup(groupId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
   // Only the creator can delete the group
   const { data: group } = await supabase
@@ -365,7 +380,7 @@ export async function deleteFamilyGroup(groupId: string) {
     .single();
 
   if (!group) {
-    return { error: "Only the group creator can delete this group" };
+    return { error: t("onlyCreatorCanDelete") };
   }
 
   // Delete all family_members rows for this group first
@@ -516,11 +531,12 @@ export async function getAllFamilyGroups() {
 /** Cancel a pending invite by its family_members row id (for invited members without a user_id). */
 export async function cancelFamilyInvite(groupId: string, memberId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
   // Check caller has permission (owner or admin)
   const { data: callerMember } = await supabase
@@ -542,7 +558,7 @@ export async function cancelFamilyInvite(groupId: string, memberId: string) {
     isCreator = !!group;
   }
   if (!callerMember || (!["owner", "admin"].includes(callerMember.role) && !isCreator)) {
-    return { error: "You do not have permission to cancel invites" };
+    return { error: t("noPermissionCancelInvites") };
   }
 
   // Verify the target is actually a pending invite
@@ -552,8 +568,8 @@ export async function cancelFamilyInvite(groupId: string, memberId: string) {
     .eq("id", memberId)
     .eq("group_id", groupId)
     .single();
-  if (!target) return { error: "Invite not found" };
-  if (target.status !== "invited") return { error: "Member is already active, use remove instead" };
+  if (!target) return { error: t("invitationNotFound") };
+  if (target.status !== "invited") return { error: t("memberAlreadyActive") };
 
   const { error } = await supabase
     .from("family_members")
@@ -572,14 +588,15 @@ export async function updateFamilyMemberRole(
   newRole: "admin" | "member"
 ) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
   if (!["admin", "member"].includes(newRole)) {
-    return { error: "Invalid role" };
+    { const t = await serverError(); return { error: t("invalidRole") }; }
   }
 
   // Permission check: owner/admin or group creator
@@ -601,7 +618,7 @@ export async function updateFamilyMemberRole(
     isCreator = !!group;
   }
   if (!callerMember || (!["owner", "admin"].includes(callerMember.role) && !isCreator)) {
-    return { error: "You do not have permission to change roles" };
+    return { error: t("noPermissionChangeRoles") };
   }
 
   // Cannot modify the owner's role
@@ -611,8 +628,8 @@ export async function updateFamilyMemberRole(
     .eq("group_id", groupId)
     .eq("user_id", targetUserId)
     .single();
-  if (!targetMember) return { error: "Member not found" };
-  if (targetMember.role === "owner") return { error: "Cannot change the owner's role" };
+  if (!targetMember) { const t = await serverError(); return { error: t("memberNotFound") }; }
+  if (targetMember.role === "owner") return { error: t("cannotChangeOwnerRole") };
 
   const { error } = await supabase
     .from("family_members")
@@ -653,11 +670,11 @@ export async function getFamilyMembers(groupId: string) {
 // Privacy control: update allow_download on a room share
 export async function updateShareDownloadPermission(shareId: string, allowDownload: boolean) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { error } = await supabase
     .from("room_shares")
@@ -672,11 +689,11 @@ export async function updateShareDownloadPermission(shareId: string, allowDownlo
 // Privacy control: update show_public on a room
 export async function updateRoomPublicVisibility(localRoomId: string, showPublic: boolean) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { data: room } = await supabase
     .from("rooms")
@@ -684,7 +701,7 @@ export async function updateRoomPublicVisibility(localRoomId: string, showPublic
     .eq("user_id", user.id)
     .eq("name", localRoomId)
     .single();
-  if (!room) return { error: "Room not found" };
+  if (!room) { const t = await serverError(); return { error: t("roomNotFound") }; }
 
   const { error } = await supabase
     .from("rooms")
@@ -698,11 +715,11 @@ export async function updateRoomPublicVisibility(localRoomId: string, showPublic
 // Privacy control: update a share's permission level
 export async function updateSharePermission(shareId: string, permission: "view" | "contribute" | "admin") {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const validPermission = ["view", "contribute", "admin"].includes(permission) ? permission : "view";
 

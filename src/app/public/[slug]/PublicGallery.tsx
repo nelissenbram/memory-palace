@@ -579,6 +579,7 @@ function MemoryLightbox({
               controls
               autoPlay
               playsInline
+              preload="metadata"
               style={{
                 width: "100%",
                 maxHeight: "60vh",

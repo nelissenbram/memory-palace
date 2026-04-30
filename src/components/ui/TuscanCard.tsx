@@ -70,7 +70,6 @@ export default function TuscanCard({
 
   return (
     <div
-      className={className}
       style={{
         ...base,
         padding,
@@ -81,32 +80,22 @@ export default function TuscanCard({
           : {}),
         ...(liftable
           ? {
-              transition: `transform 0.3s ${EASE}, box-shadow 0.3s ${EASE}`,
+              transition: `transform 0.3s ${EASE}`,
             }
           : {}),
         ...style,
       }}
-      onMouseEnter={
-        liftable
-          ? (e) => {
-              const el = e.currentTarget;
-              el.style.transform = "translateY(-0.125rem)";
-              el.style.boxShadow =
-                "0 0.75rem 2rem rgba(0,0,0,0.1), 0 0.125rem 0.5rem rgba(0,0,0,0.04)";
-            }
-          : undefined
-      }
-      onMouseLeave={
-        liftable
-          ? (e) => {
-              const el = e.currentTarget;
-              el.style.transform = "";
-              el.style.boxShadow = "";
-            }
-          : undefined
-      }
+      className={[className, liftable ? "tuscan-card-liftable" : ""].filter(Boolean).join(" ")}
     >
       {children}
+      {liftable && (
+        <style>{`
+          .tuscan-card-liftable:hover {
+            transform: translateY(-0.125rem);
+            box-shadow: 0 0.75rem 2rem rgba(0,0,0,0.1), 0 0.125rem 0.5rem rgba(0,0,0,0.04) !important;
+          }
+        `}</style>
+      )}
     </div>
   );
 }

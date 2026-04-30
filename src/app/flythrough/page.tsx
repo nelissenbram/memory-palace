@@ -14,9 +14,7 @@ const InteriorScene = dynamic(() => import("@/components/3d/InteriorScene"), { s
 
 // Sample memories for the room scene — combine all family room defaults
 const SAMPLE_MEMORIES: Mem[] = [
-  ...(ROOM_MEMS["fr1"] || []),
-  ...(ROOM_MEMS["fr2"] || []),
-  ...(ROOM_MEMS["fr3"] || []),
+  ...(ROOM_MEMS["ro1"] || []),
 ].map(m => ({ ...m, displayed: true }));
 
 // ═══ DEV TOOL — Cinematic flythrough recorder ═══
@@ -185,7 +183,7 @@ export default function FlythroughPage() {
       case 2:
         return (
           <CorridorScene
-            wingId="family"
+            wingId="roots"
             onDoorHover={noop}
             onDoorClick={noop}
             hoveredDoor={null}
@@ -195,8 +193,8 @@ export default function FlythroughPage() {
       case 3:
         return (
           <InteriorScene
-            roomId="family"
-            actualRoomId="fr1"
+            roomId="roots"
+            actualRoomId="ro1"
             memories={SAMPLE_MEMORIES}
             onMemoryClick={noop}
             styleEra="roman"

@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useAchievementStore, ACHIEVEMENTS, type Achievement } from "@/lib/stores/achievementStore";
 import { AchievementIcon } from "./AtriumWidgets";
+import { shareAchievement } from "@/lib/native/share";
 
 /** Roman laurel wreath trophy icon for the panel header */
 function TrophyIcon({ size = 28 }: { size?: number }) {
@@ -42,6 +43,17 @@ function LockedBadgeIcon({ size = 20 }: { size?: number }) {
   );
 }
 
+/** Share (arrow-up-from-box) icon */
+function ShareIcon({ size = 16, color }: { size?: number; color: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 1.5v8" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
+      <path d="M5 4.5L8 1.5l3 3" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 8.5v5a1 1 0 001 1h8a1 1 0 001-1v-5" stroke={color} strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 const CATEGORIES = [
   { key: "memories" as const, labelKey: "catMemories", iconId: "first_memory" },
   { key: "social" as const, labelKey: "catSocial", iconId: "generous_host" },
@@ -60,6 +72,14 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { earnedIds, earnedDates, getProgress } = useAchievementStore();
   const { earned, total, percentage } = getProgress();
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2500);
+  }, []);
 
   return (
     <div
@@ -134,9 +154,11 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           }}
         >
           <div style={{
-            width: `${percentage}%`, height: "100%", borderRadius: "0.25rem",
+            width: "100%", height: "100%", borderRadius: "0.25rem",
             background: `linear-gradient(90deg, ${T.color.goldLight}, ${T.color.gold})`,
-            transition: "width .6s ease",
+            transform: `scaleX(${percentage / 100})`,
+            transformOrigin: "left center",
+            transition: "transform .6s ease",
           }} />
         </div>
 
@@ -163,22 +185,51 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
                     earned={earnedIds.includes(ach.id)}
                     earnedDate={earnedDates[ach.id]}
                     highlighted={ach.id === highlightId}
+                    onShareToast={showToast}
                   />
                 ))}
               </div>
             </div>
           );
         })}
+
+        {/* Toast */}
+        {toast && (
+          <div style={{
+            position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)",
+            padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+            background: T.color.charcoal, color: T.color.white,
+            fontFamily: T.font.body, fontSize: "0.8125rem",
+            boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,.25)",
+            zIndex: 110, animation: "fadeIn .2s ease",
+          }}>
+            {toast}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function AchievementCard({ achievement, earned, earnedDate, highlighted }: {
+function AchievementCard({ achievement, earned, earnedDate, highlighted, onShareToast }: {
   achievement: Achievement; earned: boolean; earnedDate?: string; highlighted?: boolean;
+  onShareToast: (msg: string) => void;
 }) {
   const { t } = useTranslation("achievementsPanel");
   const cardRef = useRef<HTMLDivElement>(null);
+
+  const handleShare = useCallback(async () => {
+    const name = t(achievement.titleKey);
+    const text = t("shareText", { name });
+    const usedClipboard = !(
+      (typeof navigator !== "undefined" && navigator.share) ||
+      (await import("@capacitor/core")).Capacitor.isNativePlatform()
+    );
+    const ok = await shareAchievement(name, text);
+    if (ok && usedClipboard) {
+      onShareToast(t("copiedToClipboard"));
+    }
+  }, [achievement.titleKey, onShareToast, t]);
 
   useEffect(() => {
     if (highlighted && cardRef.current) {
@@ -263,6 +314,26 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted }: {
           </div>
         )}
       </div>
+      {/* Share button — earned only */}
+      {earned && (
+        <button
+          onClick={handleShare}
+          aria-label={t("shareButton")}
+          title={t("shareButton")}
+          style={{
+            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem",
+            border: `1px solid ${T.color.gold}44`,
+            background: `${T.color.goldLight}15`,
+            cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, transition: "background .15s, opacity .15s",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.goldLight}33`; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.goldLight}15`; }}
+        >
+          <ShareIcon size={14} color={T.color.gold} />
+        </button>
+      )}
       {/* Earned shimmer */}
       {earned && (
         <div style={{

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getAllPosts } from "@/lib/blog/posts";
 
 const BASE_URL = "https://thememorypalace.ai";
 
@@ -13,12 +14,22 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/privacy", priority: 0.3, changeFrequency: "yearly" as const },
     { path: "/terms", priority: 0.3, changeFrequency: "yearly" as const },
     { path: "/security", priority: 0.3, changeFrequency: "yearly" as const },
+    { path: "/blog", priority: 0.7, changeFrequency: "weekly" as const },
   ];
 
-  return publicPages.map(({ path, priority, changeFrequency }) => ({
+  const staticEntries = publicPages.map(({ path, priority, changeFrequency }) => ({
     url: `${BASE_URL}${path}`,
     lastModified: now,
     changeFrequency,
     priority,
   }));
+
+  const blogEntries = getAllPosts().map((post) => ({
+    url: `${BASE_URL}/blog/${post.slug}`,
+    lastModified: new Date(post.date),
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+
+  return [...staticEntries, ...blogEntries];
 }

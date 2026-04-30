@@ -320,7 +320,7 @@ export const OnThisDayCard = React.memo(function OnThisDayCard({ memories, onMem
    2. SharedRoomsPreview — "Shared Spaces" with sage theme
    ═══════════════════════════════════════════════════════════ */
 export interface SharedRoomsPreviewProps {
-  sharedRooms: { id: string; name: string; icon: string; wingName: string; memoryCount: number; wingId?: string }[];
+  sharedRooms: { id: string; name: string; nameKey?: string; icon: string; wingName: string; memoryCount: number; wingId?: string }[];
   onRoomClick: (roomId: string) => void;
   onViewAll: () => void;
   isMobile: boolean;
@@ -329,6 +329,7 @@ export interface SharedRoomsPreviewProps {
 
 export const SharedRoomsPreview = React.memo(function SharedRoomsPreview({ sharedRooms, onRoomClick, onViewAll, isMobile, loading }: SharedRoomsPreviewProps) {
   const { t } = useTranslation("atrium");
+  const { t: tWings } = useTranslation("wings");
 
   if (loading) {
     return (
@@ -519,7 +520,7 @@ export const SharedRoomsPreview = React.memo(function SharedRoomsPreview({ share
                     whiteSpace: "nowrap",
                     lineHeight: 1.3,
                   }}>
-                    {room.name}
+                    {(room.nameKey && tWings(room.nameKey)) || room.name}
                   </p>
                   <p style={{
                     fontFamily: T.font.body,
@@ -614,16 +615,19 @@ export interface InterviewPromptProps {
   isMobile: boolean;
 }
 
-/** Maps 1-based example card index to INTERVIEW_TEMPLATES id */
+/** Maps 1-based example card index to INTERVIEW_TEMPLATES id
+ * Must match the order of interview.example{N}Title labels in i18n:
+ * 1=Love Story, 2=Growing Up, 3=Family Traditions, 4=Career Journey,
+ * 5=Parenthood, 6=Friendship, 7=Life Lessons, 8=Travels & Adventures */
 const EXAMPLE_INDEX_TO_TEMPLATE_ID: Record<number, string> = {
-  1: "baseline",
-  2: "family-traditions",
-  3: "growing-up",
-  4: "parents-grandparents",
-  5: "love-story",
-  6: "raising-children",
-  7: "greatest-adventure",
-  8: "places-of-heart",
+  1: "love-story",
+  2: "growing-up",
+  3: "family-traditions",
+  4: "lifes-work",
+  5: "raising-children",
+  6: "mentors-lessons",
+  7: "life-wisdom",
+  8: "greatest-adventure",
 };
 
 /** CSS sound-wave bars (decorative, cinematic) */

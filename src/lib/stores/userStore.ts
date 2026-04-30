@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
-import { completeOnboarding } from "@/lib/auth/profile-actions";
+import { completeOnboarding, migrateWingSlugs } from "@/lib/auth/profile-actions";
 
 export interface BustPedestalData {
   faceUrl: string;
@@ -21,9 +21,9 @@ interface UserState {
   bustProportions: Record<string, number> | null;
   bustName: string | null;
   bustGender: string | null;
-  accessibilityMode: boolean;
+  accessibilityMode: string;
   bustPedestals: Record<number, BustPedestalData>;
-  setAccessibilityMode: (v: boolean) => void;
+  setAccessibilityMode: (v: string) => void;
   setOnboardStep: (step: number | ((s: number) => number)) => void;
   setUserName: (name: string) => void;
   setUserGoal: (goal: string) => void;
@@ -53,7 +53,7 @@ export const useUserStore = create<UserState>((set, get) => ({
   bustProportions: null,
   bustName: null,
   bustGender: null,
-  accessibilityMode: false,
+  accessibilityMode: "standard",
   bustPedestals: {},
 
   setAccessibilityMode: (v) => set({ accessibilityMode: v }),
@@ -107,9 +107,11 @@ export const useUserStore = create<UserState>((set, get) => ({
         } else if (profile.bust_texture_url) {
           pedestals = { 0: { faceUrl: profile.bust_texture_url, name: profile.bust_name || profile.display_name || "", gender: (profile.bust_gender as "male" | "female") || "male" } };
         }
-        set({ onboarded: true, userName: profile.display_name || "", styleEra: profile.style_era || null, bustTextureUrl: profile.bust_texture_url || null, bustModelUrl: profile.bust_model_url || null, bustName: profile.bust_name || null, bustGender: profile.bust_gender || null, bustPedestals: pedestals, accessibilityMode: !!profile.accessibility_mode });
+        set({ onboarded: true, userName: profile.display_name || "", styleEra: profile.style_era || null, bustTextureUrl: profile.bust_texture_url || null, bustModelUrl: profile.bust_model_url || null, bustName: profile.bust_name || null, bustGender: profile.bust_gender || null, bustPedestals: pedestals, accessibilityMode: profile.accessibility_mode || "standard" });
         // Cache onboarded state for offline/fallback scenarios
         try { localStorage.setItem("mp_onboarded", "true"); localStorage.setItem("mp_userName", profile.display_name || ""); } catch { /* ignore */ }
+        // One-time wing slug migration (old→new wing names)
+        migrateWingSlugs().catch(() => {});
       }
       else set({ onboarded: false });
     }

@@ -23,14 +23,14 @@ import {
   getWingsSharedWithMe,
 } from "@/lib/auth/sharing-actions";
 
-const WING_OPTION_IDS = ["family", "travel", "childhood", "career", "creativity"] as const;
+const WING_OPTION_IDS = ["roots", "nest", "craft", "travel", "passions"] as const;
 
 const WING_LABEL_KEYS: Record<string, string> = {
-  family: "wingFamily",
+  roots: "wingRoots",
+  nest: "wingNest",
+  craft: "wingCraft",
   travel: "wingTravel",
-  childhood: "wingChildhood",
-  career: "wingCareer",
-  creativity: "wingCreativity",
+  passions: "wingPassions",
 };
 
 interface WingShare {
@@ -144,7 +144,7 @@ export default function FamilyPage() {
   // Wing sharing state
   const [myWingShares, setMyWingShares] = useState<WingShare[]>([]);
   const [sharedWithMe, setSharedWithMe] = useState<WingShare[]>([]);
-  const [shareWingId, setShareWingId] = useState("family");
+  const [shareWingId, setShareWingId] = useState("roots");
   const [shareMemberEmail, setShareMemberEmail] = useState("");
   const [sharePermission, setSharePermission] = useState<"view" | "contribute">("view");
   const [sharingWing, setSharingWing] = useState(false);

@@ -391,7 +391,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               {t("detectingFace")}
             </h2>
             {preview && (
-              <img src={preview} alt={t("altProcessing")} style={{
+              <img src={preview} alt={t("altProcessing")} decoding="async" style={{
                 width: "6.25rem", height: "6.25rem", objectFit: "cover",
                 borderRadius: "50%", margin: "0 auto 1rem",
                 border: `3px solid ${T.color.sandstone}`,
@@ -437,7 +437,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                 }}>
                   {preview && (
                     <>
-                      <img src={preview} alt={t("original")} style={{
+                      <img src={preview} alt={t("original")} decoding="async" style={{
                         width: "100%", height: "100%", objectFit: "cover",
                       }} />
                       {/* Dimmed overlay with circular crop cutout */}
@@ -477,7 +477,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                   {t("faceCrop")}
                 </div>
                 {croppedFace && (
-                  <img src={croppedFace} alt={t("altCroppedFace")} style={{
+                  <img src={croppedFace} alt={t("altCroppedFace")} decoding="async" style={{
                     width: "6.875rem", height: "6.875rem", objectFit: "cover",
                     borderRadius: "50%",
                     border: `3px solid ${faceDetected ? T.color.sage : T.color.sandstone}`,
@@ -596,7 +596,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
               position: "relative",
             }}>
               {croppedFace && (
-                <img src={croppedFace} alt={t("altSculpting")} style={{
+                <img src={croppedFace} alt={t("altSculpting")} decoding="async" style={{
                   width: "5.625rem", height: "6.875rem", objectFit: "cover",
                   borderRadius: "45% 45% 40% 40%",
                   border: `3px solid ${T.color.sandstone}`,

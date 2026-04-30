@@ -3,10 +3,74 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { translateWingName } from "@/lib/constants/wings";
+
+/* ─── Time-of-day SVG icons (Tuscan style) ─── */
+function TimeOfDayIcon({ tod, size = 24 }: { tod: string; size?: number }) {
+  const gold = T.color.gold;
+  const terracotta = T.color.terracotta;
+  const sage = T.color.sage;
+  const p = { "aria-hidden": true as const, width: size, height: size, viewBox: "0 0 24 24", fill: "none" };
+  switch (tod) {
+    case "earlyBird": // sunrise with rays
+      return (
+        <svg {...p}>
+          <path d="M4 17h16" stroke={gold} strokeWidth="1.2" strokeLinecap="round" />
+          <path d="M6 17c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke={gold} strokeWidth="1.3" fill={`${gold}20`} />
+          <line x1="12" y1="5" x2="12" y2="8" stroke={gold} strokeWidth="1" strokeLinecap="round" />
+          <line x1="5.5" y1="9" x2="7.5" y2="10.5" stroke={gold} strokeWidth="0.8" strokeLinecap="round" />
+          <line x1="18.5" y1="9" x2="16.5" y2="10.5" stroke={gold} strokeWidth="0.8" strokeLinecap="round" />
+          <line x1="3" y1="6.5" x2="5" y2="7.5" stroke={gold} strokeWidth="0.6" strokeLinecap="round" />
+          <line x1="21" y1="6.5" x2="19" y2="7.5" stroke={gold} strokeWidth="0.6" strokeLinecap="round" />
+          <circle cx="12" cy="14" r="1" fill={gold} />
+        </svg>
+      );
+    case "afternoon": // full sun with haze
+      return (
+        <svg {...p}>
+          <circle cx="12" cy="10" r="4.5" stroke={gold} strokeWidth="1.3" fill={`${gold}25`} />
+          <circle cx="12" cy="10" r="1.5" fill={gold} />
+          <line x1="12" y1="2.5" x2="12" y2="4.5" stroke={gold} strokeWidth="1" strokeLinecap="round" />
+          <line x1="12" y1="15.5" x2="12" y2="17.5" stroke={gold} strokeWidth="1" strokeLinecap="round" />
+          <line x1="4.5" y1="10" x2="6.5" y2="10" stroke={gold} strokeWidth="1" strokeLinecap="round" />
+          <line x1="17.5" y1="10" x2="19.5" y2="10" stroke={gold} strokeWidth="1" strokeLinecap="round" />
+          <line x1="6.5" y1="4.5" x2="8" y2="6" stroke={gold} strokeWidth="0.8" strokeLinecap="round" />
+          <line x1="16" y1="6" x2="17.5" y2="4.5" stroke={gold} strokeWidth="0.8" strokeLinecap="round" />
+          <path d="M5 19.5c2-1.5 4.5-2 7-2s5 .5 7 2" stroke={sage} strokeWidth="0.7" fill="none" strokeLinecap="round" />
+        </svg>
+      );
+    case "evening": // sunset behind Tuscan hill
+      return (
+        <svg {...p}>
+          <path d="M2 18c3-2 6-5 10-5s7 3 10 5" stroke={sage} strokeWidth="1" fill={`${sage}12`} />
+          <path d="M8 18c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke={terracotta} strokeWidth="1.3" fill={`${terracotta}25`} />
+          <line x1="12" y1="10" x2="12" y2="12" stroke={terracotta} strokeWidth="0.8" strokeLinecap="round" />
+          <line x1="8.5" y1="11.5" x2="9.5" y2="12.5" stroke={terracotta} strokeWidth="0.7" strokeLinecap="round" />
+          <line x1="15.5" y1="11.5" x2="14.5" y2="12.5" stroke={terracotta} strokeWidth="0.7" strokeLinecap="round" />
+          <path d="M2 18h20" stroke={gold} strokeWidth="1.2" strokeLinecap="round" />
+          <path d="M4 20h16" stroke={`${gold}60`} strokeWidth="0.6" strokeLinecap="round" />
+        </svg>
+      );
+    case "nightOwl": // crescent moon with stars
+      return (
+        <svg {...p}>
+          <path d="M16 5c-4 0-7.5 3-7.5 7.5S12 20 16 20c-5.5 0-10-4-10-7.5S10.5 5 16 5z" stroke={gold} strokeWidth="1.2" fill={`${gold}18`} />
+          <circle cx="16.5" cy="7" r="0.7" fill={gold} />
+          <circle cx="19" cy="10" r="0.5" fill={gold} />
+          <circle cx="17.5" cy="13" r="0.6" fill={gold} />
+          <circle cx="14" cy="5.5" r="0.4" fill={`${gold}70`} />
+          <circle cx="19.5" cy="14.5" r="0.4" fill={`${gold}60`} />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
 
 /* ─── helpers ────────────────────────────────────────────── */
 
@@ -74,6 +138,7 @@ interface StatisticsPanelProps {
 export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("statistics");
+  const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const { userMems } = useMemoryStore();
   const { getWings, getWingRooms } = useRoomStore();
@@ -91,7 +156,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
     const roomToWing: Record<string, { wingId: string; wingName: string }> = {};
     for (const wing of wings) {
       for (const room of getWingRooms(wing.id)) {
-        roomToWing[room.id] = { wingId: wing.id, wingName: wing.name };
+        roomToWing[room.id] = { wingId: wing.id, wingName: translateWingName(wing, tWings) };
       }
     }
 
@@ -143,7 +208,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
 
     // Wing distribution
     const wingDist = wings
-      .map((w) => ({ id: w.id, name: w.name, accent: w.accent, count: wingMemCount[w.id] || 0 }))
+      .map((w) => ({ id: w.id, name: w.name, nameKey: w.nameKey, accent: w.accent, count: wingMemCount[w.id] || 0 }))
       .filter((w) => w.count > 0)
       .sort((a, b) => b.count - a.count);
     const maxWingCount = Math.max(1, ...wingDist.map((w) => w.count));
@@ -270,7 +335,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
       ageInDays,
       longestGapDays,
     };
-  }, [userMems, getWings, getWingRooms]);
+  }, [userMems, getWings, getWingRooms, tWings]);
 
   /* ── donut chart segments ── */
   const donutSegments = useMemo(() => {
@@ -317,7 +382,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
   };
 
   const formatDate = (d: Date | null) =>
-    d ? d.toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", { year: "numeric", month: "short", day: "numeric" }) : "—";
+    d ? d.toLocaleDateString(localeDateCodes[locale as Locale], { year: "numeric", month: "short", day: "numeric" }) : "—";
 
   return (
     <div
@@ -425,9 +490,8 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                 <div style={{
                   width: "3rem", height: "3rem", borderRadius: "0.75rem", flexShrink: 0,
                   background: `${T.color.gold}15`, display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "1.5rem",
                 }}>
-                  {stats.timeOfDay === "earlyBird" ? "\u2600\uFE0F" : stats.timeOfDay === "nightOwl" ? "\uD83C\uDF19" : stats.timeOfDay === "afternoon" ? "\u26C5" : "\uD83C\uDF05"}
+                  <TimeOfDayIcon tod={stats.timeOfDay} size={28} />
                 </div>
                 <div>
                   <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal }}>
@@ -450,7 +514,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                       <span style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: wing.accent, width: "1.5rem" }}>
                         {i === 0 ? "\uD83E\uDD47" : i === 1 ? "\uD83E\uDD48" : "\uD83E\uDD49"}
                       </span>
-                      <span style={bodyStyle}>{wing.name}</span>
+                      <span style={bodyStyle}>{translateWingName(wing, tWings)}</span>
                       <span style={{ ...mutedStyle, marginLeft: "auto" }}>{wing.count} {t("memories")}</span>
                     </div>
                   ))}
@@ -689,8 +753,8 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
             border: `1px solid ${T.color.terracotta}20`,
             textAlign: "center", padding: isMobile ? "1.25rem 1rem" : "1.5rem",
           }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>
-              {stats.timeOfDay === "earlyBird" ? "\u2600\uFE0F" : stats.timeOfDay === "nightOwl" ? "\uD83C\uDF19" : stats.timeOfDay === "afternoon" ? "\u26C5" : "\uD83C\uDF05"}
+            <div style={{ marginBottom: "0.5rem", display: "flex", justifyContent: "center" }}>
+              <TimeOfDayIcon tod={stats.timeOfDay} size={48} />
             </div>
             <div style={{ fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600, color: T.color.charcoal }}>
               {t(`time_${stats.timeOfDay}`)}
@@ -816,7 +880,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                 {stats.wingDist.map((wing) => (
                   <div key={wing.id}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.1875rem" }}>
-                      <span style={bodyStyle}>{wing.name}</span>
+                      <span style={bodyStyle}>{translateWingName(wing, tWings)}</span>
                       <span style={mutedStyle}>{wing.count} {t("memories")}</span>
                     </div>
                     <div style={{ height: "0.5rem", background: T.color.cream, borderRadius: "0.25rem", overflow: "hidden" }}>

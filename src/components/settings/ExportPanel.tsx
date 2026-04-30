@@ -63,6 +63,7 @@ interface ExportPanelProps {
 export default function ExportPanel({ showToast }: ExportPanelProps) {
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const [exportOpen, setExportOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [tree, setTree] = useState<ExportTree | null>(null);
@@ -488,7 +489,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                           : wing.icon}
                       </span>
                       <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal, flex: 1 }}>
-                        {wing.name}
+                        {tWings(wing.slug) || wing.name}
                       </span>
                       <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
                         {totalMems} {t("exportMemLabel")}{totalPhotos > 0 ? ` · ${totalPhotos} ${t("exportPhotoLabel")}` : ""}
@@ -514,7 +515,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                                 ? <RoomIcon roomId={room.roomId} wingId={wing.slug} size={14} color={T.color.walnut} />
                                 : room.icon}
                             </span>
-                            <span style={{ flex: 1 }}>{room.name}</span>
+                            <span style={{ flex: 1 }}>{(room.nameKey && tWings(room.nameKey)) || room.name}</span>
                             <span style={{ fontSize: "0.6875rem", color: T.color.muted }}>
                               {room.memoryCount}{room.photoCount > 0 ? ` · ${room.photoCount} ${t("exportPhotoLabel")}` : ""}
                             </span>
@@ -591,7 +592,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                                     ? <RoomIcon roomId={room.roomId} wingId={sw.wingSlug} size={14} color={T.color.walnut} />
                                     : room.icon}
                                 </span>
-                                <span style={{ flex: 1 }}>{room.name}</span>
+                                <span style={{ flex: 1 }}>{(room.nameKey && tWings(room.nameKey)) || room.name}</span>
                                 <span style={{ fontSize: "0.6875rem", color: T.color.muted }}>
                                   {room.memoryCount}{room.photoCount > 0 ? ` · ${room.photoCount} ${t("exportPhotoLabel")}` : ""}
                                 </span>

@@ -181,11 +181,18 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
   // Re-render on state changes
   useEffect(() => { renderPreview(); }, [renderPreview]);
 
-  // Adjustment slider change
-  const handleAdjust = (key: string, val: number) => {
-    setPreset(0); // switch to "Original" preset when manually adjusting
-    setAdjustments(prev => ({ ...prev, [key]: val }));
-  };
+  // Adjustment slider change (debounced to avoid re-render on every pixel)
+  const adjustTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleAdjust = useCallback((key: string, val: number) => {
+    setPreset(0);
+    if (adjustTimer.current) clearTimeout(adjustTimer.current);
+    adjustTimer.current = setTimeout(() => {
+      setAdjustments(prev => ({ ...prev, [key]: val }));
+    }, 50);
+  }, []);
+  useEffect(() => {
+    return () => { if (adjustTimer.current) clearTimeout(adjustTimer.current); };
+  }, []);
 
   // Reset adjustments
   const handleReset = () => {

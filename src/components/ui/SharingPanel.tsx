@@ -224,7 +224,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted}}>{sharing.shared?t("peopleCanView"):t("onlyYouCanSee")}</div>
           </div>
           <button onClick={handleToggle} role="switch" aria-checked={sharing.shared} aria-label={t("roomSharing")} style={{width:"2.75rem",height:"1.5rem",borderRadius:"0.75rem",border:"none",background:sharing.shared?T.color.terracotta:T.color.sandstone,cursor:"pointer",position:"relative",transition:"background .2s"}}>
-            <div style={{width:"1.125rem",height:"1.125rem",borderRadius:"0.5625rem",background:T.color.white,position:"absolute",top:"0.1875rem",left:sharing.shared?"1.4375rem":"0.1875rem",transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+            <div style={{width:"1.125rem",height:"1.125rem",borderRadius:"0.5625rem",background:T.color.white,position:"absolute",top:"0.1875rem",left:"0.1875rem",transform:sharing.shared?"translateX(1.25rem)":"translateX(0)",transition:"transform .2s ease",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
           </button>
         </div>
 
@@ -236,7 +236,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
               <div style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted}}>{publicShare?.is_active?t("anyoneCanView"):t("noAccountRequired")}</div>
             </div>
             <button onClick={handleTogglePublicShare} disabled={publicLoading} role="switch" aria-checked={!!publicShare?.is_active} aria-label={t("publicLink")} style={{width:"2.75rem",height:"1.5rem",borderRadius:"0.75rem",border:"none",background:publicShare?.is_active?T.color.terracotta:T.color.sandstone,cursor:publicLoading?"default":"pointer",position:"relative",transition:"background .2s",opacity:publicLoading?.6:1}}>
-              <div style={{width:"1.125rem",height:"1.125rem",borderRadius:"0.5625rem",background:T.color.white,position:"absolute",top:"0.1875rem",left:publicShare?.is_active?"1.4375rem":"0.1875rem",transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+              <div style={{width:"1.125rem",height:"1.125rem",borderRadius:"0.5625rem",background:T.color.white,position:"absolute",top:"0.1875rem",left:"0.1875rem",transform:publicShare?.is_active?"translateX(1.25rem)":"translateX(0)",transition:"transform .2s ease",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
             </button>
           </div>
           {publicShare?.is_active&&(

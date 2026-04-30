@@ -7,6 +7,8 @@ import {
   retryJob,
 } from "@/lib/queue";
 import type { Job, JobType } from "@/lib/queue/types";
+import { handleKepCaptureJob } from "@/lib/kep/capture-router";
+import { handleKepScanJob } from "@/lib/kep/photo-scanner";
 
 /**
  * GET /api/cron/process-jobs
@@ -26,7 +28,8 @@ const RETRY_DELAY_MS = 60_000; // 1 minute backoff for failed jobs
 // Placeholder handlers — actual logic will be migrated here
 // from dedicated endpoints over time.
 
-type JobHandler = (job: Job) => Promise<void>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type JobHandler = (job: Job, supabase: any) => Promise<void>;
 
 const handlers: Record<JobType, JobHandler> = {
   legacy_delivery: async (job) => {
@@ -47,6 +50,14 @@ const handlers: Record<JobType, JobHandler> = {
   notification: async (job) => {
     console.log(`[JobQueue] Processing notification ${job.id} type=${job.type}`);
     // TODO: migrate logic from /api/notifications/send
+  },
+
+  kep_capture: async (job, supabase) => {
+    await handleKepCaptureJob(supabase, job);
+  },
+
+  kep_scan: async (job, supabase) => {
+    await handleKepScanJob(supabase, job as unknown as { payload: { kepId: string; userId: string; cursor?: string } });
   },
 };
 
@@ -118,7 +129,7 @@ export async function GET(request: Request) {
       }
 
       try {
-        await handler(job);
+        await handler(job, supabase);
         await completeJob(supabase, job.id);
         succeeded++;
       } catch (err) {

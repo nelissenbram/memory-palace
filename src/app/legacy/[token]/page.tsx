@@ -2,6 +2,7 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import LegacyView from "./LegacyView";
+import { serverT, getServerLocale } from "@/lib/i18n/server";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -159,10 +160,11 @@ async function getDeliveryData(token: string) {
     }
   }
 
+  const locale = await getServerLocale();
   return {
     error: null,
-    senderName: profile?.display_name || "Someone",
-    contactName: contact?.contact_name || "Friend",
+    senderName: profile?.display_name || serverT("someone", locale),
+    contactName: contact?.contact_name || serverT("friend", locale),
     message,
     wings,
     rooms,

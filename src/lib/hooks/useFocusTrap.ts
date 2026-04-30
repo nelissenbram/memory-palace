@@ -19,7 +19,7 @@ export function useFocusTrap(active: boolean) {
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
     if (focusable.length > 0) {
-      setTimeout(() => focusable[0].focus(), 50);
+      requestAnimationFrame(() => { focusable[0]?.focus(); });
     }
 
     return () => {

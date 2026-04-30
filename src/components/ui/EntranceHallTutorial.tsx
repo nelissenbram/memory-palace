@@ -26,25 +26,38 @@ interface Props {
 type Rect = { top: number; left: number; width: number; height: number };
 
 /**
- * Help layer for the mobile Entrance Hall view.
- * Single step — spotlights the MobileJoystick as the secondary
- * manual-navigation affordance (primary being the top menu bar).
+ * Help layer for the Entrance Hall view.
+ * Mobile: 1 step (joystick).
+ * Desktop: 2 steps (navigation explanation → breadcrumb bar).
  */
 export default function EntranceHallTutorial({ open, onClose }: Props) {
   const { t } = useTranslation("entranceHallTour");
   const isMobile = useIsMobile();
+  const [step, setStep] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [targetBox, setTargetBox] = useState<Rect | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { if (open) setStep(0); }, [open]);
+
+  const totalSteps = isMobile ? 1 : 2;
 
   useLayoutEffect(() => {
     if (!open) { setTargetBox(null); return; }
     const measure = () => {
-      const el = document.querySelector<HTMLElement>("[data-mp-joystick]");
-      if (!el) { setTargetBox(null); return; }
-      const r = el.getBoundingClientRect();
-      setTargetBox({ top: r.top, left: r.left, width: r.width, height: r.height });
+      if (isMobile) {
+        const el = document.querySelector<HTMLElement>("[data-mp-joystick]");
+        if (!el) { setTargetBox(null); return; }
+        const r = el.getBoundingClientRect();
+        setTargetBox({ top: r.top, left: r.left, width: r.width, height: r.height });
+      } else {
+        // Desktop step 0: no target (centered). Step 1: breadcrumb bar.
+        if (step === 0) { setTargetBox(null); return; }
+        const el = document.querySelector<HTMLElement>("[data-palace-subnav]");
+        if (!el) { setTargetBox(null); return; }
+        const r = el.getBoundingClientRect();
+        setTargetBox({ top: r.top, left: r.left, width: r.width, height: r.height });
+      }
     };
     measure();
     const id = setTimeout(measure, 60);
@@ -55,14 +68,26 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [open]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, step, isMobile]);
 
   if (!mounted || !open) return null;
 
-  const cardBg = "rgba(42,34,24,0.94)";
-  const cardBorder = "rgba(212,175,55,0.28)";
-  const cardShadow = "0 1rem 3rem rgba(0,0,0,0.45)";
+  const cardBg = "rgba(42,34,24,0.92)";
+  const cardBorder = "rgba(212,175,55,0.2)";
+  const cardShadow = "0 0.5rem 2rem rgba(0,0,0,0.3)";
   const goldLight = (T.color as Record<string, string>).goldLight || "#E8C870";
+
+  let titleKey: string;
+  let bodyKey: string;
+
+  if (isMobile) {
+    titleKey = "stepTitle";
+    bodyKey = "stepBody";
+  } else {
+    titleKey = step === 0 ? "dStep1Title" : "dStep2Title";
+    bodyKey = step === 0 ? "dStep1Body" : "dStep2Body";
+  }
 
   const pad = 8;
   const r = 14;
@@ -73,30 +98,36 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
 
   const vw = typeof window !== "undefined" ? window.innerWidth : 360;
   const vh = typeof window !== "undefined" ? window.innerHeight : 640;
-  const tipWidth = Math.min(vw - 32, isMobile ? 320 : 360);
+  const remToPx = (rem: number) => rem * parseFloat(typeof window !== "undefined" ? getComputedStyle(document.documentElement).fontSize || "16" : "16");
+  const tipWidth = remToPx(isMobile ? 16.25 : 17.5);
 
-  // Place tip above the joystick (joystick is bottom-left)
   let tipTop = 80;
   let tipLeft = 16;
-  if (targetBox) {
+  if (!targetBox) {
+    tipTop = vh / 2 - 80;
+    tipLeft = vw / 2 - tipWidth / 2;
+  } else if (isMobile) {
     tipTop = Math.max(16, t_ - 180);
     tipLeft = Math.max(16, Math.min(vw - tipWidth - 16, l_ + w_ / 2 - tipWidth / 2));
     if (tipTop + 160 > vh - 16) tipTop = Math.max(16, vh - 180);
+  } else {
+    tipTop = Math.min(vh - 200, t_ + h_ + 12);
+    tipLeft = Math.max(16, Math.min(vw - tipWidth - 16, l_ + w_ / 2 - tipWidth / 2));
   }
 
   const overlay = (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={t("stepTitle")}
-      style={{ position: "fixed", inset: 0, zIndex: 2147483000 }}
+      aria-label={t(titleKey)}
+      style={{ position: "fixed", inset: 0, zIndex: 57 }}
     >
       <style>{`
         @keyframes mpEhTipIn { from { opacity:0; transform:translateY(0.375rem);} to { opacity:1; transform:translateY(0);} }
-        @keyframes mpEhPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.45);} 50% { box-shadow:0 0 0 0.625rem rgba(212,175,55,0);} }
+        @keyframes mpEhPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.4);} 50% { box-shadow:0 0 0 0.5rem rgba(212,175,55,0);} }
       `}</style>
 
-      {targetBox && (
+      {targetBox ? (
         <>
           <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, pointerEvents: "auto" }}>
             <defs>
@@ -108,7 +139,7 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
             <rect
               width="100%"
               height="100%"
-              fill="rgba(0,0,0,0.55)"
+              fill="rgba(0,0,0,0.45)"
               mask="url(#mp-entrance-cutout)"
               onClick={onClose}
             />
@@ -118,13 +149,18 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
               position: "absolute",
               top: t_, left: l_, width: w_, height: h_,
               borderRadius: `${r}px`,
-              border: `0.125rem solid ${goldLight}aa`,
+              border: `2px solid ${goldLight}70`,
               animation: "mpEhPulse 2s ease-in-out infinite",
               pointerEvents: "none",
               boxSizing: "border-box",
             }}
           />
         </>
+      ) : (
+        <div
+          style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", pointerEvents: "auto" }}
+          onClick={onClose}
+        />
       )}
 
       <div
@@ -137,15 +173,15 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
         <div
           style={{
             background: cardBg,
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
             borderRadius: "0.875rem",
             padding: "0.875rem 1rem",
             border: `1px solid ${cardBorder}`,
             boxShadow: cardShadow,
             display: "flex",
             flexDirection: "column",
-            gap: "0.625rem",
+            gap: "0.5rem",
           }}
         >
           <div
@@ -157,7 +193,7 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
               letterSpacing: "0.02em",
             }}
           >
-            {t("stepTitle")}
+            {t(titleKey)}
           </div>
           <div
             style={{
@@ -167,7 +203,7 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
               lineHeight: 1.5,
             }}
           >
-            {t("stepBody")}
+            {t(bodyKey)}
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.125rem" }}>
@@ -187,18 +223,30 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
 
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <div style={{ display: "flex", gap: "0.25rem" }}>
-                <div
-                  style={{
-                    width: "1rem",
-                    height: "0.3125rem",
-                    borderRadius: "0.1875rem",
-                    background: `linear-gradient(90deg, ${T.color.gold}, ${goldLight})`,
-                  }}
-                />
+                {Array.from({ length: totalSteps }).map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: i === step ? "1rem" : "0.3125rem",
+                      height: "0.3125rem",
+                      borderRadius: "0.1875rem",
+                      background: i === step
+                        ? `linear-gradient(90deg, ${T.color.gold}, ${goldLight})`
+                        : i < step
+                          ? `${T.color.gold}80`
+                          : "rgba(255,255,255,0.14)",
+                      transition: "all 0.3s ease",
+                    }}
+                  />
+                ))}
               </div>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onClose(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (step >= totalSteps - 1) onClose();
+                  else setStep(step + 1);
+                }}
                 style={{
                   fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
                   color: "#FFF",
@@ -208,7 +256,7 @@ export default function EntranceHallTutorial({ open, onClose }: Props) {
                   cursor: "pointer", letterSpacing: "0.02em",
                 }}
               >
-                {t("done")}
+                {step >= totalSteps - 1 ? t("done") : t("next")}
               </button>
             </div>
           </div>

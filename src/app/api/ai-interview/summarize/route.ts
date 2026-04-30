@@ -6,11 +6,20 @@ import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
 // TODO: Add a first-use consent dialog in the client UI to improve UX
 // instead of relying solely on the settings page toggles.
 
+const LOCALE_LANGUAGES: Record<string, string> = {
+  en: "English",
+  nl: "Dutch",
+  de: "German",
+  es: "Spanish",
+  fr: "French",
+};
+
 interface SummarizeRequest {
   interviewTitle: string;
   responses: Array<{ questionText: string; answer: string }>;
   userName: string;
   writingStyle?: "literary" | "balanced" | "factual";
+  locale?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -37,7 +46,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body: SummarizeRequest = await req.json();
-    const { interviewTitle, responses, userName, writingStyle = "balanced" } = body;
+    const { interviewTitle, responses, userName, writingStyle = "balanced", locale } = body;
+    const languageName = LOCALE_LANGUAGES[locale ?? "en"] || "English";
 
     if (!responses.length) {
       return NextResponse.json({ error: "No responses to summarize" }, { status: 400 });
@@ -100,9 +110,11 @@ Style:
 
     const systemPrompt = `You are a gifted writer creating a narrative from someone's life interview.
 
+LANGUAGE REQUIREMENT: You MUST write the entire narrative in ${languageName}. Every single word of your output MUST be in ${languageName}. This is non-negotiable. Even if the interview transcript contains text in other languages, your narrative MUST be written entirely in ${languageName}.
+
 ${styleInstructions}
 
-You must return ONLY the narrative text. No JSON, no headers, no formatting instructions.`;
+You must return ONLY the narrative text. No JSON, no headers, no formatting instructions. Remember: the ENTIRE output must be in ${languageName}.`;
 
     const userPrompt = `Interview: "${interviewTitle}"
 Person: ${userName || "The narrator"}
@@ -113,21 +125,49 @@ ${transcript}
 
 Please write a beautiful narrative summary that weaves these stories together.`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 2048,
-        temperature: writingStyle === "literary" ? 1.0 : writingStyle === "factual" ? 0.3 : 0.7,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
-    });
+    // For non-English locales, add a prefill hint to ensure the narrative starts in the right language
+    const LOCALE_STARTERS: Record<string, string> = {
+      nl: "Het verhaal van ",
+      de: "Die Geschichte von ",
+      es: "La historia de ",
+      fr: "L'histoire de ",
+    };
+    const messages: Array<{ role: string; content: string }> = [
+      { role: "user", content: userPrompt },
+    ];
+    const starter = locale ? LOCALE_STARTERS[locale] : undefined;
+    if (starter) {
+      messages.push({ role: "assistant", content: starter });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25_000);
+    let response: Response;
+    try {
+      response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 2048,
+          temperature: writingStyle === "literary" ? 1.0 : writingStyle === "factual" ? 0.3 : 0.7,
+          system: systemPrompt,
+          messages,
+        }),
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err?.name === "AbortError") {
+        return NextResponse.json({ error: "AI request timed out" }, { status: 504 });
+      }
+      throw err;
+    }
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errText = await response.text();
@@ -136,7 +176,12 @@ Please write a beautiful narrative summary that weaves these stories together.`;
     }
 
     const data = await response.json();
-    const narrative = data.content?.[0]?.text || "";
+    let narrative = data.content?.[0]?.text || "";
+
+    // Prepend the prefill starter if used
+    if (starter) {
+      narrative = starter + narrative;
+    }
 
     if (!narrative.trim()) {
       return NextResponse.json({ error: "AI returned empty response" }, { status: 500 });

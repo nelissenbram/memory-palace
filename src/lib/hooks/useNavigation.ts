@@ -1,5 +1,4 @@
 import { usePalaceStore } from "@/lib/stores/palaceStore";
-import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { useCallback } from "react";
@@ -10,10 +9,15 @@ export interface Crumb {
 }
 
 export function useNavigation() {
-  const { view, activeWing, activeRoomId, hovWing,
-    exitToPalace, exitToCorridor, exitToEntrance, enterRoom } = usePalaceStore();
-  const { setSelMem, setShowUpload } = useMemoryStore();
-  const { setShowGallery, setGalleryInitialMemId, setGalleryInitialTab } = useUIPanelStore();
+  // Use individual selectors to avoid re-renders on unrelated store changes (e.g. hovWing)
+  const view = usePalaceStore((s) => s.view);
+  const activeWing = usePalaceStore((s) => s.activeWing);
+  const activeRoomId = usePalaceStore((s) => s.activeRoomId);
+  const hovWing = usePalaceStore((s) => s.hovWing);
+  const exitToPalace = usePalaceStore((s) => s.exitToPalace);
+  const exitToCorridor = usePalaceStore((s) => s.exitToCorridor);
+  const exitToEntrance = usePalaceStore((s) => s.exitToEntrance);
+  const { setShowGallery, setGalleryInitialMemId, setGalleryInitialTab, setGalleryAutoAssignUnit } = useUIPanelStore();
   const { getWingRooms, getWings } = useRoomStore();
 
   const allWings = getWings();
@@ -50,12 +54,13 @@ export function useNavigation() {
   if (activeRoomData)
     crumbs.push({ label: `${activeRoomData.icon} ${activeRoomData.name}`, action: null });
 
-  // InteriorScene sends "__back__" or "__upload__" as special clicks, or a memory object
+  // InteriorScene sends "__back__", "__upload__", "__upload_painting__", or a memory object
   const handleMemClick = useCallback((m: any) => {
     if (m === "__back__") exitToCorridor();
+    else if (m === "__upload_painting__") { setGalleryInitialMemId(null); setGalleryInitialTab("library"); setGalleryAutoAssignUnit("painting"); setShowGallery(true); }
     else if (m === "__upload__") { setGalleryInitialMemId(null); setGalleryInitialTab("library"); setShowGallery(true); }
     else { setGalleryInitialMemId(null); setGalleryInitialTab("gallery"); setShowGallery(true); }
-  }, [exitToCorridor, setShowGallery, setGalleryInitialMemId, setGalleryInitialTab]);
+  }, [exitToCorridor, setShowGallery, setGalleryInitialMemId, setGalleryInitialTab, setGalleryAutoAssignUnit]);
 
   return { wingData, hovWingData, activeRoomData, crumbs, handleMemClick, allWings };
 }

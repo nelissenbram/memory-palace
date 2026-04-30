@@ -995,7 +995,7 @@ export default function PersonalProfile({
           label={t("profile.memoryStyle")}
           storytellerLabel={t(storytellerKey)}
           memoryTypeCounts={memoryTypeCounts}
-          onClick={onStartInterview}
+          onClick={onNavigateLibrary}
         />
         <CoverageMapCard
           wingsData={wingsData}

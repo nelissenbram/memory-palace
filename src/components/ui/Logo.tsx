@@ -1,0 +1,39 @@
+interface LogoProps {
+  size?: number;
+  className?: string;
+  style?: React.CSSProperties;
+  "aria-label"?: string;
+}
+
+export function Logo({
+  size = 24,
+  className = "",
+  style,
+  "aria-label": ariaLabel = "Memory Palace",
+}: LogoProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 100 100"
+      width={size}
+      height={size}
+      role="img"
+      aria-label={ariaLabel}
+      className={className}
+      style={style}
+    >
+      <title>{ariaLabel}</title>
+      <g fill="currentColor">
+        <path d="M10 32 L50 12 L90 32 L88 40 L12 40 Z" />
+        <rect x="18" y="40" width="8" height="32" />
+        <rect x="32" y="40" width="8" height="32" />
+        <rect x="46" y="40" width="8" height="32" />
+        <rect x="60" y="40" width="8" height="32" />
+        <ellipse cx="78" cy="56" rx="4" ry="14" opacity="0.7" />
+        <rect x="10" y="72" width="80" height="4" />
+        <rect x="6" y="78" width="88" height="4" />
+        <rect x="2" y="84" width="96" height="4" />
+      </g>
+    </svg>
+  );
+}

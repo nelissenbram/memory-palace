@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { createMemory, updateMemoryAction, deleteMemoryAction, moveMemoryAction, fetchMemories } from "@/lib/auth/memory-actions";
-import { getDemoMems } from "@/lib/constants/defaults";
+import { createMemory, updateMemoryAction, deleteMemoryAction, moveMemoryAction, fetchMemories, fetchAllMemories } from "@/lib/auth/memory-actions";
+import { getDemoMems, markDemoDeleted } from "@/lib/constants/defaults";
+import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 import type { Mem, SharingInfo } from "@/lib/constants/defaults";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { enqueueMemory, cacheMemories, getCachedMemories, type CachedMemory } from "@/lib/offline/db";
@@ -22,6 +23,7 @@ interface MemoryState {
   setSearchQuery: (q: string) => void;
   setFilterType: (t: string | null) => void;
   fetchRoomMemories: (roomId: string) => Promise<void>;
+  fetchAllRoomMemories: () => Promise<void>;
   addMemory: (roomId: string, mem: Mem) => Promise<void>;
   updateMemory: (roomId: string, memId: string, updates: Partial<Mem>) => Promise<void>;
   deleteMemory: (roomId: string, memId: string) => Promise<void>;
@@ -69,7 +71,7 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
     }
 
     const { memories } = await fetchMemories(roomId);
-    if (memories && memories.length > 0) {
+    if (memories) {
       const mapped: Mem[] = memories.map((m: any) => ({
         id: m.id, title: m.title, hue: m.hue, s: m.saturation, l: m.lightness,
         type: m.type, desc: m.description || "", dataUrl: m.file_url || null,
@@ -93,6 +95,26 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
         cacheMemories(roomId, toCache).catch(() => {});
       } catch { /* IndexedDB unavailable */ }
     }
+  },
+
+  fetchAllRoomMemories: async () => {
+    if (!isSupabaseReady()) return;
+    const { roomMemories } = await fetchAllMemories();
+    const allMapped: Record<string, Mem[]> = {};
+    for (const [roomId, mems] of Object.entries(roomMemories)) {
+      allMapped[roomId] = mems.map((m: any) => ({
+        id: m.id, title: m.title, hue: m.hue, s: m.saturation, l: m.lightness,
+        type: m.type, desc: m.description || "", dataUrl: m.file_url || null,
+        thumbnailUrl: m.thumbnail_url || null,
+        ...(m.location_name ? { locationName: m.location_name } : {}),
+        ...(m.lat != null ? { lat: m.lat } : {}),
+        ...(m.lng != null ? { lng: m.lng } : {}),
+        ...(m.created_at ? { createdAt: m.created_at } : {}),
+        ...(m.displayed != null ? { displayed: m.displayed } : {}),
+        ...(m.display_unit ? { displayUnit: m.display_unit } : {}),
+      }));
+    }
+    set({ userMems: allMapped });
   },
 
   addMemory: async (roomId, mem) => {
@@ -288,6 +310,8 @@ export const useMemoryStore = create<MemoryState>((set, get) => ({
 
   deleteMemory: async (roomId, memId) => {
     const prev = get().userMems[roomId] || getDemoMems(roomId);
+    // If this is a demo memory (ID starts with "d" or "f"), track deletion so it won't reappear
+    if (memId.match(/^[df]\d+$/)) { markDemoDeleted(memId); syncSettingsToServer(); }
     set((s) => {
       const cur = s.userMems[roomId] || getDemoMems(roomId);
       return { userMems: { ...s.userMems, [roomId]: cur.filter((m) => m.id !== memId) } };

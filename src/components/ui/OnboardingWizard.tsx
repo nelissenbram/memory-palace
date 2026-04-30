@@ -1,485 +1,1590 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
-import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
+import { locales, localeNames, type Locale } from "@/i18n/config";
+import { WINGS } from "@/lib/constants/wings";
+import { updateProfile } from "@/lib/auth/profile-actions";
+import { track } from "@/lib/analytics";
+
+const OnboardingSceneHost = lazy(() => import("@/components/ui/OnboardingSceneHost"));
+const OnboardingTooltip = lazy(() => import("@/components/ui/OnboardingTooltip"));
+const OnboardingCelebration = lazy(() => import("@/components/ui/OnboardingCelebration"));
+const ImportHub = lazy(() => import("@/components/ui/ImportHub"));
+
+/* ── State machine ── */
+type Phase =
+  | "video_intro"      // Emotional video plays first
+  | "lang_a11y"        // Language + text size (video loops bg)
+  | "name"             // Name input (video loops bg)
+  | "quiz"             // Personalization quiz (3 questions)
+  | "style_era"        // Roman vs Renaissance (video loops bg)
+  | "cinematic"        // Live 3D — "Welcome to X's Palace"
+  | "walk_exterior"
+  | "walk_entrance"
+  | "walk_corridor"
+  | "walk_room"
+  | "paywall"          // Soft paywall — trial offer after sunk-cost walkthrough
+  | "upload"
+  | "celebration"
+  | "done";
+
+const WALK_PHASES: Phase[] = ["walk_exterior", "walk_entrance", "walk_corridor", "walk_room"];
+const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "quiz", "style_era"];
+const PHASE_ORDER: Phase[] = [
+  "video_intro", "lang_a11y", "name", "quiz", "style_era", "cinematic",
+  "walk_exterior", "walk_entrance", "walk_corridor", "walk_room",
+  "upload", "paywall", "celebration", "done",
+];
+
+const STORAGE_KEY = "mp_onboarding_phase";
+const WALK_DONE_KEY = "mp_onboarding_walk_done";
+
+function persistPhase(p: Phase) { try { localStorage.setItem(STORAGE_KEY, p); } catch {} }
+function loadPhase(): Phase | null {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY) as Phase | null;
+    if (v && PHASE_ORDER.includes(v)) return v;
+  } catch {}
+  return null;
+}
+function cleanupStorage() { try { localStorage.removeItem(STORAGE_KEY); } catch {} }
+
+/* ── Text size ── */
+type TextSize = "standard" | "comfortable" | "large";
+const TEXT_SIZE_SCALE: Record<TextSize, number> = { standard: 1, comfortable: 1.125, large: 1.25 };
+
+/* ── (flags removed — clean text-only language buttons) ── */
+
+/* ── Branding header shared across all 3 setup screens ── */
+function StepIndicator({ current, total }: { current: number; total: number }) {
+  return (
+    <div style={{ position: "absolute", top: "2rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+      {Array.from({ length: total }, (_, i) => (
+        <div key={i} style={{
+          width: i + 1 === current ? "1.5rem" : "0.375rem", height: "0.375rem", borderRadius: "0.1875rem",
+          background: i < current ? T.color.terracotta : "rgba(255,255,255,0.12)",
+          transition: "all .4s ease",
+        }} />
+      ))}
+    </div>
+  );
+}
+
+/* ── Keyframes ── */
+const KEYFRAMES = `
+@keyframes onb-fadeUp{from{opacity:0;transform:translateY(1.5rem)}to{opacity:1;transform:translateY(0)}}
+@keyframes onb-titleReveal{0%{opacity:0;letter-spacing:0.6em;transform:scale(0.92)}60%{opacity:1;letter-spacing:0.12em}100%{opacity:1;letter-spacing:0.04em;transform:scale(1)}}
+@keyframes onb-subtitleReveal{0%{opacity:0;transform:translateY(0.5rem)}100%{opacity:1;transform:translateY(0)}}
+@keyframes onb-pulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
+@keyframes onb-slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+`;
 
 interface OnboardingWizardProps {
-  onFinish: () => void;
-}
-
-/* ── SVG icons — exact copies from NavigationBar ── */
-
-function AtriumIcon({ size = 48 }: { size?: number }) {
-  const c = T.color.terracotta;
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={c} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="8" cy="8" r="2" />
-      <circle cx="8" cy="8" r="0.5" fill={c} stroke="none" />
-      <path d="M3.5 3.5 A1.5 1.5 0 0 1 5 2.5" />
-      <path d="M12.5 3.5 A1.5 1.5 0 0 0 11 2.5" />
-      <path d="M3.5 12.5 A1.5 1.5 0 0 0 5 13.5" />
-      <path d="M12.5 12.5 A1.5 1.5 0 0 1 11 13.5" />
-      <circle cx="3" cy="3" r="0.7" fill={c} stroke="none" />
-      <circle cx="13" cy="3" r="0.7" fill={c} stroke="none" />
-      <circle cx="3" cy="13" r="0.7" fill={c} stroke="none" />
-      <circle cx="13" cy="13" r="0.7" fill={c} stroke="none" />
-      <rect x="1.5" y="1.5" width="13" height="13" rx="1.5" strokeDasharray="2 1.5" strokeWidth="1" />
-    </svg>
-  );
-}
-
-function LibraryIcon({ size = 48 }: { size?: number }) {
-  const c = T.color.terracotta;
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={c} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 3.5 V13" />
-      <path d="M8 3.5 C7 3 4.5 2.5 2 3 V12.5 C4.5 12 7 12.5 8 13" />
-      <path d="M8 3.5 C9 3 11.5 2.5 14 3 V12.5 C11.5 12 9 12.5 8 13" />
-      <line x1="4" y1="5.5" x2="6.5" y2="5.5" strokeWidth="0.8" />
-      <line x1="4" y1="7.2" x2="6.2" y2="7.2" strokeWidth="0.8" />
-      <line x1="4.2" y1="8.9" x2="6.5" y2="8.9" strokeWidth="0.8" />
-      <line x1="9.5" y1="5.5" x2="12" y2="5.5" strokeWidth="0.8" />
-      <line x1="9.5" y1="7.2" x2="11.8" y2="7.2" strokeWidth="0.8" />
-      <line x1="9.5" y1="8.9" x2="12" y2="8.9" strokeWidth="0.8" />
-    </svg>
-  );
-}
-
-function PalaceIcon({ size = 48 }: { size?: number }) {
-  const c = T.color.terracotta;
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={c} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2.5 5.5 L8 1.5 L13.5 5.5" />
-      <line x1="2.5" y1="5.5" x2="13.5" y2="5.5" />
-      <line x1="2" y1="13" x2="14" y2="13" />
-      <line x1="2.5" y1="12" x2="13.5" y2="12" strokeWidth="1" />
-      <line x1="3.5" y1="5.5" x2="3.5" y2="12" />
-      <line x1="12.5" y1="5.5" x2="12.5" y2="12" />
-      <line x1="6" y1="5.5" x2="6" y2="12" strokeWidth="1" />
-      <line x1="10" y1="5.5" x2="10" y2="12" strokeWidth="1" />
-      <line x1="8" y1="5.5" x2="8" y2="12" strokeWidth="0.8" strokeDasharray="1.5 1" />
-    </svg>
-  );
+  onFinish: (memoryUploaded?: boolean) => void;
 }
 
 export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const isMobile = useIsMobile();
-  const { t } = useTranslation("onboarding");
-  const wizardRef = useRef<HTMLDivElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const { t, locale, setLocaleNoReload } = useTranslation("onboarding");
+  const { t: tPalace } = useTranslation("palace");
   const {
-    onboardStep, userName,
-    setOnboardStep, setUserName, setUserGoal, setFirstWing, setStyleEra, setOnboarded,
+    userName, styleEra,
+    setUserName, setUserGoal, setFirstWing, setStyleEra, setOnboarded,
   } = useUserStore();
 
-  const [showThreshold, setShowThreshold] = useState(true);
-  const [videoLoaded, setVideoLoaded] = useState(false);
-  const [thresholdFadingOut, setThresholdFadingOut] = useState(false);
-
-  // Always set defaults for removed questions
   useEffect(() => {
-    setStyleEra("roman");
-    setUserGoal("preserve");
-    setFirstWing("family");
-  }, [setStyleEra, setUserGoal, setFirstWing]);
+    // Goal is now set by the quiz phase; only default firstWing here
+    setFirstWing("roots");
+  }, [setFirstWing]);
 
-  useEffect(() => { wizardRef.current?.focus(); }, []);
+  // ── Phase state ──
+  const [phase, setPhaseRaw] = useState<Phase>(() => {
+    const saved = loadPhase();
+    if (saved && WALK_PHASES.includes(saved)) return "walk_exterior";
+    if (saved && SETUP_PHASES.includes(saved)) return "video_intro";
+    if (saved === "cinematic" || saved === "upload" || saved === "paywall") return "walk_exterior";
+    if (saved === "celebration") return "celebration";
+    return "video_intro";
+  });
 
-  // Enter from threshold → step 0 (name)
-  const handleEnterFromThreshold = useCallback(() => {
-    setThresholdFadingOut(true);
-    setTimeout(() => {
-      setShowThreshold(false);
-      setOnboardStep(0);
-    }, 600);
-  }, [setOnboardStep]);
+  const setPhase = useCallback((p: Phase) => {
+    setPhaseRaw(p);
+    persistPhase(p);
+  }, []);
 
-  // Skip everything from threshold
+  const memoryUploadedRef = useRef(false);
+  const [uploadedMemory, setUploadedMemory] = useState<any>(null);
+  const [sceneReady, setSceneReady] = useState(false);
+  const [cinematicPaused, setCinematicPaused] = useState(false);
+  const [cinematicResumed, setCinematicResumed] = useState(false);
+  const [corridorStep, setCorridorStep] = useState(-1);
+  const [roomStep, setRoomStep] = useState(-1);
+
+  // ── Language / A11y state ──
+  // Check localStorage directly — the hook's `locale` hasn't hydrated yet on first render
+  const [selectedLocale, setSelectedLocale] = useState<Locale>(() => {
+    try {
+      const stored = localStorage.getItem("mp_locale") as Locale | null;
+      if (stored && locales.includes(stored)) return stored;
+    } catch {}
+    return detectBrowserLocale();
+  });
+  const [textSize, setTextSize] = useState<TextSize>("standard");
+  const [selectedEra, setSelectedEra] = useState<"roman" | "renaissance">(
+    (styleEra as "roman" | "renaissance") || "roman"
+  );
+
+  // ── Quiz state ──
+  const [quizStep, setQuizStep] = useState(0);
+  const [quizGoal, setQuizGoal] = useState<string | null>(null);
+  const [quizScale, setQuizScale] = useState<string | null>(null);
+  const [quizAudience, setQuizAudience] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${TEXT_SIZE_SCALE[textSize] * 100}%`;
+    return () => { document.documentElement.style.fontSize = ""; };
+  }, [textSize]);
+
+  // ── Video state ──
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoPlayed, setVideoPlayed] = useState(false);
+
+  // Force-play on mobile — autoplay can fail silently on iOS/Android
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (phase === "video_intro") {
+      v.play().catch(() => {
+        // Autoplay blocked — skip directly to next phase
+        setVideoPlayed(true);
+        setPhase("lang_a11y");
+      });
+    } else if (SETUP_PHASES.includes(phase)) {
+      // Ensure video keeps playing as background during setup phases
+      v.loop = true;
+      v.play().catch(() => {});
+    }
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Preload 3D scene modules during setup phases (before user reaches cinematic) ──
+  useEffect(() => {
+    if (phase === "name" || phase === "quiz" || phase === "style_era") {
+      // User is filling in their name / picking era — perfect time to warm the module cache
+      import("@/lib/3d/scenePreloader").then(({ preloadScene }) => {
+        preloadScene("exterior");
+        preloadScene("entrance");
+      }).catch(() => {});
+    }
+  }, [phase]);
+
+  // ── Skip ──
   const handleSkip = useCallback(() => {
-    setUserGoal("preserve");
-    setStyleEra("roman");
-    setFirstWing("family");
+    track("onboarding_skipped", { phase });
+    // Use quiz answer if already chosen, otherwise fall back to "preserve"
+    const savedGoal = (() => { try { return localStorage.getItem("mp_user_goal"); } catch { return null; } })();
+    setUserGoal(savedGoal || "preserve");
+    setStyleEra(selectedEra);
+    setFirstWing("roots");
     useWalkthroughStore.getState().skip();
     setOnboarded(true);
-  }, [setUserGoal, setStyleEra, setFirstWing, setOnboarded]);
+    cleanupStorage();
+    onFinish(false);
+  }, [setUserGoal, setStyleEra, setFirstWing, setOnboarded, onFinish, selectedEra, phase]);
 
-  // Complete wizard — start tour
-  const handleStartTour = useCallback(() => {
-    onFinish();
-  }, [onFinish]);
-
-  // Complete wizard — skip tour
-  const handleSkipTour = useCallback(() => {
-    useWalkthroughStore.getState().skip();
-    onFinish();
-  }, [onFinish]);
-
-  const TOTAL_STEPS = 3;
-  const canNext =
-    onboardStep === 0 ? userName.trim().length > 0 :
-    true;
-  const isLast = onboardStep === 2;
-
-  // Keyboard navigation
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (showThreshold) {
-      if (e.key === "Enter") handleEnterFromThreshold();
-      return;
+  // ── Scene arrival handlers ──
+  const handleExteriorRoomClick = useCallback((id: string) => {
+    // Cinematic phase zooms to entrance → 3s pause, then entrance hall
+    if (id === "__entrance__" && (phase === "cinematic" || phase === "walk_exterior")) {
+      setTimeout(() => setPhase("walk_entrance"), 3000);
     }
-    if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") return;
-    if ((e.key === "Enter" || e.key === "ArrowRight") && canNext) {
-      if (isLast) handleStartTour();
-      else setOnboardStep(s => s + 1);
-    } else if (e.key === "ArrowLeft" && onboardStep > 0) {
-      setOnboardStep(s => s - 1);
-    }
-  }, [canNext, isLast, onboardStep, showThreshold, handleEnterFromThreshold, handleStartTour, setOnboardStep]);
+  }, [phase, setPhase]);
 
-  /* ── Step 0: Threshold — Video hero + emotional hook ── */
-  if (showThreshold) {
+  const handleEntranceDoorClick = useCallback((id: string) => {
+    if (id === "roots" && phase === "walk_entrance") setPhase("walk_corridor");
+  }, [phase, setPhase]);
+
+  const [corridorEnterClicked, setCorridorEnterClicked] = useState(false);
+  const handleCorridorDoorClick = useCallback((id: string) => {
+    // Auto-walk arrived at door → auto-transition to room
+    if (id === "ro1" && phase === "walk_corridor") {
+      setPhase("walk_room");
+    }
+  }, [phase, setPhase]);
+
+  // Safety fallback: auto-transition to room 4s after Enter Room clicked
+  useEffect(() => {
+    if (corridorEnterClicked && phase === "walk_corridor") {
+      const t = setTimeout(() => setPhase("walk_room"), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [corridorEnterClicked, phase, setPhase]);
+
+  const handleRoomPaintingClick = useCallback((id: string) => {
+    if (id === "__upload_painting__" && phase === "walk_room" && roomStep >= 9) {
+      setPhase("upload");
+    }
+  }, [phase, roomStep, setPhase]);
+
+  // ── Upload ──
+  const handleMemoryAdded = useCallback(() => {
+    memoryUploadedRef.current = true;
+    setPhase("paywall");
+  }, [setPhase]);
+
+  // ── Done ──
+  useEffect(() => {
+    if (phase === "done") {
+      track("onboarding_completed", { memoryUploaded: memoryUploadedRef.current });
+      try { localStorage.setItem(WALK_DONE_KEY, "true"); } catch {}
+      cleanupStorage();
+      onFinish(memoryUploadedRef.current);
+    }
+  }, [phase, onFinish]);
+
+  // ── Onboarding room data ──
+  const onboardingRoomName: string | undefined = undefined; // Keep default room names from WING_ROOMS
+
+  // ══════════════════════════════════════════════
+  // SHARED: Video background for setup phases
+  // ══════════════════════════════════════════════
+  const isSetupPhase = SETUP_PHASES.includes(phase);
+
+  const videoBackground = (
+    <video
+      ref={videoRef}
+      autoPlay={phase === "video_intro"}
+      muted
+      loop={videoPlayed}
+      playsInline
+      preload="metadata"
+      onEnded={() => {
+        setVideoPlayed(true);
+        // After first play, switch to loop mode and transition to lang_a11y
+        if (videoRef.current) {
+          videoRef.current.loop = true;
+          videoRef.current.play().catch(() => {});
+        }
+        if (phase === "video_intro") setPhase("lang_a11y");
+      }}
+      style={{
+        position: "fixed", inset: 0,
+        width: "100%", height: "100%",
+        objectFit: "cover",
+        objectPosition: isMobile ? "60% center" : "center center",
+        // During intro: brighter. During setup: match landing page warmth
+        opacity: phase === "video_intro" ? 0.65 : 0.45,
+        filter: phase === "video_intro"
+          ? "saturate(0.7) brightness(1.1)"
+          : "saturate(0.7) brightness(1.0) blur(2px)",
+        transition: "opacity 1.2s ease, filter 1.2s ease",
+        zIndex: 0,
+      }}
+    >
+      <source src="/video/hero-ob.mp4" type="video/mp4" />
+    </video>
+  );
+
+  const gradientOverlay = (
+    <div style={{
+      position: "fixed", inset: 0,
+      background: phase === "video_intro"
+        ? "linear-gradient(180deg, rgba(26,25,23,0.15) 0%, rgba(26,25,23,0.3) 50%, rgba(26,25,23,0.7) 100%)"
+        : "radial-gradient(ellipse at center, rgba(26,25,23,0.4), rgba(26,25,23,0.65))",
+      transition: "background 1s ease",
+      pointerEvents: "none",
+      zIndex: 1,
+    }} />
+  );
+
+  // ══════════════════════════════════════════════
+  // PHASE RENDERS
+  // ══════════════════════════════════════════════
+
+  /* ── Video intro — plays once, then transitions ── */
+  if (phase === "video_intro") {
     return (
-      <div
-        ref={wizardRef}
-        role="dialog"
-        aria-label={t("wizardAriaLabel")}
-        aria-modal="true"
-        tabIndex={-1}
-        onKeyDown={handleKeyDown}
-        style={{
-          width: "100vw", minHeight: "100vh", height: "100dvh",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          position: "relative", overflow: "hidden",
-          background: "#1a1917",
-          opacity: thresholdFadingOut ? 0 : 1,
-          transition: "opacity 0.6s ease",
-        }}
-      >
-        <video
-          ref={videoRef}
-          autoPlay muted loop playsInline
-          onCanPlay={() => setVideoLoaded(true)}
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", overflow: "hidden", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+        {videoBackground}
+        {gradientOverlay}
+
+        {/* Skip button */}
+        <button
+          onClick={() => {
+            setVideoPlayed(true);
+            if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
+            setPhase("lang_a11y");
+          }}
           style={{
-            position: "absolute", inset: 0,
-            width: "100%", height: "100%",
-            objectFit: "cover",
-            opacity: videoLoaded ? 0.35 : 0,
-            filter: "saturate(0.6) brightness(0.85)",
-            transition: "opacity 1.2s ease",
+            position: "absolute", top: "1.5rem", right: "1.5rem", zIndex: 20,
+            fontFamily: T.font.body, fontSize: "0.75rem",
+            color: "rgba(255,255,255,0.35)", background: "rgba(0,0,0,0.2)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
+            cursor: "pointer", backdropFilter: "blur(4px)", minHeight: "2.5rem",
           }}
         >
-          <source src="/video/hero-bg.mp4" type="video/mp4" />
-        </video>
+          {t("cinematicSkip")}
+        </button>
 
-        <div style={{
-          position: "absolute", inset: 0,
-          background: "linear-gradient(180deg, rgba(26,25,23,0.3) 0%, rgba(26,25,23,0.6) 60%, rgba(26,25,23,0.85) 100%)",
-          pointerEvents: "none",
+        {/* Auto-advance after 15s if video hasn't ended */}
+        <VideoAutoAdvance seconds={15} onAdvance={() => {
+          setVideoPlayed(true);
+          if (videoRef.current) { videoRef.current.loop = true; videoRef.current.play().catch(() => {}); }
+          setPhase("lang_a11y");
         }} />
+      </div>
+    );
+  }
+
+  /* ── Language + Accessibility — elevated design ── */
+  if (phase === "lang_a11y") {
+    return (
+      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+        {videoBackground}
+        {gradientOverlay}
 
         <div style={{
-          position: "relative", zIndex: 1,
-          display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center",
-          gap: "1.5rem", padding: "2rem",
-          animation: "fadeUp .8s ease 0.3s both",
-          maxWidth: "32rem",
+          position: "relative", zIndex: 2,
+          width: "100%", height: "100%",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
-          <p style={{
-            fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 500,
-            color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase", margin: 0,
-          }}>
-            {t("welcomeTitle")}
-          </p>
-          <h1 style={{
-            fontFamily: T.font.display, fontSize: isMobile ? "2.5rem" : "3.25rem",
-            fontWeight: 300, color: "#F2EDE7", letterSpacing: "0.5px", lineHeight: 1.1, margin: 0,
-          }}>
-            {t("appName")}
-          </h1>
+          <StepIndicator current={1} total={4} />
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", margin: "0.25rem 0" }}>
-            <span style={{ width: "2.5rem", height: "1px", background: `${T.color.terracotta}60` }} />
-            <span style={{ width: "0.375rem", height: "0.375rem", borderRadius: "50%", border: `1px solid ${T.color.terracotta}80` }} />
-            <span style={{ width: "2.5rem", height: "1px", background: `${T.color.terracotta}60` }} />
+          {/* Glass card container — warm bronze tint */}
+          <div style={{
+            maxWidth: "30rem", width: "92%",
+            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
+            background: "rgba(40, 34, 26, 0.6)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            borderRadius: "1.25rem",
+            border: "1px solid rgba(193,127,89,0.1)",
+            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(193,127,89,0.06)",
+            animation: "onb-fadeUp .6s ease",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
+
+              {/* Ornamental header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+                <span style={{
+                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
+                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
+                }}>
+                  {t("appName")}
+                </span>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+              </div>
+
+              <h2 style={{
+                fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
+                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+              }}>
+                {t("chooseLangTitle")}
+              </h2>
+
+              {/* Language grid — text only, no flags */}
+              <div style={{ width: "100%" }}>
+                <p style={{
+                  fontFamily: T.font.body, fontSize: "0.625rem",
+                  color: "#7A6F63", textAlign: "left", marginBottom: "0.5rem",
+                  fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px",
+                }}>
+                  {t("chooseLangSubtitle")}
+                </p>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
+                  gap: "0.4375rem",
+                }}>
+                  {locales.map((loc) => {
+                    const active = loc === selectedLocale;
+                    return (
+                      <button
+                        key={loc}
+                        onClick={() => { setSelectedLocale(loc); setLocaleNoReload(loc); }}
+                        style={{
+                          fontFamily: T.font.body, fontSize: "0.8125rem",
+                          fontWeight: active ? 600 : 400,
+                          padding: "0.6875rem 0.5rem", borderRadius: "0.5rem",
+                          border: `1.5px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
+                          background: active ? `${T.color.terracotta}12` : "rgba(255,255,255,0.02)",
+                          color: active ? T.color.terracotta : "#C4B8A8",
+                          cursor: "pointer", transition: "all .2s", minHeight: "2.75rem",
+                          display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
+                        }}
+                      >
+                        {localeNames[loc]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div style={{ width: "100%", height: "1px", background: "rgba(255,255,255,0.05)" }} />
+
+              {/* Text size */}
+              <div style={{ width: "100%" }}>
+                <p style={{
+                  fontFamily: T.font.body, fontSize: "0.625rem",
+                  color: "#7A6F63", textAlign: "left", marginBottom: "0.5rem",
+                  fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.5px",
+                }}>
+                  {t("textSizeTitle")}
+                </p>
+                <div style={{ display: "flex", gap: "0.375rem" }}>
+                  {(["standard", "comfortable", "large"] as TextSize[]).map((size) => {
+                    const active = size === textSize;
+                    const label = t(`textSize${size.charAt(0).toUpperCase() + size.slice(1)}` as any);
+                    const fz = size === "standard" ? "0.9375rem" : size === "comfortable" ? "1.0625rem" : "1.25rem";
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => setTextSize(size)}
+                        style={{
+                          flex: 1, fontFamily: T.font.body, fontSize: "0.6875rem",
+                          fontWeight: active ? 600 : 400,
+                          padding: "0.75rem 0.25rem", borderRadius: "0.5rem",
+                          border: `1.5px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
+                          background: active ? `${T.color.terracotta}12` : "rgba(255,255,255,0.02)",
+                          color: active ? T.color.terracotta : "#A09889",
+                          cursor: "pointer", transition: "all .2s", minHeight: "3.25rem",
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: "0.125rem",
+                        }}
+                      >
+                        <span style={{ fontSize: fz, fontFamily: T.font.display, fontWeight: 300, lineHeight: 1 }}>Aa</span>
+                        <span style={{ fontSize: size === "comfortable" ? "0.8125rem" : size === "large" ? "0.9375rem" : undefined }}>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Continue */}
+              <button
+                onClick={() => setPhase("name")}
+                style={{
+                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                  padding: "0.8125rem 0", borderRadius: "0.5rem", border: "none",
+                  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                  color: "#FFF", cursor: "pointer", transition: "all .3s",
+                  boxShadow: "0 0.25rem 1.25rem rgba(193,127,89,.25)",
+                  minHeight: "3rem", width: "100%",
+                }}
+              >
+                {t("continueButton")}
+              </button>
+
+              <button onClick={handleSkip} style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem",
+                color: "#5A5248", background: "none", border: "none",
+                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+              }}>
+                {t("skipExploreOwn")}
+              </button>
+            </div>
           </div>
-
-          <p style={{
-            fontFamily: T.font.body, fontSize: "1.0625rem",
-            color: "#D4C5B2", lineHeight: 1.7, margin: 0, maxWidth: "26rem",
-          }}>
-            {t("thresholdMessage")}
-          </p>
-
-          <button
-            onClick={handleEnterFromThreshold}
-            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 0.5rem 2rem rgba(193,127,89,.5)"; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 0.25rem 1.25rem rgba(193,127,89,.35)"; }}
-            style={{
-              fontFamily: T.font.body, fontSize: "1.0625rem", fontWeight: 600,
-              padding: "1rem 3rem", borderRadius: "0.75rem", border: "none",
-              background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-              color: "#FFF", cursor: "pointer", transition: "all .3s",
-              boxShadow: "0 0.25rem 1.25rem rgba(193,127,89,.35)", marginTop: "0.5rem",
-            }}
-          >
-            {t("enterButton")}
-          </button>
-
-          <button
-            onClick={handleSkip}
-            onMouseEnter={e => { e.currentTarget.style.color = "#D4C5B2"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#8B7355"; }}
-            style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#8B7355",
-              background: "none", border: "none", cursor: "pointer",
-              textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-            }}
-          >
-            {t("skipExploreOwn")}
-          </button>
         </div>
       </div>
     );
   }
 
-  /* ── Wizard steps ── */
-  const SPACES = [
-    { key: "atrium", Icon: AtriumIcon, titleKey: "atriumTitle", descKey: "atriumDesc" },
-    { key: "library", Icon: LibraryIcon, titleKey: "libraryTitle", descKey: "libraryDesc" },
-    { key: "palace", Icon: PalaceIcon, titleKey: "palaceTitle", descKey: "palaceDesc" },
-  ] as const;
+  /* ── Name screen — same glass card style ── */
+  if (phase === "name") {
+    return (
+      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+        {videoBackground}
+        {gradientOverlay}
 
-  const steps = [
-    // Step 0: Name
-    () => (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem", animation: "fadeUp .6s ease" }}>
-        <h2 style={{ fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2rem", fontWeight: 300, color: T.color.charcoal, lineHeight: 1.2 }}>
-          {t("whatToCallYou")}
-        </h2>
-        <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted, maxWidth: "22rem", lineHeight: 1.6 }}>
-          {t("nameDescription")}
-        </p>
-        <div style={{ width: "100%", maxWidth: "21.25rem" }}>
-          <input
-            value={userName}
-            onChange={e => setUserName(e.target.value)}
-            placeholder={t("namePlaceholder")}
-            style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1rem" : "1.375rem", textAlign: "center",
-              padding: "0.75rem 1.5rem", border: `0.125rem solid ${T.color.sandstone}`,
-              borderRadius: "0.75rem", background: T.color.linen, color: T.color.charcoal,
-              outline: "none", width: "100%", transition: "border-color .2s",
-            }}
-            onFocus={e => { e.target.style.borderColor = T.color.terracotta; }}
-            onBlur={e => { e.target.style.borderColor = T.color.sandstone; }}
-            autoFocus
-            onKeyDown={e => { if (e.key === "Enter" && userName.trim()) { setOnboardStep(1); } }}
-          />
-        </div>
-      </div>
-    ),
-
-    // Step 1: Three spaces — big tiles
-    () => (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem", animation: "fadeUp .6s ease" }}>
-        <h2 style={{ fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem", fontWeight: 400, color: T.color.charcoal, lineHeight: 1.2 }}>
-          {userName ? t("discoverTitle", { name: userName }) : t("discoverTitleDefault")}
-        </h2>
         <div style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
-          gap: "1rem",
-          width: "100%",
-          maxWidth: "52rem",
+          position: "relative", zIndex: 2,
+          width: "100%", height: "100%",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
-          {SPACES.map(({ key, Icon, titleKey, descKey }) => (
-            <div
-              key={key}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center",
-                gap: "0.75rem", padding: isMobile ? "0.875rem 0.75rem" : "1.75rem 1.25rem",
-                borderRadius: "1rem",
-                border: `1.5px solid ${T.color.sandstone}`,
-                background: T.color.linen,
-                transition: "all .25s",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = T.color.terracotta; e.currentTarget.style.transform = "translateY(-0.125rem)"; e.currentTarget.style.boxShadow = `0 0.5rem 1.5rem ${T.color.terracotta}15`; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = T.color.sandstone; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}
-            >
-              <div style={{
-                width: "4rem", height: "4rem", borderRadius: "1rem",
-                background: `linear-gradient(135deg, ${T.color.terracotta}12, ${T.color.walnut}08)`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <Icon size={isMobile ? 28 : 40} />
+          <StepIndicator current={2} total={4} />
+
+          {/* Glass card — warm bronze tint */}
+          <div style={{
+            maxWidth: "30rem", width: "92%",
+            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
+            background: "rgba(40, 34, 26, 0.6)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            borderRadius: "1.25rem",
+            border: "1px solid rgba(193,127,89,0.1)",
+            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(193,127,89,0.06)",
+            animation: "onb-fadeUp .5s ease",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
+
+              {/* Ornamental header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+                <span style={{
+                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
+                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
+                }}>
+                  {t("appName")}
+                </span>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
               </div>
-              <h3 style={{
-                fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-                color: T.color.charcoal, margin: 0,
+
+              <h2 style={{
+                fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
+                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
               }}>
-                {t(titleKey)}
-              </h3>
+                {t("whatToCallYou")}
+              </h2>
               <p style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem",
-                color: T.color.muted, lineHeight: 1.6, margin: 0,
+                color: "#A09889", maxWidth: "22rem", lineHeight: 1.6, margin: 0,
               }}>
-                {t(descKey)}
+                {t("nameDescription")}
               </p>
+              <div style={{ width: "100%", maxWidth: "20rem" }}>
+                <input
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder={t("namePlaceholder")}
+                  style={{
+                    fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.5rem", textAlign: "center",
+                    padding: "0.875rem 1.5rem", border: "1.5px solid rgba(193,127,89,0.18)",
+                    borderRadius: "0.625rem", background: "rgba(40,34,26,0.4)", color: "#F2EDE7",
+                    outline: "none", width: "100%", transition: "border-color .2s",
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = T.color.terracotta; }}
+                  onBlur={(e) => { e.target.style.borderColor = "rgba(193,127,89,0.18)"; }}
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter" && userName.trim()) setPhase("quiz"); }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
+                <button
+                  onClick={() => setPhase("lang_a11y")}
+                  style={{
+                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
+                    padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
+                    border: "1px solid rgba(193,127,89,0.15)", background: "transparent",
+                    color: "#A09889", cursor: "pointer", minHeight: "3rem",
+                  }}
+                >
+                  {"\u2190"} {t("backButton")}
+                </button>
+                <button
+                  onClick={() => setPhase("quiz")}
+                  disabled={!userName.trim()}
+                  style={{
+                    flex: 1, fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
+                    padding: "0.75rem 2rem", borderRadius: "0.5rem", minHeight: "3rem", border: "none",
+                    background: userName.trim() ? `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})` : "rgba(255,255,255,0.06)",
+                    color: userName.trim() ? "#FFF" : "#6B6155",
+                    cursor: userName.trim() ? "pointer" : "default",
+                    boxShadow: userName.trim() ? "0 0.25rem 1rem rgba(193,127,89,.3)" : "none",
+                  }}
+                >
+                  {t("continueButton")} {"\u2192"}
+                </button>
+              </div>
+
+              <button onClick={handleSkip} style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem",
+                color: "#5A5248", background: "none", border: "none",
+                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+              }}>
+                {t("skipExploreOwn")}
+              </button>
             </div>
-          ))}
+          </div>
         </div>
       </div>
-    ),
+    );
+  }
 
-    // Step 2: Ready to get started?
-    () => (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem", animation: "fadeUp .6s ease" }}>
+  /* ── Personalization Quiz — 3 questions ── */
+  if (phase === "quiz") {
+    const QUIZ_QUESTIONS = [
+      {
+        key: "quizQ1" as const,
+        options: [
+          { label: "quizQ1o1" as const, icon: "\uD83C\uDFDB\uFE0F", value: "preserve" },
+          { label: "quizQ1o2" as const, icon: "\uD83D\uDCD6", value: "stories" },
+          { label: "quizQ1o3" as const, icon: "\uD83C\uDF33", value: "genealogy" },
+          { label: "quizQ1o4" as const, icon: "\uD83D\uDCF8", value: "organize" },
+        ],
+        selected: quizGoal,
+        onSelect: (v: string) => {
+          setQuizGoal(v);
+          try { localStorage.setItem("mp_user_goal", v); } catch {}
+          setUserGoal(v);
+          setTimeout(() => setPhase("style_era"), 300);
+        },
+      },
+    ];
+
+    const currentQ = QUIZ_QUESTIONS[quizStep];
+
+    return (
+      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
+        <style>{KEYFRAMES}{`
+@keyframes onb-quizFade{from{opacity:0;transform:translateX(1.5rem)}to{opacity:1;transform:translateX(0)}}
+        `}</style>
+        {videoBackground}
+        {gradientOverlay}
+
         <div style={{
-          width: "4.5rem", height: "4.5rem", borderRadius: "50%",
-          background: `linear-gradient(135deg, ${T.color.terracotta}18, ${T.color.walnut}12)`,
-          display: "flex", alignItems: "center", justifyContent: "center",
+          position: "relative", zIndex: 2,
+          width: "100%", height: "100%",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
-          <AtriumIcon size={44} />
-        </div>
-        <h2 style={{ fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2rem", fontWeight: 300, color: T.color.charcoal, lineHeight: 1.2 }}>
-          {userName ? t("readyTitlePersonal", { name: userName }) : t("readyTitle")}
-        </h2>
-        <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted, maxWidth: "26rem", lineHeight: 1.7 }}>
-          {t("readyDesc")}
-        </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", width: "100%", maxWidth: "20rem", marginTop: "0.5rem" }}>
-          <button
-            onClick={handleStartTour}
-            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.03)"; e.currentTarget.style.boxShadow = "0 0.375rem 1.25rem rgba(193,127,89,.45)"; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(193,127,89,.3)"; }}
-            style={{
-              fontFamily: T.font.body, fontSize: "1.0625rem", fontWeight: 600,
-              padding: "0.9375rem 2rem", borderRadius: "0.75rem", border: "none",
-              background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-              color: "#FFF", cursor: "pointer", transition: "all .3s",
-              boxShadow: "0 0.25rem 1rem rgba(193,127,89,.3)",
-            }}
-          >
-            {t("startTour")}
-          </button>
-          <button
-            onClick={handleSkipTour}
-            onMouseEnter={e => { e.currentTarget.style.color = T.color.walnut; }}
-            onMouseLeave={e => { e.currentTarget.style.color = T.color.muted; }}
-            style={{
-              fontFamily: T.font.body, fontSize: "0.875rem",
-              color: T.color.muted, background: "none", border: "none",
-              cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
-              padding: "0.5rem",
-            }}
-          >
-            {t("skipTour")}
-          </button>
+          <StepIndicator current={3} total={4} />
+
+          {/* Glass card */}
+          <div style={{
+            maxWidth: "30rem", width: "92%",
+            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
+            background: "rgba(40, 34, 26, 0.6)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            borderRadius: "1.25rem",
+            border: "1px solid rgba(193,127,89,0.1)",
+            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(193,127,89,0.06)",
+            animation: "onb-fadeUp .5s ease",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
+
+              {/* Ornamental header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+                <span style={{
+                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
+                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
+                }}>
+                  {t("quizTitle")}
+                </span>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+              </div>
+
+              {/* Question — animated swap */}
+              <div key={quizStep} style={{ animation: "onb-quizFade .4s ease", width: "100%" }}>
+                <h2 style={{
+                  fontFamily: T.font.display, fontSize: isMobile ? "1.25rem" : "1.5rem",
+                  fontWeight: 300, color: "#F2EDE7", lineHeight: 1.3, margin: "0 0 0.25rem",
+                }}>
+                  {t(currentQ.key)}
+                </h2>
+
+                {/* Quiz step dots */}
+                <div style={{ display: "flex", justifyContent: "center", gap: "0.375rem", marginBottom: "1rem" }}>
+                  {QUIZ_QUESTIONS.map((_, i) => (
+                    <div key={i} style={{
+                      width: "0.375rem", height: "0.375rem", borderRadius: "50%",
+                      background: i === quizStep ? T.color.terracotta : i < quizStep ? `${T.color.terracotta}80` : "rgba(255,255,255,0.12)",
+                      transition: "all .3s ease",
+                    }} />
+                  ))}
+                </div>
+
+                {/* Option cards */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  {currentQ.options.map((opt) => {
+                    const active = currentQ.selected === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => currentQ.onSelect(opt.value)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: "0.875rem",
+                          width: "100%", padding: isMobile ? "0.875rem 1rem" : "1rem 1.25rem",
+                          borderRadius: "0.75rem",
+                          border: `2px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
+                          background: active ? `${T.color.terracotta}14` : "rgba(255,255,255,0.02)",
+                          cursor: "pointer", transition: "all .2s",
+                          fontFamily: T.font.body, fontSize: isMobile ? "0.875rem" : "0.9375rem",
+                          color: active ? "#F2EDE7" : "#C4B8A8",
+                          fontWeight: active ? 600 : 400,
+                          textAlign: "left",
+                          minHeight: "3.25rem",
+                        }}
+                      >
+                        <span style={{ fontSize: "1.25rem", flexShrink: 0 }}>{opt.icon}</span>
+                        <span>{t(opt.label)}</span>
+                        {active && (
+                          <span style={{
+                            marginLeft: "auto", width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+                            background: T.color.terracotta, display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: "0.625rem", color: "#FFF", flexShrink: 0,
+                          }}>&#10003;</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Back button */}
+              <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
+                <button
+                  onClick={() => {
+                    if (quizStep > 0) {
+                      setQuizStep(quizStep - 1);
+                    } else {
+                      setPhase("name");
+                    }
+                  }}
+                  style={{
+                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
+                    padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
+                    border: "1px solid rgba(193,127,89,0.15)", background: "transparent",
+                    color: "#A09889", cursor: "pointer", minHeight: "3rem",
+                  }}
+                >
+                  {"\u2190"} {t("backButton")}
+                </button>
+              </div>
+
+              <button onClick={handleSkip} style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem",
+                color: "#5A5248", background: "none", border: "none",
+                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+              }}>
+                {t("skipExploreOwn")}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    ),
-  ];
+    );
+  }
 
-  return (
-    <div
-      ref={wizardRef}
-      role="dialog"
-      aria-label={t("wizardAriaLabel")}
-      aria-modal="true"
-      tabIndex={-1}
-      onKeyDown={handleKeyDown}
-      style={{
-        width: "100vw", minHeight: "100vh", height: "100dvh",
-        background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}55 100%)`,
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        position: "relative", overflow: isMobile ? "auto" : "hidden",
-      }}
-    >
-      {/* Decorative blobs */}
-      <div style={{ position: "absolute", top: "-7.5rem", right: "-5rem", width: "23.75rem", height: "23.75rem", borderRadius: "50%", background: `radial-gradient(circle, ${T.color.terracotta}08, transparent 70%)`, pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: "-6.25rem", left: "-3.75rem", width: "18.75rem", height: "18.75rem", borderRadius: "50%", background: `radial-gradient(circle, ${T.color.sage}08, transparent 70%)`, pointerEvents: "none" }} />
+  /* ── Style era: Roman vs Renaissance ── */
+  if (phase === "style_era") {
+    return (
+      <div style={{ width: "100vw", minHeight: "100vh", height: "100dvh", position: "relative", overflow: isMobile ? "auto" : "hidden", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+        {videoBackground}
+        {gradientOverlay}
 
-      {/* Progress dots */}
-      <div style={{ position: "absolute", top: "2rem", display: "flex", gap: "0.625rem", alignItems: "center" }} role="group" aria-label={t("progressAriaLabel")}>
-        {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-          <div
-            key={i}
-            role="presentation"
-            aria-label={t("stepIndicator", { current: String(i + 1), total: String(TOTAL_STEPS) })}
-            aria-current={i === onboardStep ? "step" : undefined}
-            style={{
-              width: i === onboardStep ? "1.75rem" : "0.5rem",
-              height: "0.5rem",
-              borderRadius: "0.25rem",
-              background: i <= onboardStep ? T.color.terracotta : `${T.color.sandstone}60`,
-              transition: "all .4s ease",
-            }}
+        <div style={{
+          position: "relative", zIndex: 2,
+          width: "100%", height: "100%",
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        }}>
+          <StepIndicator current={4} total={4} />
+
+          {/* Glass card — warm bronze tint */}
+          <div style={{
+            maxWidth: "30rem", width: "92%",
+            padding: isMobile ? "2rem 1.25rem" : "2.5rem 2rem",
+            background: "rgba(40, 34, 26, 0.6)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            borderRadius: "1.25rem",
+            border: "1px solid rgba(193,127,89,0.1)",
+            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(193,127,89,0.06)",
+            animation: "onb-fadeUp .5s ease",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
+
+              {/* Ornamental header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+                <span style={{
+                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
+                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
+                }}>
+                  {t("appName")}
+                </span>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+              </div>
+
+              <h2 style={{
+                fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem",
+                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+              }}>
+                {tPalace("eraPickerTitle")}
+              </h2>
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem",
+                color: "#A09889", maxWidth: "24rem", lineHeight: 1.6, margin: 0,
+              }}>
+                {tPalace("eraPickerSubtitle")}
+              </p>
+
+              {/* Era cards */}
+              <div style={{ display: "flex", gap: "0.75rem", width: "100%" }}>
+                {/* Roman Tuscany — selectable */}
+                <button
+                  onClick={() => setSelectedEra("roman")}
+                  style={{
+                    flex: 1, padding: "1.5rem 0.875rem", borderRadius: "0.875rem",
+                    border: `2px solid ${selectedEra === "roman" ? T.era.roman.secondary : "rgba(255,255,255,0.06)"}`,
+                    background: selectedEra === "roman" ? `${T.era.roman.secondary}14` : "rgba(255,255,255,0.02)",
+                    cursor: "pointer", transition: "all .25s",
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: "0.625rem",
+                    position: "relative",
+                  }}
+                >
+                  {/* Elegant laurel wreath icon */}
+                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+                    <path d="M22 6C18 10 14 16 14 22C14 28 17 32 22 34C27 32 30 28 30 22C30 16 26 10 22 6Z"
+                      stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1.2" fill="none" opacity="0.5" />
+                    <path d="M10 20C12 16 16 13 20 12" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
+                    <path d="M34 20C32 16 28 13 24 12" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.4" strokeLinecap="round" />
+                    <path d="M8 26C11 22 15 20 19 19" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.35" strokeLinecap="round" />
+                    <path d="M36 26C33 22 29 20 25 19" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1" opacity="0.35" strokeLinecap="round" />
+                    <line x1="16" y1="36" x2="28" y2="36" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="1.2" opacity="0.6" />
+                    <line x1="18" y1="38" x2="26" y2="38" stroke={selectedEra === "roman" ? T.era.roman.secondary : "#7A6F63"} strokeWidth="0.8" opacity="0.4" />
+                  </svg>
+                  <span style={{
+                    fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 500,
+                    color: selectedEra === "roman" ? "#F2EDE7" : "#A09889",
+                    letterSpacing: "0.5px",
+                  }}>
+                    {tPalace("eraRoman")}
+                  </span>
+                  <span style={{
+                    fontFamily: T.font.body, fontSize: "0.6875rem",
+                    color: selectedEra === "roman" ? "#D4C5B2" : "#6B6155", lineHeight: 1.4,
+                  }}>
+                    {tPalace("eraRomanDesc")}
+                  </span>
+                  {selectedEra === "roman" && (
+                    <span style={{
+                      position: "absolute", top: "0.5rem", right: "0.5rem",
+                      width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+                      background: T.era.roman.secondary, display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "0.625rem", color: "#FFF",
+                    }}>&#10003;</span>
+                  )}
+                </button>
+
+                {/* Renaissance Florence — locked / coming soon */}
+                <div style={{
+                  flex: 1, padding: "1.5rem 0.875rem", borderRadius: "0.875rem",
+                  border: "2px solid rgba(255,255,255,0.04)",
+                  background: "rgba(255,255,255,0.02)",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: "0.625rem",
+                  position: "relative", overflow: "hidden",
+                  cursor: "default",
+                }}>
+                  {/* Blur + greyscale overlay */}
+                  <div style={{
+                    position: "absolute", inset: 0, borderRadius: "0.875rem",
+                    backdropFilter: "blur(2px) grayscale(0.5)", WebkitBackdropFilter: "blur(2px) grayscale(0.5)",
+                    background: "rgba(26,25,23,0.35)", zIndex: 1,
+                  }} />
+                  {/* "Coming soon" badge */}
+                  <div style={{
+                    position: "absolute", top: "0.5rem", right: "0.5rem", zIndex: 2,
+                    fontFamily: T.font.body, fontSize: "0.5rem", fontWeight: 700,
+                    color: T.era.renaissance.accent, letterSpacing: "1.5px", textTransform: "uppercase",
+                    background: "rgba(26,25,23,0.7)", padding: "0.25rem 0.5rem", borderRadius: "0.25rem",
+                    border: `1px solid ${T.era.renaissance.accent}30`,
+                  }}>
+                    {t("comingSoon")}
+                  </div>
+                  {/* Elegant dome silhouette icon */}
+                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none" style={{ opacity: 0.4 }}>
+                    <path d="M22 6C22 6 12 14 12 24H32C32 14 22 6 22 6Z" stroke="#7A6F63" strokeWidth="1.2" fill="none" opacity="0.5" />
+                    <line x1="10" y1="24" x2="34" y2="24" stroke="#7A6F63" strokeWidth="1.2" opacity="0.6" />
+                    <line x1="12" y1="24" x2="12" y2="34" stroke="#7A6F63" strokeWidth="1" opacity="0.4" />
+                    <line x1="32" y1="24" x2="32" y2="34" stroke="#7A6F63" strokeWidth="1" opacity="0.4" />
+                    <line x1="10" y1="34" x2="34" y2="34" stroke="#7A6F63" strokeWidth="1.2" opacity="0.6" />
+                    <circle cx="22" cy="5" r="1.5" fill="#7A6F63" opacity="0.4" />
+                    <rect x="19" y="27" width="6" height="7" rx="3" stroke="#7A6F63" strokeWidth="0.8" fill="none" opacity="0.35" />
+                  </svg>
+                  <span style={{
+                    fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 500,
+                    color: "#7A6F63", opacity: 0.5,
+                    letterSpacing: "0.5px",
+                  }}>
+                    {tPalace("eraRenaissance")}
+                  </span>
+                  <span style={{
+                    fontFamily: T.font.body, fontSize: "0.6875rem",
+                    color: "#5A5248", lineHeight: 1.4, opacity: 0.5,
+                  }}>
+                    {tPalace("eraRenaissanceDesc")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: "flex", gap: "0.75rem", width: "100%", marginTop: "0.25rem" }}>
+                <button
+                  onClick={() => setPhase("quiz")}
+                  style={{
+                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
+                    padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
+                    border: "1px solid rgba(193,127,89,0.15)", background: "transparent",
+                    color: "#A09889", cursor: "pointer", minHeight: "3rem",
+                  }}
+                >
+                  {"\u2190"} {t("backButton")}
+                </button>
+                <button
+                  onClick={() => {
+                    setStyleEra(selectedEra);
+                    updateProfile({ styleEra: selectedEra }).catch(() => {});
+                    setPhase("cinematic");
+                  }}
+                  style={{
+                    flex: 1, fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
+                    padding: "0.75rem 2rem", borderRadius: "0.5rem", minHeight: "3rem", border: "none",
+                    background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                    color: "#FFF", cursor: "pointer",
+                    boxShadow: "0 0.25rem 1rem rgba(193,127,89,.3)",
+                  }}
+                >
+                  {t("continueButton")} {"\u2192"}
+                </button>
+              </div>
+
+              <button onClick={handleSkip} style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem",
+                color: "#5A5248", background: "none", border: "none",
+                cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+              }}>
+                {t("skipExploreOwn")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Cinematic — "Welcome to [Name]'s Palace" over live 3D ── */
+  if (phase === "cinematic") {
+    return (
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+
+        <Suspense fallback={
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: "#6B6155", animation: "onb-pulse 1.5s ease infinite" }}>
+              {t("cinematicLoading")}
+            </p>
+          </div>
+        }>
+          <OnboardingSceneHost
+            scene="exterior"
+            onboardingMode={true}
+            onRoomClick={handleExteriorRoomClick}
+            onReady={() => setSceneReady(true)}
+            onCinematicPause={() => setCinematicPaused(true)}
+            cinematicResumed={cinematicResumed}
           />
-        ))}
-      </div>
+        </Suspense>
 
-      {/* Step content */}
-      <div key={onboardStep} style={{ maxWidth: onboardStep === 1 ? "56rem" : "35rem", width: "92%", padding: isMobile ? "1.5rem 1rem" : "2.5rem 1.25rem" }}>
-        {steps[onboardStep]()}
-      </div>
+        {/* Bottom shadow gradient for text readability over 3D scene */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 5 }} />
 
-      {/* Navigation buttons (not shown on last step — it has its own buttons) */}
-      {onboardStep < 2 && (
-        <div style={{ display: "flex", gap: "0.875rem", marginTop: "0.5rem" }}>
-          {onboardStep > 0 && (
-            <button
-              onClick={() => setOnboardStep(s => s - 1)}
-              onMouseEnter={e => { e.currentTarget.style.background = `${T.color.sandstone}20`; e.currentTarget.style.borderColor = T.color.walnut; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = T.color.sandstone; }}
-              style={{
-                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                padding: "0.75rem 1.75rem", borderRadius: "0.625rem",
-                border: `0.09375rem solid ${T.color.sandstone}`, background: "transparent",
-                color: T.color.walnut, cursor: "pointer", transition: "all .2s",
-              }}
-            >
-              {"\u2190"} {t("backButton")}
-            </button>
+        {/* Title floats in from the bottom */}
+        <div style={{
+          position: "absolute",
+          bottom: isMobile ? "10vh" : "8vh",
+          left: "50%", transform: "translateX(-50%)",
+          textAlign: "center", zIndex: 10, width: "90%",
+        }}>
+          {/* Decorative line */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
+            marginBottom: "1rem",
+            animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
+          }}>
+            <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
+            <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
+            <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
+          </div>
+
+          <p style={{
+            fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
+            color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
+            margin: "0 0 0.625rem",
+            textShadow: "0 2px 8px rgba(0,0,0,0.7)",
+            animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
+          }}>
+            {t("welcomeTitle")}
+          </p>
+
+          <h1 style={{
+            fontFamily: T.font.display,
+            fontSize: isMobile ? "1.5rem" : "3.5rem",
+            fontWeight: 300, color: "#F2EDE7",
+            lineHeight: 1.05, margin: 0,
+            letterSpacing: "0.04em",
+            animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
+            backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
+            backgroundSize: "200% 100%",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
+          }}>
+            {t("cinematicPalaceName", { name: userName })}
+          </h1>
+
+          <p style={{
+            fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+            color: "#D4CBC0", margin: "0.75rem 0 0",
+            lineHeight: 1.5,
+            textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+            animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
+          }}>
+            {t("walkExterior")}
+          </p>
+
+          {cinematicPaused && !cinematicResumed && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              gap: "1rem", flexWrap: "wrap",
+              marginTop: "1.25rem",
+              animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both",
+            }}>
+              <p style={{
+                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                color: "#D4CBC0", margin: 0, lineHeight: 1.5,
+                textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+              }}>
+                {t("cinematicPrompt")}
+              </p>
+              <button
+                onClick={() => setCinematicResumed(true)}
+                style={{
+                  fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
+                  letterSpacing: "0.04em",
+                  padding: "0.625rem 1.5rem",
+                  background: T.color.terracotta,
+                  color: "#FAFAF7",
+                  border: "none", borderRadius: "0.5rem",
+                  cursor: "pointer",
+                  boxShadow: `0 0.25rem 1rem ${T.color.terracotta}40`,
+                  transition: "transform .15s ease, box-shadow .15s ease",
+                  whiteSpace: "nowrap",
+                  minHeight: "2.75rem",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-0.125rem)"; e.currentTarget.style.boxShadow = `0 0.5rem 1.5rem ${T.color.terracotta}60`; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}40`; }}
+              >
+                {t("cinematicYes")}
+              </button>
+            </div>
           )}
-          <button
-            onClick={() => setOnboardStep(s => s + 1)}
-            disabled={!canNext}
-            onMouseEnter={e => { if (canNext) { e.currentTarget.style.transform = "scale(1.03)"; e.currentTarget.style.boxShadow = "0 0.375rem 1.25rem rgba(193,127,89,.45)"; } }}
-            onMouseLeave={e => { if (canNext) { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(193,127,89,.3)"; } }}
-            style={{
-              fontFamily: T.font.body, fontSize: isMobile ? "1.0625rem" : "1rem", fontWeight: 600,
-              padding: isMobile ? "0.9375rem 2rem" : "0.8125rem 2.25rem",
-              borderRadius: "0.625rem", minHeight: "3rem", border: "none",
-              background: canNext ? `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})` : `${T.color.sandstone}50`,
-              color: canNext ? "#FFF" : T.color.muted,
-              cursor: canNext ? "pointer" : "default",
-              transition: "all .3s",
-              boxShadow: canNext ? "0 0.25rem 1rem rgba(193,127,89,.3)" : "none",
-            }}
-          >
-            {t("continueButton")} {"\u2192"}
-          </button>
         </div>
-      )}
 
-      {/* Skip link */}
-      {onboardStep < 2 && (
+        {/* Skip intro */}
         <button
-          onClick={handleSkip}
-          onMouseEnter={e => { e.currentTarget.style.color = T.color.walnut; }}
-          onMouseLeave={e => { e.currentTarget.style.color = T.color.muted; }}
+          onClick={() => setPhase("walk_exterior")}
+          aria-label={t("cinematicSkip")}
           style={{
-            position: "absolute", bottom: "1.75rem",
+            position: "absolute", top: "1.5rem", right: "1.5rem", zIndex: 20,
             fontFamily: T.font.body, fontSize: "0.8125rem",
-            color: T.color.muted, background: "none", border: "none",
-            cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+            color: "rgba(255,255,255,0.85)", background: "rgba(0,0,0,0.45)",
+            border: "1px solid rgba(255,255,255,0.2)",
+            borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
+            cursor: "pointer", backdropFilter: "blur(8px)", minHeight: "2.75rem",
+            minWidth: "2.75rem",
+            textShadow: "0 1px 3px rgba(0,0,0,0.5)",
           }}
         >
-          {t("skipExploreOwn")}
+          {t("cinematicSkip")}
         </button>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
+
+  /* ── Walk phases (3D + tooltip) ── */
+  if (WALK_PHASES.includes(phase)) {
+    const sceneMap: Record<string, "exterior" | "entrance" | "corridor" | "room"> = {
+      walk_exterior: "exterior",
+      walk_entrance: "entrance",
+      walk_corridor: "corridor",
+      walk_room: "room",
+    };
+    const currentScene = sceneMap[phase] || "exterior";
+    const autoWalkTarget =
+      phase === "walk_exterior" ? "__entrance__" :
+      phase === "walk_entrance" ? null : // entrance cinematic handles the walk internally
+      phase === "walk_corridor" ? null : // cinematic handles the walk internally, auto-walks to door at step 7
+      null;
+
+    const tooltipMessage =
+      phase === "walk_exterior" ? t("walkExterior") :
+      phase === "walk_entrance" ? t("walkEntrance") :
+      phase === "walk_corridor" ? t("walkCorridor") :
+      t("walkRoom");
+
+    const showAddMemoryButton = false; // walk_room now uses cinematic overlay, not tooltip button
+    const hideTooltip = phase === "walk_entrance" || phase === "walk_corridor" || phase === "walk_room";
+
+    return (
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+        <Suspense fallback={null}>
+          <OnboardingSceneHost
+            scene={currentScene}
+            autoWalkTo={autoWalkTarget}
+            onboardingMode={true}
+            onRoomClick={handleExteriorRoomClick}
+            onDoorClick={
+              phase === "walk_entrance" ? handleEntranceDoorClick :
+              phase === "walk_corridor" ? handleCorridorDoorClick :
+              phase === "walk_room" ? handleRoomPaintingClick :
+              undefined
+            }
+            onCinematicStep={
+              phase === "walk_corridor" ? setCorridorStep :
+              phase === "walk_room" ? setRoomStep :
+              undefined
+            }
+            roomName={onboardingRoomName}
+            isMobile={isMobile}
+            corridorEnterClicked={corridorEnterClicked}
+          />
+        </Suspense>
+
+        {/* Bottom shadow gradient for text readability — exterior only */}
+        {phase === "walk_exterior" && (
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 4 }} />
+        )}
+
+
+        {/* ── Corridor cinematic overlay ── */}
+        {phase === "walk_corridor" && corridorStep >= 0 && (
+          <>
+            {/* Bottom shadow gradient for text readability */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 5 }} />
+
+            {/* Title text overlay */}
+            <div style={{
+              position: "absolute",
+              bottom: isMobile ? "10vh" : "8vh",
+              left: "50%", transform: "translateX(-50%)",
+              textAlign: "center", zIndex: 10, width: "90%", maxWidth: "36rem",
+            }}>
+              {/* Decorative line */}
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
+                marginBottom: "1rem",
+                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
+              }}>
+                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
+                <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
+                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
+              </div>
+
+              <p style={{
+                fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
+                color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
+                margin: "0 0 0.625rem", textShadow: "0 2px 8px rgba(0,0,0,0.7)",
+                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
+              }}>
+                {t("welcomeTitle")}
+              </p>
+
+              <h1 style={{
+                fontFamily: T.font.display,
+                fontSize: isMobile ? "1.75rem" : "3.5rem",
+                fontWeight: 300, color: "#F2EDE7",
+                lineHeight: 1.05, margin: 0,
+                letterSpacing: "0.04em",
+                animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
+                backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
+                backgroundSize: "200% 100%",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
+              }}>
+                {t("cinematicPossessive", { name: userName, thing: t("corridorWingName") })}
+              </h1>
+
+              <p style={{
+                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                color: "#D4CBC0", margin: "0.75rem 0 0",
+                lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+                animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
+              }}>
+                {t("corridorSubtitle")}
+              </p>
+
+              {/* Step 6+: room prompt */}
+              {corridorStep >= 6 && (
+                <p style={{
+                  fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                  color: "#D4CBC0", margin: "0.75rem 0 0", lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+                  animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both",
+                }}>
+                  {t("corridorRoomPromptPrefix")}{" "}
+                  <span style={{ color: T.color.terracotta, fontWeight: 600 }}>{t("corridorRoomName")}</span>
+                </p>
+              )}
+
+              {/* Enter Room button — shown after camera arrives at door */}
+              {corridorStep >= 6 && !corridorEnterClicked && (
+                <button
+                  onClick={() => setCorridorEnterClicked(true)}
+                  style={{
+                    marginTop: "1.25rem",
+                    fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    padding: "0.625rem 1.75rem",
+                    background: T.color.terracotta,
+                    color: "#FAFAF7",
+                    border: "none", borderRadius: "0.5rem",
+                    cursor: "pointer",
+                    boxShadow: `0 0.25rem 1rem ${T.color.terracotta}40`,
+                    transition: "transform .15s ease, box-shadow .15s ease",
+                    whiteSpace: "nowrap",
+                    animation: "onb-slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both",
+                    minHeight: "2.75rem",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-0.125rem)"; e.currentTarget.style.boxShadow = `0 0.5rem 1.5rem ${T.color.terracotta}60`; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}40`; }}
+                >
+                  {t("corridorEnterRoom")}
+                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Room cinematic overlay ── */}
+        {phase === "walk_room" && roomStep >= 0 && (
+          <div style={{ pointerEvents: "none" }}>
+            {/* Bottom shadow gradient for text readability */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "60vh", background: "linear-gradient(transparent 0%, rgba(26,25,23,0.35) 35%, rgba(26,25,23,0.75) 70%, rgba(26,25,23,0.88) 100%)", pointerEvents: "none", zIndex: 5 }} />
+
+            {/* Title text overlay */}
+            <div style={{
+              position: "absolute",
+              bottom: isMobile ? "10vh" : "8vh",
+              left: "50%", transform: "translateX(-50%)",
+              textAlign: "center", zIndex: 10, width: "90%", maxWidth: "36rem",
+              pointerEvents: "none",
+            }}>
+              {/* Decorative line */}
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem",
+                marginBottom: "1rem",
+                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both",
+              }}>
+                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
+                <span style={{ width: "0.3rem", height: "0.3rem", borderRadius: "50%", background: T.color.terracotta, opacity: 0.6 }} />
+                <span style={{ width: "3rem", height: "1px", background: `${T.color.terracotta}50` }} />
+              </div>
+
+              <p style={{
+                fontFamily: T.font.display, fontSize: "0.625rem", fontWeight: 500,
+                color: T.color.terracotta, letterSpacing: "4px", textTransform: "uppercase",
+                margin: "0 0 0.625rem", textShadow: "0 2px 8px rgba(0,0,0,0.7)",
+                animation: "onb-slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both",
+              }}>
+                {t("welcomeTitle")}
+              </p>
+
+              <h1 style={{
+                fontFamily: T.font.display,
+                fontSize: isMobile ? "1.75rem" : "3.5rem",
+                fontWeight: 300, color: "#F2EDE7",
+                lineHeight: 1.05, margin: 0,
+                letterSpacing: "0.04em",
+                animation: "onb-titleReveal 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.6s both",
+                backgroundImage: `linear-gradient(90deg, #F2EDE7 0%, #F2EDE7 40%, ${T.color.gold} 50%, #F2EDE7 60%, #F2EDE7 100%)`,
+                backgroundSize: "200% 100%",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.6))",
+              }}>
+                {t("cinematicPossessive", { name: userName, thing: t("roomTitle") })}
+              </h1>
+
+              <p style={{
+                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                color: "#D4CBC0", margin: "0.75rem 0 0",
+                lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+                animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1.5s both",
+              }}>
+                {t("roomSubtitle")}
+              </p>
+
+              {/* Step 9+: "Click on the empty painting" prompt */}
+              {roomStep >= 9 && (
+                <div style={{
+                  marginTop: "1.25rem",
+                  animation: "onb-slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both",
+                }}>
+                  <p style={{
+                    fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.9375rem",
+                    color: "#D4CBC0", margin: "0 0 0.75rem", lineHeight: 1.5,
+                    textShadow: "0 2px 12px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.7)",
+                  }}>
+                    {t("roomHangPrompt")}
+                  </p>
+                  <span style={{
+                    display: "inline-block",
+                    fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
+                    letterSpacing: "0.04em",
+                    padding: "0.5rem 1.5rem",
+                    background: "rgba(255,255,255,0.08)",
+                    color: "rgba(250,250,247,0.5)",
+                    border: `1px solid rgba(255,255,255,0.12)`,
+                    borderRadius: "0.5rem",
+                    cursor: "default",
+                    whiteSpace: "nowrap",
+                  }}>
+                    {t("roomClickPainting")}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Skip intro button — shown during entrance hall, corridor & room cinematics */}
+        {hideTooltip && (
+          <button
+            onClick={handleSkip}
+            style={{
+              position: "absolute", top: "1.5rem", right: "1.5rem", zIndex: 20,
+              fontFamily: T.font.body, fontSize: "0.75rem",
+              color: "rgba(255,255,255,0.35)", background: "rgba(0,0,0,0.2)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: "0.375rem", padding: "0.5rem 0.875rem",
+              cursor: "pointer", backdropFilter: "blur(4px)", minHeight: "2.5rem",
+            }}
+          >
+            {t("cinematicSkip")}
+          </button>
+        )}
+
+        {/* Tooltip for exterior & other non-cinematic walk phases */}
+        {!hideTooltip && (
+          <Suspense fallback={null}>
+            <OnboardingTooltip
+              message={tooltipMessage}
+              nextLabel={showAddMemoryButton ? t("walkAddMemory") : t("walkNext")}
+              skipLabel={t("walkSkip")}
+              onNext={showAddMemoryButton ? () => setPhase("upload") : undefined}
+              onSkip={handleSkip}
+              showNext={showAddMemoryButton}
+              showSkip={true}
+            />
+          </Suspense>
+        )}
+      </div>
+    );
+  }
+
+  /* ── Paywall — soft trial offer after walkthrough ── */
+  if (phase === "paywall") {
+    const paywallFeatures = [
+      t("paywallFeat1"),
+      t("paywallFeat2"),
+      t("paywallFeat3"),
+      t("paywallFeat4"),
+    ];
+
+    return (
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+        <Suspense fallback={null}>
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
+        </Suspense>
+
+        {/* Dark overlay */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 10,
+          background: "rgba(26,25,23,0.75)",
+          backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          {/* Glass card */}
+          <div style={{
+            maxWidth: "28rem", width: "92%",
+            padding: isMobile ? "2rem 1.5rem" : "2.5rem 2.25rem",
+            background: "rgba(40, 34, 26, 0.85)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            borderRadius: "1.25rem",
+            border: "1px solid rgba(193,127,89,0.15)",
+            boxShadow: "0 1.5rem 4rem rgba(0,0,0,0.4), inset 0 1px 0 rgba(193,127,89,0.08)",
+            animation: "onb-fadeUp .6s ease",
+          }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
+
+              {/* Ornamental header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+                <span style={{
+                  fontFamily: T.font.display, fontSize: "0.5625rem", fontWeight: 500,
+                  color: T.color.terracotta, letterSpacing: "3px", textTransform: "uppercase",
+                }}>
+                  {t("appName")}
+                </span>
+                <span style={{ width: "2rem", height: "1px", background: `${T.color.terracotta}40` }} />
+              </div>
+
+              {/* Title */}
+              <h2 style={{
+                fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem",
+                fontWeight: 300, color: "#F2EDE7", lineHeight: 1.25, margin: 0,
+              }}>
+                {t("paywallTitle", { name: userName || t("namePlaceholder") })}
+              </h2>
+
+              {/* Subtitle */}
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.875rem",
+                color: "#A09889", maxWidth: "24rem", lineHeight: 1.6, margin: 0,
+              }}>
+                {t("paywallSubtitle")}
+              </p>
+
+              {/* Features */}
+              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "0.5rem", textAlign: "left" }}>
+                {paywallFeatures.map((feat) => (
+                  <div key={feat} style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+                    <span style={{
+                      width: "1.25rem", height: "1.25rem", borderRadius: "50%",
+                      background: `${T.color.terracotta}18`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "0.625rem", color: T.color.terracotta, flexShrink: 0,
+                    }}>
+                      {"\u2713"}
+                    </span>
+                    <span style={{
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#D4CBC0", lineHeight: 1.4,
+                    }}>
+                      {feat}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Trial CTA */}
+              <button
+                onClick={() => {
+                  track("paywall_trial_clicked", { source: "onboarding" });
+                  window.open("/pricing", "_blank");
+                  setPhase(memoryUploadedRef.current ? "celebration" : "done");
+                }}
+                style={{
+                  width: "100%", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                  padding: "0.875rem 0", borderRadius: "0.625rem", border: "none",
+                  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                  color: "#FFF", cursor: "pointer", transition: "all .3s",
+                  boxShadow: "0 0.25rem 1.25rem rgba(193,127,89,.3)",
+                  minHeight: "3rem",
+                }}
+              >
+                {t("paywallTrialCta")}
+              </button>
+
+              {/* Free continue */}
+              <button
+                onClick={() => {
+                  track("paywall_skipped", { source: "onboarding" });
+                  setPhase(memoryUploadedRef.current ? "celebration" : "done");
+                }}
+                style={{
+                  fontFamily: T.font.body, fontSize: "0.75rem",
+                  color: "#6B6155", background: "none", border: "none",
+                  cursor: "pointer", textDecoration: "underline", textUnderlineOffset: "0.1875rem",
+                }}
+              >
+                {t("paywallContinueFree")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Upload — selfie prompt ── */
+  if (phase === "upload") {
+    return (
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+        <Suspense fallback={null}>
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <ImportHub
+            onClose={() => setPhase("paywall")}
+            onImportFiles={async (files) => {
+              if (files.length === 0) return;
+              const f = files[0];
+              let dataUrl = f.previewUrl || f.url || "";
+              if (f.file) {
+                try {
+                  dataUrl = await new Promise<string>((res, rej) => {
+                    const reader = new FileReader();
+                    reader.onload = () => res(reader.result as string);
+                    reader.onerror = rej;
+                    reader.readAsDataURL(f.file!);
+                  });
+                } catch { /* use previewUrl fallback */ }
+              }
+              setUploadedMemory({
+                id: "onboarding-upload",
+                title: f.name,
+                type: "photo",
+                dataUrl,
+                hue: 18, s: 50, l: 60,
+                createdAt: new Date().toISOString(),
+              });
+              handleMemoryAdded();
+            }}
+            onOpenCloudProvider={() => {}}
+            initialRoomId="ro1"
+            lockRoom
+          />
+        </Suspense>
+      </div>
+    );
+  }
+
+  /* ── Celebration — confetti over the room scene, no dark overlay ── */
+  if (phase === "celebration") {
+    return (
+      <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
+        <style>{KEYFRAMES}</style>
+        <Suspense fallback={null}>
+          <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} memories={uploadedMemory ? [uploadedMemory] : []} initialCameraZ={0} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <OnboardingCelebration
+            title={t("celebrationTitle2")}
+            subtitle={t("celebrationSubtitle2")}
+            buttonLabel={t("celebrationAtrium")}
+            onContinue={() => setPhase("done")}
+            transparent
+          />
+        </Suspense>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/* ── Helper: auto-advance after N seconds ── */
+function VideoAutoAdvance({ seconds, onAdvance }: { seconds: number; onAdvance: () => void }) {
+  const firedRef = useRef(false);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!firedRef.current) { firedRef.current = true; onAdvance(); }
+    }, seconds * 1000);
+    return () => clearTimeout(t);
+  }, [seconds, onAdvance]);
+  return null;
 }

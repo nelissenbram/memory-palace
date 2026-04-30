@@ -4,6 +4,7 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import type { Wing } from "@/lib/constants/wings";
+import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import TuscanCard from "./TuscanCard";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { WingIcon, RoomIcon } from "./WingRoomIcons";
@@ -48,6 +49,7 @@ export default function LibrarySidebar({
 }: LibrarySidebarProps) {
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const { getWingRooms } = useRoomStore();
 
   const [hoveredWing, setHoveredWing] = useState<string | null>(null);
@@ -85,10 +87,11 @@ export default function LibrarySidebar({
     const sq = sidebarQuery.toLowerCase();
     return all.filter(w => {
       if (w.name.toLowerCase().includes(sq)) return true;
+      if (translateWingName(w, tWings).toLowerCase().includes(sq)) return true;
       // Also match room names within the wing
-      return getWingRooms(w.id).some(r => r.name.toLowerCase().includes(sq));
+      return getWingRooms(w.id).some(r => r.name.toLowerCase().includes(sq) || translateRoomName(r, tWings).toLowerCase().includes(sq));
     });
-  }, [wings, sidebarQuery, getWingRooms]);
+  }, [wings, sidebarQuery, getWingRooms, tWings]);
 
   const totalRooms = useMemo(
     () => wings.reduce((sum, w) => sum + getWingRooms(w.id).length, 0),
@@ -201,7 +204,7 @@ export default function LibrarySidebar({
               }}
             >
               <WingIcon wingId={w.id} size={18} color={active ? "#FFF" : w.accent} />
-              {w.id === "attic" ? t("storageRoom") : w.name}
+              {w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings)}
               {/* Room count badge (P1 #13) */}
               {getWingRooms(w.id).length > 0 && (
                 <span style={{
@@ -225,9 +228,9 @@ export default function LibrarySidebar({
   // ── DESKTOP: premium frosted-glass sidebar ──
   return (
     <nav
+      data-nudge="library_wing_sidebar"
       aria-label={t("sidebarNav")}
       className="lsb-desktop-nav"
-      data-nudge="library_wing_sidebar"
       style={{
         width: "17rem",
         minWidth: "17rem",
@@ -496,7 +499,7 @@ export default function LibrarySidebar({
                     transition: `all 0.2s ${EASE_OUT_EXPO}`,
                   }}
                 >
-                  {w.id === "attic" ? t("storageRoom") : w.name}
+                  {w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings)}
                 </span>
                 <span
                   style={{
@@ -644,7 +647,7 @@ export default function LibrarySidebar({
                   letterSpacing: "0.08em",
                   textTransform: "uppercase" as const,
                 }}>
-                  {t("roomsInWing", { wing: w.id === "attic" ? t("storageRoom") : w.name })}
+                  {t("roomsInWing", { wing: w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings) })}
                 </div>
                 {/* Room items */}
                 {getWingRooms(w.id).map((room, ri) => (
@@ -679,7 +682,7 @@ export default function LibrarySidebar({
                       flex: 1,
                       minWidth: 0,
                     }}>
-                      {room.name}
+                      {translateRoomName(room, tWings)}
                     </span>
                   </div>
                 ))}
@@ -941,6 +944,7 @@ export default function LibrarySidebar({
 
         {/* Enter Palace button — charcoal gradient with golden shimmer border */}
         <button
+          data-nudge="nav_3d_btn"
           onClick={onEnter3D}
           onMouseEnter={() => setEnterHovered(true)}
           onMouseLeave={() => setEnterHovered(false)}

@@ -58,7 +58,7 @@ function FloatingEntry({ id, amount, onDone }: { id: string; amount: number; onD
   ];
 
   return (
-    <div style={{
+    <div role="status" aria-live="polite" style={{
       position: "fixed",
       bottom: "7.5rem",
       left: "1.75rem",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signUp } from "@/lib/auth/actions";
@@ -8,6 +8,7 @@ import { signInWithGoogle } from "@/lib/auth/social-login";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
+import { track } from "@/lib/analytics";
 
 export default function RegisterPage() {
   return <Suspense><RegisterContent /></Suspense>;
@@ -22,6 +23,14 @@ function RegisterContent() {
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
+  const refCode = searchParams.get("ref");
+
+  // Store referral code for post-registration application
+  useEffect(() => {
+    if (refCode) {
+      localStorage.setItem("mp_referral_code", refCode);
+    }
+  }, [refCode]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -49,6 +58,22 @@ function RegisterContent() {
       setError(result.error);
     } else {
       setSuccess(true);
+      track("signup_completed");
+
+      // Apply referral code if stored
+      try {
+        const storedRef = localStorage.getItem("mp_referral_code");
+        if (storedRef) {
+          await fetch("/api/referral", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: storedRef }),
+          });
+          localStorage.removeItem("mp_referral_code");
+        }
+      } catch {
+        // non-critical — referral application is best-effort
+      }
     }
     setLoading(false);
   }

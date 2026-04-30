@@ -1,5 +1,3 @@
-import exifr from "exifr";
-
 export interface ExifData {
   dateTaken?: string;
   lat?: number;
@@ -11,6 +9,7 @@ export interface ExifData {
 export async function extractExif(file: File): Promise<ExifData | null> {
   if (!file.type.startsWith("image/")) return null;
   try {
+    const exifr = await import("exifr").then(m => m.default);
     const data = await exifr.parse(file, {
       pick: ["DateTimeOriginal", "GPSLatitude", "GPSLongitude", "Make", "Model"],
     });

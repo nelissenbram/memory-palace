@@ -7,6 +7,7 @@ import { useSpeechRecognition } from "@/lib/hooks/useSpeechRecognition";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import { InterviewIcon } from "@/components/ui/InterviewLibraryPanel";
@@ -120,6 +121,27 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   const autoSummaryTriggered = useRef(false);
   const handleGenerateSummaryRef = useRef<() => void>(() => {});
 
+  // Standalone recording timer (works even without MediaRecorder on mobile)
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (phase === "recording") {
+      setRecordingSeconds(0);
+      const start = Date.now();
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds(Math.floor((Date.now() - start) / 1000));
+      }, 250);
+    } else {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    }
+    return () => {
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    };
+  }, [phase]);
+
   const question = getCurrentQuestion();
   const progress = getProgress();
   const isLastQuestion = currentTemplate ? currentQuestionIndex >= currentTemplate.questions.length - 1 : false;
@@ -142,22 +164,33 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   };
 
   // Begin recording — uses browser Speech Recognition for live transcription
+  // On mobile, we skip MediaRecorder to avoid mic contention that prevents
+  // SpeechRecognition from capturing words (voice detected but no transcript).
   const handleStartRecording = async () => {
     setApiError("");
     setTranscript("");
     recorder.reset();
     speech.resetTranscript();
-    await recorder.startRecording();
-    const speechLocale = locale === "nl" ? "nl-NL" : locale === "en" ? "en-US" : (navigator.language || "en-US");
-    speech.startListening(speechLocale);
     setPhase("recording");
+    const speechLocale = localeDateCodes[locale as Locale] || navigator.language || "en-US";
+    if (isMobile) {
+      // Mobile: SpeechRecognition only — no MediaRecorder mic contention
+      speech.startListening(speechLocale);
+    } else {
+      // Desktop: both MediaRecorder (for audio save) + SpeechRecognition
+      await recorder.startRecording();
+      await new Promise((r) => setTimeout(r, 300));
+      speech.startListening(speechLocale);
+    }
   };
 
   // Stop recording — grab the speech transcript directly (no API call needed)
   const handleStopRecording = async () => {
-    await recorder.stopRecording();
-    const spokenText = speech.stopListening();
-    const finalText = spokenText || speech.transcript;
+    const spokenText = await speech.stopListening();
+    if (!isMobile) {
+      await recorder.stopRecording();
+    }
+    const finalText = (spokenText || speech.transcript || "").trim();
 
     if (!finalText.trim()) {
       setApiError(t("noWordsDetected"));
@@ -187,8 +220,12 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
     try {
       const previousResponses = (currentSession?.responses || []).map((r) => {
         const q = currentTemplate?.questions.find((tq) => tq.id === r.questionId);
-        return { questionText: q?.text || "", response: r.transcript };
+        const qText = q ? (tTpl(q.textKey) !== q.textKey ? tTpl(q.textKey) : q.text) : "";
+        return { questionText: qText, response: r.transcript };
       });
+
+      // Send the translated question text so the AI sees the user's language
+      const translatedQ = question ? (tTpl(question.textKey) !== question.textKey ? tTpl(question.textKey) : question.text) : "";
 
       const res = await fetch("/api/ai-interview", {
         method: "POST",
@@ -196,10 +233,11 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         body: JSON.stringify({
           interviewId: currentTemplate?.id,
           questionId: question?.id,
-          questionText: question?.text || "",
+          questionText: translatedQ,
           userResponse: responseText,
           previousResponses,
           userName,
+          locale,
         }),
       });
 
@@ -265,17 +303,24 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
     try {
       const responses = (currentSession.responses || []).map((r) => {
         const q = currentTemplate.questions.find((tq) => tq.id === r.questionId);
-        return { questionText: q?.text || "", answer: r.transcript };
+        const qText = q ? (tTpl(q.textKey) !== q.textKey ? tTpl(q.textKey) : q.text) : "";
+        return { questionText: qText, answer: r.transcript };
       });
+
+      // Send translated interview title instead of English-only
+      const translatedTitle = tTpl(currentTemplate.titleKey) !== currentTemplate.titleKey
+        ? tTpl(currentTemplate.titleKey)
+        : enText(currentTemplate.titleKey);
 
       const res = await fetch("/api/ai-interview/summarize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          interviewTitle: enText(currentTemplate.titleKey),
+          interviewTitle: translatedTitle,
           responses,
           userName,
           writingStyle,
+          locale,
         }),
       });
 
@@ -567,21 +612,24 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               color: DARK_PALETTE.question, lineHeight: 1.4, marginBottom: "2rem",
               maxWidth: "30rem", margin: "0 auto 2rem", opacity: 0.7,
             }}>
-              {question ? tTpl(question.textKey) : ""}
+              {question ? (tTpl(question.textKey) === question.textKey ? question.text : tTpl(question.textKey)) : ""}
             </h2>
 
             {/* Waveform visualization */}
             <div style={{ display: "flex", justifyContent: "center", gap: "0.1875rem", marginBottom: "1.5rem", height: "3.75rem", alignItems: "center" }}>
               {Array.from({ length: 20 }).map((_, i) => {
-                const delay = i * 0.05;
-                const height = 8 + recorder.audioLevel * 52 * (0.4 + 0.6 * Math.sin((Date.now() / 200 + i) * 0.8));
+                // On mobile (no MediaRecorder), simulate gentle pulse when listening
+                const level = isMobile
+                  ? (speech.isListening ? 0.3 + 0.15 * Math.sin((Date.now() / 400 + i) * 0.6) : 0)
+                  : recorder.audioLevel;
+                const height = 8 + level * 52 * (0.4 + 0.6 * Math.sin((Date.now() / 200 + i) * 0.8));
                 return (
                   <div key={i} style={{
                     width: "0.25rem", borderRadius: "0.125rem",
                     height: Math.max(8, height),
                     background: `linear-gradient(180deg, #D4A07A, ${accentColor})`,
                     transition: "height 0.1s ease",
-                    opacity: 0.6 + recorder.audioLevel * 0.4,
+                    opacity: 0.6 + level * 0.4,
                   }} />
                 );
               })}
@@ -592,7 +640,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               fontFamily: T.font.body, fontSize: "2rem", fontWeight: 300,
               color: DARK_PALETTE.question, marginBottom: "0.5rem", fontVariantNumeric: "tabular-nums",
             }}>
-              {fmtTime(recorder.duration)}
+              {fmtTime(recordingSeconds)}
             </div>
             <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: DARK_PALETTE.label, marginBottom: "1rem" }}>
               {t("recording")}
@@ -627,14 +675,16 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               <StopIcon size={28} />
             </button>
 
-            {/* Pause/resume */}
-            <div style={{ marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "center" }}>
-              {recorder.isPaused ? (
-                <button onClick={recorder.resumeRecording} style={smallBtn}>{t("resume")}</button>
-              ) : (
-                <button onClick={recorder.pauseRecording} style={smallBtn}>{t("pause")}</button>
-              )}
-            </div>
+            {/* Pause/resume (desktop only — mobile has no MediaRecorder) */}
+            {!isMobile && (
+              <div style={{ marginTop: "1.25rem", display: "flex", gap: "0.75rem", justifyContent: "center" }}>
+                {recorder.isPaused ? (
+                  <button onClick={recorder.resumeRecording} style={smallBtn}>{t("resume")}</button>
+                ) : (
+                  <button onClick={recorder.pauseRecording} style={smallBtn}>{t("pause")}</button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -726,6 +776,18 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 cursor: "pointer", transition: "all 0.2s", minHeight: "3rem",
               }}>
                 {isLastQuestion ? t("finishInterview") : t("nextQuestion")}
+              </button>
+              <button onClick={() => {
+                setTranscript(""); setApiError(""); recorder.reset(); speech.resetTranscript();
+                setAiAck(""); setAiFollowUp("");
+                setPhase("question");
+              }} style={{
+                padding: "0.5rem 1.25rem", borderRadius: "1rem", border: "none",
+                background: "transparent", color: DARK_PALETTE.dimText,
+                fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer",
+                transition: "color 0.2s",
+              }}>
+                {t("recordAgain")}
               </button>
             </div>
           </div>

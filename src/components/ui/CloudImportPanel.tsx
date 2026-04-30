@@ -90,6 +90,7 @@ function formatBytes(b: number): string {
 export default function CloudImportPanel({ onClose, embedded }: Props) {
   const { t } = useTranslation("import");
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown: handleTrapKeyDown } = useFocusTrap(!embedded);
   const { getWings, getWingRooms } = useRoomStore();
   const wings = getWings();
@@ -169,6 +170,10 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
           setItems(newItems);
         }
         setNextCursor(data.nextCursor || null);
+      } else {
+        const errBody = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        const scopeInfo = errBody.grantedScopes ? `\nScopes: ${errBody.grantedScopes}` : "";
+        setError(`${errBody.error || `HTTP ${res.status}`}${scopeInfo}`);
       }
     } catch { setError(t("loadFailed")); }
     setLoadingItems(false);
@@ -673,7 +678,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                       >
                         <option value="">{t("selectWing")}</option>
                         {wings.map((w) => (
-                          <option key={w.id} value={w.id}>{w.icon} {w.name}</option>
+                          <option key={w.id} value={w.id}>{w.icon} {tWings(w.nameKey) || w.name}</option>
                         ))}
                       </select>
                     </div>
@@ -699,7 +704,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                       >
                         <option value="">{t("selectRoom")}</option>
                         {targetWingId && getWingRooms(targetWingId).map((r) => (
-                          <option key={r.id} value={r.id}>{r.icon} {r.name}</option>
+                          <option key={r.id} value={r.id}>{r.icon} {(r.nameKey && tWings(r.nameKey)) || r.name}</option>
                         ))}
                       </select>
                     </div>

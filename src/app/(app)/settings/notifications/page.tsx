@@ -261,7 +261,7 @@ export default function NotificationsPage() {
     try {
       stage = "requestPermission";
       if (typeof Notification === "undefined") {
-        setToast({ message: "No Notification API (PWA/HTTPS?)", type: "error" });
+        setToast({ message: t("pushErrorNoApi"), type: "error" });
         setSubscribing(false);
         return;
       }
@@ -269,14 +269,14 @@ export default function NotificationsPage() {
       setPermission(perm);
 
       if (perm !== "granted") {
-        setToast({ message: `Permission: ${perm}`, type: "error" });
+        setToast({ message: t("pushErrorPermission", { perm }), type: "error" });
         setSubscribing(false);
         return;
       }
 
       stage = "serviceWorker.ready";
       if (!("serviceWorker" in navigator)) {
-        setToast({ message: "No service worker support", type: "error" });
+        setToast({ message: t("pushErrorNoServiceWorker"), type: "error" });
         setSubscribing(false);
         return;
       }
@@ -285,7 +285,7 @@ export default function NotificationsPage() {
       stage = "vapidKey";
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!vapidKey) {
-        setToast({ message: "NEXT_PUBLIC_VAPID_PUBLIC_KEY missing", type: "error" });
+        setToast({ message: t("pushErrorNoVapid"), type: "error" });
         setSubscribing(false);
         return;
       }
@@ -303,7 +303,7 @@ export default function NotificationsPage() {
 
       if (subscription.endpoint.includes("permanently-removed.invalid")) {
         setToast({
-          message: "Browser revoked push for this site. Reset Notification permission in Chrome site settings, then retry.",
+          message: t("pushErrorRevoked"),
           type: "error",
         });
         setSubscribing(false);
@@ -323,11 +323,11 @@ export default function NotificationsPage() {
       }
 
       setPrefs({ pushEnabled: true });
-      setToast({ message: `Subscribed ✓ (${subscription.endpoint.slice(0, 40)}…)`, type: "success" });
+      setToast({ message: t("pushSubscribed"), type: "success" });
     } catch (err) {
       console.error("Failed to subscribe:", err);
       const msg = (err as Error).message || String(err);
-      setToast({ message: `Fail @ ${stage}: ${msg.slice(0, 180)}`, type: "error" });
+      setToast({ message: t("pushErrorStage", { stage, msg: msg.slice(0, 180) }), type: "error" });
     }
     setSubscribing(false);
   }, [prefs.pushEnabled, setPrefs, t]);
@@ -630,14 +630,14 @@ export default function NotificationsPage() {
             // Always inject the samples locally so the bell shows them,
             // even if the notifications DB table is missing.
             const samples = diag?.samples || [
-              { type: "welcome",          message: "✧ Welcome to your Memory Palace — let's preserve something beautiful." },
-              { type: "achievement",      message: "⚜ Ten memories preserved — you're off to a beautiful start." },
-              { type: "achievement",      message: "❀ First memory in \"Atrium\" — this room just came alive." },
-              { type: "family_invite",    message: "❦ Sofia joined your family palace." },
-              { type: "new_contribution", message: "✎ Marcus added a memory to \"Living Room\"." },
-              { type: "on_this_day",      message: "❧ On this day, 3 years ago — \"Grandpa's 80th birthday\"." },
-              { type: "reminder",         message: "⧗ A quiet nudge: the Library has been patient. Want to add a story?" },
-              { type: "system",           message: "⚜ A new feature has arrived in your palace. Explore the Atrium." },
+              { type: "welcome",          message: `✧ ${t("testSampleWelcome")}` },
+              { type: "achievement",      message: `⚜ ${t("testSampleAchievement1")}` },
+              { type: "achievement",      message: `❀ ${t("testSampleAchievement2")}` },
+              { type: "family_invite",    message: `❦ ${t("testSampleFamilyInvite")}` },
+              { type: "new_contribution", message: `✎ ${t("testSampleContribution")}` },
+              { type: "on_this_day",      message: `❧ ${t("testSampleOnThisDay")}` },
+              { type: "reminder",         message: `⧗ ${t("testSampleReminder")}` },
+              { type: "system",           message: `⚜ ${t("testSampleSystem")}` },
             ];
             try {
               const store = useNotificationStore.getState();
@@ -668,12 +668,12 @@ export default function NotificationsPage() {
               if (diag.dbError) parts.push(`DBErr: ${diag.dbError.slice(0, 40)}`);
               if (diag.pushError) parts.push(`PushErr: ${diag.pushError.slice(0, 200)}`);
               setToast({
-                message: `Added 8 locally · ${parts.join(" · ")}`,
+                message: `${t("testResultLocal")} · ${parts.join(" · ")}`,
                 type: "success",
               });
             } else {
               setToast({
-                message: `Added 8 locally (server error: ${(threw || "unknown").slice(0, 60)})`,
+                message: t("testResultServerError", { error: (threw || "unknown").slice(0, 60) }),
                 type: "success",
               });
             }

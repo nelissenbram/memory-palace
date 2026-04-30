@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import Toast, { type ToastData } from "@/components/ui/Toast";
-import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/constants/plans";
+import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
+import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
 
 const F = T.font;
 const C = T.color;
@@ -18,10 +19,17 @@ const C = T.color;
 export default function PricingPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
+  const [interval, setInterval] = useState<BillingInterval>("annual");
+  const [currency, setCurrency] = useState<SupportedCurrency>("EUR");
   const [loading, setLoading] = useState<PlanId | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
   const router = useRouter();
   const { t, locale, setLocale } = useTranslation("pricing");
+
+  // Auto-detect currency from timezone/locale
+  useEffect(() => {
+    setCurrency(detectCurrency());
+  }, []);
   const { t: ts } = useTranslation("subscription");
   const { t: tp } = useTranslation("plans");
   const { t: tc } = useTranslation("common");
@@ -45,7 +53,7 @@ export default function PricingPage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId }),
+        body: JSON.stringify({ plan: planId, interval }),
       });
       const data = await res.json();
 
@@ -219,6 +227,177 @@ export default function PricingPage() {
         </p>
       </section>
 
+      {/* Billing Interval Toggle + Currency Selector */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: 12,
+          padding: isMobile ? "0 16px" : "0 40px",
+          marginTop: -8,
+          flexWrap: "wrap",
+        }}
+      >
+        <div
+          style={{
+            display: "inline-flex",
+            borderRadius: 12,
+            background: `${C.warmStone}`,
+            padding: 4,
+            gap: 0,
+          }}
+        >
+          <button
+            onClick={() => setInterval("monthly")}
+            style={{
+              padding: "10px 24px",
+              borderRadius: 10,
+              border: "none",
+              background: interval === "monthly"
+                ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
+                : "transparent",
+              color: interval === "monthly" ? C.white : C.walnut,
+              fontFamily: F.body,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            {/* i18n: "monthly" */}
+            {t("monthly") !== "monthly" ? t("monthly") : "Monthly"}
+          </button>
+          <button
+            onClick={() => setInterval("annual")}
+            style={{
+              padding: "10px 24px",
+              borderRadius: 10,
+              border: "none",
+              background: interval === "annual"
+                ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
+                : "transparent",
+              color: interval === "annual" ? C.white : C.walnut,
+              fontFamily: F.body,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {/* i18n: "annual" */}
+            {t("annual") !== "annual" ? t("annual") : "Annual"}
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: 8,
+                background: interval === "annual"
+                  ? "rgba(255,255,255,0.25)"
+                  : `${C.terracotta}18`,
+                color: interval === "annual" ? C.white : C.terracotta,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {/* i18n: "saveUpToPercent" — Save up to 23% */}
+              {t("saveUpToPercent") !== "saveUpToPercent" ? t("saveUpToPercent") : "Save up to 23%"}
+            </span>
+          </button>
+        </div>
+        <select
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
+          aria-label={t("currency")}
+          style={{
+            background: "none",
+            border: `1px solid ${C.sandstone}60`,
+            borderRadius: "0.5rem",
+            padding: "0.5rem 1.75rem 0.5rem 0.625rem",
+            fontSize: "0.8125rem",
+            fontFamily: F.body,
+            fontWeight: 600,
+            color: C.walnut,
+            cursor: "pointer",
+            letterSpacing: "0.5px",
+            transition: "border-color 0.2s, color 0.2s",
+            appearance: "none",
+            WebkitAppearance: "none",
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "right 0.5rem center",
+          }}
+        >
+          <option value="EUR">{"\u20AC"} EUR</option>
+          <option value="USD">$ USD</option>
+          <option value="GBP">{"\u00A3"} GBP</option>
+        </select>
+      </div>
+
+      {/* Trust Badges */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "1.5rem",
+          flexWrap: "wrap",
+          padding: isMobile ? "1.25rem 1rem 0" : "1.5rem 2.5rem 0",
+        }}
+      >
+        {[
+          {
+            label: t("trustSsl"),
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M5 7V5a3 3 0 1 1 6 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+            ),
+          },
+          {
+            label: t("trustGdpr"),
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M8 1.5L2.5 4v4c0 3.5 2.5 5.5 5.5 6.5 3-1 5.5-3 5.5-6.5V4L8 1.5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                <path d="M5.5 8.5l2 2 3-3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ),
+          },
+          {
+            label: t("trustGuarantee"),
+            icon: (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M5 8.5l2 2 4-4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ),
+          },
+        ].map((badge) => (
+          <div
+            key={badge.label}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.375rem",
+              fontSize: "0.8125rem",
+              color: C.walnut,
+              fontFamily: F.body,
+              fontWeight: 500,
+            }}
+          >
+            <span style={{ display: "flex", alignItems: "center", color: C.sage }}>
+              {badge.icon}
+            </span>
+            {badge.label}
+          </div>
+        ))}
+      </div>
+
       {/* Plan Cards */}
       <section
         style={{
@@ -336,7 +515,7 @@ export default function PricingPage() {
                           color: C.charcoal,
                         }}
                       >
-                        {"\u20AC"}{plan.price.toFixed(2).replace(".", ",")}
+                        {formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}
                       </span>
                       <span
                         style={{
@@ -349,7 +528,7 @@ export default function PricingPage() {
                     </>
                   )}
                 </div>
-                {!isFree && (
+                {!isFree && interval === "annual" && (
                   <p style={{ fontSize: 12, color: C.muted, marginTop: -16, marginBottom: 8 }}>
                     {t("billedYearly")}
                   </p>
@@ -383,7 +562,9 @@ export default function PricingPage() {
                     ? t("redirecting")
                     : isFree
                       ? t("getStartedBtn")
-                      : t("subscribe")}
+                      : plan.trial
+                        ? (t("startFreeTrial") !== "startFreeTrial" ? t("startFreeTrial") : `Start ${plan.trial}-day free trial`)
+                        : t("subscribe")}
                 </button>
 
                 {/* Features */}
@@ -431,6 +612,84 @@ export default function PricingPage() {
               </div>
             );
           })}
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section
+        style={{
+          padding: isMobile ? "0 1rem 3rem" : "0 2.5rem 4rem",
+          maxWidth: 1100,
+          margin: "0 auto",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: isSmall ? "1fr" : "repeat(2, 1fr)",
+            gap: isMobile ? "1.25rem" : "1.75rem",
+          }}
+        >
+          {[
+            {
+              quote: t("testimonial1Quote"),
+              author: t("testimonial1Author"),
+              role: t("testimonial1Role"),
+            },
+            {
+              quote: t("testimonial2Quote"),
+              author: t("testimonial2Author"),
+              role: t("testimonial2Role"),
+            },
+          ].map((testimonial) => (
+            <div
+              key={testimonial.author}
+              style={{
+                background: C.white,
+                borderRadius: "1rem",
+                border: `1px solid ${C.sandstone}40`,
+                padding: isMobile ? "1.5rem" : "2rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: F.display,
+                  fontSize: "1.0625rem",
+                  fontStyle: "normal",
+                  color: C.charcoal,
+                  lineHeight: 1.6,
+                  margin: 0,
+                }}
+              >
+                &ldquo;{testimonial.quote}&rdquo;
+              </p>
+              <div>
+                <span
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                    color: C.charcoal,
+                  }}
+                >
+                  {testimonial.author}
+                </span>
+                <span
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: "0.8125rem",
+                    color: C.muted,
+                    marginLeft: "0.5rem",
+                  }}
+                >
+                  {testimonial.role}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

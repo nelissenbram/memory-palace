@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useTutorialStore } from "@/lib/stores/tutorialStore";
@@ -40,6 +41,14 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
   const { view, activeWing, activeRoomId, allRoomMems, showUpload, showSharing, selMem, wingData, moreMenuOpen } = props;
   const { t: tAction } = useTranslation("actionMenu");
   const accent = wingData?.accent || T.color.terracotta;
+
+  // Close more menu on Escape
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") props.onCloseMore(); };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [moreMenuOpen, props.onCloseMore]);
 
   // Define primary actions based on view (max 3 + more = 4 visible)
   const primaryActions: { icon: string; label: string; action: () => void; accent?: boolean; isBack?: boolean }[] = [];
@@ -128,7 +137,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
         background: "rgba(42,34,24,.4)",
         backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
       }}>
-        <div onClick={e => e.stopPropagation()} style={{
+        <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{
           position: "absolute", bottom: "4.5rem", left: "0.75rem", right: "0.75rem",
           maxHeight: "70vh", overflowY: "auto",
           background: `${T.color.linen}e8`,
@@ -167,7 +176,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
                   onTouchStart={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.95)"; }}
                   onTouchEnd={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
                   >
-                    <span style={{ fontSize: "1.25rem", lineHeight: 1 }}>{item.icon}</span>
+                    <span aria-hidden="true" style={{ fontSize: "1.25rem", lineHeight: 1 }}>{item.icon}</span>
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.6875rem",
                       color: T.color.walnut, fontWeight: 500, lineHeight: 1.2,
@@ -220,14 +229,14 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
               }}>{act.icon}</div>
             ) : act.isBack ? (
               <div style={{
-                width: "2rem", height: "2rem", borderRadius: "1rem",
+                width: "2.75rem", height: "2.75rem", borderRadius: "1.375rem",
                 background: `${T.color.warmStone}dd`,
                 border: `1px solid ${T.color.cream}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "0.9375rem", color: T.color.walnut,
               }}>{act.icon}</div>
             ) : (
-              <span style={{ fontSize: "1.1875rem", lineHeight: 1 }}>{act.icon}</span>
+              <span aria-hidden="true" style={{ fontSize: "1.1875rem", lineHeight: 1 }}>{act.icon}</span>
             )}
             <span style={{
               fontFamily: T.font.body, fontSize: "0.5625rem",

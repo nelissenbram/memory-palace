@@ -227,7 +227,9 @@ export async function POST(request: Request) {
     const { data } = await supabase
       .from("memories")
       .select("id, title, user_id, room_id, thumbnail_url, created_at")
-      .in("user_id", batch);
+      .in("user_id", batch)
+      .order("created_at", { ascending: false })
+      .limit(500);
     if (data) allMemories.push(...data);
   }
 

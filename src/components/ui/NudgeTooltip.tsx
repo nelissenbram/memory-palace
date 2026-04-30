@@ -62,7 +62,7 @@ const NUDGE_CONFIG: Record<NudgeId, { messageKey: string; position: "top" | "bot
   atrium_mob_notif:       { messageKey: "mobNotif",            position: "top" },
   atrium_mob_help:        { messageKey: "mobHelp",             position: "top" },
   atrium_mob_me:          { messageKey: "mobMe",               position: "top" },
-  library_wing_sidebar:   { messageKey: "wingSidebar",         position: "bottom" },
+  library_wing_sidebar:   { messageKey: "wingSidebar",         position: "top" },
   library_room_bar:       { messageKey: "libraryRoomBar",      position: "bottom" },
   library_search:         { messageKey: "librarySearch",       position: "bottom" },
   library_tools:          { messageKey: "libraryTools",        position: "bottom" },
@@ -88,8 +88,8 @@ const NUDGE_CONFIG: Record<NudgeId, { messageKey: string; position: "top" | "bot
 export function getNudgeHighlight(activeNudge: NudgeId | null): { entrance?: string | null; wing?: string | null; room?: string | null } {
   if (!activeNudge) return {};
   if (activeNudge === "palace_click_entrance") return { entrance: "__entrance__" };
-  if (activeNudge === "palace_click_wing") return { wing: "family" };
-  if (activeNudge === "palace_click_room") return { room: "fr1" };
+  if (activeNudge === "palace_click_wing") return { wing: "roots" };
+  if (activeNudge === "palace_click_room") return { room: "ro1" };
   return {};
 }
 
@@ -177,6 +177,9 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
       ? `[data-nudge="${BRIDGE_TARGET[activeNudge]}"]`
       : `[data-nudge="${activeNudge}"]`;
 
+    // Convert rem to px for calculations (1rem = root font size)
+    const remToPx = (rem: number) => rem * parseFloat(getComputedStyle(document.documentElement).fontSize || "16");
+
     const findAndPosition = () => {
       // Pick the first visible match — multiple elements may share a data-nudge
       // (e.g. desktop sidebar + mobile top bar), only one is on-screen at a time.
@@ -188,28 +191,51 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
       if (!el) return false;
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) return false;
-      if (rect.top > window.innerHeight - 50 || rect.bottom < 0) {
+      if (rect.top > window.innerHeight - remToPx(3.125) || rect.bottom < 0) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         return false;
       }
 
-      const tooltipW = isMobile ? 260 : 280;
-      const tooltipH = 100;
-      const gap = 12;
+      const tooltipW = remToPx(isMobile ? 16.25 : 17.5);
+      const tooltipH = remToPx(6.25);
+      const gap = remToPx(0.75);
       let top = 0, left = 0;
 
-      switch (config.position) {
-        case "bottom": top = rect.bottom + gap; left = rect.left + rect.width / 2 - tooltipW / 2; break;
-        case "top": top = rect.top - tooltipH - gap; left = rect.left + rect.width / 2 - tooltipW / 2; break;
-        case "right": top = rect.top + rect.height / 2 - tooltipH / 2; left = rect.right + gap; break;
-        case "left": top = rect.top + rect.height / 2 - tooltipH / 2; left = rect.left - tooltipW - gap; break;
+      // For tall elements (e.g. full-height sidebar), place tooltip inside near the top-right
+      const isTall = rect.height > window.innerHeight * 0.6;
+      if (isTall && (config.position === "top" || config.position === "bottom")) {
+        top = Math.max(gap, rect.top) + gap;
+        left = rect.right + gap;
+        if (left + tooltipW > window.innerWidth - gap) {
+          left = rect.right - tooltipW - gap;
+        }
+      } else {
+        switch (config.position) {
+          case "bottom": top = rect.bottom + gap; left = rect.left + rect.width / 2 - tooltipW / 2; break;
+          case "top": top = rect.top - tooltipH - gap; left = rect.left + rect.width / 2 - tooltipW / 2; break;
+          case "right": top = rect.top + rect.height / 2 - tooltipH / 2; left = rect.right + gap; break;
+          case "left": top = rect.top + rect.height / 2 - tooltipH / 2; left = rect.left - tooltipW - gap; break;
+        }
       }
 
-      const m = 12;
+      // Clamp within viewport with rem-based margin
+      const m = remToPx(0.75);
       if (left < m) left = m;
       if (left + tooltipW > window.innerWidth - m) left = window.innerWidth - tooltipW - m;
-      if (top + tooltipH > window.innerHeight - m) top = rect.top - tooltipH - gap;
-      if (top < m) top = rect.bottom + gap;
+      // Vertical clamping: try opposite side first, then hard-clamp to viewport
+      if (top + tooltipH > window.innerHeight - m) {
+        top = rect.top - tooltipH - gap;
+      }
+      if (top < m) {
+        top = rect.bottom + gap;
+      }
+      // Final hard clamp — ensure card never leaves the viewport
+      if (top + tooltipH > window.innerHeight - m) {
+        top = window.innerHeight - tooltipH - m;
+      }
+      if (top < m) {
+        top = m;
+      }
 
       setTargetBox(rect);
       setPos({ top, left });
@@ -222,7 +248,13 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
       const retry = setInterval(() => {
         attempts++;
         if (findAndPosition()) clearInterval(retry);
-        else if (attempts > 10) { clearInterval(retry); dismiss(); }
+        else if (attempts > 10) {
+          clearInterval(retry);
+          // Anchor not found — show card centered instead of dismissing
+          setTargetBox(null);
+          setPos({ top: 0, left: 0 });
+          setVisible(true);
+        }
       }, 250);
       return () => { clearInterval(retry); };
     }
@@ -701,13 +733,23 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
   if (!pos) return null;
   const config = NUDGE_CONFIG[activeNudge];
 
+  // If no target anchor was found, render centered fallback instead of positioned tooltip
+  const isCenteredFallback = !targetBox;
+
   return (
     <>
       <style>{`
         @keyframes nudgeFadeIn { from { opacity:0; transform:translateY(0.375rem); } to { opacity:1; transform:translateY(0); } }
         @keyframes nudgeFadeOut { from { opacity:1; transform:translateY(0); } to { opacity:0; transform:translateY(0.375rem); } }
         @keyframes nudgePulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.4); } 50% { box-shadow:0 0 0 0.5rem rgba(212,175,55,0); } }
+        @keyframes nudgeCenterIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+        @keyframes nudgeCenterOut { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.95); } }
       `}</style>
+
+      {/* Scrim overlay — full overlay for centered fallback, cutout for targeted */}
+      {isCenteredFallback && (
+        <div style={{ position:"fixed", inset:0, zIndex:57, background:"rgba(0,0,0,0.35)", pointerEvents:"auto" }} />
+      )}
 
       {targetBox && (() => {
         const pad = 6;
@@ -743,9 +785,16 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
       })()}
 
       <div ref={tooltipRef} role="tooltip" style={{
-        position:"fixed", top:pos.top, left:pos.left, zIndex:59,
+        position:"fixed",
+        ...(isCenteredFallback
+          ? { top:"50%", left:"50%", transform:"translate(-50%,-50%)" }
+          : { top:pos.top, left:pos.left }
+        ),
+        zIndex:59,
         width: isMobile ? "16.25rem" : "17.5rem",
-        animation: fading ? "nudgeFadeOut .2s ease forwards" : "nudgeFadeIn .3s ease both",
+        animation: fading
+          ? (isCenteredFallback ? "nudgeCenterOut .2s ease forwards" : "nudgeFadeOut .2s ease forwards")
+          : (isCenteredFallback ? "nudgeCenterIn .3s ease both" : "nudgeFadeIn .3s ease both"),
       }}>
         <div style={{
           background:"rgba(42,34,24,0.92)", backdropFilter:"blur(16px)", WebkitBackdropFilter:"blur(16px)",

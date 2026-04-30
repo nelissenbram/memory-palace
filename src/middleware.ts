@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/api/stripe/webhook", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/video", "/test-palazzo"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/video", "/test-palazzo"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -11,8 +11,19 @@ function isPublicPath(path: string): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  // Allow static media files through without auth
-  if (request.nextUrl.pathname.startsWith("/video/")) {
+  const path = request.nextUrl.pathname;
+
+  // Fast-path: skip auth entirely for public/static routes that never need session
+  if (
+    path === "/" ||
+    path.startsWith("/video/") ||
+    path.startsWith("/api/cron/") ||
+    path.startsWith("/api/webhooks/") ||
+    path.startsWith("/api/stripe/webhook") ||
+    path.startsWith("/api/admin/") ||
+    path.startsWith("/api/email/") ||
+    path.startsWith("/api/notifications/send")
+  ) {
     return NextResponse.next();
   }
 
@@ -21,7 +32,6 @@ export async function middleware(request: NextRequest) {
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    const path = request.nextUrl.pathname;
     if (isPublicPath(path) || path === "/") return NextResponse.next();
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -29,18 +39,20 @@ export async function middleware(request: NextRequest) {
   // Refresh the session and get auth state in a single getUser() call
   const { response, user } = await updateSession(request);
 
-  const path = request.nextUrl.pathname;
   const isPublicRoute = isPublicPath(path);
 
-  // Authenticated user on public route or landing → redirect to palace
+  // Authenticated user on public route or landing → redirect to atrium
   // Exception: invite pages and public share pages should be accessible to authenticated users
   const isInvitePage = path.startsWith("/invite");
+  const isKepPage = path.startsWith("/kep");
   const isPublicSharePage = path.startsWith("/public");
   const isLegacyPage = path.startsWith("/legacy");
   const isResetPasswordPage = path.startsWith("/reset-password");
   const isApiRoute = path.startsWith("/api/");
-  if (user && (isPublicRoute || path === "/") && !isInvitePage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute) {
-    return NextResponse.redirect(new URL("/palace", request.url));
+  const isPricingPage = path.startsWith("/pricing");
+  const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security");
+  if (user && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage) {
+    return NextResponse.redirect(new URL("/atrium", request.url));
   }
 
   // Unauthenticated user on protected route → redirect to login

@@ -16,6 +16,8 @@ export interface WingRoom {
   id: string;
   name: string;
   nameKey?: string;
+  subtitle?: string;
+  subtitleKey?: string;
   icon: string;
   shared: boolean;
   sharedWith: string[];
@@ -23,39 +25,60 @@ export interface WingRoom {
 }
 
 export const WINGS: Wing[] = [
-  {id:"family",name:"Family",nameKey:"family",icon:"\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}",accent:"#C17F59",wall:"#DDD4C6",floor:"#9E8264",desc:"Those closest to your heart",descKey:"familyDesc",layout:"L-shaped gallery"},
-  {id:"travel",name:"Travel",nameKey:"travel",icon:"\u2708\uFE0F",accent:"#4A6741",wall:"#D8D5CA",floor:"#988868",desc:"Adventures and journeys",descKey:"travelDesc",layout:"Long corridor with alcoves"},
-  {id:"childhood",name:"Childhood",nameKey:"childhood",icon:"\u{1F33B}",accent:"#B8926A",wall:"#E0D8CA",floor:"#A88E6E",desc:"Where your story began",descKey:"childhoodDesc",layout:"Circular rotunda"},
-  {id:"career",name:"Career",nameKey:"career",icon:"\u{1F4D0}",accent:"#8B7355",wall:"#D5CFC2",floor:"#8E7C64",desc:"Milestones and achievements",descKey:"careerDesc",layout:"Exhibition hall"},
-  {id:"creativity",name:"Creativity",nameKey:"creativity",icon:"\u{1F3A8}",accent:"#9B6B8E",wall:"#DCD6CE",floor:"#AA9488",desc:"Art, music, and expression",descKey:"creativityDesc",layout:"Open loft studio"},
-  {id:"attic",name:"Storage Room",nameKey:"storageRoom",icon:"\u{1F4E6}",accent:"#8B7355",wall:"#C8BCA8",floor:"#7A6A52",desc:"Unassigned memories waiting to find their room",descKey:"storageRoomDesc",layout:"Compact storage"},
+  {id:"roots",name:"Roots",nameKey:"roots",icon:"🌱",accent:"#C17F59",wall:"#DDD4C6",floor:"#9E8264",desc:"Where I come from",descKey:"rootsDesc",layout:"L-shaped gallery"},
+  {id:"nest",name:"Nest",nameKey:"nest",icon:"🪺",accent:"#7AA0C8",wall:"#D8D5CA",floor:"#988868",desc:"The home I've made",descKey:"nestDesc",layout:"L-shaped gallery"},
+  {id:"craft",name:"Craft",nameKey:"craft",icon:"🛠",accent:"#8B7355",wall:"#D5CFC2",floor:"#8E7C64",desc:"What I've built and learned",descKey:"craftDesc",layout:"Exhibition hall"},
+  {id:"travel",name:"Travel",nameKey:"travel",icon:"🧭",accent:"#4A6741",wall:"#D8D5CA",floor:"#988868",desc:"Places I've been",descKey:"travelDesc",layout:"Long corridor with alcoves"},
+  {id:"passions",name:"Passions",nameKey:"passions",icon:"✨",accent:"#9B6B8E",wall:"#DCD6CE",floor:"#AA9488",desc:"What I do for love",descKey:"passionsDesc",layout:"Open loft studio"},
+  {id:"attic",name:"Storage Room",nameKey:"storageRoom",icon:"📦",accent:"#8B7355",wall:"#C8BCA8",floor:"#7A6A52",desc:"Unassigned memories waiting to find their room",descKey:"storageRoomDesc",layout:"Compact storage"},
 ];
 
+export function translateWingName(wing: { name: string; nameKey?: string }, t: (key: string) => string): string {
+  if (wing.nameKey) {
+    const translated = t(wing.nameKey);
+    if (translated !== wing.nameKey) return translated;
+  }
+  return wing.name;
+}
+
+export function translateRoomName(room: { name: string; nameKey?: string }, t: (key: string) => string): string {
+  if (room.nameKey) {
+    const translated = t(room.nameKey);
+    if (translated !== room.nameKey) return translated;
+  }
+  return room.name;
+}
+
 export const WING_ROOMS: Record<string, WingRoom[]> = {
-  family:[
-    {id:"fr1",name:"Christmas Traditions",nameKey:"roomChristmasTraditions",icon:"\u{1F384}",shared:false,sharedWith:[],coverHue:18},
-    {id:"fr2",name:"Mom\u2019s Birthday Parties",nameKey:"roomMomsBirthdayParties",icon:"\u{1F382}",shared:true,sharedWith:["sister@email.com","brother@email.com"],coverHue:32},
-    {id:"fr3",name:"Baby\u2019s First Year",nameKey:"roomBabysFirstYear",icon:"\u{1F476}",shared:true,sharedWith:["grandma@email.com"],coverHue:42},
+  roots:[
+    {id:"ro1",name:"Me, Over Time",nameKey:"roomMeOverTime",subtitle:"The story of me, from my first photo to today",subtitleKey:"roomMeOverTimeSub",icon:"🪞",shared:false,sharedWith:[],coverHue:18},
+    {id:"ro2",name:"Sunday Lunches",nameKey:"roomSundayLunches",subtitle:"Nonna's kitchen, too much garlic, the loud table",subtitleKey:"roomSundayLunchesSub",icon:"🍝",shared:false,sharedWith:[],coverHue:32},
+    {id:"ro3",name:"Dad's Garage",nameKey:"roomDadsGarage",subtitle:"Engine oil, tools I wasn't allowed to touch, Saturday mornings",subtitleKey:"roomDadsGarageSub",icon:"🛠",shared:false,sharedWith:[],coverHue:42},
+    {id:"ro4",name:"School Days",nameKey:"roomSchoolDays",subtitle:"Teachers, best friends, the corner desk by the window",subtitleKey:"roomSchoolDaysSub",icon:"🎒",shared:false,sharedWith:[],coverHue:48},
+  ],
+  nest:[
+    {id:"ne1",name:"Baby's First Year",nameKey:"roomBabysFirstYear",subtitle:"First laugh, first tooth, the tired and wonderful months",subtitleKey:"roomBabysFirstYearSub",icon:"👶",shared:false,sharedWith:[],coverHue:18},
+    {id:"ne2",name:"Birthdays at Home",nameKey:"roomBirthdaysAtHome",subtitle:"Candles, chaos, cake on someone's face",subtitleKey:"roomBirthdaysAtHomeSub",icon:"🎂",shared:false,sharedWith:[],coverHue:32},
+    {id:"ne3",name:"The House on Elm Street",nameKey:"roomHouseOnElmStreet",subtitle:"The walls we painted, the garden we planted, the years inside",subtitleKey:"roomHouseOnElmStreetSub",icon:"🏡",shared:false,sharedWith:[],coverHue:42},
+    {id:"ne4",name:"Our Wedding",nameKey:"roomOurWedding",subtitle:"Borrowed dresses, the toast that made everyone cry",subtitleKey:"roomOurWeddingSub",icon:"💍",shared:false,sharedWith:[],coverHue:350},
+  ],
+  craft:[
+    {id:"cf1",name:"My First Job",nameKey:"roomMyFirstJob",subtitle:"The nervous start, the boss who believed in me, the lessons I still use",subtitleKey:"roomMyFirstJobSub",icon:"📓",shared:false,sharedWith:[],coverHue:210},
+    {id:"cf2",name:"The Big Project of 2019",nameKey:"roomBigProject2019",subtitle:"Long days, late nights, the one I'm most proud of",subtitleKey:"roomBigProject2019Sub",icon:"🏆",shared:false,sharedWith:[],coverHue:240},
+    {id:"cf3",name:"Diploma Day",nameKey:"roomDiplomaDay",subtitle:"The gown, my parents in the crowd, what came after",subtitleKey:"roomDiplomaDaySub",icon:"🎓",shared:false,sharedWith:[],coverHue:48},
   ],
   travel:[
-    {id:"tr1",name:"Trip to Rome",nameKey:"roomTripToRome",icon:"\u{1F1EE}\u{1F1F9}",shared:true,sharedWith:["partner@email.com","friend@email.com"],coverHue:22},
-    {id:"tr2",name:"Japan 2024",nameKey:"roomJapan2024",icon:"\u{1F1EF}\u{1F1F5}",shared:true,sharedWith:["travel-buddy@email.com","colleague@email.com","friend@email.com"],coverHue:355},
-    {id:"tr3",name:"Weekend in Paris",nameKey:"roomWeekendInParis",icon:"\u{1F1EB}\u{1F1F7}",shared:false,sharedWith:[],coverHue:280},
-    {id:"tr4",name:"Patagonia Trek",nameKey:"roomPatagoniaTrek",icon:"\u26F0\uFE0F",shared:false,sharedWith:[],coverHue:165},
+    {id:"tv1",name:"Tokyo, 2023",nameKey:"roomTokyo2023",subtitle:"Cherry blossoms, neon streets, getting lost on purpose",subtitleKey:"roomTokyo2023Sub",icon:"🇯🇵",shared:false,sharedWith:[],coverHue:355},
+    {id:"tv2",name:"Patagonia, 2022",nameKey:"roomPatagonia2022",subtitle:"Ten days, no signal, the wind that wouldn't stop",subtitleKey:"roomPatagonia2022Sub",icon:"🏔",shared:false,sharedWith:[],coverHue:165},
+    {id:"tv3",name:"Rome, 2024",nameKey:"roomRome2024",subtitle:"Warm stones, long lunches, a hundred years in every square",subtitleKey:"roomRome2024Sub",icon:"🇮🇹",shared:false,sharedWith:[],coverHue:22},
+    {id:"tv4",name:"Coast Road, 2021",nameKey:"roomCoastRoad2021",subtitle:"Rental car playlist, wrong turns, the sea on our left",subtitleKey:"roomCoastRoad2021Sub",icon:"🛣",shared:false,sharedWith:[],coverHue:200},
   ],
-  childhood:[
-    {id:"cr1",name:"Grandpa\u2019s Workshop",nameKey:"roomGrandpasWorkshop",icon:"\u{1F6E0}\uFE0F",shared:true,sharedWith:["cousin@email.com"],coverHue:33},
-    {id:"cr2",name:"School Days",nameKey:"roomSchoolDays",icon:"\u{1F3EB}",shared:false,sharedWith:[],coverHue:48},
-  ],
-  career:[
-    {id:"kr1",name:"First Startup",nameKey:"roomFirstStartup",icon:"\u{1F680}",shared:false,sharedWith:[],coverHue:210},
-    {id:"kr2",name:"Conference Keynotes",nameKey:"roomConferenceKeynotes",icon:"\u{1F3A4}",shared:true,sharedWith:["cofounder@email.com"],coverHue:240},
-  ],
-  creativity:[
-    {id:"rr1",name:"Watercolor Collection",nameKey:"roomWatercolorCollection",icon:"\u{1F3A8}",shared:false,sharedWith:[],coverHue:280},
-    {id:"rr2",name:"Guitar Sessions",nameKey:"roomGuitarSessions",icon:"\u{1F3B8}",shared:true,sharedWith:["bandmate@email.com"],coverHue:38},
+  passions:[
+    {id:"pa1",name:"The Saxophone Years",nameKey:"roomSaxophoneYears",subtitle:"Late-night practice, the jazz bar on Thursdays, the solo I nailed once",subtitleKey:"roomSaxophoneYearsSub",icon:"🎷",shared:false,sharedWith:[],coverHue:280},
+    {id:"pa2",name:"In the Kitchen",nameKey:"roomInTheKitchen",subtitle:"Failed soufflés, perfected pasta, the curry I'm famous for",subtitleKey:"roomInTheKitchenSub",icon:"🍳",shared:false,sharedWith:[],coverHue:38},
+    {id:"pa3",name:"Saturday Football",nameKey:"roomSaturdayFootball",subtitle:"Matches with my team, the radio in the kitchen, the one cup final",subtitleKey:"roomSaturdayFootballSub",icon:"⚽",shared:false,sharedWith:[],coverHue:120},
   ],
   attic:[
-    {id:"at1",name:"Storage Room",nameKey:"roomStorageRoom",icon:"\u{1F4E6}",shared:false,sharedWith:[],coverHue:40},
+    {id:"at1",name:"Storage Room",nameKey:"roomStorageRoom",icon:"📦",shared:false,sharedWith:[],coverHue:40},
   ],
 };

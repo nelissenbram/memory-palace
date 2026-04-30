@@ -44,13 +44,13 @@ export default function SettingsTutorial({ open, onClose }: Props) {
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (open) setStep(0); }, [open]);
 
-  // Lock body scroll
+  // Lock body scroll only while tutorial overlay is visible
   useEffect(() => {
-    if (!open) return;
+    if (!open || !mounted) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
-  }, [open]);
+  }, [open, mounted]);
 
   // Measure the tab bar for step 0
   useLayoutEffect(() => {
@@ -60,20 +60,27 @@ export default function SettingsTutorial({ open, onClose }: Props) {
       if (el) setTargetBox(el.getBoundingClientRect());
     };
     measure();
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
+    let ticking = false;
+    const throttled = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => { measure(); ticking = false; });
+      }
+    };
+    window.addEventListener("resize", throttled);
+    window.addEventListener("scroll", throttled, { passive: true, capture: true });
     return () => {
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", throttled);
+      window.removeEventListener("scroll", throttled, { passive: true, capture: true } as any);
     };
   }, [open, step]);
 
   if (!mounted || !open) return null;
 
   const totalSteps = 2;
-  const cardBg = "rgba(42,34,24,0.94)";
-  const cardBorder = "rgba(212,175,55,0.25)";
-  const cardShadow = "0 1rem 3rem rgba(0,0,0,0.4)";
+  const cardBg = "rgba(42,34,24,0.92)";
+  const cardBorder = "rgba(212,175,55,0.2)";
+  const cardShadow = "0 0.5rem 2rem rgba(0,0,0,0.3)";
   const goldLight = (T.color as Record<string, string>).goldLight || "#E8C870";
 
   // ── Step 0: highlight top tab bar with small dark tooltip ──
@@ -85,15 +92,16 @@ export default function SettingsTutorial({ open, onClose }: Props) {
     const w_ = targetBox ? targetBox.width + pad * 2 : 0;
     const h_ = targetBox ? targetBox.height + pad * 2 : 0;
 
-    // Tooltip position: below the highlighted bar
+    // Tooltip position: above the highlighted bar
     const tipWidth = isMobile ? Math.min(window.innerWidth - 32, 320) : 280;
-    const tipTop = targetBox ? t_ + h_ + 12 : 80;
+    const tipEstH = 120; // estimated tooltip height
+    const tipTop = targetBox ? Math.max(16, t_ - tipEstH - 12) : 80;
     const tipLeft = targetBox
       ? Math.max(16, Math.min(window.innerWidth - tipWidth - 16, l_ + w_ / 2 - tipWidth / 2))
       : 16;
 
     const overlay = (
-      <div role="dialog" aria-modal="true" aria-label={t("step1Title")} style={{ position: "fixed", inset: 0, zIndex: 2147483000 }}>
+      <div role="dialog" aria-modal="true" aria-label={t("step1Title")} style={{ position: "fixed", inset: 0, zIndex: 57 }}>
         <style>{`
           @keyframes mpTipIn { from { opacity:0; transform:translateY(0.375rem);} to { opacity:1; transform:translateY(0);} }
           @keyframes mpPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.4);} 50% { box-shadow:0 0 0 0.5rem rgba(212,175,55,0);} }
@@ -121,10 +129,10 @@ export default function SettingsTutorial({ open, onClose }: Props) {
           animation: "mpTipIn .3s ease both",
         }}>
           <div style={{
-            background: cardBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+            background: cardBg, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
             borderRadius: "0.875rem", padding: "0.875rem 1rem",
             border: `1px solid ${cardBorder}`, boxShadow: cardShadow,
-            display: "flex", flexDirection: "column", gap: "0.625rem",
+            display: "flex", flexDirection: "column", gap: "0.5rem",
           }}>
             <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: goldLight, letterSpacing: "0.02em" }}>
               {t("step1Title")}
@@ -148,8 +156,8 @@ export default function SettingsTutorial({ open, onClose }: Props) {
 
   const overlay2 = (
     <div role="dialog" aria-modal="true" aria-label={t("step2Title")} style={{
-      position: "fixed", inset: 0, zIndex: 2147483000,
-      background: "rgba(0,0,0,0.35)",
+      position: "fixed", inset: 0, zIndex: 57,
+      background: "rgba(0,0,0,0.45)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem",
     }}>
       <style>{`
@@ -161,7 +169,7 @@ export default function SettingsTutorial({ open, onClose }: Props) {
         animation: "mpCardIn .3s ease both",
       }}>
         <div style={{
-          background: cardBg, backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+          background: cardBg, backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
           borderRadius: "1rem", padding: "1.25rem 1.25rem 1rem",
           border: `1px solid ${cardBorder}`, boxShadow: cardShadow,
           display: "flex", flexDirection: "column", gap: "0.75rem",

@@ -194,27 +194,28 @@ export function isImportableByExtension(filename: string): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Room ID resolution — map local room IDs (e.g. "tr4") to database UUIDs
+// Room ID resolution — map local room IDs (e.g. "tv4") to database UUIDs
 // ---------------------------------------------------------------------------
 
 /**
  * Map a local room ID prefix to a wing slug.
- * E.g. "tr4" → prefix "tr" → "travel".
+ * E.g. "tv4" → prefix "tv" → "travel".
  */
 export function wingSlugFromRoomId(localRoomId: string): string | null {
   const prefix = localRoomId.slice(0, 2);
   const map: Record<string, string> = {
-    fr: "family",
-    tr: "travel",
-    cr: "childhood",
-    kr: "career",
-    rr: "creativity",
+    ro: "roots",
+    ne: "nest",
+    cf: "craft",
+    tv: "travel",
+    pa: "passions",
+    at: "attic",
   };
   return map[prefix] || null;
 }
 
 /**
- * Resolve a local room ID (e.g. "tr4") to a database UUID.
+ * Resolve a local room ID (e.g. "tv4") to a database UUID.
  * Looks up an existing room by name, or creates one in the correct wing.
  * Works with any Supabase client that has the `from()` method.
  */

@@ -11,7 +11,9 @@ export type JobType =
   | "legacy_delivery"
   | "digest_email"
   | "export_zip"
-  | "notification";
+  | "notification"
+  | "kep_capture"
+  | "kep_scan";
 
 // ── Payload shapes per job type ────────────────────────────
 
@@ -37,12 +39,26 @@ export interface NotificationPayload {
   url?: string;
 }
 
+export interface KepCapturePayload {
+  captureId: string;
+  kepId: string;
+  userId: string;
+}
+
+export interface KepScanPayload {
+  kepId: string;
+  userId: string;
+  cursor?: string;
+}
+
 /** Maps each job type to its payload shape. */
 export interface JobPayloadMap {
   legacy_delivery: LegacyDeliveryPayload;
   digest_email: DigestEmailPayload;
   export_zip: ExportZipPayload;
   notification: NotificationPayload;
+  kep_capture: KepCapturePayload;
+  kep_scan: KepScanPayload;
 }
 
 // ── Job row (what comes back from the DB) ──────────────────

@@ -48,7 +48,7 @@ function roomsWithMemories(userMems: Record<string, Mem[]>, minCount = 1): numbe
 /** Get wing ID from room ID prefix */
 function wingFromRoomId(roomId: string): string {
   const prefix = roomId.slice(0, 2);
-  const map: Record<string, string> = { fr: "family", tr: "travel", cr: "childhood", kr: "career", rr: "creativity", at: "attic" };
+  const map: Record<string, string> = { ro: "roots", ne: "nest", cf: "craft", tv: "travel", pa: "passions", at: "attic" };
   return map[prefix] || "";
 }
 

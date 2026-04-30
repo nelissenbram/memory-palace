@@ -9,6 +9,7 @@ import NativeInit from "@/components/NativeInit";
 import { AccessibilityProvider } from "@/components/providers/AccessibilityProvider";
 import { DaylightProvider } from "@/components/providers/DaylightProvider";
 import WebVitals from "@/components/WebVitals";
+import PostHogProvider from "@/components/PostHogProvider";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -26,33 +27,51 @@ const sourceSans = Source_Sans_3({
 });
 
 export const metadata: Metadata = {
-  title: "The Memory Palace — Preserve Your Most Precious Memories",
-  description:
-    "A beautiful 3D space to preserve your photos, videos, and stories — in a place as unique as your life.",
+  verification: {
+    google: "SRGU5yT_g8__HK3W0meqAi-4eX3XPN7NpehWPLlk9f8",
+  },
+  title: {
+    default: "The Memory Palace",
+    template: "%s · The Memory Palace",
+  },
+  description: "Your memories, given a home.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/icons/android-chrome-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/android-chrome-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon-180.png", sizes: "180x180" },
+    ],
+  },
   openGraph: {
-    title: "The Memory Palace — Preserve Your Most Precious Memories",
-    description:
-      "A beautiful 3D space to preserve your photos, videos, and stories — in a place as unique as your life.",
+    title: "The Memory Palace",
+    description: "Your memories, given a home.",
     url: "https://thememorypalace.ai",
     siteName: "The Memory Palace",
     images: [
-      {
-        url: "https://thememorypalace.ai/palace-hero.jpg",
-        width: 1200,
-        height: 630,
-        alt: "The Memory Palace — a 3D palace for your life story",
-      },
+      { url: "/brand/alt-social-512.png", width: 512, height: 512, alt: "Memory Palace" },
     ],
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "The Memory Palace — Preserve Your Most Precious Memories",
-    description:
-      "A beautiful 3D space to preserve your photos, videos, and stories — in a place as unique as your life.",
-    images: ["https://thememorypalace.ai/palace-hero.jpg"],
+    title: "The Memory Palace",
+    description: "Your memories, given a home.",
+    images: ["/brand/alt-social-512.png"],
+  },
+  alternates: {
+    languages: {
+      en: "https://thememorypalace.ai",
+      nl: "https://thememorypalace.ai?lang=nl",
+      de: "https://thememorypalace.ai?lang=de",
+      es: "https://thememorypalace.ai?lang=es",
+      fr: "https://thememorypalace.ai?lang=fr",
+    },
   },
   appleWebApp: {
     capable: true,
@@ -69,7 +88,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#FAFAF7",
+  themeColor: "#9B5A38",
 };
 
 export default async function RootLayout({
@@ -86,7 +105,7 @@ export default async function RootLayout({
         {/* Force clear stale PWA caches — runs before any JS bundles */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
-            var V="v43";
+            var V="v62";
             try{
               var s=localStorage.getItem("mp_v");
               if(s!==V){
@@ -108,9 +127,80 @@ export default async function RootLayout({
             }catch(e){}
           })();
         `}} />
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="icon" href="/favicon.ico" sizes="32x32" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        {/* Auto-reload on stale deployment chunks (ChunkLoadError) */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            var KEY="mp_chunk_reload";
+            var MAX=3;
+            function isChunk(m){
+              if(!m)return false;
+              return m.indexOf("Loading chunk")!==-1
+                ||m.indexOf("Failed to fetch dynamically imported module")!==-1
+                ||m.indexOf("Failed to load chunk")!==-1
+                ||m.indexOf("ChunkLoadError")!==-1
+                ||m.indexOf("Loading CSS chunk")!==-1
+                ||(m.indexOf("_next/static/chunks/")!==-1&&(m.indexOf("Failed")!==-1||m.indexOf("Error")!==-1));
+            }
+            function safeReload(){
+              try{
+                var n=parseInt(sessionStorage.getItem(KEY)||"0",10);
+                if(n>=MAX)return;
+                sessionStorage.setItem(KEY,String(n+1));
+              }catch(e){}
+              if("caches" in window){
+                caches.keys().then(function(k){
+                  return Promise.all(k.map(function(c){return caches.delete(c)}));
+                }).then(function(){window.location.reload()}).catch(function(){window.location.reload()});
+              }else{window.location.reload();}
+            }
+            window.addEventListener("error",function(e){
+              if(isChunk(e.message)||isChunk(String(e.error))){e.preventDefault();safeReload();}
+            });
+            window.addEventListener("unhandledrejection",function(e){
+              var m=e.reason&&(e.reason.message||String(e.reason))||"";
+              if(isChunk(m)){e.preventDefault();safeReload();}
+            });
+          })();
+        `}} />
+        {/* JSON-LD: Organization + WebApplication structured data */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "name": "The Memory Palace",
+              "url": "https://thememorypalace.ai",
+              "logo": "https://thememorypalace.ai/brand/alt-social-512.png",
+              "sameAs": [],
+            },
+            {
+              "@type": "WebApplication",
+              "name": "The Memory Palace",
+              "url": "https://thememorypalace.ai",
+              "applicationCategory": "LifestyleApplication",
+              "operatingSystem": "Web, Android, iOS",
+              "description": "A 3D virtual memory palace where families preserve photos, videos, stories, and legacy for future generations.",
+              "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "EUR",
+                "description": "Free plan with 100 memories, 2 wings, 5 rooms",
+              },
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "4.8",
+                "ratingCount": "12",
+              },
+            },
+          ],
+        })}} />
+        {/* Smart App Banners — iOS App Store + Google Play */}
+        <meta name="apple-itunes-app" content="app-id=6745108818" />
+        {/* Icons configured via metadata export — no manual links needed */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://api.anthropic.com" />
+        <link rel="dns-prefetch" href="https://nominatim.openstreetmap.org" />
         {/* iOS Splash Screens */}
         <link
           rel="apple-touch-startup-image"
@@ -165,9 +255,10 @@ export default async function RootLayout({
       </head>
       <body style={{ margin: 0, padding: 0 }}>
         <a href="#main-content" className="skip-to-content">
-          {locale === "nl" ? "Ga naar inhoud" : "Skip to content"}
+          {{ en: "Skip to content", nl: "Ga naar inhoud", de: "Zum Inhalt springen", es: "Saltar al contenido", fr: "Aller au contenu" }[locale] || "Skip to content"}
         </a>
         <WebVitals />
+        <PostHogProvider />
         <ServiceWorkerRegistration />
         <PWAInstallBanner />
         <OfflineBanner />

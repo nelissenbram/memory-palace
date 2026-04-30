@@ -46,8 +46,8 @@ type PageId = "atrium" | "library" | "palace";
 // Ordered sequence per page — ends with a bridge nudge to the next page
 const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
   atrium: [
-    "atrium_nav_modes", "atrium_tools_button", "atrium_notifications",
-    "atrium_help_button", "atrium_user_settings",
+    "atrium_nav_modes", "atrium_notifications",
+    "atrium_help_button",
     "atrium_overview", "atrium_go_library",
   ],
   library: [
@@ -71,7 +71,7 @@ const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
 const MOBILE_PAGE_NUDGES: Record<PageId, NudgeId[]> = {
   atrium: [
     "atrium_mob_home", "atrium_mob_library", "atrium_mob_palace",
-    "atrium_mob_notif", "atrium_mob_help", "atrium_mob_me",
+    "atrium_mob_me", "atrium_mob_notif", "atrium_mob_help",
     "atrium_overview", "atrium_go_library",
   ],
   library: PAGE_NUDGES.library,
@@ -111,6 +111,15 @@ function saveSeen(seen: Set<string>) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...seen]));
   } catch {}
 }
+
+const ONBOARD_WALK_DONE_KEY = "mp_onboarding_walk_done";
+
+/** Nudges that the onboarding walk already covers */
+const ONBOARD_WALK_NUDGES: NudgeId[] = [
+  "palace_walk_intro", "palace_click_entrance",
+  "palace_entrance_info", "palace_click_wing",
+  "palace_corridor_info", "palace_click_room",
+];
 
 function shouldShowNudges(): boolean {
   try {
@@ -160,6 +169,13 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
     }
 
     const seen = loadSeen();
+
+    // If onboarding walk was completed, pre-mark those nudges as seen
+    try {
+      if (localStorage.getItem(ONBOARD_WALK_DONE_KEY) === "true") {
+        for (const id of ONBOARD_WALK_NUDGES) seen.add(id);
+      }
+    } catch {}
     const forceCurrentPage = get()._forceCurrentPage;
     const nudges = isMobile ? MOBILE_PAGE_NUDGES[page] : PAGE_NUDGES[page];
     // Also count desktop nudges as "seen" for cross-page ordering

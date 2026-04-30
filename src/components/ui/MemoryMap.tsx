@@ -1,18 +1,19 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { WINGS } from "@/lib/constants/wings";
-import { ROOM_MEMS } from "@/lib/constants/defaults";
+import { getAllDemoMems } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
-import Image from "next/image";
 import { WingIcon } from "./WingRoomIcons";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { LAND_PATHS } from "./worldMapPaths";
 
-/* ── Inline SVG icons to replace emoji ── */
+/* ── Inline SVG icons ── */
 
 function GlobeIcon({ size = 20, color = "currentColor" }: { size?: number; color?: string }) {
   return (
@@ -70,140 +71,18 @@ interface MemoryMapProps {
   onNavigateToMemory?: (wingId: string, roomId: string, memoryId: string) => void;
 }
 
-function latLngToXY(lat: number, lng: number, width: number, height: number) {
-  const x = (lng + 180) / 360 * width;
-  const y = (90 - lat) / 180 * height;
-  return { x, y };
-}
+/* ── Helpers ── */
 
-// Wing ID from room ID prefix
 function wingFromRoom(roomId: string): string {
-  if (roomId.startsWith("fr")) return "family";
-  if (roomId.startsWith("tr")) return "travel";
-  if (roomId.startsWith("cr")) return "childhood";
-  if (roomId.startsWith("kr")) return "career";
-  if (roomId.startsWith("rr")) return "creativity";
-  return "family";
+  if (roomId.startsWith("ro")) return "roots";
+  if (roomId.startsWith("ne")) return "nest";
+  if (roomId.startsWith("cf")) return "craft";
+  if (roomId.startsWith("tv")) return "travel";
+  if (roomId.startsWith("pa")) return "passions";
+  return "roots";
 }
-
-// Detailed continent polygons for canvas drawing (lng, lat pairs)
-const CONTINENTS: { nameKey: string; polys: [number, number][][] }[] = [
-  {
-    nameKey: "northAmerica",
-    polys: [[
-      [-168,72],[-162,70],[-155,71],[-140,70],[-138,62],[-135,60],[-132,56],[-125,50],[-124,46],[-124,42],[-120,36],[-117,33],[-112,30],[-108,28],[-105,22],[-98,19],[-96,16],[-92,15],[-88,16],[-84,10],[-82,9],[-80,8],
-      [-78,18],[-76,20],[-80,25],[-81,29],[-82,30],[-84,30],[-85,35],[-90,30],[-94,30],[-97,28],[-97,33],[-95,37],[-90,38],[-88,42],[-84,42],[-82,44],[-76,44],[-72,41],[-70,42],[-67,44],[-66,48],[-60,47],[-55,50],[-58,52],
-      [-62,54],[-58,56],[-55,52],[-52,47],[-48,50],[-55,55],[-58,58],[-62,60],[-68,62],[-72,64],[-78,68],[-85,70],[-92,72],[-100,74],[-110,74],[-120,72],[-130,72],[-140,72],[-150,72],[-160,72],[-168,72]
-    ]]
-  },
-  {
-    nameKey: "southAmerica",
-    polys: [[
-      [-82,9],[-80,8],[-77,8],[-74,11],[-72,12],[-68,12],[-63,10],[-60,8],[-55,6],[-52,4],[-50,2],[-50,0],[-48,-2],[-44,-3],[-42,-3],[-40,-5],[-38,-8],[-36,-10],[-35,-12],[-38,-16],[-40,-18],[-42,-20],[-44,-22],[-46,-24],[-48,-26],[-48,-28],[-50,-30],[-52,-33],[-54,-34],[-56,-36],[-58,-38],[-62,-39],[-65,-42],[-66,-44],[-68,-46],[-70,-48],[-72,-50],[-74,-52],[-72,-54],[-68,-55],[-66,-54],
-      [-72,-48],[-74,-42],[-72,-38],[-70,-36],[-72,-32],[-72,-28],[-70,-24],[-70,-18],[-75,-14],[-76,-10],[-78,-5],[-80,0],[-80,2],[-78,4],[-76,6],[-80,8],[-82,9]
-    ]]
-  },
-  {
-    nameKey: "europe",
-    polys: [
-      // Iberian Peninsula
-      [[-10,36],[-8,37],[-6,37],[-2,36],[0,38],[2,40],[3,42],[0,43],[-2,44],[-4,43],[-8,44],[-9,42],[-10,40],[-10,36]],
-      // Western + Central Europe
-      [[0,43],[2,44],[3,48],[2,50],[-1,50],[-5,48],[-5,52],[-3,54],[-2,56],[0,58],[2,56],[4,52],[5,50],[7,48],[8,46],[10,44],[12,42],[14,42],[16,40],[18,40],[20,38],[22,38],[24,36],[26,36],[28,38],[30,40],[28,42],[26,44],[24,46],[22,48],[20,50],[18,52],[16,54],[14,55],[12,56],[10,58],[8,58],[6,58],[5,60],[4,62],[6,62],[8,60],[10,56],[14,55],[18,56],[20,58],[22,58],[24,60],[26,62],[28,64],[30,66],[32,68],[30,70],[28,72],[22,72],[18,70],[14,68],[10,66],[5,62],[0,60],[-2,58],[-5,58],[-5,52],[-3,50],[0,50],[2,50],[3,48],[0,43]]
-    ]
-  },
-  {
-    nameKey: "africa",
-    polys: [
-      // Mainland Africa (with Mediterranean coast gap between Europe)
-      [[-18,15],[-16,18],[-17,22],[-16,26],[-14,28],[-10,32],[-6,34],[-2,36],[0,36],[4,36],[8,38],[10,37],[12,36],[14,34],[16,32],[20,33],[24,32],[28,32],[30,30],[32,30],[34,28],[36,24],[38,20],[40,16],[42,12],[44,10],[46,8],[48,6],[50,4],[50,0],[48,-2],[44,-4],[42,-8],[40,-12],[38,-16],[36,-20],[34,-24],[32,-28],[30,-32],[28,-34],[26,-34],[24,-33],[22,-34],[20,-34],[18,-30],[16,-26],[14,-22],[12,-18],[10,-8],[8,-2],[6,2],[4,5],[2,6],[0,6],[-4,5],[-8,5],[-10,6],[-14,10],[-16,12],[-18,15]]
-    ]
-  },
-  {
-    nameKey: "asia",
-    polys: [
-      // Main Asian landmass
-      [[28,38],[30,40],[32,42],[34,42],[36,40],[38,38],[40,36],[42,34],[44,32],[48,30],[50,28],[52,26],[54,24],[56,22],[58,22],[60,24],[62,26],[64,26],[66,26],[68,24],[70,22],[72,20],[74,16],[76,12],[78,8],[80,8],[80,12],[82,14],[84,18],[86,20],[88,22],[90,22],[92,22],[94,20],[96,18],[98,16],[100,14],[102,8],[104,2],[105,0],[106,2],[108,4],[110,4],
-      [110,8],[112,10],[116,16],[118,18],[120,20],[122,22],[124,26],[126,30],[128,34],[130,38],[132,40],[130,44],[132,46],[136,42],[138,36],[140,36],[142,40],[144,44],[148,50],[150,54],[155,58],[160,62],[165,66],[170,68],[175,68],[180,68],
-      [180,72],[170,72],[160,72],[150,70],[140,68],[130,72],[120,72],[110,70],[100,66],[90,62],[80,58],[70,56],[62,56],[56,54],[50,52],[44,44],[40,42],[36,40],[32,40],[28,38]]
-    ]
-  },
-  {
-    nameKey: "australia",
-    polys: [[
-      [114,-22],[114,-26],[115,-30],[116,-34],[118,-35],[120,-35],[122,-34],[126,-32],[128,-32],[130,-32],[132,-34],[134,-36],[136,-38],[138,-38],[140,-38],[142,-36],[144,-38],[146,-40],[148,-38],[150,-36],[152,-32],[153,-28],[152,-24],[150,-22],[148,-20],[146,-18],[144,-16],[142,-14],[140,-12],[138,-12],[136,-14],[134,-12],[132,-12],[130,-12],[128,-14],[126,-14],[124,-16],[120,-14],[118,-16],[116,-18],[114,-22]
-    ]]
-  },
-];
-
-// Additional geographic features for realism
-const GEO_FEATURES: { nameKey: string; polys: [number, number][][] }[] = [
-  // British Isles — Great Britain
-  {
-    nameKey: "britishIsles",
-    polys: [
-      [[-6,50],[-5,51],[-4,52],[-3,53],[-3,54],[-4,55],[-5,56],[-5,57],[-4,58],[-3,58],[-2,57],[-1,56],[0,54],[1,53],[1,52],[0,51],[-1,50],[-3,50],[-6,50]],
-      // Ireland
-      [[-10,52],[-10,53],[-9,54],[-8,55],[-7,55],[-6,54],[-6,53],[-7,52],[-8,51],[-10,52]],
-    ]
-  },
-  // Japan
-  {
-    nameKey: "japan",
-    polys: [
-      [[130,31],[131,33],[132,34],[134,34],[136,36],[138,38],[140,40],[142,42],[142,44],[144,44],[145,44],[144,42],[142,40],[140,38],[138,36],[136,34],[134,33],[132,32],[130,31]],
-    ]
-  },
-  // Indonesia (major islands)
-  {
-    nameKey: "indonesia",
-    polys: [
-      // Sumatra
-      [[96,-6],[98,-4],[100,-2],[102,0],[104,2],[106,2],[106,0],[106,-2],[108,-6],[106,-6],[104,-6],[102,-6],[100,-6],[98,-6],[96,-6]],
-      // Borneo
-      [[108,2],[110,4],[112,4],[114,4],[116,4],[118,2],[118,0],[116,-2],[114,-4],[112,-4],[110,-2],[108,0],[108,2]],
-      // Sulawesi
-      [[120,-2],[121,0],[122,1],[124,0],[122,-2],[122,-4],[120,-4],[120,-2]],
-      // Papua / New Guinea
-      [[132,-4],[134,-4],[136,-4],[138,-4],[140,-4],[142,-4],[144,-6],[146,-6],[148,-6],[150,-6],[150,-8],[148,-8],[146,-8],[144,-8],[142,-8],[140,-6],[138,-6],[136,-6],[134,-6],[132,-4]],
-    ]
-  },
-  // Sri Lanka
-  {
-    nameKey: "sriLanka",
-    polys: [
-      [[80,7],[81,8],[82,8],[82,7],[81,6],[80,6],[80,7]],
-    ]
-  },
-  // Madagascar
-  {
-    nameKey: "madagascar",
-    polys: [
-      [[44,-12],[46,-14],[48,-16],[50,-18],[50,-22],[48,-24],[46,-26],[44,-26],[44,-22],[44,-18],[44,-14],[44,-12]],
-    ]
-  },
-  // New Zealand
-  {
-    nameKey: "newZealand",
-    polys: [
-      // North Island
-      [[174,-36],[176,-38],[178,-40],[176,-42],[174,-42],[172,-40],[174,-38],[174,-36]],
-      // South Island
-      [[168,-44],[170,-44],[172,-44],[174,-44],[172,-46],[170,-46],[168,-46],[168,-44]],
-    ]
-  },
-  // Greenland
-  {
-    nameKey: "greenland",
-    polys: [
-      [[-55,60],[-50,62],[-45,64],[-42,66],[-38,68],[-32,70],[-28,72],[-22,74],[-18,76],[-20,78],[-24,80],[-30,82],[-38,84],[-44,82],[-50,80],[-54,78],[-56,74],[-58,70],[-56,66],[-55,60]],
-    ]
-  },
-];
 
 interface ClusteredPin {
-  x: number;
-  y: number;
   lat: number;
   lng: number;
   locationName: string;
@@ -211,20 +90,558 @@ interface ClusteredPin {
   accent: string;
 }
 
+/* ── Equirectangular projection ── */
+const VB_W = 1000;
+const VB_H = 500;
+
+function geoToSvg(lng: number, lat: number): [number, number] {
+  const x = (lng + 180) / 360 * VB_W;
+  const y = (90 - lat) / 180 * VB_H;
+  return [x, y];
+}
+
+/* ── Grid lines for the map ── */
+function generateGridLines(): string[] {
+  const lines: string[] = [];
+  // Latitude lines every 30 degrees
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const [, y] = geoToSvg(0, lat);
+    lines.push(`M0,${y.toFixed(1)}L${VB_W},${y.toFixed(1)}`);
+  }
+  // Longitude lines every 30 degrees
+  for (let lng = -150; lng <= 180; lng += 30) {
+    const [x] = geoToSvg(lng, 0);
+    lines.push(`M${x.toFixed(1)},0L${x.toFixed(1)},${VB_H}`);
+  }
+  return lines;
+}
+
+const GRID_LINES = generateGridLines();
+
+/* ── SVG World Map sub-component ── */
+
+interface SVGWorldMapProps {
+  clusters: ClusteredPin[];
+  selectedPin: ClusteredPin | null;
+  setSelectedPin: (p: ClusteredPin | null) => void;
+  hoveredPin: ClusteredPin | null;
+  setHoveredPin: (p: ClusteredPin | null) => void;
+  isMobile: boolean;
+}
+
+function SVGWorldMap({
+  clusters,
+  selectedPin,
+  setSelectedPin,
+  hoveredPin,
+  setHoveredPin,
+  isMobile,
+}: SVGWorldMapProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [viewBox, setViewBox] = useState({ x: 0, y: 0, w: VB_W, h: VB_H });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStart = useRef({ x: 0, y: 0, vbX: 0, vbY: 0 });
+  const pinchStartDist = useRef(0);
+  const pinchStartVB = useRef({ x: 0, y: 0, w: VB_W, h: VB_H });
+
+  const MIN_ZOOM_W = 80;   // maximum zoom in
+  const MAX_ZOOM_W = VB_W;  // maximum zoom out (full world)
+
+  // Convert screen coords to SVG coords
+  const screenToSvg = useCallback((clientX: number, clientY: number): [number, number] => {
+    const el = containerRef.current;
+    if (!el) return [0, 0];
+    const rect = el.getBoundingClientRect();
+    const sx = (clientX - rect.left) / rect.width;
+    const sy = (clientY - rect.top) / rect.height;
+    return [viewBox.x + sx * viewBox.w, viewBox.y + sy * viewBox.h];
+  }, [viewBox]);
+
+  // Mouse wheel zoom
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const [svgX, svgY] = screenToSvg(e.clientX, e.clientY);
+    const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
+
+    setViewBox(vb => {
+      let newW = Math.min(MAX_ZOOM_W, Math.max(MIN_ZOOM_W, vb.w * factor));
+      let newH = newW * (VB_H / VB_W);
+      // Zoom toward cursor
+      const ratioX = (svgX - vb.x) / vb.w;
+      const ratioY = (svgY - vb.y) / vb.h;
+      let newX = svgX - ratioX * newW;
+      let newY = svgY - ratioY * newH;
+      // Clamp
+      newX = Math.max(-100, Math.min(VB_W + 100 - newW, newX));
+      newY = Math.max(-50, Math.min(VB_H + 50 - newH, newY));
+      return { x: newX, y: newY, w: newW, h: newH };
+    });
+  }, [screenToSvg]);
+
+  // Pan start
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === "touch" && e.isPrimary === false) return;
+    setIsPanning(true);
+    panStart.current = { x: e.clientX, y: e.clientY, vbX: viewBox.x, vbY: viewBox.y };
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  }, [viewBox]);
+
+  // Pan move
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!isPanning) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const dx = (e.clientX - panStart.current.x) / rect.width * viewBox.w;
+    const dy = (e.clientY - panStart.current.y) / rect.height * viewBox.h;
+    let newX = panStart.current.vbX - dx;
+    let newY = panStart.current.vbY - dy;
+    newX = Math.max(-100, Math.min(VB_W + 100 - viewBox.w, newX));
+    newY = Math.max(-50, Math.min(VB_H + 50 - viewBox.h, newY));
+    setViewBox(vb => ({ ...vb, x: newX, y: newY }));
+  }, [isPanning, viewBox]);
+
+  // Pan end
+  const handlePointerUp = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  // Pinch zoom (touch)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStartDist.current = Math.sqrt(dx * dx + dy * dy);
+      pinchStartVB.current = { ...viewBox };
+    }
+  }, [viewBox]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const scale = pinchStartDist.current / dist;
+
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const sx = (midX - rect.left) / rect.width;
+      const sy = (midY - rect.top) / rect.height;
+
+      const pvb = pinchStartVB.current;
+      const svgMidX = pvb.x + sx * pvb.w;
+      const svgMidY = pvb.y + sy * pvb.h;
+
+      let newW = Math.min(MAX_ZOOM_W, Math.max(MIN_ZOOM_W, pvb.w * scale));
+      let newH = newW * (VB_H / VB_W);
+      let newX = svgMidX - sx * newW;
+      let newY = svgMidY - sy * newH;
+      newX = Math.max(-100, Math.min(VB_W + 100 - newW, newX));
+      newY = Math.max(-50, Math.min(VB_H + 50 - newH, newY));
+      setViewBox({ x: newX, y: newY, w: newW, h: newH });
+    }
+  }, []);
+
+  // Zoom controls
+  const zoomIn = useCallback(() => {
+    setViewBox(vb => {
+      const cx = vb.x + vb.w / 2;
+      const cy = vb.y + vb.h / 2;
+      const newW = Math.max(MIN_ZOOM_W, vb.w / 1.4);
+      const newH = newW * (VB_H / VB_W);
+      return {
+        x: Math.max(-100, Math.min(VB_W + 100 - newW, cx - newW / 2)),
+        y: Math.max(-50, Math.min(VB_H + 50 - newH, cy - newH / 2)),
+        w: newW, h: newH,
+      };
+    });
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setViewBox(vb => {
+      const cx = vb.x + vb.w / 2;
+      const cy = vb.y + vb.h / 2;
+      const newW = Math.min(MAX_ZOOM_W, vb.w * 1.4);
+      const newH = newW * (VB_H / VB_W);
+      return {
+        x: Math.max(-100, Math.min(VB_W + 100 - newW, cx - newW / 2)),
+        y: Math.max(-50, Math.min(VB_H + 50 - newH, cy - newH / 2)),
+        w: newW, h: newH,
+      };
+    });
+  }, []);
+
+  const resetView = useCallback(() => {
+    setViewBox({ x: 0, y: 0, w: VB_W, h: VB_H });
+  }, []);
+
+  // Fit to pins
+  useEffect(() => {
+    if (clusters.length === 0) return;
+    const coords = clusters.map(c => geoToSvg(c.lng, c.lat));
+    const xs = coords.map(c => c[0]);
+    const ys = coords.map(c => c[1]);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    if (clusters.length === 1) {
+      // Single pin - center on it with moderate zoom
+      const w = 300;
+      const h = w * (VB_H / VB_W);
+      setViewBox({
+        x: Math.max(-100, Math.min(VB_W + 100 - w, coords[0][0] - w / 2)),
+        y: Math.max(-50, Math.min(VB_H + 50 - h, coords[0][1] - h / 2)),
+        w, h,
+      });
+      return;
+    }
+
+    const padX = 80;
+    const padY = 60;
+    let w = maxX - minX + padX * 2;
+    let h = maxY - minY + padY * 2;
+    // Maintain aspect ratio
+    const aspect = VB_W / VB_H;
+    if (w / h > aspect) {
+      h = w / aspect;
+    } else {
+      w = h * aspect;
+    }
+    // Clamp
+    w = Math.min(MAX_ZOOM_W, Math.max(MIN_ZOOM_W, w));
+    h = w * (VB_H / VB_W);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    setViewBox({
+      x: Math.max(-100, Math.min(VB_W + 100 - w, cx - w / 2)),
+      y: Math.max(-50, Math.min(VB_H + 50 - h, cy - h / 2)),
+      w, h,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clusters.length]);
+
+  // Compute pin size relative to zoom
+  const pinRadius = Math.max(3, Math.min(8, viewBox.w / 100));
+  const pinStroke = Math.max(0.8, pinRadius / 3);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
+        cursor: isPanning ? "grabbing" : "grab",
+        touchAction: "none",
+        background: "#F5F0E4",
+      }}
+      onWheel={handleWheel}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+    >
+      <svg
+        viewBox={`${viewBox.x.toFixed(2)} ${viewBox.y.toFixed(2)} ${viewBox.w.toFixed(2)} ${viewBox.h.toFixed(2)}`}
+        style={{ width: "100%", height: "100%", display: "block" }}
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          {/* Parchment/ocean background gradient */}
+          <radialGradient id="oceanGrad" cx="50%" cy="40%" r="70%">
+            <stop offset="0%" stopColor="#F7F2E8" />
+            <stop offset="100%" stopColor="#EDE5D5" />
+          </radialGradient>
+          {/* Land fill gradient */}
+          <linearGradient id="landGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#E8D9C0" />
+            <stop offset="100%" stopColor="#D6C4A6" />
+          </linearGradient>
+          {/* Subtle land texture via filter */}
+          <filter id="landTexture" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="42" result="noise" />
+            <feColorMatrix type="saturate" values="0" in="noise" result="mono" />
+            <feBlend mode="soft-light" in="SourceGraphic" in2="mono" result="textured" />
+          </filter>
+          {/* Pin shadow */}
+          <filter id="pinShadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="0.8" stdDeviation="1.5" floodColor="#3C2814" floodOpacity="0.35" />
+          </filter>
+          {/* Pin glow for hover */}
+          <filter id="pinGlow" x="-100%" y="-100%" width="300%" height="300%">
+            <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#D4AF37" floodOpacity="0.6" />
+          </filter>
+        </defs>
+
+        {/* Ocean / parchment background */}
+        <rect x={-200} y={-100} width={VB_W + 400} height={VB_H + 200} fill="url(#oceanGrad)" />
+
+        {/* Grid lines */}
+        {GRID_LINES.map((d, i) => (
+          <path key={`grid-${i}`} d={d} fill="none" stroke="#D4C5B2" strokeWidth="0.3" opacity="0.4" />
+        ))}
+
+        {/* Tropics and equator (special grid lines) */}
+        {[0, 23.436, -23.436].map(lat => {
+          const [, y] = geoToSvg(0, lat);
+          return (
+            <path
+              key={`special-${lat}`}
+              d={`M0,${y.toFixed(1)}L${VB_W},${y.toFixed(1)}`}
+              fill="none"
+              stroke={lat === 0 ? "#C4A882" : "#D4C5B2"}
+              strokeWidth={lat === 0 ? "0.5" : "0.35"}
+              strokeDasharray={lat === 0 ? "none" : "4,3"}
+              opacity={lat === 0 ? 0.5 : 0.35}
+            />
+          );
+        })}
+
+        {/* Land masses from Natural Earth data */}
+        <g filter="url(#landTexture)">
+          {LAND_PATHS.map((d, i) => (
+            <path
+              key={`land-${i}`}
+              d={d}
+              fill="url(#landGrad)"
+              stroke="#B8A68A"
+              strokeWidth="0.5"
+              strokeLinejoin="round"
+            />
+          ))}
+        </g>
+
+        {/* Memory pins */}
+        {clusters.map((cluster, i) => {
+          const [cx, cy] = geoToSvg(cluster.lng, cluster.lat);
+          const isSelected = selectedPin === cluster;
+          const isHovered = hoveredPin === cluster;
+          const count = cluster.mems.length;
+          const r = count > 1 ? pinRadius * 1.3 : pinRadius;
+
+          return (
+            <g
+              key={`pin-${i}`}
+              style={{ cursor: "pointer" }}
+              onClick={(e) => { e.stopPropagation(); setSelectedPin(isSelected ? null : cluster); }}
+              onPointerEnter={() => setHoveredPin(cluster)}
+              onPointerLeave={() => setHoveredPin(null)}
+            >
+              {/* Pulse animation ring */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={r * 2.5}
+                fill="none"
+                stroke={cluster.accent}
+                strokeWidth={pinStroke * 0.5}
+                opacity={0.3}
+              >
+                <animate attributeName="r" from={r * 1.5} to={r * 3} dur="3s" repeatCount="indefinite" />
+                <animate attributeName="opacity" from="0.4" to="0" dur="3s" repeatCount="indefinite" />
+              </circle>
+
+              {/* Pin outer ring (white border) */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={r + pinStroke}
+                fill="white"
+                filter={(isHovered || isSelected) ? "url(#pinGlow)" : "url(#pinShadow)"}
+              />
+
+              {/* Pin colored fill */}
+              <circle
+                cx={cx}
+                cy={cy}
+                r={r}
+                fill={cluster.accent}
+                stroke="rgba(255,255,255,0.9)"
+                strokeWidth={pinStroke}
+              />
+
+              {/* Count label for clusters */}
+              {count > 1 && (
+                <text
+                  x={cx}
+                  y={cy}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill="white"
+                  fontSize={r * 0.9}
+                  fontFamily={T.font.body}
+                  fontWeight="700"
+                  style={{ pointerEvents: "none" }}
+                >
+                  {count}
+                </text>
+              )}
+
+              {/* Selection ring */}
+              {isSelected && (
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={r + pinStroke * 3}
+                  fill="none"
+                  stroke={cluster.accent}
+                  strokeWidth={pinStroke * 0.8}
+                  strokeDasharray={`${pinStroke * 2},${pinStroke}`}
+                  opacity={0.7}
+                >
+                  <animateTransform
+                    attributeName="transform"
+                    type="rotate"
+                    from={`0 ${cx} ${cy}`}
+                    to={`360 ${cx} ${cy}`}
+                    dur="8s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Hover tooltip */}
+      {hoveredPin && !selectedPin && (() => {
+        const el = containerRef.current;
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        const [svgX, svgY] = geoToSvg(hoveredPin.lng, hoveredPin.lat);
+        const screenX = ((svgX - viewBox.x) / viewBox.w) * rect.width;
+        const screenY = ((svgY - viewBox.y) / viewBox.h) * rect.height;
+        return (
+          <div style={{
+            position: "absolute",
+            left: screenX,
+            top: screenY - 12,
+            transform: "translate(-50%, -100%)",
+            background: `${T.color.linen}f5`,
+            backdropFilter: "blur(8px)",
+            border: `1px solid ${T.color.cream}`,
+            borderRadius: "0.5rem",
+            padding: "0.375rem 0.625rem",
+            boxShadow: "0 4px 16px rgba(60,40,20,0.2)",
+            pointerEvents: "none",
+            whiteSpace: "nowrap",
+            zIndex: 10,
+          }}>
+            <div style={{
+              fontFamily: T.font.display,
+              fontSize: "0.8125rem",
+              fontWeight: 600,
+              color: T.color.charcoal,
+              display: "flex",
+              alignItems: "center",
+              gap: "0.25rem",
+            }}>
+              <MapPinIcon size={12} color={hoveredPin.accent} />
+              {hoveredPin.locationName}
+            </div>
+            <div style={{
+              fontFamily: T.font.body,
+              fontSize: "0.625rem",
+              color: T.color.muted,
+            }}>
+              {hoveredPin.mems.length} {hoveredPin.mems.length === 1 ? "memory" : "memories"}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Zoom controls */}
+      <div style={{
+        position: "absolute",
+        right: isMobile ? "0.5rem" : "0.75rem",
+        bottom: isMobile ? "0.5rem" : "0.75rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.25rem",
+        zIndex: 5,
+      }}>
+        {[
+          { label: "+", action: zoomIn },
+          { label: "\u2013", action: zoomOut },
+          { label: "\u25A3", action: resetView },
+        ].map(({ label, action }) => (
+          <button
+            key={label}
+            onClick={action}
+            style={{
+              width: "2rem",
+              height: "2rem",
+              borderRadius: "0.375rem",
+              border: `1px solid ${T.color.sandstone}`,
+              background: `${T.color.linen}e8`,
+              backdropFilter: "blur(6px)",
+              color: T.color.walnut,
+              fontSize: "1rem",
+              fontFamily: T.font.body,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(60,40,20,0.12)",
+              lineHeight: 1,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Compass rose (top-right) */}
+      <div style={{
+        position: "absolute",
+        right: isMobile ? "0.5rem" : "0.75rem",
+        top: isMobile ? "0.5rem" : "0.75rem",
+        width: "2.25rem",
+        height: "2.25rem",
+        zIndex: 5,
+        opacity: 0.5,
+      }}>
+        <svg viewBox="0 0 40 40" width="100%" height="100%">
+          <circle cx="20" cy="20" r="18" fill="none" stroke={T.color.sandstone} strokeWidth="0.8" />
+          {/* N */}
+          <path d="M20 3L22 10L20 8L18 10Z" fill={T.color.terracotta} />
+          {/* S */}
+          <path d="M20 37L22 30L20 32L18 30Z" fill={T.color.sandstone} />
+          {/* E */}
+          <path d="M37 20L30 18L32 20L30 22Z" fill={T.color.sandstone} />
+          {/* W */}
+          <path d="M3 20L10 18L8 20L10 22Z" fill={T.color.sandstone} />
+          <text x="20" y="9" textAnchor="middle" fill={T.color.walnut} fontSize="4" fontFamily={T.font.body} fontWeight="700">N</text>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ========================================================================
+   COMPONENT
+   ======================================================================== */
 export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLibrary, onNavigateToMemory }: MemoryMapProps) {
   const isMobile = useIsMobile();
   const { t, locale } = useTranslation("memoryMap");
   const { t: tc } = useTranslation("common");
   const { t: tw } = useTranslation("wings");
   const { containerRef: focusTrapRef, handleKeyDown } = useFocusTrap(true);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [hoveredPin, setHoveredPin] = useState<ClusteredPin | null>(null);
   const [selectedPin, setSelectedPin] = useState<ClusteredPin | null>(null);
+  const [hoveredPin, setHoveredPin] = useState<ClusteredPin | null>(null);
   const [filterWing, setFilterWing] = useState<string | null>(null);
-  const [mapSize, setMapSize] = useState({ w: 900, h: 500 });
 
-  // Fetch memories for all rooms on mount so the map shows all pins
+  // Fetch memories for all rooms on mount
   const fetchRoomMemories = useMemoryStore((s) => s.fetchRoomMemories);
   const getWingRooms = useRoomStore((s) => s.getWingRooms);
   useEffect(() => {
@@ -234,7 +651,6 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
         allRoomIds.add(room.id);
       }
     }
-    // Also include rooms already in userMems (e.g. custom rooms)
     for (const roomId of Object.keys(userMems)) {
       allRoomIds.add(roomId);
     }
@@ -242,172 +658,67 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
       fetchRoomMemories(roomId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
+  }, []);
 
   // Collect all memories with location data
-  const allLocMems: { mem: Mem; roomId: string; wingId: string }[] = [];
-  const allSources = { ...ROOM_MEMS, ...userMems };
-  for (const [roomId, mems] of Object.entries(allSources)) {
-    for (const mem of mems) {
-      if (mem.lat !== undefined && mem.lng !== undefined) {
-        const wingId = wingFromRoom(roomId);
-        if (!filterWing || filterWing === wingId) {
-          allLocMems.push({ mem, roomId, wingId });
+  const allLocMems = useMemo(() => {
+    const result: { mem: Mem; roomId: string; wingId: string }[] = [];
+    const allSources = { ...getAllDemoMems(), ...userMems };
+    for (const [roomId, mems] of Object.entries(allSources)) {
+      for (const mem of mems) {
+        if (mem.lat !== undefined && mem.lng !== undefined) {
+          const wingId = wingFromRoom(roomId);
+          if (!filterWing || filterWing === wingId) {
+            result.push({ mem, roomId, wingId });
+          }
         }
       }
     }
-  }
+    return result;
+  }, [userMems, filterWing]);
 
-  // Cluster nearby pins
-  const clusters: ClusteredPin[] = [];
-  const CLUSTER_DIST = 25; // pixels
-  for (const item of allLocMems) {
-    const { x, y } = latLngToXY(item.mem.lat!, item.mem.lng!, mapSize.w, mapSize.h);
-    let foundCluster = false;
-    for (const c of clusters) {
-      const dx = c.x - x, dy = c.y - y;
-      if (Math.sqrt(dx * dx + dy * dy) < CLUSTER_DIST) {
-        c.mems.push(item);
-        foundCluster = true;
-        break;
+  // Cluster nearby memories (by location name or proximity)
+  const clusters = useMemo(() => {
+    const result: ClusteredPin[] = [];
+    const CLUSTER_DIST_DEG = 2;
+
+    for (const item of allLocMems) {
+      let foundCluster = false;
+      for (const c of result) {
+        const dlat = c.lat - item.mem.lat!;
+        const dlng = c.lng - item.mem.lng!;
+        if (Math.sqrt(dlat * dlat + dlng * dlng) < CLUSTER_DIST_DEG) {
+          c.mems.push(item);
+          foundCluster = true;
+          break;
+        }
+      }
+      if (!foundCluster) {
+        const wing = WINGS.find(w => w.id === item.wingId);
+        result.push({
+          lat: item.mem.lat!,
+          lng: item.mem.lng!,
+          locationName: item.mem.locationName || `${item.mem.lat!.toFixed(1)}, ${item.mem.lng!.toFixed(1)}`,
+          mems: [item],
+          accent: wing?.accent || T.color.terracotta,
+        });
       }
     }
-    if (!foundCluster) {
-      const wing = WINGS.find(w => w.id === item.wingId);
-      clusters.push({
-        x, y,
-        lat: item.mem.lat!,
-        lng: item.mem.lng!,
-        locationName: item.mem.locationName || `${item.mem.lat!.toFixed(1)}, ${item.mem.lng!.toFixed(1)}`,
-        mems: [item],
-        accent: wing?.accent || T.color.terracotta,
-      });
-    }
-  }
+    return result;
+  }, [allLocMems]);
 
-  const uniqueLocations = new Set(allLocMems.map(m => m.mem.locationName || `${m.mem.lat},${m.mem.lng}`)).size;
+  const uniqueLocations = useMemo(() =>
+    new Set(allLocMems.map(m => m.mem.locationName || `${m.mem.lat},${m.mem.lng}`)).size,
+    [allLocMems]
+  );
 
-  // Always show full world view — no zoom transform
-  const viewportTransform = undefined;
-
-  // Draw canvas map
-  const drawMap = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // Ocean — muted blue-grey
-    const oceanGrad = ctx.createLinearGradient(0, 0, 0, h);
-    oceanGrad.addColorStop(0, "#CFDDEA");
-    oceanGrad.addColorStop(0.3, "#C5D3DC");
-    oceanGrad.addColorStop(0.7, "#BAC9D5");
-    oceanGrad.addColorStop(1, "#B0BFCC");
-    ctx.fillStyle = oceanGrad;
-    ctx.fillRect(0, 0, w, h);
-
-    // Subtle grid lines (latitude / longitude)
-    ctx.strokeStyle = "rgba(0,0,0,0.04)";
-    ctx.lineWidth = 0.5;
-    for (let lng = -180; lng <= 180; lng += 30) {
-      const x = (lng + 180) / 360 * w;
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-    }
-    for (let lat = -90; lat <= 90; lat += 30) {
-      const y = (90 - lat) / 180 * h;
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-    }
-
-    // Equator + prime meridian — slightly more visible
-    ctx.strokeStyle = "rgba(0,0,0,0.07)";
-    ctx.lineWidth = 0.75;
-    const eqY = (90 - 0) / 180 * h;
-    ctx.beginPath(); ctx.moveTo(0, eqY); ctx.lineTo(w, eqY); ctx.stroke();
-    const pmX = (0 + 180) / 360 * w;
-    ctx.beginPath(); ctx.moveTo(pmX, 0); ctx.lineTo(pmX, h); ctx.stroke();
-
-    // Helper: draw a landmass polygon with shadow, fill, and border stroke
-    const drawLand = (poly: [number, number][]) => {
-      // Build path
-      ctx.beginPath();
-      for (let i = 0; i < poly.length; i++) {
-        const { x, y } = latLngToXY(poly[i][1], poly[i][0], w, h);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-
-      // Drop shadow
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.12)";
-      ctx.shadowBlur = 6;
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
-
-      // Warm sand/cream fill
-      const landGrad = ctx.createLinearGradient(0, 0, w, h);
-      landGrad.addColorStop(0, "#EDE5D8");
-      landGrad.addColorStop(0.4, "#E8DFD0");
-      landGrad.addColorStop(1, "#DDD4C4");
-      ctx.fillStyle = landGrad;
-      ctx.fill();
-      ctx.restore();
-
-      // Thin border stroke — country-border style
-      ctx.strokeStyle = "rgba(139,115,85,0.35)";
-      ctx.lineWidth = 0.75;
-      ctx.stroke();
-    };
-
-    // Draw continents
-    for (const continent of CONTINENTS) {
-      for (const poly of continent.polys) {
-        drawLand(poly);
-      }
-    }
-
-    // Draw additional geographic features (islands, etc.)
-    for (const feature of GEO_FEATURES) {
-      for (const poly of feature.polys) {
-        drawLand(poly);
-      }
-    }
-
-    // Antique parchment texture overlay — subtle noise
-    ctx.fillStyle = "rgba(0,0,0,0.015)";
-    for (let i = 0; i < 300; i++) {
-      const px = Math.random() * w;
-      const py = Math.random() * h;
-      ctx.fillRect(px, py, 1, 1);
-    }
-    // Warm vignette at edges for antique feel
-    const vigGrad = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.3, w / 2, h / 2, Math.max(w, h) * 0.7);
-    vigGrad.addColorStop(0, "rgba(0,0,0,0)");
-    vigGrad.addColorStop(1, "rgba(0,0,0,0.06)");
-    ctx.fillStyle = vigGrad;
-    ctx.fillRect(0, 0, w, h);
-
-  }, [mapSize.w, mapSize.h]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver(entries => {
-      for (const e of entries) {
-        const w = Math.floor(e.contentRect.width);
-        const h = Math.floor(e.contentRect.height);
-        if (w > 0 && h > 0) setMapSize({ w, h });
-      }
-    });
-    obs.observe(el);
-    return () => obs.disconnect();
+  const handleSetSelectedPin = useCallback((p: ClusteredPin | null) => {
+    setSelectedPin(p);
   }, []);
 
-  useEffect(() => { drawMap(); }, [drawMap]);
-
-  const handlePinHover = (pin: ClusteredPin | null) => setHoveredPin(pin);
+  const handleSetHoveredPin = useCallback((p: ClusteredPin | null) => {
+    setHoveredPin(p);
+  }, []);
 
   return (
     <div role="button" tabIndex={0} onClick={onClose} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } }} style={{
@@ -502,90 +813,31 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
           </div>
         )}
 
-        {/* Map area */}
-        <div ref={containerRef} style={{ flex: 1, position: "relative", overflow: isMobile ? "auto" : "hidden", margin: isMobile ? "0.5rem" : "1rem", borderRadius: "0.75rem", border: `1px solid ${T.color.sandstone}40`, WebkitOverflowScrolling: "touch" }}>
-          <div style={{ width: isMobile ? "180%" : "100%", height: "100%", minHeight: isMobile ? "50vh" : undefined, position: "relative", transform: viewportTransform, transformOrigin: "0 0", transition: "transform .5s ease" }}>
-          <canvas ref={canvasRef} width={mapSize.w} height={mapSize.h} style={{ width: "100%", height: "100%", display: "block" }} />
+        {/* ══════════════════════ MAP AREA ══════════════════════ */}
+        <div style={{
+          flex: 1, position: "relative", overflow: "hidden",
+          margin: isMobile ? "0.5rem" : "1rem",
+          borderRadius: "0.75rem",
+          border: `1px solid ${T.color.sandstone}40`,
+        }}>
+          <SVGWorldMap
+            clusters={clusters}
+            selectedPin={selectedPin}
+            setSelectedPin={handleSetSelectedPin}
+            hoveredPin={hoveredPin}
+            setHoveredPin={handleSetHoveredPin}
+            isMobile={isMobile}
+          />
 
-          {/* Pins — sizes stay in px since they are map overlay elements */}
-          {clusters.map((pin, i) => {
-            const pctX = pin.x / mapSize.w * 100;
-            const pctY = pin.y / mapSize.h * 100;
-            const isHovered = hoveredPin === pin;
-            const count = pin.mems.length;
-            const size = count > 1 ? "1.375rem" : "0.875rem";
-            return (
-              <div key={i}
-                role="button"
-                tabIndex={0}
-                aria-label={`${pin.locationName} — ${pin.mems.length} ${pin.mems.length === 1 ? t("memory") : t("memories")}`}
-                onMouseEnter={() => handlePinHover(pin)}
-                onMouseLeave={() => handlePinHover(null)}
-                onClick={() => setSelectedPin(selectedPin === pin ? null : pin)}
-                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedPin(selectedPin === pin ? null : pin); } }}
-                style={{
-                  position: "absolute",
-                  left: `${pctX}%`, top: `${pctY}%`,
-                  transform: `translate(-50%,-50%) scale(${isHovered ? 1.4 : 1})`,
-                  width: size, height: size, borderRadius: "50%",
-                  background: pin.accent,
-                  border: "2px solid rgba(255,255,255,0.8)",
-                  boxShadow: isHovered
-                    ? `0 0 20px ${pin.accent}80, 0 4px 12px rgba(0,0,0,0.3)`
-                    : `0 2px 8px rgba(0,0,0,0.3)`,
-                  cursor: "pointer",
-                  transition: "transform .2s, box-shadow .2s",
-                  zIndex: isHovered ? 10 : 5,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                {count > 1 && (
-                  <span style={{
-                    fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700,
-                    color: "#FFF", lineHeight: 1,
-                  }}>{count}</span>
-                )}
-
-                {/* Tooltip on hover */}
-                {isHovered && (
-                  <div style={{
-                    position: "absolute", bottom: "calc(100% + 0.5rem)", left: "50%",
-                    transform: "translateX(-50%)", whiteSpace: "nowrap",
-                    background: `${T.color.charcoal}f0`, backdropFilter: "blur(8px)",
-                    color: "#FFF", padding: "0.5rem 0.875rem", borderRadius: "0.625rem",
-                    fontFamily: T.font.body, fontSize: "0.6875rem", lineHeight: 1.5,
-                    boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-                    pointerEvents: "none",
-                  }}>
-                    <div style={{ fontWeight: 600, marginBottom: "0.125rem", display: "flex", alignItems: "center", gap: "0.25rem" }}><MapPinIcon size={14} color="#FFF" /> {pin.locationName}</div>
-                    {pin.mems.slice(0, 4).map((m, j) => (
-                      <div key={j} style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.625rem" }}>
-                        {m.mem.title}
-                      </div>
-                    ))}
-                    {pin.mems.length > 4 && (
-                      <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "0.625rem" }}>{t("more", { count: String(pin.mems.length - 4) })}</div>
-                    )}
-                    <div style={{
-                      position: "absolute", bottom: -4, left: "50%", transform: "translateX(-50%)",
-                      width: 0, height: 0,
-                      borderLeft: "5px solid transparent", borderRight: "5px solid transparent",
-                      borderTop: `5px solid ${T.color.charcoal}f0`,
-                    }} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          </div>{/* end viewport transform wrapper */}
-
-          {/* Empty state */}
+          {/* Empty state overlay */}
           {clusters.length === 0 && (
             <div style={{
               position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-              alignItems: "center", justifyContent: "center",
+              alignItems: "center", justifyContent: "center", pointerEvents: "none",
+              zIndex: 1000,
             }}>
               <div style={{
-                background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)",
+                background: "rgba(44,36,26,0.55)", backdropFilter: "blur(8px)",
                 padding: "1.5rem 2.25rem", borderRadius: "1rem", textAlign: "center",
               }}>
                 <div style={{ marginBottom: "0.5rem" }}><GlobeIcon size={36} color="rgba(255,255,255,0.7)" /></div>
@@ -600,7 +852,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
             </div>
           )}
 
-          {/* Selected pin detail panel */}
+          {/* ── Selected pin detail panel ── */}
           {selectedPin && (
             <div style={{
               position: "absolute", bottom: 0, left: 0, right: 0,
@@ -610,6 +862,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
               animation: "fadeUp .25s ease",
               maxHeight: "45%", overflowY: "auto",
               padding: isMobile ? "0.875rem 1rem" : "1rem 1.5rem",
+              zIndex: 1000,
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                 <div>
@@ -649,12 +902,13 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
                       onMouseEnter={e => { e.currentTarget.style.background = `${selectedPin.accent}12`; }}
                       onMouseLeave={e => { e.currentTarget.style.background = `${T.color.white}dd`; }}
                     >
-                      {m.mem.dataUrl ? (
+                      {(m.mem.thumbnailUrl || m.mem.dataUrl) ? (
                         <div style={{
                           width: "3rem", height: "3rem", borderRadius: "0.5rem", overflow: "hidden", flexShrink: 0,
                           background: `${selectedPin.accent}20`, position: "relative",
                         }}>
-                          <Image src={m.mem.dataUrl} alt="" fill sizes="48px" style={{ objectFit: "cover" }} />
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={(m.mem.thumbnailUrl ?? m.mem.dataUrl) || ""} alt="" loading="lazy" decoding="async" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
                         </div>
                       ) : (
                         <div style={{
@@ -680,7 +934,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
                           marginTop: "0.1875rem", display: "flex", alignItems: "center", gap: "0.25rem",
                         }}>
                           {wing && <WingIcon wingId={wing.id} size={12} color={wing.accent} />} {wing ? (tw(wing.nameKey) || wing.name) : ""}
-                          {m.mem.createdAt && <span style={{ color: T.color.muted }}> &middot; {new Date(m.mem.createdAt).toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US")}</span>}
+                          {m.mem.createdAt && <span style={{ color: T.color.muted }}> &middot; {new Date(m.mem.createdAt).toLocaleDateString(localeDateCodes[locale as Locale])}</span>}
                         </div>
                       </div>
                       <span style={{ color: T.color.muted, fontSize: "0.75rem", flexShrink: 0 }}>{"\u2192"}</span>

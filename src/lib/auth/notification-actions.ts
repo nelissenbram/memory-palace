@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { serverT, serverTf, getServerLocale, getUserLocale } from "@/lib/i18n/server";
 
 export interface NotificationRow {
   id: string;
@@ -46,9 +47,11 @@ export async function createContributionNotification(data: {
     .eq("id", data.contributorId)
     .single();
 
-  const fromName = profile?.display_name || "Someone";
-  const roomName = room.name || "a room";
-  const message = `${fromName} added a memory to ${roomName}`;
+  // Use the room owner's locale for their notification
+  const ownerLocale = await getUserLocale(room.user_id);
+  const fromName = profile?.display_name || serverT("someone", ownerLocale);
+  const roomName = room.name || serverT("aRoom", ownerLocale);
+  const message = serverTf("notif_contribution", ownerLocale, { name: fromName, room: roomName });
 
   // Try inserting into notifications table.
   // If the table doesn't exist yet, silently fail — the client uses localStorage fallback.
@@ -105,7 +108,7 @@ export async function createNotification(input: {
   try {
     await pushToUserDevices({
       userId: input.userId,
-      title: input.pushTitle || "Memory Palace",
+      title: input.pushTitle || serverT("memoryPalace", await getServerLocale()),
       body: input.message,
       url: input.pushUrl || "/palace?notifications=1",
       tag: `activity-${input.type}-${Date.now()}`,
@@ -156,23 +159,14 @@ async function pushToUserDevices(opts: {
 
 // ── Milestone check after a memory is created ──
 const MILESTONES = [1, 10, 25, 50, 100, 250, 500, 1000];
-const MILESTONE_COPY: Record<number, string> = {
-  1: "Your very first memory is in the palace.",
-  10: "Ten memories preserved — you're off to a beautiful start.",
-  25: "Twenty-five memories — the palace is taking shape.",
-  50: "Fifty memories. You're officially an Archivist.",
-  100: "One hundred memories — welcome to the Centurion club.",
-  250: "Two hundred and fifty — your palace is becoming a living archive.",
-  500: "Five hundred memories. An extraordinary legacy.",
-  1000: "One thousand memories. A truly remarkable palace.",
-};
 
 export async function checkAndNotifyMilestone(opts: {
   userId: string;
   totalMemories: number;
 }) {
   if (!MILESTONES.includes(opts.totalMemories)) return;
-  const msg = MILESTONE_COPY[opts.totalMemories];
+  const locale = await getUserLocale(opts.userId);
+  const msg = serverT(`notif_milestone_${opts.totalMemories}`, locale);
   if (!msg) return;
   await createNotification({ userId: opts.userId, type: "achievement", message: msg });
 }
@@ -183,10 +177,11 @@ export async function notifyFirstInRoom(opts: {
   roomId: string;
   roomName: string;
 }) {
+  const locale = await getUserLocale(opts.userId);
   await createNotification({
     userId: opts.userId,
     type: "achievement",
-    message: `First memory in "${opts.roomName}" — this room just came alive.`,
+    message: serverTf("notif_first_in_room", locale, { room: opts.roomName }),
     roomId: opts.roomId,
     roomName: opts.roomName,
   });
@@ -197,24 +192,27 @@ export async function notifyFamilyJoined(opts: {
   ownerId: string;
   joinedName: string;
 }) {
+  const locale = await getUserLocale(opts.ownerId);
   await createNotification({
     userId: opts.ownerId,
     type: "family_invite",
-    message: `${opts.joinedName} joined your family palace.`,
+    message: serverTf("notif_family_joined", locale, { name: opts.joinedName }),
     fromUserName: opts.joinedName,
   });
 }
 
-const TEST_ACTIVITY_SAMPLES: { type: string; message: string }[] = [
-  { type: "welcome",          message: "Welcome to your Memory Palace — let's preserve something beautiful." },
-  { type: "achievement",      message: "Ten memories preserved — you're off to a beautiful start." },
-  { type: "achievement",      message: "First memory in \"Atrium\" — this room just came alive." },
-  { type: "family_invite",    message: "Sofia joined your family palace." },
-  { type: "new_contribution", message: "Marcus added a memory to \"Living Room\"." },
-  { type: "on_this_day",      message: "On this day, 3 years ago — \"Grandpa's 80th birthday\"." },
-  { type: "reminder",         message: "A quiet nudge: the Library has been patient. Want to add a story?" },
-  { type: "system",           message: "A new feature has arrived in your palace. Explore the Atrium." },
-];
+function getTestActivitySamples(locale: string): { type: string; message: string }[] {
+  return [
+    { type: "welcome",          message: serverT("notif_welcome", locale) },
+    { type: "achievement",      message: serverT("notif_milestone_10", locale) },
+    { type: "achievement",      message: serverTf("notif_first_in_room", locale, { room: "Atrium" }) },
+    { type: "family_invite",    message: serverTf("notif_family_joined", locale, { name: "Sofia" }) },
+    { type: "new_contribution", message: serverTf("notif_contribution", locale, { name: "Marcus", room: "Living Room" }) },
+    { type: "on_this_day",      message: serverTf("notif_on_this_day", locale, { years: "3", title: "Grandpa's 80th birthday" }) },
+    { type: "reminder",         message: serverT("notif_reminder", locale) },
+    { type: "system",           message: serverT("notif_system", locale) },
+  ];
+}
 
 // ── Seed one of each Activity type for the current user (test helper) ──
 // Returns detailed diagnostics so the caller can surface what happened.
@@ -236,7 +234,7 @@ export async function seedTestActivities(): Promise<{
     vapidConfigured: !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY),
     dbError: undefined as string | undefined,
     pushError: undefined as string | undefined,
-    samples: TEST_ACTIVITY_SAMPLES,
+    samples: [] as { type: string; message: string }[],
   };
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -270,7 +268,10 @@ export async function seedTestActivities(): Promise<{
   } catch { /* ignore */ }
 
   // Insert rows + push
-  for (const s of TEST_ACTIVITY_SAMPLES) {
+  const userLocale = await getUserLocale(user.id);
+  const samples = getTestActivitySamples(userLocale);
+  result.samples = samples;
+  for (const s of samples) {
     // DB insert with real error capture
     try {
       const { error } = await supabase.from("notifications").insert({
@@ -301,7 +302,7 @@ export async function seedTestActivities(): Promise<{
             const r = await sendPushDetailed(
               { endpoint: sub.endpoint, keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth } },
               {
-                title: "Memory Palace",
+                title: serverT("memoryPalace", await getServerLocale()),
                 body: s.message,
                 icon: "/apple-touch-icon.png",
                 badge: "/favicon.svg",

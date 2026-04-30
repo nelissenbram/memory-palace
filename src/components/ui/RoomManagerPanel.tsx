@@ -49,7 +49,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
   const [pickingIconId, setPickingIconId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newIcon, setNewIcon] = useState("fr1");
+  const [newIcon, setNewIcon] = useState("ro1");
   const [showNewIconPicker, setShowNewIconPicker] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
@@ -72,7 +72,7 @@ export default function RoomManagerPanel({ wing, onClose, onEnterRoom }: RoomMan
     addRoom(wing.id, newName, newIcon);
     setAdding(false);
     setNewName("");
-    setNewIcon("fr1");
+    setNewIcon("ro1");
     setShowNewIconPicker(false);
   };
 

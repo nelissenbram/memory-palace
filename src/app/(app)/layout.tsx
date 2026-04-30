@@ -13,7 +13,7 @@ export default async function AppLayout({
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
     return (
-      <main id="main-content" style={{ height: "100%", width: "100%" }}>
+      <main id="main-content" style={{ width: "100%" }}>
         <AppErrorBoundaryWrapper>{children}</AppErrorBoundaryWrapper>
       </main>
     );
@@ -29,7 +29,7 @@ export default async function AppLayout({
   }
 
   return (
-    <main id="main-content" style={{ height: "100%", width: "100%" }}>
+    <main id="main-content" style={{ width: "100%" }}>
       <AppErrorBoundaryWrapper>{children}</AppErrorBoundaryWrapper>
     </main>
   );

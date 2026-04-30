@@ -115,7 +115,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
   };
 
   const handleGoToPalace = () => {
-    router.push("/palace");
+    router.push("/atrium");
   };
 
   const getTimeAgo = (dateStr: string): string => {

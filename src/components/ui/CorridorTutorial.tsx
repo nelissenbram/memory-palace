@@ -27,9 +27,8 @@ type Rect = { top: number; left: number; width: number; height: number };
 
 /**
  * Help layer for the Wing Corridor.
- * Two steps:
- *  0 — joystick (secondary manual navigation) OR the direct-room nav bar
- *  1 — corridor media/paintings button (bottom-right)
+ * Mobile: 2 steps (joystick → media button).
+ * Desktop: 2 steps (navigation explanation → corridor media button).
  */
 export default function CorridorTutorial({ open, onClose }: Props) {
   const { t } = useTranslation("corridorTour");
@@ -41,15 +40,22 @@ export default function CorridorTutorial({ open, onClose }: Props) {
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => { if (open) setStep(0); }, [open]);
 
+  const totalSteps = 2;
+
   useLayoutEffect(() => {
     if (!open) { setTargetBox(null); return; }
     const measure = () => {
       let el: HTMLElement | null = null;
-      if (step === 0) {
-        // Prefer the joystick if visible; fall back to the palace-bars nav.
-        el = document.querySelector<HTMLElement>("[data-mp-joystick]")
-          || document.querySelector<HTMLElement>("[data-mp-palace-bars]");
+      if (isMobile) {
+        if (step === 0) {
+          el = document.querySelector<HTMLElement>("[data-mp-joystick]")
+            || document.querySelector<HTMLElement>("[data-mp-palace-bars]");
+        } else {
+          el = document.querySelector<HTMLElement>("[data-mp-corridor-media]");
+        }
       } else {
+        // Desktop: step 0 = no target (centered navigation text), step 1 = media button
+        if (step === 0) { setTargetBox(null); return; }
         el = document.querySelector<HTMLElement>("[data-mp-corridor-media]");
       }
       if (!el) { setTargetBox(null); return; }
@@ -65,18 +71,26 @@ export default function CorridorTutorial({ open, onClose }: Props) {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [open, step]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, step, isMobile]);
 
   if (!mounted || !open) return null;
 
-  const totalSteps = 2;
-  const cardBg = "rgba(42,34,24,0.94)";
-  const cardBorder = "rgba(212,175,55,0.28)";
-  const cardShadow = "0 1rem 3rem rgba(0,0,0,0.45)";
+  const cardBg = "rgba(42,34,24,0.92)";
+  const cardBorder = "rgba(212,175,55,0.2)";
+  const cardShadow = "0 0.5rem 2rem rgba(0,0,0,0.3)";
   const goldLight = (T.color as Record<string, string>).goldLight || "#E8C870";
 
-  const titleKey = step === 0 ? "step1Title" : "step2Title";
-  const bodyKey  = step === 0 ? "step1Body"  : "step2Body";
+  let titleKey: string;
+  let bodyKey: string;
+
+  if (isMobile) {
+    titleKey = step === 0 ? "step1Title" : "step2Title";
+    bodyKey  = step === 0 ? "step1Body"  : "step2Body";
+  } else {
+    titleKey = step === 0 ? "dStep1Title" : "dStep2Title";
+    bodyKey  = step === 0 ? "dStep1Body"  : "dStep2Body";
+  }
 
   const pad = 8;
   const r = 14;
@@ -87,12 +101,15 @@ export default function CorridorTutorial({ open, onClose }: Props) {
 
   const vw = typeof window !== "undefined" ? window.innerWidth : 360;
   const vh = typeof window !== "undefined" ? window.innerHeight : 640;
-  const tipWidth = Math.min(vw - 32, isMobile ? 320 : 360);
+  const remToPx = (rem: number) => rem * parseFloat(typeof window !== "undefined" ? getComputedStyle(document.documentElement).fontSize || "16" : "16");
+  const tipWidth = remToPx(isMobile ? 16.25 : 17.5);
 
   let tipTop = 80;
   let tipLeft = 16;
-  if (targetBox) {
-    // Place tip above if target is in bottom half, below otherwise.
+  if (!targetBox) {
+    tipTop = vh / 2 - 80;
+    tipLeft = vw / 2 - tipWidth / 2;
+  } else {
     const targetCenterY = t_ + h_ / 2;
     if (targetCenterY > vh / 2) {
       tipTop = Math.max(16, t_ - 180);
@@ -107,14 +124,14 @@ export default function CorridorTutorial({ open, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label={t(titleKey)}
-      style={{ position: "fixed", inset: 0, zIndex: 2147483000 }}
+      style={{ position: "fixed", inset: 0, zIndex: 57 }}
     >
       <style>{`
         @keyframes mpCtTipIn { from { opacity:0; transform:translateY(0.375rem);} to { opacity:1; transform:translateY(0);} }
-        @keyframes mpCtPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.45);} 50% { box-shadow:0 0 0 0.625rem rgba(212,175,55,0);} }
+        @keyframes mpCtPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.4);} 50% { box-shadow:0 0 0 0.5rem rgba(212,175,55,0);} }
       `}</style>
 
-      {targetBox && (
+      {targetBox ? (
         <>
           <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, pointerEvents: "auto" }}>
             <defs>
@@ -126,7 +143,7 @@ export default function CorridorTutorial({ open, onClose }: Props) {
             <rect
               width="100%"
               height="100%"
-              fill="rgba(0,0,0,0.55)"
+              fill="rgba(0,0,0,0.45)"
               mask="url(#mp-corridor-cutout)"
               onClick={onClose}
             />
@@ -136,13 +153,18 @@ export default function CorridorTutorial({ open, onClose }: Props) {
               position: "absolute",
               top: t_, left: l_, width: w_, height: h_,
               borderRadius: `${r}px`,
-              border: `0.125rem solid ${goldLight}aa`,
+              border: `2px solid ${goldLight}70`,
               animation: "mpCtPulse 2s ease-in-out infinite",
               pointerEvents: "none",
               boxSizing: "border-box",
             }}
           />
         </>
+      ) : (
+        <div
+          style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", pointerEvents: "auto" }}
+          onClick={onClose}
+        />
       )}
 
       <div
@@ -155,15 +177,15 @@ export default function CorridorTutorial({ open, onClose }: Props) {
         <div
           style={{
             background: cardBg,
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
             borderRadius: "0.875rem",
             padding: "0.875rem 1rem",
             border: `1px solid ${cardBorder}`,
             boxShadow: cardShadow,
             display: "flex",
             flexDirection: "column",
-            gap: "0.625rem",
+            gap: "0.5rem",
           }}
         >
           <div

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { T } from "@/lib/theme";
 import { isNative } from "@/lib/native/platform";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { signOut } from "@/lib/auth/actions";
+import { useSignOut } from "@/lib/hooks/useSignOut";
+import SignOutOverlay from "@/components/ui/SignOutOverlay";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import NavigationBar from "@/components/ui/NavigationBar";
@@ -110,6 +111,7 @@ const NAV_ITEMS = [
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const { signingOut, handleSignOut } = useSignOut();
   const { scale } = useAccessibility();
   const { t: tc } = useTranslation("common");
 
@@ -120,15 +122,35 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const [tourOpen, setTourOpen] = useSettingsTutorial();
 
   return (
+    <>
+    {signingOut && <SignOutOverlay />}
     <div style={{
-      minHeight: "100vh",
-      paddingBottom: isMobile ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : undefined,
+      position: "fixed",
+      inset: 0,
+      overflowY: "auto",
+      WebkitOverflowScrolling: "touch",
+      paddingTop: isMobile ? undefined : "3.5rem",
+      paddingBottom: isMobile ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
       background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
+      zIndex: 1,
     }}>
-      {/* Top bar — desktop only (mobile uses bottom NavigationBar) */}
+      {/* Desktop NavigationBar — "Me" tab highlighted */}
+      {!isMobile && (
+        <NavigationBar
+          currentMode={navMode}
+          onModeChange={(mode) => { setNavMode(mode); settingsRouter.push(mode === "3d" ? "/palace" : `/${mode}`); }}
+          onNotifications={() => settingsRouter.push("/atrium?notifications=1")}
+          isMobile={false}
+          activeTab="me"
+        />
+      )}
+      {/* Top bar — desktop only (pushed below NavigationBar) */}
       {!isMobile && (
         <header style={{
-          padding: "1rem 1.75rem",
+          paddingTop: "1.5rem",
+          paddingLeft: "1.75rem",
+          paddingRight: "1.75rem",
+          paddingBottom: "1rem",
           display: "flex",
           alignItems: "center",
           gap: "1rem",
@@ -136,7 +158,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           background: `${T.color.linen}e0`,
           backdropFilter: "blur(12px)",
         }}>
-          <Link href="/palace" style={{
+          <Link href="/atrium" style={{
             display: "flex", alignItems: "center", gap: "0.5rem",
             textDecoration: "none", color: T.color.muted,
             fontFamily: T.font.body,
@@ -167,6 +189,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         }}>
           {/* Horizontal scrollable tab bar */}
           <nav aria-label={tc("settingsNavigation")} style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
             overflowX: "auto",
             whiteSpace: "nowrap",
             borderBottom: `1px solid ${T.color.cream}`,
@@ -195,7 +220,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             })}
             {/* Sign Out button – last item in tab bar on mobile */}
             <button
-              onClick={() => signOut()}
+              onClick={handleSignOut}
               style={{
                 display: "inline-flex", alignItems: "center", gap: "0.375rem",
                 minHeight: "2.75rem",
@@ -265,7 +290,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               {/* Sign Out button – bottom of sidebar on desktop */}
               <div style={{ flex: 1 }} />
               <button
-                onClick={() => signOut()}
+                onClick={handleSignOut}
                 style={{
                   display: "flex", alignItems: "center", gap: "0.625rem",
                   padding: "0.75rem 0.875rem", borderRadius: "0.625rem",
@@ -318,12 +343,13 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       {isMobile && (
         <NavigationBar
           currentMode={navMode}
-          onModeChange={(mode) => { setNavMode(mode); settingsRouter.push(`/palace?mode=${mode}`); }}
-          onNotifications={() => settingsRouter.push("/palace?notifications=1")}
+          onModeChange={(mode) => { setNavMode(mode); settingsRouter.push(mode === "3d" ? "/palace" : `/${mode}`); }}
+          onNotifications={() => settingsRouter.push("/atrium?notifications=1")}
           isMobile={true}
           activeTab="me"
         />
       )}
     </div>
+    </>
   );
 }

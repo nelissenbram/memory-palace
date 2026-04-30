@@ -6,8 +6,16 @@ import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { locales } from "@/i18n/config";
 import enMessages from "@/messages/en.json";
 import nlMessages from "@/messages/nl.json";
+import deMessages from "@/messages/de.json";
+import esMessages from "@/messages/es.json";
+import frMessages from "@/messages/fr.json";
+
+const landingMessages: Record<string, typeof enMessages> = {
+  en: enMessages, nl: nlMessages, de: deMessages, es: esMessages, fr: frMessages,
+};
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import {
   HeroIllustration,
@@ -17,9 +25,13 @@ import {
   FeatureTimeCapsuleIcon,
   FeatureSharingIcon,
   FeatureLegacyIcon,
+  FeatureFamilyTreeIcon,
+  FeatureMemoryTracksIcon,
+  FeatureMemoryMapIcon,
   AudienceHeritageIcon,
   AudienceGuardianIcon,
   AudienceArchivistIcon,
+  AudienceParentsIcon,
 } from "@/components/landing/LandingIllustrations";
 
 /* ───────── Error Boundary (P1 #8) ───────── */
@@ -59,10 +71,10 @@ function useInView(options?: IntersectionObserverInit) {
 }
 
 /* ───────── LazySection wrapper (P2 #2) ───────── */
-function LazySection({ children, minHeight = "12rem" }: { children: React.ReactNode; minHeight?: string }) {
+function LazySection({ children, minHeight = "12rem", id }: { children: React.ReactNode; minHeight?: string; id?: string }) {
   const { ref, inView } = useInView();
   return (
-    <div ref={ref}>
+    <div ref={ref} id={id}>
       {inView ? children : <div style={{ minHeight, background: "transparent" }} />}
     </div>
   );
@@ -81,6 +93,68 @@ function ScrollFadeIn({ children, delay = 0 }: { children: React.ReactNode; dela
       }}
     >
       {children}
+    </div>
+  );
+}
+
+/* ───────── Screenshot + BrowserFrame helpers ───────── */
+function Screenshot({ src, alt, sizes = "(max-width: 640px) 500px, (max-width: 1024px) 800px, 1200px" }: {
+  src: string; alt: string; sizes?: string;
+}) {
+  const basePath = src.replace(/\.webp$/, "");
+  return (
+    <img
+      src={`${basePath}-800w.webp`}
+      srcSet={`${basePath}-500w.webp 500w, ${basePath}-800w.webp 800w, ${basePath}-1200w.webp 1200w`}
+      sizes={sizes}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+        borderRadius: "0 0 0.5rem 0.5rem",
+        filter: "sepia(0.25) saturate(0.9) hue-rotate(-5deg) brightness(0.95)",
+      }}
+    />
+  );
+}
+
+function BrowserFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      borderRadius: "0.625rem",
+      overflow: "hidden",
+      background: "#1e1e1c",
+      boxShadow: "0 0.5rem 2rem rgba(212,175,55,0.08), 0 0.25rem 1rem rgba(0,0,0,0.3)",
+    }}>
+      {/* Browser chrome bar */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.375rem",
+        padding: "0.5rem 0.75rem",
+        background: "#2a2a28",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        <span style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: "#ff5f57" }} />
+        <span style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: "#febc2e" }} />
+        <span style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: "#28c840" }} />
+        <div style={{
+          marginLeft: "0.5rem",
+          flex: 1,
+          height: "1.25rem",
+          borderRadius: "0.25rem",
+          background: "rgba(255,255,255,0.06)",
+          maxWidth: "14rem",
+        }} />
+      </div>
+      {/* Content */}
+      <div style={{ aspectRatio: "16 / 10", position: "relative", overflow: "hidden" }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -121,7 +195,7 @@ function HeroVideo() {
       loop
       playsInline
       autoPlay
-      preload="auto"
+      preload="metadata"
       aria-hidden="true"
       style={{
         position: "absolute",
@@ -312,7 +386,7 @@ export default function LandingPage() {
 /* Error fallback (P1 #8) */
 function LandingErrorFallback() {
   const { locale } = useTranslation("landing");
-  const landing = (locale === "nl" ? nlMessages : enMessages).landing;
+  const landing = (landingMessages[locale] || enMessages).landing;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const lAny = landing as any;
   return (
@@ -340,10 +414,10 @@ function LandingErrorFallback() {
           color: C.charcoal,
         }}
       >
-        {lAny?.errorTitle || "Something went wrong"}
+        {lAny?.errorTitle}
       </h1>
       <p style={{ fontSize: "1rem", color: C.walnut, marginBottom: "2rem", maxWidth: "25rem", lineHeight: 1.6 }}>
-        {lAny?.errorDescription || "We encountered an unexpected error. Please refresh the page to try again."}
+        {lAny?.errorDescription}
       </p>
       <button
         onClick={() => window.location.reload()}
@@ -359,7 +433,7 @@ function LandingErrorFallback() {
           cursor: "pointer",
         }}
       >
-        {lAny?.errorRefresh || "Refresh Page"}
+        {lAny?.errorRefresh}
       </button>
     </div>
   );
@@ -371,8 +445,10 @@ function LandingPageContent() {
   const [scrollY, setScrollY] = useState(0);
   const [ctaLoading, setCtaLoading] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
+  const exitShownRef = useRef(false);
   const { locale, setLocale } = useTranslation("landing");
-  const landing = (locale === "nl" ? nlMessages : enMessages).landing;
+  const landing = (landingMessages[locale] || enMessages).landing;
   const router = useRouter();
 
   /* ─── CTA loading handler (P1 #4) ─── */
@@ -383,9 +459,14 @@ function LandingPageContent() {
 
   /* ─── Data arrays ─── */
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const featuresAny = landing.features as any;
   const FEATURES = [
     { Icon: FeaturePalaceIcon, title: landing.features.palace3d, desc: landing.features.palace3dDesc },
     { Icon: FeatureInterviewIcon, title: landing.features.aiInterviews, desc: landing.features.aiInterviewsDesc },
+    { Icon: FeatureFamilyTreeIcon, title: featuresAny?.familyTree ?? "Family Tree", desc: featuresAny?.familyTreeDesc ?? "" },
+    { Icon: FeatureMemoryTracksIcon, title: featuresAny?.memoryTracks ?? "Guided Memory Journeys", desc: featuresAny?.memoryTracksDesc ?? "" },
+    { Icon: FeatureMemoryMapIcon, title: featuresAny?.memoryMap ?? "Memory Map", desc: featuresAny?.memoryMapDesc ?? "" },
     { Icon: FeatureCloudIcon, title: landing.features.cloudImport, desc: landing.features.cloudImportDesc },
     { Icon: FeatureTimeCapsuleIcon, title: landing.features.timeCapsules, desc: landing.features.timeCapsuleDesc },
     { Icon: FeatureSharingIcon, title: landing.features.sharingTitle, desc: landing.features.sharingDesc },
@@ -405,10 +486,13 @@ function LandingPageContent() {
     { quote: landing.testimonials.quote4, name: landing.testimonials.author4, role: landing.testimonials.role4, gradient: `linear-gradient(135deg, ${C.terracotta}40, ${C.gold}40)` },
   ];
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const audienceAny = landing.audience as any;
   const AUDIENCES = [
     { Icon: AudienceHeritageIcon, title: landing.audience.keepersTitle, desc: landing.audience.keepersDesc, accent: C.sage },
     { Icon: AudienceGuardianIcon, title: landing.audience.guardiansTitle, desc: landing.audience.guardiansDesc, accent: C.terracotta },
     { Icon: AudienceArchivistIcon, title: landing.audience.archivistsTitle, desc: landing.audience.archivistsDesc, accent: C.walnut },
+    { Icon: AudienceParentsIcon, title: audienceAny?.parentsTitle ?? "Parents Building for the Future", desc: audienceAny?.parentsDesc ?? "", accent: C.gold },
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -454,6 +538,11 @@ function LandingPageContent() {
       left: comparison?.["row6Left"] ?? "",
       right: comparison?.["row6Right"] ?? "",
     },
+    {
+      category: comparison?.["row7Label"] ?? "",
+      left: comparison?.["row7Left"] ?? "",
+      right: comparison?.["row7Right"] ?? "",
+    },
   ];
 
   /* ─── Set html lang attribute on locale change (P1 #5) ─── */
@@ -482,6 +571,24 @@ function LandingPageContent() {
   }, []);
 
   const headerOpaque = scrollY > 60;
+
+  /* ─── Sticky bottom CTA visibility (mobile only, after hero) ─── */
+  const showStickyBottomCta = isSmall && scrollY > (typeof window !== "undefined" ? window.innerHeight : 800);
+
+  /* ─── Exit-intent modal (desktop only, once per session) ─── */
+  useEffect(() => {
+    if (isSmall || isMobile) return;
+    const startTime = Date.now();
+    const handleMouseLeave = (e: MouseEvent) => {
+      if (e.clientY > 0) return; // only trigger when leaving from the top
+      if (exitShownRef.current) return;
+      if (Date.now() - startTime < 5000) return; // skip first 5 seconds
+      exitShownRef.current = true;
+      setShowExitModal(true);
+    };
+    document.addEventListener("mouseleave", handleMouseLeave);
+    return () => document.removeEventListener("mouseleave", handleMouseLeave);
+  }, [isSmall, isMobile]);
 
   /* ─── Render ─── */
 
@@ -520,6 +627,19 @@ function LandingPageContent() {
                 logo: "https://thememorypalace.ai/logo.png",
                 sameAs: [],
               },
+              {
+                "@type": "FAQPage",
+                mainEntity: [1, 2, 3, 4, 5, 6, 7, 8]
+                  .filter((n) => lAny?.faq?.[`q${n}`] && lAny?.faq?.[`a${n}`])
+                  .map((n) => ({
+                    "@type": "Question",
+                    name: lAny.faq[`q${n}`],
+                    acceptedAnswer: {
+                      "@type": "Answer",
+                      text: lAny.faq[`a${n}`],
+                    },
+                  })),
+              },
             ],
           }),
         }}
@@ -546,24 +666,18 @@ function LandingPageContent() {
             padding: 0.625rem 0.5rem !important;
           }
         }
-        /* ── P1 #5: Testimonial horizontal scroll on mobile ── */
+        /* ── P1 #5: Testimonial stacked grid on mobile ── */
         @media (max-width: 640px) {
           .lp-testimonials-grid {
-            display: flex !important;
-            overflow-x: auto !important;
-            scroll-snap-type: x mandatory !important;
-            -webkit-overflow-scrolling: touch;
+            display: grid !important;
+            grid-template-columns: 1fr !important;
             gap: 1rem !important;
-            padding-bottom: 1rem !important;
-            scrollbar-width: none;
           }
-          .lp-testimonials-grid::-webkit-scrollbar {
-            display: none;
-          }
-          .lp-testimonials-grid > .lp-testimonial-card {
-            min-width: 85vw !important;
-            scroll-snap-align: center;
-            flex-shrink: 0;
+          .lp-testimonials-grid > .lp-testimonial-card .lp-testimonial-quote {
+            display: -webkit-box;
+            -webkit-line-clamp: 4;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
           }
         }
         /* ── P1 #11: Mobile nav menu z-index ── */
@@ -669,10 +783,25 @@ function LandingPageContent() {
         .lp-skip-link:focus {
           left: 0;
         }
+        /* Screenshot carousel scrollbar */
+        .lp-screenshot-carousel {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(193,127,89,0.4) transparent;
+        }
+        .lp-screenshot-carousel::-webkit-scrollbar {
+          height: 0.375rem;
+        }
+        .lp-screenshot-carousel::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .lp-screenshot-carousel::-webkit-scrollbar-thumb {
+          background: rgba(193,127,89,0.4);
+          border-radius: 0.25rem;
+        }
       `}</style>
       {/* Skip-to-content link (a11y) */}
       <a href="#main-content" className="lp-skip-link">
-        {lAny?.a11y?.skipToContent || "Skip to content"}
+        {lAny?.a11y?.skipToContent}
       </a>
 
       {/* ═══════════════════════════════════════════════════
@@ -702,6 +831,16 @@ function LandingPageContent() {
 
         <div style={{ display: "flex", gap: isMobile ? "0.5rem" : "0.75rem", alignItems: "center" }}>
           {!isSmall && (
+            <a href="#features" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream, textDecoration: "none" }}>
+              {landing.nav.features}
+            </a>
+          )}
+          {!isSmall && (
+            <a href="#how-it-works" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream, textDecoration: "none" }}>
+              {landing.nav.howItWorks}
+            </a>
+          )}
+          {!isSmall && (
             <Link href="/pricing" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream }}>
               {landing.nav.pricing}
             </Link>
@@ -711,31 +850,42 @@ function LandingPageContent() {
               {landing.nav.signIn}
             </Link>
           )}
-          <button
-            onClick={() => setLocale(locale === "en" ? "nl" : "en")}
-            aria-label="Switch language"
-            style={{
-              background: "none",
-              border: `1px solid ${headerOpaque ? `${C.sandstone}60` : `${C.sandstone}80`}`,
-              borderRadius: "0.375rem",
-              padding: "0.25rem 0.5rem",
-              fontSize: "0.75rem",
-              fontFamily: F.body,
-              fontWeight: 600,
-              color: headerOpaque ? C.walnut : C.cream,
-              cursor: "pointer",
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
-              transition: "border-color 0.2s, color 0.2s",
-            }}
-          >
-            {locale === "en" ? "NL" : "EN"}
-          </button>
+          {!isSmall && (
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as typeof locale)}
+              aria-label="Switch language"
+              style={{
+                background: "none",
+                border: `1px solid ${headerOpaque ? `${C.sandstone}60` : `${C.sandstone}80`}`,
+                borderRadius: "0.375rem",
+                padding: "0.25rem 0.5rem",
+                fontSize: "0.75rem",
+                fontFamily: F.body,
+                fontWeight: 600,
+                color: headerOpaque ? C.walnut : C.cream,
+                cursor: "pointer",
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+                transition: "border-color 0.2s, color 0.2s",
+                appearance: "none",
+                WebkitAppearance: "none",
+                paddingRight: "1.25rem",
+                backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 0.375rem center",
+              }}
+            >
+              {locales.map((l) => (
+                <option key={l} value={l} style={{ color: "#333" }}>{l.toUpperCase()}</option>
+              ))}
+            </select>
+          )}
           {!isSmall && (
             <button
               onClick={() => handleCtaClick("nav", "/register")}
               className="lp-nav-cta"
-              aria-label={lAny?.a11y?.ctaNav || "Get started — sign up"}
+              aria-label={lAny?.a11y?.ctaNav}
               style={{
                 ...navCta,
                 padding: isMobile ? "0.625rem 1.125rem" : "0.5rem 1.25rem",
@@ -745,14 +895,14 @@ function LandingPageContent() {
               }}
               disabled={ctaLoading === "nav"}
             >
-              {ctaLoading === "nav" ? (lAny?.loading || "Loading...") : landing.nav.getStarted}
+              {ctaLoading === "nav" ? (lAny?.loading) : landing.nav.getStarted}
             </button>
           )}
           {/* P1 #11: Hamburger menu for small screens */}
           {isSmall && (
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? (lAny?.a11y?.closeMenu || "Close menu") : (lAny?.a11y?.openMenu || "Open menu")}
+              aria-label={mobileMenuOpen ? lAny?.a11y?.closeMenu : lAny?.a11y?.openMenu}
               style={{
                 background: "none",
                 border: "none",
@@ -805,12 +955,47 @@ function LandingPageContent() {
               animation: "fadeUp 0.2s ease both",
             }}
           >
+            <a href="#features" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0", textDecoration: "none" }} onClick={() => setMobileMenuOpen(false)}>
+              {landing.nav.features}
+            </a>
+            <a href="#how-it-works" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0", textDecoration: "none" }} onClick={() => setMobileMenuOpen(false)}>
+              {landing.nav.howItWorks}
+            </a>
             <Link href="/pricing" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0" }} onClick={() => setMobileMenuOpen(false)}>
               {landing.nav.pricing}
             </Link>
             <Link href="/login" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0" }} onClick={() => setMobileMenuOpen(false)}>
               {landing.nav.signIn}
             </Link>
+            {/* Language selector in mobile menu */}
+            <select
+              value={locale}
+              onChange={(e) => setLocale(e.target.value as typeof locale)}
+              aria-label="Switch language"
+              style={{
+                background: "none",
+                border: `1px solid ${C.sandstone}60`,
+                borderRadius: "0.375rem",
+                padding: "0.625rem 0.75rem",
+                fontSize: "0.8125rem",
+                fontFamily: F.body,
+                fontWeight: 600,
+                color: C.walnut,
+                cursor: "pointer",
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+                appearance: "none",
+                WebkitAppearance: "none",
+                paddingRight: "1.75rem",
+                backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 0.5rem center",
+              }}
+            >
+              {locales.map((l) => (
+                <option key={l} value={l} style={{ color: "#333" }}>{l.toUpperCase()}</option>
+              ))}
+            </select>
             <button
               onClick={() => { setMobileMenuOpen(false); handleCtaClick("nav-mobile", "/register"); }}
               className="lp-nav-cta"
@@ -824,7 +1009,7 @@ function LandingPageContent() {
               }}
               disabled={ctaLoading === "nav-mobile"}
             >
-              {ctaLoading === "nav-mobile" ? (lAny?.loading || "Loading...") : landing.nav.getStarted}
+              {ctaLoading === "nav-mobile" ? (lAny?.loading) : landing.nav.getStarted}
             </button>
           </div>
           </>
@@ -859,7 +1044,7 @@ function LandingPageContent() {
             style={{
               position: "absolute",
               inset: 0,
-              background: `linear-gradient(180deg, rgba(42,34,24,0.55) 0%, rgba(42,34,24,0.3) 40%, rgba(42,34,24,0.6) 100%)`,
+              background: `linear-gradient(180deg, rgba(42,34,24,0.65) 0%, rgba(42,34,24,0.45) 40%, rgba(42,34,24,0.7) 100%)`,
               pointerEvents: "none",
             }}
           />
@@ -895,7 +1080,7 @@ function LandingPageContent() {
               animation: "fadeUp 0.7s ease 0.1s both",
               padding: isSmall ? "0 0.5rem" : undefined,
               position: "relative",
-              textShadow: "0 0.125rem 0.5rem rgba(0,0,0,0.3)",
+              textShadow: "0 0.125rem 0.5rem rgba(0,0,0,0.5), 0 0 1rem rgba(0,0,0,0.3)",
             }}
           >
             {landing.hero.storyDeserves}
@@ -917,7 +1102,7 @@ function LandingPageContent() {
               animation: "fadeUp 0.7s ease 0.2s both",
               padding: isSmall ? "0 0.5rem" : undefined,
               position: "relative",
-              textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.2)",
+              textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.4), 0 0 0.75rem rgba(0,0,0,0.2)",
             }}
           >
             {landing.hero.description}
@@ -940,7 +1125,7 @@ function LandingPageContent() {
             <button
               onClick={() => handleCtaClick("hero", "/register")}
               className="lp-hero-cta"
-              aria-label={lAny?.a11y?.ctaHero || "Start building your palace for free"}
+              aria-label={lAny?.a11y?.ctaHero}
               disabled={ctaLoading === "hero"}
               style={{
                 ...heroCta,
@@ -955,10 +1140,12 @@ function LandingPageContent() {
                 opacity: ctaLoading === "hero" ? 0.7 : 1,
               }}
             >
-              {ctaLoading === "hero" ? (lAny?.loading || "Loading...") : landing.hero.cta}
+              {ctaLoading === "hero" ? (lAny?.loading) : landing.hero.cta}
             </button>
-            <a
-              href="#how-it-works"
+            <button
+              onClick={() => {
+                document.getElementById("showcase")?.scrollIntoView({ behavior: "smooth" });
+              }}
               className="lp-hero-secondary"
               style={{
                 ...heroSecondary,
@@ -968,10 +1155,12 @@ function LandingPageContent() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                cursor: "pointer",
+                background: "none",
               }}
             >
               {landing.hero.secondaryCta}
-            </a>
+            </button>
           </div>
 
           {/* Security link */}
@@ -1008,9 +1197,9 @@ function LandingPageContent() {
             }}
           >
             {[
-              { Icon: SslIcon, label: lAny?.trustBadges?.ssl || "SSL Encrypted" },
-              { Icon: GdprIcon, label: lAny?.trustBadges?.gdpr || "GDPR Compliant" },
-              { Icon: EncryptedIcon, label: lAny?.trustBadges?.encrypted || "End-to-End Encrypted" },
+              { Icon: SslIcon, label: lAny?.trustBadges?.ssl },
+              { Icon: GdprIcon, label: lAny?.trustBadges?.gdpr },
+              { Icon: EncryptedIcon, label: lAny?.trustBadges?.encrypted },
             ].map((badge) => (
               <div
                 key={badge.label}
@@ -1049,6 +1238,7 @@ function LandingPageContent() {
               gap: "0.375rem",
               opacity: scrollY > 50 ? 0 : 0.5,
               transition: "opacity 0.3s",
+              pointerEvents: "none",
             }}
           >
             <span style={{ fontSize: "0.6875rem", color: C.sandstone, letterSpacing: 1 }}>
@@ -1116,9 +1306,8 @@ function LandingPageContent() {
         {/* ═══════════════════════════════════════════════════
             4. FEATURES SECTION (P2 #2: lazy-loaded)
             ═══════════════════════════════════════════════════ */}
-        <LazySection minHeight="30rem">
+        <LazySection minHeight="30rem" id="features">
           <section
-            id="features"
             style={{
               padding: isMobile
                 ? "4.5rem 1.25rem"
@@ -1128,7 +1317,7 @@ function LandingPageContent() {
             }}
           >
             <p style={sectionLabel}>{landing.features.title}</p>
-            <h2 style={sectionTitle}>{landing.features.subtitle}</h2>
+            <h2 style={sectionTitle}>{featuresAny?.subtitle ?? landing.features.subtitle}</h2>
 
             <div
               style={{
@@ -1163,9 +1352,8 @@ function LandingPageContent() {
         {/* ═══════════════════════════════════════════════════
             5. HOW IT WORKS (P2 #2: lazy-loaded)
             ═══════════════════════════════════════════════════ */}
-        <LazySection minHeight="20rem">
+        <LazySection minHeight="20rem" id="how-it-works">
         <section
-          id="how-it-works"
           style={{
             padding: isMobile
               ? "4rem 1.25rem"
@@ -1261,6 +1449,188 @@ function LandingPageContent() {
               ))}
             </div>
           </div>
+        </section>
+        </LazySection>
+
+        {/* ═══════════════════════════════════════════════════
+            5b. MID-PAGE CTA
+            ═══════════════════════════════════════════════════ */}
+        <section
+          style={{
+            padding: isMobile ? "2.5rem 1.25rem" : "3.5rem clamp(1.25rem, 5vw, 3.75rem)",
+            textAlign: "center",
+            background: `linear-gradient(135deg, ${C.terracotta}08, ${C.gold}06)`,
+            borderTop: `1px solid ${C.sandstone}20`,
+            borderBottom: `1px solid ${C.sandstone}20`,
+          }}
+        >
+          <p
+            style={{
+              fontSize: "1.125rem",
+              color: C.charcoal,
+              fontFamily: F.display,
+              fontWeight: 400,
+              marginBottom: "1.25rem",
+            }}
+          >
+            {lAny?.midCta?.text ?? "Ready to start? Your first palace is free."}
+          </p>
+          <button
+            onClick={() => handleCtaClick("mid", "/register")}
+            className="lp-hero-cta"
+            disabled={ctaLoading === "mid"}
+            style={{
+              ...heroCta,
+              border: "none",
+              cursor: ctaLoading === "mid" ? "wait" : "pointer",
+              opacity: ctaLoading === "mid" ? 0.7 : 1,
+              fontSize: "0.9375rem",
+              padding: "0.875rem 2rem",
+            }}
+          >
+            {ctaLoading === "mid" ? (lAny?.loading) : (lAny?.midCta?.button ?? "Start Building Now")}
+          </button>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════
+            5c. PRODUCT SHOWCASE
+            ═══════════════════════════════════════════════════ */}
+        <LazySection minHeight="30rem" id="showcase">
+        <section
+          style={{
+            padding: isMobile
+              ? "4rem 1.25rem"
+              : "6.25rem clamp(1.25rem, 5vw, 3.75rem)",
+            background: `linear-gradient(160deg, ${C.charcoal} 0%, #3D3D3A 50%, ${C.charcoal} 100%)`,
+          }}
+        >
+          <div style={{ maxWidth: "68.75rem", margin: "0 auto" }}>
+            <p style={{ ...sectionLabel, color: C.terracotta }}>
+              {lAny?.showcase?.label ?? "SEE IT IN ACTION"}
+            </p>
+            <h2 style={{ ...sectionTitle, color: C.linen }}>
+              {lAny?.showcase?.title ?? "Your palace, from the inside"}
+            </h2>
+            <p
+              style={{
+                fontSize: "1.0625rem",
+                color: MUTED_ON_DARK,
+                textAlign: "center",
+                maxWidth: "37.5rem",
+                margin: "0 auto 3rem",
+                lineHeight: 1.7,
+              }}
+            >
+              {lAny?.showcase?.subtitle ?? ""}
+            </p>
+
+            {/* Video Player */}
+            <ScrollFadeIn>
+            <div
+              style={{
+                position: "relative",
+                maxWidth: "56.25rem",
+                margin: "0 auto 3.5rem",
+                borderRadius: "1rem",
+                overflow: "hidden",
+                boxShadow: "0 1.5rem 4rem rgba(0,0,0,0.4)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                aspectRatio: "16 / 9",
+                background: "#1a1a18",
+              }}
+            >
+              <video
+                controls
+                preload="metadata"
+                playsInline
+                poster=""
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              >
+                <source src="/video/walkthrough.mp4" type="video/mp4" />
+              </video>
+            </div>
+            </ScrollFadeIn>
+
+          </div>
+        </section>
+        </LazySection>
+
+        {/* ═══════════════════════════════════════════════════
+            5b. SCREENSHOT SHOWCASE — "Inside Your Palace"
+            ═══════════════════════════════════════════════════ */}
+        <LazySection minHeight="24rem">
+        <section
+          style={{
+            padding: isMobile ? "4rem 0" : "6.25rem 0",
+            background: `linear-gradient(180deg, #1a1a18 0%, ${C.charcoal} 100%)`,
+            overflow: "hidden",
+          }}
+        >
+          {/* Section header */}
+          <div style={{ maxWidth: "68rem", margin: "0 auto", padding: "0 1.25rem" }}>
+            <ScrollFadeIn>
+              <p style={{ ...sectionLabel, color: C.gold }}>
+                {(lAny?.screenshots as Record<string, string>)?.immersiveTitle ?? "This is not a photo album."}
+              </p>
+              <h2 style={{ ...sectionTitle, color: C.white, marginBottom: isMobile ? "2rem" : "3rem" }}>
+                {(lAny?.screenshots as Record<string, string>)?.immersiveSubtitle ?? "This is a palace."}
+              </h2>
+            </ScrollFadeIn>
+          </div>
+
+          {/* Horizontal carousel */}
+          <ScrollFadeIn delay={0.15}>
+          <div
+            style={{
+              display: "flex",
+              gap: "1.5rem",
+              overflowX: "auto",
+              scrollSnapType: "x mandatory",
+              paddingLeft: isMobile ? "1.25rem" : "clamp(1.25rem, 5vw, 3.75rem)",
+              paddingRight: isMobile ? "1.25rem" : "clamp(1.25rem, 5vw, 3.75rem)",
+              paddingBottom: "1.5rem",
+              WebkitOverflowScrolling: "touch",
+            }}
+            className="lp-screenshot-carousel"
+          >
+            {[
+              { src: "/screenshots/corridor-gallery.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselCorridor ?? "Walk through torch-lit corridors of memory" },
+              { src: "/screenshots/interview-intro.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselInterview ?? "AI picks the perfect questions for your story" },
+              { src: "/screenshots/family-tree-view.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselFamilyTree ?? "Visualize generations of your family" },
+              { src: "/screenshots/library-nest.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselLibrary ?? "Your personal memory library" },
+              { src: "/screenshots/achievements.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselAchievements ?? "Earn badges as you preserve your story" },
+              { src: "/screenshots/quest-preserve.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselQuest ?? "Guided journeys to unlock memories" },
+            ].map((item, i) => (
+              <div
+                key={i}
+                style={{
+                  flex: "0 0 auto",
+                  width: isMobile ? "85vw" : "22rem",
+                  scrollSnapAlign: "start",
+                }}
+              >
+                <BrowserFrame>
+                  <Screenshot src={item.src} alt={item.caption} />
+                </BrowserFrame>
+                <p style={{
+                  fontFamily: F.body,
+                  fontSize: "0.8125rem",
+                  color: MUTED_ON_DARK,
+                  textAlign: "center",
+                  marginTop: "0.75rem",
+                  lineHeight: 1.4,
+                }}>
+                  {item.caption}
+                </p>
+              </div>
+            ))}
+          </div>
+          </ScrollFadeIn>
         </section>
         </LazySection>
 
@@ -1498,7 +1868,7 @@ function LandingPageContent() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isSmall ? "1fr" : "repeat(3, 1fr)",
+              gridTemplateColumns: isSmall ? "1fr" : isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
               gap: "1.75rem",
               marginTop: "3.5rem",
             }}
@@ -1605,22 +1975,16 @@ function LandingPageContent() {
                   }}
                 >
                   <div>
-                    {/* Decorative quote mark */}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 32 24"
-                      width="2rem"
-                      height="1.5rem"
-                      aria-hidden="true"
-                      style={{ display: "block", marginBottom: "0.75rem" }}
-                    >
-                      <path
-                        d="M0 18V12C0 5.4 4.2 1.2 12.6 0l1.2 2.4C9 4.2 7.2 7.2 6.6 12H12v12H0v-6zm18 0V12c0-6.6 4.2-10.8 12.6-12l1.2 2.4C27 4.2 25.2 7.2 24.6 12H30v12H18v-6z"
-                        fill={C.terracotta}
-                        opacity="0.35"
-                      />
-                    </svg>
+                    {/* Star rating */}
+                    <div style={{ display: "flex", gap: "0.125rem", marginBottom: "0.75rem" }}>
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <svg key={s} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="1rem" height="1rem" aria-hidden="true">
+                          <path d="M10 1l2.39 5.36L18 7.27l-4 4.15L15 18 10 15l-5 3 1-6.58-4-4.15 5.61-.91z" fill={C.gold} />
+                        </svg>
+                      ))}
+                    </div>
                     <p
+                      className="lp-testimonial-quote"
                       style={{
                         fontSize: "1.0625rem",
                         color: C.cream,
@@ -1701,25 +2065,15 @@ function LandingPageContent() {
         >
           <div style={{ maxWidth: "43.75rem", margin: "0 auto" }}>
             <h2 style={sectionTitle}>
-              {lAny?.faq?.title || "Frequently Asked Questions"}
+              {lAny?.faq?.title}
             </h2>
             <div style={{ marginTop: "2.5rem" }}>
-              <FaqItem
-                question={lAny?.faq?.q1 || "What is The Memory Palace?"}
-                answer={lAny?.faq?.a1 || ""}
-              />
-              <FaqItem
-                question={lAny?.faq?.q2 || "Is my data secure?"}
-                answer={lAny?.faq?.a2 || ""}
-              />
-              <FaqItem
-                question={lAny?.faq?.q3 || "Can I share my palace with family?"}
-                answer={lAny?.faq?.a3 || ""}
-              />
-              <FaqItem
-                question={lAny?.faq?.q4 || "What's included in the free plan?"}
-                answer={lAny?.faq?.a4 || ""}
-              />
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
+                const q = lAny?.faq?.[`q${n}`];
+                const a = lAny?.faq?.[`a${n}`];
+                if (!q || !a) return null;
+                return <FaqItem key={n} question={q} answer={a} />;
+              })}
             </div>
           </div>
         </section>
@@ -1780,7 +2134,7 @@ function LandingPageContent() {
             <button
               onClick={() => handleCtaClick("bottom", "/register")}
               className="lp-hero-cta"
-              aria-label={lAny?.a11y?.ctaBottom || "Build your palace — sign up free"}
+              aria-label={lAny?.a11y?.ctaBottom}
               disabled={ctaLoading === "bottom"}
               style={{
                 ...heroCta,
@@ -1789,7 +2143,7 @@ function LandingPageContent() {
                 opacity: ctaLoading === "bottom" ? 0.7 : 1,
               }}
             >
-              {ctaLoading === "bottom" ? (lAny?.loading || "Loading...") : landing.cta.button}
+              {ctaLoading === "bottom" ? (lAny?.loading) : landing.cta.button}
             </button>
           </div>
         </section>
@@ -1889,6 +2243,17 @@ function LandingPageContent() {
                 {landing.footer.pricing}
               </Link>
               <Link
+                href="/blog"
+                className="lp-footer-link"
+                style={{
+                  fontSize: "0.875rem",
+                  color: MUTED_ON_DARK,
+                  textDecoration: "none",
+                }}
+              >
+                Blog
+              </Link>
+              <Link
                 href="/login"
                 className="lp-footer-link"
                 style={{
@@ -1902,7 +2267,7 @@ function LandingPageContent() {
               <Link
                 href="/register"
                 className="lp-footer-accent"
-                aria-label={lAny?.a11y?.ctaFooter || "Get started with a free plan"}
+                aria-label={lAny?.a11y?.ctaFooter}
                 style={{
                   fontSize: "0.875rem",
                   color: C.terracotta,
@@ -2044,7 +2409,7 @@ function LandingPageContent() {
             <Link
               href="/register"
               className="lp-footer-accent"
-              aria-label={lAny?.a11y?.ctaFooterBottom || "Get started — create your account"}
+              aria-label={lAny?.a11y?.ctaFooterBottom}
               style={{
                 fontSize: "0.75rem",
                 color: C.terracotta,
@@ -2057,6 +2422,148 @@ function LandingPageContent() {
           </div>
         </div>
       </footer>
+
+      {/* ─── Sticky Bottom CTA (mobile only) ─── */}
+      {isSmall && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 900,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "0.75rem 1rem",
+            paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom, 0px))",
+            background: `linear-gradient(135deg, ${C.terracotta}ee, ${C.walnut}ee)`,
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            borderTop: `1px solid ${C.sandstone}40`,
+            opacity: showStickyBottomCta ? 1 : 0,
+            pointerEvents: showStickyBottomCta ? "auto" : "none",
+            transform: showStickyBottomCta ? "translateY(0)" : "translateY(100%)",
+            transition: "opacity 0.35s ease, transform 0.35s ease",
+          }}
+        >
+          <button
+            onClick={() => handleCtaClick("sticky-bottom", "/register")}
+            style={{
+              fontFamily: F.body,
+              fontSize: "1rem",
+              fontWeight: 600,
+              color: C.white,
+              background: "transparent",
+              border: `1.5px solid ${C.white}60`,
+              borderRadius: "0.625rem",
+              padding: "0.75rem 2rem",
+              width: "100%",
+              maxWidth: "24rem",
+              cursor: "pointer",
+              letterSpacing: "0.01em",
+            }}
+          >
+            {landing.hero.cta}
+          </button>
+        </div>
+      )}
+
+      {/* ─── Exit-Intent Modal (desktop only) ─── */}
+      {showExitModal && (
+        <div
+          onClick={() => setShowExitModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1100,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              maxWidth: "26.25rem",
+              width: "90%",
+              background: `linear-gradient(145deg, ${C.linen}f0, ${C.sandstone}d0)`,
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              borderRadius: "1.25rem",
+              padding: "2.5rem 2rem 2rem",
+              boxShadow: "0 1.5rem 4rem rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1)",
+              textAlign: "center",
+            }}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowExitModal(false)}
+              aria-label="Close"
+              style={{
+                position: "absolute",
+                top: "0.75rem",
+                right: "0.75rem",
+                background: "transparent",
+                border: "none",
+                fontSize: "1.25rem",
+                color: C.charcoal,
+                cursor: "pointer",
+                padding: "0.25rem 0.5rem",
+                lineHeight: 1,
+                opacity: 0.6,
+              }}
+            >
+              &#x2715;
+            </button>
+            <h2
+              style={{
+                fontFamily: F.display,
+                fontSize: "1.5rem",
+                fontWeight: 700,
+                color: C.charcoal,
+                marginBottom: "0.75rem",
+              }}
+            >
+              {lAny?.exitIntent?.title ?? "Before you go\u2026"}
+            </h2>
+            <p
+              style={{
+                fontFamily: F.body,
+                fontSize: "1rem",
+                color: C.walnut,
+                lineHeight: 1.6,
+                marginBottom: "1.5rem",
+              }}
+            >
+              {lAny?.exitIntent?.body ?? "Your family\u2019s story deserves to be preserved. Create your Memory Palace in 2 minutes \u2014 free."}
+            </p>
+            <Link
+              href="/register"
+              onClick={() => { setShowExitModal(false); handleCtaClick("exit-intent", "/register"); }}
+              style={{
+                display: "inline-block",
+                fontFamily: F.body,
+                fontSize: "1rem",
+                fontWeight: 600,
+                color: C.white,
+                textDecoration: "none",
+                padding: "0.875rem 2rem",
+                borderRadius: "0.75rem",
+                background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                boxShadow: "0 0.25rem 1rem rgba(193,127,89,0.3)",
+                transition: "transform 0.2s, box-shadow 0.2s",
+              }}
+            >
+              {lAny?.exitIntent?.cta ?? "Create Your Palace \u2014 Free"}
+            </Link>
+          </div>
+        </div>
+      )}
 
     </div>
   );

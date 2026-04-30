@@ -4,6 +4,7 @@ import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 
 const F = T.font;
@@ -362,9 +363,10 @@ export default function SecurityPage() {
           </Link>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* Language toggle */}
-          <button
-            onClick={() => setLocale(locale === "en" ? "nl" : "en")}
+          {/* Language selector */}
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as typeof locale)}
             aria-label={tc("a11ySwitchLanguage")}
             style={{
               background: "none",
@@ -379,10 +381,18 @@ export default function SecurityPage() {
               letterSpacing: "0.5px",
               textTransform: "uppercase",
               transition: "border-color 0.2s, color 0.2s",
+              appearance: "none",
+              WebkitAppearance: "none",
+              paddingRight: "1.25rem",
+              backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 0.375rem center",
             }}
           >
-            {locale === "en" ? "NL" : "EN"}
-          </button>
+            {locales.map((l) => (
+              <option key={l} value={l} style={{ color: "#333" }}>{l.toUpperCase()}</option>
+            ))}
+          </select>
           <Link
             href="/register"
             style={{

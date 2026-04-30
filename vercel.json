@@ -52,6 +52,14 @@
     {
       "path": "/api/cron/kep-disclosure",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/pre-renewal",
+      "schedule": "5 10 * * *"
+    },
+    {
+      "path": "/api/cron/drip-and-reengage",
+      "schedule": "30 9 * * *"
     }
   ]
 }

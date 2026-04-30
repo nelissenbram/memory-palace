@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, type CSSProperties, type ReactNode } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import { WingIcon, RoomIcon } from "./WingRoomIcons";
 
 /* ------------------------------------------------------------------ */
@@ -12,6 +13,7 @@ import { WingIcon, RoomIcon } from "./WingRoomIcons";
 interface WingItem {
   id: string;
   name: string;
+  nameKey?: string;
   icon: string;
   accent: string;
 }
@@ -25,6 +27,7 @@ interface SharedWingItem {
 interface RoomItem {
   id: string;
   name: string;
+  nameKey?: string;
   icon: string;
 }
 
@@ -79,52 +82,42 @@ function PalaceIcon({ size = 16, color = "currentColor" }: { size?: number; colo
     <svg
       width={size}
       height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke={color}
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="0 0 100 100"
+      fill={color}
       aria-hidden
     >
-      <path d="M2.5 5.5 L8 1.5 L13.5 5.5" />
-      <line x1="2.5" y1="5.5" x2="13.5" y2="5.5" />
-      <line x1="2" y1="13" x2="14" y2="13" />
-      <line x1="2.5" y1="12" x2="13.5" y2="12" strokeWidth="1" />
-      <line x1="3.5" y1="5.5" x2="3.5" y2="12" />
-      <line x1="12.5" y1="5.5" x2="12.5" y2="12" />
-      <line x1="6" y1="5.5" x2="6" y2="12" strokeWidth="1" />
-      <line x1="10" y1="5.5" x2="10" y2="12" strokeWidth="1" />
+      <path d="M10 32 L50 12 L90 32 L88 40 L12 40 Z" />
+      <rect x="18" y="40" width="8" height="32" />
+      <rect x="32" y="40" width="8" height="32" />
+      <rect x="46" y="40" width="8" height="32" />
+      <rect x="60" y="40" width="8" height="32" />
+      <ellipse cx="78" cy="56" rx="4" ry="14" opacity="0.7" />
+      <rect x="10" y="72" width="80" height="4" />
+      <rect x="6" y="78" width="88" height="4" />
+      <rect x="2" y="84" width="96" height="4" />
     </svg>
   );
 }
 
-/** Roman temple / gate icon for Entrance Hall */
+/** Temple icon for Entrance Hall — same brand icon */
 function TempleIcon({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke={color}
-      strokeWidth={1.4}
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      viewBox="0 0 100 100"
+      fill={color}
       aria-hidden
     >
-      {/* pediment */}
-      <path d="M3 6L8 2l5 4" />
-      {/* architrave */}
-      <line x1="3" y1="6" x2="13" y2="6" />
-      {/* columns */}
-      <line x1="4.5" y1="6" x2="4.5" y2="12" />
-      <line x1="8" y1="6" x2="8" y2="12" />
-      <line x1="11.5" y1="6" x2="11.5" y2="12" />
-      {/* base */}
-      <line x1="2.5" y1="12" x2="13.5" y2="12" />
-      {/* steps */}
-      <line x1="3" y1="13.5" x2="13" y2="13.5" strokeWidth={1} />
+      <path d="M10 32 L50 12 L90 32 L88 40 L12 40 Z" />
+      <rect x="18" y="40" width="8" height="32" />
+      <rect x="32" y="40" width="8" height="32" />
+      <rect x="46" y="40" width="8" height="32" />
+      <rect x="60" y="40" width="8" height="32" />
+      <ellipse cx="78" cy="56" rx="4" ry="14" opacity="0.7" />
+      <rect x="10" y="72" width="80" height="4" />
+      <rect x="6" y="78" width="88" height="4" />
+      <rect x="2" y="84" width="96" height="4" />
     </svg>
   );
 }
@@ -141,6 +134,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
   } = props;
 
   const { t } = useTranslation("palace");
+  const { t: tWings } = useTranslation("wings");
   const [showWingPicker, setShowWingPicker] = useState(false);
   const [quickNavOpenWing, setQuickNavOpenWing] = useState<string | null>(null);
   const wingPickerRef = useRef<HTMLDivElement>(null);
@@ -284,7 +278,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
     if (!currentWing) return null;
     const isActive = view === "corridor";
     const accent = currentWing.accent;
-    const displayName = currentWing.id === "attic" ? t("storageRoom") : currentWing.name;
+    const displayName = translateWingName(currentWing, tWings);
 
     return (
       <div
@@ -361,7 +355,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           border: `1px solid ${T.color.gold}33`,
           padding: "0.25rem",
           minWidth: "10rem",
-          maxWidth: "16rem",
+          maxWidth: "calc(16rem * var(--a11y-scale, 1))",
           boxShadow: `0 0.25rem 1rem rgba(0,0,0,0.10), 0 0 0 1px ${T.color.gold}11`,
           zIndex: 50,
           animation: "subnavDropdownIn 0.15s ease",
@@ -383,7 +377,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
 
         {wings.map((w) => {
           const isCurrentWing = w.name === wingName;
-          const displayName = w.id === "attic" ? t("storageRoom") : w.name;
+          const displayName = translateWingName(w, tWings);
           return (
             <button
               key={w.id}
@@ -399,6 +393,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                 gap: "0.4375rem",
                 width: "100%",
                 padding: "0.375rem 0.625rem",
+                minHeight: "2.75rem",
                 border: "none",
                 background: isCurrentWing ? `${w.accent}12` : "transparent",
                 borderRadius: "0.375rem",
@@ -459,7 +454,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
         />
 
         {wings.map((w) => {
-          const displayName = w.id === "attic" ? t("storageRoom") : w.name;
+          const displayName = translateWingName(w, tWings);
           const rooms = wingRooms[w.id] || [];
           const isOpen = quickNavOpenWing === w.id;
           const isActiveWing = currentWing?.id === w.id && (view === "corridor" || view === "room");
@@ -600,6 +595,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                         gap: "0.4375rem",
                         width: "100%",
                         padding: "0.3125rem 0.625rem 0.3125rem 1rem",
+                        minHeight: "2.75rem",
                         border: "none",
                         background: "transparent",
                         borderRadius: "0.375rem",
@@ -620,7 +616,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
                       <span style={{ display: "inline-flex", lineHeight: 1, flexShrink: 0 }} aria-hidden>
                         <RoomIcon roomId={r.id} size={14} color={w.accent} />
                       </span>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{r.name}</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{translateRoomName(r, tWings)}</span>
                     </button>
                   ))}
                 </div>
@@ -646,7 +642,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           ...pillStyle(true, accent),
           overflow: "hidden",
           textOverflow: "ellipsis",
-          maxWidth: compact ? "8rem" : "12rem",
+          maxWidth: compact ? "calc(8rem * var(--a11y-scale, 1))" : "calc(12rem * var(--a11y-scale, 1))",
         }}
       >
         {roomId && (
@@ -739,6 +735,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
       role="navigation"
       aria-label={t("subnavBreadcrumb")}
       data-nudge="palace_subnav"
+      data-palace-subnav
       style={{
         position: "absolute",
         top: "4.25rem",
@@ -807,6 +804,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     onExitToPalace, onEntranceHall, onSwitchWing, onNavigateRoom,
     barBackground, barBorder, barShadow } = props;
   const { t } = useTranslation("palace");
+  const { t: tWings } = useTranslation("wings");
 
   const currentWingId = wings.find((w) => w.name === wingName)?.id;
   // Bar 2 shows rooms for whichever wing is "in focus": pending > current > first
@@ -972,7 +970,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     {/* Bar 2: Wings (All + each wing) */}
     <div
       role="navigation"
-      aria-label="Wings"
+      aria-label={t("ariaWings")}
       data-mp-palace-bars="2"
       className="hide-scrollbar"
       style={{
@@ -995,7 +993,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
             aria-current={isCurr ? "location" : undefined}
           >
             <WingIcon wingId={w.id} size={12} color={isCurr || isPending ? w.accent : T.color.charcoal} />
-            <span>{w.name}</span>
+            <span>{translateWingName(w, tWings)}</span>
           </button>
         );
       })}
@@ -1004,7 +1002,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     {/* Bar 3: Rooms of focus wing */}
     <div
       role="navigation"
-      aria-label="Rooms"
+      aria-label={t("ariaRooms")}
       data-mp-palace-bars="3"
       className="hide-scrollbar"
       style={{
@@ -1017,7 +1015,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
       <span style={{ ...sectionLabel, color: accent }}>R</span>
       {focusRooms.length === 0 && (
         <span style={{ fontSize: "0.7rem", color: T.color.muted, fontStyle: "italic" }}>
-          {t("selectAWing") || "select a wing"}
+          {t("selectAWing")}
         </span>
       )}
       {focusRooms.map((r) => {
@@ -1032,7 +1030,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
             aria-current={isCurr ? "location" : undefined}
           >
             <RoomIcon roomId={r.id} size={12} color={isCurr || isPending ? accent : T.color.charcoal} />
-            <span>{r.name}</span>
+            <span>{translateRoomName(r, tWings)}</span>
           </button>
         );
       })}
@@ -1043,7 +1041,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
       onClick={commitEnter}
       disabled={!pending}
       data-mp-palace-enter="1"
-      aria-label={t("enterAction") || "Enter"}
+      aria-label={t("enterAction")}
       style={{
         position: "fixed",
         top: bar1Top,
@@ -1108,7 +1106,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         <path d="M14 26 L26 26" strokeWidth="2.2" />
         <path d="M21 20 L27 26 L21 32" strokeWidth="2.2" />
       </svg>
-      <span style={{ marginTop: "0.125rem" }}>{t("enterAction") || "Enter"}</span>
+      <span style={{ marginTop: "0.125rem" }}>{t("enterAction")}</span>
     </button>
 
     {/* Spacer to push 3d content below the 3 bars — MemoryPalace's main tree

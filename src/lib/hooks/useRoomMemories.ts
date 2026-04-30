@@ -16,6 +16,13 @@ export function useRoomMemories() {
     setFilterType(null);
   }, [activeRoomId, fetchRoomMemories, setSearchQuery, setFilterType]);
 
+  // Poll every 30s while room is active (picks up Kep captures in real-time)
+  useEffect(() => {
+    if (!activeRoomId) return;
+    const interval = setInterval(() => fetchRoomMemories(activeRoomId), 30_000);
+    return () => clearInterval(interval);
+  }, [activeRoomId, fetchRoomMemories]);
+
   // Derived room memories (all)
   const allRoomMems: Mem[] = activeRoomId
     ? userMems[activeRoomId] || getDemoMems(activeRoomId)
@@ -30,7 +37,7 @@ export function useRoomMemories() {
     }
     return true;
   });
-  const roomMemsKey = JSON.stringify(roomMems.map((m) => `${m.id}:${m.displayUnit||""}:${m.displayed??""}`));
+  const roomMemsKey = roomMems.map((m) => `${m.id}:${m.displayUnit||""}:${m.displayed??""}`).join(",");
 
   // Wrappers that bind activeRoomId
   const handleAddMemory = (mem: Mem) => {

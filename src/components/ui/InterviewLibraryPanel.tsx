@@ -11,11 +11,11 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ─── Wing accent colors for icon strokes ───
 const WING_ACCENT: Record<string, string> = {
-  family: "#C17F59",
+  roots: "#C17F59",
+  nest: "#B8926A",
+  craft: "#8B7355",
   travel: "#4A6741",
-  childhood: "#B8926A",
-  career: "#8B7355",
-  creativity: "#9B6B8E",
+  passions: "#9B6B8E",
   general: "#C4A962",
 };
 
@@ -196,7 +196,7 @@ interface InterviewLibraryPanelProps {
   highlightWingId?: string | null;
 }
 
-const WING_ORDER = ["family", "travel", "childhood", "career", "creativity", "general"];
+const WING_ORDER = ["roots", "nest", "craft", "travel", "passions", "general"];
 
 const difficultyColors: Record<string, { bg: string; text: string; labelKey: string }> = {
   light: { bg: "#4A674118", text: "#6A8A62", labelKey: "difficultyLight" },

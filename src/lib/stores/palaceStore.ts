@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 
 type NavMode = "atrium" | "library" | "3d";
 
@@ -71,12 +72,11 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
   fade: (cb) => {
     const { _timer } = get();
     if (_timer) clearTimeout(_timer);
-    set({ portalAnim: true, opacity: 0 });
     const t = setTimeout(() => {
       cb();
       set({ portalAnim: false });
     }, 500);
-    set({ _timer: t });
+    set({ portalAnim: true, opacity: 0, _timer: t });
   },
 
   enterWing: (id) => {
@@ -114,7 +114,7 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
 
   setRoomLayout: (roomId, layoutId) => set((s) => {
     const updated = { ...s.roomLayouts, [roomId]: layoutId };
-    try { localStorage.setItem("mp_room_layouts", JSON.stringify(updated)); } catch {}
+    try { localStorage.setItem("mp_room_layouts", JSON.stringify(updated)); syncSettingsToServer(); } catch {}
     return { roomLayouts: updated };
   }),
 
@@ -129,3 +129,10 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
     }
   },
 }));
+
+// Re-read localStorage when cross-device sync completes
+if (typeof window !== "undefined") {
+  window.addEventListener("mp-settings-synced", () => {
+    usePalaceStore.setState({ roomLayouts: loadRoomLayouts() });
+  });
+}

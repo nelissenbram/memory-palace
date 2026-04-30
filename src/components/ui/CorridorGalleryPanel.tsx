@@ -6,7 +6,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
-import { ROOM_MEMS } from "@/lib/constants/defaults";
+import { ROOM_MEMS, DEFAULT_CORRIDOR_PAINTINGS } from "@/lib/constants/defaults";
 import type { Mem } from "@/lib/constants/defaults";
 import { WINGS } from "@/lib/constants/wings";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
@@ -24,7 +24,12 @@ export type CorridorPaintings = Record<string, CorridorPaintingOverride>;
 function loadCorridorPaintings(wingId: string): CorridorPaintings {
   try {
     const raw = localStorage.getItem(`mp_corridor_paintings_${wingId}`);
-    return raw ? JSON.parse(raw) : {};
+    if (raw) return JSON.parse(raw);
+    // Fall back to default demo paintings if nothing saved yet
+    if (DEFAULT_CORRIDOR_PAINTINGS[wingId]) {
+      return { ...DEFAULT_CORRIDOR_PAINTINGS[wingId] };
+    }
+    return {};
   } catch { return {}; }
 }
 
@@ -47,6 +52,7 @@ interface CorridorGalleryPanelProps {
 export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintingsChange, currentPaintings }: CorridorGalleryPanelProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("corridorGallery");
+  const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const accent = wing.accent;
   const userMems = useMemoryStore((s) => s.userMems);
@@ -67,7 +73,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
       const mems = userMems[room.id] || ROOM_MEMS[room.id] || [];
       mems.forEach((mem) => {
         if (mem.dataUrl && mem.type === "photo") {
-          allMems.push({ mem, room, wingName: w.name || w.id });
+          allMems.push({ mem, room, wingName: (w.nameKey ? tWings(w.nameKey) : w.name) || w.id });
         }
       });
     });
@@ -161,7 +167,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
             </div>
             <div>
               <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>{t("title")}</h3>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>{wing.name} {t("wing")}</p>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>{tWings(wing.nameKey) || wing.name} {t("wing")}</p>
             </div>
           </div>
           <button onClick={onClose} aria-label={t("close")} style={{
@@ -354,6 +360,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                   paddingRight: "0.25rem",
                   minHeight: 0,
                   flex: 1,
+                  contain: "layout",
                 }}>
                   {filteredMems.map(({ mem, room: memRoom, wingName }) => {
                     const selected = paintings[pickingSlot]?.memId === mem.id;
@@ -382,7 +389,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                             display: "flex", alignItems: "center", gap: "0.3125rem",
                           }}>
                             <RoomIcon roomId={memRoom.id} size={12} color={T.color.muted} />
-                            <span>{memRoom.name} · {wingName}</span>
+                            <span>{(memRoom.nameKey && tWings(memRoom.nameKey)) || memRoom.name} · {wingName}</span>
                           </div>
                         </div>
                         {selected && (

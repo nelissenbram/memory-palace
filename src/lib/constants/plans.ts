@@ -1,11 +1,14 @@
 export type PlanId = "free" | "keeper" | "guardian";
+export type BillingInterval = "monthly" | "annual";
 
 export interface PlanDefinition {
   id: PlanId;
   nameKey: string;
   taglineKey: string;
-  price: number; // EUR per month, 0 for free
-  stripePriceId: string | null; // null for free plan
+  price: number; // EUR per month (annual rate)
+  monthlyPrice: number; // EUR per month (monthly rate), 0 for free
+  stripePriceId: string | null; // annual Stripe price ID, null for free plan
+  monthlyStripePriceId: string | null; // monthly Stripe price ID
   limits: PlanLimits;
   featureKeys: string[];
   highlighted?: boolean;
@@ -25,7 +28,9 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     nameKey: "freeName",
     taglineKey: "freeTagline",
     price: 0,
+    monthlyPrice: 0,
     stripePriceId: null,
+    monthlyStripePriceId: null,
     limits: {
       wings: 2,
       rooms: 5,
@@ -45,8 +50,10 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     id: "keeper",
     nameKey: "keeperName",
     taglineKey: "keeperTagline",
-    price: 7.99,
+    price: 9.99,
+    monthlyPrice: 12.99,
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_KEEPER_PRICE_ID || "",
+    monthlyStripePriceId: process.env.NEXT_PUBLIC_STRIPE_KEEPER_MONTHLY_PRICE_ID || "",
     limits: {
       wings: 3,
       rooms: 10,
@@ -63,14 +70,17 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       "featInterviews",
       "featSharing",
     ],
-    trial: 14,
+    highlighted: true,
+    trial: 7,
   },
   guardian: {
     id: "guardian",
     nameKey: "guardianName",
     taglineKey: "guardianTagline",
     price: 19.99,
+    monthlyPrice: 24.99,
     stripePriceId: process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_PRICE_ID || "",
+    monthlyStripePriceId: process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_MONTHLY_PRICE_ID || "",
     limits: {
       wings: -1,
       rooms: -1,
@@ -89,8 +99,6 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
       "featPrioritySupport",
       "featAdvancedExport",
     ],
-    highlighted: true,
-    trial: 14,
   },
 };
 

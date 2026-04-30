@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import crypto from "crypto";
+import { serverError } from "@/lib/i18n/server-errors";
 
 // Generate a short, URL-friendly slug
 function generateSlug(): string {
@@ -12,13 +13,14 @@ function generateSlug(): string {
 function wingSlugFromRoomId(localRoomId: string): string {
   const prefix = localRoomId.slice(0, 2);
   const map: Record<string, string> = {
-    fr: "family",
-    tr: "travel",
-    cr: "childhood",
-    kr: "career",
-    rr: "creativity",
+    ro: "roots",
+    ne: "nest",
+    cf: "craft",
+    tv: "travel",
+    pa: "passions",
+    at: "attic",
   };
-  return map[prefix] || "family";
+  return map[prefix] || "roots";
 }
 
 // Resolve local room ID to DB UUID
@@ -88,14 +90,14 @@ export async function fetchPublicShare(localRoomId: string) {
  */
 export async function togglePublicShare(localRoomId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const dbRoomId = await resolveRoomId(supabase, user.id, localRoomId);
-  if (!dbRoomId) return { error: "Could not resolve room" };
+  if (!dbRoomId) { const t = await serverError(); return { error: t("couldNotResolveRoom") }; }
 
   // Find the wing for this room
   const { data: room } = await supabase
@@ -146,11 +148,11 @@ export async function togglePublicShare(localRoomId: string) {
  */
 export async function deactivatePublicShare(localRoomId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { data: room } = await supabase
     .from("rooms")
@@ -158,7 +160,7 @@ export async function deactivatePublicShare(localRoomId: string) {
     .eq("user_id", user.id)
     .eq("name", localRoomId)
     .single();
-  if (!room) return { error: "Room not found" };
+  if (!room) { const t = await serverError(); return { error: t("roomNotFound") }; }
 
   const { error } = await supabase
     .from("public_shares")

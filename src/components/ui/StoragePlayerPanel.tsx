@@ -93,13 +93,13 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
                 background: "#1A1510", borderRadius: "0.75rem", overflow: "hidden", marginBottom: "1rem",
               }}>
                 {(activeMem.type === "video" || activeMem.videoBlob) && activeMem.dataUrl && (
-                  <video ref={videoRef} src={activeMem.dataUrl} controls autoPlay playsInline
+                  <video ref={videoRef} src={activeMem.dataUrl} controls autoPlay playsInline preload="metadata"
                     style={{ width: "100%", maxHeight: "22.5rem", objectFit: "contain", display: "block" }} />
                 )}
                 {(activeMem.type === "audio" || activeMem.voiceBlob) && activeMem.dataUrl && (
                   <div style={{ padding: "1.875rem 1.25rem", textAlign: "center" }}>
                     <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>{"\u{1F3B5}"}</div>
-                    <audio ref={audioRef} src={activeMem.dataUrl} controls autoPlay style={{ width: "100%", maxWidth: "25rem" }} />
+                    <audio ref={audioRef} src={activeMem.dataUrl} controls autoPlay preload="none" style={{ width: "100%", maxWidth: "25rem" }} />
                   </div>
                 )}
                 {(activeMem.type === "photo" || activeMem.type === "painting") && activeMem.dataUrl && (

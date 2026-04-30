@@ -409,6 +409,164 @@ export function FeatureLegacyIcon({ style, size = 48 }: IconProps) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   7b. FeatureFamilyTreeIcon — Tree with connected nodes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export function FeatureFamilyTreeIcon({ style, size = 48 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      style={style}
+      aria-hidden="true"
+    >
+      {/* Trunk */}
+      <line x1="24" y1="42" x2="24" y2="26" stroke="#4A6741" strokeWidth="2" strokeLinecap="round" />
+      {/* Left branch */}
+      <line x1="24" y1="30" x2="14" y2="22" stroke="#4A6741" strokeWidth="1.6" strokeLinecap="round" />
+      {/* Right branch */}
+      <line x1="24" y1="30" x2="34" y2="22" stroke="#4A6741" strokeWidth="1.6" strokeLinecap="round" />
+      {/* Left-left branch */}
+      <line x1="14" y1="22" x2="8" y2="14" stroke="#4A6741" strokeWidth="1.2" strokeLinecap="round" />
+      {/* Left-right branch */}
+      <line x1="14" y1="22" x2="18" y2="14" stroke="#4A6741" strokeWidth="1.2" strokeLinecap="round" />
+      {/* Right-left branch */}
+      <line x1="34" y1="22" x2="30" y2="14" stroke="#4A6741" strokeWidth="1.2" strokeLinecap="round" />
+      {/* Right-right branch */}
+      <line x1="34" y1="22" x2="40" y2="14" stroke="#4A6741" strokeWidth="1.2" strokeLinecap="round" />
+      {/* Nodes */}
+      <circle cx="24" cy="26" r="3" fill="#4A6741" opacity="0.3" stroke="#4A6741" strokeWidth="1.4" />
+      <circle cx="14" cy="22" r="2.5" fill="#4A6741" opacity="0.25" stroke="#4A6741" strokeWidth="1.2" />
+      <circle cx="34" cy="22" r="2.5" fill="#4A6741" opacity="0.25" stroke="#4A6741" strokeWidth="1.2" />
+      <circle cx="8" cy="14" r="2" fill="#4A6741" opacity="0.2" stroke="#4A6741" strokeWidth="1" />
+      <circle cx="18" cy="14" r="2" fill="#4A6741" opacity="0.2" stroke="#4A6741" strokeWidth="1" />
+      <circle cx="30" cy="14" r="2" fill="#4A6741" opacity="0.2" stroke="#4A6741" strokeWidth="1" />
+      <circle cx="40" cy="14" r="2" fill="#4A6741" opacity="0.2" stroke="#4A6741" strokeWidth="1" />
+      {/* Root */}
+      <path d="M20 42 Q24 38 28 42" fill="none" stroke="#4A6741" strokeWidth="1" opacity="0.4" />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7c. FeatureMemoryTracksIcon — Path with milestones/badges
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export function FeatureMemoryTracksIcon({ style, size = 48 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      style={style}
+      aria-hidden="true"
+    >
+      {/* Winding path */}
+      <path
+        d="M8 40 Q14 34 20 36 Q26 38 30 32 Q34 26 28 22 Q22 18 26 12 Q30 6 38 8"
+        fill="none"
+        stroke="#B8860B"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeDasharray="3 2"
+      />
+      {/* Milestone dots */}
+      <circle cx="10" cy="39" r="2.5" fill="#B8860B" opacity="0.4" />
+      <circle cx="22" cy="35" r="2.5" fill="#B8860B" opacity="0.5" />
+      <circle cx="30" cy="28" r="2.5" fill="#B8860B" opacity="0.6" />
+      <circle cx="26" cy="18" r="2.5" fill="#B8860B" opacity="0.7" />
+      {/* Star/badge at end */}
+      <path
+        d="M38 8 L39.5 5 L41.5 7.5 L44 6.5 L42.5 9 L45 11 L42 11 L41.5 14 L39.5 11.5 L37 13 L38 10.5 L35.5 9 Z"
+        fill="#B8860B"
+        opacity="0.5"
+      />
+      {/* Check marks on completed milestones */}
+      <path d="M9 39 l1 1 l2-2" fill="none" stroke="#B8860B" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M21 35 l1 1 l2-2" fill="none" stroke="#B8860B" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7d. FeatureMemoryMapIcon — Globe/map with pins
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export function FeatureMemoryMapIcon({ style, size = 48 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      style={style}
+      aria-hidden="true"
+    >
+      {/* Map outline */}
+      <rect x="4" y="8" width="40" height="28" rx="2" fill="none" stroke="#8B7355" strokeWidth="1.6" />
+      {/* Map fold lines */}
+      <line x1="18" y1="8" x2="18" y2="36" stroke="#8B7355" strokeWidth="0.8" opacity="0.3" />
+      <line x1="32" y1="8" x2="32" y2="36" stroke="#8B7355" strokeWidth="0.8" opacity="0.3" />
+      {/* Map pins */}
+      <g>
+        <path d="M12 18 Q12 14 14.5 14 Q17 14 17 18 Q17 22 14.5 25 Q12 22 12 18Z" fill="#C17F59" opacity="0.6" />
+        <circle cx="14.5" cy="17.5" r="1.5" fill="#C17F59" opacity="0.8" />
+      </g>
+      <g>
+        <path d="M23 14 Q23 10 25.5 10 Q28 10 28 14 Q28 18 25.5 21 Q23 18 23 14Z" fill="#C17F59" opacity="0.6" />
+        <circle cx="25.5" cy="13.5" r="1.5" fill="#C17F59" opacity="0.8" />
+      </g>
+      <g>
+        <path d="M34 20 Q34 16 36.5 16 Q39 16 39 20 Q39 24 36.5 27 Q34 24 34 20Z" fill="#C17F59" opacity="0.6" />
+        <circle cx="36.5" cy="19.5" r="1.5" fill="#C17F59" opacity="0.8" />
+      </g>
+      {/* Connection lines between pins */}
+      <line x1="14.5" y1="18" x2="25.5" y2="14" stroke="#C17F59" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+      <line x1="25.5" y1="14" x2="36.5" y2="20" stroke="#C17F59" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+      {/* Bottom label area */}
+      <rect x="4" y="36" width="40" height="6" rx="0 0 2 2" fill="#8B7355" opacity="0.08" />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   7e. AudienceParentsIcon — Parent with child and camera
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export function AudienceParentsIcon({ style, size = 48 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      style={style}
+      aria-hidden="true"
+    >
+      {/* Parent head */}
+      <circle cx="16" cy="11" r="4.5" fill="none" stroke="#C17F59" strokeWidth="1.6" />
+      {/* Parent body */}
+      <path d="M9 24 A7 6 0 0 1 23 24" fill="none" stroke="#C17F59" strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="16" y1="15.5" x2="16" y2="24" stroke="#C17F59" strokeWidth="1.6" />
+      {/* Child head */}
+      <circle cx="28" cy="18" r="3" fill="none" stroke="#C17F59" strokeWidth="1.4" />
+      {/* Child body */}
+      <path d="M24 28 A4 3.5 0 0 1 32 28" fill="none" stroke="#C17F59" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="28" y1="21" x2="28" y2="28" stroke="#C17F59" strokeWidth="1.4" />
+      {/* Camera/photo icon */}
+      <rect x="35" y="10" width="10" height="7" rx="1" fill="none" stroke="#C17F59" strokeWidth="1.3" />
+      <circle cx="40" cy="13.5" r="2" fill="none" stroke="#C17F59" strokeWidth="1" />
+      <rect x="38" y="8.5" width="4" height="2" rx="0.5" fill="none" stroke="#C17F59" strokeWidth="0.8" />
+      {/* Ground */}
+      <line x1="6" y1="38" x2="34" y2="38" stroke="#C17F59" strokeWidth="0.8" opacity="0.2" />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    8. AudienceHeritageIcon — Elderly person with photo album
    ═══════════════════════════════════════════════════════════════════════════ */
 

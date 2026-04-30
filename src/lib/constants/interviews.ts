@@ -73,13 +73,13 @@ const baselineInterview: InterviewTemplate = {
   ],
 };
 
-// ═══ FAMILY WING INTERVIEWS ═══
+// ═══ ROOTS WING INTERVIEWS ═══
 
 const familyTraditions: InterviewTemplate = {
   id: "family-traditions",
   titleKey: "familyTraditionsTitle",
   descKey: "familyTraditionsDesc",
-  wingId: "family",
+  wingId: "roots",
   icon: "\uD83D\uDD6F\uFE0F",
   difficulty: "light",
   estimatedTotalMinutes: 20,
@@ -97,7 +97,7 @@ const growingUp: InterviewTemplate = {
   id: "growing-up",
   titleKey: "growingUpTitle",
   descKey: "growingUpDesc",
-  wingId: "family",
+  wingId: "roots",
   icon: "\uD83C\uDFE0",
   difficulty: "light",
   estimatedTotalMinutes: 25,
@@ -115,7 +115,7 @@ const parentsAndGrandparents: InterviewTemplate = {
   id: "parents-grandparents",
   titleKey: "parentsGrandparentsTitle",
   descKey: "parentsGrandparentsDesc",
-  wingId: "family",
+  wingId: "roots",
   icon: "\uD83D\uDC94",
   difficulty: "medium",
   estimatedTotalMinutes: 30,
@@ -133,7 +133,7 @@ const loveStory: InterviewTemplate = {
   id: "love-story",
   titleKey: "loveStoryTitle",
   descKey: "loveStoryDesc",
-  wingId: "family",
+  wingId: "roots",
   icon: "\u2764\uFE0F",
   difficulty: "medium",
   estimatedTotalMinutes: 25,
@@ -151,7 +151,7 @@ const raisingChildren: InterviewTemplate = {
   id: "raising-children",
   titleKey: "raisingChildrenTitle",
   descKey: "raisingChildrenDesc",
-  wingId: "family",
+  wingId: "roots",
   icon: "\uD83D\uDC76",
   difficulty: "medium",
   estimatedTotalMinutes: 25,
@@ -217,13 +217,13 @@ const travelWisdom: InterviewTemplate = {
   ],
 };
 
-// ═══ CHILDHOOD WING INTERVIEWS ═══
+// ═══ ROOTS WING INTERVIEWS (childhood) ═══
 
 const earlyMemories: InterviewTemplate = {
   id: "early-memories",
   titleKey: "earlyMemoriesTitle",
   descKey: "earlyMemoriesDesc",
-  wingId: "childhood",
+  wingId: "roots",
   icon: "\uD83C\uDF1F",
   difficulty: "light",
   estimatedTotalMinutes: 20,
@@ -240,7 +240,7 @@ const schoolDays: InterviewTemplate = {
   id: "school-days",
   titleKey: "schoolDaysTitle",
   descKey: "schoolDaysDesc",
-  wingId: "childhood",
+  wingId: "roots",
   icon: "\uD83C\uDFEB",
   difficulty: "light",
   estimatedTotalMinutes: 20,
@@ -257,7 +257,7 @@ const dreamsAndPlay: InterviewTemplate = {
   id: "dreams-and-play",
   titleKey: "dreamsAndPlayTitle",
   descKey: "dreamsAndPlayDesc",
-  wingId: "childhood",
+  wingId: "roots",
   icon: "\uD83C\uDF08",
   difficulty: "light",
   estimatedTotalMinutes: 15,
@@ -269,13 +269,13 @@ const dreamsAndPlay: InterviewTemplate = {
   ],
 };
 
-// ═══ CAREER WING INTERVIEWS ═══
+// ═══ CRAFT WING INTERVIEWS ═══
 
 const lifesWork: InterviewTemplate = {
   id: "lifes-work",
   titleKey: "lifesWorkTitle",
   descKey: "lifesWorkDesc",
-  wingId: "career",
+  wingId: "craft",
   icon: "\uD83C\uDFC6",
   difficulty: "medium",
   estimatedTotalMinutes: 25,
@@ -292,7 +292,7 @@ const mentorsAndLessons: InterviewTemplate = {
   id: "mentors-lessons",
   titleKey: "mentorsLessonsTitle",
   descKey: "mentorsLessonsDesc",
-  wingId: "career",
+  wingId: "craft",
   icon: "\uD83E\uDDD1\u200D\uD83C\uDFEB",
   difficulty: "medium",
   estimatedTotalMinutes: 20,
@@ -308,7 +308,7 @@ const turningPoints: InterviewTemplate = {
   id: "turning-points",
   titleKey: "turningPointsTitle",
   descKey: "turningPointsDesc",
-  wingId: "career",
+  wingId: "craft",
   icon: "\u21AA\uFE0F",
   difficulty: "deep",
   estimatedTotalMinutes: 20,
@@ -320,13 +320,13 @@ const turningPoints: InterviewTemplate = {
   ],
 };
 
-// ═══ CREATIVITY WING INTERVIEWS ═══
+// ═══ PASSIONS WING INTERVIEWS ═══
 
 const creativeSpirit: InterviewTemplate = {
   id: "creative-spirit",
   titleKey: "creativeSpiritTitle",
   descKey: "creativeSpiritDesc",
-  wingId: "creativity",
+  wingId: "passions",
   icon: "\uD83C\uDFA8",
   difficulty: "light",
   estimatedTotalMinutes: 20,
@@ -343,7 +343,7 @@ const inspiration: InterviewTemplate = {
   id: "inspiration",
   titleKey: "inspirationTitle",
   descKey: "inspirationDesc",
-  wingId: "creativity",
+  wingId: "passions",
   icon: "\u2728",
   difficulty: "medium",
   estimatedTotalMinutes: 15,
@@ -450,20 +450,11 @@ export function getTemplate(templateId: string): InterviewTemplate | undefined {
 
 /** Maps wing IDs to translation keys (under the "interviewLibrary" namespace). */
 export const WING_ID_TO_LABEL_KEY: Record<string, string> = {
-  family: "family",
+  roots: "roots",
+  nest: "nest",
+  craft: "craft",
   travel: "travel",
-  childhood: "childhood",
-  career: "career",
-  creativity: "creativity",
+  passions: "passions",
   general: "lifeAndLegacy",
 };
 
-/** @deprecated Use WING_ID_TO_LABEL_KEY with a translation function instead. */
-export const WING_ID_TO_LABEL: Record<string, string> = {
-  family: "Family",
-  travel: "Travel",
-  childhood: "Childhood",
-  career: "Career",
-  creativity: "Creativity",
-  general: "Life & Legacy",
-};

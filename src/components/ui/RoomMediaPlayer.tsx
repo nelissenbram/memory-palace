@@ -13,6 +13,7 @@ interface RoomMediaPlayerProps {
   initialIndex: number;
   onClose: () => void;
   onEdit: (mem: Mem) => void;
+  onUpdate?: (memId: string, updates: Partial<Mem>) => void;
 }
 
 /* ─── Styles injected once ─── */
@@ -27,7 +28,7 @@ const PLAYER_STYLES = `
 .rmp-ctrl-btn:hover { background: rgba(255,255,255,0.18) !important; }
 `;
 
-export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdit }: RoomMediaPlayerProps) {
+export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdit, onUpdate }: RoomMediaPlayerProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
@@ -36,6 +37,11 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   const [autoPlay, setAutoPlay] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [transitioning, setTransitioning] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [descDraft, setDescDraft] = useState("");
+  const [infoPanelOpen, setInfoPanelOpen] = useState(true);
 
   const thumbStripRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -65,6 +71,8 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
   /* ─── Keyboard ─── */
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Don't handle shortcuts while editing title/description
+      if (editingTitle || editingDesc) return;
       if (e.key === "Escape") onClose();
       else if (e.key === "ArrowLeft") goPrev();
       else if (e.key === "ArrowRight") goNext();
@@ -72,7 +80,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose, goPrev, goNext, onEdit, mem]);
+  }, [onClose, goPrev, goNext, onEdit, mem, editingTitle, editingDesc]);
 
   /* ─── Auto-play slideshow ─── */
   useEffect(() => {
@@ -159,6 +167,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
             <img
               src={mem.dataUrl}
               alt={mem.title}
+              decoding="async"
               style={{
                 maxWidth: "100%", maxHeight: "100%",
                 objectFit: "contain",
@@ -192,7 +201,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 autoPlay
                 muted
                 playsInline
-                preload="auto"
+                preload="metadata"
                 src={mem.dataUrl?.startsWith("/api/media/") ? mem.dataUrl + (mem.dataUrl.includes("?") ? "&" : "?") + "stream=1" : mem.dataUrl}
                 style={{
                   maxWidth: "92%", maxHeight: "88%",
@@ -205,11 +214,12 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 <img
                   src={mem.thumbnailUrl || mem.dataUrl!}
                   alt={mem.title}
+                  decoding="async"
                   style={{ maxWidth: "92%", maxHeight: "88%", objectFit: "contain", borderRadius: "0.5rem", boxShadow: "0 0.5rem 2rem rgba(0,0,0,0.4)" }}
                   draggable={false}
                 />
                 <div style={{ position: "absolute", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", padding: "0.375rem 0.875rem", borderRadius: "1rem", background: "rgba(0,0,0,0.6)", color: "rgba(255,255,255,0.7)", fontFamily: T.font.body, fontSize: "0.75rem" }}>
-                  {t("videoThumbnailOnly") || "Thumbnail only"}
+                  {t("videoThumbnailOnly")}
                 </div>
               </div>
             ) : (
@@ -293,7 +303,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                     color: "rgba(255,255,255,0.6)", letterSpacing: "0.06em",
                     textTransform: "uppercase",
                   }}>
-                    {t("mediaPlayerInterview") || "Interview"}
+                    {t("mediaPlayerInterview")}
                   </span>
                 </div>
               )}
@@ -469,38 +479,127 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
           </button>
         )}
 
-        {/* ─── Title + type overlay at bottom ─── */}
-        {mem && (
-          <div
-            style={{
-              position: "absolute",
-              bottom: 0, left: 0, right: 0,
-              background: "linear-gradient(transparent, rgba(0,0,0,0.55))",
-              padding: isMobile ? "2rem 1rem 0.75rem" : "2.5rem 2rem 1rem",
-              pointerEvents: "none",
-            }}
-          >
-            <h3 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1rem" : "1.125rem",
-              fontWeight: 700, color: "rgba(255,255,255,0.88)",
-              margin: 0, letterSpacing: "0.01em",
-              textShadow: "0 0.0625rem 0.25rem rgba(0,0,0,0.3)",
-            }}>
-              {mem.title}
-            </h3>
-            {mem.createdAt && (
-              <span style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem",
-                color: "rgba(255,255,255,0.5)",
-              }}>
-                {new Date(mem.createdAt).toLocaleDateString(undefined, {
-                  year: "numeric", month: "short", day: "numeric",
-                })}
-              </span>
+        {/* overlay removed — title/desc moved below media area */}
+      </div>
+
+      {/* ─── Title + description bar (below media, no overlap) ─── */}
+      {mem && (
+        <div style={{
+          flexShrink: 0,
+          padding: isMobile ? "0.625rem 1rem 0.5rem" : "0.625rem 2rem 0.5rem",
+          background: "rgba(0,0,0,0.6)",
+          borderTop: "0.0625rem solid rgba(255,255,255,0.06)",
+          display: "flex", alignItems: "flex-start", gap: isMobile ? "0.75rem" : "1.5rem",
+        }}>
+          {/* Left: title + description */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Title — click to edit */}
+            {editingTitle ? (
+              <input
+                autoFocus
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={() => {
+                  setEditingTitle(false);
+                  if (titleDraft.trim() && titleDraft !== mem.title) {
+                    onUpdate?.(mem.id, { title: titleDraft.trim() });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Escape") { setTitleDraft(mem.title); setEditingTitle(false); }
+                }}
+                style={{
+                  fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.375rem",
+                  fontWeight: 700, color: "rgba(255,255,255,0.95)",
+                  background: "rgba(255,255,255,0.08)",
+                  border: `0.0625rem solid ${T.color.terracotta}80`,
+                  borderRadius: "0.375rem",
+                  padding: "0.25rem 0.5rem",
+                  width: "100%",
+                  outline: "none",
+                  letterSpacing: "0.01em",
+                }}
+              />
+            ) : (
+              <h3
+                onClick={() => { setTitleDraft(mem.title); setEditingTitle(true); }}
+                style={{
+                  fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.375rem",
+                  fontWeight: 700, color: "rgba(255,255,255,0.92)",
+                  margin: 0, letterSpacing: "0.01em",
+                  cursor: "text",
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                  lineHeight: 1.3,
+                }}
+              >
+                {mem.title}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                  <path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </h3>
+            )}
+
+            {/* Description — click to edit */}
+            {editingDesc ? (
+              <textarea
+                autoFocus
+                value={descDraft}
+                onChange={(e) => setDescDraft(e.target.value)}
+                onBlur={() => {
+                  setEditingDesc(false);
+                  if (descDraft !== (mem.desc || "")) {
+                    onUpdate?.(mem.id, { desc: descDraft.trim() });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") { setDescDraft(mem.desc || ""); setEditingDesc(false); }
+                }}
+                rows={3}
+                style={{
+                  fontFamily: T.font.display, fontSize: isMobile ? "0.9375rem" : "1rem",
+                  color: "rgba(255,255,255,0.85)",
+                  background: "rgba(255,255,255,0.08)",
+                  border: `0.0625rem solid ${T.color.terracotta}80`,
+                  borderRadius: "0.375rem",
+                  padding: "0.375rem 0.5rem",
+                  width: "100%", resize: "vertical",
+                  outline: "none",
+                  lineHeight: 1.6, marginTop: "0.25rem",
+                }}
+              />
+            ) : (
+              <p
+                onClick={() => { setDescDraft(mem.desc || ""); setEditingDesc(true); }}
+                style={{
+                  fontFamily: T.font.display, fontSize: isMobile ? "0.9375rem" : "1rem",
+                  color: "rgba(255,255,255,0.55)",
+                  margin: "0.25rem 0 0",
+                  lineHeight: 1.5, cursor: "text",
+                  maxHeight: isMobile ? "2.75rem" : "3rem", overflow: "hidden",
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
+                }}
+              >
+                {mem.desc || t("mediaPlayerAddDescription") || "Add a description\u2026"}
+              </p>
             )}
           </div>
-        )}
-      </div>
+
+          {/* Right: date */}
+          {mem.createdAt && (
+            <span style={{
+              fontFamily: T.font.body, fontSize: "0.75rem",
+              color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap",
+              marginTop: "0.25rem",
+            }}>
+              {new Date(mem.createdAt).toLocaleDateString(undefined, {
+                year: "numeric", month: "short", day: "numeric",
+              })}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ─── Thumbnail strip ─── */}
       <div style={{

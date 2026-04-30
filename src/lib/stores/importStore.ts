@@ -81,12 +81,19 @@ function mimeToType(mime: string): string {
   return "photo";
 }
 
+const UNTITLED: Record<string, string> = {
+  en: "Untitled", nl: "Naamloos", de: "Unbenannt", es: "Sin título", fr: "Sans titre",
+};
+
 function titleFromFilename(name: string): string {
-  return name
+  const title = name
     .replace(/\.[^.]+$/, "")
     .replace(/[-_]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim() || "Untitled";
+    .trim();
+  if (title) return title;
+  const locale = (typeof localStorage !== "undefined" && localStorage.getItem("mp_locale")?.slice(0, 2)) || "en";
+  return UNTITLED[locale] || UNTITLED.en;
 }
 
 let idCounter = 0;

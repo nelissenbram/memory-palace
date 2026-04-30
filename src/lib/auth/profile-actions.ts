@@ -1,15 +1,16 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { serverError } from "@/lib/i18n/server-errors";
 import { revokeProviderToken } from "@/lib/integrations/helpers";
 import { r2Remove, r2List, isR2Configured } from "@/lib/storage/r2";
 
 const DEFAULT_WINGS = [
-  { slug: "family", accent_color: "#C17F59" },
+  { slug: "roots", accent_color: "#C17F59" },
+  { slug: "nest", accent_color: "#7AA0C8" },
+  { slug: "craft", accent_color: "#8B7355" },
   { slug: "travel", accent_color: "#4A6741" },
-  { slug: "childhood", accent_color: "#B8926A" },
-  { slug: "career", accent_color: "#8B7355" },
-  { slug: "creativity", accent_color: "#9B6B8E" },
+  { slug: "passions", accent_color: "#9B6B8E" },
 ];
 
 export async function completeOnboarding(data: {
@@ -28,7 +29,7 @@ export async function completeOnboarding(data: {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "Not authenticated" };
+    { const t = await serverError(); return { error: t("notAuthenticated") }; }
   }
 
   // Upsert profile — handles edge case where DB trigger didn't create the row
@@ -72,6 +73,62 @@ export async function completeOnboarding(data: {
   }
 
   return { success: true };
+}
+
+/** One-time migration: rename old wing slugs → new slugs for existing users */
+export async function migrateWingSlugs() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: wings } = await supabase.from("wings").select("id, slug").eq("user_id", user.id);
+  if (!wings || wings.length === 0) return;
+
+  const slugMap: Record<string, string> = { family: "roots", childhood: "roots", career: "craft", creativity: "passions" };
+  const existingSlugs = new Set(wings.map(w => w.slug));
+
+  // Skip if already migrated (has "roots" or no old slugs)
+  const hasOldSlugs = wings.some(w => w.slug in slugMap);
+  if (!hasOldSlugs) {
+    // Just ensure "nest" exists
+    if (!existingSlugs.has("nest")) {
+      await supabase.from("wings").insert({ user_id: user.id, slug: "nest", accent_color: "#7AA0C8", sort_order: 1 });
+    }
+    return;
+  }
+
+  // Rename old slugs
+  for (const wing of wings) {
+    const newSlug = slugMap[wing.slug];
+    if (newSlug && !existingSlugs.has(newSlug)) {
+      await supabase.from("wings").update({ slug: newSlug }).eq("id", wing.id);
+      existingSlugs.add(newSlug);
+    } else if (newSlug && existingSlugs.has(newSlug) && wing.slug !== newSlug) {
+      // Merge: move memories from old wing to the already-renamed wing, then delete old
+      const targetWing = wings.find(w => w.slug === newSlug) || wings.find(w => slugMap[w.slug] === newSlug && w.id !== wing.id);
+      if (targetWing) {
+        await supabase.from("memories").update({ wing_id: targetWing.id }).eq("wing_id", wing.id);
+        await supabase.from("wings").delete().eq("id", wing.id);
+      }
+    }
+  }
+
+  // Create "nest" wing if missing
+  if (!existingSlugs.has("nest")) {
+    await supabase.from("wings").insert({ user_id: user.id, slug: "nest", accent_color: "#7AA0C8", sort_order: 1 });
+  }
+
+  // Update sort order
+  const sortOrder: Record<string, number> = { roots: 0, nest: 1, craft: 2, travel: 3, passions: 4 };
+  const { data: updatedWings } = await supabase.from("wings").select("id, slug").eq("user_id", user.id);
+  if (updatedWings) {
+    for (const w of updatedWings) {
+      if (sortOrder[w.slug] !== undefined) {
+        await supabase.from("wings").update({ sort_order: sortOrder[w.slug] }).eq("id", w.id);
+      }
+    }
+  }
 }
 
 export async function getProfile() {
@@ -118,7 +175,7 @@ export async function updateProfile(data: {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "Not authenticated" };
+    { const t = await serverError(); return { error: t("notAuthenticated") }; }
   }
 
   const updates: Record<string, unknown> = {};
@@ -136,7 +193,7 @@ export async function updateProfile(data: {
   if (data.aiBiometricConsent !== undefined) updates.ai_biometric_consent = data.aiBiometricConsent;
 
   if (Object.keys(updates).length === 0) {
-    return { error: "No fields to update" };
+    { const t = await serverError(); return { error: t("noFieldsToUpdate") }; }
   }
 
   const { error } = await supabase
@@ -161,7 +218,7 @@ export async function requestPasswordReset() {
   } = await supabase.auth.getUser();
 
   if (!user?.email) {
-    return { error: "Not authenticated" };
+    { const t = await serverError(); return { error: t("notAuthenticated") }; }
   }
 
   const siteUrl =
@@ -192,7 +249,7 @@ export async function deleteAccount() {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "Not authenticated" };
+    { const t = await serverError(); return { error: t("notAuthenticated") }; }
   }
 
   // 0. Revoke OAuth tokens for all connected accounts (best-effort)

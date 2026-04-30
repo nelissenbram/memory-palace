@@ -109,7 +109,7 @@ Return ONLY the JSON, no explanation.`,
           ],
         },
       ],
-    });
+    }, { timeout: 30_000 });
 
     const text =
       visionResponse.content[0].type === "text"
@@ -132,8 +132,11 @@ Return ONLY the JSON, no explanation.`,
         proportions[key] = 1.0; // clamp to default
       }
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error("[bust-generate] Vision analysis failed:", err);
+    if (err?.name === "APIConnectionTimeoutError" || err?.name === "AbortError") {
+      return NextResponse.json({ error: "AI request timed out" }, { status: 504 });
+    }
     return NextResponse.json(
       { error: "Face analysis failed" },
       { status: 422 }

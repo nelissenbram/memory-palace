@@ -2,9 +2,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { r2Remove, isR2Configured } from "@/lib/storage/r2";
+import { serverError } from "@/lib/i18n/server-errors";
 
 // Ensure a room exists in the DB, creating it if needed.
-// Maps local room IDs (like "fr1") to Supabase UUIDs.
+// Maps local room IDs (like "ro1") to Supabase UUIDs.
 async function ensureRoom(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -45,13 +46,14 @@ async function ensureRoom(
 function wingSlugFromRoomId(localRoomId: string): string {
   const prefix = localRoomId.slice(0, 2);
   const map: Record<string, string> = {
-    fr: "family",
-    tr: "travel",
-    cr: "childhood",
-    kr: "career",
-    rr: "creativity",
+    ro: "roots",
+    ne: "nest",
+    cf: "craft",
+    tv: "travel",
+    pa: "passions",
+    at: "attic",
   };
-  return map[prefix] || "family";
+  return map[prefix] || "roots";
 }
 
 export async function createMemory(data: {
@@ -75,18 +77,19 @@ export async function createMemory(data: {
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
+  const t = await serverError();
   // Resolve local room ID to a DB UUID
   const wingSlug = wingSlugFromRoomId(data.roomId);
   const dbRoomId = await ensureRoom(supabase, user.id, data.roomId, wingSlug);
-  if (!dbRoomId) return { error: "Could not resolve room" };
+  if (!dbRoomId) return { error: t("couldNotResolveRoom") };
 
   const { data: memory, error } = await supabase
     .from("memories")
@@ -156,30 +159,31 @@ export async function createMemory(data: {
     const { checkAndNotifyMilestone, notifyFirstInRoom } = await import(
       "@/lib/auth/notification-actions"
     );
-    // Total memories for this user
-    const { count: totalCount } = await supabase
-      .from("memories")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id);
+    // Fetch total count, room count, and room name in parallel (independent queries)
+    const [totalCountResult, roomCountResult, roomRowResult] = await Promise.all([
+      supabase
+        .from("memories")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id),
+      supabase
+        .from("memories")
+        .select("id", { count: "exact", head: false })
+        .eq("room_id", dbRoomId)
+        .limit(2),
+      supabase
+        .from("rooms")
+        .select("name")
+        .eq("id", dbRoomId)
+        .single(),
+    ]);
+    const totalCount = totalCountResult.count;
     if (typeof totalCount === "number") {
       await checkAndNotifyMilestone({ userId: user.id, totalMemories: totalCount });
     }
     // First memory in this room (by this user) — count === 1 means this one is first
-    const { count: roomCount, data: _r } = await supabase
-      .from("memories")
-      .select("id", { count: "exact", head: false })
-      .eq("room_id", dbRoomId)
-      .limit(2);
-    void _r;
-    if (roomCount === 1) {
-      const { data: roomRow } = await supabase
-        .from("rooms")
-        .select("name")
-        .eq("id", dbRoomId)
-        .single();
-      if (roomRow?.name) {
-        await notifyFirstInRoom({ userId: user.id, roomId: dbRoomId, roomName: roomRow.name });
-      }
+    const roomCount = roomCountResult.count;
+    if (roomCount === 1 && roomRowResult.data?.name) {
+      await notifyFirstInRoom({ userId: user.id, roomId: dbRoomId, roomName: roomRowResult.data.name });
     }
   } catch {
     // Non-critical
@@ -196,13 +200,13 @@ export async function updateMemoryAction(
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   // Strip undefined values to avoid nullifying existing columns
   const cleanUpdates = Object.fromEntries(
@@ -226,13 +230,13 @@ export async function deleteMemoryAction(memoryId: string) {
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   // Get memory to find file_path and storage_backend for cleanup
   const { data: memory } = await supabase
@@ -266,17 +270,18 @@ export async function moveMemoryAction(memoryId: string, toLocalRoomId: string) 
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
+  const tMove = await serverError();
   const wingSlug = wingSlugFromRoomId(toLocalRoomId);
   const dbRoomId = await ensureRoom(supabase, user.id, toLocalRoomId, wingSlug);
-  if (!dbRoomId) return { error: "Could not resolve target room" };
+  if (!dbRoomId) return { error: tMove("couldNotResolveTargetRoom") };
 
   const { error } = await supabase
     .from("memories")
@@ -320,4 +325,51 @@ export async function fetchMemories(localRoomId: string) {
 
   if (error) return { memories: [], error: error.message };
   return { memories: memories || [] };
+}
+
+/** Fetch ALL memories for the current user, grouped by local room ID */
+export async function fetchAllMemories() {
+  if (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
+    return { roomMemories: {} as Record<string, any[]> };
+  }
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { roomMemories: {} as Record<string, any[]> };
+
+  // Fetch all rooms for this user
+  const { data: rooms } = await supabase
+    .from("rooms")
+    .select("id, name")
+    .eq("user_id", user.id);
+  if (!rooms || rooms.length === 0) return { roomMemories: {} as Record<string, any[]> };
+
+  // Fetch all memories for all rooms in one query
+  const roomIds = rooms.map((r: any) => r.id);
+  const { data: memories, error } = await supabase
+    .from("memories")
+    .select("*")
+    .in("room_id", roomIds)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) return { roomMemories: {} as Record<string, any[]>, error: error.message };
+
+  // Build room UUID → local name map
+  const roomIdToName: Record<string, string> = {};
+  for (const r of rooms) roomIdToName[r.id] = r.name;
+
+  // Group memories by local room name
+  const roomMemories: Record<string, any[]> = {};
+  for (const m of (memories || [])) {
+    const localName = roomIdToName[m.room_id];
+    if (!localName) continue;
+    if (!roomMemories[localName]) roomMemories[localName] = [];
+    roomMemories[localName].push(m);
+  }
+  return { roomMemories };
 }

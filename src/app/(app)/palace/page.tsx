@@ -9,6 +9,7 @@ import PalaceLoadingScreen from "@/components/ui/PalaceLoadingScreen";
 const PRELOAD_URLS = [
   "/textures/hdri/courtyard_1k.hdr",
   "/textures/hdri/tuscan_landscape_2k.hdr",
+  // ballroom_1k.hdr removed — only needed in entrance hall, not on every palace visit
 ];
 function useWarmPalaceAssets() {
   useEffect(() => {

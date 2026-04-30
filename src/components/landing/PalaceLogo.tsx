@@ -21,77 +21,37 @@ const COLORS = {
   light: "#FAFAF7",
 } as const;
 
-const TERRACOTTA = "#C17F59";
-const GLOW = "#E8A74E";
-
-/* Column x-centers for 5 evenly spaced columns */
-const COLUMNS = [11.7, 22.5, 32.7, 43.2, 53.7];
-const MISSING_INDEX = 4; // rightmost column is absent — memories yet to be built
-
 /**
- * Palace icon — classical temple with 5 columns, rightmost missing.
- * The absent far-right pillar symbolises memories yet to be built.
- * A faint warm glow marks the gap.
+ * Palace icon — classical temple with 4 pillars + 5th pillar (oval) being raised.
+ * The oval at 70% opacity symbolises the memory yet to be built.
  *
- * viewBox 0 0 64 64, designed to work at any size down to 16px.
+ * viewBox 0 0 100 100, matches the finalized brand icon kit.
  */
 function PalaceIcon({ size, color }: { size: string; color: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 64 64"
-      fill="none"
+      viewBox="0 0 100 100"
       width={size}
       height={size}
       aria-hidden="true"
       style={{ display: "block", flexShrink: 0 }}
     >
-      {/* ---------- pediment (triangular roof) ---------- */}
-      <polygon points="32,5 8,22 56,22" fill={TERRACOTTA} />
-
-      {/* peak acroterion */}
-      <circle cx="32" cy="7" r="1.5" fill={TERRACOTTA} />
-
-      {/* subtle cornice line */}
-      <rect x="8" y="15.5" width="48" height="0.6" rx="0.3" fill={color} opacity="0.08" />
-
-      {/* ---------- entablature ---------- */}
-      <rect x="7" y="22" width="50" height="3.5" rx="0.5" fill={TERRACOTTA} />
-      <rect x="7" y="22" width="50" height="0.8" rx="0.4" fill={color} opacity="0.07" />
-
-      {/* ---------- columns ---------- */}
-      {COLUMNS.map((cx, i) => {
-        if (i === MISSING_INDEX) {
-          /* Missing column — warm glow placeholder */
-          return (
-            <g key={i}>
-              <ellipse cx={cx} cy="38" rx="2.2" ry="8" fill={GLOW} opacity="0.18" />
-              <ellipse cx={cx} cy="38" rx="1.2" ry="5" fill={GLOW} opacity="0.12" />
-            </g>
-          );
-        }
-        return (
-          <g key={i}>
-            {/* capital */}
-            <rect x={cx - 2.7} y="25.5" width={5.4} height="1.6" rx="0.8" fill={TERRACOTTA} />
-            {/* shaft with slight entasis */}
-            <rect x={cx - 1.9} y="27.1" width={3.8} height="22.4" rx="1.2" fill={TERRACOTTA} />
-            {/* fluting highlight */}
-            <rect x={cx - 0.35} y="27.1" width={0.7} height="22.4" rx="0.35" fill={color} opacity="0.06" />
-            {/* base */}
-            <rect x={cx - 2.9} y="49.5" width={5.8} height="1.6" rx="0.8" fill={TERRACOTTA} />
-          </g>
-        );
-      })}
-
-      {/* ---------- stylobate / steps ---------- */}
-      <rect x="5" y="51.1" width="54" height="3" rx="0.5" fill={TERRACOTTA} />
-      <rect x="3" y="54.1" width="58" height="3" rx="0.5" fill={TERRACOTTA} />
-      <rect x="1" y="57.1" width="62" height="3.2" rx="0.5" fill={TERRACOTTA} />
-
-      {/* step highlights */}
-      <rect x="5" y="51.1" width="54" height="0.5" rx="0.25" fill={color} opacity="0.05" />
-      <rect x="3" y="54.1" width="58" height="0.5" rx="0.25" fill={color} opacity="0.05" />
+      <g fill={color}>
+        {/* pediment (roof) */}
+        <path d="M10 32 L50 12 L90 32 L88 40 L12 40 Z" />
+        {/* 4 pillars */}
+        <rect x="18" y="40" width="8" height="32" />
+        <rect x="32" y="40" width="8" height="32" />
+        <rect x="46" y="40" width="8" height="32" />
+        <rect x="60" y="40" width="8" height="32" />
+        {/* 5th pillar — being raised */}
+        <ellipse cx="78" cy="56" rx="4" ry="14" opacity="0.7" />
+        {/* base / steps */}
+        <rect x="10" y="72" width="80" height="4" />
+        <rect x="6" y="78" width="88" height="4" />
+        <rect x="2" y="84" width="96" height="4" />
+      </g>
     </svg>
   );
 }

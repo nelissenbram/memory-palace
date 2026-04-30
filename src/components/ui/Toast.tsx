@@ -36,11 +36,12 @@ const ICON: Record<ToastData["type"], string> = {
 export default function Toast({ message, type, onDismiss }: ToastProps) {
   const { t: tc } = useTranslation("common");
 
-  // Auto-dismiss after 4 seconds
+  // Auto-dismiss after 4 seconds (errors persist until manually dismissed)
   useEffect(() => {
+    if (type === "error") return;
     const timer = setTimeout(onDismiss, 4000);
     return () => clearTimeout(timer);
-  }, [onDismiss]);
+  }, [onDismiss, type]);
 
   const isError = type === "error";
 

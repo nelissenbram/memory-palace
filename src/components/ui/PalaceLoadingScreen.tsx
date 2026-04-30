@@ -17,9 +17,12 @@ const LOADING_PHRASE_COUNT = 10;
  */
 export default function PalaceLoadingScreen({
   overlay = false,
+  fadeDelay = 0,
 }: {
   /** When true, renders as a positioned overlay with fade-out animation (for scene loading). */
   overlay?: boolean;
+  /** Seconds to hold fully visible before starting the fade-out (overlay mode only). */
+  fadeDelay?: number;
 }) {
   const { t } = useTranslation("palace");
 
@@ -69,11 +72,25 @@ export default function PalaceLoadingScreen({
           justifyContent: "center",
           background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone} 100%)`,
           fontFamily: T.font.display,
-          animation: "sceneLoadFadeOut 0.8s ease-in-out forwards",
+          animation: `sceneLoadFadeOut 0.8s ease-in-out ${fadeDelay}s forwards`,
           pointerEvents: "none",
         }}
       >
         {content}
+        {fadeDelay > 0 && (
+          <>
+            <style>{`@keyframes palaceSpinFade{0%{opacity:.4;transform:rotate(0deg)}50%{opacity:1}100%{opacity:.4;transform:rotate(360deg)}}`}</style>
+            <div style={{
+              width: "1.5rem",
+              height: "1.5rem",
+              marginTop: "1.25rem",
+              border: `0.125rem solid ${T.color.warmStone}`,
+              borderTopColor: T.color.gold,
+              borderRadius: "50%",
+              animation: "palaceSpinFade 1.2s ease-in-out infinite",
+            }} />
+          </>
+        )}
       </div>
     );
   }

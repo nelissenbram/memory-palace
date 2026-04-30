@@ -7,6 +7,7 @@
 export interface RoomLayout {
   id: string;
   name: string;
+  nameKey: string;
   rW: number; rL: number; rH: number;
   // optional extras (on top of mandatory furniture)
   piano: boolean;        // grand piano near front-right
@@ -25,35 +26,35 @@ export interface RoomLayout {
 export const ROOM_LAYOUTS: RoomLayout[] = [
   {
     // 0: Den — the original cosy room, medium size
-    id: "den", name: "Den",
+    id: "den", name: "Den", nameKey: "roomLayouts.den",
     rW: 12, rL: 10, rH: 4.5,
     piano: false, readingChair: false, globe: false,
     rugStyle: "persian", windowCount: 1, plantCorners: [0, 1, 2], extraSconces: false,
   },
   {
     // 1: Study — square room with globe, reading chair, 2 windows
-    id: "study", name: "Study",
+    id: "study", name: "Study", nameKey: "roomLayouts.study",
     rW: 11, rL: 11, rH: 4,
     piano: false, readingChair: true, globe: true,
     rugStyle: "round", windowCount: 2, plantCorners: [0, 3], extraSconces: true,
   },
   {
     // 2: Parlour — wide + tall, 2 windows, extra sconces
-    id: "parlour", name: "Parlour",
+    id: "parlour", name: "Parlour", nameKey: "roomLayouts.parlour",
     rW: 14, rL: 9, rH: 5,
     piano: false, readingChair: false, globe: false,
     rugStyle: "persian", windowCount: 2, plantCorners: [0, 1, 2, 3], extraSconces: true,
   },
   {
     // 3: Salon — deeper + taller, grand piano, elegant
-    id: "salon", name: "Salon",
+    id: "salon", name: "Salon", nameKey: "roomLayouts.salon",
     rW: 12, rL: 13, rH: 4.8,
     piano: true, readingChair: false, globe: false,
     rugStyle: "persian", windowCount: 1, plantCorners: [0, 1], extraSconces: false,
   },
   {
     // 4: Nook — small cosy room, reading chair, round rug
-    id: "nook", name: "Nook",
+    id: "nook", name: "Nook", nameKey: "roomLayouts.nook",
     rW: 10, rL: 9, rH: 3.8,
     piano: false, readingChair: true, globe: false,
     rugStyle: "round", windowCount: 1, plantCorners: [2], extraSconces: false,
@@ -61,7 +62,7 @@ export const ROOM_LAYOUTS: RoomLayout[] = [
   {
     // 5: Peristylium — open-air Roman courtyard garden with colonnades
     // 30×25 open courtyard. Height 6 (open sky, columns frame the space).
-    id: "peristylium", name: "Peristylium",
+    id: "peristylium", name: "Peristylium", nameKey: "roomLayouts.peristylium",
     rW: 30, rL: 25, rH: 6,
     piano: false, readingChair: false, globe: false,
     rugStyle: "persian", windowCount: 2, plantCorners: [0, 1, 2, 3], extraSconces: true,

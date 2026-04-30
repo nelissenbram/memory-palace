@@ -147,6 +147,141 @@ const t: Record<string, Record<string, string>> = {
     trackQuarter: "Geweldige vooruitgang. Elke stap verdiept je paleis.",
     trackStart: "Elke herinnering telt. Blijf bouwen.",
   },
+  de: {
+    weeklyDigest: "Wochenübersicht",
+    yourReport: "Dein {weekday}-Bericht",
+    goodMorning: "Guten Morgen, {name}",
+    goodAfternoon: "Guten Nachmittag, {name}",
+    goodEvening: "Guten Abend, {name}",
+    hello: "Hallo, {name}",
+    hereIsWhatHappened: "Das ist diese Woche in deinem Palast passiert.",
+    memoryOfTheWeek: "Erinnerung der Woche",
+    revisitMemory: "Besuche diese Erinnerung erneut und die Geschichten, die sie birgt.",
+    inRoom: "in",
+    onThisWeek: "Diese Woche in der Geschichte",
+    yearAgo: "Jahr her",
+    yearsAgo: "Jahre her",
+    timeCapsules: "Zeitkapseln, die bald \u00f6ffnen",
+    sharedRoomActivity: "Geteilte Raum-Aktivit\u00e4t",
+    addedMemories: "hat {count} Erinnerung hinzugef\u00fcgt zu",
+    addedMemoriesPlural: "hat {count} Erinnerungen hinzugef\u00fcgt zu",
+    yourStreak: "Deine Serie",
+    weeksInARow: "Wochen in Folge",
+    weekStreak: "Wochen-Serie",
+    yourProgress: "Dein Fortschritt",
+    next: "N\u00e4chstes:",
+    addAMemory: "+ Erinnerung hinzuf\u00fcgen",
+    visitYourPalace: "Durch deinen Palast wandeln",
+    totalMemories: "Erinnerungen gesamt",
+    thisWeek: "Diese Woche",
+    rooms: "R\u00e4ume",
+    quietWeek: "Dein Palast ist diese Woche ruhig. Warum nicht eine neue Erinnerung hinzuf\u00fcgen? Jeder Moment, den du heute bewahrst, wird morgen ein Schatz.",
+    preheaderStreak: "{name}, {streak}-Wochen-Serie! {count} neue Erinnerungen diese Woche.",
+    preheaderNormal: "{name}, du hast {count} neue Erinnerungen diese Woche.",
+    footerNotice: "Du erh\u00e4ltst diese Wochen\u00fcbersicht, weil E-Mail-Benachrichtigungen aktiviert sind.",
+    unsubscribe: "Von Wochen\u00fcbersicht abmelden",
+    streakSubject: "{streak}-Wochen-Serie! Dein {weekday} Erinnerungs\u00fcberblick",
+    normalSubject: "Dein {weekday} Erinnerungs\u00fcberblick, {name}",
+    encourageStreak12: "Bemerkenswerte Hingabe. Dein zuk\u00fcnftiges Ich wird dir danken.",
+    encourageStreak8: "Ein unglaublicher Lauf. Dein Palast wird jede Woche reicher.",
+    encourageStreak4: "Ein Monat Best\u00e4ndigkeit. Deine Erinnerungen bauen etwas Bleibendes.",
+    encourageStreakDefault: "Halte das Momentum &mdash; jede Woche z\u00e4hlt.",
+    trackClose: "Du bist so nah dran. Ein letzter Sto\u00df!",
+    trackFinish: "Die Ziellinie ist in Sicht &mdash; weiter so.",
+    trackHalfway: "Du bist \u00fcber die H\u00e4lfte. Das Momentum geh\u00f6rt dir.",
+    trackQuarter: "Toller Fortschritt. Jeder Schritt vertieft deinen Palast.",
+    trackStart: "Jede Erinnerung z\u00e4hlt. Bau weiter.",
+  },
+  es: {
+    weeklyDigest: "Resumen Semanal",
+    yourReport: "Tu informe del {weekday}",
+    goodMorning: "Buenos d\u00edas, {name}",
+    goodAfternoon: "Buenas tardes, {name}",
+    goodEvening: "Buenas noches, {name}",
+    hello: "Hola, {name}",
+    hereIsWhatHappened: "Esto es lo que pas\u00f3 en tu palacio esta semana.",
+    memoryOfTheWeek: "Recuerdo de la Semana",
+    revisitMemory: "Revisita este recuerdo y las historias que guarda.",
+    inRoom: "en",
+    onThisWeek: "Esta Semana en la Historia",
+    yearAgo: "a\u00f1o atr\u00e1s",
+    yearsAgo: "a\u00f1os atr\u00e1s",
+    timeCapsules: "C\u00e1psulas del Tiempo por Abrir",
+    sharedRoomActivity: "Actividad en Salas Compartidas",
+    addedMemories: "a\u00f1adi\u00f3 {count} recuerdo a",
+    addedMemoriesPlural: "a\u00f1adi\u00f3 {count} recuerdos a",
+    yourStreak: "Tu Racha",
+    weeksInARow: "semanas seguidas",
+    weekStreak: "Racha Semanal",
+    yourProgress: "Tu Progreso",
+    next: "Siguiente:",
+    addAMemory: "+ A\u00f1adir un Recuerdo",
+    visitYourPalace: "Recorre tu Palacio",
+    totalMemories: "Total de Recuerdos",
+    thisWeek: "Esta Semana",
+    rooms: "Salas",
+    quietWeek: "Tu palacio est\u00e1 tranquilo esta semana. \u00bfPor qu\u00e9 no a\u00f1adir un nuevo recuerdo? Cada momento que preservas hoy se convierte en un tesoro ma\u00f1ana.",
+    preheaderStreak: "{name}, \u00a1racha de {streak} semanas! {count} nuevos recuerdos esta semana.",
+    preheaderNormal: "{name}, tienes {count} nuevos recuerdos esta semana.",
+    footerNotice: "Recibes este resumen semanal porque las notificaciones por correo est\u00e1n activadas.",
+    unsubscribe: "Cancelar suscripci\u00f3n al resumen semanal",
+    streakSubject: "\u00a1Racha de {streak} semanas! Tu Resumen de Recuerdos del {weekday}",
+    normalSubject: "Tu Resumen de Recuerdos del {weekday}, {name}",
+    encourageStreak12: "Dedicaci\u00f3n notable. Tu yo futuro te lo agradecer\u00e1.",
+    encourageStreak8: "Una racha incre\u00edble. Tu palacio se enriquece cada semana.",
+    encourageStreak4: "Un mes de constancia. Tus recuerdos construyen algo duradero.",
+    encourageStreakDefault: "Mant\u00e9n el impulso &mdash; cada semana cuenta.",
+    trackClose: "Est\u00e1s tan cerca. \u00a1Un \u00faltimo empuj\u00f3n!",
+    trackFinish: "La meta est\u00e1 a la vista &mdash; sigue adelante.",
+    trackHalfway: "Has pasado la mitad. El impulso es tuyo.",
+    trackQuarter: "Gran progreso. Cada paso profundiza tu palacio.",
+    trackStart: "Cada recuerdo cuenta. Sigue construyendo.",
+  },
+  fr: {
+    weeklyDigest: "R\u00e9sum\u00e9 Hebdomadaire",
+    yourReport: "Votre rapport du {weekday}",
+    goodMorning: "Bonjour, {name}",
+    goodAfternoon: "Bon apr\u00e8s-midi, {name}",
+    goodEvening: "Bonsoir, {name}",
+    hello: "Bonjour, {name}",
+    hereIsWhatHappened: "Voici ce qui s'est pass\u00e9 dans votre palais cette semaine.",
+    memoryOfTheWeek: "Souvenir de la Semaine",
+    revisitMemory: "Revisitez ce souvenir et les histoires qu'il recèle.",
+    inRoom: "dans",
+    onThisWeek: "Cette Semaine dans l'Histoire",
+    yearAgo: "an",
+    yearsAgo: "ans",
+    timeCapsules: "Capsules Temporelles Bient\u00f4t Ouvertes",
+    sharedRoomActivity: "Activit\u00e9 des Salles Partag\u00e9es",
+    addedMemories: "a ajout\u00e9 {count} souvenir \u00e0",
+    addedMemoriesPlural: "a ajout\u00e9 {count} souvenirs \u00e0",
+    yourStreak: "Votre S\u00e9rie",
+    weeksInARow: "semaines cons\u00e9cutives",
+    weekStreak: "S\u00e9rie Hebdo",
+    yourProgress: "Votre Progression",
+    next: "Suivant :",
+    addAMemory: "+ Ajouter un Souvenir",
+    visitYourPalace: "Parcourez votre Palais",
+    totalMemories: "Total des Souvenirs",
+    thisWeek: "Cette Semaine",
+    rooms: "Salles",
+    quietWeek: "Votre palais est calme cette semaine. Pourquoi ne pas ajouter un nouveau souvenir ? Chaque moment que vous pr\u00e9servez aujourd'hui devient un tr\u00e9sor demain.",
+    preheaderStreak: "{name}, s\u00e9rie de {streak} semaines ! {count} nouveaux souvenirs cette semaine.",
+    preheaderNormal: "{name}, vous avez {count} nouveaux souvenirs cette semaine.",
+    footerNotice: "Vous recevez ce r\u00e9sum\u00e9 hebdomadaire car les notifications par e-mail sont activ\u00e9es.",
+    unsubscribe: "Se d\u00e9sabonner du r\u00e9sum\u00e9 hebdomadaire",
+    streakSubject: "S\u00e9rie de {streak} semaines ! Votre R\u00e9sum\u00e9 Souvenirs du {weekday}",
+    normalSubject: "Votre R\u00e9sum\u00e9 Souvenirs du {weekday}, {name}",
+    encourageStreak12: "D\u00e9vouement remarquable. Votre futur vous remerciera.",
+    encourageStreak8: "Une course incroyable. Votre palais s'enrichit chaque semaine.",
+    encourageStreak4: "Un mois de constance. Vos souvenirs construisent quelque chose de durable.",
+    encourageStreakDefault: "Gardez l'\u00e9lan &mdash; chaque semaine compte.",
+    trackClose: "Vous y \u00eates presque. Un dernier effort !",
+    trackFinish: "La ligne d'arriv\u00e9e est en vue &mdash; continuez.",
+    trackHalfway: "Vous avez d\u00e9pass\u00e9 la moiti\u00e9. L'\u00e9lan est v\u00f4tre.",
+    trackQuarter: "Belle progression. Chaque pas approfondit votre palais.",
+    trackStart: "Chaque souvenir compte. Continuez \u00e0 construire.",
+  },
 };
 
 /* ── Section renderers ── */
@@ -277,7 +412,8 @@ function renderOnThisDay(memories: OnThisDayMemory[], l: Record<string, string>)
 function renderCapsules(capsules: UpcomingCapsule[], locale: string, l: Record<string, string>): string {
   if (capsules.length === 0) return "";
 
-  const dateLocale = locale === "nl" ? "nl-NL" : "en-US";
+  const dateLocaleMap2: Record<string, string> = { en: "en-US", nl: "nl-NL", de: "de-DE", es: "es-ES", fr: "fr-FR" };
+  const dateLocale = dateLocaleMap2[locale] || "en-US";
   const items = capsules.slice(0, 5).map((c, i) => {
     const dateStr = new Date(c.revealDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric" });
     return `
@@ -441,7 +577,8 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
     params.sharedRoomActivity.length > 0 ||
     params.trackProgress !== null;
 
-  const dateLocale = locale === "nl" ? "nl-NL" : "en-US";
+  const dateLocaleMap: Record<string, string> = { en: "en-US", nl: "nl-NL", de: "de-DE", es: "es-ES", fr: "fr-FR" };
+  const dateLocale = dateLocaleMap[locale] || "en-US";
   const weekday = new Date().toLocaleDateString(dateLocale, { weekday: "long" });
   const greeting = getGreeting(displayName, l);
 
@@ -497,7 +634,8 @@ export function generateDigestEmailHtml(params: DigestEmailParams): string {
 export function generateDigestEmailSubject(displayName: string, streakWeeks: number, locale?: string): string {
   const loc = locale || "en";
   const l = t[loc] || t.en;
-  const dateLocale = loc === "nl" ? "nl-NL" : "en-US";
+  const dateLocaleMap3: Record<string, string> = { en: "en-US", nl: "nl-NL", de: "de-DE", es: "es-ES", fr: "fr-FR" };
+  const dateLocale = dateLocaleMap3[loc] || "en-US";
   const weekday = new Date().toLocaleDateString(dateLocale, { weekday: "long" });
   if (streakWeeks >= 4) {
     return l.streakSubject.replace("{streak}", `${streakWeeks}`).replace("{weekday}", weekday);

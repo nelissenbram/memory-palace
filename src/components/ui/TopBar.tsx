@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { T } from "@/lib/theme";
-import { signOut } from "@/lib/auth/actions";
+import { useSignOut } from "@/lib/hooks/useSignOut";
+import SignOutOverlay from "@/components/ui/SignOutOverlay";
 import { useUserStore } from "@/lib/stores/userStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
@@ -13,7 +14,9 @@ import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import { useDaylight } from "@/components/providers/DaylightProvider";
 import NotificationBell from "@/components/ui/NotificationBell";
 import type { Crumb } from "@/lib/hooks/useNavigation";
-import type { Locale } from "@/i18n/config";
+import { locales, type Locale } from "@/i18n/config";
+import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
+import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 
 function formatDaylightHour(h: number): string {
   const hr = Math.floor(h) % 24;
@@ -45,12 +48,15 @@ interface TopBarProps {
 
 export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSharingSettings}: TopBarProps){
   const isMobile = useIsMobile();
+  const { signingOut, handleSignOut } = useSignOut();
   const { t, locale, setLocale } = useTranslation("common");
-  const { accessibilityMode, toggleAccessibility } = useAccessibility();
+  const { t: tWings } = useTranslation("wings");
+  const { scaleLevel, setScaleLevel } = useAccessibility();
   const { daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour } = useDaylight();
   const { userName } = useUserStore();
   const { view, activeWing, switchWing, exitToPalace } = usePalaceStore();
   const { showDirectory, setShowDirectory } = useMemoryStore();
+  const setShowFamilyTree = useUIPanelStore((s) => s.setShowFamilyTree);
   const { getWings } = useRoomStore();
   const WINGS = getWings();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -117,6 +123,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
   if (isMobile) {
     return (
       <>
+        {signingOut && <SignOutOverlay />}
         {/* Focus-visible styles for TopBar mobile buttons */}
         <style>{`
           [data-topbar] button:focus-visible,
@@ -211,7 +218,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                     cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem",
                     textAlign: "left", minHeight: "2.75rem",
                   }}>
-                    <span style={{ fontSize: "1rem" }}>{w.icon}</span>{w.name}
+                    <span style={{ fontSize: "1rem" }}>{w.icon}</span>{translateWingName(w, tWings)}
                   </button>
                 ))}
                 {/* Shared wings in mobile menu */}
@@ -254,15 +261,14 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                 }}>
                   {"\u{1F4C2}"} {t("directory")}
                 </button>
-                <a href="/family-tree" onClick={() => setMenuOpen(false)} style={{
+                <button onClick={() => { setMenuOpen(false); setShowFamilyTree(true); }} style={{
                   flex: 1, padding: "0.625rem 0.75rem", borderRadius: "0.625rem", minHeight: "2.75rem",
                   border: `1px solid ${T.color.cream}`, background: T.color.white,
                   fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
-                  textDecoration: "none",
                 }}>
                   {"\u{1F333}"} {t("familyTree")}
-                </a>
+                </button>
                 <a href="/settings" onClick={() => setMenuOpen(false)} style={{
                   flex: 1, padding: "0.625rem 0.75rem", borderRadius: "0.625rem", minHeight: "2.75rem",
                   border: `1px solid ${T.color.cream}`, background: T.color.white,
@@ -272,11 +278,12 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                 }}>
                   {"\u2699\uFE0F"} {t("settings")}
                 </a>
-                <button onClick={() => { signOut(); setMenuOpen(false); }} style={{
+                <button onClick={() => { handleSignOut(); setMenuOpen(false); }} disabled={signingOut} style={{
                   flex: 1, padding: "0.625rem 0.75rem", borderRadius: "0.625rem", minHeight: "2.75rem",
                   border: `1px solid ${T.color.cream}`, background: T.color.white,
-                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, cursor: signingOut ? "wait" : "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
+                  opacity: signingOut ? 0.5 : 1,
                 }}>
                   {t("signOut")}
                 </button>
@@ -294,57 +301,40 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                 }}>
                   {t("preferences")}
                 </span>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                   <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, marginRight: "auto" }}>
                     {t("language")}
                   </span>
-                  <button onClick={() => setLocale("en")} aria-pressed={locale === "en"} style={{
-                    padding: "0.375rem 0.75rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontFamily: T.font.body,
-                    fontWeight: locale === "en" ? 600 : 400,
-                    border: `1px solid ${locale === "en" ? T.color.terracotta : T.color.cream}`,
-                    background: locale === "en" ? `${T.color.terracotta}12` : T.color.white,
-                    color: locale === "en" ? T.color.terracotta : T.color.muted, cursor: "pointer",
-                    minHeight: "2.75rem",
-                  }}>EN</button>
-                  <button onClick={() => setLocale("nl")} aria-pressed={locale === "nl"} style={{
-                    padding: "0.375rem 0.75rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontFamily: T.font.body,
-                    fontWeight: locale === "nl" ? 600 : 400,
-                    border: `1px solid ${locale === "nl" ? T.color.terracotta : T.color.cream}`,
-                    background: locale === "nl" ? `${T.color.terracotta}12` : T.color.white,
-                    color: locale === "nl" ? T.color.terracotta : T.color.muted, cursor: "pointer",
-                    minHeight: "2.75rem",
-                  }}>NL</button>
+                  {locales.map((l) => (
+                    <button key={l} onClick={() => setLocale(l)} aria-pressed={locale === l} style={{
+                      padding: "0.375rem 0.75rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontFamily: T.font.body,
+                      fontWeight: locale === l ? 600 : 400,
+                      border: `1px solid ${locale === l ? T.color.terracotta : T.color.cream}`,
+                      background: locale === l ? `${T.color.terracotta}12` : T.color.white,
+                      color: locale === l ? T.color.terracotta : T.color.muted, cursor: "pointer",
+                      minHeight: "2.75rem",
+                    }}>{l.toUpperCase()}</button>
+                  ))}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <div style={{ marginRight: "auto" }}>
-                    <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, display: "block" }}>
-                      {t("accessibilityMode")}
-                    </span>
-                    <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>
-                      {t("accessibilityOn")}
-                    </span>
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, marginRight: "auto" }}>
+                    {t("accessibilityMode")}
+                  </span>
+                  <div style={{ display: "flex", gap: "0.125rem", background: T.color.warmStone, borderRadius: "0.5rem", padding: "0.125rem" }}>
+                    {(["standard", "comfortable", "large"] as const).map((lvl) => {
+                      const label = { standard: "S", comfortable: "M", large: "L" }[lvl];
+                      const isActive = scaleLevel === lvl;
+                      return (
+                        <button key={lvl} onClick={() => setScaleLevel(lvl)} aria-pressed={isActive} title={lvl} style={{
+                          padding: "0.25rem 0.5rem", borderRadius: "0.375rem", fontSize: "0.6875rem", fontFamily: T.font.body,
+                          fontWeight: isActive ? 700 : 500, border: "none", minHeight: "1.75rem",
+                          background: isActive ? T.color.sage : "transparent",
+                          color: isActive ? T.color.white : T.color.muted, cursor: "pointer",
+                          transition: "all 0.15s",
+                        }}>{label}</button>
+                      );
+                    })}
                   </div>
-                  <button
-                    role="switch"
-                    aria-checked={accessibilityMode}
-                    onClick={toggleAccessibility}
-                    style={{
-                      width: "2.75rem", height: "1.5rem", borderRadius: "0.75rem",
-                      border: `1px solid ${accessibilityMode ? T.color.sage : T.color.cream}`,
-                      background: accessibilityMode ? T.color.sage : T.color.warmStone,
-                      cursor: "pointer", position: "relative",
-                      transition: "background 0.2s, border-color 0.2s",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <span style={{
-                      position: "absolute", top: "0.125rem", left: accessibilityMode ? "1.375rem" : "0.125rem",
-                      width: "1.125rem", height: "1.125rem", borderRadius: "0.5625rem",
-                      background: T.color.white,
-                      boxShadow: "0 1px 3px rgba(0,0,0,.15)",
-                      transition: "left 0.2s",
-                    }} />
-                  </button>
                 </div>
                 {/* Daylight toggle */}
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -485,8 +475,8 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               userName={userName}
               locale={locale}
               setLocale={setLocale}
-              accessibilityMode={accessibilityMode}
-              toggleAccessibility={toggleAccessibility}
+              scaleLevel={scaleLevel}
+              setScaleLevel={setScaleLevel}
               daylightEnabled={daylightEnabled}
               daylightMode={daylightMode}
               customHour={customHour}
@@ -495,6 +485,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               setCustomHour={setCustomHour}
               t={t}
               onClose={() => { setUserMenuOpen(false); userBtnRef.current?.focus(); }}
+              handleSignOut={handleSignOut}
             />
           )}
         </div>
@@ -517,12 +508,12 @@ const USER_MENU_ITEMS = [
   { href: "/security", labelKey: "security", icon: "\u{1F6E1}\uFE0F" },
 ] as const;
 
-function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggleAccessibility, daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour, t, onClose }: {
+function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLevel, daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour, t, onClose, handleSignOut }: {
   userName: string;
   locale: Locale;
   setLocale: (l: Locale) => void;
-  accessibilityMode: boolean;
-  toggleAccessibility: () => void;
+  scaleLevel: "standard" | "comfortable" | "large";
+  setScaleLevel: (level: "standard" | "comfortable" | "large") => void;
   daylightEnabled: boolean;
   daylightMode: string;
   customHour: number;
@@ -531,10 +522,12 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
   setCustomHour: (h: number) => void;
   t: (key: string, params?: Record<string, string>) => string;
   onClose: () => void;
+  handleSignOut: () => void;
 }) {
   const menuListRef = useRef<HTMLDivElement>(null);
   const [focusIdx, setFocusIdx] = useState(-1);
   const { t: tl } = useTranslation("levels");
+  const setShowFamilyTree = useUIPanelStore((s) => s.setShowFamilyTree);
   const { totalPoints, getLevelInfo } = useTrackStore();
   const levelInfo = getLevelInfo();
 
@@ -641,28 +634,35 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
 
       {/* Menu items */}
       <div style={{ padding: "0.375rem" }}>
-        {USER_MENU_ITEMS.map((item, i) => (
-          <a
-            key={item.href}
-            href={item.href}
-            role="menuitem"
-            data-menu-item
-            tabIndex={-1}
-            onClick={onClose}
-            onMouseEnter={() => setFocusIdx(i)}
-            onFocus={() => setFocusIdx(i)}
-            style={{
-              ...itemBase,
-              ...(focusIdx === i ? {
-                background: `${T.color.terracotta}10`,
-                color: T.color.terracotta,
-              } : {}),
-            }}
-          >
-            <span style={{ fontSize: "1rem", width: "1.375rem", textAlign: "center", flexShrink: 0 }}>{item.icon}</span>
-            {t(item.labelKey)}
-          </a>
-        ))}
+        {USER_MENU_ITEMS.map((item, i) => {
+          const isFamilyTree = item.href === "/family-tree";
+          const Tag = isFamilyTree ? "button" : "a";
+          const extra = isFamilyTree
+            ? { onClick: () => { onClose(); setShowFamilyTree(true); } }
+            : { href: item.href, onClick: onClose };
+          return (
+            <Tag
+              key={item.href}
+              role="menuitem"
+              data-menu-item
+              tabIndex={-1}
+              onMouseEnter={() => setFocusIdx(i)}
+              onFocus={() => setFocusIdx(i)}
+              style={{
+                ...itemBase,
+                ...(isFamilyTree ? { textDecoration: "none", width: "100%", textAlign: "left" as const } : {}),
+                ...(focusIdx === i ? {
+                  background: `${T.color.terracotta}10`,
+                  color: T.color.terracotta,
+                } : {}),
+              }}
+              {...extra as any}
+            >
+              <span style={{ fontSize: "1rem", width: "1.375rem", textAlign: "center", flexShrink: 0 }}>{item.icon}</span>
+              {t(item.labelKey)}
+            </Tag>
+          );
+        })}
       </div>
 
       {/* Preferences section */}
@@ -685,7 +685,7 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
           }}>
             {t("language")}
           </span>
-          {(["en", "nl"] as Locale[]).map((l, li) => (
+          {locales.map((l, li) => (
             <button
               key={l}
               role="menuitem"
@@ -714,50 +714,33 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
           ))}
         </div>
 
-        {/* Accessibility toggle */}
+        {/* Text size selector */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <div style={{ marginRight: "auto" }}>
-            <span style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
-              display: "block",
-            }}>
-              {t("accessibilityMode")}
-            </span>
-            <span style={{
-              fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
-            }}>
-              {t("accessibilityOn")}
-            </span>
+          <span style={{
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
+            marginRight: "auto",
+          }}>
+            {t("accessibilityMode")}
+          </span>
+          <div style={{ display: "flex", gap: "0.125rem", background: T.color.warmStone, borderRadius: "0.5rem", padding: "0.125rem" }}>
+            {(["standard", "comfortable", "large"] as const).map((lvl) => {
+              const label = { standard: "S", comfortable: "M", large: "L" }[lvl];
+              const isActive = scaleLevel === lvl;
+              return (
+                <button key={lvl} onClick={() => setScaleLevel(lvl)} aria-pressed={isActive}
+                  data-menu-item tabIndex={-1} title={lvl}
+                  onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + 2)}
+                  onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + 2)}
+                  style={{
+                    padding: "0.25rem 0.625rem", borderRadius: "0.375rem", fontSize: "0.75rem", fontFamily: T.font.body,
+                    fontWeight: isActive ? 700 : 500, border: "none", minHeight: "1.75rem",
+                    background: isActive ? T.color.sage : "transparent",
+                    color: isActive ? T.color.white : T.color.muted, cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}>{label}</button>
+              );
+            })}
           </div>
-          <button
-            role="switch"
-            aria-checked={accessibilityMode}
-            data-menu-item
-            tabIndex={-1}
-            onClick={toggleAccessibility}
-            onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + 2)}
-            onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + 2)}
-            style={{
-              width: "2.75rem", height: "1.5rem", borderRadius: "0.75rem",
-              border: `1px solid ${accessibilityMode ? T.color.sage : T.color.cream}`,
-              background: accessibilityMode ? T.color.sage : T.color.warmStone,
-              cursor: "pointer", position: "relative",
-              transition: "background 0.2s, border-color 0.2s",
-              flexShrink: 0,
-              ...(focusIdx === USER_MENU_ITEMS.length + 2 ? {
-                outline: `2px solid ${T.color.terracotta}`,
-                outlineOffset: 1,
-              } : {}),
-            }}
-          >
-            <span style={{
-              position: "absolute", top: "0.125rem", left: accessibilityMode ? "1.375rem" : "0.125rem",
-              width: "1.125rem", height: "1.125rem", borderRadius: "0.5625rem",
-              background: T.color.white,
-              boxShadow: "0 1px 3px rgba(0,0,0,.15)",
-              transition: "left 0.2s",
-            }} />
-          </button>
         </div>
 
         {/* Daylight toggle */}
@@ -855,7 +838,7 @@ function DesktopUserMenu({ userName, locale, setLocale, accessibilityMode, toggl
           role="menuitem"
           data-menu-item
           tabIndex={-1}
-          onClick={() => { signOut(); onClose(); }}
+          onClick={() => { handleSignOut(); onClose(); }}
           onMouseEnter={() => setFocusIdx(totalItems - 1)}
           onFocus={() => setFocusIdx(totalItems - 1)}
           style={{
@@ -886,6 +869,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
   onSharingSettings?: () => void;
 }) {
   const { t: tc } = useTranslation("common");
+  const { t: tWings } = useTranslation("wings");
   const [wingsOpen, setWingsOpen] = useState(false);
   const [expandedWing, setExpandedWing] = useState<string | null>(null);
   const [sharedWingRoomsCache, setSharedWingRoomsCache] = useState<Record<string, { id: string; name: string; icon: string }[]>>({});
@@ -968,7 +952,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                     onMouseLeave={e => { if (activeWing !== w.id) e.currentTarget.style.background = "transparent"; }}
                   >
                     <span style={{ fontSize: "0.9375rem" }}>{w.icon}</span>
-                    {w.name}
+                    {translateWingName(w, tWings)}
                   </button>
                   {rooms.length > 0 && (
                     <button
@@ -1013,7 +997,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                         onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                       >
                         <span style={{ fontSize: "0.8125rem" }}>{r.icon}</span>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{translateRoomName(r, tWings)}</span>
                       </button>
                     ))}
                   </div>
@@ -1130,7 +1114,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                             onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                           >
                             <span style={{ fontSize: "0.8125rem" }}>{r.icon || "\u{1F4C1}"}</span>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</span>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{translateRoomName(r, tWings)}</span>
                           </button>
                         )) : (
                           <span style={{ padding: "0.375rem 0.625rem", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, fontStyle: "italic" }}>{tc("noRooms")}</span>

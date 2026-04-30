@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { setDaylightHour } from "@/lib/3d/daylightCycle";
 
@@ -158,12 +158,15 @@ export function DaylightProvider({ children }: { children: ReactNode }) {
     persistToDb(true, mode, customHour);
   }, [customHour, persistToDb]);
 
+  const dbTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setCustomHour = useCallback((hour: number) => {
     setCustomHourState(hour);
     setDaylightModeState("custom");
     setDaylightEnabled(true);
     saveLocal(true, "custom", hour);
-    persistToDb(true, "custom", hour);
+    // Debounce DB persistence — slider fires on every pixel
+    if (dbTimerRef.current) clearTimeout(dbTimerRef.current);
+    dbTimerRef.current = setTimeout(() => persistToDb(true, "custom", hour), 500);
   }, [persistToDb]);
 
   // Resolve the hour: if disabled → undefined (use default midday), if auto → system time, else → custom slider hour
@@ -176,16 +179,10 @@ export function DaylightProvider({ children }: { children: ReactNode }) {
     setDaylightHour(resolvedHour);
   }, [resolvedHour]);
 
+  const contextValue = useMemo(() => ({ daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour, resolvedHour }), [daylightEnabled, daylightMode, customHour, toggleDaylight, setDaylightMode, setCustomHour, resolvedHour]);
+
   return (
-    <DaylightContext.Provider value={{
-      daylightEnabled,
-      daylightMode,
-      customHour,
-      toggleDaylight,
-      setDaylightMode,
-      setCustomHour,
-      resolvedHour,
-    }}>
+    <DaylightContext.Provider value={contextValue}>
       {children}
     </DaylightContext.Provider>
   );

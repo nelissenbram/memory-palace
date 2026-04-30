@@ -2,14 +2,16 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
+import { serverError } from "@/lib/i18n/server-errors";
+import { serverT, getServerLocale } from "@/lib/i18n/server";
 
 // Map local room ID prefix to wing slug
 function wingSlugFromRoomId(localRoomId: string): string {
   const prefix = localRoomId.slice(0, 2);
   const map: Record<string, string> = {
-    fr: "family", tr: "travel", cr: "childhood", kr: "career", rr: "creativity",
+    ro: "roots", ne: "nest", cf: "craft", tv: "travel", pa: "passions", at: "attic",
   };
-  return map[prefix] || "family";
+  return map[prefix] || "roots";
 }
 
 // Resolve local room ID to DB UUID (reused from memory-actions pattern)
@@ -75,15 +77,16 @@ export async function fetchRoomShares(localRoomId: string) {
 
 export async function shareRoomWithEmail(localRoomId: string, email: string, permission: string = "view", inviteMessage?: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-  if (email.toLowerCase() === user.email?.toLowerCase()) return { error: "Cannot share with yourself" };
+  if (!user) return { error: t("notAuthenticated") };
+  if (email.toLowerCase() === user.email?.toLowerCase()) return { error: t("cannotShareWithYourself") };
 
   const dbRoomId = await resolveRoomId(supabase, user.id, localRoomId);
-  if (!dbRoomId) return { error: "Could not resolve room" };
+  if (!dbRoomId) return { error: t("couldNotResolveRoom") };
 
   // Check if already shared with this email
   const { data: existing } = await supabase
@@ -92,7 +95,7 @@ export async function shareRoomWithEmail(localRoomId: string, email: string, per
     .eq("room_id", dbRoomId)
     .eq("shared_with_email", email.toLowerCase())
     .single();
-  if (existing) return { error: "Already shared with this person" };
+  if (existing) return { error: t("alreadySharedWithThisPerson") };
 
   // Check if the invitee has an account — link their user ID if so
   const { data: inviteeProfile } = await supabase
@@ -127,11 +130,11 @@ export async function shareRoomWithEmail(localRoomId: string, email: string, per
 
 export async function removeRoomShare(shareId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   // Get the share to find room_id before deleting
   const { data: share } = await supabase
@@ -166,7 +169,7 @@ export async function removeRoomShare(shareId: string) {
 
 // ═══ WING-LEVEL SHARING ═══
 
-const VALID_WINGS = ["family", "travel", "childhood", "career", "creativity"];
+const VALID_WINGS = ["roots", "nest", "craft", "travel", "passions", "attic"];
 
 export async function shareWing(
   wingId: string,
@@ -180,21 +183,22 @@ export async function shareWing(
   }
 ) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
-  if (!VALID_WINGS.includes(wingId)) return { error: "Invalid wing" };
+  if (!VALID_WINGS.includes(wingId)) { const t = await serverError(); return { error: t("invalidWing") }; }
   if (!sharedWithEmail.trim() || !sharedWithEmail.includes("@")) {
-    return { error: "Valid email is required" };
+    return { error: t("validEmailRequired") };
   }
 
   const normalizedEmail = sharedWithEmail.trim().toLowerCase();
 
   if (normalizedEmail === user.email?.toLowerCase()) {
-    return { error: "You cannot share a wing with yourself" };
+    return { error: t("cannotShareWingWithYourself") };
   }
 
   // Verify the caller actually owns a wing with this slug
@@ -204,7 +208,7 @@ export async function shareWing(
     .eq("user_id", user.id)
     .eq("slug", wingId)
     .single();
-  if (!ownedWing) return { error: "Wing not found or not owned by you" };
+  if (!ownedWing) { const t = await serverError(); return { error: t("wingNotFoundOrNotOwned") }; }
 
   // Check if the invitee has an account — link their user ID if so
   const admin = createAdminClient();
@@ -222,7 +226,7 @@ export async function shareWing(
     .eq("owner_id", user.id)
     .eq("shared_with_email", normalizedEmail)
     .single();
-  if (existing) return { error: "Already shared with this person" };
+  if (existing) return { error: t("alreadySharedWithThisPerson") };
 
   const validPermission = ["view", "contribute"].includes(permission) ? permission : "view";
 
@@ -249,11 +253,11 @@ export async function shareWing(
 
 export async function unshareWing(shareId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const admin = createAdminClient();
   const { error } = await admin
@@ -284,6 +288,7 @@ export async function getMyWingShares() {
   if (!shares || shares.length === 0) return { shares: [] };
 
   // Resolve shared_with display names from profiles
+  const loc = await getServerLocale();
   const userIds = [...new Set(shares.map((s) => s.shared_with_id).filter(Boolean))];
   const nameMap: Record<string, string> = {};
   if (userIds.length > 0) {
@@ -292,13 +297,13 @@ export async function getMyWingShares() {
       .select("id, display_name, email")
       .in("id", userIds);
     (profiles || []).forEach((p: { id: string; display_name: string | null; email: string | null }) => {
-      nameMap[p.id] = p.display_name || p.email || "Unknown";
+      nameMap[p.id] = p.display_name || p.email || serverT("unknown", loc);
     });
   }
 
   const enrichedShares = shares.map((s) => ({
     ...s,
-    shared_with_name: s.shared_with_id ? (nameMap[s.shared_with_id] || s.shared_with_email || "Unknown") : (s.shared_with_email || "Unknown"),
+    shared_with_name: s.shared_with_id ? (nameMap[s.shared_with_id] || s.shared_with_email || serverT("unknown", loc)) : (s.shared_with_email || serverT("unknown", loc)),
   }));
 
   return { shares: enrichedShares };
@@ -323,6 +328,7 @@ export async function getWingsSharedWithMe() {
   if (!shares || shares.length === 0) return { shares: [] };
 
   // Resolve owner display names from profiles
+  const loc2 = await getServerLocale();
   const ownerIds = [...new Set(shares.map((s) => s.owner_id))];
   const nameMap: Record<string, string> = {};
   if (ownerIds.length > 0) {
@@ -331,13 +337,13 @@ export async function getWingsSharedWithMe() {
       .select("id, display_name")
       .in("id", ownerIds);
     (profiles || []).forEach((p: { id: string; display_name: string | null }) => {
-      nameMap[p.id] = p.display_name || "Someone";
+      nameMap[p.id] = p.display_name || serverT("someone", loc2);
     });
   }
 
   const enrichedShares = shares.map((s) => ({
     ...s,
-    owner_name: nameMap[s.owner_id] || "Someone",
+    owner_name: nameMap[s.owner_id] || serverT("someone", loc2),
   }));
 
   return { shares: enrichedShares };
@@ -345,11 +351,11 @@ export async function getWingsSharedWithMe() {
 
 export async function leaveWingShare(shareId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const admin = createAdminClient();
 
@@ -361,7 +367,7 @@ export async function leaveWingShare(shareId: string) {
     .eq("shared_with_id", user.id)
     .single();
 
-  if (!share) return { error: "Share not found or not authorized" };
+  if (!share) { const t = await serverError(); return { error: t("shareNotFoundOrNotAuthorized") }; }
 
   const { error } = await admin
     .from("wing_shares")
@@ -375,11 +381,11 @@ export async function leaveWingShare(shareId: string) {
 
 export async function leaveRoomShare(shareId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const admin = createAdminClient();
 
@@ -391,7 +397,7 @@ export async function leaveRoomShare(shareId: string) {
     .eq("shared_with_id", user.id)
     .single();
 
-  if (!share) return { error: "Share not found or not authorized" };
+  if (!share) { const t = await serverError(); return { error: t("shareNotFoundOrNotAuthorized") }; }
 
   const { error } = await admin
     .from("room_shares")
@@ -409,11 +415,11 @@ export async function updateSharePermissions(
   permissions: Partial<{ canAdd: boolean; canEdit: boolean; canDelete: boolean }>
 ) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const admin = createAdminClient();
 
@@ -425,7 +431,7 @@ export async function updateSharePermissions(
     .eq("owner_id", user.id)
     .single();
 
-  if (!share) return { error: "Share not found or not authorized" };
+  if (!share) { const t = await serverError(); return { error: t("shareNotFoundOrNotAuthorized") }; }
 
   const updatePayload: Record<string, boolean> = {};
   if (permissions.canAdd !== undefined) updatePayload.can_add = permissions.canAdd;
@@ -444,11 +450,11 @@ export async function updateSharePermissions(
 
 export async function getSharedWingData(shareId: string) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const admin = createAdminClient();
 
@@ -461,7 +467,7 @@ export async function getSharedWingData(shareId: string) {
     .eq("status", "accepted")
     .single();
 
-  if (!share) return { error: "Share not found or not accepted" };
+  if (!share) { const t = await serverError(); return { error: t("shareNotFoundOrNotAccepted") }; }
 
   // Fetch the owner's wing details using the slug + owner_id join
   const { data: wing } = await admin
@@ -471,7 +477,7 @@ export async function getSharedWingData(shareId: string) {
     .eq("user_id", share.owner_id)
     .single();
 
-  if (!wing) return { error: "Wing not found" };
+  if (!wing) { const t = await serverError(); return { error: t("wingNotFound") }; }
 
   // Fetch rooms for this wing
   const { data: rooms } = await admin
@@ -501,11 +507,11 @@ export async function getSharedRoomMemories(
   shareId: string
 ) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const admin = createAdminClient();
 
@@ -519,7 +525,7 @@ export async function getSharedRoomMemories(
       .eq("status", "accepted")
       .single();
 
-    if (!share) return { error: "Wing share not found or not accepted" };
+    if (!share) { const t = await serverError(); return { error: t("wingShareNotFoundOrNotAccepted") }; }
 
     // Verify the room belongs to the shared wing (join via slug + owner_id)
     const { data: wing } = await admin
@@ -529,7 +535,7 @@ export async function getSharedRoomMemories(
       .eq("user_id", share.owner_id)
       .single();
 
-    if (!wing) return { error: "Wing not found" };
+    if (!wing) { const t = await serverError(); return { error: t("wingNotFound") }; }
 
     const { data: room } = await admin
       .from("rooms")
@@ -538,7 +544,7 @@ export async function getSharedRoomMemories(
       .eq("wing_id", wing.id)
       .single();
 
-    if (!room) return { error: "Room does not belong to the shared wing" };
+    if (!room) { const t = await serverError(); return { error: t("roomDoesNotBelongToSharedWing") }; }
   } else {
     // Room-level share: verify the room_id matches the share
     const { data: share } = await admin
@@ -549,8 +555,8 @@ export async function getSharedRoomMemories(
       .eq("status", "accepted")
       .single();
 
-    if (!share) return { error: "Room share not found or not accepted" };
-    if (share.room_id !== roomId) return { error: "Room does not match the share" };
+    if (!share) { const t = await serverError(); return { error: t("roomShareNotFoundOrNotAccepted") }; }
+    if (share.room_id !== roomId) { const t = await serverError(); return { error: t("roomDoesNotMatchShare") }; }
   }
 
   // Fetch memories for the room
@@ -610,6 +616,7 @@ export async function getAllMyShares() {
   (receivedWings || []).forEach((s) => allUserIds.add(s.owner_id));
   (receivedRooms || []).forEach((s) => allUserIds.add(s.owner_id));
 
+  const loc3 = await getServerLocale();
   const nameMap: Record<string, string> = {};
   if (allUserIds.size > 0) {
     const { data: profiles } = await admin
@@ -617,7 +624,7 @@ export async function getAllMyShares() {
       .select("id, display_name, email")
       .in("id", Array.from(allUserIds));
     (profiles || []).forEach((p: { id: string; display_name: string | null; email: string | null }) => {
-      nameMap[p.id] = p.display_name || p.email || "Unknown";
+      nameMap[p.id] = p.display_name || p.email || serverT("unknown", loc3);
     });
   }
 
@@ -681,7 +688,7 @@ export async function getAllMyShares() {
         return {
           ...s,
           type: "wing" as const,
-          recipientName: s.shared_with_id ? (nameMap[s.shared_with_id] || s.shared_with_email || "Unknown") : (s.shared_with_email || "Unknown"),
+          recipientName: s.shared_with_id ? (nameMap[s.shared_with_id] || s.shared_with_email || serverT("unknown", loc3)) : (s.shared_with_email || serverT("unknown", loc3)),
           wingName: wd.name,
           wingIcon: wd.icon,
         };
@@ -693,8 +700,8 @@ export async function getAllMyShares() {
         return {
           ...s,
           type: "room" as const,
-          recipientName: s.shared_with_id ? (nameMap[s.shared_with_id] || s.shared_with_email || "Unknown") : (s.shared_with_email || "Unknown"),
-          roomName: ri ? roomDisplayName(ri.name) : "Unknown room",
+          recipientName: s.shared_with_id ? (nameMap[s.shared_with_id] || s.shared_with_email || serverT("unknown", loc3)) : (s.shared_with_email || serverT("unknown", loc3)),
+          roomName: ri ? roomDisplayName(ri.name) : serverT("unknownRoom", loc3),
           roomIcon: ri ? roomDisplayIcon(ri.name, ri.icon) : "",
           wingName: wd.name,
         };
@@ -706,7 +713,7 @@ export async function getAllMyShares() {
         return {
           ...s,
           type: "wing" as const,
-          ownerName: nameMap[s.owner_id] || "Someone",
+          ownerName: nameMap[s.owner_id] || serverT("someone", loc3),
           wingName: wd.name,
           wingIcon: wd.icon,
         };
@@ -718,8 +725,8 @@ export async function getAllMyShares() {
         return {
           ...s,
           type: "room" as const,
-          ownerName: nameMap[s.owner_id] || "Someone",
-          roomName: ri ? roomDisplayName(ri.name) : "Unknown room",
+          ownerName: nameMap[s.owner_id] || serverT("someone", loc3),
+          roomName: ri ? roomDisplayName(ri.name) : serverT("unknownRoom", loc3),
           roomIcon: ri ? roomDisplayIcon(ri.name, ri.icon) : "",
           placedInWingName: wd.name,
         };
@@ -730,14 +737,15 @@ export async function getAllMyShares() {
 
 export async function toggleRoomSharing(localRoomId: string, enabled: boolean) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { error: "Supabase not configured" };
+    { const t = await serverError(); return { error: t("supabaseNotConfigured") }; }
   }
   const supabase = await createClient();
+  const t = await serverError();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) return { error: t("notAuthenticated") };
 
   const dbRoomId = await resolveRoomId(supabase, user.id, localRoomId);
-  if (!dbRoomId) return { error: "Could not resolve room" };
+  if (!dbRoomId) return { error: t("couldNotResolveRoom") };
 
   await supabase.from("rooms").update({ is_shared: enabled }).eq("id", dbRoomId);
 

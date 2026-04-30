@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, lazy, Suspense } from "react";
+import { useState, lazy, Suspense, memo } from "react";
 import { T } from "@/lib/theme";
 import { isNative } from "@/lib/native/platform";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { signOut } from "@/lib/auth/actions";
+import { useSignOut } from "@/lib/hooks/useSignOut";
+import SignOutOverlay from "@/components/ui/SignOutOverlay";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import SettingsTutorial, { useSettingsTutorial } from "@/components/ui/SettingsTutorial";
@@ -69,9 +70,10 @@ const fallback = (
   </div>
 );
 
-export default function SettingsInline() {
+function SettingsInline() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const isMobile = useIsMobile();
+  const { signingOut, handleSignOut } = useSignOut();
   const { scale } = useAccessibility();
   const { t: tc } = useTranslation("common");
   const [tourOpen, setTourOpen] = useSettingsTutorial();
@@ -80,16 +82,23 @@ export default function SettingsInline() {
   const ActivePage = PAGE_MAP[activeTab];
 
   return (
+    <>
+    {signingOut && <SignOutOverlay />}
     <div style={{
-      width: "100%",
-      minHeight: "100dvh",
+      position: "fixed",
+      inset: 0,
+      overflowY: "auto",
+      WebkitOverflowScrolling: "touch",
+      paddingTop: isMobile ? undefined : "3.5rem",
       background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
       paddingBottom: isMobile ? "calc(4.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
+      zIndex: 1,
     }}>
       {/* Mobile: horizontal scrollable tab bar */}
       {isMobile ? (
         <div style={{ display: "flex", flexDirection: "column", maxWidth: 1100, margin: "0 auto" }}>
           <nav data-mp-settings-tabs aria-label={tc("settingsNavigation")} style={{
+            position: "sticky", top: 0, zIndex: 10,
             overflowX: "auto", whiteSpace: "nowrap",
             borderBottom: `1px solid ${T.color.cream}`,
             background: T.color.white,
@@ -126,7 +135,7 @@ export default function SettingsInline() {
               );
             })}
             <button
-              onClick={() => signOut()}
+              onClick={handleSignOut}
               style={{
                 display: "inline-flex", alignItems: "center", gap: "0.375rem",
                 minHeight: "2.75rem",
@@ -183,7 +192,7 @@ export default function SettingsInline() {
               })}
               <div style={{ flex: 1 }} />
               <button
-                onClick={() => signOut()}
+                onClick={handleSignOut}
                 style={{
                   display: "flex", alignItems: "center", gap: "0.625rem",
                   padding: "0.75rem 0.875rem", borderRadius: "0.625rem",
@@ -208,5 +217,8 @@ export default function SettingsInline() {
       )}
       <SettingsTutorial open={tourOpen} onClose={() => setTourOpen(false)} />
     </div>
+    </>
   );
 }
+
+export default memo(SettingsInline);

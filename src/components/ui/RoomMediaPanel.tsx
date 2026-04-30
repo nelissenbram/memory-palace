@@ -1,22 +1,27 @@
 "use client";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
-import { RoomIcon } from "@/components/ui/WingRoomIcons";
+import { translateWingName, translateRoomName } from "@/lib/constants/wings";
+import { RoomIcon, WingIcon } from "@/components/ui/WingRoomIcons";
 import RoomMediaPlayer from "@/components/ui/RoomMediaPlayer";
+import { useMemoryStore } from "@/lib/stores/memoryStore";
+import { useRoomStore } from "@/lib/stores/roomStore";
 
 // Library-system imports
 import { LibraryMemoryCard } from "@/components/ui/LibraryCards";
 import { LibraryStyles, LibraryEmptyState } from "@/components/ui/LibraryAnimations";
 import { LibrarySearch } from "@/components/ui/LibrarySearch";
 import { LibraryFilterBar } from "@/components/ui/LibrarySearch";
-import UploadPanel from "@/components/ui/UploadPanel";
 import ImportHub from "@/components/ui/ImportHub";
 import type { QueuedFile } from "@/components/ui/ImportHub";
+import CloudBrowser from "@/components/ui/CloudBrowser";
+import type { CloudItem } from "@/components/ui/CloudBrowser";
 import { ROOM_LAYOUTS } from "@/lib/3d/roomLayouts";
 
 // ─── Constants (kept from original) ──────────────────────────────────────────
@@ -110,6 +115,7 @@ function DisplayedPill({
   onUpdate,
   allMems,
   slotCounts,
+  isExhibition,
 }: {
   mem: Mem;
   accent: string;
@@ -117,12 +123,17 @@ function DisplayedPill({
   onUpdate: (memId: string, updates: Partial<Mem>) => void;
   allMems: Mem[];
   slotCounts?: Record<string, number>;
+  isExhibition?: boolean;
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const nType = normalizeType(mem);
-  const units = DISPLAY_UNITS[nType] || [];
+  const allUnits = DISPLAY_UNITS[nType] || [];
+  // In exhibition mode, only painting + screen slots are available
+  const units = isExhibition
+    ? allUnits.filter(u => u.key === "painting" || u.key === "screen")
+    : allUnits;
   const currentUnit = mem.displayUnit || null;
   const isDisplayed = mem.displayed !== false && !!currentUnit;
 
@@ -213,7 +224,7 @@ function DisplayedPill({
             }}
           >
             {units.map((unit) => {
-              const limit = ROOM_SLOT_COUNTS[unit.slotType] || 1;
+              const limit = (slotCounts || ROOM_SLOT_COUNTS)[unit.slotType] || 1;
               const count = slotOccupancy[unit.slotType] || 0;
               const isActive = currentUnit === unit.key;
               return (
@@ -410,12 +421,15 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   const isMobile = useIsMobile();
   const { t } = useTranslation("roomMedia");
   const { t: tLib } = useTranslation("library");
+  const { t: tLayout } = useTranslation("roomLayouts");
+  const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
   const accent = wing?.accent || T.color.terracotta;
 
   const [activeTab, setActiveTab] = useState<"library" | "gallery">(initialTab);
-  const [showUploadPanel, setShowUploadPanel] = useState(false);
+  // Upload panel removed — Import Hub handles both import and upload
   const [showImportHub, setShowImportHub] = useState(false);
+  const [cloudBrowserProvider, setCloudBrowserProvider] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "alpha" | "type">("newest");
@@ -425,6 +439,11 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lastConsumedMemId = useRef<string | null>(null);
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
+  const [movingMem, setMovingMem] = useState<Mem | null>(null);
+  const [expandedMoveWing, setExpandedMoveWing] = useState<string | null>(null);
+  const [movedToast, setMovedToast] = useState(false);
+  const { moveMemory } = useMemoryStore();
+  const { getWings, getWingRooms } = useRoomStore();
 
   // ── Exhibition-aware furniture slots ──
   const currentLayout = useMemo(() => {
@@ -459,24 +478,107 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
     onDelete(memId);
   }, [onDelete, t]);
 
+  // Helper: read file as data URL with timeout (prevents Samsung browser hangs)
+  const readFileWithTimeout = useCallback((file: File, timeoutMs: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      const timer = setTimeout(() => { reader.abort(); reject(new Error("FileReader timeout")); }, timeoutMs);
+      reader.onload = () => { clearTimeout(timer); resolve(reader.result as string); };
+      reader.onerror = () => { clearTimeout(timer); reject(reader.error); };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const addMemory = useMemoryStore((s) => s.addMemory);
+
   const handleImportFiles = useCallback(async (files: QueuedFile[]) => {
-    for (const f of files) {
-      const mem: Mem = {
-        id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        title: f.name || "Imported",
+    const targetRoom = room?.id;
+    if (!targetRoom) return;
+    for (const item of files) {
+      const isVideo = (item.type || "").startsWith("video/") || /\.(mp4|mov|webm|3gp)$/i.test(item.name);
+      const isAudio = (item.type || "").startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg)$/i.test(item.name);
+      const isImage = !isVideo && !isAudio;
+      let dataUrl = item.url || "";
+      let directFilePath: string | null = null;
+      let directStorageBackend: string | null = null;
+
+      if (item.file) {
+        try {
+          if ((isVideo || isAudio) && item.file.size > 0) {
+            const formData = new FormData();
+            formData.append("file", item.file, item.name);
+            formData.append("bucket", "memories");
+            const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              dataUrl = uploadData.url;
+              directFilePath = uploadData.path;
+              directStorageBackend = uploadData.storageBackend;
+            } else {
+              dataUrl = await readFileWithTimeout(item.file, 15000);
+            }
+          } else if (isImage && item.file.size > 2 * 1024 * 1024) {
+            try {
+              dataUrl = await new Promise<string>((resolve, reject) => {
+                const img = new window.Image();
+                const blobUrl = URL.createObjectURL(item.file!);
+                img.onload = () => {
+                  try {
+                    const maxDim = 1600;
+                    let w = img.naturalWidth, h = img.naturalHeight;
+                    if (w > maxDim || h > maxDim) {
+                      const ratio = Math.min(maxDim / w, maxDim / h);
+                      w = Math.round(w * ratio); h = Math.round(h * ratio);
+                    }
+                    const canvas = document.createElement("canvas");
+                    canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) { reject(new Error("no canvas")); return; }
+                    ctx.drawImage(img, 0, 0, w, h);
+                    resolve(canvas.toDataURL("image/jpeg", 0.82));
+                  } finally { URL.revokeObjectURL(blobUrl); }
+                };
+                img.onerror = () => { URL.revokeObjectURL(blobUrl); reject(new Error("img load")); };
+                img.src = blobUrl;
+              });
+            } catch {
+              dataUrl = await readFileWithTimeout(item.file, 15000);
+            }
+          } else {
+            dataUrl = await readFileWithTimeout(item.file, 15000);
+          }
+        } catch {
+          if (item.file) {
+            try {
+              const formData = new FormData();
+              formData.append("file", item.file, item.name);
+              formData.append("bucket", "memories");
+              const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+              if (uploadRes.ok) {
+                const uploadData = await uploadRes.json();
+                dataUrl = uploadData.url;
+                directFilePath = uploadData.path;
+                directStorageBackend = uploadData.storageBackend;
+              }
+            } catch { /* give up */ }
+          }
+        }
+      } else if (item.previewUrl) {
+        dataUrl = item.previewUrl;
+      }
+      await addMemory(targetRoom, {
+        id: `import-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        title: item.name,
+        hue: Math.floor(Math.random() * 360), s: 50, l: 70,
+        type: isVideo ? "video" : isAudio ? "audio" : "photo",
+        dataUrl,
         desc: "",
-        type: f.type?.startsWith("video") ? "video" : f.type?.startsWith("audio") ? "audio" : "photo",
-        hue: Math.floor(Math.random() * 360),
-        s: 50,
-        l: 50,
-        displayed: false,
         createdAt: new Date().toISOString(),
-        dataUrl: f.previewUrl || "",
-      } as Mem;
-      onAdd(mem);
+        ...(directFilePath ? { _filePath: directFilePath, _storageBackend: directStorageBackend } : {}),
+      } as Mem);
     }
     setShowImportHub(false);
-  }, [onAdd]);
+  }, [room, addMemory, readFileWithTimeout]);
 
   // ─── Derived data ───────────────────────────────────────────────────────────
   // Normalize display types to match Library — painting→photo, voice→interview
@@ -577,10 +679,19 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   const handleMoveSelected = useCallback(() => {
     const firstId = Array.from(selectedIds)[0];
     const mem = mems.find(m => m.id === firstId);
-    if (mem && onSelect) onSelect(mem);
+    if (mem) setMovingMem(mem);
     setSelectedIds(new Set());
     setSelectMode(false);
-  }, [selectedIds, mems, onSelect]);
+  }, [selectedIds, mems]);
+
+  const handleMoveToRoom = useCallback((targetRoomId: string) => {
+    if (!movingMem || !room) return;
+    moveMemory(room.id, targetRoomId, movingMem.id);
+    setMovingMem(null);
+    setExpandedMoveWing(null);
+    setMovedToast(true);
+    setTimeout(() => setMovedToast(false), 2200);
+  }, [movingMem, room, moveMemory]);
 
   // ─── Styles ────────────────────────────────────────────────────────────────
   const panelW = isMobile ? "100%" : "min(27.5rem, 92vw)";
@@ -591,8 +702,8 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   return (
     <div
       role="button" tabIndex={0}
-      onClick={onClose}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } }}
+      onClick={() => { if (!showImportHub && !cloudBrowserProvider) onClose(); }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (!showImportHub && !cloudBrowserProvider) onClose(); } }}
       style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(0.5rem)", zIndex: 55, animation: "fadeIn .2s ease" }}
     >
       <LibraryStyles />
@@ -692,7 +803,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
           isMobile={isMobile}
         />
 
-        {/* ─── Import button + sort ─── */}
+        {/* ─── Import / Upload button + sort ─── */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <button onClick={() => setShowImportHub(true)} style={{
             display: "inline-flex", alignItems: "center", gap: "0.375rem",
@@ -878,7 +989,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     accent={accent}
                     onClick={() => selectMode ? toggleSelect(mem.id) : setMediaPlayerMemId(mem.id)}
                     animationIndex={i}
-                    onMove={onSelect ? () => onSelect(mem) : undefined}
+                    onMove={() => setMovingMem(mem)}
                     searchQuery={searchQuery}
                   />
                   <DisplayedPill
@@ -888,6 +999,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     onUpdate={onUpdate}
                     allMems={mems}
                     slotCounts={activeSlotCounts}
+                    isExhibition={isExhibition}
                   />
                 </div>
               ))}
@@ -913,7 +1025,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 </svg>
                 {t("roomType")}
               </span>
-              {[{ id: "", name: "Auto" }, ...ROOM_LAYOUTS].map(l => {
+              {[{ id: "", name: "Auto", nameKey: "" }, ...ROOM_LAYOUTS].map(l => {
                 const isActive = (roomLayout || "") === l.id;
                 return (
                   <button
@@ -935,7 +1047,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                       letterSpacing: "0.01em",
                     }}
                   >
-                    {l.id === "peristylium" ? "\uD83C\uDFDB\uFE0F " : ""}{l.name}
+                    {l.id ? tLayout(l.id) : tLayout("auto")}
                   </button>
                 );
               })}
@@ -948,7 +1060,6 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
             gridTemplateColumns: "1fr 1fr",
             gap: "0.75rem",
             width: "100%",
-            overflow: "hidden",
           }}>
             {(() => {
               // For exhibition mode, expand painting into 20 individual slots + 1 screen
@@ -966,9 +1077,24 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
               return galleryItems;
             })().map((slot) => {
               const allAssigned = mems.filter(m => m.displayed !== false && m.displayUnit === slot.unitKey);
-              // For exhibition individual slots, match by displayOrder; otherwise show first
+              // For exhibition individual slots, match by displayOrder; fallback to next unplaced mem
               const firstMem = isExhibition
-                ? allAssigned.find(m => m.displayOrder === slot.slotIdx) || null
+                ? allAssigned.find(m => m.displayOrder === slot.slotIdx)
+                  || (slot.slotIdx === 0 ? null : null) // exact match only for numbered slots
+                  || (() => {
+                    // Find mems assigned to painting but without a specific displayOrder
+                    const placedOrders = new Set(allAssigned.filter(m => m.displayOrder !== undefined && m.displayOrder !== null).map(m => m.displayOrder));
+                    const unplaced = allAssigned.filter(m => m.displayOrder === undefined || m.displayOrder === null);
+                    // Assign unplaced mems to empty slots sequentially
+                    let unplacedIdx = 0;
+                    for (let s = 0; s < 20; s++) {
+                      if (!placedOrders.has(s)) {
+                        if (s === slot.slotIdx) return unplaced[unplacedIdx] || null;
+                        unplacedIdx++;
+                      }
+                    }
+                    return null;
+                  })()
                 : allAssigned[0] || null;
               const isPicking = pickingSlot === slot.key;
               const slotLabel = isExhibition && slot.unitKey === "painting"
@@ -1091,7 +1217,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
             const slotLabel = exhibitionMatch
               ? (exhibitionMatch[1] === "painting" ? `${t("painting")} ${slotIdx + 1}` : t("screen"))
               : (slot.key === "album" ? t("tableAlbum") : t(slot.key));
-            return (
+            return createPortal(
               <div
                 onClick={() => setPickingSlot(null)}
                 style={{
@@ -1224,31 +1350,63 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                   </div>
                 </div>
               </div>
-            );
+            , document.body);
           })()}
         </>}
 
       </div>
 
-      {/* ─── UPLOAD PANEL (overlay) ─── */}
-      {showUploadPanel && (
-        <UploadPanel
-          wing={wing}
-          room={room}
-          onClose={() => setShowUploadPanel(false)}
-          onAdd={(mem) => { onAdd(mem); setShowUploadPanel(false); }}
-          roomMemories={mems}
-          onUpdateMemory={onUpdate}
-        />
-      )}
+      {/* Upload removed — Import Hub handles both import and upload */}
 
       {/* ─── IMPORT HUB (overlay) ─── */}
       {showImportHub && (
         <ImportHub
           onClose={() => setShowImportHub(false)}
           onImportFiles={handleImportFiles}
-          onOpenCloudProvider={() => {}}
+          onOpenCloudProvider={(provider) => { setShowImportHub(false); setCloudBrowserProvider(provider); }}
           initialRoomId={room?.id}
+        />
+      )}
+
+      {cloudBrowserProvider && (
+        <CloudBrowser
+          provider={cloudBrowserProvider}
+          onClose={() => setCloudBrowserProvider(null)}
+          onImport={async (cloudItems: CloudItem[]) => {
+            const targetRoom = room?.id;
+            if (!targetRoom || cloudItems.length === 0) return;
+            const provider = cloudItems[0].provider;
+            const endpointMap: Record<string, string> = {
+              dropbox: "/api/integrations/dropbox/import",
+              googlePhotos: "/api/integrations/google/import",
+              onedrive: "/api/integrations/onedrive/import",
+              box: "/api/integrations/box/import",
+            };
+            const endpoint = endpointMap[provider];
+            if (endpoint) {
+              let body: Record<string, unknown>;
+              if (provider === "dropbox") {
+                body = { filePaths: cloudItems.map((i) => i.path || i.id), roomId: targetRoom };
+              } else if (provider === "googlePhotos") {
+                body = { photoIds: cloudItems.map((i) => i.id), roomId: targetRoom };
+              } else if (provider === "onedrive") {
+                body = { itemIds: cloudItems.map((i) => i.id), roomId: targetRoom };
+              } else {
+                body = { fileIds: cloudItems.map((i) => i.id), roomId: targetRoom };
+              }
+              try {
+                const res = await fetch(endpoint, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(body),
+                });
+                if (res.ok) {
+                  await useMemoryStore.getState().fetchRoomMemories(targetRoom);
+                }
+              } catch { /* ignore */ }
+            }
+            setCloudBrowserProvider(null);
+          }}
         />
       )}
 
@@ -1263,7 +1421,115 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
               setMediaPlayerMemId(null);
               onSelect?.(mem);
             }}
+            onUpdate={onUpdate}
           />
+        </div>
+      )}
+
+      {/* ─── MOVE-TO-ROOM DIALOG ─── */}
+      {movingMem && (
+        <div
+          onClick={() => { setMovingMem(null); setExpandedMoveWing(null); }}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(44,44,42,.35)",
+            backdropFilter: "blur(0.75rem)",
+            WebkitBackdropFilter: "blur(0.75rem)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            animation: "fadeIn 0.2s ease both",
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "rgba(255,255,255,.96)",
+              backdropFilter: "blur(1.5rem) saturate(1.4)",
+              WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
+              borderRadius: "1.25rem",
+              boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18), 0 0.5rem 1.25rem rgba(44,44,42,.08)",
+              border: `0.0625rem solid ${T.color.cream}`,
+              width: "min(26rem, 90vw)",
+              maxHeight: "min(32rem, 80vh)",
+              display: "flex", flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${T.color.cream}`, flexShrink: 0 }}>
+              <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+                {t("moveTo")}
+              </h3>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
+                <strong>{movingMem.title}</strong>
+              </p>
+            </div>
+            <div style={{ flex: 1, overflow: "auto", padding: "0.75rem 0" }}>
+              {getWings().map(w => {
+                const wRooms = getWingRooms(w.id);
+                const isExpanded = expandedMoveWing === w.id;
+                return (
+                  <div key={w.id}>
+                    <button
+                      onClick={() => setExpandedMoveWing(isExpanded ? null : w.id)}
+                      style={{
+                        width: "100%", padding: "0.625rem 1.5rem",
+                        background: isExpanded ? `${w.accent}0A` : "transparent",
+                        border: "none", cursor: "pointer",
+                        display: "flex", alignItems: "center", gap: "0.625rem",
+                        fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                        color: T.color.charcoal,
+                      }}
+                    >
+                      <WingIcon wingId={w.id} size={18} color={w.accent} />
+                      <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(w, tWings)}</span>
+                      <span style={{ fontSize: "0.6875rem", color: T.color.muted, fontWeight: 400 }}>{wRooms.length}</span>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round"
+                        style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease", flexShrink: 0 }}>
+                        <path d="M4 2l4 4-4 4" />
+                      </svg>
+                    </button>
+                    {isExpanded && wRooms.map(r => {
+                      const isCurrent = r.id === room?.id;
+                      return (
+                        <button key={r.id}
+                          onClick={() => { if (!isCurrent) handleMoveToRoom(r.id); }}
+                          disabled={isCurrent}
+                          style={{
+                            width: "100%", padding: "0.5rem 1.5rem 0.5rem 3.25rem",
+                            background: isCurrent ? `${w.accent}08` : "transparent",
+                            border: "none", cursor: isCurrent ? "default" : "pointer",
+                            display: "flex", alignItems: "center", gap: "0.5rem",
+                            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 400,
+                            color: isCurrent ? T.color.muted : T.color.walnut,
+                            opacity: isCurrent ? 0.6 : 1,
+                          }}
+                          onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = `${w.accent}12`; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = isCurrent ? `${w.accent}08` : "transparent"; }}
+                        >
+                          <RoomIcon roomId={r.id} size={15} color={w.accent} />
+                          <span style={{ flex: 1, textAlign: "left" }}>{translateRoomName(r, tWings)}</span>
+                          {isCurrent && <span style={{ fontSize: "0.625rem", fontWeight: 500, color: w.accent, textTransform: "uppercase" as const }}>{t("currentRoom")}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── MOVED TOAST ─── */}
+      {movedToast && (
+        <div style={{
+          position: "fixed", bottom: "6rem", left: "50%", transform: "translateX(-50%)",
+          background: `${T.color.charcoal}f0`, color: "#fff",
+          padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
+          boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,0.3)",
+          zIndex: 10000, animation: "fadeIn 0.2s ease both",
+        }}>
+          {t("memoryMoved")}
         </div>
       )}
     </div>

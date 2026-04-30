@@ -33,9 +33,10 @@ export default function SearchBar({query,filterType,totalCount,filteredCount,acc
           value={query}
           onChange={e=>onQueryChange(e.target.value)}
           placeholder={t("placeholder")}
+          aria-label={t("placeholder")}
           style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:isMobile?"1rem":"0.75rem",color:T.color.charcoal,outline:"none",padding:isMobile?"0.375rem 0":"0.25rem 0"}}
         />
-        {isFiltering&&<button onClick={()=>{onQueryChange("");onFilterChange(null);}} aria-label={t("clearFilter")} style={{background:"none",border:"none",color:T.color.muted,fontSize:"0.75rem",cursor:"pointer",padding:"0.125rem 0.25rem"}}>✕</button>}
+        {isFiltering&&<button onClick={()=>{onQueryChange("");onFilterChange(null);}} aria-label={t("clearFilter")} style={{background:"none",border:"none",color:T.color.muted,fontSize:"0.75rem",cursor:"pointer",padding:"0.125rem 0.25rem",minWidth:"2.75rem",minHeight:"2.75rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>}
       </div>
 
       {/* Type filter pills */}
@@ -47,7 +48,7 @@ export default function SearchBar({query,filterType,totalCount,filteredCount,acc
               style={{padding:isMobile?"0.5rem 0.75rem":"0.25rem 0.625rem",borderRadius:"1rem",border:active?`1.5px solid ${color}`:`1px solid ${T.color.cream}`,
                 background:active?`${color}15`:`${T.color.white}cc`,backdropFilter:"blur(8px)",
                 fontFamily:T.font.body,fontSize:isMobile?"0.75rem":"0.625rem",color:active?color:T.color.muted,
-                cursor:"pointer",display:"flex",alignItems:"center",gap:isMobile?"0.3125rem":"0.1875rem",transition:"all .15s",minHeight:isMobile?"2.25rem":undefined}}>
+                cursor:"pointer",display:"flex",alignItems:"center",gap:isMobile?"0.3125rem":"0.1875rem",transition:"all .15s",minHeight:isMobile?"2.75rem":undefined}}>
               <span style={{fontSize:isMobile?"0.8125rem":"0.625rem"}}>{icon}</span>{t(labelKey)}
             </button>
           );

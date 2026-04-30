@@ -4,6 +4,7 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { getPendingInvites, acceptInvite, acceptWingInvite, declineInvite } from "@/lib/auth/invite-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 
 interface PendingInvite {
@@ -82,7 +83,7 @@ export default function InviteNotificationsPanel({ onClose, onNavigateToRoom }: 
     const days = Math.floor(hours / 24);
     if (days === 1) return t("yesterday");
     if (days < 7) return t("daysAgo", { count: String(days) });
-    return new Date(dateStr).toLocaleDateString(locale === "nl" ? "nl-NL" : "en-US", { month: "short", day: "numeric" });
+    return new Date(dateStr).toLocaleDateString(localeDateCodes[locale as Locale], { month: "short", day: "numeric" });
   };
 
   return (

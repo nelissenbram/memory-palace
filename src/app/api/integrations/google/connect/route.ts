@@ -20,7 +20,7 @@ export async function GET() {
     const codeChallenge = computeCodeChallenge(codeVerifier);
     const redirectUri = `${getBaseUrl()}/api/integrations/google/callback`;
     const scopes = [
-      "https://www.googleapis.com/auth/photoslibrary.readonly",
+      "https://www.googleapis.com/auth/photospicker.mediaitems.readonly",
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile",
     ];
@@ -31,7 +31,7 @@ export async function GET() {
       response_type: "code",
       scope: scopes.join(" "),
       access_type: "offline",
-      prompt: "consent",
+      prompt: "select_account consent",
       state,
       code_challenge: codeChallenge,
       code_challenge_method: "S256",

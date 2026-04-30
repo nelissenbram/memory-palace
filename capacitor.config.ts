@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.memorypalace.app',
+  appId: 'ai.thememorypalace.app',
   appName: 'The Memory Palace',
   webDir: 'out',
   server: {

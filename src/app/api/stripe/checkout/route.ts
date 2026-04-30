@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
-import { PLANS, type PlanId } from "@/lib/constants/plans";
+import { PLANS, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 
 function getStripe() {
@@ -26,14 +26,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
     }
 
-    const { plan } = (await req.json()) as { plan: PlanId };
+    const { plan, interval = "annual" } = (await req.json()) as {
+      plan: PlanId;
+      interval?: BillingInterval;
+    };
 
     if (!plan || !PLANS[plan] || plan === "free") {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
     const planDef = PLANS[plan];
-    if (!planDef.stripePriceId) {
+    const priceId =
+      interval === "monthly"
+        ? planDef.monthlyStripePriceId
+        : planDef.stripePriceId;
+
+    if (!priceId) {
       return NextResponse.json({ error: "Plan has no price configured" }, { status: 400 });
     }
 
@@ -57,19 +65,25 @@ export async function POST(req: NextRequest) {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
+    // Only apply trial for new customers (no existing stripe_customer_id)
+    const trialDays =
+      planDef.trial && !subscription?.stripe_customer_id
+        ? planDef.trial
+        : undefined;
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       line_items: [
         {
-          price: planDef.stripePriceId.trim(),
+          price: priceId.trim(),
           quantity: 1,
         },
       ],
-      subscription_data: planDef.trial
-        ? { trial_period_days: planDef.trial }
-        : undefined,
+      subscription_data: trialDays
+        ? { trial_period_days: trialDays }
+        : {},
       metadata: {
         user_id: user.id,
         plan: plan,

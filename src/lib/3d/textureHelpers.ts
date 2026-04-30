@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { Mem } from "@/lib/constants/defaults";
+import { getQuality } from "./mobilePerf";
 
 function isMemLocked(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }): boolean {
   if (!('revealDate' in m) || !m.revealDate) return false;
@@ -8,7 +9,8 @@ function isMemLocked(m: Mem | { hue?: number; s?: number; l?: number; title: str
 }
 
 function paintLockedTex(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }) {
-  const c = document.createElement("canvas"); c.width = 512; c.height = 384;
+  const Q = getQuality();
+  const c = document.createElement("canvas"); c.width = Q.paintingResWidth; c.height = Q.paintingResHeight;
   const ctx = c.getContext("2d")!, w = 512, h = 384;
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const baseHue = m.hue || 200;
@@ -47,11 +49,12 @@ function paintLockedTex(m: Mem | { hue?: number; s?: number; l?: number; title: 
   return tex;
 }
 
-export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }) {
+export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title: string; dataUrl?: string | null; revealDate?: string }, signal?: AbortSignal) {
   // If this is a locked time capsule, render the locked appearance
   if (isMemLocked(m)) return paintLockedTex(m);
 
-  const c = document.createElement("canvas"); c.width = 512; c.height = 384;
+  const Q = getQuality();
+  const c = document.createElement("canvas"); c.width = Q.paintingResWidth; c.height = Q.paintingResHeight;
   const ctx = c.getContext("2d")!, w = 512, h = 384;
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
   const baseHue = m.hue || 200, baseS = m.s || 30, baseL = m.l || 65;
@@ -83,20 +86,27 @@ export function paintTex(m: Mem | { hue?: number; s?: number; l?: number; title:
       ctx.fillStyle = v2; ctx.fillRect(0, 0, w, h);
       tex.needsUpdate = true;
     };
-    // Fetch as blob via ?stream=1 to avoid cross-origin redirect (tainted canvas blocks WebGL)
-    const streamUrl = m.dataUrl.startsWith("/api/media/")
-      ? m.dataUrl + (m.dataUrl.includes("?") ? "&" : "?") + "stream=1"
-      : m.dataUrl;
-    fetch(streamUrl, { credentials: "same-origin" })
-      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
-      .then(blob => {
-        const objUrl = URL.createObjectURL(blob);
-        const img = new Image();
-        img.onload = () => { drawImg(img); URL.revokeObjectURL(objUrl); };
-        img.onerror = () => URL.revokeObjectURL(objUrl);
-        img.src = objUrl;
-      })
-      .catch(() => {});
+    // Data URIs and blob URLs: load directly (fetch+blob would taint or fail)
+    if (m.dataUrl.startsWith("data:") || m.dataUrl.startsWith("blob:")) {
+      const img = new Image();
+      img.onload = () => drawImg(img);
+      img.src = m.dataUrl;
+    } else {
+      // Fetch as blob via ?stream=1 to avoid cross-origin redirect (tainted canvas blocks WebGL)
+      const streamUrl = m.dataUrl.startsWith("/api/media/")
+        ? m.dataUrl + (m.dataUrl.includes("?") ? "&" : "?") + "stream=1"
+        : m.dataUrl;
+      fetch(streamUrl, { credentials: "same-origin", signal })
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.blob(); })
+        .then(blob => {
+          const objUrl = URL.createObjectURL(blob);
+          const img = new Image();
+          img.onload = () => { drawImg(img); URL.revokeObjectURL(objUrl); };
+          img.onerror = () => URL.revokeObjectURL(objUrl);
+          img.src = objUrl;
+        })
+        .catch(() => {});
+    }
   }
   return tex;
 }

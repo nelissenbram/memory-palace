@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 
 // ── Provider definitions ──
@@ -80,7 +81,6 @@ const PROVIDERS: ProviderDef[] = [
     accentColor: "#4285F4",
     connectUrl: "/api/integrations/google/connect",
     browseType: "photos",
-    comingSoon: true,
   },
   {
     id: "dropbox",
@@ -99,26 +99,6 @@ const PROVIDERS: ProviderDef[] = [
     accentColor: "#0078D4",
     connectUrl: "/api/integrations/onedrive/connect",
     browseType: "files",
-  },
-  {
-    id: "box",
-    name: "Box",
-    descKey: "boxDesc",
-    iconKey: "folder",
-    accentColor: "#0061D5",
-    connectUrl: "/api/integrations/box/connect",
-    browseType: "files",
-    comingSoon: true,
-  },
-  {
-    id: "apple_photos",
-    name: "Apple Photos",
-    descKey: "applePhotosDesc",
-    iconKey: "apple",
-    accentColor: "#999999",
-    connectUrl: "",
-    browseType: "photos",
-    comingSoon: true,
   },
 ];
 
@@ -149,7 +129,6 @@ function ConnectionsContent() {
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [appleGuide, setAppleGuide] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState<string | null>(null);
 
   const fetchAccounts = useCallback(async () => {
@@ -272,7 +251,6 @@ function ConnectionsContent() {
           {PROVIDERS.map((provider) => {
             const account = connectedMap.get(provider.id);
             const isConnected = !!account;
-            const isApple = provider.id === "apple_photos";
             const isComingSoon = !!provider.comingSoon;
 
             return (
@@ -360,21 +338,7 @@ function ConnectionsContent() {
 
                   {/* Action button */}
                   <div style={{ flexShrink: 0 }}>
-                    {isApple ? (
-                      <button
-                        onClick={() => setAppleGuide(!appleGuide)}
-                        style={{
-                          padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
-                          border: `1px solid ${T.color.cream}`,
-                          background: T.color.warmStone,
-                          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-                          color: T.color.charcoal, cursor: "pointer",
-                          transition: "all .15s", minHeight: "2.75rem",
-                        }}
-                      >
-                        {appleGuide ? t("hideGuide") : t("viewGuide")}
-                      </button>
-                    ) : isConnected ? (
+                    {isConnected ? (
                       <button
                         onClick={() => setConfirmDisconnect(provider.id)}
                         disabled={disconnecting === provider.id}
@@ -410,15 +374,6 @@ function ConnectionsContent() {
                   </div>
                 </div>
 
-                {/* Apple Photos guide (expanded) */}
-                {isApple && appleGuide && (
-                  <div style={{
-                    marginTop: "1rem", paddingTop: "1rem",
-                    borderTop: `1px solid ${T.color.cream}`,
-                  }}>
-                    <ApplePhotosGuide />
-                  </div>
-                )}
               </div>
             );
           })}
@@ -436,6 +391,22 @@ function ConnectionsContent() {
           margin: 0, lineHeight: 1.5,
         }}>
           {t("privacyNote")}
+        </p>
+      </div>
+
+      {/* Apple Photos note */}
+      <div style={{
+        marginTop: "1rem", padding: "1rem 1.25rem", borderRadius: "0.75rem",
+        background: T.color.warmStone,
+        border: `1px solid ${T.color.cream}`,
+        display: "flex", alignItems: "center", gap: "0.875rem",
+      }}>
+        <ProviderIcon name="apple" color={T.color.muted} size={22} />
+        <p style={{
+          fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut,
+          margin: 0, lineHeight: 1.5,
+        }}>
+          {t("applePhotosNote")}
         </p>
       </div>
 
@@ -457,50 +428,6 @@ function ConnectionsContent() {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
-    </div>
-  );
-}
-
-// ── Apple Photos guide sub-component ──
-function ApplePhotosGuide() {
-  const { t } = useTranslation("connections");
-  const [platform, setPlatform] = useState<"mac" | "iphone" | "icloud">("mac");
-
-  const guides: Record<string, { titleKey: string; stepsKey: string }> = {
-    mac: { titleKey: "appleFromMac", stepsKey: "appleMacSteps" },
-    iphone: { titleKey: "appleFromIphone", stepsKey: "appleIphoneSteps" },
-    icloud: { titleKey: "appleFromIcloud", stepsKey: "appleIcloudSteps" },
-  };
-
-  const guide = guides[platform];
-  const steps = t(guide.stepsKey).split("|");
-
-  return (
-    <div>
-      <div style={{ display: "flex", gap: "0.375rem", marginBottom: "0.875rem" }}>
-        {(Object.keys(guides) as Array<keyof typeof guides>).map((key) => (
-          <button key={key} onClick={() => setPlatform(key as typeof platform)} style={{
-            padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
-            border: platform === key ? `1px solid ${T.color.terracotta}40` : `1px solid ${T.color.cream}`,
-            background: platform === key ? `${T.color.terracotta}10` : T.color.warmStone,
-            fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: platform === key ? 600 : 400,
-            color: platform === key ? T.color.terracotta : T.color.muted,
-            cursor: "pointer", transition: "all .15s", minHeight: "2.75rem",
-          }}>
-            {t(guides[key].titleKey)}
-          </button>
-        ))}
-      </div>
-
-      <ol style={{
-        margin: 0, paddingLeft: "1.25rem",
-        fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
-        lineHeight: 1.8,
-      }}>
-        {steps.map((step, i) => (
-          <li key={i} style={{ paddingLeft: "0.25rem" }}>{step}</li>
-        ))}
-      </ol>
     </div>
   );
 }
@@ -618,6 +545,6 @@ function formatRelativeDate(iso: string, t: (key: string, params?: Record<string
   if (diffDays === 1) return t("yesterday");
   if (diffDays < 7) return t("daysAgo", { count: String(diffDays) });
   if (diffDays < 30) return t("weeksAgo", { count: String(Math.floor(diffDays / 7)) });
-  const dateLocale = locale === "nl" ? "nl-NL" : "en-US";
+  const dateLocale = localeDateCodes[locale as Locale];
   return d.toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" });
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { serverError } from "@/lib/i18n/server-errors";
 
 function isSupabaseReady() { return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY); }
 
@@ -40,7 +41,7 @@ export async function completeTrackStep(trackId: string, stepId: string, pointVa
   if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   // Get or create track progress
   const { data: existing } = await supabase
@@ -96,7 +97,7 @@ export async function completeTrackBonus(trackId: string, bonusPoints: number) {
   if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   // Check if bonus already awarded
   const { data: existing } = await supabase
@@ -161,7 +162,7 @@ export async function addLegacyContact(data: {
   if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { data: contact, error } = await supabase
     .from("legacy_contacts")
@@ -195,7 +196,7 @@ export async function updateLegacyContact(
   if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const dbUpdates: Record<string, unknown> = {};
   if (updates.contactName !== undefined) dbUpdates.contact_name = updates.contactName;
@@ -219,7 +220,7 @@ export async function removeLegacyContact(contactId: string) {
   if (!isSupabaseReady()) return { success: true };
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
+  if (!user) { const t = await serverError(); return { error: t("notAuthenticated") }; }
 
   const { error } = await supabase
     .from("legacy_contacts")

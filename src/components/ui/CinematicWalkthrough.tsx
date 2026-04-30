@@ -10,7 +10,7 @@ import { WINGS } from "@/lib/constants/wings";
 import { useRoomStore } from "@/lib/stores/roomStore";
 
 // Wing index for directional indicator angle
-const WING_INDEX: Record<string, number> = { family: 0, travel: 1, childhood: 2, career: 3, creativity: 4 };
+const WING_INDEX: Record<string, number> = { roots: 0, nest: 1, craft: 2, travel: 3, passions: 4 };
 
 export default function CinematicWalkthrough() {
   const isMobile = useIsMobile();

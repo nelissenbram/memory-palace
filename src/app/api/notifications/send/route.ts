@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { sendPush, type PushSubscriptionJSON, type NotificationPayload } from "@/lib/push";
+import { serverT, serverTf } from "@/lib/i18n/server";
+import type { Locale } from "@/i18n/config";
 
 /**
  * POST /api/notifications/send
@@ -51,11 +53,16 @@ export async function POST(request: Request) {
   let expired = 0;
 
   // ── 1. "On This Day" memories ──
-  // Find memories created on this month+day in prior years
+  // Find memories created before this year (only prior years can have "on this day" matches).
+  // Filter to exclude current year since we only want anniversaries, and cap at 10,000 rows
+  // as a safety limit to prevent unbounded reads.
+  const startOfYear = new Date(today.getFullYear(), 0, 1).toISOString();
   const { data: otdMemories } = await supabase
     .from("memories")
     .select("id, title, user_id, created_at")
-    .not("created_at", "is", null);
+    .not("created_at", "is", null)
+    .lt("created_at", startOfYear)
+    .limit(10000);
 
   // Group anniversaries by user
   const otdByUser: Record<string, { title: string; yearsAgo: number }[]> = {};
@@ -105,10 +112,25 @@ export async function POST(request: Request) {
     });
   }
 
+  // ── 3b. Fetch user locales for i18n push content ──
+  const allUserIds = [...new Set(subscriptions.map((s) => s.user_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, preferred_locale")
+    .in("id", allUserIds);
+
+  const userLocaleMap: Record<string, Locale> = {};
+  if (profiles) {
+    for (const p of profiles) {
+      userLocaleMap[p.id] = (p.preferred_locale as Locale) || "en";
+    }
+  }
+
   // ── 4. Send notifications ──
   const expiredEndpoints: string[] = [];
 
   for (const sub of subscriptions) {
+    const locale = userLocaleMap[sub.user_id] || "en";
     const pushSub: PushSubscriptionJSON = {
       endpoint: sub.endpoint,
       keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
@@ -119,12 +141,13 @@ export async function POST(request: Request) {
       const memories = otdByUser[sub.user_id];
       const count = memories.length;
       const first = memories[0];
+      const yearWord = serverT(first.yearsAgo === 1 ? "push_year_singular" : "push_year_plural", locale);
       const payload: NotificationPayload = {
-        title: "On this day...",
+        title: serverT("push_otd_title", locale),
         body:
           count === 1
-            ? `"${first.title}" — ${first.yearsAgo} ${first.yearsAgo === 1 ? "year" : "years"} ago`
-            : `${count} memories from years past, including "${first.title}"`,
+            ? serverTf("push_otd_single", locale, { title: first.title, years: String(first.yearsAgo), yearWord })
+            : serverTf("push_otd_multi", locale, { count: String(count), title: first.title }),
         icon: "/apple-touch-icon.png",
         badge: "/favicon.svg",
         tag: `otd-${todayISO}`,
@@ -140,11 +163,11 @@ export async function POST(request: Request) {
     if (sub.time_capsule && capsuleByUser[sub.user_id]?.length) {
       const titles = capsuleByUser[sub.user_id];
       const payload: NotificationPayload = {
-        title: "A time capsule has opened!",
+        title: serverT("push_capsule_title", locale),
         body:
           titles.length === 1
-            ? `"${titles[0]}" is ready to be revealed`
-            : `${titles.length} time capsules are ready to open`,
+            ? serverTf("push_capsule_single", locale, { title: titles[0] })
+            : serverTf("push_capsule_multi", locale, { count: String(titles.length) }),
         icon: "/apple-touch-icon.png",
         badge: "/favicon.svg",
         tag: `capsule-${todayISO}`,

@@ -105,12 +105,12 @@ const KEYFRAMES = `
 
 /* ---- 3D PALACE: portal ---- */
 @keyframes mt-portal-expand {
-  0%   { clip-path: circle(0% at 50% 50%); }
-  100% { clip-path: circle(80% at 50% 50%); }
+  0%   { transform: scale(0); border-radius: 50%; opacity: 0; }
+  100% { transform: scale(1); border-radius: 0; opacity: 1; }
 }
 @keyframes mt-portal-collapse {
-  0%   { clip-path: circle(80% at 50% 50%); }
-  100% { clip-path: circle(150% at 50% 50%); }
+  0%   { transform: scale(1); border-radius: 0; opacity: 1; }
+  100% { transform: scale(1.5); border-radius: 0; opacity: 0; }
 }
 @keyframes mt-portal-rim {
   0%   { transform: scale(0); opacity: 0; box-shadow: 0 0 0 0.125rem ${T.color.gold}, 0 0 1.5rem 0.25rem ${T.color.gold}; }
@@ -427,6 +427,7 @@ export default function ModeTransition({
                 position: "absolute",
                 inset: 0,
                 background: `radial-gradient(ellipse at 50% 50%, ${T.color.walnut}50 0%, ${T.color.charcoal} 60%)`,
+                willChange: "transform, opacity",
                 animation:
                   phase === "in"
                     ? `mt-portal-expand ${HALF}s ${EASE} forwards`

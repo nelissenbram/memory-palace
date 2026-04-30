@@ -37,10 +37,10 @@ export default class ErrorBoundary extends React.Component<
     console.error("[ErrorBoundary]", error, info);
   }
 
-  private getLocale(): "en" | "nl" {
+  private getLocale(): string {
     if (typeof document !== "undefined") {
       const lang = document.documentElement.lang;
-      if (lang?.startsWith("nl")) return "nl";
+      if (lang) return lang.slice(0, 2);
     }
     return "en";
   }
@@ -52,15 +52,11 @@ export default class ErrorBoundary extends React.Component<
 
     const locale = this.getLocale();
     const title =
-      locale === "nl"
-        ? "Er is iets misgegaan"
-        : "Something went wrong";
+      ({ en: "Something went wrong", nl: "Er is iets misgegaan", de: "Etwas ist schiefgelaufen", es: "Algo sali\u00f3 mal", fr: "Une erreur est survenue" } as Record<string, string>)[locale] || "Something went wrong";
     const message =
-      locale === "nl"
-        ? "Er is een onverwachte fout opgetreden. Probeer het opnieuw."
-        : "An unexpected error occurred. Please try again.";
+      ({ en: "An unexpected error occurred. Please try again.", nl: "Er is een onverwachte fout opgetreden. Probeer het opnieuw.", de: "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.", es: "Ocurri\u00f3 un error inesperado. Int\u00e9ntelo de nuevo.", fr: "Une erreur inattendue s\u2019est produite. Veuillez r\u00e9essayer." } as Record<string, string>)[locale] || "An unexpected error occurred. Please try again.";
     const retry =
-      locale === "nl" ? "Opnieuw proberen" : "Try again";
+      ({ en: "Try again", nl: "Opnieuw proberen", de: "Erneut versuchen", es: "Intentar de nuevo", fr: "Réessayer" } as Record<string, string>)[locale] || "Try again";
 
     return (
       <div

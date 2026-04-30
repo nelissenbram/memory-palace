@@ -6,6 +6,14 @@ import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
 // TODO: Add a first-use consent dialog in the client UI to improve UX
 // instead of relying solely on the settings page toggles.
 
+const LOCALE_LANGUAGES: Record<string, string> = {
+  en: "English",
+  nl: "Dutch",
+  de: "German",
+  es: "Spanish",
+  fr: "French",
+};
+
 interface InterviewRequest {
   interviewId: string;
   questionId: string;
@@ -13,6 +21,7 @@ interface InterviewRequest {
   userResponse: string;
   previousResponses: Array<{ questionText: string; response: string }>;
   userName: string;
+  locale?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -39,7 +48,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body: InterviewRequest = await req.json();
-    const { interviewId, questionText, userResponse, previousResponses, userName } = body;
+    const { interviewId, questionText, userResponse, previousResponses, userName, locale } = body;
+    const languageName = LOCALE_LANGUAGES[locale ?? "en"] || "English";
 
     if (!userResponse.trim()) {
       return NextResponse.json({ error: "No response provided" }, { status: 400 });
@@ -71,6 +81,8 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `You are a warm, gentle interviewer — like a kind friend sitting down for a heartfelt conversation about someone's life. You are helping ${userName || "someone special"} record their life stories for their family.
 
+LANGUAGE REQUIREMENT: You MUST conduct this entire interview in ${languageName}. ALL of your output — the acknowledgment, the follow-up question, the suggested title — MUST be written in ${languageName}. This is non-negotiable. Even if the user's answer or the question text is in a different language, you MUST always respond in ${languageName}.
+
 Your tone:
 - Warm and genuinely curious, like a favorite grandparent or a beloved podcast host
 - Never rush — acknowledge what was shared before moving on
@@ -80,7 +92,7 @@ Your tone:
 - Be specific in your follow-ups — reference details they mentioned
 - If they mention a year, person, or place, note it — it matters
 
-IMPORTANT: You must respond with valid JSON only. No other text.`;
+IMPORTANT: You must respond with valid JSON only. No other text. Remember: ALL text values in the JSON MUST be in ${languageName}.`;
 
     const userPrompt = `The interview topic is "${interviewId}".
 
@@ -99,20 +111,41 @@ Respond with a JSON object containing:
   "historicalContext": "If they mentioned a specific year or era, provide a brief, interesting historical note (1 sentence). Otherwise, null."
 }`;
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
-    });
+    // Use assistant prefill to enforce language compliance for non-English locales
+    const messages: Array<{ role: string; content: string }> = [
+      { role: "user", content: userPrompt },
+    ];
+    if (locale && locale !== "en") {
+      messages.push({ role: "assistant", content: `{"acknowledgment": "` });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000);
+    let response: Response;
+    try {
+      response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages,
+        }),
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err?.name === "AbortError") {
+        return NextResponse.json({ error: "AI request timed out" }, { status: 504 });
+      }
+      throw err;
+    }
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errText = await response.text();
@@ -121,7 +154,12 @@ Respond with a JSON object containing:
     }
 
     const data = await response.json();
-    const text = data.content?.[0]?.text || "{}";
+    let text = data.content?.[0]?.text || "{}";
+
+    // If we used prefill, prepend the partial JSON start
+    if (locale && locale !== "en") {
+      text = `{"acknowledgment": "` + text;
+    }
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

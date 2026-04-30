@@ -1,8 +1,10 @@
 import * as THREE from "three";
+import { getQuality } from "./mobilePerf";
 
 const HILL_Y = 8;
 const SIZE = 800;
-const SEGMENTS = 256;
+// Segments are determined per-device at runtime via getQuality().terrainSegments
+// Desktop: 256 (65K verts), Mobile: 64 (4K verts) — ~16x fewer vertices
 
 /**
  * Evaluate terrain height at any world (x, z) using the same formula as the mesh.
@@ -59,7 +61,8 @@ export function createTuscanTerrain(
     cropRoughness?: THREE.Texture;
   }
 ) {
-  const geo = new THREE.PlaneGeometry(SIZE, SIZE, SEGMENTS, SEGMENTS);
+  const segments = getQuality().terrainSegments;
+  const geo = new THREE.PlaneGeometry(SIZE, SIZE, segments, segments);
   geo.rotateX(-Math.PI / 2);
 
   const pos = geo.attributes.position;

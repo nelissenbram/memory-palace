@@ -97,6 +97,9 @@ export { ornamentalDivider };
 const footerTaglines: Record<string, string> = {
   en: "Where your memories find their rooms.",
   nl: "Waar je herinneringen hun kamer vinden.",
+  de: "Wo deine Erinnerungen ihr Zimmer finden.",
+  es: "Donde tus recuerdos encuentran su habitaci\u00f3n.",
+  fr: "L\u00e0 o\u00f9 vos souvenirs trouvent leur chambre.",
 };
 
 export function emailLayout(opts: {

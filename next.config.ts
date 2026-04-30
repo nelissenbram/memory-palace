@@ -25,7 +25,7 @@ const withPWA = withPWAInit({
           networkTimeoutSeconds: 5,
           expiration: {
             maxEntries: 50,
-            maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+            maxAgeSeconds: 60 * 60, // 1 hour — prevent stale HTML serving
           },
         },
       },
@@ -51,6 +51,20 @@ const withPWA = withPWAInit({
             maxEntries: 200,
             maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
           },
+        },
+      },
+      // Video assets — CacheFirst so returning visitors don't re-download
+      {
+        urlPattern: /\.(?:mp4|webm)$/i,
+        handler: "CacheFirst" as const,
+        options: {
+          cacheName: "video-cache",
+          expiration: {
+            maxEntries: 10,
+            maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+          },
+          cacheableResponse: { statuses: [0, 200] },
+          rangeRequests: true,
         },
       },
       // Google Fonts stylesheets
@@ -134,9 +148,44 @@ const cspDirectives = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // Split Three.js & postprocessing into separate cacheable chunks (production webpack builds)
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization?.splitChunks,
+          cacheGroups: {
+            ...((config.optimization?.splitChunks as any)?.cacheGroups || {}),
+            three: {
+              test: /[\\/]node_modules[\\/]three[\\/]/,
+              name: "three",
+              chunks: "all" as const,
+              priority: 30,
+            },
+            postprocessing: {
+              test: /[\\/]node_modules[\\/]postprocessing[\\/]/,
+              name: "postprocessing",
+              chunks: "all" as const,
+              priority: 20,
+            },
+          },
+        },
+      };
+    }
+    return config;
+  },
+
   // Security headers
   async headers() {
     return [
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Pragma", value: "no-cache" },
+        ],
+      },
       {
         source: "/(.*)",
         headers: [
@@ -160,6 +209,15 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // URL simplification: /atrium and /library serve the same palace page
+  async rewrites() {
+    return [
+      { source: "/atrium", destination: "/palace" },
+      { source: "/library", destination: "/palace" },
+      { source: "/me", destination: "/palace" },
+    ];
+  },
+
   // Ensure Three.js works properly
   transpilePackages: ["three"],
 
@@ -173,6 +231,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.r2.cloudflarestorage.com",
       },
     ],
     // Static export doesn't support Next.js Image optimization

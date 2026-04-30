@@ -23,10 +23,14 @@ function lsGet(): NotificationRow[] {
   }
 }
 
+const LS_MAX_ITEMS = 200;
+
 function lsSet(items: NotificationRow[]) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(items));
+    // Cap at 200 items to prevent unbounded localStorage growth
+    const capped = items.length > LS_MAX_ITEMS ? items.slice(0, LS_MAX_ITEMS) : items;
+    localStorage.setItem(LS_KEY, JSON.stringify(capped));
   } catch {
     // Storage full or unavailable
   }

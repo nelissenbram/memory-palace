@@ -3,12 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
-import { PLANS, PLAN_ORDER, type PlanId } from "@/lib/constants/plans";
+import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
+import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
 import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
+import CancelFlow from "@/components/ui/CancelFlow";
 
 const F = T.font;
 const C = T.color;
@@ -30,6 +32,7 @@ interface UsageData {
 export default function SubscriptionPage() {
   const { t, locale } = useTranslation("subscription");
   const { t: tp } = useTranslation("plans");
+  const { t: tPricing } = useTranslation("pricing");
   const nativeApp = isAndroid();
   const isMobile = useIsMobile();
   const [sub, setSub] = useState<SubscriptionData | null>(null);
@@ -39,6 +42,12 @@ export default function SubscriptionPage() {
   const [upgradeLoading, setUpgradeLoading] = useState<PlanId | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
   const [showFullComparison, setShowFullComparison] = useState(false);
+  const [showCancelFlow, setShowCancelFlow] = useState(false);
+  const [interval, setInterval] = useState<BillingInterval>("annual");
+  const [currency, setCurrency] = useState<SupportedCurrency>("EUR");
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+  const [referralCount, setReferralCount] = useState(0);
+  const [referralRewards, setReferralRewards] = useState<{ promo_code: string; created_at: string; redeemed: boolean }[]>([]);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -53,6 +62,11 @@ export default function SubscriptionPage() {
       window.history.replaceState({}, "", "/settings/subscription");
     }
   }, [showToast]);
+
+  // Auto-detect currency from timezone/locale
+  useEffect(() => {
+    setCurrency(detectCurrency());
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -91,6 +105,18 @@ export default function SubscriptionPage() {
           memories: memoriesRes.count || 0,
           storageMb: totalStorageMb,
         });
+        // Fetch referral info
+        try {
+          const refRes = await fetch("/api/referral");
+          if (refRes.ok) {
+            const refData = await refRes.json();
+            setReferralCode(refData.referralCode);
+            setReferralCount(refData.referralCount ?? 0);
+            setReferralRewards(refData.rewards ?? []);
+          }
+        } catch {
+          // non-critical
+        }
       } catch {
         // ignore
       }
@@ -124,7 +150,7 @@ export default function SubscriptionPage() {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId }),
+        body: JSON.stringify({ plan: planId, interval }),
       });
       const data = await res.json();
       if (data.url) {
@@ -168,6 +194,17 @@ export default function SubscriptionPage() {
       {/* Toast */}
       {toast && (
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
+      )}
+
+      {showCancelFlow && (
+        <CancelFlow
+          onClose={() => setShowCancelFlow(false)}
+          onProceedToPortal={() => {
+            setShowCancelFlow(false);
+            handleManageBilling();
+          }}
+          planName={tp(currentPlan.nameKey)}
+        />
       )}
 
       {/* Header — desktop only */}
@@ -227,7 +264,7 @@ export default function SubscriptionPage() {
             {currentPlan.price > 0 ? (
               <>
                 <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 400, color: C.charcoal }}>
-                  {"\u20AC"}{currentPlan.price.toFixed(2).replace(".", ",")}
+                  {formatPrice(convertPrice(interval === "monthly" ? currentPlan.monthlyPrice : currentPlan.price, currency), currency)}
                 </div>
                 <div style={{ fontSize: "0.8125rem", color: C.muted }}>{t("perMonth")}</div>
               </>
@@ -257,22 +294,39 @@ export default function SubscriptionPage() {
         {!nativeApp && (
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
             {isPaid && (
-              <button
-                onClick={handleManageBilling}
-                disabled={portalLoading}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "0.75rem",
-                  border: `1px solid ${C.cream}`,
-                  background: C.white,
-                  fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                  color: C.charcoal,
-                  cursor: portalLoading ? "wait" : "pointer",
-                  transition: "all .15s",
-                }}
-              >
-                {portalLoading ? t("opening") : t("manageBilling")}
-              </button>
+              <>
+                <button
+                  onClick={handleManageBilling}
+                  disabled={portalLoading}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "0.75rem",
+                    border: `1px solid ${C.cream}`,
+                    background: C.white,
+                    fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
+                    color: C.charcoal,
+                    cursor: portalLoading ? "wait" : "pointer",
+                    transition: "all .15s",
+                  }}
+                >
+                  {portalLoading ? t("opening") : t("manageBilling")}
+                </button>
+                <button
+                  onClick={() => setShowCancelFlow(true)}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "0.75rem",
+                    border: `1px solid ${C.cream}`,
+                    background: "none",
+                    fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 400,
+                    color: C.muted,
+                    cursor: "pointer",
+                    transition: "all .15s",
+                  }}
+                >
+                  {t("cancelPlan")}
+                </button>
+              </>
             )}
             {isFree && (
               <button
@@ -488,6 +542,111 @@ export default function SubscriptionPage() {
           {t("comparePlans")}
         </p>
 
+        {/* Billing interval toggle + Currency selector */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "1rem",
+          marginBottom: "1.25rem",
+          flexWrap: "wrap",
+        }}>
+          <div
+            style={{
+              display: "inline-flex",
+              borderRadius: 12,
+              background: `${C.warmStone}`,
+              padding: 4,
+              gap: 0,
+            }}
+          >
+            <button
+              onClick={() => setInterval("monthly")}
+              style={{
+                padding: "10px 24px",
+                borderRadius: 10,
+                border: "none",
+                background: interval === "monthly"
+                  ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
+                  : "transparent",
+                color: interval === "monthly" ? C.white : C.walnut,
+                fontFamily: F.body,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              {tPricing("monthly") !== "monthly" ? tPricing("monthly") : "Monthly"}
+            </button>
+            <button
+              onClick={() => setInterval("annual")}
+              style={{
+                padding: "10px 24px",
+                borderRadius: 10,
+                border: "none",
+                background: interval === "annual"
+                  ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
+                  : "transparent",
+                color: interval === "annual" ? C.white : C.walnut,
+                fontFamily: F.body,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              {tPricing("annual") !== "annual" ? tPricing("annual") : "Annual"}
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "2px 8px",
+                  borderRadius: 8,
+                  background: interval === "annual"
+                    ? "rgba(255,255,255,0.25)"
+                    : `${C.terracotta}18`,
+                  color: interval === "annual" ? C.white : C.terracotta,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {tPricing("saveUpToPercent") !== "saveUpToPercent" ? tPricing("saveUpToPercent") : "Save up to 23%"}
+              </span>
+            </button>
+          </div>
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as SupportedCurrency)}
+            aria-label={tPricing("currency")}
+            style={{
+              background: "none",
+              border: `1px solid ${C.sandstone}60`,
+              borderRadius: "0.5rem",
+              padding: "0.5rem 1.75rem 0.5rem 0.625rem",
+              fontSize: "0.8125rem",
+              fontFamily: F.body,
+              fontWeight: 600,
+              color: C.walnut,
+              cursor: "pointer",
+              letterSpacing: "0.5px",
+              transition: "border-color 0.2s, color 0.2s",
+              appearance: "none",
+              WebkitAppearance: "none" as const,
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23666'/%3E%3C/svg%3E\")",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 0.5rem center",
+            }}
+          >
+            <option value="EUR">{"\u20AC"} EUR</option>
+            <option value="USD">$ USD</option>
+            <option value="GBP">{"\u00A3"} GBP</option>
+          </select>
+        </div>
+
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           {(["free", "keeper", "guardian"] as PlanId[]).map((planId) => {
             const plan = PLANS[planId];
@@ -530,7 +689,7 @@ export default function SubscriptionPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0, marginLeft: "1rem" }}>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: C.charcoal }}>
-                      {plan.price === 0 ? t("free") : `\u20AC${plan.price.toFixed(2).replace(".", ",")}/${t("perMonthShort")}`}
+                      {plan.price === 0 ? t("free") : `${formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}/${t("perMonthShort")}`}
                     </div>
                   </div>
                   {!nativeApp && isUpgrade && (
@@ -674,7 +833,7 @@ export default function SubscriptionPage() {
                               fontWeight: 400,
                               color: C.charcoal,
                             }}>
-                              {"\u20AC"}{plan.price.toFixed(2).replace(".", ",")}
+                              {formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}
                             </span>
                             <span style={{
                               fontSize: "0.8125rem",
@@ -774,6 +933,223 @@ export default function SubscriptionPage() {
           </div>
         )}
       </div>
+
+      {/* Refer a Friend */}
+      {referralCode && (
+        <div style={{
+          background: C.white,
+          borderRadius: "1rem",
+          border: `1px solid ${C.cream}`,
+          padding: "1.75rem 2rem",
+          boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+          marginTop: "1.5rem",
+        }}>
+          <h3 style={{
+            fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
+            color: C.charcoal, margin: "0 0 0.375rem",
+          }}>
+            {t("referralTitle")}
+          </h3>
+          <p style={{
+            fontFamily: F.body, fontSize: "0.875rem", color: C.muted,
+            margin: "0 0 1.25rem", lineHeight: 1.5,
+          }}>
+            {t("referralDesc")}
+          </p>
+
+          {/* Referral code display */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0.75rem",
+            flexWrap: "wrap", marginBottom: "1rem",
+          }}>
+            <div>
+              <div style={{
+                fontFamily: F.body, fontSize: "0.6875rem", fontWeight: 600,
+                color: C.muted, textTransform: "uppercase", letterSpacing: "0.5px",
+                marginBottom: "0.25rem",
+              }}>
+                {t("referralCode")}
+              </div>
+              <div style={{
+                fontFamily: "monospace", fontSize: "1.25rem", fontWeight: 700,
+                color: C.charcoal, letterSpacing: "2px",
+                padding: "0.5rem 1rem",
+                background: C.linen,
+                borderRadius: "0.5rem",
+                border: `1px solid ${C.cream}`,
+                userSelect: "all",
+              }}>
+                {referralCode}
+              </div>
+            </div>
+
+            <div style={{
+              fontFamily: F.body, fontSize: "0.875rem", color: C.muted,
+              padding: "0.5rem 0.75rem",
+              background: `${C.sage}12`,
+              borderRadius: "0.5rem",
+            }}>
+              {t("referralCount", { count: String(referralCount) })}
+            </div>
+          </div>
+
+          {/* Share actions */}
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+            <button
+              onClick={() => {
+                const link = `https://thememorypalace.ai/register?ref=${referralCode}`;
+                navigator.clipboard.writeText(link).then(() => {
+                  showToast(t("referralCopied"), "success");
+                });
+              }}
+              style={{
+                padding: "0.75rem 1.5rem",
+                borderRadius: "0.75rem",
+                border: `1px solid ${C.cream}`,
+                background: C.white,
+                fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
+                color: C.charcoal,
+                cursor: "pointer",
+                transition: "all .15s",
+                display: "flex", alignItems: "center", gap: "0.5rem",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              {t("referralCopied").replace("!", "")}
+            </button>
+
+            {typeof navigator !== "undefined" && "share" in navigator && (
+              <button
+                onClick={() => {
+                  const link = `https://thememorypalace.ai/register?ref=${referralCode}`;
+                  navigator.share({
+                    title: "The Memory Palace",
+                    text: t("referralDesc"),
+                    url: link,
+                  }).catch(() => {});
+                }}
+                style={{
+                  padding: "0.75rem 1.5rem",
+                  borderRadius: "0.75rem",
+                  border: "none",
+                  background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                  fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
+                  color: C.white,
+                  cursor: "pointer",
+                  transition: "all .15s",
+                  display: "flex", alignItems: "center", gap: "0.5rem",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="18" cy="5" r="3"/>
+                  <circle cx="6" cy="12" r="3"/>
+                  <circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+                {t("referralShare")}
+              </button>
+            )}
+          </div>
+
+          {/* Earned Rewards */}
+          {referralRewards.length > 0 && (
+            <div style={{ marginTop: "1.5rem" }}>
+              <h4 style={{
+                fontFamily: F.display, fontSize: "1rem", fontWeight: 500,
+                color: C.charcoal, margin: "0 0 0.75rem",
+              }}>
+                {t("referralRewardsTitle")}
+              </h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {referralRewards.map((reward) => (
+                  <div
+                    key={reward.promo_code}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "0.75rem 1rem",
+                      borderRadius: "0.625rem",
+                      background: reward.redeemed ? `${C.sandstone}15` : `${C.sage}10`,
+                      border: `1px solid ${reward.redeemed ? C.sandstone : C.sage}30`,
+                      flexWrap: "wrap",
+                      gap: "0.5rem",
+                    }}
+                  >
+                    <div>
+                      <div style={{
+                        fontFamily: "monospace",
+                        fontSize: "0.9375rem",
+                        fontWeight: 700,
+                        color: reward.redeemed ? C.muted : C.charcoal,
+                        letterSpacing: "1px",
+                        textDecoration: reward.redeemed ? "line-through" : "none",
+                      }}>
+                        {reward.promo_code}
+                      </div>
+                      <div style={{
+                        fontFamily: F.body,
+                        fontSize: "0.75rem",
+                        color: C.muted,
+                        marginTop: "0.125rem",
+                      }}>
+                        {t("referralRewardHint")}
+                      </div>
+                    </div>
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                    }}>
+                      <span style={{
+                        fontFamily: F.body,
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        padding: "0.25rem 0.5rem",
+                        borderRadius: "0.375rem",
+                        background: reward.redeemed ? `${C.muted}18` : `${C.sage}18`,
+                        color: reward.redeemed ? C.muted : C.sage,
+                      }}>
+                        {reward.redeemed ? t("referralRewardRedeemed") : t("referralRewardStatus")}
+                      </span>
+                      {!reward.redeemed && (
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(reward.promo_code).then(() => {
+                              showToast(t("referralCopied"), "success");
+                            });
+                          }}
+                          style={{
+                            padding: "0.375rem 0.75rem",
+                            borderRadius: "0.375rem",
+                            border: `1px solid ${C.cream}`,
+                            background: C.white,
+                            fontFamily: F.body,
+                            fontSize: "0.75rem",
+                            fontWeight: 500,
+                            color: C.charcoal,
+                            cursor: "pointer",
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ verticalAlign: "middle", marginRight: "0.25rem" }}>
+                            <rect x="9" y="9" width="13" height="13" rx="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                          </svg>
+                          Copy
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

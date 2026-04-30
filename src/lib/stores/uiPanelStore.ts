@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 interface UIPanelState {
   // Panel visibility
+  showFamilyTree: boolean;
   showMemoryMap: boolean;
   showTimeline: boolean;
   showStatistics: boolean;
@@ -18,14 +19,19 @@ interface UIPanelState {
   showRoomShare: boolean;
   showStoragePlayer: boolean;
   showWingManager: boolean;
+  showImportHub: boolean;
 
   // Gallery initial memory — when clicking a 3D object, open gallery at that memory
   galleryInitialMemId: string | null;
   // Gallery initial tab — "gallery" when clicking furniture in 3D, "library" otherwise
   galleryInitialTab: "library" | "gallery";
   setGalleryInitialTab: (tab: "library" | "gallery") => void;
+  // Auto-assign display unit after upload (e.g. clicking empty painting frame → auto-assign "painting")
+  galleryAutoAssignUnit: string | null;
+  setGalleryAutoAssignUnit: (unit: string | null) => void;
 
   // Setters
+  setShowFamilyTree: (v: boolean) => void;
   setShowMemoryMap: (v: boolean) => void;
   setShowTimeline: (v: boolean) => void;
   setShowStatistics: (v: boolean) => void;
@@ -42,6 +48,7 @@ interface UIPanelState {
   setShowRoomShare: (v: boolean) => void;
   setShowStoragePlayer: (v: boolean) => void;
   setShowWingManager: (v: boolean) => void;
+  setShowImportHub: (v: boolean) => void;
   setGalleryInitialMemId: (id: string | null) => void;
 
   // Convenience: close all panels
@@ -50,6 +57,7 @@ interface UIPanelState {
 
 export const useUIPanelStore = create<UIPanelState>((set) => ({
   // Panel visibility — all default to false
+  showFamilyTree: false,
   showMemoryMap: false,
   showTimeline: false,
   showStatistics: false,
@@ -58,6 +66,8 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
   galleryInitialMemId: null,
   galleryInitialTab: "library" as "library" | "gallery",
   setGalleryInitialTab: (tab) => set({ galleryInitialTab: tab }),
+  galleryAutoAssignUnit: null,
+  setGalleryAutoAssignUnit: (unit) => set({ galleryAutoAssignUnit: unit }),
   showBustBuilder: false,
   showInvites: false,
   showSharedWithMe: false,
@@ -69,13 +79,15 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
   showRoomShare: false,
   showStoragePlayer: false,
   showWingManager: false,
+  showImportHub: false,
 
   // Setters
+  setShowFamilyTree: (v) => set({ showFamilyTree: v }),
   setShowMemoryMap: (v) => set({ showMemoryMap: v }),
   setShowTimeline: (v) => set({ showTimeline: v }),
   setShowStatistics: (v) => set({ showStatistics: v }),
   setShowMassImport: (v) => set({ showMassImport: v }),
-  setShowGallery: (v) => set({ showGallery: v, ...(v ? {} : { galleryInitialMemId: null, galleryInitialTab: "library" as "library" | "gallery" }) }),
+  setShowGallery: (v) => set({ showGallery: v, ...(v ? {} : { galleryInitialMemId: null, galleryInitialTab: "library" as "library" | "gallery", galleryAutoAssignUnit: null }) }),
   setGalleryInitialMemId: (id) => set({ galleryInitialMemId: id }),
   setShowBustBuilder: (v) => set({ showBustBuilder: v }),
   setShowInvites: (v) => set({ showInvites: v }),
@@ -88,10 +100,12 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
   setShowRoomShare: (v) => set({ showRoomShare: v }),
   setShowStoragePlayer: (v) => set({ showStoragePlayer: v }),
   setShowWingManager: (v) => set({ showWingManager: v }),
+  setShowImportHub: (v) => set({ showImportHub: v }),
 
   // Close all panels at once
   closeAllPanels: () =>
     set({
+      showFamilyTree: false,
       showMemoryMap: false,
       showTimeline: false,
       showStatistics: false,
@@ -99,6 +113,7 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
       showGallery: false,
       galleryInitialMemId: null,
       galleryInitialTab: "library" as "library" | "gallery",
+      galleryAutoAssignUnit: null,
       showBustBuilder: false,
       showInvites: false,
       showSharedWithMe: false,
@@ -110,5 +125,6 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
       showRoomShare: false,
       showStoragePlayer: false,
       showWingManager: false,
+      showImportHub: false,
     }),
 }));
