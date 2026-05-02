@@ -20,7 +20,7 @@ type Phase =
   | "video_intro"      // Emotional video plays first
   | "lang_a11y"        // Language + text size (video loops bg)
   | "name"             // Name input (video loops bg)
-  | "quiz"             // Personalization quiz (3 questions)
+  | "quiz"             // REMOVED — kept for backward compat with saved phases
   | "style_era"        // Roman vs Renaissance (video loops bg)
   | "cinematic"        // Live 3D — "Welcome to X's Palace"
   | "walk_exterior"
@@ -33,11 +33,11 @@ type Phase =
   | "done";
 
 const WALK_PHASES: Phase[] = ["walk_exterior", "walk_entrance", "walk_corridor", "walk_room"];
-const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "quiz", "style_era"];
+const SETUP_PHASES: Phase[] = ["video_intro", "lang_a11y", "name", "style_era"];
 const PHASE_ORDER: Phase[] = [
-  "video_intro", "lang_a11y", "name", "quiz", "style_era", "cinematic",
+  "video_intro", "lang_a11y", "name", "style_era", "cinematic",
   "walk_exterior", "walk_entrance", "walk_corridor", "walk_room",
-  "upload", "paywall", "celebration", "done",
+  "upload", "celebration", "paywall", "done",
 ];
 
 const STORAGE_KEY = "mp_onboarding_phase";
@@ -232,7 +232,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   // ── Upload ──
   const handleMemoryAdded = useCallback(() => {
     memoryUploadedRef.current = true;
-    setPhase("paywall");
+    setPhase("celebration");
   }, [setPhase]);
 
   // ── Done ──
@@ -244,6 +244,13 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
       onFinish(memoryUploadedRef.current);
     }
   }, [phase, onFinish]);
+
+  // ── Preload ImportHub during walk phases so it's ready when the user clicks the painting ──
+  useEffect(() => {
+    if (phase === "walk_corridor" || phase === "walk_room") {
+      import("@/components/ui/ImportHub");
+    }
+  }, [phase]);
 
   // ── Onboarding room data ──
   const onboardingRoomName: string | undefined = undefined; // Keep default room names from WING_ROOMS
@@ -354,7 +361,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           width: "100%", height: "100%",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
-          <StepIndicator current={1} total={4} />
+          <StepIndicator current={1} total={3} />
 
           {/* Glass card container — warm bronze tint */}
           <div style={{
@@ -508,7 +515,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           width: "100%", height: "100%",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
-          <StepIndicator current={2} total={4} />
+          <StepIndicator current={2} total={3} />
 
           {/* Glass card — warm bronze tint */}
           <div style={{
@@ -561,7 +568,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   onFocus={(e) => { e.target.style.borderColor = T.color.terracotta; }}
                   onBlur={(e) => { e.target.style.borderColor = "rgba(193,127,89,0.18)"; }}
                   autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter" && userName.trim()) setPhase("quiz"); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" && userName.trim()) setPhase("style_era"); }}
                 />
               </div>
 
@@ -578,7 +585,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   {"\u2190"} {t("backButton")}
                 </button>
                 <button
-                  onClick={() => setPhase("quiz")}
+                  onClick={() => setPhase("style_era")}
                   disabled={!userName.trim()}
                   style={{
                     flex: 1, fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
@@ -643,7 +650,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           width: "100%", height: "100%",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
-          <StepIndicator current={3} total={4} />
+          <StepIndicator current={3} total={3} />
 
           {/* Glass card */}
           <div style={{
@@ -775,7 +782,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           width: "100%", height: "100%",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
-          <StepIndicator current={4} total={4} />
+          <StepIndicator current={3} total={3} />
 
           {/* Glass card — warm bronze tint */}
           <div style={{
@@ -917,7 +924,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
               {/* Buttons */}
               <div style={{ display: "flex", gap: "0.75rem", width: "100%", marginTop: "0.25rem" }}>
                 <button
-                  onClick={() => setPhase("quiz")}
+                  onClick={() => setPhase("style_era")}
                   style={{
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                     padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
@@ -1473,7 +1480,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                 onClick={() => {
                   track("paywall_trial_clicked", { source: "onboarding" });
                   window.open("/pricing", "_blank");
-                  setPhase(memoryUploadedRef.current ? "celebration" : "done");
+                  setPhase("done");
                 }}
                 style={{
                   width: "100%", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
@@ -1491,7 +1498,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
               <button
                 onClick={() => {
                   track("paywall_skipped", { source: "onboarding" });
-                  setPhase(memoryUploadedRef.current ? "celebration" : "done");
+                  setPhase("done");
                 }}
                 style={{
                   fontFamily: T.font.body, fontSize: "0.75rem",
@@ -1566,7 +1573,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             title={t("celebrationTitle2")}
             subtitle={t("celebrationSubtitle2")}
             buttonLabel={t("celebrationAtrium")}
-            onContinue={() => setPhase("done")}
+            onContinue={() => setPhase("paywall")}
             transparent
           />
         </Suspense>

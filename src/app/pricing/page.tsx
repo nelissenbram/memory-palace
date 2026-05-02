@@ -303,8 +303,7 @@ export default function PricingPage() {
                 whiteSpace: "nowrap",
               }}
             >
-              {/* i18n: "saveUpToPercent" — Save up to 23% */}
-              {t("saveUpToPercent") !== "saveUpToPercent" ? t("saveUpToPercent") : "Save up to 23%"}
+              {t("saveUpToPercent")}
             </span>
           </button>
         </div>

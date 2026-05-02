@@ -23,14 +23,40 @@ export async function GET() {
 
     const admin = createAdminClient();
 
-    // Fetch referral info
-    const { data: profile, error } = await admin
+    // Fetch referral info — try with referral_rewards first, fall back without
+    // (the column may not exist yet if migration hasn't run)
+    let profile: Record<string, unknown> | null = null;
+    let hasRewardsColumn = true;
+
+    const { data: fullProfile, error: fullError } = await admin
       .from("profiles")
       .select("referral_code, referral_count, referral_rewards")
       .eq("id", user.id)
       .single();
 
-    if (error || !profile) {
+    if (fullError) {
+      // If the error is about the referral_rewards column, retry without it
+      const errMsg = fullError.message ?? "";
+      if (errMsg.includes("referral_rewards") || fullError.code === "PGRST204") {
+        hasRewardsColumn = false;
+        const { data: basicProfile, error: basicError } = await admin
+          .from("profiles")
+          .select("referral_code, referral_count")
+          .eq("id", user.id)
+          .single();
+
+        if (basicError || !basicProfile) {
+          return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+        }
+        profile = basicProfile as Record<string, unknown>;
+      } else {
+        return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+      }
+    } else {
+      profile = fullProfile as Record<string, unknown>;
+    }
+
+    if (!profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
@@ -46,8 +72,8 @@ export async function GET() {
 
     return NextResponse.json({
       referralCode,
-      referralCount: profile.referral_count ?? 0,
-      rewards: profile.referral_rewards ?? [],
+      referralCount: (profile.referral_count as number) ?? 0,
+      rewards: hasRewardsColumn ? ((profile.referral_rewards as unknown[]) ?? []) : [],
     });
   } catch (err) {
     console.error("[referral] GET error:", err);

@@ -76,21 +76,26 @@ export default function PalaceLoadingScreen({
           pointerEvents: "none",
         }}
       >
+        {/* Top progress bar */}
+        <style>{`@keyframes palaceProgressSlide{0%{transform:translateX(-100%)}50%{transform:translateX(0%)}100%{transform:translateX(100%)}}`}</style>
+        <div style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "0.1875rem",
+          background: `${T.color.warmStone}40`,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            width: "40%",
+            height: "100%",
+            background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
+            borderRadius: "0 2px 2px 0",
+            animation: "palaceProgressSlide 1.8s ease-in-out infinite",
+          }} />
+        </div>
         {content}
-        {fadeDelay > 0 && (
-          <>
-            <style>{`@keyframes palaceSpinFade{0%{opacity:.4;transform:rotate(0deg)}50%{opacity:1}100%{opacity:.4;transform:rotate(360deg)}}`}</style>
-            <div style={{
-              width: "1.5rem",
-              height: "1.5rem",
-              marginTop: "1.25rem",
-              border: `0.125rem solid ${T.color.warmStone}`,
-              borderTopColor: T.color.gold,
-              borderRadius: "50%",
-              animation: "palaceSpinFade 1.2s ease-in-out infinite",
-            }} />
-          </>
-        )}
       </div>
     );
   }
@@ -98,6 +103,7 @@ export default function PalaceLoadingScreen({
   return (
     <div
       style={{
+        position: "relative",
         width: "100vw",
         height: "100dvh",
         display: "flex",
@@ -108,6 +114,25 @@ export default function PalaceLoadingScreen({
         fontFamily: T.font.display,
       }}
     >
+      {/* Top progress bar */}
+      <style>{`@keyframes palaceProgressSlide{0%{transform:translateX(-100%)}50%{transform:translateX(0%)}100%{transform:translateX(100%)}}`}</style>
+      <div style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: "0.1875rem",
+        background: `${T.color.warmStone}40`,
+        overflow: "hidden",
+      }}>
+        <div style={{
+          width: "40%",
+          height: "100%",
+          background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
+          borderRadius: "0 2px 2px 0",
+          animation: "palaceProgressSlide 1.8s ease-in-out infinite",
+        }} />
+      </div>
       {content}
     </div>
   );

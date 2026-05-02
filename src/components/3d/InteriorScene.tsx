@@ -2034,7 +2034,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
         }
         // Skip normal movement when in onboarding mode
       } else {
-      const spd=2.5*dt;_dir.current.set(0,0,0);
+      const spd=(keys.current["shift"]?7.5:2.5)*dt;_dir.current.set(0,0,0);
       const k=keys.current;
       if(k["w"]||k["arrowup"])_dir.current.z-=1;if(k["s"]||k["arrowdown"])_dir.current.z+=1;
       if(k["a"]||k["arrowleft"])_dir.current.x-=1;if(k["d"]||k["arrowright"])_dir.current.x+=1;

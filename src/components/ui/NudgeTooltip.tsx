@@ -126,7 +126,17 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
   navCorridorRef.current = onNavigateCorridor;
   navRoomRef.current = onNavigateRoom;
 
-  useEffect(() => { initPage(page, isMobile); }, [page, initPage, isMobile, resetCount]);
+  // Delay initPage slightly so the DOM (NavigationBar slide-in, lazy loads)
+  // has time to mount and paint.  On the very first atrium visit (right
+  // after onboarding) the NavigationBar animation takes ~550ms; use a
+  // 600ms delay to ensure data-nudge targets are laid-out and measurable.
+  // On subsequent mounts (page switches) use a shorter delay.
+  useEffect(() => {
+    const isFirstEver = useNudgeStore.getState().activePage === null;
+    const delay = isFirstEver ? 600 : 150;
+    const t = setTimeout(() => initPage(page, isMobile), delay);
+    return () => clearTimeout(t);
+  }, [page, initPage, isMobile, resetCount]);
 
   // Position tooltip on target element
   useEffect(() => {

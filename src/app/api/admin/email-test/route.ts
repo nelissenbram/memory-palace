@@ -11,21 +11,49 @@ import {
 } from "@/lib/email/send-legacy";
 import { sendDripEmail } from "@/lib/email/send-drip";
 import { sendRenewalEmail } from "@/lib/email/send-renewal";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+/** Emails allowed to use admin endpoints when authenticated via session. */
+const ADMIN_EMAILS = [
+  "nelissen_bram@hotmail.com",
+  "bram@elyphont.com",
+];
+
 /**
  * One-shot endpoint to send sample versions of every email template to a recipient.
- * Guarded by CRON_SECRET.
+ * Auth: CRON_SECRET query param OR logged-in admin session (cookie).
  *
- * Usage: GET /api/admin/email-test?to=bram@elyphont.com&secret=...
+ * Usage:
+ *   GET /api/admin/email-test?to=you@example.com&secret=<CRON_SECRET>
+ *   GET /api/admin/email-test?to=you@example.com   (if logged in as admin)
  */
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const to = url.searchParams.get("to");
   const secret = url.searchParams.get("secret");
 
-  if (!secret || secret !== process.env.CRON_SECRET) {
+  // --- Auth: try CRON_SECRET first, then fall back to session-based admin ---
+  let authorized = false;
+
+  if (secret && secret === process.env.CRON_SECRET) {
+    authorized = true;
+  }
+
+  if (!authorized) {
+    try {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+        authorized = true;
+      }
+    } catch {
+      // Session lookup failed — leave authorized false
+    }
+  }
+
+  if (!authorized) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!to) {

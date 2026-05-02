@@ -47,9 +47,9 @@ export function convertPrice(
   eurPrice: number,
   currency: SupportedCurrency,
 ): number {
+  if (currency === "EUR") return eurPrice;
   const converted = eurPrice * CURRENCY_RATES[currency];
-  // Round to .99
-  return Math.floor(converted) + 0.99;
+  return Math.round(converted * 100) / 100;
 }
 
 /**

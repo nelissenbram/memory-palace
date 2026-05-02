@@ -1981,7 +1981,7 @@ function EntranceHallScene({
 
       // ── Movement (WASD / Arrow keys) ──
       if (!awTarget) {
-      const spd = 4.0 * dt;
+      const spd = (keys.current["shift"] ? 12.0 : 4.0) * dt;
       _dir.current.set(0, 0, 0);
       const k = keys.current;
       if (k["w"] || k["arrowup"]) _dir.current.z -= 1;

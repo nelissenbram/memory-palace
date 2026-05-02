@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/api/cron/") ||
     path.startsWith("/api/webhooks/") ||
     path.startsWith("/api/stripe/webhook") ||
-    path.startsWith("/api/admin/") ||
+    // Note: /api/admin/ is NOT fast-pathed — it needs session refresh for admin auth fallback
     path.startsWith("/api/email/") ||
     path.startsWith("/api/notifications/send")
   ) {

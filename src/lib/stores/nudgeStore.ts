@@ -160,7 +160,16 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
   setAutoWalking: (val) => set({ autoWalking: val }),
 
   initPage: (page, isMobile) => {
-    const prev = get()._advanceTimer;
+    const { activePage, activeNudge: currentNudge, queue: currentQueue, _advanceTimer: prev, _forceCurrentPage: forceCurrent } = get();
+
+    // If this page's nudge sequence is already running, don't reset it.
+    // This prevents a duplicate initPage call (e.g. from a delayed setTimeout)
+    // from blinking the active nudge off and on again.
+    // Skip this guard when _forceCurrentPage is set (from reset() / help button).
+    if (!forceCurrent && activePage === page && (currentNudge || currentQueue.length > 0 || prev)) {
+      return;
+    }
+
     if (prev) clearTimeout(prev);
 
     if (!shouldShowNudges()) {

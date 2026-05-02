@@ -797,11 +797,9 @@ export default function MemoryPalace(){
     justOnboardedRef.current = true;
     // Mark checklist item if user uploaded during onboarding
     if (memoryUploaded) markChecklistItem("upload_first_memory");
-    // Land on Atrium — auto-trigger the nudge tutorial after a short delay
+    // Land on Atrium — NudgeProvider's own useEffect will call initPage("atrium")
+    // with a 600ms delay, giving the DOM time to mount after the transition.
     setNavMode("atrium");
-    setTimeout(() => {
-      useNudgeStore.getState().initPage("atrium", isMobile);
-    }, 800);
   };
 
   // ── Early returns for Settings / Notifications (before profileLoading gate

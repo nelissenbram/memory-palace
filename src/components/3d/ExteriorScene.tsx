@@ -175,6 +175,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     // Procedural sky sphere used as fallback only — hidden when HDRI background loads
     const skySphere=new THREE.Mesh(skyGeo,new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide}));
     scene.add(skySphere);
+    // On mobile (no HDRI background), set scene.background to the procedural sky texture.
+    // The sky sphere mesh alone can be clipped by the camera far plane (300) since its
+    // radius (500) exceeds it, causing a black background on Android/mobile.
+    if(!Q.loadBackgroundHDRI){scene.background=skyTex;scene.backgroundIntensity=1.0;skySphere.visible=false;}
 
     const camera=new THREE.PerspectiveCamera(32,w/h,1.0,300);
     const ren=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,Q.maxPixelRatio));
