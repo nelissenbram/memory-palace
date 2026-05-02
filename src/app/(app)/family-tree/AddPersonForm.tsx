@@ -322,7 +322,7 @@ export function AddPersonForm({
               color: gender === gp.value ? T.color.terracotta : T.color.charcoal,
               cursor: "pointer",
               minHeight: "2.75rem",
-              fontWeight: gender === gp.value ? 600 : 400,
+              fontWeight: gender === gp.value ? 600 : 500,
               transition: "all 0.15s ease",
             }}
           >
@@ -380,7 +380,7 @@ export function AddPersonForm({
                       color: relationType === rt ? T.color.white : T.color.walnut,
                       cursor: "pointer",
                       minHeight: "2.75rem",
-                      fontWeight: relationType === rt ? 600 : 400,
+                      fontWeight: relationType === rt ? 600 : 500,
                       transition: "all 0.15s ease",
                     }}
                   >
@@ -458,7 +458,7 @@ export function AddPersonForm({
                         color: isSelected ? T.color.terracotta : T.color.charcoal,
                         cursor: "pointer",
                         minHeight: "2.75rem",
-                        fontWeight: isSelected ? 600 : 400,
+                        fontWeight: isSelected ? 600 : 500,
                         transition: "all 0.15s ease",
                         display: "inline-flex",
                         alignItems: "center",

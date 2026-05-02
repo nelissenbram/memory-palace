@@ -286,7 +286,7 @@ function PermissionBadge({ label, enabled }: { label: string; enabled: boolean }
         fontFamily: T.font.body,
         fontSize: "0.5625rem",
         color: enabled ? T.color.sage : T.color.sandstone,
-        fontWeight: enabled ? 600 : 400,
+        fontWeight: enabled ? 600 : 500,
       }}
     >
       {label}
@@ -562,7 +562,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                     boxShadow: active ? "0 1px 3px rgba(44,44,42,.08)" : "none",
                     fontFamily: T.font.body,
                     fontSize: "0.8125rem",
-                    fontWeight: active ? 600 : 400,
+                    fontWeight: active ? 600 : 500,
                     color: active ? T.color.charcoal : T.color.muted,
                     cursor: "pointer",
                     transition: "all .15s",

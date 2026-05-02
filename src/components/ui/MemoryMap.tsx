@@ -768,7 +768,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
             style={{
               padding: "0.375rem 0.875rem", borderRadius: "0.5rem", border: `1px solid ${!filterWing ? T.color.walnut : T.color.cream}`,
               background: !filterWing ? `${T.color.walnut}15` : T.color.white,
-              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: !filterWing ? 600 : 400,
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: !filterWing ? 600 : 500,
               color: !filterWing ? T.color.walnut : T.color.muted, cursor: "pointer", whiteSpace: "nowrap",
             }}
           >{t("allWings")}</button>
@@ -777,7 +777,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
               padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
               border: `1px solid ${filterWing === w.id ? w.accent : T.color.cream}`,
               background: filterWing === w.id ? `${w.accent}15` : T.color.white,
-              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: filterWing === w.id ? 600 : 400,
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: filterWing === w.id ? 600 : 500,
               color: filterWing === w.id ? w.accent : T.color.muted, cursor: "pointer",
               whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.25rem",
             }}>

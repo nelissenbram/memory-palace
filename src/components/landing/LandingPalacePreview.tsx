@@ -157,7 +157,7 @@ export default function LandingPalacePreview() {
           {/* Roof */}
           <linearGradient id="lpp-roof" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#9A7A58" />
-            <stop offset="100%" stopColor="#C17F59" />
+            <stop offset="100%" stopColor="#C66B3D" />
           </linearGradient>
 
           {/* Shadow cast */}
@@ -330,7 +330,7 @@ export default function LandingPalacePreview() {
           <polygon
             points="395,268 480,215 565,268"
             fill="none"
-            stroke="#C17F59"
+            stroke="#C66B3D"
             strokeWidth="1"
             opacity="0.5"
           />

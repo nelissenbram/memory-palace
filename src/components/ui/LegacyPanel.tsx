@@ -365,7 +365,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                     background: formRelationship === rel.id ? `${T.color.walnut}10` : T.color.white,
                     cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem",
                     color: formRelationship === rel.id ? T.color.charcoal : T.color.muted,
-                    fontWeight: formRelationship === rel.id ? 600 : 400,
+                    fontWeight: formRelationship === rel.id ? 600 : 500,
                   }}>{rel.label}</button>
                 ))}
               </div>

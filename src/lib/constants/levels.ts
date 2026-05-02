@@ -11,7 +11,7 @@ export interface Level {
 export const LEVELS: Level[] = [
   { rank: 0, titleKey: "newcomer",  minPoints: 0,    color: "#9A9183" },
   { rank: 1, titleKey: "explorer",  minPoints: 50,   color: "#8B7355" },
-  { rank: 2, titleKey: "keeper",    minPoints: 150,  color: "#C17F59" },
+  { rank: 2, titleKey: "keeper",    minPoints: 150,  color: "#C66B3D" },
   { rank: 3, titleKey: "guardian",  minPoints: 300,  color: "#4A6741" },
   { rank: 4, titleKey: "curator",   minPoints: 500,  color: "#5B8FA8" },
   { rank: 5, titleKey: "master",    minPoints: 1000, color: "#C9A84C" },

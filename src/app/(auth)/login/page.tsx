@@ -153,7 +153,7 @@ function LoginContent() {
             style={{
               fontFamily: T.font.display,
               fontSize: "1.75rem",
-              fontWeight: 400,
+              fontWeight: 500,
               color: T.color.charcoal,
               margin: 0,
               lineHeight: 1.3,

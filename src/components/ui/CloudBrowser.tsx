@@ -130,7 +130,7 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
           </div>
           {status === "connected" && (
             <nav style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginTop: "0.625rem", flexWrap: "wrap" }}>
-              <button onClick={() => navigateToFolder("")} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.25rem", fontFamily: T.font.body, fontSize: "0.75rem", color: currentPath ? T.color.terracotta : T.color.charcoal, fontWeight: currentPath ? 400 : 600, textDecoration: currentPath ? "underline" : "none" }}>
+              <button onClick={() => navigateToFolder("")} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.25rem", fontFamily: T.font.body, fontSize: "0.75rem", color: currentPath ? T.color.terracotta : T.color.charcoal, fontWeight: currentPath ? 500 : 600, textDecoration: currentPath ? "underline" : "none" }}>
                 {t("cloudBreadcrumbRoot")}
               </button>
               {breadcrumbSegments.map((seg, i) => {
@@ -139,7 +139,7 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
                 return (
                   <span key={segPath} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
                     <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>/</span>
-                    <button onClick={() => !isLast && navigateToFolder(segPath)} style={{ background: "none", border: "none", cursor: isLast ? "default" : "pointer", padding: "0.125rem 0.25rem", fontFamily: T.font.body, fontSize: "0.75rem", color: isLast ? T.color.charcoal : T.color.terracotta, fontWeight: isLast ? 600 : 400, textDecoration: isLast ? "none" : "underline" }}>
+                    <button onClick={() => !isLast && navigateToFolder(segPath)} style={{ background: "none", border: "none", cursor: isLast ? "default" : "pointer", padding: "0.125rem 0.25rem", fontFamily: T.font.body, fontSize: "0.75rem", color: isLast ? T.color.charcoal : T.color.terracotta, fontWeight: isLast ? 600 : 500, textDecoration: isLast ? "none" : "underline" }}>
                       {seg}
                     </button>
                   </span>

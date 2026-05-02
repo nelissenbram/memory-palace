@@ -1158,7 +1158,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         <div style={{
                           fontFamily: T.font.body, fontSize: "0.5625rem",
                           color: displayType === val ? accent : T.color.muted,
-                          fontWeight: displayType === val ? 600 : 400,
+                          fontWeight: displayType === val ? 600 : 500,
                         }}>{t(labelKey)}</div>
                       </button>
                     ))}
@@ -1288,7 +1288,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         <div style={{
                           fontFamily: T.font.body, fontSize: "0.5625rem",
                           color: visibility === val ? accent : T.color.muted,
-                          fontWeight: visibility === val ? 600 : 400,
+                          fontWeight: visibility === val ? 600 : 500,
                         }}>
                           {t(`vis${val.charAt(0).toUpperCase() + val.slice(1)}` as any)}
                         </div>

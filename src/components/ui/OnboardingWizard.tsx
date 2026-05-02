@@ -370,8 +370,8 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             background: "rgba(40, 34, 26, 0.6)",
             backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
             borderRadius: "1.25rem",
-            border: "1px solid rgba(193,127,89,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(193,127,89,0.06)",
+            border: "1px solid rgba(198,107,61,0.1)",
+            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
             animation: "onb-fadeUp .6s ease",
           }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -417,7 +417,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                         onClick={() => { setSelectedLocale(loc); setLocaleNoReload(loc); }}
                         style={{
                           fontFamily: T.font.body, fontSize: "0.8125rem",
-                          fontWeight: active ? 600 : 400,
+                          fontWeight: active ? 600 : 500,
                           padding: "0.6875rem 0.5rem", borderRadius: "0.5rem",
                           border: `1.5px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
                           background: active ? `${T.color.terracotta}12` : "rgba(255,255,255,0.02)",
@@ -456,7 +456,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                         onClick={() => setTextSize(size)}
                         style={{
                           flex: 1, fontFamily: T.font.body, fontSize: "0.6875rem",
-                          fontWeight: active ? 600 : 400,
+                          fontWeight: active ? 600 : 500,
                           padding: "0.75rem 0.25rem", borderRadius: "0.5rem",
                           border: `1.5px solid ${active ? T.color.terracotta : "rgba(255,255,255,0.06)"}`,
                           background: active ? `${T.color.terracotta}12` : "rgba(255,255,255,0.02)",
@@ -481,7 +481,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   padding: "0.8125rem 0", borderRadius: "0.5rem", border: "none",
                   background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                   color: "#FFF", cursor: "pointer", transition: "all .3s",
-                  boxShadow: "0 0.25rem 1.25rem rgba(193,127,89,.25)",
+                  boxShadow: "0 0.25rem 1.25rem rgba(198,107,61,.25)",
                   minHeight: "3rem", width: "100%",
                 }}
               >
@@ -524,8 +524,8 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             background: "rgba(40, 34, 26, 0.6)",
             backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
             borderRadius: "1.25rem",
-            border: "1px solid rgba(193,127,89,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(193,127,89,0.06)",
+            border: "1px solid rgba(198,107,61,0.1)",
+            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
             animation: "onb-fadeUp .5s ease",
           }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -561,12 +561,12 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   placeholder={t("namePlaceholder")}
                   style={{
                     fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.5rem", textAlign: "center",
-                    padding: "0.875rem 1.5rem", border: "1.5px solid rgba(193,127,89,0.18)",
+                    padding: "0.875rem 1.5rem", border: "1.5px solid rgba(198,107,61,0.18)",
                     borderRadius: "0.625rem", background: "rgba(40,34,26,0.4)", color: "#F2EDE7",
                     outline: "none", width: "100%", transition: "border-color .2s",
                   }}
                   onFocus={(e) => { e.target.style.borderColor = T.color.terracotta; }}
-                  onBlur={(e) => { e.target.style.borderColor = "rgba(193,127,89,0.18)"; }}
+                  onBlur={(e) => { e.target.style.borderColor = "rgba(198,107,61,0.18)"; }}
                   autoFocus
                   onKeyDown={(e) => { if (e.key === "Enter" && userName.trim()) setPhase("style_era"); }}
                 />
@@ -578,7 +578,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   style={{
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                     padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
-                    border: "1px solid rgba(193,127,89,0.15)", background: "transparent",
+                    border: "1px solid rgba(198,107,61,0.15)", background: "transparent",
                     color: "#A09889", cursor: "pointer", minHeight: "3rem",
                   }}
                 >
@@ -593,7 +593,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                     background: userName.trim() ? `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})` : "rgba(255,255,255,0.06)",
                     color: userName.trim() ? "#FFF" : "#6B6155",
                     cursor: userName.trim() ? "pointer" : "default",
-                    boxShadow: userName.trim() ? "0 0.25rem 1rem rgba(193,127,89,.3)" : "none",
+                    boxShadow: userName.trim() ? "0 0.25rem 1rem rgba(198,107,61,.3)" : "none",
                   }}
                 >
                   {t("continueButton")} {"\u2192"}
@@ -659,8 +659,8 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             background: "rgba(40, 34, 26, 0.6)",
             backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
             borderRadius: "1.25rem",
-            border: "1px solid rgba(193,127,89,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(193,127,89,0.06)",
+            border: "1px solid rgba(198,107,61,0.1)",
+            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
             animation: "onb-fadeUp .5s ease",
           }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -714,7 +714,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                           cursor: "pointer", transition: "all .2s",
                           fontFamily: T.font.body, fontSize: isMobile ? "0.875rem" : "0.9375rem",
                           color: active ? "#F2EDE7" : "#C4B8A8",
-                          fontWeight: active ? 600 : 400,
+                          fontWeight: active ? 600 : 500,
                           textAlign: "left",
                           minHeight: "3.25rem",
                         }}
@@ -747,7 +747,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   style={{
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                     padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
-                    border: "1px solid rgba(193,127,89,0.15)", background: "transparent",
+                    border: "1px solid rgba(198,107,61,0.15)", background: "transparent",
                     color: "#A09889", cursor: "pointer", minHeight: "3rem",
                   }}
                 >
@@ -791,8 +791,8 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             background: "rgba(40, 34, 26, 0.6)",
             backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
             borderRadius: "1.25rem",
-            border: "1px solid rgba(193,127,89,0.1)",
-            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(193,127,89,0.06)",
+            border: "1px solid rgba(198,107,61,0.1)",
+            boxShadow: "0 1rem 3rem rgba(0,0,0,0.3), inset 0 1px 0 rgba(198,107,61,0.06)",
             animation: "onb-fadeUp .5s ease",
           }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.5rem" }}>
@@ -928,7 +928,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   style={{
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                     padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
-                    border: "1px solid rgba(193,127,89,0.15)", background: "transparent",
+                    border: "1px solid rgba(198,107,61,0.15)", background: "transparent",
                     color: "#A09889", cursor: "pointer", minHeight: "3rem",
                   }}
                 >
@@ -945,7 +945,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                     padding: "0.75rem 2rem", borderRadius: "0.5rem", minHeight: "3rem", border: "none",
                     background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                     color: "#FFF", cursor: "pointer",
-                    boxShadow: "0 0.25rem 1rem rgba(193,127,89,.3)",
+                    boxShadow: "0 0.25rem 1rem rgba(198,107,61,.3)",
                   }}
                 >
                   {t("continueButton")} {"\u2192"}
@@ -1420,8 +1420,8 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             background: "rgba(40, 34, 26, 0.85)",
             backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
             borderRadius: "1.25rem",
-            border: "1px solid rgba(193,127,89,0.15)",
-            boxShadow: "0 1.5rem 4rem rgba(0,0,0,0.4), inset 0 1px 0 rgba(193,127,89,0.08)",
+            border: "1px solid rgba(198,107,61,0.15)",
+            boxShadow: "0 1.5rem 4rem rgba(0,0,0,0.4), inset 0 1px 0 rgba(198,107,61,0.08)",
             animation: "onb-fadeUp .6s ease",
           }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: "1.25rem" }}>
@@ -1487,7 +1487,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   padding: "0.875rem 0", borderRadius: "0.625rem", border: "none",
                   background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                   color: "#FFF", cursor: "pointer", transition: "all .3s",
-                  boxShadow: "0 0.25rem 1.25rem rgba(193,127,89,.3)",
+                  boxShadow: "0 0.25rem 1.25rem rgba(198,107,61,.3)",
                   minHeight: "3rem",
                 }}
               >

@@ -25,7 +25,7 @@ export interface WingRoom {
 }
 
 export const WINGS: Wing[] = [
-  {id:"roots",name:"Roots",nameKey:"roots",icon:"🌱",accent:"#C17F59",wall:"#DDD4C6",floor:"#9E8264",desc:"Where I come from",descKey:"rootsDesc",layout:"L-shaped gallery"},
+  {id:"roots",name:"Roots",nameKey:"roots",icon:"🌱",accent:"#C66B3D",wall:"#DDD4C6",floor:"#9E8264",desc:"Where I come from",descKey:"rootsDesc",layout:"L-shaped gallery"},
   {id:"nest",name:"Nest",nameKey:"nest",icon:"🪺",accent:"#7AA0C8",wall:"#D8D5CA",floor:"#988868",desc:"The home I've made",descKey:"nestDesc",layout:"L-shaped gallery"},
   {id:"craft",name:"Craft",nameKey:"craft",icon:"🛠",accent:"#8B7355",wall:"#D5CFC2",floor:"#8E7C64",desc:"What I've built and learned",descKey:"craftDesc",layout:"Exhibition hall"},
   {id:"travel",name:"Travel",nameKey:"travel",icon:"🧭",accent:"#4A6741",wall:"#D8D5CA",floor:"#988868",desc:"Places I've been",descKey:"travelDesc",layout:"Long corridor with alcoves"},

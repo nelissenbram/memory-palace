@@ -20,7 +20,7 @@ function skyGradient(hour: number): string {
   if (hour >= 12 && hour < 18)
     return `linear-gradient(180deg, #F5DFA0 0%, ${T.era.roman.primary} 50%, ${T.color.warmStone} 100%)`;
   if (hour >= 18 && hour < 22)
-    return `linear-gradient(180deg, #9B4D3A 0%, #C17F59 30%, ${T.era.roman.primary} 70%, ${T.color.warmStone} 100%)`;
+    return `linear-gradient(180deg, #9B4D3A 0%, #C66B3D 30%, ${T.era.roman.primary} 70%, ${T.color.warmStone} 100%)`;
   return `linear-gradient(180deg, #1E1E20 0%, #2C2C2A 40%, #3A362E 80%, ${T.color.walnut} 100%)`;
 }
 

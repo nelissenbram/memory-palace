@@ -27,7 +27,7 @@ const EMOJI_PRESETS = [
 ];
 
 const ACCENT_PALETTE = [
-  { color: "#C17F59", nameKey: "terracotta" },
+  { color: "#C66B3D", nameKey: "terracotta" },
   { color: "#4A6741", nameKey: "forest" },
   { color: "#B8926A", nameKey: "sand" },
   { color: "#8B7355", nameKey: "walnut" },

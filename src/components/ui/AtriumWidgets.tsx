@@ -1459,7 +1459,7 @@ const AchievementBadge = React.memo(function AchievementBadge({
             {achievement.descKey && (
               <div style={{
                 fontSize: "0.5625rem",
-                fontWeight: 400,
+                fontWeight: 500,
                 color: "rgba(255,255,255,0.7)",
                 marginTop: "0.125rem",
                 lineHeight: 1.4,

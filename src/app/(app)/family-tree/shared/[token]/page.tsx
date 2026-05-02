@@ -45,7 +45,7 @@ export default async function SharedFamilyTreePage({
         }}
       >
         <h1 style={{ fontSize: "1.5rem", margin: 0 }}>{notFoundTitle[locale] || notFoundTitle.en}</h1>
-        <p style={{ color: "#746B60", fontSize: "0.9375rem", fontFamily: "'Source Sans 3', system-ui, sans-serif" }}>
+        <p style={{ color: "#746B60", fontSize: "0.9375rem", fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif" }}>
           {notFoundDesc[locale] || notFoundDesc.en}
         </p>
       </div>

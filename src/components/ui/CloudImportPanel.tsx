@@ -343,7 +343,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                     padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: "none",
                     background: isActive ? T.color.white : "transparent",
                     color: isActive ? T.color.charcoal : T.color.muted,
-                    fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: isActive ? 600 : 400,
+                    fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: isActive ? 600 : 500,
                     cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem",
                     whiteSpace: "nowrap", transition: "all .15s", minHeight: "2.75rem",
                   }}>
@@ -548,7 +548,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                         background: "none", border: "none",
                         color: i === folderPath.length - 1 ? T.color.charcoal : T.color.terracotta,
                         fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
-                        fontWeight: i === folderPath.length - 1 ? 600 : 400,
+                        fontWeight: i === folderPath.length - 1 ? 600 : 500,
                         padding: "0.125rem 0.25rem", minHeight: "2.75rem",
                       }}>
                         {folder.name}
@@ -945,7 +945,7 @@ function FileList({ items, selected, onToggle, onOpenFolder }: {
             {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: isFolder ? 500 : 400,
+                fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: isFolder ? 500 : 500,
                 color: T.color.charcoal,
                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
               }}>

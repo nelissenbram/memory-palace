@@ -6,7 +6,7 @@ import { revokeProviderToken } from "@/lib/integrations/helpers";
 import { r2Remove, r2List, isR2Configured } from "@/lib/storage/r2";
 
 const DEFAULT_WINGS = [
-  { slug: "roots", accent_color: "#C17F59" },
+  { slug: "roots", accent_color: "#C66B3D" },
   { slug: "nest", accent_color: "#7AA0C8" },
   { slug: "craft", accent_color: "#8B7355" },
   { slug: "travel", accent_color: "#4A6741" },

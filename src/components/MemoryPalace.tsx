@@ -822,6 +822,9 @@ export default function MemoryPalace(){
     justOnboardedRef.current = true;
     // Mark checklist item if user uploaded during onboarding
     if (memoryUploaded) markChecklistItem("upload_first_memory");
+    // Reset nudge state for fresh tutorial — clears any stale skip/seen
+    // data from a previous user on the same browser
+    useNudgeStore.getState().reset();
     // Land on Atrium — NudgeProvider's own useEffect will call initPage("atrium")
     // with a 900ms delay, giving the DOM time to mount after the transition.
     setNavMode("atrium");
@@ -832,7 +835,7 @@ export default function MemoryPalace(){
     setTimeout(() => {
       const { activePage, activeNudge, queue } = useNudgeStore.getState();
       if (activePage !== "atrium" || (!activeNudge && queue.length === 0)) {
-        useNudgeStore.getState().initPage("atrium");
+        useNudgeStore.getState().initPage("atrium", typeof window !== "undefined" && window.innerWidth < 768);
       }
     }, 1200);
   };
@@ -1254,7 +1257,7 @@ export default function MemoryPalace(){
       {/* Era picker modal — for existing users who haven't chosen a style */}
       {showEraPicker && <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(44,44,42,.6)",backdropFilter:"blur(0.375rem)"}} onClick={()=>setShowEraPicker(false)}>
         <div role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{if(e.key==="Escape")setShowEraPicker(false);}} onClick={e=>e.stopPropagation()} style={{background:T.color.linen,borderRadius:"1.25rem",padding:isMobile?"1.75rem 1.25rem":"2.25rem 2.5rem",maxWidth:"30rem",width:"90%",textAlign:"center",boxShadow:"0 0.75rem 3rem rgba(0,0,0,.2)"}}>
-          <h2 style={{fontFamily:T.font.display,fontSize:isMobile?"1.375rem":"1.625rem",fontWeight:400,color:T.color.charcoal,marginBottom:"0.5rem"}}>{tPalace("eraPickerTitle")}</h2>
+          <h2 style={{fontFamily:T.font.display,fontSize:isMobile?"1.375rem":"1.625rem",fontWeight:500,color:T.color.charcoal,marginBottom:"0.5rem"}}>{tPalace("eraPickerTitle")}</h2>
           <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,marginBottom:"1.25rem"}}>{tPalace("eraPickerSubtitle")}</p>
           <div style={{display:"flex",gap:"0.75rem",marginBottom:"1.25rem"}}>
             {(["roman","renaissance"] as const).map(era=>(
@@ -1292,7 +1295,7 @@ export default function MemoryPalace(){
                 {tPalace("viewPlans")}
               </button>
               <button onClick={()=>setShowUpgradePrompt(false)}
-                style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:400,padding:"0.5rem",border:"none",
+                style={{fontFamily:T.font.body,fontSize:"0.8125rem",fontWeight:500,padding:"0.5rem",border:"none",
                   background:"none",color:T.color.muted,cursor:"pointer"}}>
                 {tPalace("gotIt")}
               </button>

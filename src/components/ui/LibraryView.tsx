@@ -196,7 +196,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
                 style={{
                   background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.25rem",
                   fontFamily: T.font.body, fontSize: "0.75rem", color: currentPath ? T.color.terracotta : T.color.charcoal,
-                  fontWeight: currentPath ? 400 : 600, textDecoration: currentPath ? "underline" : "none",
+                  fontWeight: currentPath ? 500 : 600, textDecoration: currentPath ? "underline" : "none",
                 }}
               >
                 {t("cloudBreadcrumbRoot")}
@@ -214,7 +214,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
                         padding: "0.125rem 0.25rem",
                         fontFamily: T.font.body, fontSize: "0.75rem",
                         color: isLast ? T.color.charcoal : T.color.terracotta,
-                        fontWeight: isLast ? 600 : 400,
+                        fontWeight: isLast ? 600 : 500,
                         textDecoration: isLast ? "none" : "underline",
                       }}
                     >
@@ -1044,7 +1044,7 @@ export default function LibraryView() {
       <LibraryStyles />
       <TuscanStyles />
       {/* Spotlight pulse animation */}
-      <style>{`@keyframes spotlightPulse{0%,100%{box-shadow:0 0 0 0.1875rem rgba(193,127,89,0.25),0 0.25rem 1rem rgba(193,127,89,0.2)}50%{box-shadow:0 0 0 0.375rem rgba(193,127,89,0.35),0 0.25rem 1rem rgba(193,127,89,0.3)}}`}</style>
+      <style>{`@keyframes spotlightPulse{0%,100%{box-shadow:0 0 0 0.1875rem rgba(198,107,61,0.25),0 0.25rem 1rem rgba(198,107,61,0.2)}50%{box-shadow:0 0 0 0.375rem rgba(198,107,61,0.35),0 0.25rem 1rem rgba(198,107,61,0.3)}}`}</style>
 
       {/* ═══ WING SIDEBAR ═══ */}
       {/* Mobile: hamburger in the merged header bar below */}
@@ -1398,7 +1398,7 @@ export default function LibraryView() {
                       </svg>
                       <span style={{
                         fontFamily: T.font.body, fontSize: "0.8125rem",
-                        fontWeight: sortMode === mode ? 600 : 400,
+                        fontWeight: sortMode === mode ? 600 : 500,
                         color: sortMode === mode ? currentWing.accent : T.color.charcoal,
                       }}>
                         {t(`sort${mode.charAt(0).toUpperCase() + mode.slice(1)}` as "sortNewest")}
@@ -1470,7 +1470,7 @@ export default function LibraryView() {
                 display: "flex", alignItems: "center", gap: isMobile ? "0.25rem" : "0.5rem",
                 padding: isMobile ? "0.375rem 0.625rem" : "0.5rem 1rem", borderRadius: "1.5rem",
                 border: `0.0625rem solid ${isSpotlit ? T.color.terracotta : selectedRoom ? T.color.cream : "rgba(44,44,42,.1)"}`,
-                background: isSpotlit ? "rgba(193,127,89,0.12)" : selectedRoom ? "rgba(255,255,255,0.78)" : "rgba(255,255,255,0.4)",
+                background: isSpotlit ? "rgba(198,107,61,0.12)" : selectedRoom ? "rgba(255,255,255,0.78)" : "rgba(255,255,255,0.4)",
                 backdropFilter: "blur(0.5rem)",
                 color: isSpotlit ? T.color.terracotta : selectedRoom ? T.color.walnut : T.color.muted,
                 cursor: selectedRoom || isSpotlit ? "pointer" : "default",
@@ -1479,7 +1479,7 @@ export default function LibraryView() {
                 opacity: isSpotlit ? 1 : selectedRoom ? 1 : 0.55,
                 transition: "all 0.2s ease",
                 boxShadow: isSpotlit
-                  ? `0 0 0 0.1875rem ${T.color.terracotta}44, 0 0.25rem 1rem rgba(193,127,89,0.2)`
+                  ? `0 0 0 0.1875rem ${T.color.terracotta}44, 0 0.25rem 1rem rgba(198,107,61,0.2)`
                   : selectedRoom ? "0 0.0625rem 0.25rem rgba(44,44,42,0.06)" : "none",
                 position: "relative",
                 zIndex: isSpotlit ? 10 : undefined,
@@ -1686,7 +1686,7 @@ export default function LibraryView() {
             <div style={{
               marginBottom: "1.5rem",
               padding: isMobile ? "1rem" : "1.125rem 1.5rem",
-              background: "linear-gradient(135deg, rgba(193,127,89,0.08) 0%, rgba(212,175,55,0.06) 100%)",
+              background: "linear-gradient(135deg, rgba(198,107,61,0.08) 0%, rgba(212,175,55,0.06) 100%)",
               borderRadius: "0.75rem",
               border: `0.0625rem solid ${T.color.terracotta}22`,
               display: "flex", flexDirection: isMobile ? "column" : "row",
@@ -1727,16 +1727,16 @@ export default function LibraryView() {
                     color: T.color.white, border: "none", cursor: "pointer",
                     fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                     letterSpacing: "0.03em", whiteSpace: "nowrap",
-                    boxShadow: "0 0.125rem 0.5rem rgba(193,127,89,0.25)",
+                    boxShadow: "0 0.125rem 0.5rem rgba(198,107,61,0.25)",
                     transition: "all 0.25s ease",
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.transform = "translateY(-0.0625rem)";
-                    e.currentTarget.style.boxShadow = "0 0.25rem 0.75rem rgba(193,127,89,0.35)";
+                    e.currentTarget.style.boxShadow = "0 0.25rem 0.75rem rgba(198,107,61,0.35)";
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.transform = "none";
-                    e.currentTarget.style.boxShadow = "0 0.125rem 0.5rem rgba(193,127,89,0.25)";
+                    e.currentTarget.style.boxShadow = "0 0.125rem 0.5rem rgba(198,107,61,0.25)";
                   }}
                 >
                   {t("aiSortButton")}
@@ -3313,7 +3313,7 @@ export default function LibraryView() {
                       <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(wing, tWings)}</span>
                       <span style={{
                         fontSize: "0.6875rem", color: T.color.muted,
-                        fontWeight: 400,
+                        fontWeight: 500,
                       }}>
                         {wRooms.length}
                       </span>
@@ -3349,7 +3349,7 @@ export default function LibraryView() {
                             gap: "0.5rem",
                             fontFamily: T.font.body,
                             fontSize: "0.8125rem",
-                            fontWeight: 400,
+                            fontWeight: 500,
                             color: isCurrent ? T.color.muted : T.color.walnut,
                             letterSpacing: "0.01em",
                             opacity: isCurrent ? 0.6 : 1,
@@ -3482,7 +3482,7 @@ export default function LibraryView() {
                     >
                       <WingIcon wingId={wing.id} size={18} color={wing.accent} />
                       <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(wing, tWings)}</span>
-                      <span style={{ fontSize: "0.6875rem", color: T.color.muted, fontWeight: 400 }}>{wRooms.length}</span>
+                      <span style={{ fontSize: "0.6875rem", color: T.color.muted, fontWeight: 500 }}>{wRooms.length}</span>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round"
                         style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease", flexShrink: 0 }}
                       ><path d="M4 2l4 4-4 4" /></svg>
@@ -3499,7 +3499,7 @@ export default function LibraryView() {
                             background: isCurrent ? `${wing.accent}08` : "transparent",
                             border: "none", cursor: isCurrent ? "default" : "pointer",
                             display: "flex", alignItems: "center", gap: "0.5rem",
-                            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 400,
+                            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
                             color: isCurrent ? T.color.muted : T.color.walnut,
                             letterSpacing: "0.01em", opacity: isCurrent ? 0.6 : 1,
                             transition: "background 0.15s ease",

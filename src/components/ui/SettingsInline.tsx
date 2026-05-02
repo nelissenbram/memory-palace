@@ -124,7 +124,7 @@ function SettingsInline() {
                     textDecoration: "none",
                     background: isActive ? `${T.color.terracotta}10` : "transparent",
                     color: isActive ? T.color.terracotta : T.color.charcoal,
-                    fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 400,
+                    fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 500,
                     cursor: "pointer",
                     transition: "all .15s",
                   }}
@@ -144,7 +144,7 @@ function SettingsInline() {
                 border: "none",
                 background: "transparent",
                 color: T.color.muted,
-                fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 400,
+                fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 500,
                 cursor: "pointer",
                 transition: "all .15s",
               }}
@@ -180,7 +180,7 @@ function SettingsInline() {
                       border: "none", width: "100%", textAlign: "left",
                       background: isActive ? `${T.color.terracotta}10` : "transparent",
                       color: isActive ? T.color.terracotta : T.color.charcoal,
-                      fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 400,
+                      fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 500,
                       cursor: "pointer",
                       transition: "all .15s",
                     }}
@@ -199,7 +199,7 @@ function SettingsInline() {
                   border: "none", width: "100%", textAlign: "left",
                   background: "transparent",
                   color: T.color.muted,
-                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 400,
+                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 500,
                   cursor: "pointer",
                   transition: "all .15s",
                   marginTop: "0.25rem",

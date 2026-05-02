@@ -57,7 +57,7 @@ export function HeroIllustration({ style, size = 400 }: IconProps) {
         </linearGradient>
         <linearGradient id="hero-ground" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#D4C5B2" />
-          <stop offset="100%" stopColor="#C17F59" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#C66B3D" stopOpacity="0.3" />
         </linearGradient>
         <radialGradient id="hero-entrance-glow" cx="0.5" cy="0.5" r="0.5">
           <stop offset="0%" stopColor="#B8860B" stopOpacity="0.7" />
@@ -65,7 +65,7 @@ export function HeroIllustration({ style, size = 400 }: IconProps) {
         </radialGradient>
         <linearGradient id="hero-roof" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#8B7355" />
-          <stop offset="100%" stopColor="#C17F59" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#C66B3D" stopOpacity="0.8" />
         </linearGradient>
       </defs>
 
@@ -148,7 +148,7 @@ export function HeroIllustration({ style, size = 400 }: IconProps) {
       <polygon
         points="350,198 400,162 450,198"
         fill="none"
-        stroke="#C17F59"
+        stroke="#C66B3D"
         strokeWidth="1"
         opacity="0.5"
       />
@@ -215,20 +215,20 @@ export function FeaturePalaceIcon({ style, size = 48 }: IconProps) {
       aria-hidden="true"
     >
       {/* Pediment */}
-      <polygon points="8,18 24,6 40,18" fill="none" stroke="#C17F59" strokeWidth="1.8" strokeLinejoin="round" />
+      <polygon points="8,18 24,6 40,18" fill="none" stroke="#C66B3D" strokeWidth="1.8" strokeLinejoin="round" />
       {/* Entablature */}
-      <rect x="7" y="17" width="34" height="2.5" rx="0.5" fill="#C17F59" />
+      <rect x="7" y="17" width="34" height="2.5" rx="0.5" fill="#C66B3D" />
       {/* Columns */}
-      <rect x="11" y="19.5" width="3" height="18" rx="1.2" fill="#C17F59" />
-      <rect x="22.5" y="19.5" width="3" height="18" rx="1.2" fill="#C17F59" />
-      <rect x="34" y="19.5" width="3" height="18" rx="1.2" fill="#C17F59" />
+      <rect x="11" y="19.5" width="3" height="18" rx="1.2" fill="#C66B3D" />
+      <rect x="22.5" y="19.5" width="3" height="18" rx="1.2" fill="#C66B3D" />
+      <rect x="34" y="19.5" width="3" height="18" rx="1.2" fill="#C66B3D" />
       {/* Base */}
-      <rect x="6" y="37" width="36" height="2.5" rx="0.5" fill="#C17F59" />
+      <rect x="6" y="37" width="36" height="2.5" rx="0.5" fill="#C66B3D" />
       {/* Steps */}
-      <rect x="8" y="39.5" width="32" height="1.5" rx="0.4" fill="#C17F59" opacity="0.6" />
-      <rect x="10" y="41" width="28" height="1.5" rx="0.4" fill="#C17F59" opacity="0.35" />
+      <rect x="8" y="39.5" width="32" height="1.5" rx="0.4" fill="#C66B3D" opacity="0.6" />
+      <rect x="10" y="41" width="28" height="1.5" rx="0.4" fill="#C66B3D" opacity="0.35" />
       {/* Door */}
-      <rect x="20" y="28" width="8" height="9" rx="4" fill="#C17F59" opacity="0.4" />
+      <rect x="20" y="28" width="8" height="9" rx="4" fill="#C66B3D" opacity="0.4" />
     </svg>
   );
 }
@@ -384,24 +384,24 @@ export function FeatureLegacyIcon({ style, size = 48 }: IconProps) {
       aria-hidden="true"
     >
       {/* Pediment */}
-      <polygon points="6,18 24,6 42,18" fill="none" stroke="#C17F59" strokeWidth="1.6" strokeLinejoin="round" />
+      <polygon points="6,18 24,6 42,18" fill="none" stroke="#C66B3D" strokeWidth="1.6" strokeLinejoin="round" />
       {/* Entablature */}
-      <line x1="6" y1="18" x2="42" y2="18" stroke="#C17F59" strokeWidth="2" strokeLinecap="round" />
+      <line x1="6" y1="18" x2="42" y2="18" stroke="#C66B3D" strokeWidth="2" strokeLinecap="round" />
       {/* Left column */}
-      <rect x="10" y="19" width="3" height="18" rx="1" fill="#C17F59" />
+      <rect x="10" y="19" width="3" height="18" rx="1" fill="#C66B3D" />
       {/* Right column */}
-      <rect x="35" y="19" width="3" height="18" rx="1" fill="#C17F59" />
+      <rect x="35" y="19" width="3" height="18" rx="1" fill="#C66B3D" />
       {/* Base */}
-      <line x1="6" y1="38" x2="42" y2="38" stroke="#C17F59" strokeWidth="2" strokeLinecap="round" />
+      <line x1="6" y1="38" x2="42" y2="38" stroke="#C66B3D" strokeWidth="2" strokeLinecap="round" />
       {/* Flame / eternal fire */}
       <path
         d="M24 34 Q20 28 22 24 Q23 22 24 20 Q25 22 26 24 Q28 28 24 34 Z"
-        fill="#C17F59"
+        fill="#C66B3D"
         opacity="0.45"
       />
       <path
         d="M24 34 Q22 30 23 27 Q24 25 24 23 Q24 25 25 27 Q26 30 24 34 Z"
-        fill="#C17F59"
+        fill="#C66B3D"
         opacity="0.7"
       />
     </svg>
@@ -512,20 +512,20 @@ export function FeatureMemoryMapIcon({ style, size = 48 }: IconProps) {
       <line x1="32" y1="8" x2="32" y2="36" stroke="#8B7355" strokeWidth="0.8" opacity="0.3" />
       {/* Map pins */}
       <g>
-        <path d="M12 18 Q12 14 14.5 14 Q17 14 17 18 Q17 22 14.5 25 Q12 22 12 18Z" fill="#C17F59" opacity="0.6" />
-        <circle cx="14.5" cy="17.5" r="1.5" fill="#C17F59" opacity="0.8" />
+        <path d="M12 18 Q12 14 14.5 14 Q17 14 17 18 Q17 22 14.5 25 Q12 22 12 18Z" fill="#C66B3D" opacity="0.6" />
+        <circle cx="14.5" cy="17.5" r="1.5" fill="#C66B3D" opacity="0.8" />
       </g>
       <g>
-        <path d="M23 14 Q23 10 25.5 10 Q28 10 28 14 Q28 18 25.5 21 Q23 18 23 14Z" fill="#C17F59" opacity="0.6" />
-        <circle cx="25.5" cy="13.5" r="1.5" fill="#C17F59" opacity="0.8" />
+        <path d="M23 14 Q23 10 25.5 10 Q28 10 28 14 Q28 18 25.5 21 Q23 18 23 14Z" fill="#C66B3D" opacity="0.6" />
+        <circle cx="25.5" cy="13.5" r="1.5" fill="#C66B3D" opacity="0.8" />
       </g>
       <g>
-        <path d="M34 20 Q34 16 36.5 16 Q39 16 39 20 Q39 24 36.5 27 Q34 24 34 20Z" fill="#C17F59" opacity="0.6" />
-        <circle cx="36.5" cy="19.5" r="1.5" fill="#C17F59" opacity="0.8" />
+        <path d="M34 20 Q34 16 36.5 16 Q39 16 39 20 Q39 24 36.5 27 Q34 24 34 20Z" fill="#C66B3D" opacity="0.6" />
+        <circle cx="36.5" cy="19.5" r="1.5" fill="#C66B3D" opacity="0.8" />
       </g>
       {/* Connection lines between pins */}
-      <line x1="14.5" y1="18" x2="25.5" y2="14" stroke="#C17F59" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
-      <line x1="25.5" y1="14" x2="36.5" y2="20" stroke="#C17F59" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+      <line x1="14.5" y1="18" x2="25.5" y2="14" stroke="#C66B3D" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
+      <line x1="25.5" y1="14" x2="36.5" y2="20" stroke="#C66B3D" strokeWidth="0.8" strokeDasharray="2 2" opacity="0.4" />
       {/* Bottom label area */}
       <rect x="4" y="36" width="40" height="6" rx="0 0 2 2" fill="#8B7355" opacity="0.08" />
     </svg>
@@ -547,21 +547,21 @@ export function AudienceParentsIcon({ style, size = 48 }: IconProps) {
       aria-hidden="true"
     >
       {/* Parent head */}
-      <circle cx="16" cy="11" r="4.5" fill="none" stroke="#C17F59" strokeWidth="1.6" />
+      <circle cx="16" cy="11" r="4.5" fill="none" stroke="#C66B3D" strokeWidth="1.6" />
       {/* Parent body */}
-      <path d="M9 24 A7 6 0 0 1 23 24" fill="none" stroke="#C17F59" strokeWidth="1.6" strokeLinecap="round" />
-      <line x1="16" y1="15.5" x2="16" y2="24" stroke="#C17F59" strokeWidth="1.6" />
+      <path d="M9 24 A7 6 0 0 1 23 24" fill="none" stroke="#C66B3D" strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="16" y1="15.5" x2="16" y2="24" stroke="#C66B3D" strokeWidth="1.6" />
       {/* Child head */}
-      <circle cx="28" cy="18" r="3" fill="none" stroke="#C17F59" strokeWidth="1.4" />
+      <circle cx="28" cy="18" r="3" fill="none" stroke="#C66B3D" strokeWidth="1.4" />
       {/* Child body */}
-      <path d="M24 28 A4 3.5 0 0 1 32 28" fill="none" stroke="#C17F59" strokeWidth="1.4" strokeLinecap="round" />
-      <line x1="28" y1="21" x2="28" y2="28" stroke="#C17F59" strokeWidth="1.4" />
+      <path d="M24 28 A4 3.5 0 0 1 32 28" fill="none" stroke="#C66B3D" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="28" y1="21" x2="28" y2="28" stroke="#C66B3D" strokeWidth="1.4" />
       {/* Camera/photo icon */}
-      <rect x="35" y="10" width="10" height="7" rx="1" fill="none" stroke="#C17F59" strokeWidth="1.3" />
-      <circle cx="40" cy="13.5" r="2" fill="none" stroke="#C17F59" strokeWidth="1" />
-      <rect x="38" y="8.5" width="4" height="2" rx="0.5" fill="none" stroke="#C17F59" strokeWidth="0.8" />
+      <rect x="35" y="10" width="10" height="7" rx="1" fill="none" stroke="#C66B3D" strokeWidth="1.3" />
+      <circle cx="40" cy="13.5" r="2" fill="none" stroke="#C66B3D" strokeWidth="1" />
+      <rect x="38" y="8.5" width="4" height="2" rx="0.5" fill="none" stroke="#C66B3D" strokeWidth="0.8" />
       {/* Ground */}
-      <line x1="6" y1="38" x2="34" y2="38" stroke="#C17F59" strokeWidth="0.8" opacity="0.2" />
+      <line x1="6" y1="38" x2="34" y2="38" stroke="#C66B3D" strokeWidth="0.8" opacity="0.2" />
     </svg>
   );
 }

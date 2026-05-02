@@ -77,7 +77,7 @@ export function WhatsAppSetup({ kepId, link, exclusions, onVerify, onSendDisclos
           {link?.verified ? (
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#10b981", fontSize: "0.875rem", fontWeight: 500 }}>
               \u2705 {t("whatsappVerified")}
-              {link.verified_at && <span style={{ color: "#9ca3af", fontWeight: 400 }}>({new Date(link.verified_at).toLocaleDateString()})</span>}
+              {link.verified_at && <span style={{ color: "#9ca3af", fontWeight: 500 }}>({new Date(link.verified_at).toLocaleDateString()})</span>}
             </div>
           ) : (
             <button
@@ -115,7 +115,7 @@ export function WhatsAppSetup({ kepId, link, exclusions, onVerify, onSendDisclos
             {link.disclosure_sent ? (
               <div style={{ color: "#10b981", fontSize: "0.875rem", fontWeight: 500 }}>
                 \u2705 {t("whatsappDisclosureSent")}
-                {link.disclosure_sent_at && <span style={{ color: "#9ca3af", fontWeight: 400 }}> ({new Date(link.disclosure_sent_at).toLocaleDateString()})</span>}
+                {link.disclosure_sent_at && <span style={{ color: "#9ca3af", fontWeight: 500 }}> ({new Date(link.disclosure_sent_at).toLocaleDateString()})</span>}
               </div>
             ) : (
               <button

@@ -404,7 +404,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
         <div style={{ display: "flex", borderBottom: `1px solid ${T.color.cream}`, padding: "0 1rem" }}>
           {TABS.map(tab_ => (
             <button key={tab_.key} onClick={() => { setTab(tab_.key); if (tab_.key !== "crop") { setCropActive(false); setCropRect(null); } }}
-              style={{ flex: 1, padding: "0.625rem 0", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: tab === tab_.key ? 600 : 400, color: tab === tab_.key ? color : T.color.muted, background: "transparent", border: "none", borderBottom: tab === tab_.key ? `2px solid ${color}` : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3125rem" }}>
+              style={{ flex: 1, padding: "0.625rem 0", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: tab === tab_.key ? 600 : 500, color: tab === tab_.key ? color : T.color.muted, background: "transparent", border: "none", borderBottom: tab === tab_.key ? `2px solid ${color}` : "2px solid transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3125rem" }}>
               <span style={{ fontSize: "0.75rem" }}>{tab_.icon}</span>{tab_.label}
             </button>
           ))}
@@ -420,7 +420,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
                 <button key={p.name} onClick={() => setPreset(i)}
                   style={{ padding: "0.625rem 0.25rem", borderRadius: "0.625rem", border: preset === i ? `2px solid ${color}` : `1px solid ${T.color.cream}`, background: preset === i ? `${color}10` : T.color.white, cursor: "pointer", textAlign: "center", transition: "all .15s" }}>
                   <div style={{ fontSize: "1.125rem" }}>{p.icon}</div>
-                  <div style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: preset === i ? color : T.color.muted, fontWeight: preset === i ? 600 : 400, marginTop: "0.1875rem" }}>{t(p.name)}</div>
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: preset === i ? color : T.color.muted, fontWeight: preset === i ? 600 : 500, marginTop: "0.1875rem" }}>{t(p.name)}</div>
                 </button>
               ))}
             </div>
@@ -470,7 +470,7 @@ export default function ImageEditor({ dataUrl, accent, onSave, onCancel }: Image
                     { label: "270\u00B0", val: 270 },
                   ].map(r => (
                     <button key={r.val} onClick={() => setRotation(r.val)}
-                      style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", border: rotation === r.val ? `2px solid ${color}` : `1px solid ${T.color.cream}`, background: rotation === r.val ? `${color}10` : T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: rotation === r.val ? color : T.color.muted, cursor: "pointer", fontWeight: rotation === r.val ? 600 : 400 }}>
+                      style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", border: rotation === r.val ? `2px solid ${color}` : `1px solid ${T.color.cream}`, background: rotation === r.val ? `${color}10` : T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: rotation === r.val ? color : T.color.muted, cursor: "pointer", fontWeight: rotation === r.val ? 600 : 500 }}>
                       {r.label}
                     </button>
                   ))}

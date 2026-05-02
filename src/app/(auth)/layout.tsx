@@ -44,7 +44,7 @@ export default async function AuthLayout({
         justifyContent: "center",
         background:
           "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
-        fontFamily: "'Source Sans 3', system-ui, sans-serif",
+        fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
         position: "relative",
         overflow: "hidden",
       }}
@@ -57,7 +57,7 @@ export default async function AuthLayout({
           height: 400,
           borderRadius: "50%",
           background:
-            "radial-gradient(circle, rgba(193,127,89,0.08) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(198,107,61,0.08) 0%, transparent 70%)",
           top: -100,
           right: -100,
           pointerEvents: "none",

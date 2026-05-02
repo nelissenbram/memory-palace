@@ -22,7 +22,7 @@ export default function OfflinePage() {
         style={{
           width: 80,
           height: 100,
-          border: "3px solid #C17F59",
+          border: "3px solid #C66B3D",
           borderRadius: "40px 40px 0 0",
           marginBottom: "2rem",
           position: "relative",
@@ -37,7 +37,7 @@ export default function OfflinePage() {
             transform: "translateX(-50%)",
             width: 2,
             height: 40,
-            backgroundColor: "#C17F59",
+            backgroundColor: "#C66B3D",
             opacity: 0.4,
           }}
         />
@@ -50,7 +50,7 @@ export default function OfflinePage() {
             width: 6,
             height: 6,
             borderRadius: "50%",
-            backgroundColor: "#C17F59",
+            backgroundColor: "#C66B3D",
             opacity: 0.6,
           }}
         />
@@ -60,7 +60,7 @@ export default function OfflinePage() {
         style={{
           fontFamily: "var(--font-display), 'Cormorant Garamond', serif",
           fontSize: "clamp(1.75rem, 5vw, 2.5rem)",
-          fontWeight: 400,
+          fontWeight: 500,
           color: "#1a1a1a",
           marginBottom: "0.75rem",
           letterSpacing: "-0.01em",
@@ -71,9 +71,9 @@ export default function OfflinePage() {
 
       <p
         style={{
-          fontFamily: "var(--font-body), 'Source Sans 3', sans-serif",
+          fontFamily: "var(--font-body), 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
           fontSize: "1.1rem",
-          fontWeight: 300,
+          fontWeight: 500,
           color: "#666",
           maxWidth: 420,
           lineHeight: 1.6,
@@ -85,9 +85,9 @@ export default function OfflinePage() {
 
       <p
         style={{
-          fontFamily: "var(--font-body), 'Source Sans 3', sans-serif",
+          fontFamily: "var(--font-body), 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
           fontSize: "1rem",
-          fontWeight: 400,
+          fontWeight: 500,
           color: "#888",
           maxWidth: 400,
           lineHeight: 1.6,
@@ -100,11 +100,11 @@ export default function OfflinePage() {
       <button
         onClick={() => window.location.reload()}
         style={{
-          fontFamily: "var(--font-body), 'Source Sans 3', sans-serif",
+          fontFamily: "var(--font-body), 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
           fontSize: "0.95rem",
           fontWeight: 500,
           color: "#FAFAF7",
-          backgroundColor: "#C17F59",
+          backgroundColor: "#C66B3D",
           border: "none",
           borderRadius: 8,
           padding: "0.75rem 2rem",
@@ -120,7 +120,7 @@ export default function OfflinePage() {
 
       <p
         style={{
-          fontFamily: "var(--font-body), 'Source Sans 3', sans-serif",
+          fontFamily: "var(--font-body), 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
           fontSize: "0.8rem",
           color: "#aaa",
           marginTop: "3rem",

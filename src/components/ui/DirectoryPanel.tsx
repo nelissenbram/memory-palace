@@ -202,7 +202,7 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
                             <span style={{fontSize:"0.5625rem",color:T.color.muted,transition:"transform .2s",transform:roomExpanded?"rotate(90deg)":"rotate(0)"}}>&#x25B6;</span>
                             <span style={{fontSize:"0.875rem"}}>{room.icon}</span>
                             <div style={{flex:1}}>
-                              <div style={{fontFamily:T.font.body,fontSize:"0.75rem",fontWeight:isRoomActive?600:400,color:isRoomActive?wing.accent:T.color.charcoal}}>{(room.nameKey && tWings(room.nameKey)) || room.name}</div>
+                              <div style={{fontFamily:T.font.body,fontSize:"0.75rem",fontWeight:isRoomActive?600:500,color:isRoomActive?wing.accent:T.color.charcoal}}>{(room.nameKey && tWings(room.nameKey)) || room.name}</div>
                               <div style={{fontFamily:T.font.body,fontSize:"0.5625rem",color:T.color.muted}}>{t("roomMemories", { count: String(room.mems.length) })}{room.shared?` · ${t("shared")}`:""}</div>
                             </div>
                           </button>

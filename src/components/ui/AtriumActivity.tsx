@@ -13,7 +13,7 @@ import { TuscanSectionHeader } from "./TuscanCard";
    ═══════════════════════════════════════════════════════════ */
 const AVATAR_COLORS = [
   T.color.terracotta, T.color.sage, T.color.gold,
-  "#7B68AE", "#4A8C9F", "#C17F59", "#8B6F4E",
+  "#7B68AE", "#4A8C9F", "#C66B3D", "#8B6F4E",
   "#6B8E6B", "#9B6B8E", "#5A7D9A",
 ];
 
@@ -63,7 +63,7 @@ function OTDThumb({ mem, isMobile, year }: { mem: Mem; isMobile: boolean; year: 
           <div style={{
             position: "absolute",
             inset: 0,
-            background: "linear-gradient(180deg, rgba(193,127,89,0.06) 0%, transparent 40%, rgba(139,115,85,0.18) 100%)",
+            background: "linear-gradient(180deg, rgba(198,107,61,0.06) 0%, transparent 40%, rgba(139,115,85,0.18) 100%)",
             pointerEvents: "none",
           }} />
         </>
@@ -769,12 +769,12 @@ export function InterviewPrompt({
         style={{
           borderRadius: "1.25rem",
           overflow: "hidden",
-          background: `linear-gradient(145deg, rgba(255,250,240,0.95) 0%, rgba(193,127,89,0.1) 30%, rgba(212,175,55,0.06) 60%, rgba(193,127,89,0.08) 85%, ${T.color.warmStone} 100%)`,
-          border: `0.0625rem solid rgba(193,127,89,0.15)`,
+          background: `linear-gradient(145deg, rgba(255,250,240,0.95) 0%, rgba(198,107,61,0.1) 30%, rgba(212,175,55,0.06) 60%, rgba(198,107,61,0.08) 85%, ${T.color.warmStone} 100%)`,
+          border: `0.0625rem solid rgba(198,107,61,0.15)`,
           padding: isMobile ? "2rem 1.5rem" : "2.75rem 3rem",
           animation: "atriumSlideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) 0.2s both, atriumBorderGlow 6s ease-in-out 3s infinite",
           position: "relative",
-          boxShadow: `0 0.5rem 2.5rem rgba(193,127,89,0.08), 0 0.25rem 1rem rgba(44,44,42,0.04), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
+          boxShadow: `0 0.5rem 2.5rem rgba(198,107,61,0.08), 0 0.25rem 1rem rgba(44,44,42,0.04), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
         }}
       >
         {/* Decorative radial glow top-right */}

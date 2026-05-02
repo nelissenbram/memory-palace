@@ -680,7 +680,7 @@ export const PersonCard = memo(function PersonCard({
           y={lastNameY}
           fontFamily={T.font.display}
           fontSize={nodeHPx * 0.12}
-          fontWeight={400}
+          fontWeight={500}
           fill={T.color.muted}
         >
           {lastName}

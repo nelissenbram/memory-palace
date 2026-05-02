@@ -210,7 +210,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                   textDecoration: "none",
                   background: isActive ? `${T.color.terracotta}10` : "transparent",
                   color: isActive ? T.color.terracotta : T.color.charcoal,
-                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 400,
+                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 500,
                   transition: "all .15s",
                 }}>
                   <SettingsIcon name={item.iconKey} size={16} />
@@ -229,7 +229,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 border: "none",
                 background: "transparent",
                 color: T.color.muted,
-                fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 400,
+                fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 500,
                 cursor: "pointer",
                 transition: "all .15s",
               }}
@@ -279,7 +279,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                     textDecoration: "none",
                     background: isActive ? `${T.color.terracotta}10` : "transparent",
                     color: isActive ? T.color.terracotta : T.color.charcoal,
-                    fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 400,
+                    fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 500,
                     transition: "all .15s",
                   }}>
                     <SettingsIcon name={item.iconKey} size={16} />
@@ -297,7 +297,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                   border: "none",
                   background: "transparent",
                   color: T.color.muted,
-                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 400,
+                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 500,
                   cursor: "pointer",
                   transition: "all .15s",
                   width: "100%",

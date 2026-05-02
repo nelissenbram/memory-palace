@@ -395,7 +395,7 @@ export default function PersonPanelRelationships({
             {t("siblings")}
             <span
               style={{
-                fontWeight: 400,
+                fontWeight: 500,
                 fontStyle: "italic",
                 textTransform: "none",
                 marginLeft: "0.375rem",
@@ -493,7 +493,7 @@ export default function PersonPanelRelationships({
             }}
           >
             <span style={{ color: T.color.terracotta }}>{person.first_name}</span>{" "}
-            <span style={{ color: T.color.muted, fontWeight: 400 }}>{t("relPreview", { person: "", relType: "", other: "" }).trim() === "" ? "is" : ""}</span>
+            <span style={{ color: T.color.muted, fontWeight: 500 }}>{t("relPreview", { person: "", relType: "", other: "" }).trim() === "" ? "is" : ""}</span>
           </div>
 
           {/* Pill buttons for relationship type */}

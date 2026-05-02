@@ -312,7 +312,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
             letterSpacing: "0.01em",
             lineHeight: 1.3,
           }}>
-            <span style={{ fontWeight: 400, color: T.color.muted, fontSize: "0.8125rem", marginRight: "0.25rem" }}>{t("room")}</span>
+            <span style={{ fontWeight: 500, color: T.color.muted, fontSize: "0.8125rem", marginRight: "0.25rem" }}>{t("room")}</span>
             {translateRoomName(room, tWings)}
           </p>
           <p style={{
@@ -320,7 +320,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
             fontSize: "0.75rem",
             color: T.color.muted,
             margin: 0,
-            fontWeight: 400,
+            fontWeight: 500,
             letterSpacing: "0.02em",
           }}>
             {t("memoryCount", { count: String(memCount) })}

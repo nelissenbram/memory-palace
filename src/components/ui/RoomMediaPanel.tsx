@@ -248,7 +248,7 @@ function DisplayedPill({
                   <span style={{
                     fontFamily: T.font.body,
                     fontSize: "0.75rem",
-                    fontWeight: isActive ? 600 : 400,
+                    fontWeight: isActive ? 600 : 500,
                     color: isActive ? accent : T.color.charcoal,
                   }}>
                     {t(unit.label) || unit.label}
@@ -779,7 +779,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                   border: "none", cursor: "pointer",
                   background: activeTab === tab ? T.color.white : "transparent",
                   boxShadow: activeTab === tab ? "0 0.0625rem 0.25rem rgba(44,44,42,0.08)" : "none",
-                  fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: activeTab === tab ? 600 : 400,
+                  fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: activeTab === tab ? 600 : 500,
                   color: activeTab === tab ? accent : T.color.muted,
                   transition: "all 0.2s ease",
                 }}
@@ -889,7 +889,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     <SortIcon mode={mode} color={sortMode === mode ? accent : T.color.muted} />
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.8125rem",
-                      fontWeight: sortMode === mode ? 600 : 400,
+                      fontWeight: sortMode === mode ? 600 : 500,
                       color: sortMode === mode ? accent : T.color.charcoal,
                     }}>
                       {tLib(`sort${mode.charAt(0).toUpperCase() + mode.slice(1)}` as "sortNewest")}
@@ -1481,7 +1481,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                     >
                       <WingIcon wingId={w.id} size={18} color={w.accent} />
                       <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(w, tWings)}</span>
-                      <span style={{ fontSize: "0.6875rem", color: T.color.muted, fontWeight: 400 }}>{wRooms.length}</span>
+                      <span style={{ fontSize: "0.6875rem", color: T.color.muted, fontWeight: 500 }}>{wRooms.length}</span>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round"
                         style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease", flexShrink: 0 }}>
                         <path d="M4 2l4 4-4 4" />
@@ -1498,7 +1498,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                             background: isCurrent ? `${w.accent}08` : "transparent",
                             border: "none", cursor: isCurrent ? "default" : "pointer",
                             display: "flex", alignItems: "center", gap: "0.5rem",
-                            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 400,
+                            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
                             color: isCurrent ? T.color.muted : T.color.walnut,
                             opacity: isCurrent ? 0.6 : 1,
                           }}

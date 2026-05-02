@@ -328,7 +328,7 @@ function LifeAreaCard({
           fontFamily: T.font.body,
           fontSize: "0.6875rem",
           color: isEmpty ? T.color.terracotta : T.color.muted,
-          fontWeight: isEmpty ? 600 : 400,
+          fontWeight: isEmpty ? 600 : 500,
         }}
       >
         {isEmpty
@@ -424,7 +424,7 @@ export default function LifeStoryWidget({
         style={{
           fontFamily: T.font.display,
           fontSize: "0.9375rem",
-          fontWeight: 400,
+          fontWeight: 500,
           fontStyle: "italic",
           color: T.color.walnut,
           textAlign: "center",

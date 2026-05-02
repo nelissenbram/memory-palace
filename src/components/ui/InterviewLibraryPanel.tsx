@@ -11,7 +11,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ─── Wing accent colors for icon strokes ───
 const WING_ACCENT: Record<string, string> = {
-  roots: "#C17F59",
+  roots: "#C66B3D",
   nest: "#B8926A",
   craft: "#8B7355",
   travel: "#4A6741",
@@ -200,7 +200,7 @@ const WING_ORDER = ["roots", "nest", "craft", "travel", "passions", "general"];
 
 const difficultyColors: Record<string, { bg: string; text: string; labelKey: string }> = {
   light: { bg: "#4A674118", text: "#6A8A62", labelKey: "difficultyLight" },
-  medium: { bg: "#C17F5918", text: "#C17F59", labelKey: "difficultyMedium" },
+  medium: { bg: "#C66B3D18", text: "#C66B3D", labelKey: "difficultyMedium" },
   deep: { bg: "#7A5A9E18", text: "#9A7AB8", labelKey: "difficultyDeep" },
 };
 
@@ -328,7 +328,7 @@ function FilterTab({ label, active, onClick, highlight }: { label: string; activ
       padding: "0.5rem 0.875rem", borderRadius: "1rem", border: "none", whiteSpace: "nowrap", minHeight: "2.75rem",
       background: active ? T.color.charcoal : highlight ? `${T.color.terracotta}14` : T.color.warmStone,
       color: active ? "#FFF" : highlight ? T.color.terracotta : T.color.walnut,
-      fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: active ? 600 : 400,
+      fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: active ? 600 : 500,
       cursor: "pointer", transition: "all 0.2s",
     }}>
       {label}

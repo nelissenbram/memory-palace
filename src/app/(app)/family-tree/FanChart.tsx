@@ -344,7 +344,7 @@ export default function FanChart({
                   background: maxGen === g ? `${T.color.terracotta}18` : "transparent",
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
-                  fontWeight: maxGen === g ? 700 : 400,
+                  fontWeight: maxGen === g ? 700 : 500,
                   color: maxGen === g ? T.color.terracotta : T.color.charcoal,
                   cursor: "pointer",
                   padding: 0,
@@ -419,7 +419,7 @@ export default function FanChart({
                 background: maxGen === g ? `${T.color.terracotta}18` : "transparent",
                 fontFamily: T.font.body,
                 fontSize: "0.875rem",
-                fontWeight: maxGen === g ? 700 : 400,
+                fontWeight: maxGen === g ? 700 : 500,
                 color: maxGen === g ? T.color.terracotta : T.color.charcoal,
                 cursor: "pointer",
               }}

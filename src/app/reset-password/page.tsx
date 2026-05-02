@@ -165,7 +165,7 @@ const wrapperStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   background: "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
   position: "relative",
   overflow: "hidden",
 };

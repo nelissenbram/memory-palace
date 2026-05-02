@@ -260,7 +260,7 @@ export function LibraryHeader({
                 animation: "libSlideRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both",
               }}
             >
-              {roomName ? <><span style={{ fontWeight: 400, color: T.color.muted, fontSize: "0.875rem", marginRight: "0.25rem" }}>{t("room")}</span>{roomName}</> : wingName}
+              {roomName ? <><span style={{ fontWeight: 500, color: T.color.muted, fontSize: "0.875rem", marginRight: "0.25rem" }}>{t("room")}</span>{roomName}</> : wingName}
             </h2>
 
             {/* Breadcrumb or description */}

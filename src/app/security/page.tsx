@@ -472,7 +472,7 @@ export default function SecurityPage() {
                 style={{
                   fontFamily: F.display,
                   fontSize: "clamp(24px, 3vw, 32px)",
-                  fontWeight: 400,
+                  fontWeight: 500,
                   color: C.charcoal,
                   margin: 0,
                 }}
@@ -626,7 +626,7 @@ export default function SecurityPage() {
             padding: "16px 36px",
             borderRadius: 14,
             background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-            boxShadow: "0 4px 20px rgba(193,127,89,0.3)",
+            boxShadow: "0 4px 20px rgba(198,107,61,0.3)",
           }}
         >
           {t("ctaButton")}

@@ -229,7 +229,7 @@ export default function NotificationBell() {
                 style={{
                   fontFamily: T.font.body,
                   fontSize: "0.75rem",
-                  fontWeight: n.read ? 400 : 500,
+                  fontWeight: n.read ? 500 : 600,
                   color: n.read ? T.color.muted : T.color.charcoal,
                   lineHeight: 1.4,
                 }}

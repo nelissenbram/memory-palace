@@ -841,7 +841,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
 
       // Inline font style so text renders correctly in the serialized SVG
       const styleEl = document.createElementNS("http://www.w3.org/2000/svg", "style");
-      styleEl.textContent = `text, foreignObject * { font-family: 'Source Sans 3', 'Source Sans Pro', system-ui, sans-serif; }`;
+      styleEl.textContent = `text, foreignObject * { font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif; }`;
       const defs = clone.querySelector("defs");
       if (defs) {
         defs.appendChild(styleEl);
@@ -1460,7 +1460,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                       alignItems: "center",
                       justifyContent: "center",
                       transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                      boxShadow: isActive ? "0 0.125rem 0.5rem rgba(193,127,89,0.25)" : "none",
+                      boxShadow: isActive ? "0 0.125rem 0.5rem rgba(198,107,61,0.25)" : "none",
                     }}
                   >
                     {mode === "portrait" ? (
@@ -1537,7 +1537,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               border: `0.125rem solid ${T.color.gold}`,
               background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.gold})`,
               color: T.color.white,
-              boxShadow: "0 0.125rem 0.75rem rgba(193,127,89,0.3)",
+              boxShadow: "0 0.125rem 0.75rem rgba(198,107,61,0.3)",
               fontFamily: T.font.body,
               fontWeight: 600,
               fontSize: "0.8125rem",
@@ -2050,7 +2050,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 color: T.color.white,
                 fontSize: "1rem",
                 padding: "0.875rem 1.75rem",
-                boxShadow: `0 0.25rem 1rem rgba(193,127,89,.25)`,
+                boxShadow: `0 0.25rem 1rem rgba(198,107,61,.25)`,
               }}
             >
               {t("addFirstPerson")}

@@ -301,7 +301,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
                 background: !showCloud ? T.color.white : "transparent",
                 color: !showCloud ? T.color.charcoal : T.color.muted,
-                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: !showCloud ? 600 : 400, cursor: "pointer",
+                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: !showCloud ? 600 : 500, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem",
               }}>
                 {"\u{1F4C1}"} {t("localFiles")}
@@ -310,7 +310,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "none",
                 background: showCloud ? T.color.white : "transparent",
                 color: showCloud ? T.color.charcoal : T.color.muted,
-                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: showCloud ? 600 : 400, cursor: "pointer",
+                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: showCloud ? 600 : 500, cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem",
               }}>
                 {"\u2601\uFE0F"} {t("importFromCloud")}
@@ -518,7 +518,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                   flex: 1, padding: "0.4375rem 0.5rem", borderRadius: "0.5rem", border: "none",
                   background: tab === key ? T.color.white : "transparent",
                   color: tab === key ? T.color.charcoal : T.color.muted,
-                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: tab === key ? 600 : 400, cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: tab === key ? 600 : 500, cursor: "pointer",
                   minHeight: "2.75rem",
                 }}>{label}</button>
               ))}

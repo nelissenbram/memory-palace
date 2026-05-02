@@ -187,7 +187,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
       <div style={{ ...cardStyle, animation: "fadeUp .6s ease" }}>
         {/* Decorative header */}
         <div style={{
-          background: "linear-gradient(135deg, #C17F59 0%, #8B7355 60%, #4A6741 100%)",
+          background: "linear-gradient(135deg, #C66B3D 0%, #8B7355 60%, #4A6741 100%)",
           margin: "-2.25rem -2rem 1.75rem",
           padding: "2.25rem 2rem 2rem",
           borderRadius: "1.25rem 1.25rem 0 0",
@@ -217,7 +217,7 @@ export default function InviteLanding({ shareId, result }: { shareId: string; re
             {t("youveBeenInvited")}
           </p>
           <h1 style={{
-            fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 400,
+            fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 500,
             color: "#FFFFFF", margin: 0, lineHeight: 1.4,
           }}>
             {t("wantsToShare", { name: inviter.name })}
@@ -414,7 +414,7 @@ const pageStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   background: "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
   padding: "1.25rem",
   position: "relative",
   overflow: "hidden",
@@ -436,7 +436,7 @@ const cardStyle: React.CSSProperties = {
 const headingStyle: React.CSSProperties = {
   fontFamily: "'Cormorant Garamond', Georgia, serif",
   fontSize: "1.625rem",
-  fontWeight: 400,
+  fontWeight: 500,
   color: "#2C2C2A",
   margin: "0 0 0.75rem",
   textAlign: "center",
@@ -444,7 +444,7 @@ const headingStyle: React.CSSProperties = {
 };
 
 const bodyTextStyle: React.CSSProperties = {
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
   fontSize: "0.9375rem",
   color: "#9A9183",
   lineHeight: 1.6,
@@ -458,15 +458,15 @@ const primaryBtnStyle: React.CSSProperties = {
   padding: "1rem 1.5rem",
   borderRadius: "0.875rem",
   border: "none",
-  background: "linear-gradient(135deg, #C17F59, #8B7355)",
+  background: "linear-gradient(135deg, #C66B3D, #8B7355)",
   color: "#FFFFFF",
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
   fontSize: "1rem",
   fontWeight: 600,
   cursor: "pointer",
   textAlign: "center",
   textDecoration: "none",
-  boxShadow: "0 4px 16px rgba(193,127,89,0.3)",
+  boxShadow: "0 4px 16px rgba(198,107,61,0.3)",
   transition: "all 0.2s",
 };
 
@@ -478,7 +478,7 @@ const secondaryBtnStyle: React.CSSProperties = {
   border: "1.5px solid #D4C5B2",
   background: "#FFFFFF",
   color: "#8B7355",
-  fontFamily: "'Source Sans 3', system-ui, sans-serif",
+  fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
   fontSize: "0.9375rem",
   fontWeight: 600,
   cursor: "pointer",

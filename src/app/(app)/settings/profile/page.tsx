@@ -378,7 +378,7 @@ export default function ProfilePage() {
                     transition: "all .2s",
                     fontFamily: T.font.body,
                     fontSize: "0.875rem",
-                    fontWeight: styleEra === era && !isComingSoon ? 600 : 400,
+                    fontWeight: styleEra === era && !isComingSoon ? 600 : 500,
                     color: styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : T.color.charcoal,
                   }}
                 >
@@ -386,7 +386,7 @@ export default function ProfilePage() {
                     {era === "roman" ? t("romanName") : t("renaissanceName")}
                     {isComingSoon && <span style={{ fontSize: "0.6875rem", fontWeight: 600, marginLeft: "0.5rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("comingSoon")}</span>}
                   </div>
-                  <div style={{ fontSize: "0.75rem", fontWeight: 400, color: T.color.muted }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 500, color: T.color.muted }}>
                     {era === "roman" ? t("romanDesc") : t("renaissanceDesc")}
                   </div>
                 </button>
@@ -717,7 +717,7 @@ export default function ProfilePage() {
                 cursor: "pointer",
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
-                fontWeight: locale === l ? 600 : 400,
+                fontWeight: locale === l ? 600 : 500,
                 color: locale === l ? T.color.terracotta : T.color.charcoal,
                 transition: "all .2s",
               }}
@@ -914,7 +914,7 @@ export default function ProfilePage() {
                       cursor: "pointer",
                       fontFamily: T.font.body,
                       fontSize: "0.75rem",
-                      fontWeight: isAuto ? 600 : 400,
+                      fontWeight: isAuto ? 600 : 500,
                       color: isAuto ? T.color.walnut : T.color.muted,
                       transition: "all .2s",
                     }}

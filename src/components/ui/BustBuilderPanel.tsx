@@ -224,7 +224,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "manage" && (
           <>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
               color: T.color.charcoal, textAlign: "center", marginBottom: "1rem",
             }}>
               {t("pedestalTitle", { index: String(pedestalIndex + 1) })}{pedestalData?.name ? ` — ${pedestalData.name}` : ""}
@@ -273,7 +273,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "upload" && (
           <>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
               color: T.color.charcoal, textAlign: "center", marginBottom: "0.5rem",
             }}>
               {hasBust ? t("changeBust", { index: String(pedestalIndex + 1) }) : t("createBust", { index: String(pedestalIndex + 1) })}
@@ -323,7 +323,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                     onClick={() => setBustGender(g)}
                     style={{
                       flex: 1, padding: "0.5rem 0", borderRadius: "0.5rem", cursor: "pointer",
-                      fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: bustGender === g ? 600 : 400,
+                      fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: bustGender === g ? 600 : 500,
                       border: bustGender === g
                         ? `2px solid ${T.color.terracotta}`
                         : `1px solid ${T.color.sandstone}`,
@@ -385,7 +385,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "calibrating" && (
           <div style={{ textAlign: "center", padding: "1.875rem 0" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
               color: T.color.charcoal, marginBottom: "1rem",
             }}>
               {t("detectingFace")}
@@ -411,7 +411,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "ready" && (
           <>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
               color: T.color.charcoal, textAlign: "center", marginBottom: "1rem",
             }}>
               {faceDetected ? t("faceCalibrated") : t("photoLoaded")}
@@ -542,7 +542,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
                       onClick={() => setBustGender(g)}
                       style={{
                         flex: 1, padding: "0.4375rem 0", borderRadius: "0.375rem", cursor: "pointer",
-                        fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: bustGender === g ? 600 : 400,
+                        fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: bustGender === g ? 600 : 500,
                         border: bustGender === g
                           ? `2px solid ${T.color.terracotta}`
                           : `1px solid ${T.color.sandstone}`,
@@ -585,7 +585,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "creating" && (
           <div style={{ textAlign: "center", padding: "1.875rem 0" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
               color: T.color.charcoal, marginBottom: "1rem",
             }}>
               {t("creatingBust")}
@@ -641,7 +641,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "error" && (
           <div role="alert" style={{ textAlign: "center", padding: "1.25rem 0" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
               color: T.color.charcoal, marginBottom: "0.75rem",
             }}>
               {t("somethingWrong")}
@@ -666,7 +666,7 @@ export default function BustBuilderPanel({ onClose, pedestalIndex = 0 }: BustBui
         {stage === "done" && (
           <div style={{ textAlign: "center" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
               color: T.color.charcoal, marginBottom: "0.75rem",
             }}>
               {t("bustReady")}

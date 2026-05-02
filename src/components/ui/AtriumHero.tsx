@@ -316,8 +316,8 @@ function LibraryIllustration({ hover }: { hover: boolean }) {
         height: "auto",
         transition: "filter 0.5s ease",
         filter: hover
-          ? `drop-shadow(0 0 0.75rem rgba(193,127,89,0.3))`
-          : `drop-shadow(0 0 0.375rem rgba(193,127,89,0.08))`,
+          ? `drop-shadow(0 0 0.75rem rgba(198,107,61,0.3))`
+          : `drop-shadow(0 0 0.375rem rgba(198,107,61,0.08))`,
       }}
       aria-hidden="true"
     >
@@ -741,7 +741,7 @@ export default function AtriumHero({
             style={{
               fontFamily: T.font.display,
               fontSize: "0.8125rem",
-              fontWeight: 400,
+              fontWeight: 500,
               letterSpacing: "0.2em",
               textTransform: "uppercase",
               color: T.color.walnut,
@@ -973,8 +973,8 @@ export default function AtriumHero({
                   borderRadius: "0.75rem",
                   transition: "all 0.35s cubic-bezier(0.23, 1, 0.32, 1)",
                   boxShadow: libHover
-                    ? `0 0.625rem 1.5rem rgba(193,127,89,0.35)`
-                    : `0 0.25rem 0.75rem rgba(193,127,89,0.15)`,
+                    ? `0 0.625rem 1.5rem rgba(198,107,61,0.35)`
+                    : `0 0.25rem 0.75rem rgba(198,107,61,0.15)`,
                   transform: libHover ? "translateX(0.125rem)" : "translateX(0)",
                 }}
               >

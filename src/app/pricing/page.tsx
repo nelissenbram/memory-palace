@@ -54,7 +54,13 @@ export default function PricingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: planId, interval }),
+        redirect: "manual",
       });
+      // Middleware redirects unauthenticated users — detect redirect
+      if (res.type === "opaqueredirect" || res.status === 0 || res.status === 307 || res.status === 308) {
+        window.location.href = "/register";
+        return;
+      }
       if (res.status === 401) {
         window.location.href = "/register";
         return;
@@ -440,7 +446,7 @@ export default function PricingPage() {
                   padding: isMobile ? "28px 24px" : "36px 32px",
                   position: "relative",
                   boxShadow: isHighlighted
-                    ? `0 8px 32px rgba(193,127,89,0.15)`
+                    ? `0 8px 32px rgba(198,107,61,0.15)`
                     : "0 2px 12px rgba(0,0,0,0.04)",
                   transform: isHighlighted && !isSmall ? "scale(1.03)" : undefined,
                 }}
@@ -506,7 +512,7 @@ export default function PricingPage() {
                       style={{
                         fontFamily: F.display,
                         fontSize: 42,
-                        fontWeight: 400,
+                        fontWeight: 500,
                         color: C.charcoal,
                       }}
                     >
@@ -518,7 +524,7 @@ export default function PricingPage() {
                         style={{
                           fontFamily: F.display,
                           fontSize: 42,
-                          fontWeight: 400,
+                          fontWeight: 500,
                           color: C.charcoal,
                         }}
                       >

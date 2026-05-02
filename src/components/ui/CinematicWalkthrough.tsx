@@ -97,7 +97,7 @@ export default function CinematicWalkthrough() {
         <div style={{
           fontFamily: T.font.display,
           fontSize: isMobile ? "1.0625rem" : "1.1875rem",
-          fontWeight: 400,
+          fontWeight: 500,
           color: T.color.linen,
           lineHeight: 1.5,
           letterSpacing: "0.01em",

@@ -51,7 +51,7 @@ export const TRACKS: Track[] = [
     nameKey: "tracks.visualize.name",
     icon: "\uD83C\uDFA8",
     descriptionKey: "tracks.visualize.description",
-    color: "#C17F59", // terracotta
+    color: "#C66B3D", // terracotta
     completionBonus: 50,
     relevantGoals: ["organize"],
     steps: [

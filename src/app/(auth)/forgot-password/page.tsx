@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
           style={{
             fontFamily: T.font.display,
             fontSize: "1.5rem",
-            fontWeight: 400,
+            fontWeight: 500,
             color: T.color.charcoal,
             margin: "0 0 0.75rem",
           }}

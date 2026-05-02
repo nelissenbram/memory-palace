@@ -117,7 +117,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
         <h1 style={{
           fontFamily: T.font.display,
           fontSize: 28,
-          fontWeight: 400,
+          fontWeight: 500,
           color: T.color.charcoal,
           textAlign: "center",
         }}>
@@ -175,7 +175,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
         <h1 style={{
           fontFamily: T.font.display,
           fontSize: 32,
-          fontWeight: 400,
+          fontWeight: 500,
           color: T.color.charcoal,
           margin: "0 0 6px",
           letterSpacing: "-0.5px",
@@ -267,7 +267,7 @@ export default function PublicGallery({ slug }: { slug: string }) {
         <div style={{
           fontFamily: T.font.display,
           fontSize: 18,
-          fontWeight: 400,
+          fontWeight: 500,
           fontStyle: "italic",
           color: T.color.walnut,
           marginBottom: 12,

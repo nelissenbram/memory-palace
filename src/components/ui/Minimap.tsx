@@ -32,14 +32,14 @@ export default function Minimap(){
             const isActive=activeWing===w.id;const wRooms=getWingRooms(w.id);
             return <div key={w.id}>
               <button onClick={()=>switchWing(w.id)} aria-label={w.name}
-                style={{display:"flex",alignItems:"center",gap:"0.375rem",padding:"0.25rem 0.5rem",borderRadius:"0.5rem",border:"none",background:isActive&&view==="corridor"?`${w.accent}18`:"transparent",cursor:"pointer",fontFamily:T.font.body,fontSize:"0.6875rem",color:isActive?w.accent:T.color.muted,fontWeight:isActive?600:400,textAlign:"left",width:"100%"}}>
+                style={{display:"flex",alignItems:"center",gap:"0.375rem",padding:"0.25rem 0.5rem",borderRadius:"0.5rem",border:"none",background:isActive&&view==="corridor"?`${w.accent}18`:"transparent",cursor:"pointer",fontFamily:T.font.body,fontSize:"0.6875rem",color:isActive?w.accent:T.color.muted,fontWeight:isActive?600:500,textAlign:"left",width:"100%"}}>
                 <div style={{width:"0.375rem",height:"0.375rem",borderRadius:"0.1875rem",background:w.accent,opacity:isActive?1:.25}}/>{w.icon} {w.name}
                 <span style={{marginLeft:"auto",fontSize:"0.6875rem",opacity:.5}}>{wRooms.length}</span>
               </button>
               {isActive&&wRooms.map((r: any)=>{
                 const isRoomActive=activeRoomId===r.id;
                 return <button key={r.id} onClick={()=>{if(!isRoomActive)enterRoom(r.id);}} aria-label={r.name}
-                  style={{display:"flex",alignItems:"center",gap:"0.3125rem",padding:"0.1875rem 0.5rem 0.1875rem 1.375rem",borderRadius:"0.375rem",border:"none",background:isRoomActive?`${w.accent}12`:"transparent",cursor:"pointer",fontFamily:T.font.body,fontSize:"0.6875rem",color:isRoomActive?w.accent:`${T.color.muted}bb`,fontWeight:isRoomActive?500:400,textAlign:"left",width:"100%"}}>
+                  style={{display:"flex",alignItems:"center",gap:"0.3125rem",padding:"0.1875rem 0.5rem 0.1875rem 1.375rem",borderRadius:"0.375rem",border:"none",background:isRoomActive?`${w.accent}12`:"transparent",cursor:"pointer",fontFamily:T.font.body,fontSize:"0.6875rem",color:isRoomActive?w.accent:`${T.color.muted}bb`,fontWeight:isRoomActive?500:500,textAlign:"left",width:"100%"}}>
                   <div style={{width:"0.375rem",height:"0.375rem",borderRadius:"0.1875rem",background:isRoomActive?w.accent:T.color.sandstone,opacity:isRoomActive?1:.3}}/>{r.icon} {r.name}
                   {r.shared&&<div style={{width:"0.3125rem",height:"0.3125rem",borderRadius:"0.1875rem",background:"#4A6741",marginLeft:"auto"}}/>}
                 </button>;

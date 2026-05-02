@@ -1,10 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { T } from "@/lib/theme";
-import { getAllPosts, getReadingTime } from "@/lib/blog/posts";
+import { getAllPostsAsync, getReadingTime } from "@/lib/blog/posts";
+import type { BlogLocale } from "@/lib/blog/posts";
+import { getServerLocale } from "@/lib/i18n/server";
 
 const C = T.color;
 const F = T.font;
+
+const UI: Record<BlogLocale, { title: string; subtitle: string; readMore: string; minRead: string; signIn: string; getStarted: string }> = {
+  en: { title: "Blog", subtitle: "Stories about memory, family, and legacy", readMore: "Read more", minRead: "min read", signIn: "Sign In", getStarted: "Get Started" },
+  nl: { title: "Blog", subtitle: "Verhalen over herinnering, familie en nalatenschap", readMore: "Lees meer", minRead: "min lezen", signIn: "Inloggen", getStarted: "Aan de slag" },
+  de: { title: "Blog", subtitle: "Geschichten uber Erinnerung, Familie und Vermachtnis", readMore: "Weiterlesen", minRead: "Min. Lesezeit", signIn: "Anmelden", getStarted: "Loslegen" },
+  es: { title: "Blog", subtitle: "Historias sobre memoria, familia y legado", readMore: "Leer mas", minRead: "min de lectura", signIn: "Iniciar sesion", getStarted: "Comenzar" },
+  fr: { title: "Blog", subtitle: "Histoires sur la memoire, la famille et l'heritage", readMore: "Lire la suite", minRead: "min de lecture", signIn: "Se connecter", getStarted: "Commencer" },
+};
 
 export const metadata: Metadata = {
   title: "Blog",
@@ -25,8 +35,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BlogIndexPage() {
-  const posts = getAllPosts();
+export default async function BlogIndexPage() {
+  const locale = await getServerLocale() as BlogLocale;
+  const ui = UI[locale] || UI.en;
+  const posts = await getAllPostsAsync(locale);
 
   return (
     <div
@@ -116,7 +128,7 @@ export default function BlogIndexPage() {
               padding: "8px 16px",
             }}
           >
-            Sign In
+            {ui.signIn}
           </Link>
           <Link
             href="/register"
@@ -131,7 +143,7 @@ export default function BlogIndexPage() {
               background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
             }}
           >
-            Get Started
+            {ui.getStarted}
           </Link>
         </div>
       </nav>
@@ -147,13 +159,13 @@ export default function BlogIndexPage() {
           style={{
             fontFamily: F.display,
             fontSize: "clamp(2rem, 4vw, 3rem)",
-            fontWeight: 400,
+            fontWeight: 500,
             color: C.charcoal,
             margin: "0 0 0.75rem",
             letterSpacing: "-0.5px",
           }}
         >
-          Blog
+          {ui.title}
         </h1>
         <p
           style={{
@@ -163,7 +175,7 @@ export default function BlogIndexPage() {
             margin: 0,
           }}
         >
-          Stories about memory, family, and legacy
+          {ui.subtitle}
         </p>
       </section>
 
@@ -208,12 +220,12 @@ export default function BlogIndexPage() {
                     margin: "0 0 0.75rem",
                   }}
                 >
-                  {new Date(post.date).toLocaleDateString("en-US", {
+                  {new Date(post.date).toLocaleDateString(locale, {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
                   })}{" "}
-                  &middot; {mins} min read
+                  &middot; {mins} {ui.minRead}
                 </p>
                 <h2
                   style={{
@@ -249,7 +261,7 @@ export default function BlogIndexPage() {
                     display: "inline-block",
                   }}
                 >
-                  Read more &rarr;
+                  {ui.readMore} &rarr;
                 </span>
               </article>
             </Link>

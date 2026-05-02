@@ -151,8 +151,18 @@ export default function SubscriptionPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: planId, interval }),
+        redirect: "manual",
       });
-      const data = await res.json();
+      if (res.type === "opaqueredirect" || res.status === 0 || res.status === 307 || res.status === 308) {
+        window.location.href = "/login";
+        return;
+      }
+      let data;
+      try { data = await res.json(); } catch {
+        showToast(`${t("checkoutError")} (${res.status})`, "error");
+        setUpgradeLoading(null);
+        return;
+      }
       if (data.url) {
         if (isIOS()) { await openInExternalBrowser(data.url); } else { window.location.href = data.url; }
       } else {
@@ -263,13 +273,13 @@ export default function SubscriptionPage() {
           <div style={{ textAlign: "right" }}>
             {currentPlan.price > 0 ? (
               <>
-                <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 400, color: C.charcoal }}>
+                <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: C.charcoal }}>
                   {formatPrice(convertPrice(interval === "monthly" ? currentPlan.monthlyPrice : currentPlan.price, currency), currency)}
                 </div>
                 <div style={{ fontSize: "0.8125rem", color: C.muted }}>{t("perMonth")}</div>
               </>
             ) : (
-              <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 400, color: C.charcoal }}>
+              <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: C.charcoal }}>
                 {t("free")}
               </div>
             )}
@@ -318,7 +328,7 @@ export default function SubscriptionPage() {
                     borderRadius: "0.75rem",
                     border: `1px solid ${C.cream}`,
                     background: "none",
-                    fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 400,
+                    fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
                     color: C.muted,
                     cursor: "pointer",
                     transition: "all .15s",
@@ -406,7 +416,7 @@ export default function SubscriptionPage() {
                   <span style={{
                     fontFamily: F.body, fontSize: "0.8125rem",
                     color: isNearLimit ? C.terracotta : C.muted,
-                    fontWeight: isNearLimit ? 600 : 400,
+                    fontWeight: isNearLimit ? 600 : 500,
                   }}>
                     {item.current} / {isUnlimited ? "\u221E" : item.limit}
                   </span>
@@ -451,7 +461,7 @@ export default function SubscriptionPage() {
                 <span style={{
                   fontFamily: F.body, fontSize: "0.8125rem",
                   color: !limits.storageMb || limits.storageMb === -1 ? C.muted : (usage.storageMb / limits.storageMb > 0.8 ? C.terracotta : C.muted),
-                  fontWeight: !limits.storageMb || limits.storageMb === -1 ? 400 : (usage.storageMb / limits.storageMb > 0.8 ? 600 : 400),
+                  fontWeight: !limits.storageMb || limits.storageMb === -1 ? 500 : (usage.storageMb / limits.storageMb > 0.8 ? 600 : 500),
                 }}>
                   {usage.storageMb >= 1024
                     ? `${(usage.storageMb / 1024).toFixed(1)} ${t("storageGb")}`
@@ -762,7 +772,7 @@ export default function SubscriptionPage() {
                         padding: isMobile ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
                         position: "relative",
                         boxShadow: isHighlighted
-                          ? "0 0.5rem 2rem rgba(193,127,89,0.15)"
+                          ? "0 0.5rem 2rem rgba(198,107,61,0.15)"
                           : "0 0.125rem 0.75rem rgba(0,0,0,0.04)",
                         transform: isHighlighted && !isMobile ? "scale(1.03)" : undefined,
                       }}
@@ -820,7 +830,7 @@ export default function SubscriptionPage() {
                           <span style={{
                             fontFamily: F.display,
                             fontSize: "2rem",
-                            fontWeight: 400,
+                            fontWeight: 500,
                             color: C.charcoal,
                           }}>
                             {t("free")}
@@ -830,7 +840,7 @@ export default function SubscriptionPage() {
                             <span style={{
                               fontFamily: F.display,
                               fontSize: "2rem",
-                              fontWeight: 400,
+                              fontWeight: 500,
                               color: C.charcoal,
                             }}>
                               {formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}

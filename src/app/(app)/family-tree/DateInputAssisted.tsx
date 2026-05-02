@@ -401,7 +401,7 @@ export function DateInputAssisted({
                     fontFamily: T.font.body,
                     fontSize: "0.75rem",
                     fontVariant: "all-small-caps",
-                    fontWeight: isSelected ? 700 : 400,
+                    fontWeight: isSelected ? 700 : 500,
                     color: isSelected ? T.color.terracotta : T.color.walnut,
                     cursor: "pointer",
                     minHeight: "2rem",
@@ -484,7 +484,7 @@ export function DateInputAssisted({
                       background: isSelected ? T.color.terracotta : "transparent",
                       fontFamily: T.font.body,
                       fontSize: "0.75rem",
-                      fontWeight: isSelected ? 700 : 400,
+                      fontWeight: isSelected ? 700 : 500,
                       color: isSelected
                         ? T.color.white
                         : isWeekend
@@ -555,7 +555,7 @@ export function DateInputAssisted({
               background: qualifier === q.symbol ? `${T.color.terracotta}18` : T.color.white,
               borderColor: qualifier === q.symbol ? T.color.terracotta : T.color.sandstone,
               color: qualifier === q.symbol ? T.color.terracotta : T.color.walnut,
-              fontWeight: qualifier === q.symbol ? 600 : 400,
+              fontWeight: qualifier === q.symbol ? 600 : 500,
             }}
             title={q.label}
           >

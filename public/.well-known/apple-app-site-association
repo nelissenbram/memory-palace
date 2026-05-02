@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appIDs": ["L3H3AK7C38.ai.thememorypalace.app"],
+        "appIDs": ["Q742W8J63H.ai.thememorypalace.app"],
         "components": [
           { "/": "/auth/callback", "comment": "OAuth callback" },
           { "/": "/invite/*", "comment": "Family invites" },
@@ -13,6 +13,6 @@
     ]
   },
   "webcredentials": {
-    "apps": ["L3H3AK7C38.ai.thememorypalace.app"]
+    "apps": ["Q742W8J63H.ai.thememorypalace.app"]
   }
 }

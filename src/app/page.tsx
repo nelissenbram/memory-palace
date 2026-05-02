@@ -711,7 +711,7 @@ function LandingPageContent() {
         }
         .lp-nav-cta:hover {
           transform: translateY(-0.0625rem);
-          box-shadow: 0 0.25rem 1rem rgba(193,127,89,0.25);
+          box-shadow: 0 0.25rem 1rem rgba(198,107,61,0.25);
           filter: brightness(1.05);
         }
         .lp-hero-cta {
@@ -719,7 +719,7 @@ function LandingPageContent() {
         }
         .lp-hero-cta:hover {
           transform: translateY(-0.125rem) scale(1.02);
-          box-shadow: 0 0.5rem 1.75rem rgba(193,127,89,0.35);
+          box-shadow: 0 0.5rem 1.75rem rgba(198,107,61,0.35);
           filter: brightness(1.05);
         }
         .lp-hero-secondary {
@@ -786,7 +786,7 @@ function LandingPageContent() {
         /* Screenshot carousel scrollbar */
         .lp-screenshot-carousel {
           scrollbar-width: thin;
-          scrollbar-color: rgba(193,127,89,0.4) transparent;
+          scrollbar-color: rgba(198,107,61,0.4) transparent;
         }
         .lp-screenshot-carousel::-webkit-scrollbar {
           height: 0.375rem;
@@ -795,7 +795,7 @@ function LandingPageContent() {
           background: transparent;
         }
         .lp-screenshot-carousel::-webkit-scrollbar-thumb {
-          background: rgba(193,127,89,0.4);
+          background: rgba(198,107,61,0.4);
           border-radius: 0.25rem;
         }
       `}</style>
@@ -1477,7 +1477,7 @@ function LandingPageContent() {
               fontSize: "1.125rem",
               color: C.charcoal,
               fontFamily: F.display,
-              fontWeight: 400,
+              fontWeight: 500,
               marginBottom: "1.25rem",
             }}
           >
@@ -2563,7 +2563,7 @@ function LandingPageContent() {
                 padding: "0.875rem 2rem",
                 borderRadius: "0.75rem",
                 background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                boxShadow: "0 0.25rem 1rem rgba(193,127,89,0.3)",
+                boxShadow: "0 0.25rem 1rem rgba(198,107,61,0.3)",
                 transition: "transform 0.2s, box-shadow 0.2s",
               }}
             >
@@ -2600,7 +2600,7 @@ const navCta: React.CSSProperties = {
   padding: "0.5rem 1.25rem",
   borderRadius: "0.625rem",
   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-  boxShadow: "0 0.125rem 0.5rem rgba(193,127,89,0.2)",
+  boxShadow: "0 0.125rem 0.5rem rgba(198,107,61,0.2)",
 };
 
 const heroCta: React.CSSProperties = {
@@ -2613,7 +2613,7 @@ const heroCta: React.CSSProperties = {
   padding: "1rem 2.25rem",
   borderRadius: "0.875rem",
   background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-  boxShadow: "0 4px 20px rgba(193,127,89,0.3)",
+  boxShadow: "0 4px 20px rgba(198,107,61,0.3)",
   transition: "transform 0.2s, box-shadow 0.2s",
 };
 

@@ -241,7 +241,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
             <span style={{
               fontFamily: T.font.body, fontSize: "0.5625rem",
               color: act.accent ? accent : act.isBack ? T.color.walnut : T.color.muted,
-              fontWeight: act.accent ? 600 : act.isBack ? 500 : 400,
+              fontWeight: act.accent ? 600 : act.isBack ? 500 : 500,
             }}>{act.label}</span>
           </button>
         ))}
@@ -266,7 +266,7 @@ export default function MobileBottomBar(props: MobileBottomBarProps) {
           <span style={{
             fontFamily: T.font.body, fontSize: "0.5625rem",
             color: moreMenuOpen ? accent : T.color.muted,
-            fontWeight: moreMenuOpen ? 600 : 400,
+            fontWeight: moreMenuOpen ? 600 : 500,
           }}>{tAction("more")}</span>
         </button>
       </div>

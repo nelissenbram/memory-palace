@@ -151,7 +151,7 @@ export default function RoomPlacementPicker({
             style={{
               fontFamily: T.font.display,
               fontSize: "1.625rem",
-              fontWeight: 400,
+              fontWeight: 500,
               color: T.color.charcoal,
               margin: "0 0 0.5rem",
               textAlign: "center",

@@ -685,7 +685,7 @@ export default function NotificationsPage() {
             border: "none", borderRadius: "0.625rem",
             padding: "0.625rem 1.125rem", cursor: "pointer",
             minHeight: "2.75rem",
-            boxShadow: "0 2px 8px rgba(193,127,89,.2)",
+            boxShadow: "0 2px 8px rgba(198,107,61,.2)",
           }}
         >
           {t("sendTest")}

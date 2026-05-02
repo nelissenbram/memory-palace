@@ -246,7 +246,7 @@ export default function NotificationsPage() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{
                 fontSize: "0.875rem",
-                fontWeight: n.read ? 400 : 600,
+                fontWeight: n.read ? 500 : 600,
                 color: T.color.charcoal,
                 margin: 0,
                 lineHeight: 1.4,

@@ -265,7 +265,7 @@ export default function PersonPanelInvite({ isMobile, personName, personId }: Pe
                     fontFamily: T.font.body,
                     fontSize: isMobile ? "0.8125rem" : "0.75rem",
                     color: permission === p ? T.color.sage : T.color.muted,
-                    fontWeight: permission === p ? 600 : 400,
+                    fontWeight: permission === p ? 600 : 500,
                     transition: "all 0.15s ease",
                   }}
                 >

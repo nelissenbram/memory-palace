@@ -775,7 +775,7 @@ export default function FamilyPage() {
                         fontFamily: T.font.body,
                         fontSize: "0.8125rem",
                         color: inviteRole === r ? T.color.terracotta : T.color.muted,
-                        fontWeight: inviteRole === r ? 600 : 400,
+                        fontWeight: inviteRole === r ? 600 : 500,
                         transition: "all .15s",
                         textAlign: "left",
                         flex: 1,
@@ -785,7 +785,7 @@ export default function FamilyPage() {
                         {r === "member" ? t("roleMember") : t("roleAdmin")}
                       </div>
                       <div style={{
-                        fontSize: "0.75rem", fontWeight: 400,
+                        fontSize: "0.75rem", fontWeight: 500,
                         color: inviteRole === r ? T.color.terracotta : T.color.muted,
                         opacity: 0.85,
                       }}>
@@ -1562,7 +1562,7 @@ export default function FamilyPage() {
                         fontFamily: T.font.body,
                         fontSize: "0.8125rem",
                         color: shareWingId === wingId ? T.color.sage : T.color.muted,
-                        fontWeight: shareWingId === wingId ? 600 : 400,
+                        fontWeight: shareWingId === wingId ? 600 : 500,
                         transition: "all .15s",
                       }}
                     >
@@ -1605,7 +1605,7 @@ export default function FamilyPage() {
                         fontFamily: T.font.body,
                         fontSize: "0.8125rem",
                         color: sharePermission === perm ? T.color.sage : T.color.muted,
-                        fontWeight: sharePermission === perm ? 600 : 400,
+                        fontWeight: sharePermission === perm ? 600 : 500,
                         transition: "all .15s",
                       }}
                     >

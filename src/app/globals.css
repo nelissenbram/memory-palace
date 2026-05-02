@@ -193,7 +193,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
 /* Focus-visible indicators for keyboard navigation (accessibility) */
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-  outline: 2px solid #C17F59;
+  outline: 2px solid #C66B3D;
   outline-offset: 2px;
 }
 

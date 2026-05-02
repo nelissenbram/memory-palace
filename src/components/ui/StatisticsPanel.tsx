@@ -807,7 +807,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                     <div style={{
                       height: "3rem", borderRadius: "0.375rem", marginBottom: "0.375rem",
                       background: intensity > 0
-                        ? `rgba(193,127,89,${0.12 + intensity * 0.55})`
+                        ? `rgba(198,107,61,${0.12 + intensity * 0.55})`
                         : `${T.color.cream}80`,
                       border: isBest ? `2px solid ${T.color.terracotta}` : "2px solid transparent",
                       display: "flex", alignItems: "center", justifyContent: "center",
@@ -819,7 +819,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                         </span>
                       )}
                     </div>
-                    <span style={{ ...mutedStyle, fontSize: "0.5625rem", fontWeight: isBest ? 700 : 400, color: isBest ? T.color.terracotta : T.color.muted }}>
+                    <span style={{ ...mutedStyle, fontSize: "0.5625rem", fontWeight: isBest ? 700 : 500, color: isBest ? T.color.terracotta : T.color.muted }}>
                       {t(`day_${DAY_KEYS[i]}`).slice(0, 2)}
                     </span>
                   </div>
@@ -861,7 +861,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
                   </div>
                   <span style={{
                     ...mutedStyle, width: "1.5rem", textAlign: "right", flexShrink: 0,
-                    fontWeight: bucket.count > 0 ? 600 : 400,
+                    fontWeight: bucket.count > 0 ? 600 : 500,
                     color: bucket.count > 0 ? T.color.charcoal : T.color.muted,
                   }}>
                     {bucket.count || ""}

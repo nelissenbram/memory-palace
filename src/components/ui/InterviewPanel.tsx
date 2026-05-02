@@ -447,7 +447,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               <InterviewIcon templateId={currentTemplate.id} wingId={currentTemplate.wingId} size={48} />
             </div>
             <h1 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 500,
               color: DARK_PALETTE.question, lineHeight: 1.3, marginBottom: "1rem",
             }}>
               {tTpl(currentTemplate.titleKey)}
@@ -527,7 +527,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {phase === "question" && question && (
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.6s ease both", width: "100%" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.875rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.875rem", fontWeight: 500,
               color: DARK_PALETTE.question, lineHeight: 1.4, marginBottom: "2.5rem",
               maxWidth: "32.5rem", margin: "0 auto 2.5rem",
             }}>
@@ -608,7 +608,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {phase === "recording" && (
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.4s ease both", width: "100%" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem", fontWeight: 500,
               color: DARK_PALETTE.question, lineHeight: 1.4, marginBottom: "2rem",
               maxWidth: "30rem", margin: "0 auto 2rem", opacity: 0.7,
             }}>
@@ -760,7 +760,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 </p>
                 <p style={{
                   fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.25rem",
-                  color: DARK_PALETTE.question, lineHeight: 1.5, margin: 0, fontWeight: 400,
+                  color: DARK_PALETTE.question, lineHeight: 1.5, margin: 0, fontWeight: 500,
                 }}>
                   {aiFollowUp}
                 </p>
@@ -797,7 +797,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {phase === "summary" && (
           <div style={{ animation: "fadeInSlow 0.6s ease both", width: "100%", maxWidth: "33.75rem", margin: "0 auto" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem", fontWeight: 500,
               color: DARK_PALETTE.question, textAlign: "center", marginBottom: "0.5rem",
             }}>
               {t("yourStory")}
@@ -881,7 +881,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.8s ease both" }}>
             <div style={{ marginBottom: "1.25rem" }}><SparklesIcon size={56} /></div>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.625rem" : "2rem", fontWeight: 400,
+              fontFamily: T.font.display, fontSize: isMobile ? "1.625rem" : "2rem", fontWeight: 500,
               color: DARK_PALETTE.question, marginBottom: "0.75rem",
             }}>
               {t("beautifully")}

@@ -96,7 +96,7 @@ export default function KepDetailPage() {
               border: "none",
               borderBottom: activeTab === tab ? "2px solid #b45309" : "2px solid transparent",
               color: activeTab === tab ? "#b45309" : "#6b7280",
-              fontWeight: activeTab === tab ? 600 : 400,
+              fontWeight: activeTab === tab ? 600 : 500,
               cursor: "pointer",
             }}
           >

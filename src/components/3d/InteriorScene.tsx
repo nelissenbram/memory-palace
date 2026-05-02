@@ -172,7 +172,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       glassG:new THREE.MeshStandardMaterial({color:"#FFF8E0",emissive:"#FFE8B0",emissiveIntensity:.5,transparent:true,opacity:.6}),
       screen:new THREE.MeshStandardMaterial({color:"#1A1A1A",roughness:.3,metalness:.1}),
       vinyl:new THREE.MeshStandardMaterial({color:"#1A1A1A",roughness:.15,metalness:.3}),
-      vinylL:new THREE.MeshStandardMaterial({color:wing?.accent||"#C17F59",roughness:.3}),
+      vinylL:new THREE.MeshStandardMaterial({color:wing?.accent||"#C66B3D",roughness:.3}),
       pot:new THREE.MeshStandardMaterial({color:"#B8926A",roughness:.6}),
       plant:new THREE.MeshStandardMaterial({color:"#4A7838",roughness:.85}),
       curtain:mkPhys(THREE,{color:"#8A6848",roughness:.95,side:THREE.DoubleSide,sheen:0.3,sheenRoughness:0.8,sheenColor:new THREE.Color("#D4B896"),map:velvetTex.map,normalMap:velvetTex.normalMap,normalScale:new THREE.Vector2(.25,.25)}),
@@ -877,7 +877,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // Buttons
     for(let bx=-3;bx<=3;bx++)for(let by=0;by<2;by++){scene.add(mk(new THREE.SphereGeometry(.02,6,6),MS.button,bx*.3,.5+by*.18,sofaZ+.44));}
     scene.add(mk(new THREE.BoxGeometry(.45,.22,.35),new THREE.MeshStandardMaterial({color:"#8A5838",roughness:.8}),-0.7,.48,sofaZ-.15));
-    scene.add(mk(new THREE.BoxGeometry(.4,.2,.32),new THREE.MeshStandardMaterial({color:wing?.accent||"#C17F59",roughness:.85}),.8,.46,sofaZ-.12));
+    scene.add(mk(new THREE.BoxGeometry(.4,.2,.32),new THREE.MeshStandardMaterial({color:wing?.accent||"#C66B3D",roughness:.85}),.8,.46,sofaZ-.12));
     } // end !isExhibition sofa
 
     // ═══════════════════════════════════════════

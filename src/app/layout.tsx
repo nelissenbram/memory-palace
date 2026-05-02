@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { Cormorant_Garamond, Source_Sans_3 } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
@@ -13,15 +13,15 @@ import PostHogProvider from "@/components/PostHogProvider";
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-display",
   display: "swap",
 });
 
-const sourceSans = Source_Sans_3({
+const manrope = Manrope({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-body",
   display: "swap",
 });
@@ -100,7 +100,7 @@ export default async function RootLayout({
   const locale = cookieStore.get("mp_locale")?.value || "en";
 
   return (
-    <html lang={locale} className={`${cormorant.variable} ${sourceSans.variable}`}>
+    <html lang={locale} className={`${cormorant.variable} ${manrope.variable}`}>
       <head>
         {/* Force clear stale PWA caches — runs before any JS bundles */}
         <script dangerouslySetInnerHTML={{ __html: `

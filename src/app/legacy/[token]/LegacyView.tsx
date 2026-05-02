@@ -336,13 +336,13 @@ const LT = {
     sandstone: "#F0EDE8",
     charcoal: "#2C2C2A",
     walnut: "#8B7355",
-    terracotta: "#C17F59",
+    terracotta: "#C66B3D",
     muted: "#9A9183",
     faded: "#D4C5B2",
   },
   font: {
     display: "'Cormorant Garamond', Georgia, serif",
-    body: "'Source Sans 3', 'Segoe UI', system-ui, sans-serif",
+    body: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
   },
 } as const;
 
@@ -371,7 +371,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: "0 0 0.5rem",
     fontSize: "1.75rem",
     fontFamily: LT.font.display,
-    fontWeight: 400,
+    fontWeight: 500,
     color: LT.color.white,
     lineHeight: 1.3,
   },

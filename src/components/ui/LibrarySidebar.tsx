@@ -30,7 +30,7 @@ const PLAN_LIMIT = 500;
 const PROGRESS_BASELINE = 20;
 const EASE_OUT_EXPO = "cubic-bezier(0.22, 1, 0.36, 1)";
 
-const WING_COLOR_SWATCHES = ["#C17F59", "#D4AF37", "#4A6741", "#6B8EAD", "#A0527E", "#8B7355", "#C05050", "#2C2C2A"];
+const WING_COLOR_SWATCHES = ["#C66B3D", "#D4AF37", "#4A6741", "#6B8EAD", "#A0527E", "#8B7355", "#C05050", "#2C2C2A"];
 
 export default function LibrarySidebar({
   wings,
@@ -277,7 +277,7 @@ export default function LibrarySidebar({
             color: T.color.muted,
             margin: "0.5rem 0 0",
             letterSpacing: "0.02em",
-            fontWeight: 400,
+            fontWeight: 500,
           }}
         >
           {t("sidebarSubtitle", {
@@ -396,7 +396,7 @@ export default function LibrarySidebar({
               background: T.color.charcoal, color: T.color.linen,
               borderRadius: "0.5rem",
               fontFamily: T.font.body, fontSize: "0.6875rem", lineHeight: 1.5,
-              fontWeight: 400, letterSpacing: "0.01em",
+              fontWeight: 500, letterSpacing: "0.01em",
               boxShadow: "0 0.25rem 1rem rgba(44,44,42,0.25)",
               animation: `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both`,
             }}>
@@ -673,7 +673,7 @@ export default function LibrarySidebar({
                     <span style={{
                       fontFamily: T.font.body,
                       fontSize: "0.75rem",
-                      fontWeight: 400,
+                      fontWeight: 500,
                       color: T.color.walnut,
                       letterSpacing: "0.01em",
                       overflow: "hidden",

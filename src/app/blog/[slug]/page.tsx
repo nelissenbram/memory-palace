@@ -2,10 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { T } from "@/lib/theme";
-import { getAllPosts, getPostBySlug, getReadingTime } from "@/lib/blog/posts";
+import { getAllPosts, getPostBySlugAsync, getReadingTime } from "@/lib/blog/posts";
+import type { BlogLocale } from "@/lib/blog/posts";
+import { getServerLocale } from "@/lib/i18n/server";
 
 const C = T.color;
 const F = T.font;
+
+const UI: Record<BlogLocale, { allPosts: string; minRead: string; signIn: string; getStarted: string; ctaTitle: string; ctaBody: string; ctaButton: string }> = {
+  en: { allPosts: "All posts", minRead: "min read", signIn: "Sign In", getStarted: "Get Started", ctaTitle: "Start preserving your family's memories today", ctaBody: "Build a beautiful, private Memory Palace for your family's stories, photos, and legacy.", ctaButton: "Get Started Free" },
+  nl: { allPosts: "Alle berichten", minRead: "min lezen", signIn: "Inloggen", getStarted: "Aan de slag", ctaTitle: "Begin vandaag met het bewaren van familiherinneringen", ctaBody: "Bouw een prachtig, privaat Memory Palace voor de verhalen, foto's en nalatenschap van je familie.", ctaButton: "Gratis beginnen" },
+  de: { allPosts: "Alle Beitrage", minRead: "Min. Lesezeit", signIn: "Anmelden", getStarted: "Loslegen", ctaTitle: "Bewahren Sie noch heute die Erinnerungen Ihrer Familie", ctaBody: "Erstellen Sie einen wunderschonen, privaten Memory Palace fur die Geschichten, Fotos und das Vermachtnis Ihrer Familie.", ctaButton: "Kostenlos starten" },
+  es: { allPosts: "Todos los articulos", minRead: "min de lectura", signIn: "Iniciar sesion", getStarted: "Comenzar", ctaTitle: "Empieza a preservar los recuerdos de tu familia hoy", ctaBody: "Construye un hermoso Memory Palace privado para las historias, fotos y legado de tu familia.", ctaButton: "Comenzar gratis" },
+  fr: { allPosts: "Tous les articles", minRead: "min de lecture", signIn: "Se connecter", getStarted: "Commencer", ctaTitle: "Commencez a preserver les souvenirs de votre famille", ctaBody: "Construisez un magnifique Memory Palace prive pour les histoires, photos et l'heritage de votre famille.", ctaButton: "Commencer gratuitement" },
+};
 
 /* ── Static params for ISR ── */
 export function generateStaticParams() {
@@ -19,7 +29,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const locale = await getServerLocale() as BlogLocale;
+  const post = await getPostBySlugAsync(slug, locale);
   if (!post) return {};
 
   return {
@@ -57,7 +68,9 @@ export default async function BlogPostPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const locale = await getServerLocale() as BlogLocale;
+  const ui = UI[locale] || UI.en;
+  const post = await getPostBySlugAsync(slug, locale);
   if (!post) notFound();
 
   const mins = getReadingTime(post);
@@ -150,7 +163,7 @@ export default async function BlogPostPage({
               padding: "8px 16px",
             }}
           >
-            Sign In
+            {ui.signIn}
           </Link>
           <Link
             href="/register"
@@ -165,7 +178,7 @@ export default async function BlogPostPage({
               background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
             }}
           >
-            Get Started
+            {ui.getStarted}
           </Link>
         </div>
       </nav>
@@ -208,7 +221,7 @@ export default async function BlogPostPage({
               strokeLinejoin="round"
             />
           </svg>
-          All posts
+          {ui.allPosts}
         </Link>
 
         {/* Header */}
@@ -217,7 +230,7 @@ export default async function BlogPostPage({
             style={{
               fontFamily: F.display,
               fontSize: "clamp(1.75rem, 4vw, 2.5rem)",
-              fontWeight: 400,
+              fontWeight: 500,
               color: C.charcoal,
               margin: "0 0 1rem",
               lineHeight: 1.25,
@@ -234,12 +247,12 @@ export default async function BlogPostPage({
               margin: 0,
             }}
           >
-            {new Date(post.date).toLocaleDateString("en-US", {
+            {new Date(post.date).toLocaleDateString(locale, {
               year: "numeric",
               month: "long",
               day: "numeric",
             })}{" "}
-            &middot; {mins} min read &middot; {post.author}
+            &middot; {mins} {ui.minRead} &middot; {post.author}
           </p>
         </header>
 
@@ -264,12 +277,12 @@ export default async function BlogPostPage({
             style={{
               fontFamily: F.display,
               fontSize: "1.5rem",
-              fontWeight: 400,
+              fontWeight: 500,
               color: C.charcoal,
               margin: "0 0 0.75rem",
             }}
           >
-            Start preserving your family&apos;s memories today
+            {ui.ctaTitle}
           </h3>
           <p
             style={{
@@ -280,8 +293,7 @@ export default async function BlogPostPage({
               lineHeight: 1.6,
             }}
           >
-            Build a beautiful, private Memory Palace for your family&apos;s
-            stories, photos, and legacy.
+            {ui.ctaBody}
           </p>
           <Link
             href="/register"
@@ -298,7 +310,7 @@ export default async function BlogPostPage({
               transition: "opacity 0.2s",
             }}
           >
-            Get Started Free
+            {ui.ctaButton}
           </Link>
         </section>
       </article>

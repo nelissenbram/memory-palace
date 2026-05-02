@@ -23,7 +23,7 @@ export default function SignOutOverlay() {
         animation: "mp-signout-spin 0.8s linear infinite",
       }} />
       <p style={{
-        fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 400,
+        fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
         color: "#F2EDE7", letterSpacing: "0.04em", margin: 0,
       }}>
         Signing out&hellip;

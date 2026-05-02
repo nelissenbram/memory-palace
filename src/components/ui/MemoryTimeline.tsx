@@ -495,7 +495,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
               onClick={() => setRecurrence(o.key)}
               style={{
                 fontFamily: T.font.body, fontSize: "0.6875rem",
-                fontWeight: recurrence === o.key ? 600 : 400,
+                fontWeight: recurrence === o.key ? 600 : 500,
                 color: recurrence === o.key ? T.color.gold : T.color.muted,
                 background: recurrence === o.key ? `${T.color.gold}15` : "none",
                 border: `1px solid ${recurrence === o.key ? T.color.gold + "40" : T.color.cream}`,

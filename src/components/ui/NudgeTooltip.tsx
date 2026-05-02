@@ -403,7 +403,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
               </button>
             </div>
             <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-              alignSelf:"center", fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:400,
+              alignSelf:"center", fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
               color:"rgba(250,250,247,0.4)", background:"none", border:"none",
               cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em", marginTop:"0.125rem",
             }}
@@ -456,7 +456,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             )}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"flex-end", gap:"0.5rem" }}>
               <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:400,
+                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
                 color:"rgba(250,250,247,0.45)", background:"none", border:"none",
                 cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
               }}
@@ -505,7 +505,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
               <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:400,
+                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
                 color:"rgba(250,250,247,0.45)", background:"none", border:"none",
                 cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
               }}
@@ -576,7 +576,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             </div>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
               <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:400,
+                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
                 color:"rgba(250,250,247,0.45)", background:"none", border:"none",
                 cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
               }}
@@ -646,7 +646,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             {footer && <div style={{ fontFamily:T.font.body, fontSize:"0.75rem", color:"rgba(250,250,247,0.5)", fontStyle:"italic", marginTop:"0.125rem" }}>{footer}</div>}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
               <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
-                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:400,
+                fontFamily:T.font.body, fontSize:"0.625rem", fontWeight:500,
                 color:"rgba(250,250,247,0.45)", background:"none", border:"none",
                 cursor:"pointer", padding:"0.125rem 0.25rem", letterSpacing:"0.03em",
               }}

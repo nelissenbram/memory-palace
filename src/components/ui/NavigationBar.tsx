@@ -258,7 +258,7 @@ function activeTextColor(_mode: ModeKey | "me"): string {
 }
 
 function activeIndicatorShadow(_mode: ModeKey | "me"): string {
-  return "0 0.125rem 0.75rem rgba(209,175,55,0.3), 0 0.0625rem 0.25rem rgba(193,127,89,0.2)";
+  return "0 0.125rem 0.75rem rgba(209,175,55,0.3), 0 0.0625rem 0.25rem rgba(198,107,61,0.2)";
 }
 
 /* ------------------------------------------------------------------ */
@@ -358,7 +358,7 @@ function NavigationBar({
         background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
         borderRadius: "0 0 0.1875rem 0.1875rem",
         transition: `left 0.35s ${EASE_SPRING}, width 0.35s ${EASE}`,
-        boxShadow: `0 0.125rem 0.5rem rgba(193,127,89,0.35)`,
+        boxShadow: `0 0.125rem 0.5rem rgba(198,107,61,0.35)`,
       });
     } else {
       // Desktop: pill is rendered directly on the active button (no separate indicator)
@@ -548,7 +548,7 @@ function NavigationBar({
                   color,
                   fontFamily: T.font.body,
                   fontSize: "0.625rem",
-                  fontWeight: isActive ? 600 : 400,
+                  fontWeight: isActive ? 600 : 500,
                   letterSpacing: "0.03em",
                   textTransform: "uppercase" as const,
                   transition: `color 0.3s ${EASE}, opacity 0.3s ${EASE}`,

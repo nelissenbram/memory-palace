@@ -218,7 +218,7 @@ export function OnboardingWizard({ onStart, onSkip, isMobile }: OnboardingWizard
                 color: T.color.white,
                 cursor: "pointer",
                 minHeight: "2.75rem",
-                boxShadow: `0 0.25rem 0.75rem rgba(193,127,89,.25)`,
+                boxShadow: `0 0.25rem 0.75rem rgba(198,107,61,.25)`,
               }}
             >
               {tc("next")}

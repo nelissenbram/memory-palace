@@ -32,7 +32,7 @@ export default function OnboardingCelebration({
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const colors = ["#C17F59", "#D4AF37", "#4A6741", "#8B7355", "#F2EDE7", "#B85C38"];
+    const colors = ["#C66B3D", "#D4AF37", "#4A6741", "#8B7355", "#F2EDE7", "#B85C38"];
     const pieces: { x: number; y: number; w: number; h: number; c: string; vx: number; vy: number; rot: number; vr: number }[] = [];
 
     for (let i = 0; i < 120; i++) {
@@ -161,7 +161,7 @@ export default function OnboardingCelebration({
             color: "#FFF",
             cursor: "pointer",
             transition: "all .3s",
-            boxShadow: "0 0.25rem 1.25rem rgba(193,127,89,.35)",
+            boxShadow: "0 0.25rem 1.25rem rgba(198,107,61,.35)",
             marginTop: "0.5rem",
             minHeight: "3rem",
             pointerEvents: "auto",

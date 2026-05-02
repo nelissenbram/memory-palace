@@ -75,7 +75,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     // ── WING LAYOUTS: each wing is a different museum section ──
     // DRAMATICALLY HIGHER CEILINGS (+2m each)
     const cfg={
-      roots:{cW:9,cH:8,sp:8, rugC:"#7A2028",rugB:"#C8A040",accent:"#C17F59",
+      roots:{cW:9,cH:8,sp:8, rugC:"#7A2028",rugB:"#C8A040",accent:"#C66B3D",
         floorPat:"herringbone",ceilStyle:"coffered",wallStyle:"warm_panels"},
       travel:{cW:7.5,cH:8.5,sp:7.5, rugC:"#1A2A48",rugB:"#B88828",accent:"#4A6741",
         floorPat:"marble_strip",ceilStyle:"vaulted_beams",wallStyle:"map_alcoves"},

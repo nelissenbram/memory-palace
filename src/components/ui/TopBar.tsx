@@ -211,7 +211,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                 {WINGS.map(w => (
                   <button key={w.id} onClick={() => { switchWing(w.id); setMenuOpen(false); }} style={{
                     padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
-                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: activeWing === w.id ? 600 : 400,
+                    fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: activeWing === w.id ? 600 : 500,
                     border: activeWing === w.id ? `1.5px solid ${w.accent}` : `1px solid ${T.color.cream}`,
                     background: activeWing === w.id ? `${w.accent}15` : T.color.white,
                     color: activeWing === w.id ? w.accent : T.color.muted,
@@ -234,7 +234,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                       return (
                         <button key={sw.shareId} onClick={() => { onNavigateSharedWing?.(sw.shareId, sw.wingId); setMenuOpen(false); }} style={{
                           padding: "0.625rem 0.75rem", borderRadius: "0.625rem",
-                          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 400,
+                          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
                           border: `1px solid ${T.color.cream}`, background: T.color.white,
                           color: T.color.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem",
                           textAlign: "left", minHeight: "2.75rem",
@@ -308,7 +308,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                   {locales.map((l) => (
                     <button key={l} onClick={() => setLocale(l)} aria-pressed={locale === l} style={{
                       padding: "0.375rem 0.75rem", borderRadius: "0.5rem", fontSize: "0.75rem", fontFamily: T.font.body,
-                      fontWeight: locale === l ? 600 : 400,
+                      fontWeight: locale === l ? 600 : 500,
                       border: `1px solid ${locale === l ? T.color.terracotta : T.color.cream}`,
                       background: locale === l ? `${T.color.terracotta}12` : T.color.white,
                       color: locale === l ? T.color.terracotta : T.color.muted, cursor: "pointer",
@@ -391,7 +391,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                             border: `1px solid ${isAuto ? T.color.gold : T.color.cream}`,
                             background: isAuto ? `${T.color.gold}18` : T.color.white,
                             cursor: "pointer", fontFamily: T.font.body,
-                            fontSize: "0.625rem", fontWeight: isAuto ? 600 : 400,
+                            fontSize: "0.625rem", fontWeight: isAuto ? 600 : 500,
                             color: isAuto ? T.color.walnut : T.color.muted,
                           }}
                         >
@@ -558,7 +558,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
   const itemBase: React.CSSProperties = {
     display: "flex", alignItems: "center", gap: "0.625rem",
     padding: "0.625rem 0.875rem", borderRadius: "0.625rem",
-    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 400,
+    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
     color: T.color.charcoal, textDecoration: "none",
     border: "none", background: "transparent",
     cursor: "pointer", width: "100%", textAlign: "left",
@@ -698,7 +698,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
               style={{
                 padding: "0.3125rem 0.75rem", borderRadius: "0.5rem",
                 fontSize: "0.8125rem", fontFamily: T.font.body,
-                fontWeight: locale === l ? 600 : 400,
+                fontWeight: locale === l ? 600 : 500,
                 border: `1px solid ${locale === l ? T.color.terracotta : T.color.cream}`,
                 background: locale === l ? `${T.color.terracotta}12` : T.color.white,
                 color: locale === l ? T.color.terracotta : T.color.muted,
@@ -813,7 +813,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
                     border: `1px solid ${isAuto ? T.color.gold : T.color.cream}`,
                     background: isAuto ? `${T.color.gold}18` : T.color.white,
                     cursor: "pointer", fontFamily: T.font.body,
-                    fontSize: "0.625rem", fontWeight: isAuto ? 600 : 400,
+                    fontSize: "0.625rem", fontWeight: isAuto ? 600 : 500,
                     color: isAuto ? T.color.walnut : T.color.muted,
                   }}
                 >
@@ -940,7 +940,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                     style={{
                       flex: 1, padding: "0.5625rem 0.75rem", borderRadius: isExpanded ? "0.625rem 0 0 0" : "0.625rem 0 0 0.625rem",
                       fontFamily: T.font.body, fontSize: "0.8125rem",
-                      fontWeight: activeWing === w.id ? 600 : 400,
+                      fontWeight: activeWing === w.id ? 600 : 500,
                       border: activeWing === w.id ? `1.5px solid ${w.accent}` : `1px solid transparent`,
                       borderRight: "none",
                       background: activeWing === w.id ? `${w.accent}15` : "transparent",
@@ -987,7 +987,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                         onClick={() => { enterWing(w.id); setTimeout(() => enterRoom(r.id), 100); setWingsOpen(false); setExpandedWing(null); }}
                         style={{
                           padding: "0.375rem 0.625rem", borderRadius: "0.5rem",
-                          fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 400,
+                          fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
                           border: "none", background: "transparent",
                           color: T.color.charcoal, cursor: "pointer",
                           display: "flex", alignItems: "center", gap: "0.375rem",
@@ -1034,7 +1034,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                         style={{
                           flex: 1, padding: "0.5625rem 0.75rem", borderRadius: isExpanded ? "0.625rem 0 0 0" : "0.625rem 0 0 0.625rem",
                           fontFamily: T.font.body, fontSize: "0.8125rem",
-                          fontWeight: isActive ? 600 : 400,
+                          fontWeight: isActive ? 600 : 500,
                           border: isActive ? `1.5px solid ${T.color.terracotta}` : `1px solid transparent`,
                           borderRight: "none",
                           background: isActive ? `${T.color.terracotta}15` : "transparent",
@@ -1049,7 +1049,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {sw.wingId.charAt(0).toUpperCase() + sw.wingId.slice(1)}
                         </span>
-                        <span style={{ fontSize: "0.5625rem", color: T.color.sandstone, fontWeight: 400 }}>
+                        <span style={{ fontSize: "0.5625rem", color: T.color.sandstone, fontWeight: 500 }}>
                           {sw.ownerName}
                         </span>
                       </button>
@@ -1104,7 +1104,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
                             }}
                             style={{
                               padding: "0.375rem 0.625rem", borderRadius: "0.5rem",
-                              fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 400,
+                              fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
                               border: "none", background: "transparent",
                               color: T.color.charcoal, cursor: "pointer",
                               display: "flex", alignItems: "center", gap: "0.375rem",

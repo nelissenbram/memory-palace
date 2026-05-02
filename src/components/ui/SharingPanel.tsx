@@ -269,7 +269,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                 border:`1px solid ${permission===p?accent+"40":T.color.cream}`,
                 background:permission===p?`${accent}10`:T.color.white,
                 cursor:"pointer",fontFamily:T.font.body,fontSize:isMobile?"0.8125rem":"0.6875rem",
-                color:permission===p?accent:T.color.muted,fontWeight:permission===p?600:400,
+                color:permission===p?accent:T.color.muted,fontWeight:permission===p?600:500,
               }}>
                 {p==="view"?t("canView"):t("canContribute")}
               </button>
@@ -410,7 +410,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
                               background:share.permission===p?`${accent}10`:T.color.white,
                               cursor:"pointer",fontFamily:T.font.body,fontSize:"0.625rem",
                               color:share.permission===p?accent:T.color.muted,
-                              fontWeight:share.permission===p?600:400,
+                              fontWeight:share.permission===p?600:500,
                             }}>
                               {p==="view"?t("permView"):p==="contribute"?t("permContribute"):t("permAdmin")}
                             </button>

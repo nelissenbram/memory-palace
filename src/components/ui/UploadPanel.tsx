@@ -174,7 +174,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
         {/* Method tabs */}
         <div style={{display:"flex",gap:"0.25rem",marginBottom:"1rem",background:T.color.warmStone,borderRadius:"0.625rem",padding:"0.1875rem"}}>
           {[["url",t("pasteUrl")],["file",t("uploadFile")],...(roomMemories.length>0?[["room",t("fromRoom")]]:[] as string[][])].map(([val,label])=>(
-            <button key={val} onClick={()=>setUploadMethod(val)} role="tab" aria-selected={uploadMethod===val} style={{flex:1,padding:isMobile?"0.75rem 0.75rem":"0.5rem 0.75rem",borderRadius:"0.5rem",border:"none",background:uploadMethod===val?T.color.white:"transparent",color:uploadMethod===val?T.color.charcoal:T.color.muted,fontFamily:T.font.body,fontSize:isMobile?"0.875rem":"0.75rem",fontWeight:uploadMethod===val?600:400,cursor:"pointer",transition:"all .2s"}}>{label}</button>
+            <button key={val} onClick={()=>setUploadMethod(val)} role="tab" aria-selected={uploadMethod===val} style={{flex:1,padding:isMobile?"0.75rem 0.75rem":"0.5rem 0.75rem",borderRadius:"0.5rem",border:"none",background:uploadMethod===val?T.color.white:"transparent",color:uploadMethod===val?T.color.charcoal:T.color.muted,fontFamily:T.font.body,fontSize:isMobile?"0.875rem":"0.75rem",fontWeight:uploadMethod===val?600:500,cursor:"pointer",transition:"all .2s"}}>{label}</button>
           ))}
         </div>
 
@@ -256,7 +256,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             {([["photo","typeFrame"],["painting","typePainting"],["video","typeScreen"],["album","typeAlbum"],["orb","typeOrb"],["case","typeVitrine"],["audio","typeAudio"],["document","typeDocument"]] as const).map(([val,labelKey])=>(
               <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"0.625rem 0.5rem",borderRadius:"0.625rem",border:displayType===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
                 <div style={{display:"flex",justifyContent:"center"}}><TypeIcon type={val} size={20} color={displayType===val?accent:T.color.muted}/></div>
-                <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:400,marginTop:"0.125rem"}}>{t(labelKey)}</div>
+                <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:500,marginTop:"0.125rem"}}>{t(labelKey)}</div>
               </button>
             ))}
           </div>
@@ -280,7 +280,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
           {([["photo","typeFrame"],["painting","typePainting"],["video","typeScreen"],["album","typeAlbum"],["orb","typeOrb"],["case","typeVitrine"],["audio","typeAudio"],["document","typeDocument"]] as const).map(([val,labelKey])=>(
             <button key={val} onClick={()=>setDisplayType(val)} style={{padding:"0.625rem 0.5rem",borderRadius:"0.625rem",border:displayType===val?`2px solid ${accent}`:`1px solid ${T.color.cream}`,background:displayType===val?`${accent}10`:T.color.white,cursor:"pointer",textAlign:"center",transition:"all .15s"}}>
               <div style={{display:"flex",justifyContent:"center"}}><TypeIcon type={val} size={20} color={displayType===val?accent:T.color.muted}/></div>
-              <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:400,marginTop:"0.125rem"}}>{t(labelKey)}</div>
+              <div style={{fontFamily:T.font.body,fontSize:"0.625rem",color:displayType===val?accent:T.color.muted,fontWeight:displayType===val?600:500,marginTop:"0.125rem"}}>{t(labelKey)}</div>
             </button>
           ))}
         </div>
@@ -351,7 +351,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
         </div>
         {/* Historical Context suggestion */}
         {title.trim()&&!timeCapsule&&<div style={{marginBottom:"1.25rem"}}>
-          {contextOffer&&contextPreview?<div style={{padding:"0.875rem",borderRadius:"0.75rem",border:`1px solid ${T.color.cream}`,background:"linear-gradient(135deg,rgba(74,103,65,.06),rgba(193,127,89,.06))"}}>
+          {contextOffer&&contextPreview?<div style={{padding:"0.875rem",borderRadius:"0.75rem",border:`1px solid ${T.color.cream}`,background:"linear-gradient(135deg,rgba(74,103,65,.06),rgba(198,107,61,.06))"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"0.5rem"}}>
               <span style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase"}}>{t("historicalContext")}</span>
               <div style={{display:"flex",gap:"0.375rem"}}>
