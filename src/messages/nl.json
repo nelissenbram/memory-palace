@@ -243,7 +243,7 @@
     "cinematicLoading": "Je paleis wordt voorbereid...",
     "cinematicPrompt": "Klaar om je paleis te bezoeken en te vullen met je herinneringen?",
     "cinematicYes": "Ja, laten we gaan!",
-    "walkExterior": "Dit is je Geheugenpaleis — een prachtige plek om alles te bewaren wat je dierbaar is.",
+    "walkExterior": "Dit is je Memory Palace — een prachtige plek om alles te bewaren wat je dierbaar is.",
     "walkEntrance": "Via de entree vind je vleugels voor elk deel van je leven.",
     "walkCorridor": "Elke vleugel heeft kamers voor je herinneringen — foto's, video's, verhalen.",
     "corridorWingName": "Wortels-vleugel",
@@ -296,7 +296,7 @@
     "uploadMemory": "Herinnering uploaden",
     "shareRoom": "Kamer delen",
     "viewDetails": "Details bekijken",
-    "wingRoots": "Wortels",
+    "wingRoots": "Roots",
     "wingNest": "Nest",
     "wingCraft": "Ambacht",
     "wingTravel": "Reizen",
@@ -345,7 +345,7 @@
     "palaceLabel": "Paleis",
     "entranceHallLabel": "Entreehal",
     "enterAction": "Binnen",
-    "sceneAriaLabel": "3D Geheugenpaleis interactieve scène",
+    "sceneAriaLabel": "3D Memory Palace interactieve scène",
     "subnavPalace": "Paleis",
     "subnavBreadcrumb": "Paleisnavigatie",
     "subnavAriaLabel": "Paleis subnavigatie",
@@ -530,7 +530,7 @@
     "pushErrorRevoked": "Browser heeft push voor deze site ingetrokken. Reset de meldingstoestemming in de browser-instellingen en probeer opnieuw.",
     "pushSubscribed": "Pushmeldingen succesvol geabonneerd",
     "pushErrorStage": "Push-abonnement mislukt bij {stage}: {msg}",
-    "testSampleWelcome": "Welkom in je Geheugenpaleis — laten we iets moois bewaren.",
+    "testSampleWelcome": "Welkom in je Memory Palace — laten we iets moois bewaren.",
     "testSampleAchievement1": "Tien herinneringen bewaard — een prachtig begin.",
     "testSampleAchievement2": "Eerste herinnering in \"Atrium\" — deze kamer leeft nu.",
     "testSampleFamilyInvite": "Sofia is toegetreden tot je familiepaleis.",
@@ -1923,7 +1923,7 @@
     "audioMemory": "Audioherinnering: {title}",
     "expiryBanner": "Deze link is beschikbaar tot {date}",
     "backToTop": "Terug naar boven",
-    "memoryPalaceIcon": "Geheugenpaleis"
+    "memoryPalaceIcon": "Memory Palace"
   },
   "interview": {
     "noWordsDetected": "We hebben geen woorden opgevangen. Je kunt je antwoord hieronder typen, of probeer opnieuw op te nemen.",
@@ -2960,7 +2960,7 @@
     "msg_achievement": "Prestatie ontgrendeld!",
     "msg_family_invite": "{name} is lid geworden van je familiepaleis.",
     "msg_share_accepted": "{name} heeft je kameruitnodiging geaccepteerd.",
-    "msg_welcome": "Welkom in je Geheugenpaleis — laten we iets moois bewaren.",
+    "msg_welcome": "Welkom in je Memory Palace — laten we iets moois bewaren.",
     "msg_reminder": "Een zachte herinnering: de Bibliotheek wacht geduldig. Wil je een verhaal toevoegen?",
     "msg_system": "Een nieuwe functie is in je paleis aangekomen. Verken het Atrium.",
     "msg_on_this_day": "Op deze dag, {years} jaar geleden — \"{title}\".",
@@ -3360,7 +3360,7 @@
     "sharedBadge": "gedeeld",
     "welcomeLabel": "Welkom in de",
     "title": "Entreehal",
-    "subtitle": "Een overzicht van de hoofdstukken van je leven — laten we verdergaan naar de Wortelvleugel",
+    "subtitle": "Een overzicht van de hoofdstukken van je leven — laten we verdergaan naar de Roots-vleugel",
     "skipIntro": "Intro overslaan"
   },
   "contributorBanner": {

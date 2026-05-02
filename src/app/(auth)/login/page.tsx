@@ -49,13 +49,17 @@ function LoginContent() {
         return;
       }
 
-      // If signIn succeeds it redirects, so we only get here on error
+      if (result?.success) {
+        // Auth succeeded — navigate client-side so cookies are flushed first
+        window.location.href = result.redirect || "/atrium";
+        return;
+      }
+
       if (result?.error) {
         setError(result.error);
       }
     } catch {
-      // redirect() throws NEXT_REDIRECT — this is expected on success.
-      // If the navigation doesn't happen, fall through to clear loading.
+      // Unexpected error — clear loading state
     }
     setLoading(false);
   }

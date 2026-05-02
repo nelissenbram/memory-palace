@@ -107,12 +107,12 @@ export async function signIn(formData: FormData) {
     }
   }
 
-  // No MFA needed — redirect as usual
+  // No MFA needed — return success so client can redirect
   if (redirectTo && (redirectTo.startsWith("/invite/") || redirectTo.startsWith("/kep/"))) {
-    redirect(redirectTo);
+    return { success: true, redirect: redirectTo };
   }
 
-  redirect("/atrium");
+  return { success: true, redirect: "/atrium" };
 }
 
 export async function signOut() {

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     // Check if user already has a Stripe customer ID
     const { data: subscription } = await supabase
       .from("subscriptions")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id, stripe_subscription_id, status")
       .eq("user_id", user.id)
       .single();
 
@@ -65,9 +65,11 @@ export async function POST(req: NextRequest) {
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-    // Only apply trial for new customers (no existing stripe_customer_id)
+    // Only apply trial if user has never had a paid/trialing subscription
+    const hadSubscription = subscription?.stripe_subscription_id &&
+      ["active", "trialing", "past_due"].includes(subscription?.status ?? "");
     const trialDays =
-      planDef.trial && !subscription?.stripe_customer_id
+      planDef.trial && !hadSubscription
         ? planDef.trial
         : undefined;
 
