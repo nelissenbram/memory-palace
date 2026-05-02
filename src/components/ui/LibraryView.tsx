@@ -1422,7 +1422,7 @@ export default function LibraryView() {
                 wingIcon={currentWing.icon}
                 wingId={currentWing.id}
                 wingName={translateWingName(currentWing, tWings)}
-                wingDesc={currentWing.desc}
+                wingDesc={currentWing.descKey ? tWings(currentWing.descKey) : currentWing.desc}
                 roomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
                 accent={currentWing.accent}
                 onBack={selectedRoom ? handleBackToRooms : undefined}
