@@ -39,6 +39,7 @@ export async function POST(request: Request) {
   }
 
   const rawBody = await request.text();
+  console.log("[WhatsApp] Webhook POST received, body length:", rawBody.length, "signature present:", !!signature);
 
   // Verify X-Hub-Signature-256 (skip in development)
   const isDev = process.env.NODE_ENV === "development";

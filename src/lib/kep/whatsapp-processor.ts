@@ -64,6 +64,7 @@ export async function processWhatsAppMessage(
   const link = await lookupLink(supabase, phoneNumberId, chatId);
 
   if (!link) {
+    console.log("[WhatsApp] No link found for", chatId ? `group ${chatId}` : `DM from ${message.from}`, "phoneNumberId:", phoneNumberId);
     // No link found — for groups, auto-create one
     if (chatId) {
       const newLink = await autoCreateGroupLink(supabase, phoneNumberId, chatId);
