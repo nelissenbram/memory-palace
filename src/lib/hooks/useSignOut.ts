@@ -19,7 +19,7 @@ export function useSignOut() {
     try {
       await signOut();
     } catch {
-      // signOut uses redirect() which throws NEXT_REDIRECT — expected
+      // Server action error — fallback navigation below handles it
     }
     clearTimeout(fallback);
     // If we're still here, force navigate

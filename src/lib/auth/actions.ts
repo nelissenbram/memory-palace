@@ -117,11 +117,11 @@ export async function signIn(formData: FormData) {
 
 export async function signOut() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    redirect("/login");
+    return { success: true };
   }
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  return { success: true };
 }
 
 export async function resetPassword(formData: FormData) {

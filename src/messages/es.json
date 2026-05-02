@@ -246,7 +246,7 @@
     "walkExterior": "Este es tu Memory Palace — un hermoso lugar para guardar todo lo que atesoras.",
     "walkEntrance": "A través de la entrada, encontrarás alas para cada parte de tu vida.",
     "walkCorridor": "Cada ala tiene salas para tus recuerdos — fotos, videos, historias.",
-    "corridorWingName": "Ala de Raíces",
+    "corridorWingName": "Roots Wing",
     "corridorSubtitle": "Cada ala tiene salas — pequeños espacios dentro de uno mayor, cada uno para un capítulo con recuerdos tuyos.",
     "corridorRoomPromptPrefix": "Tu sala personal es",
     "corridorRoomName": "Yo, a Través del Tiempo",
@@ -3358,7 +3358,7 @@
     "sharedBadge": "compartida",
     "welcomeLabel": "Bienvenido al",
     "title": "Vestíbulo",
-    "subtitle": "Una vista general de los capítulos de tu vida — continuemos al Ala de Raíces",
+    "subtitle": "Una vista general de los capítulos de tu vida — continuemos al Roots Wing",
     "skipIntro": "Saltar intro"
   },
   "contributorBanner": {

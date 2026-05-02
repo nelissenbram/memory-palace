@@ -246,7 +246,7 @@
     "walkExterior": "Voici votre Memory Palace — un bel endroit pour conserver tout ce qui vous est cher.",
     "walkEntrance": "Par l'entrée, vous trouverez des ailes pour chaque partie de votre vie.",
     "walkCorridor": "Chaque aile contient des salles pour vos souvenirs — photos, vidéos, histoires.",
-    "corridorWingName": "Aile des Racines",
+    "corridorWingName": "Roots Wing",
     "corridorSubtitle": "Chaque aile a des salles — de petits espaces au sein d'un plus grand, chacun pour un chapitre de vos souvenirs.",
     "corridorRoomPromptPrefix": "Votre salle personnelle est",
     "corridorRoomName": "Moi, Au Fil du Temps",
@@ -3358,7 +3358,7 @@
     "sharedBadge": "partagée",
     "welcomeLabel": "Bienvenue dans le",
     "title": "Hall d'entrée",
-    "subtitle": "Un aperçu des chapitres de votre vie — continuons vers l\u2019Aile des Racines",
+    "subtitle": "Un aperçu des chapitres de votre vie — continuons vers le Roots Wing",
     "skipIntro": "Passer l'intro"
   },
   "contributorBanner": {

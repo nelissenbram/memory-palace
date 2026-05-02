@@ -65,8 +65,18 @@ export function detectBrowserLocale(): Locale {
  * Falls back to English if key is missing in the active locale.
  */
 export function useTranslation<S extends Section>(section: S) {
-  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
-  const [messages, setMessages] = useState<Messages>(enMessages);
+  // Initialize synchronously from cache if available — avoids flash of English
+  // in canvas textures (Three.js) that render on first mount before useEffect fires
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    if (typeof window === "undefined") return defaultLocale;
+    const stored = getStoredLocale();
+    return stored;
+  });
+  const [messages, setMessages] = useState<Messages>(() => {
+    if (typeof window === "undefined") return enMessages;
+    const stored = getStoredLocale();
+    return messageCache.get(stored) ?? enMessages;
+  });
 
   useEffect(() => {
     const stored = getStoredLocale();

@@ -246,7 +246,7 @@
     "walkExterior": "Das ist dein Memory Palace — ein wunderschöner Ort, um alles aufzubewahren, was dir wichtig ist.",
     "walkEntrance": "Durch den Eingang findest du Flügel für jeden Teil deines Lebens.",
     "walkCorridor": "Jeder Flügel hat Räume für deine Erinnerungen — Fotos, Videos, Geschichten.",
-    "corridorWingName": "Wurzeln-Flügel",
+    "corridorWingName": "Roots Wing",
     "corridorSubtitle": "Jeder Flügel hat Räume — kleine Bereiche innerhalb eines größeren, jeweils für ein Kapitel mit Erinnerungen an dich.",
     "corridorRoomPromptPrefix": "Dein persönlicher Raum ist",
     "corridorRoomName": "Ich, im Wandel der Zeit",
@@ -3358,7 +3358,7 @@
     "sharedBadge": "geteilt",
     "welcomeLabel": "Willkommen in der",
     "title": "Eingangshalle",
-    "subtitle": "Ein Überblick über die Kapitel deines Lebens — weiter zum Wurzelflügel",
+    "subtitle": "Ein Überblick über die Kapitel deines Lebens — weiter zum Roots Wing",
     "skipIntro": "Intro überspringen"
   },
   "contributorBanner": {

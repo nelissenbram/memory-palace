@@ -61,10 +61,10 @@ const fallbackNames: Record<string, Record<string, string>> = {
   },
   memoryPalace: {
     en: "Memory Palace",
-    nl: "Geheugenpaleis",
-    de: "Gedächtnispalast",
-    es: "Palacio de la memoria",
-    fr: "Palais de la mémoire",
+    nl: "Memory Palace",
+    de: "Memory Palace",
+    es: "Memory Palace",
+    fr: "Memory Palace",
   },
   unknownRoom: {
     en: "Unknown room",
@@ -160,10 +160,10 @@ const fallbackNames: Record<string, Record<string, string>> = {
   },
   notif_welcome: {
     en: "Welcome to your Memory Palace — let's preserve something beautiful.",
-    nl: "Welkom in je Geheugenpaleis — laten we iets moois bewaren.",
-    de: "Willkommen in deinem Gedächtnispalast — lass uns etwas Schönes bewahren.",
-    es: "Bienvenido a tu Palacio de la Memoria — preservemos algo hermoso.",
-    fr: "Bienvenue dans votre Palais de la Mémoire — préservons quelque chose de beau.",
+    nl: "Welkom in je Memory Palace — laten we iets moois bewaren.",
+    de: "Willkommen in deinem Memory Palace — lass uns etwas Schönes bewahren.",
+    es: "Bienvenido a tu Memory Palace — preservemos algo hermoso.",
+    fr: "Bienvenue dans votre Memory Palace — préservons quelque chose de beau.",
   },
   notif_on_this_day: {
     en: "On this day, {years} years ago — \"{title}\".",
