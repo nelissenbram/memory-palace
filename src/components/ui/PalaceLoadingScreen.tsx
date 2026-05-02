@@ -6,22 +6,11 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 
 const LOADING_PHRASE_COUNT = 10;
 
-/**
- * Unified loading screen used everywhere in the Palace flow:
- *   1. Dynamic-import fallback (page.tsx)
- *   2. Profile-loading gate (MemoryPalace.tsx)
- *   3. Scene-loading overlay (MemoryPalace.tsx)
- *
- * All three render the exact same visuals so the user never sees
- * a font/layout shift between loading stages.
- */
 export default function PalaceLoadingScreen({
   overlay = false,
   fadeDelay = 0,
 }: {
-  /** When true, renders as a positioned overlay with fade-out animation (for scene loading). */
   overlay?: boolean;
-  /** Seconds to hold fully visible before starting the fade-out (overlay mode only). */
   fadeDelay?: number;
 }) {
   const { t } = useTranslation("palace");
@@ -31,31 +20,50 @@ export default function PalaceLoadingScreen({
     return `loadingPhrase${idx}` as const;
   }, []);
 
+  const progressBar = (
+    <>
+      <style>{`@keyframes palaceProgressSlide{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}`}</style>
+      <div style={{
+        width: "min(16rem, 60vw)",
+        height: "0.25rem",
+        borderRadius: "0.125rem",
+        background: `${T.color.sandstone}40`,
+        overflow: "hidden",
+        marginTop: "1.5rem",
+      }}>
+        <div style={{
+          width: "40%",
+          height: "100%",
+          background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
+          borderRadius: "0.125rem",
+          animation: "palaceProgressSlide 1.4s ease-in-out infinite",
+        }} />
+      </div>
+    </>
+  );
+
   const content = (
     <>
       <div style={{ marginBottom: "1.5rem" }}>
         <PalaceLogo variant="mark" color="dark" size="xl" />
       </div>
-      <div
-        style={{
-          fontSize: "1.75rem",
-          fontWeight: 300,
-          color: T.color.charcoal,
-        }}
-      >
+      <div style={{
+        fontSize: "1.75rem",
+        fontWeight: 300,
+        color: T.color.charcoal,
+      }}>
         {t("appTitle")}
       </div>
-      <div
-        style={{
-          fontSize: "0.9375rem",
-          color: T.color.muted,
-          marginTop: "0.75rem",
-          fontFamily: T.font.body,
-          fontStyle: "italic",
-        }}
-      >
+      <div style={{
+        fontSize: "0.9375rem",
+        color: T.color.muted,
+        marginTop: "0.75rem",
+        fontFamily: T.font.body,
+        fontStyle: "italic",
+      }}>
         {t(phrase)}
       </div>
+      {progressBar}
     </>
   );
 
@@ -76,25 +84,6 @@ export default function PalaceLoadingScreen({
           pointerEvents: "none",
         }}
       >
-        {/* Top progress bar */}
-        <style>{`@keyframes palaceProgressSlide{0%{transform:translateX(-100%)}50%{transform:translateX(0%)}100%{transform:translateX(100%)}}`}</style>
-        <div style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: "0.1875rem",
-          background: `${T.color.warmStone}40`,
-          overflow: "hidden",
-        }}>
-          <div style={{
-            width: "40%",
-            height: "100%",
-            background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
-            borderRadius: "0 2px 2px 0",
-            animation: "palaceProgressSlide 1.8s ease-in-out infinite",
-          }} />
-        </div>
         {content}
       </div>
     );
@@ -114,25 +103,6 @@ export default function PalaceLoadingScreen({
         fontFamily: T.font.display,
       }}
     >
-      {/* Top progress bar */}
-      <style>{`@keyframes palaceProgressSlide{0%{transform:translateX(-100%)}50%{transform:translateX(0%)}100%{transform:translateX(100%)}}`}</style>
-      <div style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        height: "0.1875rem",
-        background: `${T.color.warmStone}40`,
-        overflow: "hidden",
-      }}>
-        <div style={{
-          width: "40%",
-          height: "100%",
-          background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
-          borderRadius: "0 2px 2px 0",
-          animation: "palaceProgressSlide 1.8s ease-in-out infinite",
-        }} />
-      </div>
       {content}
     </div>
   );

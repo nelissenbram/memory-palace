@@ -55,7 +55,18 @@ export default function PricingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan: planId, interval }),
       });
-      const data = await res.json();
+      if (res.status === 401) {
+        window.location.href = "/register";
+        return;
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        setToast({ message: `${t("couldNotConnect")} (${res.status})`, type: "error" });
+        return;
+      }
 
       if (data.url) {
         if (isIOS()) {
@@ -63,14 +74,11 @@ export default function PricingPage() {
         } else {
           window.location.href = data.url;
         }
-      } else if (res.status === 401) {
-        // Not logged in, redirect to register
-        window.location.href = "/register";
       } else {
         setToast({ message: data.error || t("somethingWentWrong"), type: "error" });
       }
-    } catch {
-      setToast({ message: t("couldNotConnect"), type: "error" });
+    } catch (err) {
+      setToast({ message: `${t("couldNotConnect")} ${err instanceof Error ? err.message : ""}`, type: "error" });
     }
     setLoading(null);
   };

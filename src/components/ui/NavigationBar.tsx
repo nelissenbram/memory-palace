@@ -842,6 +842,38 @@ function NavigationBar({
           </div>
         )}
 
+        {/* ---- blog link ---- */}
+        {!minimal && (
+          <a
+            href="/blog"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "2.25rem",
+              padding: "0 0.75rem",
+              borderRadius: "1.125rem",
+              border: `0.0625rem solid ${T.color.cream}`,
+              background: "transparent",
+              fontFamily: T.font.body,
+              fontSize: "0.8125rem",
+              fontWeight: 500,
+              color: T.color.muted,
+              textDecoration: "none",
+              cursor: "pointer",
+              transition: `all 0.25s ${EASE}`,
+              marginRight: "0.375rem",
+              flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = T.color.terracotta; e.currentTarget.style.color = T.color.terracotta; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = T.color.cream; e.currentTarget.style.color = T.color.muted; }}
+          >
+            {t("blog")}
+          </a>
+        )}
+
         {/* ---- help / restart tutorial ---- */}
         {!minimal && (
           <button

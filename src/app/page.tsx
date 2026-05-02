@@ -846,6 +846,11 @@ function LandingPageContent() {
             </Link>
           )}
           {!isSmall && (
+            <Link href="/blog" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream }}>
+              {landing.nav.blog}
+            </Link>
+          )}
+          {!isSmall && (
             <Link href="/login" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream }}>
               {landing.nav.signIn}
             </Link>
@@ -963,6 +968,9 @@ function LandingPageContent() {
             </a>
             <Link href="/pricing" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0" }} onClick={() => setMobileMenuOpen(false)}>
               {landing.nav.pricing}
+            </Link>
+            <Link href="/blog" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0" }} onClick={() => setMobileMenuOpen(false)}>
+              {landing.nav.blog}
             </Link>
             <Link href="/login" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0" }} onClick={() => setMobileMenuOpen(false)}>
               {landing.nav.signIn}
@@ -2251,7 +2259,7 @@ function LandingPageContent() {
                   textDecoration: "none",
                 }}
               >
-                Blog
+                {landing.footer.blog}
               </Link>
               <Link
                 href="/login"

@@ -1526,7 +1526,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
 
         <Suspense fallback={null}>
           <ImportHub
-            onClose={() => setPhase("paywall")}
+            onClose={() => { if (!memoryUploadedRef.current) setPhase("paywall"); }}
             onImportFiles={async (files) => {
               if (files.length === 0) return;
               const f = files[0];

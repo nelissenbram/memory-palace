@@ -1067,6 +1067,7 @@
       "features": "Functies",
       "howItWorks": "Hoe het werkt",
       "pricing": "Prijzen",
+      "blog": "Blog",
       "signIn": "Inloggen",
       "getStarted": "Aan de slag"
     },
@@ -1230,6 +1231,7 @@
       "features": "Functies",
       "howItWorks": "Hoe het werkt",
       "pricing": "Prijzen",
+      "blog": "Blog",
       "signIn": "Inloggen",
       "getStartedFree": "Gratis beginnen",
       "trustSecurity": "Vertrouwen & Beveiliging",
@@ -4399,7 +4401,8 @@
     "settings": "Instellingen",
     "tools": "Hulpmiddelen",
     "helpTutorial": "Help & Rondleiding",
-    "noHelpHere": "Je bent een pro — geen tutorial nodig hier! 🏛️"
+    "noHelpHere": "Je bent een pro — geen tutorial nodig hier! 🏛️",
+    "blog": "Blog"
   },
   "persona": {
     "title": "Ontdek je herinneringsstijl",

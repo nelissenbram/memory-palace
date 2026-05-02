@@ -162,11 +162,15 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
   initPage: (page, isMobile) => {
     const { activePage, activeNudge: currentNudge, queue: currentQueue, _advanceTimer: prev, _forceCurrentPage: forceCurrent } = get();
 
-    // If this page's nudge sequence is already running, don't reset it.
-    // This prevents a duplicate initPage call (e.g. from a delayed setTimeout)
-    // from blinking the active nudge off and on again.
+    // If this page's nudge sequence is already running with an active nudge
+    // or queued nudges, don't reset it.  This prevents a duplicate initPage
+    // call (e.g. from a delayed setTimeout or React re-render) from blinking
+    // the active nudge off and on again.
+    // Only block when a nudge is actually visible or queued — a pending timer
+    // alone should NOT block, because the timer might belong to a stale setup
+    // that never produced a visible nudge (e.g. race after onboarding).
     // Skip this guard when _forceCurrentPage is set (from reset() / help button).
-    if (!forceCurrent && activePage === page && (currentNudge || currentQueue.length > 0 || prev)) {
+    if (!forceCurrent && activePage === page && (currentNudge || currentQueue.length > 0)) {
       return;
     }
 

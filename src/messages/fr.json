@@ -1067,6 +1067,7 @@
       "features": "Fonctionnalités",
       "howItWorks": "Comment ça marche",
       "pricing": "Tarifs",
+      "blog": "Blog",
       "signIn": "Se connecter",
       "getStarted": "Commencer"
     },
@@ -1230,6 +1231,7 @@
       "features": "Fonctionnalites",
       "howItWorks": "Comment ca fonctionne",
       "pricing": "Tarifs",
+      "blog": "Blog",
       "signIn": "Se connecter",
       "getStartedFree": "Commencer gratuitement",
       "trustSecurity": "Confiance et securite",
@@ -4397,7 +4399,8 @@
     "settings": "Paramètres",
     "tools": "Outils",
     "helpTutorial": "Aide & tutoriel",
-    "noHelpHere": "Vous êtes un pro — pas besoin de tutoriel ici ! 🏛️"
+    "noHelpHere": "Vous êtes un pro — pas besoin de tutoriel ici ! 🏛️",
+    "blog": "Blog"
   },
   "persona": {
     "title": "Découvrez votre style de souvenir",

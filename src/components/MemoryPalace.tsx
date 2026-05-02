@@ -383,14 +383,18 @@ export default function MemoryPalace(){
     if (onboarded && !styleEra && !profileLoading) setShowEraPicker(true);
   }, [onboarded, styleEra, profileLoading]);
 
-  // ── Scene loading overlay — shown on the VERY FIRST Palace visit AND
-  // when navigating from Library into a 3D corridor/room scene (where
-  // lazy-loaded CorridorScene / InteriorScene need time to mount). ──
+  // ── Scene loading overlay — shown on the VERY FIRST Palace visit,
+  // when navigating from Library into a 3D corridor/room scene, AND
+  // when transitioning between different rooms/wings within the palace
+  // (where lazy-loaded CorridorScene / InteriorScene need time to mount). ──
   const firstPalaceVisitRef = useRef(true);
   const prevNavModeForLoadingRef = useRef(navMode);
+  const prevViewForLoadingRef = useRef(view);
   useEffect(() => {
     const cameFromLibrary = prevNavModeForLoadingRef.current === "library" && navMode === "3d";
+    const prevView = prevViewForLoadingRef.current;
     prevNavModeForLoadingRef.current = navMode;
+    prevViewForLoadingRef.current = view;
 
     // Library → 3D corridor/room: show loading while scene JS loads & mounts.
     // Checked first because enterCorridor/enterRoom use fade() which delays
@@ -421,6 +425,27 @@ export default function MemoryPalace(){
       // onReady from ExteriorScene will hide it precisely; 2.5s safety.
       const t = setTimeout(() => setSceneLoading(false), 2500);
       return () => clearTimeout(t);
+    }
+
+    // Intra-palace view transitions (e.g. corridor→room, room→corridor,
+    // entrance→corridor, exterior→entrance): show a brief loading overlay
+    // while the lazy-loaded scene JS chunk loads and the 3D scene mounts.
+    // Only trigger when the view actually changed AND we're in 3D mode.
+    if (navMode === "3d" && prevView !== view && !sceneLoadFromLibraryRef.current) {
+      const needsLoading =
+        (prevView === "corridor" && view === "room") ||
+        (prevView === "room" && view === "corridor") ||
+        (prevView === "entrance" && view === "corridor") ||
+        (prevView === "corridor" && view === "entrance") ||
+        (prevView === "exterior" && view === "entrance") ||
+        (prevView === "entrance" && view === "exterior") ||
+        (prevView === "exterior" && view === "corridor") ||
+        (prevView === "room" && view === "entrance");
+      if (needsLoading) {
+        setSceneLoading(true);
+        const t = setTimeout(() => setSceneLoading(false), 1200);
+        return () => clearTimeout(t);
+      }
     }
 
     // Any other view transition: no splash — but don't interrupt an active
@@ -798,8 +823,18 @@ export default function MemoryPalace(){
     // Mark checklist item if user uploaded during onboarding
     if (memoryUploaded) markChecklistItem("upload_first_memory");
     // Land on Atrium — NudgeProvider's own useEffect will call initPage("atrium")
-    // with a 600ms delay, giving the DOM time to mount after the transition.
+    // with a 900ms delay, giving the DOM time to mount after the transition.
     setNavMode("atrium");
+    // Safety fallback: if NudgeProvider's useEffect didn't fire (e.g. due to
+    // React mount timing), explicitly trigger initPage after 1.2s.  The
+    // idempotency guard inside initPage ensures this is a no-op if the
+    // NudgeProvider already started the sequence successfully.
+    setTimeout(() => {
+      const { activePage, activeNudge, queue } = useNudgeStore.getState();
+      if (activePage !== "atrium" || (!activeNudge && queue.length === 0)) {
+        useNudgeStore.getState().initPage("atrium");
+      }
+    }, 1200);
   };
 
   // ── Early returns for Settings / Notifications (before profileLoading gate

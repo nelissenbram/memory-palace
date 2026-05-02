@@ -129,11 +129,12 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
   // Delay initPage slightly so the DOM (NavigationBar slide-in, lazy loads)
   // has time to mount and paint.  On the very first atrium visit (right
   // after onboarding) the NavigationBar animation takes ~550ms; use a
-  // 600ms delay to ensure data-nudge targets are laid-out and measurable.
+  // 900ms delay to ensure data-nudge targets are laid-out and measurable
+  // (the extra margin covers React Suspense boundaries and CSS transitions).
   // On subsequent mounts (page switches) use a shorter delay.
   useEffect(() => {
     const isFirstEver = useNudgeStore.getState().activePage === null;
-    const delay = isFirstEver ? 600 : 150;
+    const delay = isFirstEver ? 900 : 150;
     const t = setTimeout(() => initPage(page, isMobile), delay);
     return () => clearTimeout(t);
   }, [page, initPage, isMobile, resetCount]);

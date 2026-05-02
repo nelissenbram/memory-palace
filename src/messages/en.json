@@ -1067,6 +1067,7 @@
       "features": "Features",
       "howItWorks": "How It Works",
       "pricing": "Pricing",
+      "blog": "Blog",
       "signIn": "Sign In",
       "getStarted": "Get Started"
     },
@@ -1230,6 +1231,7 @@
       "features": "Features",
       "howItWorks": "How It Works",
       "pricing": "Pricing",
+      "blog": "Blog",
       "signIn": "Sign In",
       "getStartedFree": "Get Started Free",
       "trustSecurity": "Trust & Security",
@@ -4397,7 +4399,8 @@
     "settings": "Settings",
     "tools": "Tools",
     "helpTutorial": "Help & Tutorial",
-    "noHelpHere": "You're a pro — no tutorial needed here! 🏛️"
+    "noHelpHere": "You're a pro — no tutorial needed here! 🏛️",
+    "blog": "Blog"
   },
   "persona": {
     "title": "Discover Your Memory Style",
