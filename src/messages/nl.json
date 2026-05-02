@@ -1800,6 +1800,7 @@
     "subscribe": "Abonneren",
     "startFreeTrial": "Start 7 dagen gratis proefperiode",
     "trialNote": "7 dagen gratis proefperiode, altijd opzegbaar",
+    "noCardRequired": "geen creditcard vereist",
     "faqTitle": "Vragen? Wij hebben antwoorden.",
     "faq1q": "Hoe werkt de facturering?",
     "faq1a": "Kies tussen maandelijkse of jaarlijkse facturering. Jaarabonnementen besparen tot 23%. Je kunt op elk moment opzeggen, en je abonnement blijft actief tot het einde van de betaalde periode.",
@@ -3265,6 +3266,8 @@
     "rotate": "Draaien",
     "switchToAudio": "Wisselen naar audio",
     "switchToVideo": "Wisselen naar video",
+    "paintingTitle": "{name}'s Mooie Glimlach",
+    "paintingDate": "anno {date}",
     "sceneLabel": "Kamer interieur 3D-scène — gebruik toetsenbord om te navigeren",
     "tapForSound": "Tik voor geluid",
     "peristylium": "Peristylium",
@@ -3801,15 +3804,15 @@
     "feat100gbStorage": "100 GB opslag"
   },
   "wings": {
-    "roots": "Wortels",
+    "roots": "Roots",
     "rootsDesc": "Waar ik vandaan kom",
     "nest": "Nest",
     "nestDesc": "Het thuis dat ik heb opgebouwd",
-    "craft": "Ambacht",
+    "craft": "Craft",
     "craftDesc": "Wat ik heb opgebouwd en geleerd",
-    "travel": "Reizen",
+    "travel": "Travel",
     "travelDesc": "Plekken waar ik ben geweest",
-    "passions": "Passies",
+    "passions": "Passions",
     "passionsDesc": "Wat ik doe uit liefde",
     "storage": "Ongecategoriseerd",
     "storageRoom": "Ongecategoriseerd",
@@ -4376,7 +4379,9 @@
     "familyGroupTitle": "Maak een Familiegroep",
     "familyGroupDesc": "Nodig dierbaren uit om samen herinneringen te delen en bij te dragen",
     "timeCapsuleTitle": "Maak een tijdcapsule",
-    "timeCapsuleDesc": "Verzegel een herinnering om op een toekomstige datum te onthullen"
+    "timeCapsuleDesc": "Verzegel een herinnering om op een toekomstige datum te onthullen",
+    "blogTitle": "Lees onze blog",
+    "blogDesc": "Tips, verhalen en inspiratie voor het bewaren van familieherinneringen"
   },
   "discover": {
     "sectionTitle": "Ontdek je paleis",

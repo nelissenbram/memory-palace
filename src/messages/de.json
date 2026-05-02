@@ -1800,6 +1800,7 @@
     "subscribe": "Abonnieren",
     "startFreeTrial": "7 Tage kostenlos testen",
     "trialNote": "7 Tage kostenlos, jederzeit kündbar",
+    "noCardRequired": "keine Kreditkarte erforderlich",
     "faqTitle": "Fragen? Wir haben Antworten.",
     "faq1q": "Wie funktioniert die Abrechnung?",
     "faq1a": "Wähle zwischen monatlicher oder jährlicher Abrechnung. Jahrespläne sparen bis zu 23%. Du kannst jederzeit kündigen, und dein Abonnement bleibt bis zum Ende des bezahlten Zeitraums aktiv.",
@@ -3256,6 +3257,8 @@
     "loadingVideo": "Video wird geladen...",
     "backToCorridor": "← Zurück zum Korridor",
     "close": "Schließen",
+    "paintingTitle": "{name}s Wunderschones Lacheln",
+    "paintingDate": "anno {date}",
     "sceneLabel": "3D-Szene des Rauminneren — mit Tastatur navigieren",
     "videoFallback": "Video",
     "audioFallback": "Audio",
@@ -3799,15 +3802,15 @@
     "feat100gbStorage": "100 GB Speicher"
   },
   "wings": {
-    "roots": "Wurzeln",
+    "roots": "Roots",
     "rootsDesc": "Woher ich komme",
     "nest": "Nest",
     "nestDesc": "Das Zuhause, das ich geschaffen habe",
-    "craft": "Handwerk",
+    "craft": "Craft",
     "craftDesc": "Was ich aufgebaut und gelernt habe",
-    "travel": "Reisen",
+    "travel": "Travel",
     "travelDesc": "Orte, an denen ich gewesen bin",
-    "passions": "Leidenschaften",
+    "passions": "Passions",
     "passionsDesc": "Was ich aus Liebe tue",
     "storage": "Nicht kategorisiert",
     "storageRoom": "Nicht kategorisiert",
@@ -4374,7 +4377,9 @@
     "familyGroupTitle": "Familiengruppe erstellen",
     "familyGroupDesc": "Lade Liebste ein, gemeinsam Erinnerungen zu teilen und beizutragen",
     "timeCapsuleTitle": "Zeitkapsel erstellen",
-    "timeCapsuleDesc": "Versiegele eine Erinnerung, die an einem zukünftigen Datum enthüllt wird"
+    "timeCapsuleDesc": "Versiegele eine Erinnerung, die an einem zukünftigen Datum enthüllt wird",
+    "blogTitle": "Unseren Blog lesen",
+    "blogDesc": "Tipps, Geschichten und Inspiration fur die Bewahrung von Familienerinnerungen"
   },
   "discover": {
     "sectionTitle": "Deinen Palast erkunden",

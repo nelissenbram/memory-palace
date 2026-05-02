@@ -1800,6 +1800,7 @@
     "subscribe": "Suscribirse",
     "startFreeTrial": "Iniciar prueba gratuita de 7 días",
     "trialNote": "7 días de prueba gratuita, cancela en cualquier momento",
+    "noCardRequired": "sin tarjeta de crédito",
     "faqTitle": "¿Preguntas? Tenemos respuestas.",
     "faq1q": "¿Cómo funciona la facturación?",
     "faq1a": "Elige entre facturación mensual o anual. Los planes anuales ahorran hasta un 23%. Puedes cancelar en cualquier momento, y tu suscripción permanece activa hasta el final del período pagado.",
@@ -3256,6 +3257,8 @@
     "loadingVideo": "Cargando vídeo...",
     "backToCorridor": "← Volver al corredor",
     "close": "Cerrar",
+    "paintingTitle": "La Hermosa Sonrisa de {name}",
+    "paintingDate": "anno {date}",
     "sceneLabel": "Escena 3D interior de la sala — usa el teclado para navegar",
     "videoFallback": "Vídeo",
     "audioFallback": "Audio",
@@ -3799,15 +3802,15 @@
     "feat100gbStorage": "100 GB de almacenamiento"
   },
   "wings": {
-    "roots": "Raíces",
+    "roots": "Roots",
     "rootsDesc": "De dónde vengo",
-    "nest": "Nido",
+    "nest": "Nest",
     "nestDesc": "El hogar que he construido",
-    "craft": "Oficio",
+    "craft": "Craft",
     "craftDesc": "Lo que he construido y aprendido",
-    "travel": "Viajes",
+    "travel": "Travel",
     "travelDesc": "Lugares donde he estado",
-    "passions": "Pasiones",
+    "passions": "Passions",
     "passionsDesc": "Lo que hago por amor",
     "storage": "Sin categoría",
     "storageRoom": "Sin categoría",
@@ -4374,7 +4377,9 @@
     "familyGroupTitle": "Crear un grupo familiar",
     "familyGroupDesc": "Invita a tus seres queridos a compartir y contribuir recuerdos juntos",
     "timeCapsuleTitle": "Crear una cápsula del tiempo",
-    "timeCapsuleDesc": "Sella un recuerdo para que se revele en una fecha futura"
+    "timeCapsuleDesc": "Sella un recuerdo para que se revele en una fecha futura",
+    "blogTitle": "Lee nuestro blog",
+    "blogDesc": "Consejos, historias e inspiracion para preservar recuerdos familiares"
   },
   "discover": {
     "sectionTitle": "Explora tu palacio",

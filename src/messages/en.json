@@ -1800,6 +1800,7 @@
     "subscribe": "Subscribe",
     "startFreeTrial": "Start 7-day Free Trial",
     "trialNote": "7-day free trial, cancel anytime",
+    "noCardRequired": "no credit card required",
     "faqTitle": "Questions? We have answers.",
     "faq1q": "How does billing work?",
     "faq1a": "Choose between monthly or annual billing. Annual plans save you up to 23%. You can cancel at any time, and your subscription remains active until the end of the paid period.",
@@ -3256,6 +3257,8 @@
     "loadingVideo": "Loading video...",
     "backToCorridor": "← Back to corridor",
     "close": "Close",
+    "paintingTitle": "{name}'s Beautiful Smile",
+    "paintingDate": "anno {date}",
     "sceneLabel": "Room interior 3D scene — use keyboard to navigate",
     "videoFallback": "Video",
     "audioFallback": "Audio",
@@ -4374,7 +4377,9 @@
     "familyGroupTitle": "Create a Family Group",
     "familyGroupDesc": "Invite loved ones to share and contribute memories together",
     "timeCapsuleTitle": "Create a Time Capsule",
-    "timeCapsuleDesc": "Seal a memory to be revealed on a future date"
+    "timeCapsuleDesc": "Seal a memory to be revealed on a future date",
+    "blogTitle": "Read Our Blog",
+    "blogDesc": "Tips, stories and inspiration for preserving family memories"
   },
   "discover": {
     "sectionTitle": "Explore Your Palace",

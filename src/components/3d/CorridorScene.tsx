@@ -654,7 +654,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // Name plaque — large, centered ON the door
       const plq=document.createElement("canvas");plq.width=560;plq.height=96;
       const pc=plq.getContext("2d")!;pc.fillStyle="#3E3020";pc.fillRect(0,0,560,96);pc.fillStyle="#C8A868";pc.fillRect(3,3,554,90);pc.fillStyle="#3E3020";pc.fillRect(8,8,544,80);
-      pc.fillStyle="#F0EAE0";pc.font="bold 30px Georgia,serif";pc.textAlign="center";pc.textBaseline="middle";pc.fillText(room.name,280,48);
+      pc.fillStyle="#F0EAE0";pc.font="bold 30px Georgia,serif";pc.textAlign="center";pc.textBaseline="middle";const roomLabel=room.nameKey?tWings(room.nameKey):room.name;pc.fillText(roomLabel,280,48);
       const ptex=new THREE.CanvasTexture(plq);ptex.colorSpace=THREE.SRGBColorSpace;
       const plm=new THREE.Mesh(new THREE.PlaneGeometry(1.4,.28),new THREE.MeshStandardMaterial({map:ptex,roughness:.4}));
       plm.rotation.y=side*(-Math.PI/2);plm.position.set(wx-(side*.06),dH*.75,z);scene.add(plm);

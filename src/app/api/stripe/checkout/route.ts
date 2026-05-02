@@ -82,8 +82,16 @@ export async function POST(req: NextRequest) {
         },
       ],
       subscription_data: trialDays
-        ? { trial_period_days: trialDays }
+        ? {
+            trial_period_days: trialDays,
+            trial_settings: {
+              end_behavior: { missing_payment_method: "cancel" },
+            },
+          }
         : {},
+      ...(trialDays
+        ? { payment_method_collection: "if_required" as const }
+        : {}),
       metadata: {
         user_id: user.id,
         plan: plan,

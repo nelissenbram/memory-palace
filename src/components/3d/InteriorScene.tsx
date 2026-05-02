@@ -1157,9 +1157,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       const displayName=userName||"Your";
       const now=new Date();const month=now.toLocaleString("en",{month:"long"});const year=now.getFullYear();
       ctx.fillStyle="#8B7355";ctx.font="italic 22px Georgia, serif";
-      ctx.fillText(`${displayName}'s Beautiful Smile`,256,150);
+      ctx.fillText(t("paintingTitle",{name:displayName}),256,150);
       ctx.fillStyle="#A09889";ctx.font="italic 16px Georgia, serif";
-      ctx.fillText(`anno ${month} ${year}`,256,195);
+      ctx.fillText(t("paintingDate",{date:`${month} ${year}`}),256,195);
       ctx.strokeStyle="#C8B898";ctx.lineWidth=0.8;ctx.beginPath();ctx.moveTo(160,225);ctx.lineTo(352,225);ctx.stroke();
       const tex=new THREE.CanvasTexture(cvs);tex.colorSpace=THREE.SRGBColorSpace;
       const placeholderMat=new THREE.MeshStandardMaterial({map:tex,roughness:.85});

@@ -1800,6 +1800,7 @@
     "subscribe": "S'abonner",
     "startFreeTrial": "Démarrer l'essai gratuit de 7 jours",
     "trialNote": "7 jours d'essai gratuit, annulation à tout moment",
+    "noCardRequired": "aucune carte de crédit requise",
     "faqTitle": "Des questions ? Nous avons les réponses.",
     "faq1q": "Comment fonctionne la facturation ?",
     "faq1a": "Choisissez entre la facturation mensuelle ou annuelle. Les plans annuels permettent d'économiser jusqu'à 23%. Vous pouvez annuler à tout moment, et votre abonnement reste actif jusqu'à la fin de la période payée.",
@@ -3256,6 +3257,8 @@
     "loadingVideo": "Chargement de la vidéo...",
     "backToCorridor": "← Retour au couloir",
     "close": "Fermer",
+    "paintingTitle": "Le Beau Sourire de {name}",
+    "paintingDate": "anno {date}",
     "sceneLabel": "Scène 3D intérieure de la salle — utilisez le clavier pour naviguer",
     "videoFallback": "Vidéo",
     "audioFallback": "Audio",
@@ -3799,13 +3802,13 @@
     "feat100gbStorage": "100 Go de stockage"
   },
   "wings": {
-    "roots": "Racines",
+    "roots": "Roots",
     "rootsDesc": "D'où je viens",
-    "nest": "Nid",
+    "nest": "Nest",
     "nestDesc": "Le foyer que j'ai construit",
-    "craft": "Métier",
+    "craft": "Craft",
     "craftDesc": "Ce que j'ai construit et appris",
-    "travel": "Voyages",
+    "travel": "Travel",
     "travelDesc": "Les endroits où j'ai été",
     "passions": "Passions",
     "passionsDesc": "Ce que je fais par amour",
@@ -4374,7 +4377,9 @@
     "familyGroupTitle": "Créer un groupe familial",
     "familyGroupDesc": "Invitez vos proches à partager et contribuer des souvenirs ensemble",
     "timeCapsuleTitle": "Créer une capsule temporelle",
-    "timeCapsuleDesc": "Scellez un souvenir pour qu'il soit révélé à une date future"
+    "timeCapsuleDesc": "Scellez un souvenir pour qu'il soit révélé à une date future",
+    "blogTitle": "Lire notre blog",
+    "blogDesc": "Conseils, histoires et inspiration pour preserver les souvenirs de famille"
   },
   "discover": {
     "sectionTitle": "Explorez votre palais",

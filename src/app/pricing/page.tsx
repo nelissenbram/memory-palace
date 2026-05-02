@@ -579,6 +579,20 @@ export default function PricingPage() {
                         ? (t("startFreeTrial") !== "startFreeTrial" ? t("startFreeTrial") : `Start ${plan.trial}-day free trial`)
                         : t("subscribe")}
                 </button>
+                {plan.trial && (
+                  <p style={{
+                    fontSize: 13,
+                    color: C.terracotta,
+                    textAlign: "center" as const,
+                    marginTop: -16,
+                    marginBottom: 16,
+                    fontWeight: 500,
+                  }}>
+                    {t("trialNote") !== "trialNote" ? t("trialNote") : `${plan.trial}-day free trial, cancel anytime`}
+                    {" — "}
+                    {t("noCardRequired") !== "noCardRequired" ? t("noCardRequired") : "no credit card required"}
+                  </p>
+                )}
 
                 {/* Features */}
                 <div

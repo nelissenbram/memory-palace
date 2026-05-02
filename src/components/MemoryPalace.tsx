@@ -822,22 +822,18 @@ export default function MemoryPalace(){
     justOnboardedRef.current = true;
     // Mark checklist item if user uploaded during onboarding
     if (memoryUploaded) markChecklistItem("upload_first_memory");
-    // Reset nudge state for fresh tutorial — clears any stale skip/seen
-    // data from a previous user on the same browser
-    useNudgeStore.getState().reset();
-    // Land on Atrium — NudgeProvider's own useEffect will call initPage("atrium")
-    // with a 900ms delay, giving the DOM time to mount after the transition.
+    // Land on Atrium first, then reset nudges after a tick so NudgeProvider
+    // is mounted in the atrium view before we trigger the tutorial.
     setNavMode("atrium");
-    // Safety fallback: if NudgeProvider's useEffect didn't fire (e.g. due to
-    // React mount timing), explicitly trigger initPage after 1.2s.  The
-    // idempotency guard inside initPage ensures this is a no-op if the
-    // NudgeProvider already started the sequence successfully.
+    // Reset nudge state for fresh tutorial after the atrium has mounted
     setTimeout(() => {
-      const { activePage, activeNudge, queue } = useNudgeStore.getState();
-      if (activePage !== "atrium" || (!activeNudge && queue.length === 0)) {
-        useNudgeStore.getState().initPage("atrium", typeof window !== "undefined" && window.innerWidth < 768);
-      }
-    }, 1200);
+      useNudgeStore.getState().reset();
+      // Force-trigger the tutorial after reset settles
+      setTimeout(() => {
+        const mobile = typeof window !== "undefined" && window.innerWidth < 768;
+        useNudgeStore.getState().initPage("atrium", mobile);
+      }, 200);
+    }, 800);
   };
 
   // ── Early returns for Settings / Notifications (before profileLoading gate
