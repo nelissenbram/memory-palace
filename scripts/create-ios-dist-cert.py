@@ -24,7 +24,7 @@ try:
     import jwt
     from cryptography import x509
     from cryptography.hazmat.primitives import hashes, serialization
-    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.asymmetric import rsa
     from cryptography.hazmat.backends import default_backend
     from cryptography.x509.oid import NameOID
     from cryptography.hazmat.primitives.serialization import pkcs12
@@ -69,7 +69,10 @@ def api_request(method, path, token, body=None):
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
     try:
         with urllib.request.urlopen(req) as resp:
-            return json.loads(resp.read().decode())
+            body = resp.read().decode()
+            if not body:
+                return {}
+            return json.loads(body)
     except urllib.error.HTTPError as e:
         error_body = e.read().decode()
         print(f"API error {e.code}: {error_body}")
@@ -97,19 +100,18 @@ def main():
     print(f"Found {len(certs)} existing distribution certificate(s).")
 
     if len(certs) >= 2:
-        print("\nWARNING: Apple allows max 2 distribution certificates.")
-        print("Existing certificates:")
-        for c in certs:
-            attrs = c["attributes"]
-            print(f"  - {attrs.get('name', 'N/A')} (expires: {attrs.get('expirationDate', 'N/A')})")
-        print("\nYou may need to revoke one before creating a new one.")
-        resp = input("Continue anyway? (y/N): ").strip().lower()
-        if resp != "y":
-            sys.exit(0)
+        print("\nApple allows max 2 distribution certificates. Revoking the oldest...")
+        # Sort by expiration to revoke the oldest
+        oldest = sorted(certs, key=lambda c: c["attributes"].get("expirationDate", ""))[0]
+        oldest_name = oldest["attributes"].get("name", "N/A")
+        oldest_id = oldest["id"]
+        print(f"  Revoking: {oldest_name} (ID: {oldest_id})")
+        api_request("DELETE", f"certificates/{oldest_id}", token)
+        print("  Revoked successfully.")
 
-    # Generate EC private key (P-256, which Apple requires for CSRs)
-    print("\nGenerating EC P-256 private key...")
-    private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
+    # Generate RSA 2048 private key (Apple requires RSA 2048 for distribution certs)
+    print("\nGenerating RSA 2048 private key...")
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
 
     # Create CSR
     print("Creating Certificate Signing Request...")
