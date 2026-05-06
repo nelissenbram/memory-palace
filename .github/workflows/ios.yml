@@ -20,15 +20,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
-
-      - name: Install Fastlane
-        run: gem install fastlane
-
       - name: Install Node dependencies
         run: npm ci
 
@@ -42,12 +33,6 @@ jobs:
       - name: Copy app icons
         run: cp -r memory-palace-ios-build/icons/* ios/App/App/Assets.xcassets/AppIcon.appiconset/
 
-      - name: Note on entitlements
-        run: |
-          echo "Skipping push notification and associated domains entitlements for now."
-          echo "These can be added later once App ID capabilities are configured."
-          echo "The app still has: native camera, haptic feedback, native share, app rating, deep links."
-
       - name: Add camera permissions to Info.plist
         run: |
           PLIST="ios/App/App/Info.plist"
@@ -56,109 +41,75 @@ jobs:
 
       - name: Write App Store Connect API key
         run: |
-          # Write the .p8 key for xcodebuild
-          mkdir -p $HOME/private_keys
-          echo "${{ secrets.ASC_API_KEY_P8 }}" > $HOME/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8
+          mkdir -p ~/private_keys
+          echo "${{ secrets.ASC_API_KEY_P8 }}" > ~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8
 
-          # Create the JSON file that Fastlane expects
-          python3 << 'PYEOF'
-          import json, os
-          key_id = os.environ["KEY_ID"]
-          issuer_id = os.environ["ISSUER_ID"]
-          with open(os.path.expanduser("~/private_keys/AuthKey_" + key_id + ".p8"), "r") as f:
-              key_content = f.read().strip()
-          api_key = {
-              "key_id": key_id,
-              "issuer_id": issuer_id,
-              "key": key_content,
-              "in_house": False
-          }
-          with open("/tmp/api_key.json", "w") as f:
-              json.dump(api_key, f)
-          print("API key JSON written")
-          PYEOF
-        env:
-          KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
-          ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
-
-      - name: Create keychain
+      - name: Create keychain and import certificate
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
           KEYCHAIN_PASS=$(openssl rand -hex 16)
+
+          # Create and configure keychain
           security create-keychain -p "$KEYCHAIN_PASS" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASS" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
+
+          # Decode and import the pre-created distribution certificate
+          echo "$DIST_CERT_P12_BASE64" | base64 --decode > $RUNNER_TEMP/dist-cert.p12
+          security import $RUNNER_TEMP/dist-cert.p12 \
+            -k $KEYCHAIN_PATH \
+            -P "$DIST_CERT_P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+
+          # Allow codesign to access the keychain without prompts
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASS" $KEYCHAIN_PATH
+
+          # Clean up p12
+          rm -f $RUNNER_TEMP/dist-cert.p12
+
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
           echo "KEYCHAIN_PASS=$KEYCHAIN_PASS" >> $GITHUB_ENV
 
-      - name: Create certificate and provisioning profile
-        run: |
-          cd ios/App
-
-          # Create/fetch distribution certificate
-          fastlane run cert \
-            api_key_path:/tmp/api_key.json \
-            team_id:"$TEAM_ID" \
-            keychain_path:$KEYCHAIN_PATH \
-            keychain_password:"$KEYCHAIN_PASS" \
-            platform:ios \
-            generate_apple_certs:true
-
-          # Create/fetch App Store distribution provisioning profile
-          fastlane run sigh \
-            api_key_path:/tmp/api_key.json \
-            team_id:"$TEAM_ID" \
-            app_identifier:"$BUNDLE_ID" \
-            platform:ios \
-            readonly:false
-
-          # Extract profile UUID and signing identity for manual signing
-          PROFILE_PATH=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null | head -1)
-          if [ -n "$PROFILE_PATH" ]; then
-            PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID raw -o - -)
-            PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name raw -o - -)
-            echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
-            echo "PROFILE_NAME=$PROFILE_NAME" >> $GITHUB_ENV
-            echo "Profile: $PROFILE_NAME ($PROFILE_UUID)"
-          fi
-
-          SIGNING_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> $GITHUB_ENV
-          echo "Identity: $SIGNING_IDENTITY"
+          # Show imported identity
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+        env:
+          DIST_CERT_P12_BASE64: ${{ secrets.DIST_CERT_P12_BASE64 }}
+          DIST_CERT_P12_PASSWORD: ${{ secrets.DIST_CERT_P12_PASSWORD }}
 
       - name: Resolve SPM dependencies
         run: |
           cd ios/App
-          ls -la
-          # Capacitor 8 uses SPM — resolve packages first
           if [ -d "App.xcworkspace" ]; then
-            echo "Using workspace"
             xcodebuild -resolvePackageDependencies -workspace App.xcworkspace -scheme App
           else
-            echo "Using project"
             xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
           fi
 
       - name: Build archive
         run: |
           cd ios/App
-          # Detect workspace vs project
           if [ -d "App.xcworkspace" ]; then
             PROJECT_FLAG="-workspace App.xcworkspace"
           else
             PROJECT_FLAG="-project App.xcodeproj"
           fi
+
+          API_KEY_PATH=~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8
+
           xcodebuild archive \
             $PROJECT_FLAG \
             -scheme App \
             -configuration Release \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$API_KEY_PATH" \
+            -authenticationKeyID "${{ secrets.ASC_API_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_API_ISSUER_ID }}" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
+            CODE_SIGN_STYLE=Automatic \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
 
       - name: Export IPA
@@ -175,12 +126,7 @@ jobs:
             <key>destination</key>
             <string>upload</string>
             <key>signingStyle</key>
-            <string>manual</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>ai.thememorypalace.app</key>
-              <string>${PROFILE_NAME}</string>
-            </dict>
+            <string>automatic</string>
           </dict>
           </plist>
           EOF
@@ -188,7 +134,11 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
-            -exportPath $RUNNER_TEMP/export
+            -exportPath $RUNNER_TEMP/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8 \
+            -authenticationKeyID "${{ secrets.ASC_API_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_API_ISSUER_ID }}"
 
       - name: Upload to App Store Connect
         run: |
@@ -210,4 +160,4 @@ jobs:
         if: always()
         run: |
           security delete-keychain $KEYCHAIN_PATH 2>/dev/null || true
-          rm -rf $HOME/private_keys /tmp/api_key.json /tmp/raw_key.p8
+          rm -rf ~/private_keys

@@ -51,9 +51,15 @@ supabase/.temp/
 android/keystore.properties
 .cap-build-backup/
 
+# iOS signing
+*.p12
+scripts/dist-cert-b64.txt
+
 .env*.local
 
 # PWA generated files
 public/sw.js.map
 public/workbox-*.js
 public/workbox-*.js.map
+
+.env*.local
