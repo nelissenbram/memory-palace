@@ -148,22 +148,67 @@ def main():
     print(f"Certificate subject: {cert.subject}")
     print(f"Certificate expires: {cert.not_valid_after_utc}")
 
-    # Create .p12 bundle
+    # Create .p12 bundle using openssl CLI for macOS compatibility
+    # Python's cryptography lib uses AES-256 by default which macOS security import rejects
     p12_password = os.urandom(16).hex()
     print(f"\nP12 password: {p12_password}")
 
-    p12_data = pkcs12.serialize_key_and_certificates(
-        name=b"Apple Distribution",
-        key=private_key,
-        cert=cert,
-        cas=None,
-        encryption_algorithm=serialization.BestAvailableEncryption(p12_password.encode()),
-    )
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    key_pem_path = os.path.join(script_dir, "dist-key.pem")
+    cert_pem_path = os.path.join(script_dir, "dist-cert.pem")
+    p12_path = os.path.join(script_dir, "dist-cert.p12")
 
-    # Save .p12 file locally
-    p12_path = os.path.join(os.path.dirname(__file__), "dist-cert.p12")
-    with open(p12_path, "wb") as f:
-        f.write(p12_data)
+    # Write private key as PEM
+    key_pem = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.TraditionalOpenSSL,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    with open(key_pem_path, "wb") as f:
+        f.write(key_pem)
+
+    # Write certificate as PEM
+    cert_pem_data = cert.public_bytes(serialization.Encoding.PEM)
+    with open(cert_pem_path, "wb") as f:
+        f.write(cert_pem_data)
+
+    # Use openssl to create p12 with legacy encryption (3DES) that macOS understands
+    import subprocess
+    result = subprocess.run(
+        [
+            "openssl", "pkcs12", "-export",
+            "-inkey", key_pem_path,
+            "-in", cert_pem_path,
+            "-out", p12_path,
+            "-name", "Apple Distribution",
+            "-passout", f"pass:{p12_password}",
+            "-legacy",  # Forces 3DES + SHA1, compatible with macOS security import
+        ],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        # Try without -legacy flag (older openssl versions don't need it)
+        result = subprocess.run(
+            [
+                "openssl", "pkcs12", "-export",
+                "-inkey", key_pem_path,
+                "-in", cert_pem_path,
+                "-out", p12_path,
+                "-name", "Apple Distribution",
+                "-passout", f"pass:{p12_password}",
+            ],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            print(f"openssl error: {result.stderr}")
+            sys.exit(1)
+
+    # Clean up PEM files
+    os.remove(key_pem_path)
+    os.remove(cert_pem_path)
+
+    with open(p12_path, "rb") as f:
+        p12_data = f.read()
     print(f"P12 saved to: {p12_path}")
 
     # Base64 encode for GitHub secrets
