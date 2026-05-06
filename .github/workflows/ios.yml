@@ -140,11 +140,30 @@ jobs:
             platform:ios \
             readonly:false
 
+      - name: Resolve SPM dependencies
+        run: |
+          cd ios/App
+          ls -la
+          # Capacitor 8 uses SPM — resolve packages first
+          if [ -d "App.xcworkspace" ]; then
+            echo "Using workspace"
+            xcodebuild -resolvePackageDependencies -workspace App.xcworkspace -scheme App
+          else
+            echo "Using project"
+            xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
+          fi
+
       - name: Build archive
         run: |
           cd ios/App
+          # Detect workspace vs project
+          if [ -d "App.xcworkspace" ]; then
+            PROJECT_FLAG="-workspace App.xcworkspace"
+          else
+            PROJECT_FLAG="-project App.xcodeproj"
+          fi
           xcodebuild archive \
-            -workspace App.xcworkspace \
+            $PROJECT_FLAG \
             -scheme App \
             -configuration Release \
             -archivePath $RUNNER_TEMP/App.xcarchive \
