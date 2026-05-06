@@ -69,14 +69,141 @@ jobs:
           # Clean up p12
           rm -f $RUNNER_TEMP/dist-cert.p12
 
+          # Extract signing identity name
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> $GITHUB_ENV
+          echo "Signing identity: $SIGNING_IDENTITY"
+
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
           echo "KEYCHAIN_PASS=$KEYCHAIN_PASS" >> $GITHUB_ENV
-
-          # Show imported identity
-          security find-identity -v -p codesigning $KEYCHAIN_PATH
         env:
           DIST_CERT_P12_BASE64: ${{ secrets.DIST_CERT_P12_BASE64 }}
           DIST_CERT_P12_PASSWORD: ${{ secrets.DIST_CERT_P12_PASSWORD }}
+
+      - name: Fetch provisioning profile
+        run: |
+          pip3 install pyjwt --quiet
+
+          python3 << 'PYEOF'
+          import jwt, json, urllib.request, urllib.error, datetime, os, base64, subprocess
+
+          key_id = os.environ["KEY_ID"]
+          issuer_id = os.environ["ISSUER_ID"]
+          bundle_id = os.environ["BUNDLE_ID"]
+
+          with open(os.path.expanduser(f"~/private_keys/AuthKey_{key_id}.p8")) as f:
+              p8_key = f.read()
+
+          # Create JWT
+          now = datetime.datetime.now(datetime.timezone.utc)
+          token = jwt.encode(
+              {"iss": issuer_id, "iat": int(now.timestamp()),
+               "exp": int((now + datetime.timedelta(minutes=15)).timestamp()),
+               "aud": "appstoreconnect-v1"},
+              p8_key, algorithm="ES256", headers={"kid": key_id}
+          )
+
+          def api_get(path):
+              req = urllib.request.Request(
+                  f"https://api.appstoreconnect.apple.com/v1/{path}",
+                  headers={"Authorization": f"Bearer {token}"}
+              )
+              with urllib.request.urlopen(req) as resp:
+                  return json.loads(resp.read().decode())
+
+          # Find App Store distribution profiles for our bundle ID
+          profiles = api_get(f"profiles?filter[profileType]=IOS_APP_STORE&include=bundleId")
+
+          profile_data = None
+          profile_name = None
+          for p in profiles.get("data", []):
+              attrs = p["attributes"]
+              if attrs.get("profileState") == "ACTIVE":
+                  # Check if this profile is for our bundle ID
+                  bid_ref = p.get("relationships", {}).get("bundleId", {}).get("data", {}).get("id")
+                  for included in profiles.get("included", []):
+                      if included["id"] == bid_ref and included["attributes"].get("identifier") == bundle_id:
+                          profile_data = attrs["profileContent"]
+                          profile_name = attrs["name"]
+                          break
+              if profile_data:
+                  break
+
+          if not profile_data:
+              print(f"No active App Store profile found for {bundle_id}")
+              print("Creating one via API...")
+
+              # Get bundle ID resource ID
+              bundles = api_get(f"bundleIds?filter[identifier]={bundle_id}")
+              bundle_res_id = bundles["data"][0]["id"]
+
+              # Get active distribution certificate ID
+              certs = api_get("certificates?filter[certificateType]=DISTRIBUTION")
+              cert_id = certs["data"][0]["id"]
+
+              # Create profile
+              create_body = json.dumps({
+                  "data": {
+                      "type": "profiles",
+                      "attributes": {
+                          "name": f"CI App Store {bundle_id}",
+                          "profileType": "IOS_APP_STORE"
+                      },
+                      "relationships": {
+                          "bundleId": {"data": {"type": "bundleIds", "id": bundle_res_id}},
+                          "certificates": {"data": [{"type": "certificates", "id": cert_id}]}
+                      }
+                  }
+              }).encode()
+
+              req = urllib.request.Request(
+                  "https://api.appstoreconnect.apple.com/v1/profiles",
+                  data=create_body,
+                  headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                  method="POST"
+              )
+              with urllib.request.urlopen(req) as resp:
+                  result = json.loads(resp.read().decode())
+
+              profile_data = result["data"]["attributes"]["profileContent"]
+              profile_name = result["data"]["attributes"]["name"]
+              print(f"Created profile: {profile_name}")
+          else:
+              print(f"Found existing profile: {profile_name}")
+
+          # Decode and install the profile
+          profile_bytes = base64.b64decode(profile_data)
+
+          profiles_dir = os.path.expanduser("~/Library/MobileDevice/Provisioning Profiles")
+          os.makedirs(profiles_dir, exist_ok=True)
+
+          # Extract UUID from the profile
+          result = subprocess.run(
+              ["security", "cms", "-D", "-i", "/dev/stdin"],
+              input=profile_bytes, capture_output=True
+          )
+          plist_str = result.stdout.decode()
+
+          # Parse UUID from plist XML
+          import re
+          uuid_match = re.search(r"<key>UUID</key>\s*<string>([^<]+)</string>", plist_str)
+          profile_uuid = uuid_match.group(1)
+
+          profile_path = os.path.join(profiles_dir, f"{profile_uuid}.mobileprovision")
+          with open(profile_path, "wb") as f:
+              f.write(profile_bytes)
+
+          print(f"Profile UUID: {profile_uuid}")
+          print(f"Profile installed to: {profile_path}")
+
+          # Write to GITHUB_ENV
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              f.write(f"PROFILE_UUID={profile_uuid}\n")
+              f.write(f"PROFILE_NAME={profile_name}\n")
+          PYEOF
+        env:
+          KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
 
       - name: Resolve SPM dependencies
         run: |
@@ -96,20 +223,16 @@ jobs:
             PROJECT_FLAG="-project App.xcodeproj"
           fi
 
-          API_KEY_PATH=~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8
-
           xcodebuild archive \
             $PROJECT_FLAG \
             -scheme App \
             -configuration Release \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -destination 'generic/platform=iOS' \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$API_KEY_PATH" \
-            -authenticationKeyID "${{ secrets.ASC_API_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.ASC_API_ISSUER_ID }}" \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
 
       - name: Export IPA
@@ -126,7 +249,12 @@ jobs:
             <key>destination</key>
             <string>upload</string>
             <key>signingStyle</key>
-            <string>automatic</string>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>ai.thememorypalace.app</key>
+              <string>${PROFILE_NAME}</string>
+            </dict>
           </dict>
           </plist>
           EOF
@@ -134,11 +262,7 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
-            -exportPath $RUNNER_TEMP/export \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8 \
-            -authenticationKeyID "${{ secrets.ASC_API_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.ASC_API_ISSUER_ID }}"
+            -exportPath $RUNNER_TEMP/export
 
       - name: Upload to App Store Connect
         run: |
