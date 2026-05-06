@@ -82,9 +82,10 @@ jobs:
 
       - name: Fetch provisioning profile
         run: |
-          pip3 install pyjwt --quiet
+          python3 -m venv $RUNNER_TEMP/venv
+          $RUNNER_TEMP/venv/bin/pip install pyjwt cryptography --quiet
 
-          python3 << 'PYEOF'
+          $RUNNER_TEMP/venv/bin/python3 << 'PYEOF'
           import jwt, json, urllib.request, urllib.error, datetime, os, base64, subprocess
 
           key_id = os.environ["KEY_ID"]
