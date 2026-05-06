@@ -215,6 +215,91 @@ jobs:
             xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
           fi
 
+      - name: Configure signing in Xcode project
+        run: |
+          cd ios/App
+          PBXPROJ="App.xcodeproj/project.pbxproj"
+
+          # Inject PROVISIONING_PROFILE_SPECIFIER into existing Release buildSettings
+          # for the App target only (the ones that already have INFOPLIST_FILE = App/Info.plist)
+          # This uses Python to precisely edit the pbxproj
+          python3 << 'PYEOF'
+          import re
+
+          with open("App.xcodeproj/project.pbxproj", "r") as f:
+              content = f.read()
+
+          import os
+          profile_uuid = os.environ["PROFILE_UUID"]
+          signing_identity = os.environ["SIGNING_IDENTITY"]
+          team_id = os.environ["TEAM_ID"]
+
+          # Find buildSettings blocks that contain INFOPLIST_FILE (= App target)
+          # and inject/update provisioning profile
+          def inject_signing(match):
+              block = match.group(0)
+              if "INFOPLIST_FILE" not in block:
+                  return block
+
+              # Add/replace PROVISIONING_PROFILE_SPECIFIER
+              if "PROVISIONING_PROFILE_SPECIFIER" in block:
+                  block = re.sub(
+                      r'PROVISIONING_PROFILE_SPECIFIER = "?[^";]*"?;',
+                      f'PROVISIONING_PROFILE_SPECIFIER = "{profile_uuid}";',
+                      block
+                  )
+              else:
+                  block = block.replace(
+                      "buildSettings = {",
+                      f'buildSettings = {{\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "{profile_uuid}";'
+                  )
+
+              # Set CODE_SIGN_STYLE to Manual
+              if "CODE_SIGN_STYLE" in block:
+                  block = re.sub(r'CODE_SIGN_STYLE = \w+;', 'CODE_SIGN_STYLE = Manual;', block)
+              else:
+                  block = block.replace(
+                      "buildSettings = {",
+                      'buildSettings = {\n\t\t\t\tCODE_SIGN_STYLE = Manual;'
+                  )
+
+              # Set CODE_SIGN_IDENTITY
+              if "CODE_SIGN_IDENTITY" in block:
+                  block = re.sub(
+                      r'"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "[^"]*";',
+                      f'"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "{signing_identity}";',
+                      block
+                  )
+              else:
+                  block = block.replace(
+                      "buildSettings = {",
+                      f'buildSettings = {{\n\t\t\t\t"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "{signing_identity}";'
+                  )
+
+              # Set DEVELOPMENT_TEAM
+              if "DEVELOPMENT_TEAM" in block:
+                  block = re.sub(
+                      r'DEVELOPMENT_TEAM = \w+;',
+                      f'DEVELOPMENT_TEAM = {team_id};',
+                      block
+                  )
+
+              return block
+
+          # Match buildSettings blocks
+          content = re.sub(
+              r'buildSettings = \{[^}]+\}',
+              inject_signing,
+              content,
+              flags=re.DOTALL
+          )
+
+          with open("App.xcodeproj/project.pbxproj", "w") as f:
+              f.write(content)
+
+          print("Signing configured in pbxproj for App target only")
+          PYEOF
+
       - name: Build archive
         run: |
           cd ios/App
@@ -230,10 +315,6 @@ jobs:
             -configuration Release \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -destination 'generic/platform=iOS' \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
 
       - name: Export IPA
