@@ -2064,6 +2064,7 @@
     "addMemory": "Herinnering toevoegen",
     "pasteUrl": "URL plakken",
     "uploadFile": "Bestand uploaden",
+    "takePhoto": "Foto maken",
     "fromRoom": "Uit kamer",
     "imageOrVideoUrl": "Afbeelding- of video-URL",
     "urlPlaceholder": "https://voorbeeld.nl/foto.jpg",
@@ -4671,5 +4672,18 @@
     "addKepRoomDesc": "Kies een vleugel en naam voor deze kamer.",
     "pleaseSignIn": "Log eerst in.",
     "signIn": "Inloggen"
+  },
+  "kepView": {
+    "title": "Memory Palace Kep",
+    "loading": "Kamer laden...",
+    "notFound": "Kamer niet gevonden",
+    "notFoundDesc": "Deze uitnodigingslink is ongeldig of de kamer is nog niet aangemaakt.",
+    "error": "Er is iets misgegaan",
+    "expired": "Deze kamer is verlopen",
+    "expiredDesc": "Virtuele kamers zijn 14 dagen beschikbaar. Maak een Memory Palace om je herinneringen voor altijd te bewaren.",
+    "daysRemaining": "Nog {count} dagen",
+    "noMemories": "Nog geen herinneringen. Deel foto's en video's in WhatsApp om te beginnen.",
+    "ctaTitle": "Maak een Memory Palace om deze herinneringen voor altijd te bewaren",
+    "createPalace": "Maak je Memory Palace"
   }
 }

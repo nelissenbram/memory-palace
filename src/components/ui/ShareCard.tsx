@@ -4,6 +4,7 @@ import { T } from "@/lib/theme";
 import type { Mem } from "@/lib/constants/defaults";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { hapticLight } from "@/lib/native/haptics";
 
 interface ShareCardProps {
   mem?: Mem;
@@ -258,6 +259,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(getShareUrl());
+      hapticLight();
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch { /* fallback */ }
@@ -275,6 +277,7 @@ export default function ShareCard({ mem, roomName, roomIcon, wingName, wingIcon,
   const handleShare = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    hapticLight();
     canvas.toBlob(async (blob) => {
       if (!blob) return;
       const file = new File([blob], "memory-palace.png", { type: "image/png" });

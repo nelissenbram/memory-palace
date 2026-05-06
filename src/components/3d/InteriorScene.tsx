@@ -20,6 +20,7 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { useRoomMediaBarStore } from "@/lib/stores/roomMediaBarStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
+import { hapticMedium } from "@/lib/native/haptics";
 
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
@@ -88,6 +89,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;
+    hapticMedium();
     // Cancellation guard — prevents async work (HDRI loading, etc.) from
     // writing into a scene that has already been torn down.
     let alive=true;

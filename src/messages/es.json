@@ -2064,6 +2064,7 @@
     "addMemory": "Añadir recuerdo",
     "pasteUrl": "Pegar URL",
     "uploadFile": "Subir archivo",
+    "takePhoto": "Tomar foto",
     "fromRoom": "Desde la sala",
     "imageOrVideoUrl": "URL de imagen o vídeo",
     "urlPlaceholder": "https://ejemplo.com/foto.jpg",
@@ -4669,5 +4670,18 @@
     "addKepRoomDesc": "Elige un ala y nombre para esta sala.",
     "pleaseSignIn": "Inicia sesión primero.",
     "signIn": "Iniciar sesión"
+  },
+  "kepView": {
+    "title": "Memory Palace Kep",
+    "loading": "Cargando sala...",
+    "notFound": "Sala no encontrada",
+    "notFoundDesc": "Este enlace de invitación no es válido o la sala aún no ha sido creada.",
+    "error": "Algo salió mal",
+    "expired": "Esta sala ha expirado",
+    "expiredDesc": "Las salas virtuales están disponibles durante 14 días. Crea un Memory Palace para conservar tus recuerdos para siempre.",
+    "daysRemaining": "{count} días restantes",
+    "noMemories": "Aún no hay recuerdos. Comparte fotos y videos en WhatsApp para empezar.",
+    "ctaTitle": "Crea un Memory Palace para conservar estos recuerdos para siempre",
+    "createPalace": "Crea tu Memory Palace"
   }
 }

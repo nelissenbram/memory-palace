@@ -13,6 +13,9 @@ import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { translateRoomName } from "@/lib/constants/wings";
 import Image from "next/image";
 import { TypeIcon } from "@/lib/constants/type-icons";
+import { hapticSuccess } from "@/lib/native/haptics";
+import { captureOrPick } from "@/lib/native/camera";
+import { isNative } from "@/lib/native/platform";
 
 interface UploadPanelProps {
   wing: Wing | null | undefined;
@@ -149,6 +152,7 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
     if(locationName.trim()) mem.locationName=locationName.trim();
     if(contextAccepted&&contextPreview) mem.historicalContext=contextPreview;
     onAdd(mem);
+    hapticSuccess();
     setSubmitting(false);
     if (!isOnline) {
       setSavedOffline(true);
@@ -205,6 +209,16 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
             <p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.sandstone,margin:"0.25rem 0 0"}}>{t("fileTypes")}</p>
           </div>
           <input ref={fileRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" style={{display:"none"}} onChange={e=>{if(e.target.files?.[0])processFile(e.target.files[0]);}}/>
+          {isNative()&&<button onClick={async()=>{
+            const dataUrl=await captureOrPick();
+            if(!dataUrl)return;
+            const res=await fetch(dataUrl);
+            const blob=await res.blob();
+            const file=new File([blob],"photo.jpg",{type:blob.type||"image/jpeg"});
+            processFile(file);
+          }} style={{width:"100%",padding:isMobile?"0.875rem":"0.75rem",borderRadius:"0.75rem",border:`2px solid ${accent}`,background:`${accent}10`,color:accent,fontFamily:T.font.body,fontSize:isMobile?"0.9375rem":"0.8125rem",fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:"0.5rem",marginBottom:"1rem",transition:"all .2s"}}>
+            <span style={{fontSize:"1.125rem"}}>&#x1F4F7;</span> {t("takePhoto")}
+          </button>}
           {fileName&&<p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,marginBottom:"0.5rem"}}>{t("fileLabel", { name: fileName })}</p>}
           {fileSizeError&&<p role="alert" style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.error,background:`${T.color.error}10`,padding:"0.625rem 0.875rem",borderRadius:"0.625rem",marginBottom:"0.75rem",lineHeight:1.5}}>{fileSizeError}</p>}
         </>}

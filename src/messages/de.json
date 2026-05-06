@@ -2064,6 +2064,7 @@
     "addMemory": "Erinnerung hinzufügen",
     "pasteUrl": "URL einfügen",
     "uploadFile": "Datei hochladen",
+    "takePhoto": "Foto aufnehmen",
     "fromRoom": "Aus dem Raum",
     "imageOrVideoUrl": "Bild- oder Video-URL",
     "urlPlaceholder": "https://beispiel.de/foto.jpg",
@@ -4669,5 +4670,18 @@
     "addKepRoomDesc": "Wählen Sie einen Flügel und Namen für diesen Raum.",
     "pleaseSignIn": "Bitte melden Sie sich zuerst an.",
     "signIn": "Anmelden"
+  },
+  "kepView": {
+    "title": "Memory Palace Kep",
+    "loading": "Raum wird geladen...",
+    "notFound": "Raum nicht gefunden",
+    "notFoundDesc": "Dieser Einladungslink ist ung\u00fcltig oder der Raum wurde noch nicht erstellt.",
+    "error": "Etwas ist schiefgelaufen",
+    "expired": "Dieser Raum ist abgelaufen",
+    "expiredDesc": "Virtuelle R\u00e4ume sind 14 Tage verf\u00fcgbar. Erstelle einen Memory Palace, um deine Erinnerungen f\u00fcr immer zu bewahren.",
+    "daysRemaining": "Noch {count} Tage",
+    "noMemories": "Noch keine Erinnerungen. Teile Fotos und Videos in WhatsApp, um loszulegen.",
+    "ctaTitle": "Erstelle einen Memory Palace, um diese Erinnerungen f\u00fcr immer zu bewahren",
+    "createPalace": "Erstelle deinen Memory Palace"
   }
 }

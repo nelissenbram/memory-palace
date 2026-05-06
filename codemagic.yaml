@@ -1,0 +1,83 @@
+workflows:
+  ios-release:
+    name: iOS App Store Release
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+
+    integrations:
+      app_store_connect: Memory Palace ASC
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: ai.thememorypalace.app
+      node: 20
+      vars:
+        BUNDLE_ID: ai.thememorypalace.app
+
+    scripts:
+      - name: Install dependencies
+        script: npm ci
+
+      - name: Sync Capacitor iOS
+        script: |
+          mkdir -p out
+          echo '<!DOCTYPE html><html><body>Loading...</body></html>' > out/index.html
+          npx cap sync ios
+
+      - name: Copy app icons
+        script: |
+          cp -r memory-palace-ios-build/icons/* ios/App/App/Assets.xcassets/AppIcon.appiconset/
+
+      - name: Add entitlements
+        script: |
+          cat > ios/App/App/App.entitlements << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>aps-environment</key>
+            <string>production</string>
+            <key>com.apple.developer.associated-domains</key>
+            <array>
+              <string>applinks:thememorypalace.ai</string>
+            </array>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Add camera permissions
+        script: |
+          PLIST="ios/App/App/Info.plist"
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Take photos for your memory palace'" $PLIST 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Choose photos for your memory palace'" $PLIST 2>/dev/null || true
+
+      - name: Set up code signing
+        script: xcode-project use-profiles
+
+      - name: Build iOS
+        script: |
+          cd ios/App
+          xcodebuild build -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath $CM_BUILD_DIR/App.xcarchive \
+            archive
+
+      - name: Export IPA
+        script: |
+          xcode-project build-ipa \
+            --workspace ios/App/App.xcworkspace \
+            --scheme App \
+            --archive-path $CM_BUILD_DIR/App.xcarchive
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false

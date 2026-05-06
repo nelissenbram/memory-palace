@@ -10,6 +10,7 @@ import { fetchRoomShares, shareRoomWithEmail, removeRoomShare, toggleRoomSharing
 import { fetchPublicShare, togglePublicShare } from "@/lib/auth/public-share-actions";
 import { updateShareDownloadPermission, updateRoomPublicVisibility, updateSharePermission } from "@/lib/auth/family-actions";
 import { generateInviteLink } from "@/lib/sharing/generate-link";
+import { hapticLight } from "@/lib/native/haptics";
 
 interface Share {
   id: string;
@@ -90,6 +91,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
     if(!publicShare?.slug) return;
     const url=`${window.location.origin}/public/${publicShare.slug}`;
     navigator.clipboard.writeText(url).catch(()=>{});
+    hapticLight();
     setPublicCopied(true);
     setTimeout(()=>setPublicCopied(false),2000);
   };
@@ -168,6 +170,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
   const copyInviteLink=(shareId: string)=>{
     const url=generateInviteLink(shareId);
     navigator.clipboard.writeText(url).catch(()=>{});
+    hapticLight();
     setCopied(true);
     setTimeout(()=>setCopied(false),2000);
   };
@@ -175,6 +178,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
   const copyGenericLink=()=>{
     const url=`${window.location.origin}/palace?shared=${roomId}`;
     navigator.clipboard.writeText(url).catch(()=>{});
+    hapticLight();
     setCopied(true);
     setTimeout(()=>setCopied(false),2000);
   };

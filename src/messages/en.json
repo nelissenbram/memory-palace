@@ -2064,6 +2064,7 @@
     "addMemory": "Add memory",
     "pasteUrl": "Paste URL",
     "uploadFile": "Upload file",
+    "takePhoto": "Take Photo",
     "fromRoom": "From room",
     "imageOrVideoUrl": "Image or video URL",
     "urlPlaceholder": "https://example.com/photo.jpg",
@@ -4669,5 +4670,18 @@
     "addKepRoomDesc": "Choose a wing and name for this room.",
     "pleaseSignIn": "Please sign in first.",
     "signIn": "Sign in"
+  },
+  "kepView": {
+    "title": "Memory Palace Kep",
+    "loading": "Loading room...",
+    "notFound": "Room not found",
+    "notFoundDesc": "This invite link is invalid or the room hasn't been created yet.",
+    "error": "Something went wrong",
+    "expired": "This room has expired",
+    "expiredDesc": "Virtual rooms are available for 14 days. Create a Memory Palace to keep your memories forever.",
+    "daysRemaining": "{count} days remaining",
+    "noMemories": "No memories yet. Share photos and videos in WhatsApp to get started.",
+    "ctaTitle": "Create a Memory Palace to keep these memories forever",
+    "createPalace": "Create Your Memory Palace"
   }
 }
