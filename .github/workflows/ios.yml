@@ -42,40 +42,11 @@ jobs:
       - name: Copy app icons
         run: cp -r memory-palace-ios-build/icons/* ios/App/App/Assets.xcassets/AppIcon.appiconset/
 
-      - name: Add entitlements
+      - name: Note on entitlements
         run: |
-          cat > ios/App/App/App.entitlements << 'PLIST'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>aps-environment</key>
-            <string>production</string>
-            <key>com.apple.developer.associated-domains</key>
-            <array>
-              <string>applinks:thememorypalace.ai</string>
-            </array>
-          </dict>
-          </plist>
-          PLIST
-
-      - name: Set entitlements in Xcode project
-        run: |
-          cd ios/App
-          python3 << 'PYEOF'
-          with open("App.xcodeproj/project.pbxproj", "r") as f:
-              content = f.read()
-          if "App.entitlements" not in content:
-              content = content.replace(
-                  'PRODUCT_BUNDLE_IDENTIFIER = ai.thememorypalace.app;',
-                  'PRODUCT_BUNDLE_IDENTIFIER = ai.thememorypalace.app;\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = App/App.entitlements;'
-              )
-              with open("App.xcodeproj/project.pbxproj", "w") as f:
-                  f.write(content)
-              print("Added entitlements to project.pbxproj")
-          else:
-              print("Entitlements already referenced")
-          PYEOF
+          echo "Skipping push notification and associated domains entitlements for now."
+          echo "These can be added later once App ID capabilities are configured."
+          echo "The app still has: native camera, haptic feedback, native share, app rating, deep links."
 
       - name: Add camera permissions to Info.plist
         run: |
