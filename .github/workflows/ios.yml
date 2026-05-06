@@ -6,6 +6,7 @@ on:
 jobs:
   build:
     runs-on: macos-15
+    timeout-minutes: 30
 
     env:
       TEAM_ID: ${{ secrets.TEAM_ID }}
@@ -13,6 +14,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: |
+          # List available Xcode versions and select the latest
+          ls /Applications/ | grep Xcode | sort -V
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          echo "Selecting: $LATEST_XCODE"
+          sudo xcode-select -s "$LATEST_XCODE"
+          xcodebuild -version
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -32,6 +42,25 @@ jobs:
 
       - name: Copy app icons
         run: cp -r memory-palace-ios-build/icons/* ios/App/App/Assets.xcassets/AppIcon.appiconset/
+
+      - name: Strip alpha channel from app icons
+        run: |
+          # Apple rejects icons with alpha/transparency
+          cd ios/App/App/Assets.xcassets/AppIcon.appiconset
+          for icon in *.png; do
+            sips -s format png --setProperty formatOptions 100 "$icon" --out "$icon" 2>/dev/null || true
+            # Remove alpha channel by flattening onto white background
+            python3 -c "
+          import subprocess, sys
+          f = '$icon'
+          # Use sips to remove alpha by converting to jpg and back
+          subprocess.run(['sips', '-s', 'format', 'jpeg', f, '--out', f + '.jpg'], capture_output=True)
+          subprocess.run(['sips', '-s', 'format', 'png', f + '.jpg', '--out', f], capture_output=True)
+          import os
+          os.remove(f + '.jpg')
+          "
+          done
+          echo "Alpha channels stripped from all icons"
 
       - name: Add camera permissions to Info.plist
         run: |
