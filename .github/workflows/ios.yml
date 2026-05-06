@@ -85,20 +85,20 @@ jobs:
 
       - name: Write App Store Connect API key
         run: |
-          # Decode the raw .p8 key
-          echo -n "${{ secrets.ASC_API_KEY_BASE64 }}" | base64 --decode > /tmp/raw_key.p8
+          # Write the .p8 key for xcodebuild
+          mkdir -p $HOME/private_keys
+          echo "${{ secrets.ASC_API_KEY_P8 }}" > $HOME/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8
 
           # Create the JSON file that Fastlane expects
-          python3 << PYEOF
-          import json
-          with open("/tmp/raw_key.p8", "r") as f:
+          python3 << 'PYEOF'
+          import json, os
+          key_id = os.environ["KEY_ID"]
+          issuer_id = os.environ["ISSUER_ID"]
+          with open(os.path.expanduser("~/private_keys/AuthKey_" + key_id + ".p8"), "r") as f:
               key_content = f.read().strip()
-          # Ensure PEM headers
-          if "BEGIN" not in key_content:
-              key_content = "-----BEGIN PRIVATE KEY-----\n" + key_content + "\n-----END PRIVATE KEY-----"
           api_key = {
-              "key_id": "${{ secrets.ASC_API_KEY_ID }}",
-              "issuer_id": "${{ secrets.ASC_API_ISSUER_ID }}",
+              "key_id": key_id,
+              "issuer_id": issuer_id,
               "key": key_content,
               "in_house": False
           }
@@ -106,10 +106,9 @@ jobs:
               json.dump(api_key, f)
           print("API key JSON written")
           PYEOF
-
-          # Also write the .p8 for xcodebuild
-          mkdir -p $HOME/private_keys
-          cp /tmp/raw_key.p8 $HOME/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8
+        env:
+          KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
 
       - name: Create keychain
         run: |
