@@ -1,19 +1,15 @@
 name: iOS Release Build
 
 on:
-  workflow_dispatch: # Manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-15
 
     env:
-      APPLE_ID: ${{ secrets.APPLE_ID }}
-      APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
       TEAM_ID: ${{ secrets.TEAM_ID }}
       BUNDLE_ID: ai.thememorypalace.app
-      APP_NAME: The Memory Palace
-      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -44,8 +40,7 @@ jobs:
           npx cap sync ios
 
       - name: Copy app icons
-        run: |
-          cp -r memory-palace-ios-build/icons/* ios/App/App/Assets.xcassets/AppIcon.appiconset/
+        run: cp -r memory-palace-ios-build/icons/* ios/App/App/Assets.xcassets/AppIcon.appiconset/
 
       - name: Add entitlements
         run: |
@@ -67,14 +62,9 @@ jobs:
       - name: Set entitlements in Xcode project
         run: |
           cd ios/App
-          # Use sed to set CODE_SIGN_ENTITLEMENTS in the project
-          sed -i '' 's/CODE_SIGN_ENTITLEMENTS = "";/CODE_SIGN_ENTITLEMENTS = App\/App.entitlements;/g' App.xcodeproj/project.pbxproj || true
-          # Also try adding it if the key doesn't exist
           python3 << 'PYEOF'
-          import re
           with open("App.xcodeproj/project.pbxproj", "r") as f:
               content = f.read()
-          # Add entitlements reference to all build configurations
           if "App.entitlements" not in content:
               content = content.replace(
                   'PRODUCT_BUNDLE_IDENTIFIER = ai.thememorypalace.app;',
@@ -93,54 +83,56 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Take photos for your memory palace'" $PLIST 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Choose photos for your memory palace'" $PLIST 2>/dev/null || true
 
-      - name: Create certificate and provisioning profile
+      - name: Write App Store Connect API key
         run: |
-          # Create a temporary keychain
+          mkdir -p ~/private_keys
+          echo -n "${{ secrets.ASC_API_KEY_BASE64 }}" | base64 --decode > ~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8
+
+      - name: Create keychain
+        run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
           KEYCHAIN_PASS=$(openssl rand -hex 16)
           security create-keychain -p "$KEYCHAIN_PASS" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASS" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "KEYCHAIN_PASS=$KEYCHAIN_PASS" >> $GITHUB_ENV
 
-          # Use fastlane to create/fetch certificate and profile
+      - name: Create certificate and provisioning profile
+        run: |
           cd ios/App
-          fastlane run create_keychain \
-            path:$KEYCHAIN_PATH \
-            password:"$KEYCHAIN_PASS" \
-            default_keychain:true \
-            unlock:true \
-            timeout:3600 \
-            lock_when_sleeps:false || true
 
-          # Generate a new certificate using Apple API
+          # Use API key for authentication (no 2FA needed)
           fastlane run get_certificates \
-            username:"$APPLE_ID" \
-            team_id:"$TEAM_ID" \
+            api_key_path:~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8 \
             keychain_path:$KEYCHAIN_PATH \
             keychain_password:"$KEYCHAIN_PASS" \
             platform:ios \
-            generate_apple_certs:true
+            generate_apple_certs:true || true
 
-          # Generate provisioning profile
-          fastlane run get_provisioning_profile \
-            username:"$APPLE_ID" \
+          # If get_certificates didn't work with api_key_path, try inline
+          fastlane run cert \
+            key_id:"${{ secrets.ASC_API_KEY_ID }}" \
+            issuer_id:"${{ secrets.ASC_API_ISSUER_ID }}" \
+            key_filepath:~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8 \
             team_id:"$TEAM_ID" \
-            app_identifier:"$BUNDLE_ID" \
+            keychain_path:$KEYCHAIN_PATH \
+            keychain_password:"$KEYCHAIN_PASS" \
             platform:ios
 
-          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
-          echo "KEYCHAIN_PASS=$KEYCHAIN_PASS" >> $GITHUB_ENV
-        env:
-          FASTLANE_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
-          FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+          fastlane run sigh \
+            key_id:"${{ secrets.ASC_API_KEY_ID }}" \
+            issuer_id:"${{ secrets.ASC_API_ISSUER_ID }}" \
+            key_filepath:~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8 \
+            team_id:"$TEAM_ID" \
+            app_identifier:"$BUNDLE_ID" \
+            platform:ios \
+            readonly:false
 
       - name: Build archive
         run: |
           cd ios/App
-          # Find the provisioning profile UUID
-          PROFILE_UUID=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null | head -1 | xargs -I{} /usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(security cms -D -i "{}") 2>/dev/null || echo "")
-
           xcodebuild archive \
             -workspace App.xcworkspace \
             -scheme App \
@@ -150,9 +142,9 @@ jobs:
             DEVELOPMENT_TEAM="$TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
             -allowProvisioningUpdates \
-            -authenticationKeyPath "" \
-            -authenticationKeyID "" \
-            -authenticationKeyIssuerID "" \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8 \
+            -authenticationKeyID "${{ secrets.ASC_API_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_API_ISSUER_ID }}" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
 
       - name: Export IPA
@@ -178,15 +170,18 @@ jobs:
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
             -exportPath $RUNNER_TEMP/export \
-            -allowProvisioningUpdates
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8 \
+            -authenticationKeyID "${{ secrets.ASC_API_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_API_ISSUER_ID }}"
 
       - name: Upload to App Store Connect
         run: |
           xcrun altool --upload-app \
             --type ios \
             --file $RUNNER_TEMP/export/App.ipa \
-            --username "$APPLE_ID" \
-            --password "$APP_SPECIFIC_PASSWORD"
+            --apiKey "${{ secrets.ASC_API_KEY_ID }}" \
+            --apiIssuer "${{ secrets.ASC_API_ISSUER_ID }}"
 
       - name: Upload IPA as artifact (backup)
         if: always()
@@ -196,6 +191,8 @@ jobs:
           path: ${{ runner.temp }}/export/App.ipa
           if-no-files-found: ignore
 
-      - name: Clean up keychain
+      - name: Clean up
         if: always()
-        run: security delete-keychain $KEYCHAIN_PATH 2>/dev/null || true
+        run: |
+          security delete-keychain $KEYCHAIN_PATH 2>/dev/null || true
+          rm -rf ~/private_keys
