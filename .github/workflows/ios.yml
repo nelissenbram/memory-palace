@@ -125,6 +125,7 @@ jobs:
         run: |
           cd ios/App
 
+          # Create/fetch distribution certificate
           fastlane run cert \
             api_key_path:/tmp/api_key.json \
             team_id:"$TEAM_ID" \
@@ -133,12 +134,27 @@ jobs:
             platform:ios \
             generate_apple_certs:true
 
+          # Create/fetch App Store distribution provisioning profile
           fastlane run sigh \
             api_key_path:/tmp/api_key.json \
             team_id:"$TEAM_ID" \
             app_identifier:"$BUNDLE_ID" \
             platform:ios \
             readonly:false
+
+          # Extract profile UUID and signing identity for manual signing
+          PROFILE_PATH=$(ls ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision 2>/dev/null | head -1)
+          if [ -n "$PROFILE_PATH" ]; then
+            PROFILE_UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID raw -o - -)
+            PROFILE_NAME=$(security cms -D -i "$PROFILE_PATH" | plutil -extract Name raw -o - -)
+            echo "PROFILE_UUID=$PROFILE_UUID" >> $GITHUB_ENV
+            echo "PROFILE_NAME=$PROFILE_NAME" >> $GITHUB_ENV
+            echo "Profile: $PROFILE_NAME ($PROFILE_UUID)"
+          fi
+
+          SIGNING_IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "SIGNING_IDENTITY=$SIGNING_IDENTITY" >> $GITHUB_ENV
+          echo "Identity: $SIGNING_IDENTITY"
 
       - name: Resolve SPM dependencies
         run: |
@@ -169,11 +185,9 @@ jobs:
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -destination 'generic/platform=iOS' \
             DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Automatic \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath $HOME/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8 \
-            -authenticationKeyID "${{ secrets.ASC_API_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.ASC_API_ISSUER_ID }}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
             OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH"
 
       - name: Export IPA
@@ -190,7 +204,12 @@ jobs:
             <key>destination</key>
             <string>upload</string>
             <key>signingStyle</key>
-            <string>automatic</string>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>ai.thememorypalace.app</key>
+              <string>${PROFILE_NAME}</string>
+            </dict>
           </dict>
           </plist>
           EOF
@@ -198,11 +217,7 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist \
-            -exportPath $RUNNER_TEMP/export \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath $HOME/private_keys/AuthKey_${{ secrets.ASC_API_KEY_ID }}.p8 \
-            -authenticationKeyID "${{ secrets.ASC_API_KEY_ID }}" \
-            -authenticationKeyIssuerID "${{ secrets.ASC_API_ISSUER_ID }}"
+            -exportPath $RUNNER_TEMP/export
 
       - name: Upload to App Store Connect
         run: |
