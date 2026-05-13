@@ -102,9 +102,10 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={`${cormorant.variable} ${manrope.variable}`}>
       <head>
-        {/* Force clear stale PWA caches — runs before any JS bundles */}
+        {/* Force clear stale PWA caches — runs before any JS bundles (skip in Capacitor native) */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
+            if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())return;
             var V="v62";
             try{
               var s=localStorage.getItem("mp_v");

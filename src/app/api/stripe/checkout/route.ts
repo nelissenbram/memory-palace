@@ -54,13 +54,23 @@ export async function POST(req: NextRequest) {
 
     let customerId = subscription?.stripe_customer_id;
 
-    // Create Stripe customer if needed
+    // Create Stripe customer if needed, and persist to DB
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: { user_id: user.id },
       });
       customerId = customer.id;
+
+      await supabase
+        .from("subscriptions")
+        .upsert({
+          user_id: user.id,
+          stripe_customer_id: customerId,
+          plan: "free",
+          status: "active",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
     }
 
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";

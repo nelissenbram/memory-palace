@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useKepStore } from "@/lib/stores/kepStore";
 import TuscanCard from "@/components/ui/TuscanCard";
 import { getMediaTypeIcon, getStatusColor, getStatusLabel } from "@/lib/kep/route-helpers";
+import { WINGS } from "@/lib/constants/wings";
+import { allocateVirtualRoom } from "@/lib/kep/join-actions";
+import { T } from "@/lib/theme";
 import type { Kep, KepCapture, KepStats } from "@/types/kep";
 
 export default function KepDetailPage() {
@@ -15,12 +18,24 @@ export default function KepDetailPage() {
   const kepId = params.id as string;
   const { currentKep, captures, stats, isLoading, fetchKep, fetchCaptures, fetchStats, updateKep, deleteKep } = useKepStore();
   const [activeTab, setActiveTab] = useState<"captures" | "settings" | "stats">("captures");
+  const [linkedRoom, setLinkedRoom] = useState<{ id: string; name: string; is_virtual: boolean; wing_id: string | null; memories: { id: string; title: string; type: string; file_url: string | null; created_at: string }[] } | null>(null);
+
+  const fetchLinkedRoom = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/keps/${kepId}/room`);
+      if (res.ok) {
+        const data = await res.json();
+        setLinkedRoom(data);
+      }
+    } catch { /* no linked room */ }
+  }, [kepId]);
 
   useEffect(() => {
     fetchKep(kepId);
     fetchCaptures(kepId);
     fetchStats(kepId);
-  }, [kepId, fetchKep, fetchCaptures, fetchStats]);
+    fetchLinkedRoom();
+  }, [kepId, fetchKep, fetchCaptures, fetchStats, fetchLinkedRoom]);
 
   if (isLoading && !currentKep) {
     return <div style={{ padding: "3rem", textAlign: "center", color: "#6b7280" }}>{t("loading")}</div>;
@@ -104,6 +119,11 @@ export default function KepDetailPage() {
           </button>
         ))}
       </div>
+
+      {/* Linked Room */}
+      {linkedRoom && (
+        <LinkedRoomSection room={linkedRoom} onAllocated={fetchLinkedRoom} t={t} />
+      )}
 
       {/* Tab content */}
       {activeTab === "captures" && <CapturesTab captures={captures} t={t} />}
@@ -199,6 +219,114 @@ function SettingsTab({ kep, t }: { kep: Kep; t: (key: string, params?: Record<st
             <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{kep.description as string}</p>
           </div>
         )}
+      </div>
+    </TuscanCard>
+  );
+}
+
+function LinkedRoomSection({ room, onAllocated, t }: {
+  room: { id: string; name: string; is_virtual: boolean; wing_id: string | null; memories: { id: string; title: string; type: string; file_url: string | null; created_at: string }[] };
+  onAllocated: () => void;
+  t: (key: string, params?: Record<string, string>) => string;
+}) {
+  const [allocating, setAllocating] = useState(false);
+  const [selectedWing, setSelectedWing] = useState<string | null>(null);
+  const [roomName, setRoomName] = useState(room.name);
+  const [showAllocate, setShowAllocate] = useState(false);
+
+  const handleAllocate = async () => {
+    if (!selectedWing || !roomName.trim()) return;
+    setAllocating(true);
+    const result = await allocateVirtualRoom(room.id, selectedWing, roomName.trim());
+    setAllocating(false);
+    if (!result.error) {
+      setShowAllocate(false);
+      onAllocated();
+    }
+  };
+
+  const wingName = room.wing_id ? WINGS.find(w => w.id === room.wing_id)?.name : null;
+
+  return (
+    <TuscanCard>
+      <div style={{ padding: "1.25rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "1.25rem" }}>{room.is_virtual ? "📦" : "🏛"}</span>
+            <div>
+              <span style={{ fontWeight: 600, fontSize: "0.9375rem" }}>{room.name}</span>
+              <span style={{ fontSize: "0.75rem", color: T.color.muted, marginLeft: "0.5rem" }}>
+                {room.is_virtual ? "Virtual room" : wingName || "Palace room"}
+              </span>
+            </div>
+          </div>
+          {room.is_virtual && !showAllocate && (
+            <button onClick={() => setShowAllocate(true)} style={{
+              padding: "0.375rem 0.75rem", borderRadius: "0.375rem", fontSize: "0.75rem",
+              background: T.color.terracotta, color: "#fff", border: "none", cursor: "pointer", fontWeight: 500,
+            }}>
+              Allocate to wing
+            </button>
+          )}
+        </div>
+
+        {/* Allocate form */}
+        {showAllocate && (
+          <div style={{ background: T.color.linen, padding: "1rem", borderRadius: "0.75rem", marginBottom: "0.75rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.375rem", marginBottom: "0.75rem" }}>
+              {WINGS.filter(w => w.id !== "attic").map(w => (
+                <button key={w.id} onClick={() => setSelectedWing(w.id)} style={{
+                  padding: "0.5rem", borderRadius: "0.5rem", cursor: "pointer", fontSize: "0.75rem",
+                  border: selectedWing === w.id ? `2px solid ${T.color.terracotta}` : `1px solid ${T.color.cream}`,
+                  background: selectedWing === w.id ? `${T.color.terracotta}10` : "#fff",
+                }}>
+                  {w.icon} {w.name}
+                </button>
+              ))}
+            </div>
+            <input value={roomName} onChange={e => setRoomName(e.target.value)} placeholder="Room name"
+              style={{ width: "100%", padding: "0.5rem", borderRadius: "0.375rem", border: `1px solid ${T.color.cream}`, fontSize: "0.875rem", boxSizing: "border-box", marginBottom: "0.5rem" }}
+            />
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button onClick={handleAllocate} disabled={!selectedWing || !roomName.trim() || allocating} style={{
+                padding: "0.5rem 1rem", borderRadius: "0.375rem", background: selectedWing ? T.color.terracotta : T.color.cream,
+                color: selectedWing ? "#fff" : T.color.muted, border: "none", cursor: selectedWing ? "pointer" : "default", fontSize: "0.8125rem",
+              }}>
+                {allocating ? "..." : "Move to wing"}
+              </button>
+              <button onClick={() => setShowAllocate(false)} style={{
+                padding: "0.5rem 1rem", borderRadius: "0.375rem", background: "none", border: `1px solid ${T.color.cream}`,
+                cursor: "pointer", fontSize: "0.8125rem", color: T.color.muted,
+              }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Memories */}
+        {room.memories.length > 0 ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(5rem, 1fr))", gap: "0.5rem" }}>
+            {room.memories.map(m => (
+              <div key={m.id} style={{
+                aspectRatio: "1", borderRadius: "0.5rem", overflow: "hidden", background: T.color.cream,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {m.file_url && (m.type === "photo" || m.type === "image") ? (
+                  <img src={m.file_url} alt={m.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ fontSize: "1.5rem" }}>{m.type === "video" ? "🎬" : m.type === "audio" ? "🎵" : "📄"}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: "0.8125rem", color: T.color.muted, margin: 0 }}>No memories yet</p>
+        )}
+
+        <p style={{ fontSize: "0.75rem", color: T.color.muted, margin: "0.5rem 0 0" }}>
+          {room.memories.length} {room.memories.length === 1 ? "memory" : "memories"}
+        </p>
       </div>
     </TuscanCard>
   );

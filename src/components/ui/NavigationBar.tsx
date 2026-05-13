@@ -554,6 +554,7 @@ function NavigationBar({
                   transition: `color 0.3s ${EASE}, opacity 0.3s ${EASE}`,
                   opacity: isActive ? 1 : 0.7,
                   WebkitTapHighlightColor: "transparent",
+                  WebkitAppearance: "none" as const,
                   position: "relative",
                 }}
               >
@@ -713,8 +714,9 @@ function NavigationBar({
                   alignItems: "center",
                   gap: "0.375rem",
                   padding: "0.5rem 0.875rem",
-                  borderRadius: "1.5rem",
+                  borderRadius: "0.625rem",
                   border: "none",
+                  WebkitAppearance: "none" as const,
                   background: isActive
                     ? activeIndicatorBg(mode)
                     : isHovered
@@ -779,8 +781,9 @@ function NavigationBar({
                   alignItems: "center",
                   gap: "0.375rem",
                   padding: "0.5rem 0.875rem",
-                  borderRadius: "1.5rem",
+                  borderRadius: "0.625rem",
                   border: "none",
+                  WebkitAppearance: "none" as const,
                   background: isMeActive
                     ? activeIndicatorBg("me")
                     : isMeHovered

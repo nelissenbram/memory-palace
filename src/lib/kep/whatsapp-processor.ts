@@ -61,17 +61,19 @@ export async function processWhatsAppMessage(
   }
 
   // Look up the WhatsApp link
-  const link = await lookupLink(supabase, phoneNumberId, chatId);
+  const link = await lookupLink(supabase, phoneNumberId, chatId, message.from);
 
   if (!link) {
-    console.log("[WhatsApp] No link found for", chatId ? `group ${chatId}` : `DM from ${message.from}`, "phoneNumberId:", phoneNumberId);
-    // No link found — for groups, auto-create one
+    console.log("[WhatsApp] No link found for", chatId ? `group ${chatId}` : `DM from ${message.from}`);
+    // No link found — auto-create for groups and 1:1 DMs
+    let newLink: Record<string, unknown> | null = null;
     if (chatId) {
-      const newLink = await autoCreateGroupLink(supabase, phoneNumberId, chatId);
-      if (newLink) {
-        // Process the message with the new link
-        await processMessageWithLink(supabase, message, newLink);
-      }
+      newLink = await autoCreateGroupLink(supabase, phoneNumberId, chatId);
+    } else {
+      newLink = await autoCreateDMLink(supabase, phoneNumberId, message.from);
+    }
+    if (newLink) {
+      await processMessageWithLink(supabase, message, newLink);
     }
     return;
   }
@@ -86,6 +88,7 @@ async function lookupLink(
   supabase: SupabaseClient,
   phoneNumberId: string,
   chatId: string | null,
+  senderPhone?: string,
 ): Promise<Record<string, unknown> | null> {
   let query = supabase
     .from("whatsapp_links")
@@ -96,8 +99,11 @@ async function lookupLink(
     // Group: lookup by group ID
     query = query.eq("wa_group_id", chatId);
   } else {
-    // 1:1: lookup by phone number where no group is set
-    query = query.eq("phone_number_id", phoneNumberId).is("wa_group_id", null);
+    // 1:1: lookup by phone number + sender phone where no group is set
+    query = query
+      .eq("phone_number_id", phoneNumberId)
+      .is("wa_group_id", null)
+      .eq("wa_sender_phone", senderPhone ?? "");
   }
 
   const { data: link } = await query.single();
@@ -182,6 +188,84 @@ async function autoCreateGroupLink(
 }
 
 /**
+ * Auto-create a Kep + whatsapp_link when a 1:1 DM arrives with no existing link.
+ */
+async function autoCreateDMLink(
+  supabase: SupabaseClient,
+  phoneNumberId: string,
+  senderPhone: string,
+): Promise<Record<string, unknown> | null> {
+  const defaultUserId = process.env.KEP_DEFAULT_USER_ID;
+  if (!defaultUserId) {
+    console.error("[WhatsApp] KEP_DEFAULT_USER_ID not configured — cannot auto-create DM link");
+    return null;
+  }
+
+  const inviteCode = generateInviteCode();
+
+  try {
+    // Create the Kep
+    const { data: kep, error: kepError } = await supabase
+      .from("keps")
+      .insert({
+        user_id: defaultUserId,
+        name: `DM +${senderPhone}`,
+        icon: "💬",
+        source_type: "whatsapp",
+        source_config: { sender_phone: senderPhone },
+        status: "active",
+        auto_route_enabled: false,
+        routing_rules: [],
+        is_private: true,
+        memories_captured: 0,
+      })
+      .select("id")
+      .single();
+
+    if (kepError) {
+      console.error("[WhatsApp] Failed to auto-create DM Kep:", kepError.message);
+      return null;
+    }
+
+    // Create the whatsapp_link
+    const { data: link, error: linkError } = await supabase
+      .from("whatsapp_links")
+      .insert({
+        kep_id: kep.id,
+        user_id: defaultUserId,
+        wa_group_id: null,
+        wa_sender_phone: senderPhone,
+        phone_number_id: phoneNumberId,
+        verified: true,
+        verified_at: new Date().toISOString(),
+        invite_code: inviteCode,
+        stopped: false,
+      })
+      .select("*, keps(*)")
+      .single();
+
+    if (linkError) {
+      // Unique constraint violation → another request already created it
+      if (linkError.code === "23505") {
+        console.log("[WhatsApp] DM link already exists (race condition), re-fetching");
+        return await lookupLink(supabase, phoneNumberId, null, senderPhone);
+      }
+      console.error("[WhatsApp] Failed to auto-create DM link:", linkError.message);
+      return null;
+    }
+
+    // Send welcome message to the sender
+    await sendWelcomeMessage(senderPhone, inviteCode);
+
+    console.log(`[WhatsApp] Auto-created DM link for +${senderPhone} with invite ${inviteCode}`);
+    return link;
+  } catch (err) {
+    console.error("[WhatsApp] autoCreateDMLink error:", err);
+    return null;
+  }
+}
+
+/**
  * Process a message once we have a valid link.
  */
 async function processMessageWithLink(
@@ -261,7 +345,7 @@ async function processMessageWithLink(
           source_timestamp: new Date(parseInt(message.timestamp) * 1000).toISOString(),
           media_type: mediaType,
           status: "failed",
-          payload_preview: { error: "Media download failed" },
+          payload_preview: { error: `Media download failed: ${err instanceof Error ? err.message : String(err)}` },
         });
         return;
       }
@@ -331,7 +415,10 @@ async function handleCommand(
   if (chatId) {
     query = query.eq("wa_group_id", chatId);
   } else {
-    query = query.eq("phone_number_id", phoneNumberId).is("wa_group_id", null);
+    query = query
+      .eq("phone_number_id", phoneNumberId)
+      .is("wa_group_id", null)
+      .eq("wa_sender_phone", senderPhone);
   }
 
   const { data: links } = await query;

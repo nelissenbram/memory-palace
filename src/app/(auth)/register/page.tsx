@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signUp } from "@/lib/auth/actions";
-import { signInWithGoogle } from "@/lib/auth/social-login";
+import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -53,27 +53,31 @@ function RegisterContent() {
     }
 
     if (redirect) formData.set("redirect", redirect);
-    const result = await signUp(formData);
-    if (result?.error) {
-      setError(result.error);
-    } else {
-      setSuccess(true);
-      track("signup_completed");
+    try {
+      const result = await signUp(formData);
+      if (result?.error) {
+        setError(result.error);
+      } else {
+        setSuccess(true);
+        track("signup_completed");
 
-      // Apply referral code if stored
-      try {
-        const storedRef = localStorage.getItem("mp_referral_code");
-        if (storedRef) {
-          await fetch("/api/referral", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ code: storedRef }),
-          });
-          localStorage.removeItem("mp_referral_code");
+        // Apply referral code if stored
+        try {
+          const storedRef = localStorage.getItem("mp_referral_code");
+          if (storedRef) {
+            await fetch("/api/referral", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code: storedRef }),
+            });
+            localStorage.removeItem("mp_referral_code");
+          }
+        } catch {
+          // non-critical — referral application is best-effort
         }
-      } catch {
-        // non-critical — referral application is best-effort
       }
+    } catch {
+      setError(t("unexpectedError") || "Something went wrong. Please try again.");
     }
     setLoading(false);
   }
@@ -265,21 +269,21 @@ function RegisterContent() {
 
       <button
         type="button"
-        disabled
+        onClick={() => {
+          if (!ageConfirmed) {
+            setError(t("ageRequiredForSocial"));
+            return;
+          }
+          signInWithApple();
+        }}
         style={{
           ...appleButtonStyle,
-          opacity: 0.5,
-          cursor: "not-allowed",
-          pointerEvents: "none" as const,
+          ...(!ageConfirmed ? { opacity: 0.6 } : {}),
         }}
-        aria-disabled
       >
         <AppleIcon />
         {t("signUpWithApple")}
       </button>
-      <span style={{ display: "block", textAlign: "center", fontSize: "0.75rem", fontStyle: "italic", color: T.color.muted, marginTop: "-0.25rem" }}>
-        {t("comingSoon")}
-      </span>
 
       <p
         style={{

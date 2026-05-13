@@ -71,12 +71,13 @@ export async function createVirtualRoom(
     const { data: room, error: roomErr } = await supabase
       .from("rooms")
       .insert({
-        user_id: kep.user_id,
+        user_id: user.id,
         name,
         wing_id: null,
         is_virtual: true,
         virtual_title: name,
         source_kep_id: kep.id,
+        expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
       })
       .select("id")
       .single();
@@ -181,6 +182,53 @@ export async function createPalaceRoom(
 }
 
 /**
+ * Link a Kep invite to an existing palace room (instead of creating a new one).
+ */
+export async function linkToExistingRoom(
+  inviteCode: string,
+  roomId: string,
+): Promise<{ roomId: string | null; error?: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { const t = await serverError(); return { roomId: null, error: t("notAuthenticated") }; }
+
+    // Verify user owns the room
+    const { data: room } = await supabase
+      .from("rooms")
+      .select("id, user_id, wing_id, name")
+      .eq("id", roomId)
+      .single();
+
+    if (!room) { const t = await serverError(); return { roomId: null, error: t("roomNotFound") }; }
+    if (room.user_id !== user.id) { const t = await serverError(); return { roomId: null, error: t("notYourRoom") }; }
+
+    // Verify invite code is valid
+    const { data: link, error: linkErr } = await supabase
+      .from("whatsapp_links")
+      .select("id, kep_id, target_room_id")
+      .eq("invite_code", inviteCode)
+      .single();
+
+    if (linkErr || !link) { const t = await serverError(); return { roomId: null, error: t("invalidInviteCode") }; }
+
+    // If already linked, return existing
+    if (link.target_room_id) return { roomId: link.target_room_id };
+
+    // Set target_room_id on the whatsapp_link
+    await supabase
+      .from("whatsapp_links")
+      .update({ target_room_id: room.id })
+      .eq("id", link.id);
+
+    return { roomId: room.id };
+  } catch (e) {
+    console.error("[Kep linkToExistingRoom]", e);
+    { const t = await serverError(); return { roomId: null, error: t("somethingWentWrong") }; }
+  }
+}
+
+/**
  * Allocate a virtual room to a wing (convert virtual → palace room).
  */
 export async function allocateVirtualRoom(
@@ -220,6 +268,8 @@ export async function allocateVirtualRoom(
         name: roomName.trim(),
         is_virtual: false,
         allocated_at: new Date().toISOString(),
+        grounded_at: new Date().toISOString(),
+        expires_at: null,
       })
       .eq("id", roomId);
 

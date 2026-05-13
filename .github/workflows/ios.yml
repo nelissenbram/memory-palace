@@ -40,6 +40,14 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
+      - name: Bump build number
+        run: |
+          PLIST="ios/App/App/Info.plist"
+          # Set version 1.0, build number from run number (auto-increments)
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0" $PLIST
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" $PLIST
+          echo "Version: 1.0 (${{ github.run_number }})"
+
       - name: Copy app icons
         run: cp -r memory-palace-ios-build/icons/* ios/App/App/Assets.xcassets/AppIcon.appiconset/
 
@@ -62,11 +70,22 @@ jobs:
           done
           echo "Alpha channels stripped from all icons"
 
-      - name: Add camera permissions to Info.plist
+      - name: Configure Info.plist (permissions, iPad support)
         run: |
           PLIST="ios/App/App/Info.plist"
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Take photos for your memory palace'" $PLIST 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Choose photos for your memory palace'" $PLIST 2>/dev/null || true
+          # Ensure iPad support (Universal: iPhone + iPad)
+          /usr/libexec/PlistBuddy -c "Delete :UIDeviceFamily" $PLIST 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily array" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:0 integer 1" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:1 integer 2" $PLIST
+          # Support all orientations on iPad
+          /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations~ipad" $PLIST 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad array" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:0 string UIInterfaceOrientationPortrait" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:1 string UIInterfaceOrientationLandscapeLeft" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:2 string UIInterfaceOrientationLandscapeRight" $PLIST
 
       - name: Write App Store Connect API key
         run: |

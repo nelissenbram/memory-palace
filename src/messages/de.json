@@ -171,8 +171,7 @@
     "agreeTerms": "Mit der Erstellung eines Kontos stimmst du unseren",
     "and": "und",
     "ageConfirm": "Ich bestätige, dass ich mindestens 16 Jahre alt bin",
-    "ageRequiredForSocial": "Bitte bestätige, dass du mindestens 16 Jahre alt bist.",
-    "comingSoon": "Demnächst verfügbar"
+    "ageRequiredForSocial": "Bitte bestätige, dass du mindestens 16 Jahre alt bist."
   },
   "forgotPassword": {
     "title": "Passwort zurücksetzen",
@@ -613,7 +612,7 @@
     "startFreeTrial": "Kostenlose Testphase starten",
     "usageProgress": "{label}: {current} von {max} verwendet",
     "storageProgress": "Speicher: {current} von {max} verwendet",
-    "cancelPlan": "Abo k\u00fcndigen",
+    "cancelPlan": "Abo kündigen",
     "referralTitle": "Freund empfehlen",
     "referralDesc": "Teile deinen Code. Wenn ein Freund beitritt, bekommst du 1 Monat Guardian gratis.",
     "referralCode": "Dein Empfehlungscode",
@@ -628,7 +627,7 @@
   },
   "cancelFlow": {
     "whyLeaving": "Bevor du gehst...",
-    "whyLeavingDesc": "Wir w\u00fcrden gerne verstehen, warum du \u00fcberlegst, dein {plan}-Abo zu k\u00fcndigen.",
+    "whyLeavingDesc": "Wir würden gerne verstehen, warum du überlegst, dein {plan}-Abo zu kündigen.",
     "reasonExpensive": "Es ist mir gerade zu teuer",
     "reasonNotUsing": "Ich nutze es nicht genug",
     "reasonMissing": "Es fehlen Funktionen, die ich brauche",
@@ -638,18 +637,18 @@
     "offerPauseBody": "Du kannst dein Abo bis zu 3 Monate pausieren. Deine Erinnerungen bleiben sicher, und du kannst jederzeit fortfahren.",
     "offerPauseCta": "Mein Abo pausieren",
     "offerReminderTitle": "Wir helfen dir beim Einstieg",
-    "offerReminderBody": "Probiere unser KI-Lebensinterview \u2014 es macht das Hinzuf\u00fcgen von Erinnerungen einfach und spa\u00dfig. Erz\u00e4hl einfach, und wir halten deine Geschichten fest.",
+    "offerReminderBody": "Probiere unser KI-Lebensinterview — es macht das Hinzufügen von Erinnerungen einfach und spaßig. Erzähl einfach, und wir halten deine Geschichten fest.",
     "offerReminderCta": "Ich versuche es nochmal",
     "offerFeedbackTitle": "Sag uns, was fehlt",
     "offerFeedbackBody": "Dein Feedback bestimmt unsere Roadmap. Sag uns, welche Funktionen du brauchst.",
     "offerFeedbackCta": "Feedback senden",
     "offerStayTitle": "Du bist uns wichtig",
-    "offerStayBody": "Deine Erinnerungen verdienen ein sch\u00f6nes Zuhause. Wir arbeiten st\u00e4ndig daran, deinen Palast noch besser zu machen.",
+    "offerStayBody": "Deine Erinnerungen verdienen ein schönes Zuhause. Wir arbeiten ständig daran, deinen Palast noch besser zu machen.",
     "offerStayCta": "Ich bleibe noch etwas",
-    "stillWantToCancel": "Ich m\u00f6chte trotzdem k\u00fcndigen",
+    "stillWantToCancel": "Ich möchte trotzdem kündigen",
     "confirmTitle": "Bist du sicher?",
-    "confirmBody": "Dein Abo bleibt bis zum Ende deines aktuellen Abrechnungszeitraums aktiv. Deine Erinnerungen werden niemals gel\u00f6scht.",
-    "proceedToCancel": "Ja, mein Abo k\u00fcndigen",
+    "confirmBody": "Dein Abo bleibt bis zum Ende deines aktuellen Abrechnungszeitraums aktiv. Deine Erinnerungen werden niemals gelöscht.",
+    "proceedToCancel": "Ja, mein Abo kündigen",
     "keepMyPlan": "Mein Abo behalten"
   },
   "connections": {
@@ -1282,9 +1281,9 @@
       "a8": "Ja! Native Apps für iOS und Android sind derzeit in Entwicklung. In der Zwischenzeit funktioniert The Memory Palace wunderbar in jedem modernen Browser auf Desktop, Tablet und Handy – kein Download erforderlich."
     },
     "exitIntent": {
-      "title": "Bevor du gehst\u2026",
-      "body": "Die Geschichte deiner Familie verdient es, bewahrt zu werden. Erstelle deinen Memory Palace in 2 Minuten \u2014 kostenlos.",
-      "cta": "Erstelle deinen Palace \u2014 Kostenlos"
+      "title": "Bevor du gehst…",
+      "body": "Die Geschichte deiner Familie verdient es, bewahrt zu werden. Erstelle deinen Memory Palace in 2 Minuten — kostenlos.",
+      "cta": "Erstelle deinen Palace — Kostenlos"
     },
     "cookieConsent": {
       "message": "Wir verwenden Cookies, um dein Erlebnis zu verbessern.",
@@ -4675,13 +4674,37 @@
     "title": "Memory Palace Kep",
     "loading": "Raum wird geladen...",
     "notFound": "Raum nicht gefunden",
-    "notFoundDesc": "Dieser Einladungslink ist ung\u00fcltig oder der Raum wurde noch nicht erstellt.",
+    "notFoundDesc": "Dieser Einladungslink ist ungültig oder der Raum wurde noch nicht erstellt.",
     "error": "Etwas ist schiefgelaufen",
     "expired": "Dieser Raum ist abgelaufen",
-    "expiredDesc": "Virtuelle R\u00e4ume sind 14 Tage verf\u00fcgbar. Erstelle einen Memory Palace, um deine Erinnerungen f\u00fcr immer zu bewahren.",
+    "expiredDesc": "Virtuelle Räume sind 14 Tage verfügbar. Erstelle einen Memory Palace, um deine Erinnerungen für immer zu bewahren.",
     "daysRemaining": "Noch {count} Tage",
     "noMemories": "Noch keine Erinnerungen. Teile Fotos und Videos in WhatsApp, um loszulegen.",
-    "ctaTitle": "Erstelle einen Memory Palace, um diese Erinnerungen f\u00fcr immer zu bewahren",
+    "ctaTitle": "Erstelle einen Memory Palace, um diese Erinnerungen für immer zu bewahren",
     "createPalace": "Erstelle deinen Memory Palace"
+  },
+  "kepLanding": {
+    "title": "Lernen Sie Kep kennen",
+    "subtitle": "Ihr persönlicher Erinnerungsträger",
+    "heroText": "Kep ist der stille Diener Ihres Memory Palace. Wie ein hingebungsvoller Gepäckträger bringt Kep Ihre kostbaren Momente aus WhatsApp-Gesprächen direkt in die Hallen Ihres Palastes — damit nichts auf dem Weg verloren geht.",
+    "whatIsKep": "Wer ist Kep?",
+    "whatIsKepText": "Kep ist ein diskreter, stets aufmerksamer Kammerdiener im Dienst Ihres Memory Palace. Fügen Sie Kep einer WhatsApp-Gruppe hinzu, und dieser treue Träger sammelt still jedes Foto, Video und jede Nachricht — und trägt sie sorgfältig in einen Raum, der nur für Sie vorbereitet wurde.",
+    "howItWorksTitle": "Wie Kep Ihnen dient",
+    "step1Title": "Laden Sie Kep ein",
+    "step1Text": "Fügen Sie Kep Ihrer WhatsApp-Gruppe hinzu oder starten Sie ein persönliches Gespräch. Eine einfache Nachricht genügt.",
+    "step2Title": "Kep sammelt",
+    "step2Text": "Wie ein fleißiger Gepäckträger sammelt Kep still jedes Foto, Video und jede Nachricht. Nichts wird übersehen, nichts wird vergessen.",
+    "step3Title": "Ein Raum wird vorbereitet",
+    "step3Text": "Kep ordnet Ihre Erinnerungen in einem temporären virtuellen Raum — eine Vorschau dessen, was Ihr Palast beherbergen könnte. 14 Tage verfügbar.",
+    "step4Title": "Willkommen zu Hause",
+    "step4Text": "Wenn Sie bereit sind, trägt Kep Ihre Sammlung in einen permanenten Raum Ihres Memory Palace. Sicher, organisiert, für immer Ihres.",
+    "privacyTitle": "Diskretion über alles",
+    "privacyText": "Ein guter Diener überschreitet nie seine Grenzen. Kep kündigt sich bei der Gruppe an, respektiert Opt-outs und dient nur auf Ihr Kommando. Sagen Sie jederzeit STOP, und Kep tritt zurück — ohne Fragen.",
+    "personaTitle": "Der treue Träger",
+    "personaText": "In den großen Häusern vergangener Zeiten stand der Träger am Tor — Gäste empfangen, Gepäck tragen und sicherstellen, dass nichts Wertvolles verloren ging. Kep trägt diese Tradition ins digitale Zeitalter und pflegt Ihre Erinnerungen mit stiller Hingabe.",
+    "ctaTitle": "Lassen Sie Kep Ihre Erinnerungen tragen",
+    "ctaText": "Starten Sie ein Gespräch mit Kep auf WhatsApp und lassen Sie Ihren treuen Träger an die Arbeit gehen.",
+    "ctaButton": "Nachricht an Kep auf WhatsApp",
+    "learnMore": "Mehr über The Memory Palace"
   }
 }

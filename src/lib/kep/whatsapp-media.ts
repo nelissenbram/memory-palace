@@ -12,14 +12,14 @@ interface DownloadResult {
   storagePath: string;
 }
 
-const GRAPH_API_BASE = "https://graph.facebook.com/v19.0";
+const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
 const MAX_MEDIA_SIZE = 50 * 1024 * 1024; // 50 MB
 
 /**
  * Get the download URL for a WhatsApp media ID.
  */
 async function getMediaUrl(mediaId: string): Promise<{ url: string; mime_type: string; file_size: number }> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
   if (!token) throw new Error("WHATSAPP_ACCESS_TOKEN not configured");
 
   const res = await fetch(`${GRAPH_API_BASE}/${mediaId}`, {
@@ -27,7 +27,8 @@ async function getMediaUrl(mediaId: string): Promise<{ url: string; mime_type: s
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to get media URL: ${res.status} ${res.statusText}`);
+    const body = await res.text();
+    throw new Error(`Failed to get media URL: ${res.status} ${body.slice(0, 200)}`);
   }
 
   return res.json();
@@ -37,7 +38,7 @@ async function getMediaUrl(mediaId: string): Promise<{ url: string; mime_type: s
  * Download media binary from WhatsApp CDN.
  */
 async function downloadMedia(url: string): Promise<{ buffer: ArrayBuffer; contentType: string }> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
   if (!token) throw new Error("WHATSAPP_ACCESS_TOKEN not configured");
 
   const res = await fetch(url, {
@@ -45,7 +46,8 @@ async function downloadMedia(url: string): Promise<{ buffer: ArrayBuffer; conten
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to download media: ${res.status} ${res.statusText}`);
+    const body = await res.text();
+    throw new Error(`Failed to download media: ${res.status} ${body.slice(0, 200)}`);
   }
 
   const contentType = res.headers.get("content-type") || "application/octet-stream";

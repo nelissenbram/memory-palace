@@ -18,6 +18,8 @@ export default function PWAInstallBanner() {
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
+    // Don't show inside Capacitor native app
+    if ((window as unknown as Record<string, unknown>).Capacitor) return;
     // Don't show if already installed (standalone mode)
     if (window.matchMedia("(display-mode: standalone)").matches) return;
     // Don't show if already dismissed

@@ -98,11 +98,24 @@ export async function POST(req: NextRequest) {
             status = subscription.status;
         }
 
-        // Determine plan from price
+        // Determine plan from price (check both annual and monthly price IDs)
         const priceId = subscription.items.data[0]?.price?.id;
+        const keeperPrices = [
+          process.env.STRIPE_KEEPER_PRICE_ID,
+          process.env.STRIPE_KEEPER_MONTHLY_PRICE_ID,
+          process.env.NEXT_PUBLIC_STRIPE_KEEPER_PRICE_ID,
+          process.env.NEXT_PUBLIC_STRIPE_KEEPER_MONTHLY_PRICE_ID,
+        ].filter(Boolean);
+        const guardianPrices = [
+          process.env.STRIPE_GUARDIAN_PRICE_ID,
+          process.env.STRIPE_GUARDIAN_MONTHLY_PRICE_ID,
+          process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_PRICE_ID,
+          process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_MONTHLY_PRICE_ID,
+        ].filter(Boolean);
+
         let plan = "free";
-        if (priceId === process.env.STRIPE_KEEPER_PRICE_ID) plan = "keeper";
-        if (priceId === process.env.STRIPE_GUARDIAN_PRICE_ID) plan = "guardian";
+        if (keeperPrices.includes(priceId!)) plan = "keeper";
+        if (guardianPrices.includes(priceId!)) plan = "guardian";
 
         await supabase
           .from("subscriptions")

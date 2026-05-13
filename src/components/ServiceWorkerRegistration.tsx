@@ -10,7 +10,9 @@ export default function ServiceWorkerRegistration() {
     if (
       typeof window === "undefined" ||
       !("serviceWorker" in navigator) ||
-      process.env.NODE_ENV !== "production"
+      process.env.NODE_ENV !== "production" ||
+      // Skip SW entirely inside Capacitor native WKWebView — it conflicts with native caching
+      (window as unknown as Record<string, unknown>).Capacitor
     ) return;
 
     // On first load, clear ALL caches to bust stale PWA content

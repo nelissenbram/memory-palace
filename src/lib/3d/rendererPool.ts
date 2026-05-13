@@ -36,17 +36,31 @@ export function borrowRenderer(w: number, h: number): THREE.WebGLRenderer {
     return _pool;
   }
 
-  // Create fresh renderer
-  const ren = new THREE.WebGLRenderer({
-    antialias: Q.antialias,
-    powerPreference: "high-performance",
-  });
-  ren.setSize(w, h);
-  ren.setPixelRatio(Math.min(window.devicePixelRatio, Q.maxPixelRatio));
-  ren.outputColorSpace = THREE.SRGBColorSpace;
-  _pool = ren;
-  _inUse = true;
-  return ren;
+  // Create fresh renderer — wrap in try-catch for WKWebView compatibility
+  try {
+    const ren = new THREE.WebGLRenderer({
+      antialias: Q.antialias,
+      powerPreference: "high-performance",
+    });
+    ren.setSize(w, h);
+    ren.setPixelRatio(Math.min(window.devicePixelRatio, Q.maxPixelRatio));
+    ren.outputColorSpace = THREE.SRGBColorSpace;
+    _pool = ren;
+    _inUse = true;
+    return ren;
+  } catch (e) {
+    // Retry with default power preference (iPad WKWebView fallback)
+    const ren = new THREE.WebGLRenderer({
+      antialias: false,
+      powerPreference: "default",
+    });
+    ren.setSize(w, h);
+    ren.setPixelRatio(Math.min(window.devicePixelRatio, 1));
+    ren.outputColorSpace = THREE.SRGBColorSpace;
+    _pool = ren;
+    _inUse = true;
+    return ren;
+  }
 }
 
 /** Return a renderer to the pool for reuse by the next scene. */

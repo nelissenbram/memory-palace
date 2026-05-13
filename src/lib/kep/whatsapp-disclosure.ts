@@ -3,7 +3,7 @@
  * Sends privacy disclosure to groups when a Kep is first activated.
  */
 
-const GRAPH_API_BASE = "https://graph.facebook.com/v19.0";
+const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
 
 /**
  * Send a disclosure message to a WhatsApp group.
@@ -12,7 +12,7 @@ export async function sendDisclosureMessage(
   groupId: string,
   locale: string = "en",
 ): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (!token || !phoneNumberId) {
@@ -64,7 +64,7 @@ export async function sendWelcomeMessage(
   inviteCode: string | null,
   locale: string = "en",
 ): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (!token || !phoneNumberId) {
@@ -114,7 +114,7 @@ export async function sendGroupWelcomeMessage(
   inviteCode: string,
   locale: string = "en",
 ): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
 
   if (!token || !phoneNumberId) {
@@ -214,34 +214,34 @@ function getGroupWelcomeText(inviteCode: string, locale: string): string {
 }
 
 function getWelcomeText(inviteCode: string | null, locale: string = "en"): string {
-  const texts: Record<string, { intro: string; virtualRoom: string; palaceRoom: string; stop: string }> = {
+  const texts: Record<string, { intro: string; viewRoom: string; palaceRoom: string; stop: string }> = {
     en: {
       intro: "I capture photos, videos, and messages you share here and add them to your Memory Palace room.",
-      virtualRoom: "Create a virtual room (anyone):",
+      viewRoom: "View room (anyone):",
       palaceRoom: "Add to your palace (host only):",
       stop: "Reply STOP KEP to deactivate.",
     },
     nl: {
       intro: "Ik bewaar foto's, video's en berichten die je hier deelt en voeg ze toe aan je Memory Palace kamer.",
-      virtualRoom: "Maak een virtuele kamer (iedereen):",
+      viewRoom: "Bekijk kamer (iedereen):",
       palaceRoom: "Voeg toe aan je paleis (alleen host):",
       stop: "Antwoord STOP KEP om te deactiveren.",
     },
     de: {
       intro: "Ich speichere Fotos, Videos und Nachrichten, die du hier teilst, und f\u00fcge sie deinem Memory Palace Raum hinzu.",
-      virtualRoom: "Erstelle einen virtuellen Raum (jeder):",
+      viewRoom: "Raum ansehen (jeder):",
       palaceRoom: "Zu deinem Palast hinzuf\u00fcgen (nur Host):",
       stop: "Antworte STOP KEP zum Deaktivieren.",
     },
     es: {
       intro: "Capturo fotos, videos y mensajes que compartes aqu\u00ed y los a\u00f1ado a tu sala de Memory Palace.",
-      virtualRoom: "Crea una sala virtual (cualquiera):",
+      viewRoom: "Ver sala (cualquiera):",
       palaceRoom: "A\u00f1adir a tu palacio (solo anfitri\u00f3n):",
       stop: "Responde STOP KEP para desactivar.",
     },
     fr: {
       intro: "Je capture les photos, vid\u00e9os et messages que vous partagez ici et les ajoute \u00e0 votre salle Memory Palace.",
-      virtualRoom: "Cr\u00e9ez une salle virtuelle (tout le monde) :",
+      viewRoom: "Voir la salle (tout le monde) :",
       palaceRoom: "Ajouter \u00e0 votre palais (h\u00f4te uniquement) :",
       stop: "R\u00e9pondez STOP KEP pour d\u00e9sactiver.",
     },
@@ -257,8 +257,8 @@ function getWelcomeText(inviteCode: string | null, locale: string = "en"): strin
   if (inviteCode) {
     lines.push(
       "",
-      `\ud83d\udc49 ${t.virtualRoom}`,
-      `${BASE_URL}/kep/join/${inviteCode}`,
+      `\ud83d\udc49 ${t.viewRoom}`,
+      `${BASE_URL}/kep/view/${inviteCode}`,
       "",
       `\ud83d\udc49 ${t.palaceRoom}`,
       `${BASE_URL}/kep/palace/${inviteCode}`,

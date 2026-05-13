@@ -171,8 +171,7 @@
     "agreeTerms": "En créant un compte, vous acceptez nos",
     "and": "et",
     "ageConfirm": "Je confirme avoir au moins 16 ans",
-    "ageRequiredForSocial": "Veuillez confirmer que vous avez au moins 16 ans avant de vous inscrire.",
-    "comingSoon": "Bientôt disponible"
+    "ageRequiredForSocial": "Veuillez confirmer que vous avez au moins 16 ans avant de vous inscrire."
   },
   "forgotPassword": {
     "title": "Réinitialiser le Mot de Passe",
@@ -278,19 +277,19 @@
     "paywallTrialCta": "Démarrer l'essai gratuit de 7 jours",
     "paywallContinueFree": "Continuer avec le plan gratuit",
     "quizTitle": "Personnalisons ton palais",
-    "quizQ1": "Qu'est-ce qui t'am\u00e8ne ici ?",
-    "quizQ1o1": "Pr\u00e9server les souvenirs de famille",
+    "quizQ1": "Qu'est-ce qui t'amène ici ?",
+    "quizQ1o1": "Préserver les souvenirs de famille",
     "quizQ1o2": "Enregistrer les histoires de famille",
-    "quizQ1o3": "Construire mon arbre g\u00e9n\u00e9alogique",
-    "quizQ1o4": "Organiser photos et vid\u00e9os",
-    "quizQ2": "Combien de souvenirs veux-tu pr\u00e9server ?",
-    "quizQ2o1": "Une poign\u00e9e",
+    "quizQ1o3": "Construire mon arbre généalogique",
+    "quizQ1o4": "Organiser photos et vidéos",
+    "quizQ2": "Combien de souvenirs veux-tu préserver ?",
+    "quizQ2o1": "Une poignée",
     "quizQ2o2": "Une belle collection",
     "quizQ2o3": "Toute une vie",
     "quizQ3": "Pour qui est ce palais ?",
     "quizQ3o1": "Juste pour moi",
     "quizQ3o2": "Ma famille proche",
-    "quizQ3o3": "Famille \u00e9largie et g\u00e9n\u00e9rations futures"
+    "quizQ3o3": "Famille élargie et générations futures"
   },
   "palace": {
     "uploadMemory": "Ajouter un Souvenir",
@@ -631,24 +630,24 @@
     "whyLeavingDesc": "Nous aimerions comprendre pourquoi vous envisagez d'annuler votre plan {plan}.",
     "reasonExpensive": "C'est trop cher pour moi en ce moment",
     "reasonNotUsing": "Je ne l'utilise pas assez",
-    "reasonMissing": "Il manque des fonctionnalit\u00e9s dont j'ai besoin",
+    "reasonMissing": "Il manque des fonctionnalités dont j'ai besoin",
     "reasonOther": "Autre raison",
     "nevermind": "Tant pis, je reste",
     "offerPauseTitle": "Prenez une pause ?",
-    "offerPauseBody": "Vous pouvez mettre votre abonnement en pause jusqu'\u00e0 3 mois. Vos souvenirs restent en s\u00e9curit\u00e9, et vous pouvez reprendre \u00e0 tout moment.",
+    "offerPauseBody": "Vous pouvez mettre votre abonnement en pause jusqu'à 3 mois. Vos souvenirs restent en sécurité, et vous pouvez reprendre à tout moment.",
     "offerPauseCta": "Mettre en pause mon abonnement",
-    "offerReminderTitle": "Nous pouvons vous aider \u00e0 d\u00e9marrer",
-    "offerReminderBody": "Essayez notre Interview de Vie IA \u2014 cela rend l'ajout de souvenirs facile et amusant. Parlez simplement, et nous capturerons vos histoires.",
-    "offerReminderCta": "Je r\u00e9essaie",
+    "offerReminderTitle": "Nous pouvons vous aider à démarrer",
+    "offerReminderBody": "Essayez notre Interview de Vie IA — cela rend l'ajout de souvenirs facile et amusant. Parlez simplement, et nous capturerons vos histoires.",
+    "offerReminderCta": "Je réessaie",
     "offerFeedbackTitle": "Dites-nous ce qui manque",
-    "offerFeedbackBody": "Vos retours fa\u00e7onnent directement notre feuille de route. Dites-nous quelles fonctionnalit\u00e9s vous avez besoin.",
+    "offerFeedbackBody": "Vos retours façonnent directement notre feuille de route. Dites-nous quelles fonctionnalités vous avez besoin.",
     "offerFeedbackCta": "Envoyer des commentaires",
-    "offerStayTitle": "Nous vous appr\u00e9cions",
-    "offerStayBody": "Vos souvenirs m\u00e9ritent un bel \u00e9crin. Nous travaillons constamment \u00e0 am\u00e9liorer votre palais.",
+    "offerStayTitle": "Nous vous apprécions",
+    "offerStayBody": "Vos souvenirs méritent un bel écrin. Nous travaillons constamment à améliorer votre palais.",
     "offerStayCta": "Je reste encore un peu",
-    "stillWantToCancel": "Je veux quand m\u00eame annuler",
-    "confirmTitle": "\u00cates-vous s\u00fbr ?",
-    "confirmBody": "Votre abonnement restera actif jusqu'\u00e0 la fin de votre p\u00e9riode de facturation en cours. Vos souvenirs ne sont jamais supprim\u00e9s.",
+    "stillWantToCancel": "Je veux quand même annuler",
+    "confirmTitle": "Êtes-vous sûr ?",
+    "confirmBody": "Votre abonnement restera actif jusqu'à la fin de votre période de facturation en cours. Vos souvenirs ne sont jamais supprimés.",
     "proceedToCancel": "Oui, annuler mon plan",
     "keepMyPlan": "Garder mon plan"
   },
@@ -1282,9 +1281,9 @@
       "a8": "Oui ! Des applications natives pour iOS et Android sont actuellement en cours de développement. En attendant, The Memory Palace fonctionne parfaitement dans tout navigateur moderne sur ordinateur, tablette et mobile — aucun téléchargement requis."
     },
     "exitIntent": {
-      "title": "Avant de partir\u2026",
-      "body": "L\u2019histoire de votre famille m\u00e9rite d\u2019\u00eatre pr\u00e9serv\u00e9e. Cr\u00e9ez votre Memory Palace en 2 minutes \u2014 gratuit.",
-      "cta": "Cr\u00e9ez votre Palace \u2014 Gratuit"
+      "title": "Avant de partir…",
+      "body": "L’histoire de votre famille mérite d’être préservée. Créez votre Memory Palace en 2 minutes — gratuit.",
+      "cta": "Créez votre Palace — Gratuit"
     },
     "cookieConsent": {
       "message": "Nous utilisons des cookies pour ameliorer votre experience.",
@@ -3011,7 +3010,7 @@
     "lockedAchievement": "{name} — verrouillée",
     "shareButton": "Partager",
     "shareText": "Je viens de gagner le badge {name} dans The Memory Palace !",
-    "copiedToClipboard": "Copi\u00e9 !",
+    "copiedToClipboard": "Copié !",
     "close": "Fermer"
   },
   "directoryPanel": {
@@ -4683,5 +4682,29 @@
     "noMemories": "Pas encore de souvenirs. Partagez des photos et vidéos dans WhatsApp pour commencer.",
     "ctaTitle": "Créez un Memory Palace pour conserver ces souvenirs pour toujours",
     "createPalace": "Créez votre Memory Palace"
+  },
+  "kepLanding": {
+    "title": "Découvrez Kep",
+    "subtitle": "Votre porteur de souvenirs personnel",
+    "heroText": "Kep est le serviteur silencieux de votre Memory Palace. Tel un porteur dévoué, Kep transporte vos moments précieux depuis vos conversations WhatsApp directement dans les salles de votre palais — pour que rien ne se perde en chemin.",
+    "whatIsKep": "Qui est Kep ?",
+    "whatIsKepText": "Kep est un valet discret et toujours attentif au service de votre Memory Palace. Ajoutez Kep à un groupe WhatsApp et ce fidèle porteur collectera silencieusement chaque photo, vidéo et message — les transportant avec soin dans une salle préparée rien que pour vous.",
+    "howItWorksTitle": "Comment Kep vous sert",
+    "step1Title": "Invitez Kep",
+    "step1Text": "Ajoutez Kep à votre groupe WhatsApp ou démarrez une conversation privée. Un simple message suffit.",
+    "step2Title": "Kep collecte",
+    "step2Text": "Tel un porteur diligent, Kep collecte silencieusement chaque photo, vidéo et message. Rien n’est négligé, rien n’est oublié.",
+    "step3Title": "Une salle est préparée",
+    "step3Text": "Kep arrange vos souvenirs dans une salle virtuelle temporaire — un aperçu de ce que votre palais pourrait contenir. Disponible pendant 14 jours.",
+    "step4Title": "Bienvenue chez vous",
+    "step4Text": "Quand vous êtes prêt, Kep transporte votre collection dans une salle permanente de votre Memory Palace. En sécurité, organisé, à vous pour toujours.",
+    "privacyTitle": "Discrétion avant tout",
+    "privacyText": "Un bon porteur ne dépasse jamais ses limites. Kep s’annonce au groupe, respecte les refus et ne sert que sur votre ordre. Dites STOP à tout moment, et Kep se retire — sans poser de questions.",
+    "personaTitle": "Le fidèle porteur",
+    "personaText": "Dans les grandes maisons d’autrefois, le porteur se tenait à la porte — accueillant les invités, portant les bagages et veillant à ce que rien de précieux ne soit égaré. Kep perpétue cette tradition à l’ère numérique, prenant soin de vos souvenirs avec une dévotion silencieuse.",
+    "ctaTitle": "Laissez Kep porter vos souvenirs",
+    "ctaText": "Démarrez une conversation avec Kep sur WhatsApp et laissez votre fidèle porteur se mettre au travail.",
+    "ctaButton": "Écrire à Kep sur WhatsApp",
+    "learnMore": "En savoir plus sur The Memory Palace"
   }
 }

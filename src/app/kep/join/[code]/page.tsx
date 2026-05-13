@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { T } from "@/lib/theme";
 import { WINGS } from "@/lib/constants/wings";
-import { checkKepInvite, createVirtualRoom, createPalaceRoom } from "@/lib/kep/join-actions";
+import { checkKepInvite, createVirtualRoom, createPalaceRoom, linkToExistingRoom } from "@/lib/kep/join-actions";
 import { WingIcon } from "@/components/ui/WingRoomIcons";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -38,6 +38,8 @@ export default function KepJoinPage({ params }: PageProps) {
   const [createdRoomName, setCreatedRoomName] = useState("");
   const [createdWingName, setCreatedWingName] = useState("");
   const [selectedWing, setSelectedWing] = useState<string | null>(null);
+  const [existingRooms, setExistingRooms] = useState<{ id: string; name: string; memories_count: number }[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
 
   const addRoom = useRoomStore((s) => s.addRoom);
 
@@ -69,6 +71,56 @@ export default function KepJoinPage({ params }: PageProps) {
     });
     return () => { cancelled = true; };
   }, [params, router, pathname]);
+
+  // Fetch existing rooms when a wing is selected
+  useEffect(() => {
+    if (!selectedWing) {
+      setExistingRooms([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingRooms(true);
+    fetch(`/api/keps/rooms?wing=${encodeURIComponent(selectedWing)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return;
+        const wing = data.wings?.[0];
+        setExistingRooms(wing?.rooms ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setExistingRooms([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRooms(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedWing]);
+
+  async function handleExistingRoom(existingRoomId: string, existingRoomName: string) {
+    if (!code || !selectedWing) return;
+    setStep("creating");
+    setError("");
+    try {
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Server action timed out after 15s")), 15000));
+      const result = await Promise.race([linkToExistingRoom(code, existingRoomId), timeout]);
+      if (result.error) {
+        setStep("error");
+        setError(result.error);
+      } else if (result.roomId) {
+        setRoomId(result.roomId);
+        setCreatedRoomName(existingRoomName);
+        const w = WINGS.find((wing) => wing.id === selectedWing);
+        setCreatedWingName(w?.name || "");
+        setStep("ready");
+      } else {
+        setStep("error");
+        setError("No room ID returned");
+      }
+    } catch (e) {
+      setStep("error");
+      setError(String(e));
+    }
+  }
 
   async function handleVirtualRoom() {
     if (!roomName.trim() || !code) return;
@@ -273,8 +325,57 @@ export default function KepJoinPage({ params }: PageProps) {
             </div>
             {selectedWing && (
               <>
+                {/* Existing rooms */}
+                {loadingRooms && (
+                  <p style={{ color: T.color.muted, fontSize: "0.8125rem", marginBottom: "0.5rem" }}>
+                    Loading rooms...
+                  </p>
+                )}
+                {!loadingRooms && existingRooms.length > 0 && (
+                  <>
+                    <p style={{ fontFamily: T.font.display, fontSize: "0.875rem", color: T.color.charcoal, marginBottom: "0.5rem" }}>
+                      Use existing room
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", marginBottom: "1rem" }}>
+                      {existingRooms.map((room) => (
+                        <button
+                          key={room.id}
+                          onClick={() => handleExistingRoom(room.id, room.name)}
+                          style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            padding: "0.75rem 1rem", borderRadius: "0.75rem", width: "100%",
+                            border: `1px solid ${T.color.cream}`, background: T.color.linen,
+                            cursor: "pointer", transition: "border-color .15s, box-shadow .15s",
+                            textAlign: "left" as const,
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.color.terracotta; e.currentTarget.style.boxShadow = `0 0 0 1px ${T.color.terracotta}`; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.color.cream; e.currentTarget.style.boxShadow = "none"; }}
+                        >
+                          <span style={{ fontFamily: T.font.display, fontSize: "0.875rem", color: T.color.charcoal }}>
+                            {room.name}
+                          </span>
+                          <span style={{ fontSize: "0.75rem", color: T.color.muted, flexShrink: 0, marginLeft: "0.5rem" }}>
+                            {room.memories_count} {room.memories_count === 1 ? "memory" : "memories"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: "0.75rem",
+                      marginBottom: "0.75rem",
+                    }}>
+                      <div style={{ flex: 1, height: "1px", background: T.color.cream }} />
+                      <span style={{ fontSize: "0.75rem", color: T.color.muted }}>or</span>
+                      <div style={{ flex: 1, height: "1px", background: T.color.cream }} />
+                    </div>
+                  </>
+                )}
+
+                {/* Create new room */}
                 <label style={{ display: "block", fontFamily: T.font.display, fontSize: "0.875rem", color: T.color.charcoal, marginBottom: "0.375rem" }}>
-                  {t("roomName")}
+                  Create new room
                 </label>
                 <input
                   type="text" value={roomName} onChange={(e) => setRoomName(e.target.value)}

@@ -46,7 +46,10 @@ export function getGPUTier(): GPUTier {
   const smallScreen = window.innerWidth < 768 || window.innerHeight < 500;
   const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
   const mobileUA = /Android|iPhone|iPad|iPod|Mobile|webOS/i.test(navigator.userAgent);
-  const isMobile = smallScreen || (hasTouch && mobileUA);
+  // iPad has large screens but shares mobile GPU constraints in WKWebView
+  const isIPad = /iPad/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && hasTouch && navigator.maxTouchPoints > 1);
+  const isMobile = smallScreen || isIPad || (hasTouch && mobileUA);
 
   if (isMobile) {
     const renderer = detectRendererString();

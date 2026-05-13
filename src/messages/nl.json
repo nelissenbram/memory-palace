@@ -171,8 +171,7 @@
     "agreeTerms": "Door een account aan te maken ga je akkoord met onze",
     "and": "en",
     "ageConfirm": "Ik bevestig dat ik minstens 16 jaar oud ben",
-    "ageRequiredForSocial": "Bevestig dat je minstens 16 jaar oud bent voordat je je registreert.",
-    "comingSoon": "Binnenkort"
+    "ageRequiredForSocial": "Bevestig dat je minstens 16 jaar oud bent voordat je je registreert."
   },
   "forgotPassword": {
     "title": "Wachtwoord resetten",
@@ -638,7 +637,7 @@
     "offerPauseBody": "Je kunt je abonnement tot 3 maanden pauzeren. Je herinneringen blijven veilig, en je kunt op elk moment hervatten.",
     "offerPauseCta": "Pauzeer mijn abonnement",
     "offerReminderTitle": "We helpen je op weg",
-    "offerReminderBody": "Probeer ons AI-levensinterview \u2014 het maakt het toevoegen van herinneringen makkelijk en leuk. Praat gewoon, en wij leggen je verhalen vast.",
+    "offerReminderBody": "Probeer ons AI-levensinterview — het maakt het toevoegen van herinneringen makkelijk en leuk. Praat gewoon, en wij leggen je verhalen vast.",
     "offerReminderCta": "Ik probeer het nog eens",
     "offerFeedbackTitle": "Vertel ons wat er ontbreekt",
     "offerFeedbackBody": "Je feedback bepaalt direct onze roadmap. Laat ons weten welke functies je nodig hebt.",
@@ -1282,9 +1281,9 @@
       "a8": "Ja! Eigen apps voor iOS en Android zijn momenteel in ontwikkeling. In de tussentijd werkt The Memory Palace prachtig in elke moderne browser op desktop, tablet en mobiel — geen download nodig."
     },
     "exitIntent": {
-      "title": "Voordat je gaat\u2026",
-      "body": "Het verhaal van jouw familie verdient het om bewaard te worden. Maak je Memory Palace in 2 minuten \u2014 gratis.",
-      "cta": "Maak je Palace \u2014 Gratis"
+      "title": "Voordat je gaat…",
+      "body": "Het verhaal van jouw familie verdient het om bewaard te worden. Maak je Memory Palace in 2 minuten — gratis.",
+      "cta": "Maak je Palace — Gratis"
     },
     "cookieConsent": {
       "message": "We gebruiken cookies om je ervaring te verbeteren.",
@@ -4685,5 +4684,29 @@
     "noMemories": "Nog geen herinneringen. Deel foto's en video's in WhatsApp om te beginnen.",
     "ctaTitle": "Maak een Memory Palace om deze herinneringen voor altijd te bewaren",
     "createPalace": "Maak je Memory Palace"
+  },
+  "kepLanding": {
+    "title": "Maak kennis met Kep",
+    "subtitle": "Jouw persoonlijke herinneringendrager",
+    "heroText": "Kep is de stille bediende van jouw Memory Palace. Als een toegewijde kruier draagt Kep je kostbare momenten vanuit WhatsApp-gesprekken rechtstreeks naar de zalen van je paleis — zodat er niets verloren gaat onderweg.",
+    "whatIsKep": "Wie is Kep?",
+    "whatIsKepText": "Kep is een discrete, altijd oplettende lakei in dienst van jouw Memory Palace. Voeg Kep toe aan een WhatsApp-groep en deze trouwe kruier verzamelt stilletjes elke foto, video en elk bericht — en draagt ze zorgvuldig naar een kamer die speciaal voor jou is ingericht.",
+    "howItWorksTitle": "Hoe Kep je bedient",
+    "step1Title": "Nodig Kep uit",
+    "step1Text": "Voeg Kep toe aan je WhatsApp-groep of start een persoonlijk gesprek. Een simpel bericht is alles wat nodig is.",
+    "step2Title": "Kep verzamelt",
+    "step2Text": "Als een ijverige kruier verzamelt Kep stilletjes elke foto, video en elk bericht. Niets wordt over het hoofd gezien, niets wordt vergeten.",
+    "step3Title": "Een kamer wordt ingericht",
+    "step3Text": "Kep schikt je herinneringen in een tijdelijke virtuele kamer — een voorproefje van wat je paleis kan bevatten. Beschikbaar voor 14 dagen.",
+    "step4Title": "Welkom thuis",
+    "step4Text": "Wanneer je er klaar voor bent, draagt Kep je collectie naar een permanente kamer in je Memory Palace. Veilig, georganiseerd, voor altijd van jou.",
+    "privacyTitle": "Discretie boven alles",
+    "privacyText": "Een goede lakei overschrijdt nooit zijn grenzen. Kep kondigt zichzelf aan bij de groep, respecteert opt-outs, en dient enkel op jouw commando. Zeg op elk moment STOP, en Kep doet een stap terug — zonder vragen.",
+    "personaTitle": "De trouwe kruier",
+    "personaText": "In de grote huizen van weleer stond de kruier aan de poort — gasten ontvangen, bagage dragen, en ervoor zorgen dat niets van waarde zoekraakte. Kep draagt diezelfde traditie het digitale tijdperk in, en zorgt voor je herinneringen met stille toewijding.",
+    "ctaTitle": "Laat Kep je herinneringen dragen",
+    "ctaText": "Start een gesprek met Kep op WhatsApp en laat je trouwe kruier aan het werk gaan.",
+    "ctaButton": "Bericht Kep op WhatsApp",
+    "learnMore": "Meer over The Memory Palace"
   }
 }

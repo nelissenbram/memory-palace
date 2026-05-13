@@ -35,16 +35,16 @@ export async function POST(request: Request) {
 
   if (!appSecret) {
     console.error("[WhatsApp] WHATSAPP_APP_SECRET not configured");
-    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+    return new Response("OK", { status: 200 });
   }
 
   const rawBody = await request.text();
-  console.log("[WhatsApp] Webhook POST received, body length:", rawBody.length, "signature present:", !!signature);
 
-  // Verify X-Hub-Signature-256 (temporarily log mismatches instead of rejecting)
+  // Verify X-Hub-Signature-256 — always return 200 to prevent Meta backoff
   const isValid = await verifySignature(rawBody, signature, appSecret);
   if (!isValid) {
-    console.warn("[WhatsApp] Signature mismatch — processing anyway. signature:", signature?.slice(0, 20), "secret length:", appSecret.length);
+    console.warn("[WhatsApp] Signature verification failed");
+    return new Response("OK", { status: 200 });
   }
 
   // Parse the webhook payload
@@ -52,11 +52,12 @@ export async function POST(request: Request) {
   try {
     payload = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    console.warn("[WhatsApp] Invalid JSON payload");
+    return new Response("OK", { status: 200 });
   }
 
   if (payload.object !== "whatsapp_business_account") {
-    return NextResponse.json({ error: "Unsupported object" }, { status: 400 });
+    return new Response("OK", { status: 200 });
   }
 
   // Must return 200 quickly to avoid Meta retries

@@ -171,8 +171,7 @@
     "agreeTerms": "By creating an account, you agree to our",
     "and": "and",
     "ageConfirm": "I confirm I am at least 16 years old",
-    "ageRequiredForSocial": "Please confirm you are at least 16 years old before signing up.",
-    "comingSoon": "Coming soon"
+    "ageRequiredForSocial": "Please confirm you are at least 16 years old before signing up."
   },
   "forgotPassword": {
     "title": "Reset Password",
@@ -204,8 +203,8 @@
   },
   "onboarding": {
     "welcomeTitle": "Welcome to",
-    "cinematicPalaceName": "{name}\u2019s Palace",
-    "cinematicPossessive": "{name}\u2019s {thing}",
+    "cinematicPalaceName": "{name}’s Palace",
+    "cinematicPossessive": "{name}’s {thing}",
     "appName": "The Memory Palace",
     "thresholdMessage": "Every life is a story worth preserving. Yours starts here.",
     "enterButton": "Enter",
@@ -1282,9 +1281,9 @@
       "a8": "Yes! Native apps for iOS and Android are currently in development. In the meantime, The Memory Palace works beautifully in any modern browser on desktop, tablet, and mobile — no download required."
     },
     "exitIntent": {
-      "title": "Before you go\u2026",
-      "body": "Your family\u2019s story deserves to be preserved. Create your Memory Palace in 2 minutes \u2014 free.",
-      "cta": "Create Your Palace \u2014 Free"
+      "title": "Before you go…",
+      "body": "Your family’s story deserves to be preserved. Create your Memory Palace in 2 minutes — free.",
+      "cta": "Create Your Palace — Free"
     },
     "cookieConsent": {
       "message": "We use cookies to improve your experience.",
@@ -4010,9 +4009,9 @@
     "cloudSelectAll": "Select all",
     "cloudDeselectAll": "Deselect all",
     "cloudItemsSelected": "{count} items selected",
-    "googlePhotosPickerOpening": "Opening Google Photos\u2026",
+    "googlePhotosPickerOpening": "Opening Google Photos…",
     "googlePhotosPickerWaiting": "Select photos in the Google Photos window, then click Done.",
-    "googlePhotosPickerImporting": "Importing selected photos\u2026",
+    "googlePhotosPickerImporting": "Importing selected photos…",
     "googlePhotosPickerOpenBtn": "Open Google Photos",
     "googlePhotosPickerBlocked": "Please allow popups for this site to use Google Photos.",
     "googlePhotosPickerNoRoom": "Please select a room first.",
@@ -4683,5 +4682,29 @@
     "noMemories": "No memories yet. Share photos and videos in WhatsApp to get started.",
     "ctaTitle": "Create a Memory Palace to keep these memories forever",
     "createPalace": "Create Your Memory Palace"
+  },
+  "kepLanding": {
+    "title": "Meet Kep",
+    "subtitle": "Your personal memory porter",
+    "heroText": "Kep is the silent attendant of your Memory Palace. Like a devoted porter, Kep carries your precious moments from WhatsApp conversations straight into the halls of your palace — so nothing gets lost along the way.",
+    "whatIsKep": "Who is Kep?",
+    "whatIsKepText": "Kep is a discreet, ever-attentive valet in the service of your Memory Palace. Add Kep to any WhatsApp group, and this faithful porter will quietly collect every photo, video, and message shared — carefully carrying them to a private room prepared just for you.",
+    "howItWorksTitle": "How Kep serves you",
+    "step1Title": "Invite Kep",
+    "step1Text": "Add Kep to your WhatsApp group or start a private conversation. A simple message is all it takes.",
+    "step2Title": "Kep collects",
+    "step2Text": "Like a diligent porter, Kep silently gathers every photo, video, and message. Nothing is overlooked, nothing is forgotten.",
+    "step3Title": "A room is prepared",
+    "step3Text": "Kep arranges your memories in a temporary virtual room — a preview of what your palace could hold. Available for 14 days.",
+    "step4Title": "Welcome home",
+    "step4Text": "When you are ready, Kep carries your collection into a permanent room in your Memory Palace. Safe, organised, forever yours.",
+    "privacyTitle": "Discretion above all",
+    "privacyText": "A good porter never oversteps. Kep announces itself to the group, respects opt-outs, and only serves at your command. Say STOP at any time, and Kep steps back — no questions asked.",
+    "personaTitle": "The faithful porter",
+    "personaText": "In the great houses of old, the porter stood at the gate — receiving guests, carrying luggage, and ensuring nothing of value was misplaced. Kep carries that same tradition into the digital age, tending to your memories with quiet dedication.",
+    "ctaTitle": "Let Kep carry your memories",
+    "ctaText": "Start a conversation with Kep on WhatsApp and let your faithful porter get to work.",
+    "ctaButton": "Message Kep on WhatsApp",
+    "learnMore": "Learn more about The Memory Palace"
   }
 }

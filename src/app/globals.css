@@ -77,9 +77,11 @@ body {
    operations including programmatic scrolls, causing jank. Use CSS class or
    JS smooth-scroll selectively where needed instead. */
 
-/* Touch-action for interactive elements */
+/* Touch-action and iOS button reset for interactive elements */
 button, a, [role="button"] {
   touch-action: manipulation;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Prevent text selection on UI controls during touch */

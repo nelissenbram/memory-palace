@@ -53,23 +53,7 @@ export default function SubscriptionPage() {
     setToast({ message, type });
   }, []);
 
-  // Check for success param
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("success") === "true") {
-      showToast(t("activated"), "success");
-      // Clean URL
-      window.history.replaceState({}, "", "/settings/subscription");
-    }
-  }, [showToast]);
-
-  // Auto-detect currency from timezone/locale
-  useEffect(() => {
-    setCurrency(detectCurrency());
-  }, []);
-
-  useEffect(() => {
-    async function load() {
+  const load = useCallback(async () => {
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -121,9 +105,28 @@ export default function SubscriptionPage() {
         // ignore
       }
       setLoading(false);
-    }
-    load();
   }, []);
+
+  // Check for success param — refetch data to pick up webhook-updated plan
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "true") {
+      showToast(t("activated"), "success");
+      window.history.replaceState({}, "", "/settings/subscription");
+      // Refetch after short delay to allow webhook to process
+      const timer = setTimeout(() => load(), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast, load]);
+
+  // Auto-detect currency from timezone/locale
+  useEffect(() => {
+    setCurrency(detectCurrency());
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleManageBilling = async () => {
     setPortalLoading(true);
