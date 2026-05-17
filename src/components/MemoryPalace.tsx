@@ -48,6 +48,7 @@ import OnThisDay from "@/components/ui/OnThisDay";
 import TimeCapsuleReveal from "@/components/ui/TimeCapsuleReveal";
 const MemoryTimeline = lazy(() => import("@/components/ui/MemoryTimeline"));
 const StatisticsPanel = lazy(() => import("@/components/ui/StatisticsPanel"));
+const PublishModal = lazy(() => import("@/components/social/PublishModal"));
 // MassImportPanel removed — all import flows now use ImportHub in Library mode
 import RoomGallery from "@/components/ui/RoomGallery";
 const RoomMediaPanel = lazy(() => import("@/components/ui/RoomMediaPanel"));
@@ -247,6 +248,7 @@ export default function MemoryPalace(){
   const setShowWingManager = useUIPanelStore((s) => s.setShowWingManager);
   const showStatistics = useUIPanelStore((s) => s.showStatistics);
   const setShowStatistics = useUIPanelStore((s) => s.setShowStatistics);
+  const [publishTarget, setPublishTarget] = useState<{ type: "wing" | "room"; id: string; name: string } | null>(null);
   const [sharedWings, setSharedWings] = useState<SharedWingDoor[]>([]);
   // sharedContext removed — was never read
   const [sharedWingData, setSharedWingData] = useState<{ wing: any; rooms: any[] } | null>(null);
@@ -1032,6 +1034,13 @@ export default function MemoryPalace(){
         onShare={() => setShowSharing(true)}
         onSharingSettings={() => setShowSharingSettings(true)}
         onBack={() => { view === "room" ? exitToCorridor() : view === "corridor" ? exitToEntrance() : exitToPalace(); }}
+        onPublish={() => {
+          if (view === "room" && activeRoomId && activeRoomData) {
+            setPublishTarget({ type: "room", id: activeRoomId, name: activeRoomData.nameKey ? (tWings(activeRoomData.nameKey) || activeRoomData.name) : activeRoomData.name });
+          } else if (view === "corridor" && activeWing && wingData) {
+            setPublishTarget({ type: "wing", id: wingData.id, name: wingData.nameKey ? (tWings(wingData.nameKey) || wingData.name) : wingData.name });
+          }
+        }}
       />
 
       {/* Portal transition overlay */}
@@ -1072,6 +1081,7 @@ export default function MemoryPalace(){
       {/* MobileBottomBar removed — replaced by PalaceSubNav */}
 
       {/* Panels + overlays */}
+      {publishTarget && <Suspense fallback={lazyFallback}><PublishModal type={publishTarget.type} id={publishTarget.id} name={publishTarget.name} onClose={() => setPublishTarget(null)} /></Suspense>}
       {showUpload&&activeRoomId&&<UploadPanel wing={wingData} room={activeRoomData} onClose={()=>setShowUpload(false)} onAdd={(mem: any)=>{
         const wasFirst = Object.values(userMems).every(a => a.length === 0) && allRoomMems.length === 0;
         handleAddMemory(mem);

@@ -218,6 +218,11 @@ export default function NotificationBell() {
                   case "reminder":         return "\u29D7"; // ⧗
                   case "system":           return "\u2756"; // ❖
                   case "kep_capture":      return "\uD83D\uDCF8"; // 📸
+                  case "new_follower":     return "\u2726"; // ✦
+                  case "collab_invite":    return "\u2694"; // ⚔
+                  case "comment_reply":    return "\u270E"; // ✎
+                  case "reaction":         return "\u2764"; // ❤
+                  case "palace_visit":     return "\u21E8"; // ⇨
                   default:                 return "\u2726"; // ✦
                 }
               })()}

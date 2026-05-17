@@ -31,6 +31,8 @@ import RoomManagerPanel from "@/components/ui/RoomManagerPanel";
 import { WingIcon, RoomIcon } from "./WingRoomIcons";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
+import { lazy, Suspense } from "react";
+const PublishModal = lazy(() => import("@/components/social/PublishModal"));
 
 interface CloudItem {
   id: string;
@@ -450,6 +452,7 @@ export default function LibraryView() {
   const [selectMode, setSelectMode] = useState(false);
   const [lightboxMem, setLightboxMem] = useState<Mem | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [publishTarget, setPublishTarget] = useState<{ type: "wing" | "room"; id: string; name: string } | null>(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSortOpen, setMobileSortOpen] = useState(false);
   const [batchTagInput, setBatchTagInput] = useState("");
@@ -1490,6 +1493,40 @@ export default function LibraryView() {
             </button>
             );
           })}
+          {/* Publish button */}
+          <button onClick={() => {
+            if (selectedRoom) {
+              const r = wingRooms.find(r => r.id === selectedRoom);
+              setPublishTarget({ type: "room", id: selectedRoom, name: r ? translateRoomName(r, tWings) : selectedRoom });
+            } else if (selectedWing && selectedWing !== "__all__") {
+              const w = wings.find(w => w.id === selectedWing);
+              setPublishTarget({ type: "wing", id: selectedWing, name: w?.nameKey ? tWings(w.nameKey) || w.name : w?.name || selectedWing });
+            } else {
+              setToolbarHint(true);
+              setTimeout(() => setToolbarHint(false), 2500);
+            }
+          }}
+            style={{
+              display: "flex", alignItems: "center", gap: isMobile ? "0.25rem" : "0.5rem",
+              padding: isMobile ? "0.375rem 0.625rem" : "0.5rem 1rem", borderRadius: "1.5rem",
+              border: `0.0625rem solid ${(selectedRoom || (selectedWing && selectedWing !== "__all__")) ? `${T.color.gold}55` : "rgba(44,44,42,.1)"}`,
+              background: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? `${T.color.gold}10` : "rgba(255,255,255,0.4)",
+              backdropFilter: "blur(0.5rem)",
+              color: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? T.color.goldDark : T.color.muted,
+              cursor: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? "pointer" : "default",
+              fontFamily: T.font.body, fontSize: isMobile ? "0.6875rem" : "0.8125rem", fontWeight: 600,
+              letterSpacing: "0.02em", whiteSpace: "nowrap", flexShrink: 0,
+              opacity: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? 1 : 0.55,
+              transition: "all 0.2s ease",
+              boxShadow: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? "0 0.0625rem 0.25rem rgba(44,44,42,0.06)" : "none",
+            }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+            {t("publish")}
+          </button>
           {toolbarHint && !selectedRoom && !spotlightTarget && (
             <span style={{
               fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.terracotta,
@@ -3546,6 +3583,18 @@ export default function LibraryView() {
       )}
 
       {/* ═══ MOVED TOAST ═══ */}
+      {/* Publish modal */}
+      {publishTarget && (
+        <Suspense fallback={null}>
+          <PublishModal
+            type={publishTarget.type}
+            id={publishTarget.id}
+            name={publishTarget.name}
+            onClose={() => setPublishTarget(null)}
+          />
+        </Suspense>
+      )}
+
       {movedToast && (
         <div style={{
           position: "fixed",

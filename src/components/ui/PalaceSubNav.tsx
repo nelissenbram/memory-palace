@@ -70,6 +70,7 @@ export interface PalaceSubNavProps {
   onShare: () => void;
   onSharingSettings: () => void;
   onBack: () => void;
+  onPublish?: () => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -722,6 +723,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
         barShadow={barShadow}
         controlledPending={props.pending}
         onPendingChange={props.onPendingChange}
+        onPublish={props.onPublish}
       />
     );
   }
@@ -771,6 +773,48 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
         }}
       >
         {renderBreadcrumbs()}
+
+        {/* Publish button — shown in corridor/room view */}
+        {props.onPublish && (view === "corridor" || view === "room") && (
+          <>
+            <span style={{ flex: 1 }} />
+            <button
+              onClick={props.onPublish}
+              title={t("publishAction")}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.3125rem",
+                padding: "0.25rem 0.625rem",
+                borderRadius: "0.5rem",
+                border: `1px solid ${T.color.gold}55`,
+                background: `${T.color.gold}10`,
+                fontFamily: T.font.body,
+                fontSize: "0.75rem",
+                fontWeight: 500,
+                color: T.color.goldDark,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = `${T.color.gold}25`;
+                e.currentTarget.style.borderColor = T.color.gold;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = `${T.color.gold}10`;
+                e.currentTarget.style.borderColor = `${T.color.gold}55`;
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+                <polyline points="16 6 12 2 8 6" />
+                <line x1="12" y1="2" x2="12" y2="15" />
+              </svg>
+              {t("publishAction")}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -796,6 +840,7 @@ interface MobileThreeBarNavProps {
   barShadow: string;
   controlledPending?: PalacePending;
   onPendingChange?: (p: PalacePending) => void;
+  onPublish?: () => void;
 }
 
 type Pending = PalacePending;
@@ -803,7 +848,7 @@ type Pending = PalacePending;
 function MobileThreeBarNav(props: MobileThreeBarNavProps) {
   const { view, wingName, wingAccent, roomId, wings, wingRooms,
     onExitToPalace, onEntranceHall, onSwitchWing, onNavigateRoom,
-    barBackground, barBorder, barShadow } = props;
+    barBackground, barBorder, barShadow, onPublish } = props;
   const { t } = useTranslation("palace");
   const { t: tWings } = useTranslation("wings");
 
@@ -1036,6 +1081,40 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         );
       })}
     </div>
+
+    {/* Publish button — mobile corridor/room only */}
+    {onPublish && (view === "corridor" || view === "room") && (
+      <button
+        onClick={onPublish}
+        aria-label={t("publishAction")}
+        style={{
+          position: "fixed",
+          top: `calc(${safeT} + ${BAR_H} * 3 + 0.5rem)`,
+          right: `calc(${safeR} + 0.75rem)`,
+          zIndex: 43,
+          width: "2.75rem",
+          height: "2.75rem",
+          borderRadius: "50%",
+          border: `1px solid ${T.color.gold}55`,
+          background: `${T.color.linen}ee`,
+          backdropFilter: "blur(0.5rem)",
+          WebkitBackdropFilter: "blur(0.5rem)",
+          color: T.color.goldDark,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 0.125rem 0.5rem rgba(44,44,42,0.1)",
+          transition: "all 0.15s ease",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+          <polyline points="16 6 12 2 8 6" />
+          <line x1="12" y1="2" x2="12" y2="15" />
+        </svg>
+      </button>
+    )}
 
     {/* Enter button: fixed on right, spans 3 bars — Tuscan arched portico */}
     <button

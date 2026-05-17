@@ -11,6 +11,7 @@ import { fetchPublicShare, togglePublicShare } from "@/lib/auth/public-share-act
 import { updateShareDownloadPermission, updateRoomPublicVisibility, updateSharePermission } from "@/lib/auth/family-actions";
 import { generateInviteLink } from "@/lib/sharing/generate-link";
 import { hapticLight } from "@/lib/native/haptics";
+import QRShareModal from "@/components/social/QRShareModal";
 
 interface Share {
   id: string;
@@ -53,6 +54,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
   const [allowDownload,setAllowDownload]=useState(true);
   const [showPublicPalace,setShowPublicPalace]=useState(false);
   const [editingPermFor,setEditingPermFor]=useState<string|null>(null);
+  const [showQR,setShowQR]=useState(false);
   const accent=wing?.accent||T.color.terracotta;
 
   // Load real shares from DB on mount
@@ -198,6 +200,7 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
   };
 
   return(
+    <>
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(0.5rem)",zIndex:55,animation:"fadeIn .2s ease"}}>
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("shareRoom")} onKeyDown={(e)=>{if(e.key==="Escape")onClose();handleKeyDown(e);}} onClick={e=>e.stopPropagation()} style={{position:"absolute",right:0,top:0,bottom:0,width:isMobile?"100%":"min(25rem, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(1.25rem)",borderLeft:isMobile?"none":`1px solid ${T.color.cream}`,padding:isMobile?"1.25rem 1rem":"1.75rem 1.5rem",paddingBottom:isMobile?"calc(1.25rem + env(safe-area-inset-bottom, 0px))":"1.75rem",overflowY:"auto",animation:"slideInRight .3s cubic-bezier(.23,1,.32,1)"}}>
         {/* Header */}
@@ -296,11 +299,17 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
             }}
           />
 
-          {/* Copy generic link */}
-          <button onClick={copyGenericLink} style={{width:"100%",padding:"0.75rem 1rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,cursor:"pointer",display:"flex",alignItems:"center",gap:"0.5rem",marginBottom:"1.25rem",transition:"all .2s"}}>
-            <span style={{fontSize:"0.875rem"}}>{copied?"&#x2705;":"&#x1F517;"}</span>
-            <span style={{fontFamily:T.font.body,fontSize:"0.75rem",color:copied?T.color.success:T.color.walnut,fontWeight:500}}>{copied?t("linkCopied"):t("copyShareLink")}</span>
-          </button>
+          {/* Copy generic link + QR */}
+          <div style={{display:"flex",gap:"0.5rem",marginBottom:"1.25rem"}}>
+            <button onClick={copyGenericLink} style={{flex:1,padding:"0.75rem 1rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,cursor:"pointer",display:"flex",alignItems:"center",gap:"0.5rem",transition:"all .2s"}}>
+              <span style={{fontSize:"0.875rem"}}>{copied?"&#x2705;":"&#x1F517;"}</span>
+              <span style={{fontFamily:T.font.body,fontSize:"0.75rem",color:copied?T.color.success:T.color.walnut,fontWeight:500}}>{copied?t("linkCopied"):t("copyShareLink")}</span>
+            </button>
+            <button onClick={()=>setShowQR(true)} aria-label="QR Code" style={{padding:"0.75rem 1rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,cursor:"pointer",display:"flex",alignItems:"center",gap:"0.375rem",transition:"all .2s",whiteSpace:"nowrap"}}>
+              <span style={{fontSize:"0.875rem"}}>{"\u{1F4F1}"}</span>
+              <span style={{fontFamily:T.font.body,fontSize:"0.75rem",color:T.color.walnut,fontWeight:500}}>QR</span>
+            </button>
+          </div>
 
           {/* People list */}
           {shares.length>0&&<>
@@ -445,5 +454,14 @@ export default function SharingPanel({wing,room,roomId,sharing,onUpdate,onClose}
         </div>
       </div>
     </div>
+
+    {showQR && (
+      <QRShareModal
+        url={`${typeof window !== "undefined" ? window.location.origin : ""}/palace?shared=${roomId}`}
+        title={room?.name || "Memory Palace"}
+        onClose={() => setShowQR(false)}
+      />
+    )}
+    </>
   );
 }

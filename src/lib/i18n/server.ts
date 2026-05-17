@@ -265,6 +265,42 @@ const fallbackNames: Record<string, Record<string, string>> = {
     es: "Ha pasado un tiempo, {name}. Tu palacio est\u00e1 tal como lo dejaste.",
     fr: "Cela fait un moment, {name}. Votre palais est tel que vous l'avez laiss\u00e9.",
   },
+  // ── Social notifications ──
+  notif_new_follower: {
+    en: "{name} started following you.",
+    nl: "{name} volgt je nu.",
+    de: "{name} folgt dir jetzt.",
+    es: "{name} comenz\u00f3 a seguirte.",
+    fr: "{name} a commenc\u00e9 \u00e0 vous suivre.",
+  },
+  notif_comment: {
+    en: "{name} commented on your {target}.",
+    nl: "{name} reageerde op je {target}.",
+    de: "{name} hat deinen/deine {target} kommentiert.",
+    es: "{name} coment\u00f3 en tu {target}.",
+    fr: "{name} a comment\u00e9 sur votre {target}.",
+  },
+  notif_collab_invite: {
+    en: "{name} invited you to collaborate on \"{room}\".",
+    nl: "{name} heeft je uitgenodigd om samen te werken aan \"{room}\".",
+    de: "{name} hat dich zur Zusammenarbeit an \"{room}\" eingeladen.",
+    es: "{name} te invit\u00f3 a colaborar en \"{room}\".",
+    fr: "{name} vous a invit\u00e9 \u00e0 collaborer sur \"{room}\".",
+  },
+  notif_palace_visit: {
+    en: "{name} visited your palace.",
+    nl: "{name} heeft je paleis bezocht.",
+    de: "{name} hat deinen Palast besucht.",
+    es: "{name} visit\u00f3 tu palacio.",
+    fr: "{name} a visit\u00e9 votre palais.",
+  },
+  notif_reaction: {
+    en: "{name} reacted to your {target}.",
+    nl: "{name} reageerde op je {target}.",
+    de: "{name} hat auf deinen/deine {target} reagiert.",
+    es: "{name} reaccion\u00f3 a tu {target}.",
+    fr: "{name} a r\u00e9agi \u00e0 votre {target}.",
+  },
 };
 
 /**

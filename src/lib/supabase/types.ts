@@ -23,6 +23,9 @@ export interface Database {
           email_digest: boolean;
           last_seen_at: string | null;
           created_at: string;
+          username: string | null;
+          bio: string | null;
+          is_public: boolean;
         };
         Insert: {
           id: string;
@@ -34,6 +37,9 @@ export interface Database {
           email_digest?: boolean;
           last_seen_at?: string | null;
           created_at?: string;
+          username?: string | null;
+          bio?: string | null;
+          is_public?: boolean;
         };
         Update: {
           id?: string;
@@ -45,6 +51,9 @@ export interface Database {
           email_digest?: boolean;
           last_seen_at?: string | null;
           created_at?: string;
+          username?: string | null;
+          bio?: string | null;
+          is_public?: boolean;
         };
       };
       wings: {
@@ -56,6 +65,10 @@ export interface Database {
           accent_color: string | null;
           sort_order: number;
           created_at: string;
+          published_at: string | null;
+          publish_description: string | null;
+          publish_visibility: string;
+          visibility: string;
         };
         Insert: {
           id?: string;
@@ -65,6 +78,10 @@ export interface Database {
           accent_color?: string | null;
           sort_order?: number;
           created_at?: string;
+          published_at?: string | null;
+          publish_description?: string | null;
+          publish_visibility?: string;
+          visibility?: string;
         };
         Update: {
           id?: string;
@@ -74,6 +91,10 @@ export interface Database {
           accent_color?: string | null;
           sort_order?: number;
           created_at?: string;
+          published_at?: string | null;
+          publish_description?: string | null;
+          publish_visibility?: string;
+          visibility?: string;
         };
       };
       rooms: {
@@ -87,6 +108,10 @@ export interface Database {
           sort_order: number;
           is_shared: boolean;
           created_at: string;
+          published_at: string | null;
+          publish_description: string | null;
+          publish_visibility: string;
+          visibility: string;
         };
         Insert: {
           id?: string;
@@ -98,6 +123,10 @@ export interface Database {
           sort_order?: number;
           is_shared?: boolean;
           created_at?: string;
+          published_at?: string | null;
+          publish_description?: string | null;
+          publish_visibility?: string;
+          visibility?: string;
         };
         Update: {
           id?: string;
@@ -109,6 +138,10 @@ export interface Database {
           sort_order?: number;
           is_shared?: boolean;
           created_at?: string;
+          published_at?: string | null;
+          publish_description?: string | null;
+          publish_visibility?: string;
+          visibility?: string;
         };
       };
       memories: {
@@ -238,6 +271,185 @@ export interface Database {
           permission?: string;
           accepted?: boolean;
           created_at?: string;
+        };
+      };
+      follows: {
+        Row: {
+          id: string;
+          follower_id: string;
+          following_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          follower_id: string;
+          following_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          follower_id?: string;
+          following_id?: string;
+          created_at?: string;
+        };
+      };
+      activity_feed: {
+        Row: {
+          id: string;
+          actor_id: string;
+          target_user_id: string | null;
+          action_type: string;
+          target_type: string | null;
+          target_id: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          actor_id: string;
+          target_user_id?: string | null;
+          action_type: string;
+          target_type?: string | null;
+          target_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          actor_id?: string;
+          target_user_id?: string | null;
+          action_type?: string;
+          target_type?: string | null;
+          target_id?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+      };
+      comments: {
+        Row: {
+          id: string;
+          user_id: string;
+          target_type: string;
+          target_id: string;
+          body: string;
+          parent_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          target_type: string;
+          target_id: string;
+          body: string;
+          parent_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          target_type?: string;
+          target_id?: string;
+          body?: string;
+          parent_id?: string | null;
+          created_at?: string;
+        };
+      };
+      reactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          target_type: string;
+          target_id: string;
+          emoji: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          target_type: string;
+          target_id: string;
+          emoji: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          target_type?: string;
+          target_id?: string;
+          emoji?: string;
+          created_at?: string;
+        };
+      };
+      palace_visits: {
+        Row: {
+          id: string;
+          visitor_id: string;
+          owner_id: string;
+          wing_id: string | null;
+          room_id: string | null;
+          visited_at: string;
+        };
+        Insert: {
+          id?: string;
+          visitor_id: string;
+          owner_id: string;
+          wing_id?: string | null;
+          room_id?: string | null;
+          visited_at?: string;
+        };
+        Update: {
+          id?: string;
+          visitor_id?: string;
+          owner_id?: string;
+          wing_id?: string | null;
+          room_id?: string | null;
+          visited_at?: string;
+        };
+      };
+      featured_palaces: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: string | null;
+          featured_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category?: string | null;
+          featured_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category?: string | null;
+          featured_at?: string;
+        };
+      };
+      room_collaborators: {
+        Row: {
+          id: string;
+          room_id: string;
+          user_id: string;
+          role: string;
+          invited_at: string;
+          accepted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          room_id: string;
+          user_id: string;
+          role?: string;
+          invited_at?: string;
+          accepted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          room_id?: string;
+          user_id?: string;
+          role?: string;
+          invited_at?: string;
+          accepted_at?: string | null;
         };
       };
     };

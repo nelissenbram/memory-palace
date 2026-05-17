@@ -105,7 +105,9 @@ export default async function RootLayout({
         {/* Force clear stale PWA caches — runs before any JS bundles (skip in Capacitor native) */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
-            if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())return;
+            try{
+              if(window.Capacitor||navigator.userAgent.indexOf("CapacitorNative")!==-1||window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.bridge)return;
+            }catch(e){return;}
             var V="v62";
             try{
               var s=localStorage.getItem("mp_v");
@@ -113,14 +115,16 @@ export default async function RootLayout({
                 localStorage.setItem("mp_v",V);
                 if("caches" in window){
                   caches.keys().then(function(k){
+                    if(!k.length){return;}
                     Promise.all(k.map(function(n){return caches.delete(n)})).then(function(){
                       if(navigator.serviceWorker){
                         navigator.serviceWorker.getRegistrations().then(function(r){
+                          if(!r.length){return;}
                           Promise.all(r.map(function(reg){return reg.unregister()})).then(function(){
                             window.location.reload();
                           });
                         });
-                      } else { window.location.reload(); }
+                      }
                     });
                   });
                 }
@@ -255,6 +259,18 @@ export default async function RootLayout({
         />
       </head>
       <body style={{ margin: 0, padding: 0 }}>
+        {/* Server-rendered loading state — visible until React mounts, then hidden by first client component */}
+        <div id="mp-loading" style={{
+          position: "fixed", inset: 0, zIndex: 99999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          backgroundColor: "#F2EDE4", fontFamily: "var(--font-display, Georgia, serif)",
+          color: "#7A5230", fontSize: "1.25rem", letterSpacing: "0.05em",
+        }}>
+          The Memory Palace
+        </div>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){var el=document.getElementById("mp-loading");if(!el)return;var t=setTimeout(function(){el.style.display="none"},8000);window.__mpHideLoading=function(){clearTimeout(t);if(el&&el.parentNode){el.style.opacity="0";el.style.transition="opacity 0.3s";setTimeout(function(){el.style.display="none"},300)}}})();
+        `}} />
         <a href="#main-content" className="skip-to-content">
           {{ en: "Skip to content", nl: "Ga naar inhoud", de: "Zum Inhalt springen", es: "Saltar al contenido", fr: "Aller au contenu" }[locale] || "Skip to content"}
         </a>

@@ -11,6 +11,7 @@ import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import CancelFlow from "@/components/ui/CancelFlow";
+import InviteFlow from "@/components/social/InviteFlow";
 
 const F = T.font;
 const C = T.color;
@@ -48,6 +49,7 @@ export default function SubscriptionPage() {
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralCount, setReferralCount] = useState(0);
   const [referralRewards, setReferralRewards] = useState<{ promo_code: string; created_at: string; redeemed: boolean }[]>([]);
+  const [showInviteFlow, setShowInviteFlow] = useState(false);
 
   const showToast = useCallback((message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -1066,7 +1068,38 @@ export default function SubscriptionPage() {
                 {t("referralShare")}
               </button>
             )}
+
+            <button
+              onClick={() => setShowInviteFlow(true)}
+              style={{
+                padding: "0.75rem 1.5rem",
+                borderRadius: "0.75rem",
+                border: `1px solid ${C.cream}`,
+                background: C.white,
+                fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
+                color: C.charcoal,
+                cursor: "pointer",
+                transition: "all .15s",
+                display: "flex", alignItems: "center", gap: "0.5rem",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <line x1="19" y1="8" x2="19" y2="14"/>
+                <line x1="22" y1="11" x2="16" y2="11"/>
+              </svg>
+              {t("inviteFriends") || "Invite Friends"}
+            </button>
           </div>
+
+          {showInviteFlow && referralCode && (
+            <InviteFlow
+              referralCode={referralCode}
+              targetUrl="https://thememorypalace.ai/register"
+              onClose={() => setShowInviteFlow(false)}
+            />
+          )}
 
           {/* Earned Rewards */}
           {referralRewards.length > 0 && (

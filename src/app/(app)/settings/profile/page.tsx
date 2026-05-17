@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
+import { updateProfile as updateSocialProfile } from "@/lib/social/profile-actions";
 import MFASetup from "@/components/settings/MFASetup";
 import ExportPanel from "@/components/settings/ExportPanel";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -19,6 +20,8 @@ interface ProfileData {
   email: string;
   bio: string;
   avatar_url: string;
+  username: string;
+  is_public: boolean;
 }
 
 /** Format hour (0-24 float) as HH:MM */
@@ -52,6 +55,9 @@ export default function ProfilePage() {
   // Editable fields
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
+  const [username, setUsername] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
+  const [isPublicSaving, setIsPublicSaving] = useState(false);
   const [styleEra, setStyleEra] = useState("");
   const [aiConsent, setAiConsent] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
@@ -97,10 +103,14 @@ export default function ProfilePage() {
             email: user.email || "",
             bio: data.bio || "",
             avatar_url: data.avatar_url || "",
+            username: data.username || "",
+            is_public: !!data.is_public,
           };
           setProfile(p);
           setDisplayName(p.display_name);
           setBio(p.bio);
+          setUsername(p.username);
+          setIsPublic(!!data.is_public);
           setStyleEra(data.style_era || "roman");
           setAiConsent(!!data.ai_consent);
         }
@@ -115,7 +125,8 @@ export default function ProfilePage() {
   const hasChanges =
     profile &&
     (displayName !== profile.display_name ||
-      bio !== profile.bio);
+      bio !== profile.bio ||
+      username !== profile.username);
 
   const handleSave = async () => {
     setSaving(true);
@@ -126,15 +137,28 @@ export default function ProfilePage() {
 
     if (result.error) {
       showToast(result.error, "error");
-    } else {
-      // Optimistic update
-      setProfile((prev) =>
-        prev
-          ? { ...prev, display_name: displayName, bio }
-          : prev
-      );
-      showToast(t("profileSaved"), "success");
+      setSaving(false);
+      return;
     }
+
+    if (username !== profile!.username) {
+      const socialResult = await updateSocialProfile({
+        username: username || undefined,
+      });
+      if (socialResult.error) {
+        showToast(socialResult.error, "error");
+        setSaving(false);
+        return;
+      }
+    }
+
+    // Optimistic update
+    setProfile((prev) =>
+      prev
+        ? { ...prev, display_name: displayName, bio, username }
+        : prev
+    );
+    showToast(t("profileSaved"), "success");
     setSaving(false);
   };
 
@@ -322,6 +346,27 @@ export default function ProfilePage() {
             </p>
           </div>
 
+          {/* Username (social) */}
+          <div>
+            <label htmlFor="profile-username" style={labelStyle}>{t("username")}</label>
+            <input
+              id="profile-username"
+              className="mp-settings-input"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+              placeholder={t("usernamePlaceholder")}
+              maxLength={30}
+              style={inputStyle}
+            />
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+              margin: "0.375rem 0 0", lineHeight: 1.4,
+            }}>
+              {t("usernameHelp")}
+            </p>
+          </div>
+
           {/* Bio */}
           <div>
             <label htmlFor="profile-bio" style={labelStyle}>{t("aboutMe")}</label>
@@ -339,6 +384,72 @@ export default function ProfilePage() {
                 lineHeight: 1.6,
               }}
             />
+          </div>
+
+          {/* Profile Visibility */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
+            background: T.color.linen,
+            border: `1px solid ${T.color.cream}`,
+          }}>
+            <div style={{ marginRight: "1rem" }}>
+              <div style={{
+                fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+                color: T.color.charcoal,
+              }}>
+                {t("profileVisibility")}
+              </div>
+              <div style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                marginTop: "0.25rem", lineHeight: 1.4,
+              }}>
+                {t("profileVisibilityDesc")}
+              </div>
+            </div>
+            <button
+              role="switch"
+              aria-checked={isPublic}
+              disabled={isPublicSaving}
+              onClick={async () => {
+                const newVal = !isPublic;
+                setIsPublicSaving(true);
+                setIsPublic(newVal);
+                const result = await updateSocialProfile({ is_public: newVal });
+                if (result.error) {
+                  showToast(result.error, "error");
+                  setIsPublic(!newVal);
+                } else {
+                  setProfile((prev) => prev ? { ...prev, is_public: newVal } : prev);
+                  showToast(newVal ? t("profileVisibilityOn") : t("profileVisibilityOff"), "success");
+                }
+                setIsPublicSaving(false);
+              }}
+              style={{
+                width: "3.25rem",
+                height: "1.75rem",
+                borderRadius: "0.875rem",
+                border: "none",
+                background: isPublic ? T.color.sage : T.color.sandstone,
+                cursor: isPublicSaving ? "wait" : "pointer",
+                position: "relative",
+                transition: "background .2s",
+                flexShrink: 0,
+                opacity: isPublicSaving ? 0.6 : 1,
+              }}
+            >
+              <span style={{
+                position: "absolute",
+                top: "0.1875rem",
+                left: isPublic ? "1.6875rem" : "0.1875rem",
+                width: "1.375rem",
+                height: "1.375rem",
+                borderRadius: "0.6875rem",
+                background: T.color.white,
+                boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+                transition: "left .2s",
+              }} />
+            </button>
           </div>
 
           {/* Palace Style */}
@@ -509,6 +620,7 @@ export default function ProfilePage() {
               onClick={() => {
                 setDisplayName(profile.display_name);
                 setBio(profile.bio);
+                setUsername(profile.username);
               }}
               style={{
                 padding: "0.875rem 1.5rem",

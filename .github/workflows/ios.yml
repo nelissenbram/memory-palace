@@ -80,6 +80,10 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:0 integer 1" $PLIST
           /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:1 integer 2" $PLIST
+          # WKAppBoundDomains — declares primary domain for WKWebView cookie/storage trust
+          /usr/libexec/PlistBuddy -c "Delete :WKAppBoundDomains" $PLIST 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains array" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains:0 string thememorypalace.ai" $PLIST
           # Support all orientations on iPad
           /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations~ipad" $PLIST 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad array" $PLIST

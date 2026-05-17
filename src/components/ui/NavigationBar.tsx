@@ -132,6 +132,27 @@ function PalaceIcon({ color = "currentColor", size = 16 }: { color?: string; siz
   );
 }
 
+/** Explore — compass rose for discovery */
+function ExploreIcon({ color = "currentColor", size = 16 }: { color?: string; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill={color} opacity="0.3" stroke="none" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </svg>
+  );
+}
+
 /** Me — user silhouette (kept from existing) */
 function MeIcon({ color = "currentColor", size = 16 }: { color?: string; size?: number }) {
   return (
@@ -156,7 +177,7 @@ function MeIcon({ color = "currentColor", size = 16 }: { color?: string; size?: 
 /*  Mode icon renderer                                                 */
 /* ------------------------------------------------------------------ */
 
-function ModeIcon({ mode, active, size = 16, color: colorOverride }: { mode: ModeKey | "me" | "help"; active: boolean; size?: number; color?: string }) {
+function ModeIcon({ mode, active, size = 16, color: colorOverride }: { mode: ModeKey | "me" | "help" | "explore"; active: boolean; size?: number; color?: string }) {
   const activeColor = T.color.gold;
   const inactiveColor = "currentColor";
   const color = colorOverride ?? (active ? activeColor : inactiveColor);
@@ -168,6 +189,8 @@ function ModeIcon({ mode, active, size = 16, color: colorOverride }: { mode: Mod
       return <LibraryIcon color={color} size={size} />;
     case "3d":
       return <PalaceIcon color={color} size={size} />;
+    case "explore":
+      return <ExploreIcon color={color} size={size} />;
     case "me":
       return <MeIcon color={color} size={size} />;
     case "help":
@@ -421,6 +444,7 @@ function NavigationBar({
           { mode: "library",       labelKey: "mode_library",       nudgeId: "atrium_mob_library" },
           { mode: "3d",            labelKey: "mode_palace",        nudgeId: "atrium_mob_palace" },
           { mode: "me",            labelKey: "tab_me",             nudgeId: "atrium_mob_me" },
+          { mode: "explore" as any, labelKey: "tab_explore",        nudgeId: "atrium_mob_explore" },
           { mode: "_spacer" as any, labelKey: "" },
           { mode: "notifications", labelKey: "tab_notifications",  nudgeId: "atrium_mob_notif" },
           { mode: "help",          labelKey: "tab_help",           nudgeId: "atrium_mob_help" },
@@ -473,10 +497,12 @@ function NavigationBar({
             const isMe = mode === "me";
             const isHelp = mode === "help";
             const isNotifications = mode === "notifications";
-            const isNavMode = !isMe && !isHelp && !isNotifications;
+            const isExplore = mode === ("explore" as any);
+            const isNavMode = !isMe && !isHelp && !isNotifications && !isExplore;
             const hasSpecialActive = !!(activeTab || nudgeActive);
             const isActive = isMe ? activeTab === "me"
               : isNotifications ? activeTab === "notifications"
+              : isExplore ? pathname === "/explore"
               : isHelp ? nudgeActive
               : hasSpecialActive ? false  /* suppress mode highlight when a special tab is active */
               : mode === currentMode;
@@ -491,7 +517,13 @@ function NavigationBar({
                   if (isNavMode) buttonRefs.current[mode as ModeKey] = el;
                 }}
                 onClick={() => {
-                  if (isMe) {
+                  if (isExplore) {
+                    if (onNavigate) {
+                      onNavigate("/explore");
+                    } else {
+                      router.push("/explore");
+                    }
+                  } else if (isMe) {
                     if (onSettings) {
                       onSettings();
                     } else {
@@ -758,7 +790,66 @@ function NavigationBar({
             );
           })}
 
-          {/* Me button — 4th nav item, same pill styling */}
+          {/* Explore button — discover published palaces */}
+          {!minimal && (() => {
+            const isExploreActive = pathname === "/explore";
+            const isExploreHovered = hoveringMode === ("explore" as any);
+            return (
+              <button
+                data-nudge="nav_explore_btn"
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate("/explore");
+                  } else {
+                    router.push("/explore");
+                  }
+                }}
+                onMouseEnter={() => setHoveringMode("explore" as any)}
+                onMouseLeave={() => setHoveringMode(null)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.375rem",
+                  padding: "0.5rem 0.875rem",
+                  borderRadius: "0.625rem",
+                  border: "none",
+                  WebkitAppearance: "none" as const,
+                  background: isExploreHovered
+                    ? "rgba(44,44,42,0.06)"
+                    : "transparent",
+                  boxShadow: "none",
+                  color: isExploreActive ? T.color.terracotta : T.color.walnut,
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
+                  letterSpacing: "0.01em",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  transition: `color 0.3s ${EASE}, background 0.35s ${EASE}`,
+                  opacity: isExploreActive || isExploreHovered ? 1 : 0.75,
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "1rem",
+                    height: "1rem",
+                    lineHeight: 1,
+                    flexShrink: 0,
+                  }}
+                >
+                  <ExploreIcon size={16} />
+                </span>
+                <span>{t("tab_explore")}</span>
+              </button>
+            );
+          })()}
+
+          {/* Me button — nav item, same pill styling */}
           {!minimal && (() => {
             const isMeActive = activeTab === "me";
             const isMeHovered = hoveringMode === "me";

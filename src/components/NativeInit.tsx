@@ -14,11 +14,24 @@ export default function NativeInit() {
     initDeepLinkListener();
     initPushNotifications();
 
-    // Manually hide splash screen after app renders — safety net in case auto-hide fails
+    // Dismiss the server-rendered loading overlay now that React has mounted
+    if (typeof window !== "undefined" && (window as any).__mpHideLoading) {
+      (window as any).__mpHideLoading();
+    }
+
+    // Hide splash screen only after the page has rendered real content.
+    // launchAutoHide is disabled so we control the timing here.
     if (isNative()) {
-      import("@capacitor/splash-screen").then(({ SplashScreen }) => {
-        SplashScreen.hide().catch(() => {});
-      }).catch(() => {});
+      const hide = () => {
+        import("@capacitor/splash-screen").then(({ SplashScreen }) => {
+          SplashScreen.hide().catch(() => {});
+        }).catch(() => {});
+      };
+      // Wait for next animation frame (ensures React has flushed to DOM)
+      // then an extra 300ms buffer so the content is painted
+      requestAnimationFrame(() => {
+        setTimeout(hide, 300);
+      });
     }
   }, []);
 
