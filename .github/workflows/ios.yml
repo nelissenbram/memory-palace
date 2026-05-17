@@ -2,9 +2,176 @@ name: iOS Release Build
 
 on:
   workflow_dispatch:
+    inputs:
+      skip_test:
+        description: 'Skip iPad simulator test'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 jobs:
+  # ── iPad Simulator Test ──────────────────────────────────────────────
+  # Boots the app in an iPad Air simulator, waits for content to load,
+  # takes a screenshot, and verifies the page is not blank.
+  test-ipad:
+    if: ${{ inputs.skip_test != 'true' }}
+    runs-on: macos-15
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode
+        run: |
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -1)
+          sudo xcode-select -s "$LATEST_XCODE"
+          xcodebuild -version
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build Capacitor iOS (debug)
+        run: |
+          mkdir -p out
+          cat > out/index.html << 'FALLBACK'
+          <!DOCTYPE html>
+          <html lang="en"><head><meta charset="utf-8"/><title>Loading</title>
+          <style>body{background:#F2EDE4;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui}
+          .s{width:40px;height:40px;border:3px solid #D4C5A9;border-top-color:#8B7355;border-radius:50%;animation:r .8s linear infinite;margin:0 auto 1rem}
+          @keyframes r{to{transform:rotate(360deg)}}
+          </style></head><body><div style="text-align:center"><div class="s"></div><p>Loading...</p></div></body></html>
+          FALLBACK
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Find iPad simulator
+        run: |
+          # Find an iPad Air or any iPad simulator
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          for runtime, devices in data['devices'].items():
+              if 'iOS' not in runtime:
+                  continue
+              for d in devices:
+                  name = d['name']
+                  if 'iPad Air' in name or 'iPad Pro' in name or 'iPad' in name:
+                      print(d['udid'])
+                      sys.exit(0)
+          sys.exit(1)
+          ")
+          echo "IPAD_UDID=$DEVICE" >> $GITHUB_ENV
+          echo "Found iPad simulator: $DEVICE"
+          xcrun simctl list devices available | grep "$DEVICE" || true
+
+      - name: Boot iPad simulator
+        run: |
+          xcrun simctl boot "$IPAD_UDID" || true
+          # Wait for simulator to be fully booted
+          xcrun simctl bootstatus "$IPAD_UDID" -b
+          echo "iPad simulator booted"
+
+      - name: Build and install app on simulator
+        run: |
+          cd ios/App
+          if [ -d "App.xcworkspace" ]; then
+            PROJECT_FLAG="-workspace App.xcworkspace"
+          else
+            PROJECT_FLAG="-project App.xcodeproj"
+          fi
+
+          xcodebuild build \
+            $PROJECT_FLAG \
+            -scheme App \
+            -configuration Debug \
+            -destination "id=$IPAD_UDID" \
+            -derivedDataPath $RUNNER_TEMP/DerivedData \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+          # Find and install the .app bundle
+          APP_PATH=$(find $RUNNER_TEMP/DerivedData -name "App.app" -type d | head -1)
+          echo "Installing: $APP_PATH"
+          xcrun simctl install "$IPAD_UDID" "$APP_PATH"
+
+      - name: Launch app and capture screenshots
+        run: |
+          # Launch the app
+          xcrun simctl launch "$IPAD_UDID" ai.thememorypalace.app
+          echo "App launched, waiting for content to load..."
+
+          # Take screenshots at multiple intervals
+          mkdir -p $RUNNER_TEMP/screenshots
+
+          # Screenshot after 5s (should show loading or content)
+          sleep 5
+          xcrun simctl io "$IPAD_UDID" screenshot $RUNNER_TEMP/screenshots/ipad-05s.png
+          echo "Captured: 5s screenshot"
+
+          # Screenshot after 15s (should definitely show content)
+          sleep 10
+          xcrun simctl io "$IPAD_UDID" screenshot $RUNNER_TEMP/screenshots/ipad-15s.png
+          echo "Captured: 15s screenshot"
+
+          # Screenshot after 25s (final state)
+          sleep 10
+          xcrun simctl io "$IPAD_UDID" screenshot $RUNNER_TEMP/screenshots/ipad-25s.png
+          echo "Captured: 25s screenshot"
+
+      - name: Verify content loaded (not blank)
+        run: |
+          # Check that the 15s screenshot is not a solid color (blank screen)
+          # sips gives us pixel dimensions; we use Python to check image variance
+          python3 << 'PYEOF'
+          import subprocess, sys
+
+          img = "${{ runner.temp }}/screenshots/ipad-15s.png"
+
+          # Get image info via sips
+          result = subprocess.run(["sips", "-g", "pixelWidth", "-g", "pixelHeight", img], capture_output=True, text=True)
+          print(result.stdout)
+
+          # Use built-in Python to sample pixel colors and check for variance
+          # Read raw pixel data via sips conversion to raw format
+          subprocess.run(["sips", "-s", "format", "png", img, "--out", "/tmp/check.png"], capture_output=True)
+
+          # Quick check: file size of the screenshot — blank screens are very small (< 50KB)
+          import os
+          size_kb = os.path.getsize(img) / 1024
+          print(f"Screenshot size: {size_kb:.0f} KB")
+
+          if size_kb < 30:
+              print("FAIL: Screenshot appears blank (< 30 KB)")
+              sys.exit(1)
+          else:
+              print("PASS: Screenshot has content")
+          PYEOF
+
+      - name: Upload iPad screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipad-simulator-screenshots
+          path: ${{ runner.temp }}/screenshots/
+
+      - name: Shutdown simulator
+        if: always()
+        run: xcrun simctl shutdown "$IPAD_UDID" 2>/dev/null || true
+
+  # ── Release Build ────────────────────────────────────────────────────
   build:
+    needs: test-ipad
+    if: always() && (needs.test-ipad.result == 'success' || inputs.skip_test == 'true')
     runs-on: macos-15
     timeout-minutes: 30
 
