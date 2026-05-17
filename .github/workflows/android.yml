@@ -39,7 +39,7 @@ jobs:
       - name: Decode keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: echo "$KEYSTORE_BASE64" | base64 -d > android/memorypalace-release.keystore
+        run: echo "$KEYSTORE_BASE64" | base64 -d > android/app/memorypalace-release.keystore
 
       - name: Build release AAB
         working-directory: android
