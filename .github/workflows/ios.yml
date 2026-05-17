@@ -36,7 +36,51 @@ jobs:
       - name: Sync Capacitor iOS
         run: |
           mkdir -p out
-          echo '<!DOCTYPE html><html><body>Loading...</body></html>' > out/index.html
+          cat > out/index.html << 'FALLBACK'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+            <title>The Memory Palace</title>
+            <style>
+              *{margin:0;padding:0;box-sizing:border-box}
+              body{background:#F2EDE4;font-family:-apple-system,system-ui,sans-serif;
+                   display:flex;align-items:center;justify-content:center;height:100vh;
+                   color:#5C4A32}
+              .wrap{text-align:center;padding:2rem}
+              .spinner{width:40px;height:40px;margin:0 auto 1.5rem;
+                       border:3px solid #D4C5A9;border-top-color:#8B7355;
+                       border-radius:50%;animation:spin .8s linear infinite}
+              @keyframes spin{to{transform:rotate(360deg)}}
+              h1{font-size:1.25rem;font-weight:600;margin-bottom:.5rem}
+              p{font-size:.875rem;color:#8B7355}
+              .err{display:none;margin-top:1.5rem}
+              .err button{background:#8B7355;color:#fff;border:none;padding:.75rem 1.5rem;
+                          border-radius:.5rem;font-size:.875rem;cursor:pointer}
+            </style>
+          </head>
+          <body>
+            <div class="wrap">
+              <div class="spinner" id="sp"></div>
+              <h1>The Memory Palace</h1>
+              <p id="msg">Loading your palace...</p>
+              <div class="err" id="err">
+                <p>Could not connect. Check your internet and try again.</p>
+                <button onclick="location.reload()">Retry</button>
+              </div>
+            </div>
+            <script>
+              // If the remote app hasn't replaced this page within 8s, show error
+              setTimeout(function(){
+                document.getElementById('sp').style.display='none';
+                document.getElementById('msg').style.display='none';
+                document.getElementById('err').style.display='block';
+              },8000);
+            </script>
+          </body>
+          </html>
+          FALLBACK
           npx cap add ios
           npx cap sync ios
 

@@ -32,6 +32,10 @@ export default function NativeInit() {
       requestAnimationFrame(() => {
         setTimeout(hide, 300);
       });
+
+      // Safety net: force-hide splash after 5s even if React fails to mount properly.
+      // Prevents the app from appearing stuck on a blank screen during review.
+      setTimeout(hide, 5000);
     }
   }, []);
 
