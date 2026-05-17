@@ -480,7 +480,25 @@
     "profileVisibility": "Perfil publico",
     "profileVisibilityDesc": "Cuando esta activado, tu palacio aparece en el directorio de exploracion y otros pueden visitar tus salas publicadas.",
     "profileVisibilityOn": "Tu perfil ahora es publico",
-    "profileVisibilityOff": "Tu perfil ahora es privado"
+    "profileVisibilityOff": "Tu perfil ahora es privado",
+    "changeProfilePhoto": "Cambiar foto de perfil",
+    "uploadingPhoto": "Subiendo...",
+    "avatarSaved": "Foto de perfil actualizada.",
+    "avatarInvalidType": "Selecciona un archivo de imagen.",
+    "avatarTooLarge": "La imagen debe ser menor de 5 MB.",
+    "avatarUploadError": "No se pudo subir la foto.",
+    "publishedContent": "Contenido publicado",
+    "publishedContentDesc": "Controla qué alas son visibles para otros visitantes.",
+    "manageInLibrary": "Abrir biblioteca",
+    "loadingWings": "Cargando alas...",
+    "noWingsYet": "Aún no tienes alas. Crea una primero para publicarla.",
+    "publishedOn": "Publicado",
+    "private": "Privado",
+    "publish": "Publicar",
+    "unpublish": "Despublicar",
+    "wingPublished": "El ala ahora es pública.",
+    "wingUnpublished": "El ala ahora es privada.",
+    "wingToggleError": "No se pudo actualizar el ala."
   },
   "notifications": {
     "title": "Alertas",
@@ -4796,6 +4814,11 @@
     "followUser": "Seguir a este usuario",
     "unfollowUser": "Dejar de seguir",
     "qrError": "No se pudo generar el código QR. Inténtalo de nuevo.",
-    "charCount": "{count}/500"
+    "charCount": "{count}/500",
+    "publishYourPalace": "Publicar tu palacio",
+    "publishAll": "Publicar todas las alas",
+    "publishAllTitle": "Publica todo tu palacio",
+    "publishAllSubtitle": "Todas tus alas serán visibles públicamente para que otros puedan explorar tu palacio de memoria.",
+    "publishAllDone": "{count} alas publicadas — ¡bienvenido al mundo!"
   }
 }

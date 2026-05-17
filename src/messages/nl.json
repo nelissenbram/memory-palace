@@ -480,7 +480,25 @@
     "profileVisibility": "Openbaar profiel",
     "profileVisibilityDesc": "Wanneer ingeschakeld verschijnt je paleis in de verkenningsgids en kunnen anderen je gepubliceerde kamers bezoeken.",
     "profileVisibilityOn": "Je profiel is nu openbaar",
-    "profileVisibilityOff": "Je profiel is nu prive"
+    "profileVisibilityOff": "Je profiel is nu prive",
+    "changeProfilePhoto": "Profielfoto wijzigen",
+    "uploadingPhoto": "Uploaden...",
+    "avatarSaved": "Profielfoto bijgewerkt.",
+    "avatarInvalidType": "Selecteer een afbeeldingsbestand.",
+    "avatarTooLarge": "Afbeelding moet kleiner zijn dan 5 MB.",
+    "avatarUploadError": "Kon foto niet uploaden. Probeer het opnieuw.",
+    "publishedContent": "Gepubliceerde inhoud",
+    "publishedContentDesc": "Bepaal welke vleugels zichtbaar zijn voor andere bezoekers. Schakel in of uit per vleugel.",
+    "manageInLibrary": "Bibliotheek openen",
+    "loadingWings": "Vleugels laden...",
+    "noWingsYet": "Je hebt nog geen vleugels. Maak eerst een vleugel aan om te publiceren.",
+    "publishedOn": "Gepubliceerd op",
+    "private": "Privé",
+    "publish": "Publiceren",
+    "unpublish": "Verbergen",
+    "wingPublished": "Vleugel is nu openbaar.",
+    "wingUnpublished": "Vleugel is nu privé.",
+    "wingToggleError": "Kon vleugel niet bijwerken. Probeer het opnieuw."
   },
   "notifications": {
     "title": "Meldingen",
@@ -4798,6 +4816,11 @@
     "followUser": "Volg deze gebruiker",
     "unfollowUser": "Ontvolg deze gebruiker",
     "qrError": "QR-code kon niet worden gegenereerd. Probeer het opnieuw.",
-    "charCount": "{count}/500"
+    "charCount": "{count}/500",
+    "publishYourPalace": "Publiceer jouw paleis",
+    "publishAll": "Alle vleugels publiceren",
+    "publishAllTitle": "Publiceer je volledige paleis",
+    "publishAllSubtitle": "Al je vleugels worden openbaar zichtbaar zodat anderen jouw geheugenpaleis kunnen verkennen.",
+    "publishAllDone": "{count} vleugels gepubliceerd — welkom in de wereld!"
   }
 }

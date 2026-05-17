@@ -480,7 +480,25 @@
     "profileVisibility": "Offentliches Profil",
     "profileVisibilityDesc": "Wenn aktiviert, erscheint dein Palast im Erkundungsverzeichnis und andere konnen deine veroffentlichten Raume besuchen.",
     "profileVisibilityOn": "Dein Profil ist jetzt offentlich",
-    "profileVisibilityOff": "Dein Profil ist jetzt privat"
+    "profileVisibilityOff": "Dein Profil ist jetzt privat",
+    "changeProfilePhoto": "Profilfoto ändern",
+    "uploadingPhoto": "Wird hochgeladen...",
+    "avatarSaved": "Profilfoto aktualisiert.",
+    "avatarInvalidType": "Bitte wähle eine Bilddatei.",
+    "avatarTooLarge": "Bild muss kleiner als 5 MB sein.",
+    "avatarUploadError": "Foto konnte nicht hochgeladen werden.",
+    "publishedContent": "Veröffentlichte Inhalte",
+    "publishedContentDesc": "Bestimme, welche Flügel für andere Besucher sichtbar sind.",
+    "manageInLibrary": "Bibliothek öffnen",
+    "loadingWings": "Flügel werden geladen...",
+    "noWingsYet": "Du hast noch keine Flügel. Erstelle zuerst einen.",
+    "publishedOn": "Veröffentlicht",
+    "private": "Privat",
+    "publish": "Veröffentlichen",
+    "unpublish": "Zurückziehen",
+    "wingPublished": "Flügel ist jetzt öffentlich.",
+    "wingUnpublished": "Flügel ist jetzt privat.",
+    "wingToggleError": "Flügel konnte nicht aktualisiert werden."
   },
   "notifications": {
     "title": "Benachrichtigungen",
@@ -4796,6 +4814,11 @@
     "followUser": "Diesem Benutzer folgen",
     "unfollowUser": "Nicht mehr folgen",
     "qrError": "QR-Code konnte nicht erstellt werden. Bitte versuche es erneut.",
-    "charCount": "{count}/500"
+    "charCount": "{count}/500",
+    "publishYourPalace": "Deinen Palast veröffentlichen",
+    "publishAll": "Alle Flügel veröffentlichen",
+    "publishAllTitle": "Deinen gesamten Palast veröffentlichen",
+    "publishAllSubtitle": "Alle deine Flügel werden öffentlich sichtbar, damit andere deinen Gedächtnispalast erkunden können.",
+    "publishAllDone": "{count} Flügel veröffentlicht — willkommen in der Welt!"
   }
 }

@@ -5,6 +5,7 @@ import {
   getTrending,
   getNewPalaces,
 } from "@/lib/social/directory-actions";
+import { createClient } from "@/lib/supabase/server";
 
 export const revalidate = 300;
 
@@ -17,6 +18,9 @@ export const metadata: Metadata = {
 };
 
 export default async function ExplorePage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   const [featured, trending, newest] = await Promise.all([
     getFeatured(8),
     getTrending(8),
@@ -28,6 +32,7 @@ export default async function ExplorePage() {
       featured={featured}
       trending={trending}
       newest={newest}
+      isAuthenticated={!!user}
     />
   );
 }

@@ -480,7 +480,25 @@
     "profileVisibility": "Public Profile",
     "profileVisibilityDesc": "When enabled, your palace appears in the explore directory and others can visit your published rooms.",
     "profileVisibilityOn": "Your profile is now public",
-    "profileVisibilityOff": "Your profile is now private"
+    "profileVisibilityOff": "Your profile is now private",
+    "changeProfilePhoto": "Change profile photo",
+    "uploadingPhoto": "Uploading...",
+    "avatarSaved": "Profile photo updated.",
+    "avatarInvalidType": "Please select an image file.",
+    "avatarTooLarge": "Image must be smaller than 5 MB.",
+    "avatarUploadError": "Could not upload photo. Please try again.",
+    "publishedContent": "Published Content",
+    "publishedContentDesc": "Control which wings are visible to other visitors. Toggle to publish or unpublish each wing.",
+    "manageInLibrary": "Open Library",
+    "loadingWings": "Loading wings...",
+    "noWingsYet": "You have no wings yet. Create a wing first to publish it.",
+    "publishedOn": "Published",
+    "private": "Private",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "wingPublished": "Wing is now public.",
+    "wingUnpublished": "Wing is now private.",
+    "wingToggleError": "Could not update wing. Please try again."
   },
   "notifications": {
     "title": "Alerts",
@@ -4796,6 +4814,11 @@
     "followUser": "Follow this user",
     "unfollowUser": "Unfollow this user",
     "qrError": "Could not generate QR code. Please try again.",
-    "charCount": "{count}/500"
+    "charCount": "{count}/500",
+    "publishYourPalace": "Publish Your Palace",
+    "publishAll": "Publish All Wings",
+    "publishAllTitle": "Publish your entire palace",
+    "publishAllSubtitle": "All your wings will become publicly visible so others can explore your memory palace.",
+    "publishAllDone": "{count} wings published — welcome to the world!"
   }
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
 import { updateProfile as updateSocialProfile } from "@/lib/social/profile-actions";
+import { publishWing, unpublishWing } from "@/lib/social/share-actions";
 import MFASetup from "@/components/settings/MFASetup";
 import ExportPanel from "@/components/settings/ExportPanel";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -22,6 +23,13 @@ interface ProfileData {
   avatar_url: string;
   username: string;
   is_public: boolean;
+}
+
+interface WingData {
+  id: string;
+  name: string;
+  published_at: string | null;
+  publish_visibility: string | null;
 }
 
 /** Format hour (0-24 float) as HH:MM */
@@ -65,6 +73,15 @@ export default function ProfilePage() {
   const { t: tPersona } = useTranslation("persona" as "common");
   const router = useRouter();
   const isMobile = useIsMobile();
+
+  // Avatar upload
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  // Published wings
+  const [wings, setWings] = useState<WingData[]>([]);
+  const [wingsLoading, setWingsLoading] = useState(true);
+  const [wingsSaving, setWingsSaving] = useState<Record<string, boolean>>({});
 
   // Load persona from localStorage
   useEffect(() => {
@@ -114,9 +131,18 @@ export default function ProfilePage() {
           setStyleEra(data.style_era || "roman");
           setAiConsent(!!data.ai_consent);
         }
+
+        // Load wings
+        const { data: wingsData } = await supabase
+          .from("wings")
+          .select("id, name, published_at, publish_visibility")
+          .eq("user_id", user.id)
+          .order("name", { ascending: true });
+        setWings(wingsData || []);
       } catch {
         // ignore
       }
+      setWingsLoading(false);
       setLoading(false);
     }
     load();
@@ -181,6 +207,64 @@ export default function ProfilePage() {
     } else {
       window.location.href = "/login";
     }
+  };
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!file || !profile) return;
+    if (!file.type.startsWith("image/")) {
+      showToast(t("avatarInvalidType"), "error");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast(t("avatarTooLarge"), "error");
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `avatars/${user.id}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("profile-photos")
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) {
+        showToast(uploadError.message, "error");
+        return;
+      }
+      const { data: urlData } = supabase.storage.from("profile-photos").getPublicUrl(path);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      await updateProfile({ avatarUrl: publicUrl });
+      setProfile((prev) => prev ? { ...prev, avatar_url: publicUrl } : prev);
+      showToast(t("avatarSaved"), "success");
+    } catch {
+      showToast(t("avatarUploadError"), "error");
+    }
+    setAvatarUploading(false);
+  };
+
+  const handleWingToggle = async (wing: WingData) => {
+    const isPublished = !!wing.published_at;
+    setWingsSaving((prev) => ({ ...prev, [wing.id]: true }));
+    if (isPublished) {
+      const result = await unpublishWing(wing.id);
+      if (result.ok) {
+        setWings((prev) => prev.map((w) => w.id === wing.id ? { ...w, published_at: null, publish_visibility: "private" } : w));
+        showToast(t("wingUnpublished"), "success");
+      } else {
+        showToast(t("wingToggleError"), "error");
+      }
+    } else {
+      const result = await publishWing({ wingId: wing.id, visibility: "public" });
+      if (result.ok) {
+        setWings((prev) => prev.map((w) => w.id === wing.id ? { ...w, published_at: new Date().toISOString(), publish_visibility: "public" } : w));
+        showToast(t("wingPublished"), "success");
+      } else {
+        showToast(result.error || t("wingToggleError"), "error");
+      }
+    }
+    setWingsSaving((prev) => ({ ...prev, [wing.id]: false }));
   };
 
   const getInitials = (name: string) => {
@@ -267,28 +351,69 @@ export default function ProfilePage() {
       }}>
         {/* Avatar + Name header */}
         <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", marginBottom: "1.75rem" }}>
-          <div style={{
-            width: "4.5rem", height: "4.5rem", borderRadius: "2.25rem",
-            background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#FFF",
-            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
-            letterSpacing: "1px",
-            flexShrink: 0,
-          }}>
-            {profile.avatar_url ? (
-              <Image
-                src={profile.avatar_url}
-                alt=""
-                width={72} height={72}
-                style={{
-                  borderRadius: "2.25rem",
-                  objectFit: "cover",
-                }}
-              />
-            ) : (
-              getInitials(displayName || profile.display_name)
-            )}
+          {/* Clickable avatar with upload overlay */}
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              aria-label={t("changeProfilePhoto")}
+              disabled={avatarUploading}
+              style={{
+                width: "4.5rem", height: "4.5rem", borderRadius: "2.25rem",
+                background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#FFF",
+                fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
+                letterSpacing: "1px",
+                border: "none",
+                cursor: avatarUploading ? "wait" : "pointer",
+                padding: 0,
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              {profile.avatar_url ? (
+                <Image
+                  src={profile.avatar_url}
+                  alt=""
+                  width={72} height={72}
+                  style={{ borderRadius: "2.25rem", objectFit: "cover" }}
+                />
+              ) : (
+                getInitials(displayName || profile.display_name)
+              )}
+              {/* Hover overlay */}
+              <span style={{
+                position: "absolute", inset: 0, borderRadius: "2.25rem",
+                background: "rgba(0,0,0,0.35)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                opacity: avatarUploading ? 1 : 0,
+                transition: "opacity .2s",
+              }}
+                className="mp-avatar-overlay"
+              >
+                {avatarUploading ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }}>
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                )}
+              </span>
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleAvatarUpload(file);
+                e.target.value = "";
+              }}
+            />
           </div>
           <div>
             <div style={{
@@ -303,6 +428,18 @@ export default function ProfilePage() {
             }}>
               {profile.email}
             </div>
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              style={{
+                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                color: T.color.terracotta, background: "none",
+                border: "none", padding: "0.25rem 0", cursor: avatarUploading ? "wait" : "pointer",
+                marginTop: "0.25rem", opacity: avatarUploading ? 0.6 : 1,
+              }}
+            >
+              {avatarUploading ? t("uploadingPhoto") : t("changeProfilePhoto")}
+            </button>
           </div>
         </div>
 
@@ -639,6 +776,131 @@ export default function ProfilePage() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* ── Published Content ── */}
+      <div style={{
+        background: T.color.white,
+        borderRadius: "1rem",
+        border: `1px solid ${T.color.cream}`,
+        padding: "1.75rem 2rem",
+        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        marginBottom: "1.5rem",
+      }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
+          <div>
+            <h3 style={{
+              fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+              color: T.color.charcoal, margin: "0 0 0.375rem",
+            }}>
+              {t("publishedContent")}
+            </h3>
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+              margin: 0, lineHeight: 1.5,
+            }}>
+              {t("publishedContentDesc")}
+            </p>
+          </div>
+          <button
+            onClick={() => router.push("/library")}
+            style={{
+              padding: "0.625rem 1.25rem",
+              borderRadius: "0.625rem",
+              border: `1.5px solid ${T.color.terracotta}`,
+              background: "transparent",
+              fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+              color: T.color.terracotta,
+              cursor: "pointer", flexShrink: 0, transition: "all .15s",
+            }}
+          >
+            {t("manageInLibrary")}
+          </button>
+        </div>
+
+        {wingsLoading ? (
+          <div style={{
+            padding: "1.5rem", textAlign: "center",
+            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+          }}>
+            {t("loadingWings")}
+          </div>
+        ) : wings.length === 0 ? (
+          <div style={{
+            padding: "1.5rem 1.25rem", borderRadius: "0.75rem",
+            background: T.color.linen, border: `1px solid ${T.color.cream}`,
+            textAlign: "center",
+            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+          }}>
+            {t("noWingsYet")}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+            {wings.map((wing) => {
+              const published = !!wing.published_at;
+              const isSaving = !!wingsSaving[wing.id];
+              return (
+                <div
+                  key={wing.id}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "1rem 1.25rem", borderRadius: "0.75rem",
+                    background: published ? `${T.color.sage}08` : T.color.linen,
+                    border: `1px solid ${published ? T.color.sage + "30" : T.color.cream}`,
+                    gap: "1rem",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
+                    {/* Status dot */}
+                    <span style={{
+                      width: "0.5rem", height: "0.5rem", borderRadius: "50%", flexShrink: 0,
+                      background: published ? T.color.sage : T.color.sandstone,
+                    }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+                        color: T.color.charcoal,
+                        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                      }}>
+                        {wing.name}
+                      </div>
+                      <div style={{
+                        fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                        marginTop: "0.125rem",
+                      }}>
+                        {published
+                          ? `${t("publishedOn")} ${new Date(wing.published_at!).toLocaleDateString()}`
+                          : t("private")}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    disabled={isSaving}
+                    onClick={() => handleWingToggle(wing)}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      borderRadius: "0.5rem",
+                      border: `1px solid ${published ? "#C0505033" : T.color.sage + "50"}`,
+                      background: published ? "#C0505008" : `${T.color.sage}10`,
+                      fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                      color: published ? "#C05050" : T.color.sage,
+                      cursor: isSaving ? "wait" : "pointer",
+                      flexShrink: 0,
+                      opacity: isSaving ? 0.6 : 1,
+                      transition: "all .15s",
+                      minHeight: "2.25rem",
+                    }}
+                  >
+                    {isSaving
+                      ? t("saving")
+                      : published ? t("unpublish") : t("publish")}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Account Section ── */}
@@ -1202,6 +1464,8 @@ export default function ProfilePage() {
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        button:hover .mp-avatar-overlay { opacity: 1 !important; }
         ${settingsFocusStyle}
       `}</style>
     </div>

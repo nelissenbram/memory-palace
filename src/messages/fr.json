@@ -480,7 +480,25 @@
     "profileVisibility": "Profil public",
     "profileVisibilityDesc": "Lorsqu'il est active, ton palais apparait dans le repertoire d'exploration et d'autres peuvent visiter tes salles publiees.",
     "profileVisibilityOn": "Ton profil est maintenant public",
-    "profileVisibilityOff": "Ton profil est maintenant prive"
+    "profileVisibilityOff": "Ton profil est maintenant prive",
+    "changeProfilePhoto": "Changer la photo de profil",
+    "uploadingPhoto": "Téléchargement...",
+    "avatarSaved": "Photo de profil mise à jour.",
+    "avatarInvalidType": "Veuillez sélectionner un fichier image.",
+    "avatarTooLarge": "L'image doit faire moins de 5 Mo.",
+    "avatarUploadError": "Impossible de télécharger la photo.",
+    "publishedContent": "Contenu publié",
+    "publishedContentDesc": "Contrôlez quelles ailes sont visibles par les autres visiteurs.",
+    "manageInLibrary": "Ouvrir la bibliothèque",
+    "loadingWings": "Chargement des ailes...",
+    "noWingsYet": "Vous n'avez pas encore d'ailes. Créez-en une d'abord.",
+    "publishedOn": "Publié",
+    "private": "Privé",
+    "publish": "Publier",
+    "unpublish": "Dépublier",
+    "wingPublished": "L'aile est maintenant publique.",
+    "wingUnpublished": "L'aile est maintenant privée.",
+    "wingToggleError": "Impossible de mettre à jour l'aile."
   },
   "notifications": {
     "title": "Alertes",
@@ -4796,6 +4814,11 @@
     "followUser": "Suivre cet utilisateur",
     "unfollowUser": "Ne plus suivre",
     "qrError": "Impossible de générer le code QR. Veuillez réessayer.",
-    "charCount": "{count}/500"
+    "charCount": "{count}/500",
+    "publishYourPalace": "Publier votre palais",
+    "publishAll": "Publier toutes les ailes",
+    "publishAllTitle": "Publiez votre palais entier",
+    "publishAllSubtitle": "Toutes vos ailes seront visibles publiquement pour que d'autres puissent explorer votre palais de mémoire.",
+    "publishAllDone": "{count} ailes publiées — bienvenue dans le monde !"
   }
 }
