@@ -379,17 +379,52 @@ jobs:
           # Find App Store distribution profiles for our bundle ID
           profiles = api_get(f"profiles?filter[profileType]=IOS_APP_STORE&include=bundleId")
 
+          # Get the signing certificate fingerprint from the imported p12
+          import hashlib
+          cert_fingerprint = None
+          cert_result = subprocess.run(
+              ["security", "find-identity", "-v", "-p", "codesigning"],
+              capture_output=True, text=True
+          )
+          print(f"Available signing identities:\n{cert_result.stdout}")
+
+          # Get the cert ID from App Store Connect that matches our imported cert
+          certs = api_get("certificates?filter[certificateType]=DISTRIBUTION")
+          our_cert_id = certs["data"][0]["id"] if certs.get("data") else None
+          print(f"Distribution cert ID from ASC: {our_cert_id}")
+
           profile_data = None
           profile_name = None
+          matched_profile_id = None
+
           for p in profiles.get("data", []):
               attrs = p["attributes"]
               if attrs.get("profileState") == "ACTIVE":
-                  # Check if this profile is for our bundle ID
                   bid_ref = p.get("relationships", {}).get("bundleId", {}).get("data", {}).get("id")
                   for included in profiles.get("included", []):
                       if included["id"] == bid_ref and included["attributes"].get("identifier") == bundle_id:
-                          profile_data = attrs["profileContent"]
+                          matched_profile_id = p["id"]
                           profile_name = attrs["name"]
+                          # Check if this profile contains our cert
+                          prof_certs = api_get(f"profiles/{p['id']}/certificates")
+                          prof_cert_ids = [c["id"] for c in prof_certs.get("data", [])]
+                          print(f"Profile '{profile_name}' has certs: {prof_cert_ids}")
+                          if our_cert_id and our_cert_id in prof_cert_ids:
+                              profile_data = attrs["profileContent"]
+                              print(f"Profile matches our cert!")
+                          else:
+                              # Delete stale profile so we can recreate with correct cert
+                              print(f"Profile '{profile_name}' does NOT contain our cert — deleting and recreating")
+                              try:
+                                  req = urllib.request.Request(
+                                      f"https://api.appstoreconnect.apple.com/v1/profiles/{p['id']}",
+                                      headers={"Authorization": f"Bearer {token}"},
+                                      method="DELETE"
+                                  )
+                                  urllib.request.urlopen(req)
+                                  print(f"Deleted stale profile: {profile_name}")
+                              except Exception as e:
+                                  print(f"Warning: could not delete profile: {e}")
                           break
               if profile_data:
                   break
