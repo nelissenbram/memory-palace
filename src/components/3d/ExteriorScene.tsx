@@ -71,7 +71,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
   },[]);// eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(()=>{
-    const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
+    const el=mountRef.current;if(!el)return;let w=el.clientWidth||window.innerWidth,h=el.clientHeight||window.innerHeight;
     const dlPreset=getLightingPreset();
     const Q=getQuality();
     const isMobileQ=Q.maxEagerTextureSets<=6;
@@ -182,9 +182,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     if(!Q.loadBackgroundHDRI){scene.background=skyTex;scene.backgroundIntensity=1.0;skySphere.visible=false;}
 
     const camera=new THREE.PerspectiveCamera(32,w/h,1.0,300);
-    const ren=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:"high-performance"});ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,Q.maxPixelRatio));
+    let ren:THREE.WebGLRenderer;
+    try{ren=new THREE.WebGLRenderer({antialias:Q.antialias,powerPreference:"high-performance"});}catch{ren=new THREE.WebGLRenderer({antialias:false,powerPreference:"default"});}
+    ren.setSize(w,h);ren.setPixelRatio(Math.min(window.devicePixelRatio,Q.maxPixelRatio));
     ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=2048?THREE.PCFSoftShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=2.4*dlPreset.exposure;
     ren.outputColorSpace=THREE.SRGBColorSpace;
+    ren.domElement.addEventListener("webglcontextlost",(e)=>{e.preventDefault();});
+    ren.domElement.addEventListener("webglcontextrestored",()=>{ren.shadowMap.needsUpdate=true;});
     el.appendChild(ren.domElement);
 
     // Cache root font size for rem calculations in render loop (avoid per-frame getComputedStyle)

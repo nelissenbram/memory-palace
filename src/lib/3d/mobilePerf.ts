@@ -47,9 +47,14 @@ export function getGPUTier(): GPUTier {
   const hasTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
   const mobileUA = /Android|iPhone|iPad|iPod|Mobile|webOS/i.test(navigator.userAgent);
   // iPad has large screens but shares mobile GPU constraints in WKWebView
+  // iPadOS 26+ may report "Macintosh" instead of "MacIntel" in navigator.platform
   const isIPad = /iPad/i.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && hasTouch && navigator.maxTouchPoints > 1);
-  const isMobile = smallScreen || isIPad || (hasTouch && mobileUA);
+    (/Mac/i.test(navigator.platform) && hasTouch && navigator.maxTouchPoints > 1);
+  // Capacitor iOS native app — always treat as mobile regardless of UA
+  const cap = (window as any).Capacitor;
+  const isCapacitorIOS = cap?.getPlatform?.() === "ios" ||
+    (cap?.isNativePlatform?.() && /Mac|iPhone|iPad/i.test(navigator.platform));
+  const isMobile = smallScreen || isIPad || isCapacitorIOS || (hasTouch && mobileUA);
 
   if (isMobile) {
     const renderer = detectRendererString();
