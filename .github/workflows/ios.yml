@@ -238,12 +238,25 @@ jobs:
               </div>
             </div>
             <script>
-              // If the remote app hasn't replaced this page within 8s, show error
-              setTimeout(function(){
-                document.getElementById('sp').style.display='none';
-                document.getElementById('msg').style.display='none';
-                document.getElementById('err').style.display='block';
-              },8000);
+              // If the remote app hasn't replaced this page within 15s, show error
+              // Track retries — after 3 attempts, stop retrying
+              (function(){
+                var KEY='mp_fallback_retries';
+                var MAX=3;
+                var n=0;
+                try{n=parseInt(sessionStorage.getItem(KEY)||'0',10);}catch(e){}
+                setTimeout(function(){
+                  document.getElementById('sp').style.display='none';
+                  document.getElementById('msg').style.display='none';
+                  var errEl=document.getElementById('err');
+                  if(n>=MAX){
+                    errEl.innerHTML='<p>Something went wrong. Please close the app completely and try again later.</p>';
+                  }else{
+                    try{sessionStorage.setItem(KEY,String(n+1));}catch(e){}
+                  }
+                  errEl.style.display='block';
+                },15000);
+              })();
             </script>
           </body>
           </html>
@@ -291,10 +304,6 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:0 integer 1" $PLIST
           /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:1 integer 2" $PLIST
-          # WKAppBoundDomains — declares primary domain for WKWebView cookie/storage trust
-          /usr/libexec/PlistBuddy -c "Delete :WKAppBoundDomains" $PLIST 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains array" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :WKAppBoundDomains:0 string thememorypalace.ai" $PLIST
           # Support all orientations on iPad
           /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations~ipad" $PLIST 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad array" $PLIST

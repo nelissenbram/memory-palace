@@ -19,24 +19,26 @@ export default function NativeInit() {
       (window as any).__mpHideLoading();
     }
 
-    // Hide splash screen only after the page has rendered real content.
+    // Hide splash screen after the page has rendered real content.
     // launchAutoHide is disabled so we control the timing here.
+    const hideSplash = () => {
+      import("@capacitor/splash-screen").then(({ SplashScreen }) => {
+        SplashScreen.hide().catch(() => {});
+      }).catch(() => {});
+    };
+
     if (isNative()) {
-      const hide = () => {
-        import("@capacitor/splash-screen").then(({ SplashScreen }) => {
-          SplashScreen.hide().catch(() => {});
-        }).catch(() => {});
-      };
       // Wait for next animation frame (ensures React has flushed to DOM)
       // then an extra 300ms buffer so the content is painted
       requestAnimationFrame(() => {
-        setTimeout(hide, 300);
+        setTimeout(hideSplash, 300);
       });
-
-      // Safety net: force-hide splash after 5s even if React fails to mount properly.
-      // Prevents the app from appearing stuck on a blank screen during review.
-      setTimeout(hide, 5000);
     }
+
+    // Universal safety net: force-hide splash after 5s regardless of isNative().
+    // If the Capacitor bridge failed to inject, isNative() returns false but
+    // the splash may still be visible. The import fails silently on web.
+    setTimeout(hideSplash, 5000);
   }, []);
 
   return null;

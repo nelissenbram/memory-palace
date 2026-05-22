@@ -27,11 +27,7 @@ export async function initPushNotifications(): Promise<void> {
     const push = await getPushPlugin();
     if (!push) return;
 
-    const permResult = await push.requestPermissions();
-    if (permResult.receive !== "granted") return;
-
-    await push.register();
-
+    // Set up listeners first (before any permission/register calls)
     await push.addListener("registration", async (token) => {
       try {
         await fetch("/api/push/register", {
@@ -57,6 +53,28 @@ export async function initPushNotifications(): Promise<void> {
         window.location.href = url;
       }
     });
+
+    // Check current permission status without triggering a system alert
+    const status = await push.checkPermissions();
+
+    if (status.receive === "granted") {
+      // Already granted — register silently
+      await push.register();
+    } else if (status.receive === "prompt") {
+      // Never asked yet — defer the permission request by 15s to avoid
+      // iPadOS 26 WKWebView-reload-on-alert bug during initial load
+      setTimeout(async () => {
+        try {
+          const result = await push.requestPermissions();
+          if (result.receive === "granted") {
+            await push.register();
+          }
+        } catch (e) {
+          console.warn("[push] Deferred permission request failed:", e);
+        }
+      }, 15000);
+    }
+    // If "denied", do nothing — user must enable in Settings
   } catch (e) {
     console.warn("[push] Init failed:", e);
   }

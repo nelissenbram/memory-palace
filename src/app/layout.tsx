@@ -106,7 +106,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
             try{
-              if(window.Capacitor||navigator.userAgent.indexOf("CapacitorNative")!==-1||window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.bridge)return;
+              if(window.webkit&&window.webkit.messageHandlers)return;if(window.Capacitor)return;if(navigator.userAgent.indexOf("CapacitorNative")!==-1)return;
             }catch(e){return;}
             var V="v62";
             try{
@@ -135,6 +135,7 @@ export default async function RootLayout({
         {/* Auto-reload on stale deployment chunks (ChunkLoadError) */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
+            try{if(window.webkit&&window.webkit.messageHandlers)return;if(window.Capacitor)return;if(navigator.userAgent.indexOf("CapacitorNative")!==-1)return;}catch(e){}
             var KEY="mp_chunk_reload";
             var MAX=3;
             function isChunk(m){
