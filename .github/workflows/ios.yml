@@ -233,8 +233,7 @@ jobs:
               <h1>The Memory Palace</h1>
               <p id="msg">Loading your palace...</p>
               <div class="err" id="err">
-                <p>Could not connect. Check your internet and try again.</p>
-                <button onclick="location.reload()">Retry</button>
+                <p>Could not connect. Please close the app completely (swipe up from multitasking) and reopen it.</p>
               </div>
             </div>
             <script>

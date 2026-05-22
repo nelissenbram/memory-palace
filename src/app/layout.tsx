@@ -102,6 +102,22 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={`${cormorant.variable} ${manrope.variable}`}>
       <head>
+        {/* Global reload circuit breaker — caps ALL reloads at 5 per session to prevent infinite loops */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            var K="mp_total_reloads",MAX=5;
+            try{
+              var n=parseInt(sessionStorage.getItem(K)||"0",10);
+              sessionStorage.setItem(K,String(n+1));
+              if(n>=MAX){
+                var w=function(){console.warn("[MP] Reload blocked: circuit breaker ("+MAX+" reloads)")};
+                try{Object.defineProperty(window.location,"reload",{value:w,writable:false});}catch(e){
+                  window.location.reload=w;
+                }
+              }
+            }catch(e){}
+          })();
+        `}} />
         {/* Force clear stale PWA caches — runs before any JS bundles (skip in Capacitor native) */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){

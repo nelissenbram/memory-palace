@@ -12,7 +12,9 @@ export default function ServiceWorkerRegistration() {
       !("serviceWorker" in navigator) ||
       process.env.NODE_ENV !== "production" ||
       // Skip SW entirely inside Capacitor native WKWebView — it conflicts with native caching
-      (window as unknown as Record<string, unknown>).Capacitor
+      (window as unknown as Record<string, unknown>).Capacitor ||
+      // Fallback: webkit.messageHandlers is set by WKWebView natively, even if Capacitor bridge fails
+      ((window as any).webkit && (window as any).webkit.messageHandlers)
     ) return;
 
     // On first load, clear ALL caches to bust stale PWA content
