@@ -8,22 +8,22 @@ import { Browser } from "@capacitor/browser";
 
 /** Returns true when running inside Capacitor (Android/iOS), false on web. */
 export function isNative(): boolean {
-  return Capacitor.isNativePlatform();
+  try { return Capacitor.isNativePlatform(); } catch { return false; }
 }
 
 /** Returns the current platform: "android", "ios", or "web". */
 export function getPlatform(): string {
-  return Capacitor.getPlatform();
+  try { return Capacitor.getPlatform(); } catch { return "web"; }
 }
 
 /** Returns true when running inside the Android native app. */
 export function isAndroid(): boolean {
-  return Capacitor.getPlatform() === "android";
+  try { return Capacitor.getPlatform() === "android"; } catch { return false; }
 }
 
 /** Returns true when running inside the iOS native app. */
 export function isIOS(): boolean {
-  return Capacitor.getPlatform() === "ios";
+  try { return Capacitor.getPlatform() === "ios"; } catch { return false; }
 }
 
 /**
