@@ -20,6 +20,12 @@ export type NudgeId =
   | "atrium_mob_notif"
   | "atrium_mob_help"
   | "atrium_mob_me"
+  // Explore page
+  | "explore_search"
+  | "explore_tabs"
+  | "explore_cards"
+  | "explore_publish"
+  | "explore_overview"
   | "library_wing_sidebar"
   | "library_room_bar"
   | "library_search"
@@ -41,10 +47,15 @@ export type NudgeId =
   | "palace_room_memory"
   | "palace_room_share";
 
-type PageId = "atrium" | "library" | "palace";
+type PageId = "atrium" | "library" | "palace" | "explore";
 
 // Ordered sequence per page — ends with a bridge nudge to the next page
 const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
+  explore: [
+    "explore_search", "explore_tabs",
+    "explore_cards", "explore_publish",
+    "explore_overview",
+  ],
   atrium: [
     "atrium_nav_modes", "atrium_notifications",
     "atrium_help_button",
@@ -69,6 +80,7 @@ const PAGE_NUDGES: Record<PageId, NudgeId[]> = {
 
 // Mobile: explain each bottom nav button left-to-right, then overview + bridge
 const MOBILE_PAGE_NUDGES: Record<PageId, NudgeId[]> = {
+  explore: PAGE_NUDGES.explore,
   atrium: [
     "atrium_mob_home", "atrium_mob_library", "atrium_mob_palace",
     "atrium_mob_me", "atrium_mob_notif", "atrium_mob_help",
@@ -135,6 +147,7 @@ function shouldShowNudges(): boolean {
     if (seen.length === 0) return true;
 
     const allNudges = new Set([
+      ...PAGE_NUDGES.explore,
       ...PAGE_NUDGES.atrium, ...PAGE_NUDGES.library, ...PAGE_NUDGES.palace,
       ...MOBILE_PAGE_NUDGES.atrium,
     ]);

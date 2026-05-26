@@ -25,12 +25,17 @@ async function getShareData(slug: string) {
 
   const { data: share } = await supabase
     .from("public_shares")
-    .select("id, room_id, wing_id, slug, created_by, is_active")
+    .select("id, room_id, wing_id, slug, created_by, is_active, expires_at")
     .eq("slug", slug)
     .eq("is_active", true)
     .single();
 
   if (!share) return null;
+
+  // Check expiry
+  if (share.expires_at && new Date(share.expires_at) < new Date()) {
+    return null;
+  }
 
   const { data: room } = await supabase
     .from("rooms")

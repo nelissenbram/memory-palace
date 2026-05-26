@@ -29,8 +29,8 @@ interface NavigationBarProps {
   onNavigate?: (path: string) => void;
   /** Minimal mode — only show mode buttons (used in 3D Palace view) */
   minimal?: boolean;
-  /** Active special tab — used to highlight non-mode tabs like "me" or "notifications" */
-  activeTab?: "me" | "notifications" | null;
+  /** Active special tab — used to highlight non-mode tabs like "me", "notifications", or "explore" */
+  activeTab?: "me" | "notifications" | "explore" | null;
   /** Callback when notifications tab is tapped */
   onNotifications?: () => void;
   /** Callback when Me/settings tab is tapped */
@@ -502,7 +502,7 @@ function NavigationBar({
             const hasSpecialActive = !!(activeTab || nudgeActive);
             const isActive = isMe ? activeTab === "me"
               : isNotifications ? activeTab === "notifications"
-              : isExplore ? pathname === "/explore"
+              : isExplore ? activeTab === "explore"
               : isHelp ? nudgeActive
               : hasSpecialActive ? false  /* suppress mode highlight when a special tab is active */
               : mode === currentMode;
@@ -792,7 +792,7 @@ function NavigationBar({
 
           {/* Explore button — discover published palaces */}
           {!minimal && (() => {
-            const isExploreActive = pathname === "/explore";
+            const isExploreActive = activeTab === "explore";
             const isExploreHovered = hoveringMode === ("explore" as any);
             return (
               <button
@@ -814,19 +814,21 @@ function NavigationBar({
                   borderRadius: "0.625rem",
                   border: "none",
                   WebkitAppearance: "none" as const,
-                  background: isExploreHovered
-                    ? "rgba(44,44,42,0.06)"
-                    : "transparent",
-                  boxShadow: "none",
-                  color: isExploreActive ? T.color.terracotta : T.color.walnut,
+                  background: isExploreActive
+                    ? activeIndicatorBg("me")
+                    : isExploreHovered
+                      ? "rgba(44,44,42,0.06)"
+                      : "transparent",
+                  boxShadow: isExploreActive ? activeIndicatorShadow("me") : "none",
+                  color: isExploreActive ? activeTextColor("me") : T.color.walnut,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
-                  fontWeight: 500,
+                  fontWeight: isExploreActive ? 600 : 500,
                   letterSpacing: "0.01em",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                   flexShrink: 0,
-                  transition: `color 0.3s ${EASE}, background 0.35s ${EASE}`,
+                  transition: `color 0.3s ${EASE}, background 0.35s ${EASE}, box-shadow 0.35s ${EASE}`,
                   opacity: isExploreActive || isExploreHovered ? 1 : 0.75,
                 }}
               >
@@ -840,9 +842,11 @@ function NavigationBar({
                     height: "1rem",
                     lineHeight: 1,
                     flexShrink: 0,
+                    transition: `transform 0.3s ${EASE_SPRING}`,
+                    transform: isExploreActive ? "scale(1.1)" : "scale(1)",
                   }}
                 >
-                  <ExploreIcon size={16} />
+                  <ExploreIcon size={16} color={isExploreActive ? activeTextColor("me") : undefined} />
                 </span>
                 <span>{t("tab_explore")}</span>
               </button>

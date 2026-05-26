@@ -426,6 +426,44 @@ export interface Database {
           featured_at?: string;
         };
       };
+      public_shares: {
+        Row: {
+          id: string;
+          room_id: string | null;
+          wing_id: string | null;
+          slug: string;
+          created_by: string;
+          is_active: boolean;
+          created_at: string;
+          expires_at: string | null;
+          scope: string;
+          passcode: string | null;
+        };
+        Insert: {
+          id?: string;
+          room_id?: string | null;
+          wing_id?: string | null;
+          slug: string;
+          created_by: string;
+          is_active?: boolean;
+          created_at?: string;
+          expires_at?: string | null;
+          scope?: string;
+          passcode?: string | null;
+        };
+        Update: {
+          id?: string;
+          room_id?: string | null;
+          wing_id?: string | null;
+          slug?: string;
+          created_by?: string;
+          is_active?: boolean;
+          created_at?: string;
+          expires_at?: string | null;
+          scope?: string;
+          passcode?: string | null;
+        };
+      };
       room_collaborators: {
         Row: {
           id: string;

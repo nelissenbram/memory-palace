@@ -5,7 +5,6 @@ import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { updateProfile, requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
 import { updateProfile as updateSocialProfile } from "@/lib/social/profile-actions";
-import { publishWing, unpublishWing } from "@/lib/social/share-actions";
 import MFASetup from "@/components/settings/MFASetup";
 import ExportPanel from "@/components/settings/ExportPanel";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -23,13 +22,6 @@ interface ProfileData {
   avatar_url: string;
   username: string;
   is_public: boolean;
-}
-
-interface WingData {
-  id: string;
-  name: string;
-  published_at: string | null;
-  publish_visibility: string | null;
 }
 
 /** Format hour (0-24 float) as HH:MM */
@@ -77,11 +69,6 @@ export default function ProfilePage() {
   // Avatar upload
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
-
-  // Published wings
-  const [wings, setWings] = useState<WingData[]>([]);
-  const [wingsLoading, setWingsLoading] = useState(true);
-  const [wingsSaving, setWingsSaving] = useState<Record<string, boolean>>({});
 
   // Load persona from localStorage
   useEffect(() => {
@@ -132,17 +119,9 @@ export default function ProfilePage() {
           setAiConsent(!!data.ai_consent);
         }
 
-        // Load wings
-        const { data: wingsData } = await supabase
-          .from("wings")
-          .select("id, name, published_at, publish_visibility")
-          .eq("user_id", user.id)
-          .order("name", { ascending: true });
-        setWings(wingsData || []);
       } catch {
         // ignore
       }
-      setWingsLoading(false);
       setLoading(false);
     }
     load();
@@ -242,29 +221,6 @@ export default function ProfilePage() {
       showToast(t("avatarUploadError"), "error");
     }
     setAvatarUploading(false);
-  };
-
-  const handleWingToggle = async (wing: WingData) => {
-    const isPublished = !!wing.published_at;
-    setWingsSaving((prev) => ({ ...prev, [wing.id]: true }));
-    if (isPublished) {
-      const result = await unpublishWing(wing.id);
-      if (result.ok) {
-        setWings((prev) => prev.map((w) => w.id === wing.id ? { ...w, published_at: null, publish_visibility: "private" } : w));
-        showToast(t("wingUnpublished"), "success");
-      } else {
-        showToast(t("wingToggleError"), "error");
-      }
-    } else {
-      const result = await publishWing({ wingId: wing.id, visibility: "public" });
-      if (result.ok) {
-        setWings((prev) => prev.map((w) => w.id === wing.id ? { ...w, published_at: new Date().toISOString(), publish_visibility: "public" } : w));
-        showToast(t("wingPublished"), "success");
-      } else {
-        showToast(result.error || t("wingToggleError"), "error");
-      }
-    }
-    setWingsSaving((prev) => ({ ...prev, [wing.id]: false }));
   };
 
   const getInitials = (name: string) => {
@@ -776,131 +732,6 @@ export default function ProfilePage() {
             </button>
           )}
         </div>
-      </div>
-
-      {/* ── Published Content ── */}
-      <div style={{
-        background: T.color.white,
-        borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
-        padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
-        marginBottom: "1.5rem",
-      }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "1rem", flexWrap: "wrap", gap: "0.75rem" }}>
-          <div>
-            <h3 style={{
-              fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
-              color: T.color.charcoal, margin: "0 0 0.375rem",
-            }}>
-              {t("publishedContent")}
-            </h3>
-            <p style={{
-              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-              margin: 0, lineHeight: 1.5,
-            }}>
-              {t("publishedContentDesc")}
-            </p>
-          </div>
-          <button
-            onClick={() => router.push("/library")}
-            style={{
-              padding: "0.625rem 1.25rem",
-              borderRadius: "0.625rem",
-              border: `1.5px solid ${T.color.terracotta}`,
-              background: "transparent",
-              fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-              color: T.color.terracotta,
-              cursor: "pointer", flexShrink: 0, transition: "all .15s",
-            }}
-          >
-            {t("manageInLibrary")}
-          </button>
-        </div>
-
-        {wingsLoading ? (
-          <div style={{
-            padding: "1.5rem", textAlign: "center",
-            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-          }}>
-            {t("loadingWings")}
-          </div>
-        ) : wings.length === 0 ? (
-          <div style={{
-            padding: "1.5rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen, border: `1px solid ${T.color.cream}`,
-            textAlign: "center",
-            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-          }}>
-            {t("noWingsYet")}
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-            {wings.map((wing) => {
-              const published = !!wing.published_at;
-              const isSaving = !!wingsSaving[wing.id];
-              return (
-                <div
-                  key={wing.id}
-                  style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "1rem 1.25rem", borderRadius: "0.75rem",
-                    background: published ? `${T.color.sage}08` : T.color.linen,
-                    border: `1px solid ${published ? T.color.sage + "30" : T.color.cream}`,
-                    gap: "1rem",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
-                    {/* Status dot */}
-                    <span style={{
-                      width: "0.5rem", height: "0.5rem", borderRadius: "50%", flexShrink: 0,
-                      background: published ? T.color.sage : T.color.sandstone,
-                    }} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{
-                        fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
-                        color: T.color.charcoal,
-                        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                      }}>
-                        {wing.name}
-                      </div>
-                      <div style={{
-                        fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
-                        marginTop: "0.125rem",
-                      }}>
-                        {published
-                          ? `${t("publishedOn")} ${new Date(wing.published_at!).toLocaleDateString()}`
-                          : t("private")}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    disabled={isSaving}
-                    onClick={() => handleWingToggle(wing)}
-                    style={{
-                      padding: "0.5rem 1rem",
-                      borderRadius: "0.5rem",
-                      border: `1px solid ${published ? "#C0505033" : T.color.sage + "50"}`,
-                      background: published ? "#C0505008" : `${T.color.sage}10`,
-                      fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                      color: published ? "#C05050" : T.color.sage,
-                      cursor: isSaving ? "wait" : "pointer",
-                      flexShrink: 0,
-                      opacity: isSaving ? 0.6 : 1,
-                      transition: "all .15s",
-                      minHeight: "2.25rem",
-                    }}
-                  >
-                    {isSaving
-                      ? t("saving")
-                      : published ? t("unpublish") : t("publish")}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {/* ── Account Section ── */}

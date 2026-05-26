@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export interface SocialProfile {
   id: string;
@@ -156,6 +157,7 @@ export async function toggleFollow(
 
   if (existing) {
     await supabase.from("follows").delete().eq("id", existing.id);
+    revalidatePath("/explore");
     return { following: false };
   }
 
@@ -196,6 +198,9 @@ export async function toggleFollow(
   } catch {
     // Notifications may not be available
   }
+
+  // Bust Explore page cache so Following tab updates
+  revalidatePath("/explore");
 
   return { following: true };
 }

@@ -3,48 +3,70 @@
 import React, { useState, useRef, useTransition, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import PalaceCard from "@/components/social/PalaceCard";
-import { TuscanSectionHeader } from "@/components/ui/TuscanCard";
+import TuscanCard, { TuscanSectionHeader } from "@/components/ui/TuscanCard";
 import { useRouter } from "next/navigation";
 import { searchPalaces } from "@/lib/social/directory-actions";
 import type { DirectoryPalace } from "@/lib/social/directory-actions";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { usePalaceStore } from "@/lib/stores/palaceStore";
+// Note: do NOT import usePalaceStore — Explore is outside the (app) layout group
+import { ANIM, EASE } from "@/components/ui/TuscanStyles";
+import NudgeProvider from "@/components/ui/NudgeTooltip";
+import { useNudgeStore } from "@/lib/stores/nudgeStore";
+
+/* ── Types ─────────────────────────────────────────── */
+
+interface FollowingPalace extends DirectoryPalace {
+  latest_published_at: string | null;
+}
 
 interface ExplorePageClientProps {
   featured: DirectoryPalace[];
   trending: DirectoryPalace[];
   newest: DirectoryPalace[];
+  following?: FollowingPalace[];
   isAuthenticated?: boolean;
 }
+
+/* ── Helpers ───────────────────────────────────────── */
+
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/* ── Main Component ────────────────────────────────── */
 
 export default function ExplorePageClient({
   featured,
   trending,
   newest,
+  following = [],
   isAuthenticated = false,
 }: ExplorePageClientProps) {
   const { t } = useTranslation("social");
   const router = useRouter();
   const isMobile = useIsMobile();
-  const navMode = usePalaceStore((s) => s.navMode);
-  const setNavMode = usePalaceStore((s) => s.setNavMode);
   const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<DirectoryPalace[] | null>(
-    null
-  );
+  const [searchResults, setSearchResults] = useState<DirectoryPalace[] | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"discover" | "following">("discover");
   const [, startTransition] = useTransition();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const handleSearch = (value: string) => {
     setQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (value.trim().length < 2) {
-      setSearchResults(null);
-      return;
-    }
+    if (value.trim().length < 2) { setSearchResults(null); return; }
     debounceRef.current = setTimeout(() => {
       startTransition(async () => {
         const results = await searchPalaces(value.trim());
@@ -54,234 +76,383 @@ export default function ExplorePageClient({
   };
 
   const navigateToProfile = (palace: DirectoryPalace) => {
-    if (palace.username) {
-      router.push(`/u/${palace.username}`);
-    } else {
-      router.push(`/visit/${palace.user_id}/`);
-    }
+    router.push(`/u/${palace.username || palace.user_id}`);
   };
 
+  // Navigate to app modes via full page navigation (not soft nav)
+  // to avoid conflicts with MemoryPalace's history management
   const handleModeChange = (mode: "atrium" | "library" | "3d") => {
-    setNavMode(mode);
-    router.push(mode === "3d" ? "/palace" : `/${mode}`);
+    window.location.href = mode === "3d" ? "/palace" : `/${mode}`;
   };
+
+  const hasContent = featured.length > 0 || trending.length > 0 || newest.length > 0;
 
   return (
     <div
       style={{
-        position: "fixed",
-        inset: 0,
-        overflowY: "auto",
-        WebkitOverflowScrolling: "touch",
+        minHeight: "100dvh",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
         paddingTop: isAuthenticated && !isMobile ? "3.5rem" : undefined,
         paddingBottom: isAuthenticated && isMobile
           ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))"
           : "2rem",
-        zIndex: 1,
       }}
     >
-      {/* Desktop NavigationBar — Explore tab active via pathname */}
       {isAuthenticated && !isMobile && (
         <NavigationBar
-          currentMode={navMode}
+          currentMode={"atrium"}
           onModeChange={handleModeChange}
-          onNotifications={() => router.push("/atrium?notifications=1")}
+          onNotifications={() => router.push("/palace?notifications=1")}
           isMobile={false}
+          activeTab="explore"
         />
       )}
 
-      {/* Scrollable content */}
-      <div
-        style={{
-          maxWidth: "56rem",
-          margin: "0 auto",
-          padding: "2rem 1rem",
-        }}
-      >
+      <div style={{ maxWidth: "60rem", margin: "0 auto", padding: "0 1rem" }}>
 
-      {/* Header */}
-      <h1
-        style={{
-          fontFamily: T.font.display,
-          fontSize: "2rem",
-          fontWeight: 600,
-          color: T.color.charcoal,
-          margin: "0 0 0.5rem",
-        }}
-      >
-        {t("exploreTitle")}
-      </h1>
-      <p
-        style={{
-          fontFamily: T.font.body,
-          fontSize: "1rem",
-          color: T.color.walnut,
-          margin: "0 0 1.5rem",
-        }}
-      >
-        {t("exploreSubtitle")}
-      </p>
-
-      {/* Publish CTA — for authenticated users only */}
-      {isAuthenticated && (
-        <div style={{ marginBottom: "1.75rem" }}>
-          <button
-            onClick={() => setShowPublishModal(true)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              fontFamily: T.font.body,
-              fontSize: "0.9375rem",
-              fontWeight: 600,
-              padding: "0.75rem 1.5rem",
-              borderRadius: "0.75rem",
-              border: "none",
-              background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
-              color: T.color.cream,
-              cursor: "pointer",
-              boxShadow: `0 2px 8px ${T.color.gold}40`,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            {t("publishYourPalace")}
-          </button>
-        </div>
-      )}
-
-      {/* Search */}
-      <div style={{ marginBottom: "2rem" }}>
-        <input
-          value={query}
-          onChange={(e) => handleSearch(e.target.value)}
-          placeholder={t("searchPalaces")}
-          aria-label={t("searchPalaces")}
+        {/* ── Hero Section ──────────────────────────────── */}
+        <div
           style={{
-            width: "100%",
-            fontFamily: T.font.body,
-            fontSize: "1rem",
-            padding: "0.75rem 1.25rem",
-            borderRadius: "0.75rem",
-            border: `1px solid ${T.color.sandstone}`,
-            background: T.color.cream,
-            color: T.color.charcoal,
-            outline: "none",
-            boxSizing: "border-box",
+            padding: isMobile ? "2rem 0 1.5rem" : "2.5rem 0 2rem",
+            textAlign: "center",
+            animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out both`,
           }}
-        />
-      </div>
+        >
+          {/* Compass icon */}
+          <div style={{
+            width: "3.5rem", height: "3.5rem", margin: "0 auto 1.25rem",
+            borderRadius: "50%",
+            background: `linear-gradient(135deg, ${T.color.gold}20, ${T.color.terracotta}15)`,
+            border: `1.5px solid ${T.color.gold}40`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill={`${T.color.gold}30`} stroke={T.color.gold} />
+            </svg>
+          </div>
+          <h1 style={{
+            fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem",
+            fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.5rem",
+            letterSpacing: "0.01em",
+          }}>
+            {t("exploreTitle")}
+          </h1>
+          <p style={{
+            fontFamily: T.font.body, fontSize: "1rem",
+            color: T.color.walnut, margin: "0 auto", maxWidth: "28rem",
+            lineHeight: 1.5,
+          }}>
+            {t("exploreSubtitle")}
+          </p>
+        </div>
 
-      {/* Search results */}
-      {searchResults !== null ? (
-        <section>
-          <TuscanSectionHeader>
-            {t("searchResults")} ({searchResults.length})
-          </TuscanSectionHeader>
-          {searchResults.length === 0 ? (
-            <p
+        {/* ── Value Prop Cards ──────────────────────────── */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+          gap: "0.875rem",
+          marginBottom: "1.75rem",
+          animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.05s both`,
+        }}>
+          {[
+            {
+              icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                </svg>
+              ),
+              title: t("valuePropSearch"),
+              desc: t("valuePropSearchDesc"),
+            },
+            {
+              icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+              ),
+              title: t("valuePropFollow"),
+              desc: t("valuePropFollowDesc"),
+            },
+            {
+              icon: (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 21V8a9 9 0 0 1 18 0v13" />
+                  <rect x="9" y="13" width="6" height="8" rx="1" />
+                </svg>
+              ),
+              title: t("valuePropVisit"),
+              desc: t("valuePropVisitDesc"),
+            },
+          ].map((card) => (
+            <TuscanCard key={card.title} variant="glass" padding="1.125rem">
+              <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                <div style={{
+                  width: "2.5rem", height: "2.5rem", borderRadius: "50%", flexShrink: 0,
+                  background: `${T.color.gold}15`, border: `1px solid ${T.color.gold}25`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {card.icon}
+                </div>
+                <div>
+                  <div style={{ fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal, marginBottom: "0.25rem" }}>
+                    {card.title}
+                  </div>
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut, lineHeight: 1.5 }}>
+                    {card.desc}
+                  </div>
+                </div>
+              </div>
+            </TuscanCard>
+          ))}
+        </div>
+
+        {/* ── Search Bar ──────────────────────────────────── */}
+        <div data-nudge="explore_search" style={{
+          maxWidth: "32rem", margin: "0 auto 1.75rem",
+          animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.1s both`,
+        }}>
+          <div style={{
+            position: "relative",
+            borderRadius: "0.875rem",
+            border: `1.5px solid ${searchFocused ? T.color.gold : T.color.sandstone}`,
+            background: T.color.cream,
+            boxShadow: searchFocused
+              ? `0 0 0 3px ${T.color.gold}15, 0 2px 8px rgba(0,0,0,0.06)`
+              : "0 1px 4px rgba(0,0,0,0.04)",
+            transition: `border-color 0.3s ${EASE}, box-shadow 0.3s ${EASE}`,
+            display: "flex", alignItems: "center", gap: "0.75rem",
+            padding: "0 1rem",
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={searchFocused ? T.color.gold : T.color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "stroke 0.3s" }}>
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              value={query}
+              onChange={(e) => handleSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder={t("searchPalaces")}
+              aria-label={t("searchPalaces")}
               style={{
-                fontFamily: T.font.body,
-                fontSize: "0.9375rem",
-                color: T.color.muted,
-                textAlign: "center",
-                padding: "2rem 0",
+                flex: 1, fontFamily: T.font.body, fontSize: "0.9375rem",
+                padding: "0.75rem 0", border: "none", background: "transparent",
+                color: T.color.charcoal, outline: "none",
               }}
-            >
-              {t("noResults")}
-            </p>
-          ) : (
-            <PalaceGrid
-              palaces={searchResults}
-              onPalaceClick={navigateToProfile}
             />
-          )}
-        </section>
-      ) : (
-        <>
-          {/* Featured */}
-          {featured.length > 0 && (
-            <section style={{ marginBottom: "2.5rem" }}>
-              <TuscanSectionHeader>{t("featured")}</TuscanSectionHeader>
-              <PalaceGrid
-                palaces={featured}
-                onPalaceClick={navigateToProfile}
-              />
-            </section>
-          )}
-
-          {/* Trending */}
-          {trending.length > 0 && (
-            <section style={{ marginBottom: "2.5rem" }}>
-              <TuscanSectionHeader>{t("trending")}</TuscanSectionHeader>
-              <PalaceGrid
-                palaces={trending}
-                onPalaceClick={navigateToProfile}
-              />
-            </section>
-          )}
-
-          {/* Newest */}
-          {newest.length > 0 && (
-            <section style={{ marginBottom: "2.5rem" }}>
-              <TuscanSectionHeader>{t("newest")}</TuscanSectionHeader>
-              <PalaceGrid
-                palaces={newest}
-                onPalaceClick={navigateToProfile}
-              />
-            </section>
-          )}
-
-          {/* Empty state when nothing published yet */}
-          {featured.length === 0 &&
-            trending.length === 0 &&
-            newest.length === 0 && (
-              <div
+            {query && (
+              <button
+                onClick={() => { setQuery(""); setSearchResults(null); }}
+                aria-label="Clear"
                 style={{
-                  textAlign: "center",
-                  padding: "4rem 1rem",
+                  background: "none", border: "none", cursor: "pointer",
+                  color: T.color.muted, padding: "0.25rem", flexShrink: 0,
                 }}
               >
-                <p
-                  style={{
-                    fontFamily: T.font.display,
-                    fontSize: "1.375rem",
-                    color: T.color.charcoal,
-                    marginBottom: "0.5rem",
-                  }}
-                >
-                  {t("exploreEmpty")}
-                </p>
-                <p
-                  style={{
-                    fontFamily: T.font.body,
-                    fontSize: "0.9375rem",
-                    color: T.color.muted,
-                  }}
-                >
-                  {t("exploreEmptyHint")}
-                </p>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Search Results ──────────────────────────────── */}
+        {searchResults !== null ? (
+          <section style={{ animation: `${ANIM.tuscanFadeSlideUp} 0.4s ease-out both` }}>
+            <TuscanSectionHeader
+              badge={<span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted }}>{searchResults.length}</span>}
+            >
+              {t("searchResults")}
+            </TuscanSectionHeader>
+            {searchResults.length === 0 ? (
+              <EmptyState text={t("noResults")} />
+            ) : (
+              <PalaceGrid palaces={searchResults} onPalaceClick={navigateToProfile} />
+            )}
+          </section>
+        ) : (
+          <>
+            {/* ── Tabs: Discover / Following ──────────────── */}
+            {isAuthenticated && (
+              <div data-nudge="explore_tabs" style={{
+                display: "flex", gap: "0.25rem", marginBottom: "1.75rem",
+                background: `${T.color.sandstone}40`, borderRadius: "0.75rem",
+                padding: "0.25rem", maxWidth: "20rem", margin: "0 auto 1.75rem",
+                animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.15s both`,
+              }}>
+                {(["discover", "following"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    style={{
+                      flex: 1, fontFamily: T.font.body, fontSize: "0.875rem",
+                      fontWeight: activeTab === tab ? 600 : 400,
+                      padding: "0.625rem 1rem", borderRadius: "0.5rem",
+                      border: "none", cursor: "pointer",
+                      background: activeTab === tab ? T.color.cream : "transparent",
+                      color: activeTab === tab ? T.color.charcoal : T.color.walnut,
+                      boxShadow: activeTab === tab ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                      transition: `all 0.25s ${EASE}`,
+                    }}
+                  >
+                    {tab === "discover" ? t("exploreDiscover") : t("exploreFollowing")}
+                    {tab === "following" && (
+                      <span style={{
+                        marginLeft: "0.375rem", fontSize: "0.75rem",
+                        background: `${T.color.gold}20`, color: T.color.goldDark,
+                        padding: "0.0625rem 0.375rem", borderRadius: "0.75rem",
+                      }}>
+                        {following.length}
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
             )}
-        </>
-      )}
+
+            {/* ── Following Tab ──────────────────────────── */}
+            {activeTab === "following" ? (
+              <section style={{ animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out both` }}>
+                <TuscanSectionHeader>{t("exploreFollowingTitle")}</TuscanSectionHeader>
+                {following.length > 0 ? (
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? "100%" : "18rem"}, 1fr))`,
+                    gap: "0.875rem",
+                  }}>
+                    {following.map((p) => (
+                      <FollowingCard key={p.user_id} palace={p} onClick={() => navigateToProfile(p)} />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
+                    <div style={{
+                      width: "3rem", height: "3rem", margin: "0 auto 1rem",
+                      borderRadius: "50%",
+                      background: `${T.color.gold}15`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                      </svg>
+                    </div>
+                    <p style={{ fontFamily: T.font.display, fontSize: "1.125rem", color: T.color.charcoal, margin: "0 0 0.5rem" }}>
+                      {t("exploreFollowEmpty")}
+                    </p>
+                    <button
+                      onClick={() => setActiveTab("discover")}
+                      style={{
+                        fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                        color: T.color.goldDark, background: `${T.color.gold}15`,
+                        border: "none", borderRadius: "1rem", padding: "0.5rem 1.25rem",
+                        cursor: "pointer", transition: `background 0.2s ${EASE}`,
+                      }}
+                    >
+                      {t("exploreDiscover")} →
+                    </button>
+                  </div>
+                )}
+              </section>
+            ) : activeTab === "discover" || !isAuthenticated ? (
+              <>
+                {/* ── Publish CTA ──────────────────────────── */}
+                {isAuthenticated && (
+                  <div data-nudge="explore_publish" style={{
+                    textAlign: "center", marginBottom: "2rem",
+                    animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.2s both`,
+                  }}>
+                    <button
+                      onClick={() => setShowPublishModal(true)}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: "0.5rem",
+                        fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                        padding: "0.75rem 1.75rem", borderRadius: "2rem",
+                        border: "none",
+                        background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                        color: T.color.cream, cursor: "pointer",
+                        boxShadow: `0 2px 12px ${T.color.gold}35`,
+                        transition: `transform 0.2s ${EASE}, box-shadow 0.2s ${EASE}`,
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 4px 16px ${T.color.gold}45`; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 2px 12px ${T.color.gold}35`; }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                      {t("publishYourPalace")}
+                    </button>
+                  </div>
+                )}
+
+                {/* ── Featured ──────────────────────────────── */}
+                {featured.length > 0 && (
+                  <section data-nudge="explore_cards" style={{ marginBottom: "2.5rem", animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.1s both` }}>
+                    <TuscanSectionHeader
+                      badge={<span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, padding: "0.1875rem 0.5rem", borderRadius: "1rem", background: `${T.color.gold}15`, color: T.color.goldDark }}>★</span>}
+                    >
+                      {t("featured")}
+                    </TuscanSectionHeader>
+                    <PalaceGrid palaces={featured} onPalaceClick={navigateToProfile} variant="featured" />
+                  </section>
+                )}
+
+                {/* ── Trending ──────────────────────────────── */}
+                {trending.length > 0 && (
+                  <section style={{ marginBottom: "2.5rem", animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.2s both` }}>
+                    <TuscanSectionHeader
+                      badge={<span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, padding: "0.1875rem 0.5rem", borderRadius: "1rem", background: `${T.color.terracotta}12`, color: T.color.terracotta }}>🔥</span>}
+                    >
+                      {t("trending")}
+                    </TuscanSectionHeader>
+                    <PalaceGrid palaces={trending} onPalaceClick={navigateToProfile} />
+                  </section>
+                )}
+
+                {/* ── Newest ────────────────────────────────── */}
+                {newest.length > 0 && (
+                  <section style={{ marginBottom: "2.5rem", animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.3s both` }}>
+                    <TuscanSectionHeader>{t("newest")}</TuscanSectionHeader>
+                    <PalaceGrid palaces={newest} onPalaceClick={navigateToProfile} />
+                  </section>
+                )}
+
+                {/* ── Enhanced Empty state ──────────────────── */}
+                {!hasContent && (
+                  <div style={{ textAlign: "center", padding: "2rem 1rem" }}>
+                    <EmptyState text={t("exploreEmpty")} hint={t("exploreEmptyHint")} />
+                    {isAuthenticated && (
+                      <button
+                        onClick={() => setShowPublishModal(true)}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: "0.5rem",
+                          fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
+                          padding: "0.875rem 2rem", borderRadius: "2rem",
+                          border: "none", marginTop: "1rem",
+                          background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                          color: T.color.cream, cursor: "pointer",
+                          boxShadow: `0 2px 12px ${T.color.gold}35`,
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                        {t("publishYourPalace")}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : null}
+          </>
+        )}
       </div>
 
-      {/* Mobile bottom NavigationBar — Explore tab active via pathname */}
+      {/* Mobile NavigationBar */}
       {isAuthenticated && isMobile && (
         <NavigationBar
-          currentMode={navMode}
+          currentMode={"atrium"}
           onModeChange={handleModeChange}
-          onNotifications={() => router.push("/atrium?notifications=1")}
+          onNotifications={() => router.push("/palace?notifications=1")}
           isMobile={true}
+          activeTab="explore"
         />
       )}
 
-      {/* Publish-all-wings modal triggered from the CTA */}
       {showPublishModal && (
         <Suspense fallback={null}>
           <PublishAllModal
@@ -290,37 +461,309 @@ export default function ExplorePageClient({
           />
         </Suspense>
       )}
+
+      {/* Tutorial nudges */}
+      <NudgeProvider page="explore" />
     </div>
   );
 }
 
+/* ── Palace Grid ───────────────────────────────────── */
+
 function PalaceGrid({
   palaces,
   onPalaceClick,
+  variant,
 }: {
   palaces: DirectoryPalace[];
   onPalaceClick: (p: DirectoryPalace) => void;
+  variant?: "featured";
 }) {
+  const isMobile = useIsMobile();
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(16rem, 1fr))",
-        gap: "0.75rem",
+        gridTemplateColumns: `repeat(auto-fill, minmax(${isMobile ? "100%" : variant === "featured" ? "20rem" : "17rem"}, 1fr))`,
+        gap: "0.875rem",
       }}
     >
       {palaces.map((p) => (
-        <PalaceCard
+        <EnhancedPalaceCard
           key={p.user_id}
           palace={p}
           onClick={() => onPalaceClick(p)}
+          featured={variant === "featured"}
         />
       ))}
     </div>
   );
 }
 
-/** Modal that publishes ALL user wings at once (Issue 4) */
+/* ── Enhanced Palace Card ──────────────────────────── */
+
+function EnhancedPalaceCard({
+  palace,
+  onClick,
+  featured = false,
+}: {
+  palace: DirectoryPalace;
+  onClick: () => void;
+  featured?: boolean;
+}) {
+  const { t } = useTranslation("social");
+
+  return (
+    <TuscanCard
+      variant={featured ? "elevated" : "glass"}
+      padding="0"
+      style={{ cursor: "pointer" }}
+    >
+      <div
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        aria-label={palace.display_name || t("anonymous")}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+        style={{ padding: "1.25rem" }}
+      >
+        {/* Top row: avatar + info */}
+        <div style={{ display: "flex", gap: "0.875rem", alignItems: "flex-start" }}>
+          {/* Avatar */}
+          <div style={{
+            width: featured ? "3.5rem" : "3rem", height: featured ? "3.5rem" : "3rem",
+            borderRadius: "50%", flexShrink: 0,
+            background: palace.avatar_url
+              ? `url(${palace.avatar_url}) center/cover`
+              : `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
+            border: `2px solid ${featured ? T.color.gold : T.color.sandstone}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: T.color.cream, fontFamily: T.font.display,
+            fontSize: featured ? "1.375rem" : "1.125rem", fontWeight: 600,
+          }}>
+            {!palace.avatar_url && (palace.display_name?.[0]?.toUpperCase() || "?")}
+          </div>
+
+          {/* Name + username */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontFamily: T.font.display, fontSize: featured ? "1.1875rem" : "1.0625rem",
+              fontWeight: 600, color: T.color.charcoal,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            }}>
+              {palace.display_name || t("anonymous")}
+            </div>
+            {palace.username && (
+              <div style={{
+                fontFamily: T.font.body, fontSize: "0.8125rem",
+                color: T.color.muted, marginTop: "0.0625rem",
+              }}>
+                @{palace.username}
+              </div>
+            )}
+          </div>
+
+          {/* Category badge or visit count */}
+          {palace.category ? (
+            <span style={{
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
+              padding: "0.1875rem 0.5rem", borderRadius: "1rem",
+              background: `${T.color.gold}12`, color: T.color.goldDark,
+              whiteSpace: "nowrap", flexShrink: 0,
+            }}>
+              {palace.category}
+            </span>
+          ) : palace.total_visit_count > 0 ? (
+            <span style={{
+              fontFamily: T.font.body, fontSize: "0.6875rem",
+              color: T.color.muted, flexShrink: 0,
+            }}>
+              {palace.total_visit_count} {t("visits")}
+            </span>
+          ) : null}
+        </div>
+
+        {/* Bio */}
+        {palace.bio && (
+          <p style={{
+            fontFamily: T.font.body, fontSize: "0.8125rem",
+            color: T.color.walnut, margin: "0.75rem 0 0",
+            lineHeight: 1.5, display: "-webkit-box",
+            WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+          }}>
+            {palace.bio}
+          </p>
+        )}
+
+        {/* Wing count bar + Visit */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: "0.5rem",
+          marginTop: "0.75rem", paddingTop: "0.625rem",
+          borderTop: `1px solid ${T.color.lineFaint}`,
+        }}>
+          {palace.published_wing_count > 0 && (
+            <>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
+                {palace.published_wing_count} {palace.published_wing_count === 1 ? "wing" : "wings"}
+              </span>
+            </>
+          )}
+          {palace.first_wing_slug && (
+            <span style={{
+              marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.25rem",
+              fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500, color: T.color.goldDark,
+            }}>
+              {t("exploreVisitPalace")} →
+            </span>
+          )}
+        </div>
+      </div>
+    </TuscanCard>
+  );
+}
+
+/* ── Following Card ──────────────────────────────────── */
+
+function FollowingCard({
+  palace,
+  onClick,
+}: {
+  palace: FollowingPalace;
+  onClick: () => void;
+}) {
+  const { t } = useTranslation("social");
+
+  return (
+    <TuscanCard variant="elevated" padding="0" style={{ cursor: "pointer" }}>
+      <div
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        aria-label={palace.display_name || t("anonymous")}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      >
+        {/* Accent header strip */}
+        <div style={{
+          height: "0.25rem",
+          background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.terracotta})`,
+          borderRadius: "1rem 1rem 0 0",
+        }} />
+
+        <div style={{ padding: "1.25rem" }}>
+          <div style={{ display: "flex", gap: "0.875rem", alignItems: "center" }}>
+            {/* Avatar */}
+            <div style={{
+              width: "3.25rem", height: "3.25rem", borderRadius: "50%", flexShrink: 0,
+              background: palace.avatar_url
+                ? `url(${palace.avatar_url}) center/cover`
+                : `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
+              border: `2px solid ${T.color.gold}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: T.color.cream, fontFamily: T.font.display,
+              fontSize: "1.25rem", fontWeight: 600,
+            }}>
+              {!palace.avatar_url && (palace.display_name?.[0]?.toUpperCase() || "?")}
+            </div>
+
+            {/* Info */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600,
+                color: T.color.charcoal,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {palace.display_name || t("anonymous")}
+              </div>
+              {palace.username && (
+                <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted }}>
+                  @{palace.username}
+                </div>
+              )}
+            </div>
+
+            {/* Last update badge */}
+            {palace.latest_published_at && (
+              <span style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem",
+                color: T.color.walnut, flexShrink: 0,
+                background: `${T.color.sandstone}40`, padding: "0.1875rem 0.5rem",
+                borderRadius: "0.5rem",
+              }}>
+                {timeAgo(palace.latest_published_at)}
+              </span>
+            )}
+          </div>
+
+          {/* Bio */}
+          {palace.bio && (
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.8125rem",
+              color: T.color.walnut, margin: "0.625rem 0 0",
+              lineHeight: 1.5, display: "-webkit-box",
+              WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+            }}>
+              {palace.bio}
+            </p>
+          )}
+
+          {/* Stats row */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0.75rem",
+            marginTop: "0.75rem", paddingTop: "0.625rem",
+            borderTop: `1px solid ${T.color.lineFaint}`,
+            fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+          }}>
+            {palace.published_wing_count > 0 && (
+              <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+                {palace.published_wing_count} {palace.published_wing_count === 1 ? "wing" : "wings"}
+              </span>
+            )}
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: "0.25rem",
+              color: T.color.goldDark, fontWeight: 500,
+            }}>
+              {t("exploreVisitPalace")} →
+            </span>
+          </div>
+        </div>
+      </div>
+    </TuscanCard>
+  );
+}
+
+/* ── Empty State ──────────────────────────────────── */
+
+function EmptyState({ text, hint }: { text: string; hint?: string }) {
+  return (
+    <div style={{ textAlign: "center", padding: "3rem 1rem" }}>
+      <div style={{
+        width: "3rem", height: "3rem", margin: "0 auto 1rem",
+        borderRadius: "50%",
+        background: `${T.color.sandstone}30`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="1.5">
+          <circle cx="12" cy="12" r="10" /><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+        </svg>
+      </div>
+      <p style={{ fontFamily: T.font.display, fontSize: "1.25rem", color: T.color.charcoal, margin: "0 0 0.375rem" }}>
+        {text}
+      </p>
+      {hint && (
+        <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, margin: 0 }}>
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ── Publish All Modal ────────────────────────────── */
+
 function PublishAllModal({
   onClose,
   onPublished,
@@ -339,173 +782,81 @@ function PublishAllModal({
     startTransition(async () => {
       setError(null);
       const { publishAllWings } = await import("@/lib/social/share-actions");
-      const result = await publishAllWings({
-        description: description.trim() || undefined,
-        visibility,
-      });
-      if (!result.ok) {
-        setError(result.error || t("publishError"));
-        return;
-      }
+      const result = await publishAllWings({ description: description.trim() || undefined, visibility });
+      if (!result.ok) { setError(result.error || t("publishError")); return; }
       setDone(result.count);
-      setTimeout(() => {
-        onPublished?.();
-        onClose();
-      }, 1500);
+      setTimeout(() => { onPublished?.(); onClose(); }, 1500);
     });
   };
 
   React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isPending) onClose();
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && !isPending) onClose(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [isPending, onClose]);
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="publish-all-title"
+      role="dialog" aria-modal="true" aria-labelledby="publish-all-title"
       style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.5)",
-        backdropFilter: "blur(0.25rem)",
+        position: "fixed", inset: 0, zIndex: 9999,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: "rgba(0,0,0,0.5)", backdropFilter: "blur(0.25rem)",
       }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isPending) onClose();
-      }}
+      onClick={(e) => { if (e.target === e.currentTarget && !isPending) onClose(); }}
     >
-      <div
-        style={{
-          width: "min(28rem, 90vw)",
-          maxHeight: "80vh",
-          overflow: "auto",
-          background: T.color.cream,
-          borderRadius: "1rem",
-          padding: "2rem",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-        }}
-      >
-        <h2
-          id="publish-all-title"
-          style={{
-            fontFamily: T.font.display,
-            fontSize: "1.5rem",
-            fontWeight: 600,
-            color: T.color.charcoal,
-            margin: "0 0 0.25rem",
-          }}
-        >
+      <div style={{
+        width: "min(28rem, 90vw)", maxHeight: "80vh", overflow: "auto",
+        background: T.color.cream, borderRadius: "1rem", padding: "2rem",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+      }}>
+        <h2 id="publish-all-title" style={{
+          fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 600,
+          color: T.color.charcoal, margin: "0 0 0.25rem",
+        }}>
           {t("publishAllTitle")}
         </h2>
-        <p
-          style={{
-            fontFamily: T.font.body,
-            fontSize: "0.875rem",
-            color: T.color.muted,
-            margin: "0 0 1.5rem",
-          }}
-        >
+        <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, margin: "0 0 1.5rem" }}>
           {t("publishAllSubtitle")}
         </p>
 
         {done !== null ? (
-          <p
-            style={{
-              fontFamily: T.font.body,
-              fontSize: "1rem",
-              color: T.color.charcoal,
-              textAlign: "center",
-              padding: "1rem 0",
-            }}
-          >
+          <p style={{ fontFamily: T.font.body, fontSize: "1rem", color: T.color.charcoal, textAlign: "center", padding: "1rem 0" }}>
             {t("publishAllDone", { count: String(done) })}
           </p>
         ) : (
           <>
-            {/* Description */}
-            <label
-              htmlFor="pub-all-desc"
-              style={{
-                fontFamily: T.font.body,
-                fontSize: "0.8125rem",
-                fontWeight: 600,
-                color: T.color.charcoal,
-                display: "block",
-                marginBottom: "0.375rem",
-              }}
-            >
+            <label htmlFor="pub-all-desc" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal, display: "block", marginBottom: "0.375rem" }}>
               {t("description")}
             </label>
             <textarea
-              id="pub-all-desc"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={500}
-              rows={3}
-              placeholder={t("publishDescPlaceholder")}
+              id="pub-all-desc" value={description} onChange={(e) => setDescription(e.target.value)}
+              maxLength={500} rows={3} placeholder={t("publishDescPlaceholder")}
               style={{
-                width: "100%",
-                fontFamily: T.font.body,
-                fontSize: "0.875rem",
-                padding: "0.625rem 0.875rem",
-                borderRadius: "0.625rem",
-                border: `1px solid ${T.color.sandstone}`,
-                background: T.color.linen,
-                color: T.color.charcoal,
-                resize: "vertical",
-                outline: "none",
-                boxSizing: "border-box",
+                width: "100%", fontFamily: T.font.body, fontSize: "0.875rem",
+                padding: "0.625rem 0.875rem", borderRadius: "0.625rem",
+                border: `1px solid ${T.color.sandstone}`, background: T.color.linen,
+                color: T.color.charcoal, resize: "vertical", outline: "none", boxSizing: "border-box",
               }}
             />
-            <div
-              style={{
-                fontFamily: T.font.body,
-                fontSize: "0.75rem",
-                color: T.color.muted,
-                textAlign: "right",
-                marginTop: "0.25rem",
-              }}
-            >
+            <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, textAlign: "right", marginTop: "0.25rem" }}>
               {description.length}/500
             </div>
 
-            {/* Visibility */}
-            <label
-              style={{
-                fontFamily: T.font.body,
-                fontSize: "0.8125rem",
-                fontWeight: 600,
-                color: T.color.charcoal,
-                display: "block",
-                margin: "1.25rem 0 0.5rem",
-              }}
-            >
+            <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal, display: "block", margin: "1.25rem 0 0.5rem" }}>
               {t("visibility")}
             </label>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               {(["public", "followers"] as const).map((v) => (
                 <button
-                  key={v}
-                  onClick={() => setVisibility(v)}
+                  key={v} onClick={() => setVisibility(v)}
                   style={{
-                    flex: 1,
-                    fontFamily: T.font.body,
-                    fontSize: "0.8125rem",
+                    flex: 1, fontFamily: T.font.body, fontSize: "0.8125rem",
                     fontWeight: visibility === v ? 600 : 400,
-                    padding: "0.625rem",
-                    borderRadius: "0.5rem",
+                    padding: "0.625rem", borderRadius: "0.5rem",
                     border: `1px solid ${visibility === v ? T.color.gold : T.color.sandstone}`,
                     background: visibility === v ? `${T.color.gold}15` : "transparent",
-                    color: visibility === v ? T.color.goldDark : T.color.walnut,
-                    cursor: "pointer",
+                    color: visibility === v ? T.color.goldDark : T.color.walnut, cursor: "pointer",
                   }}
                 >
                   {t(`visibility_${v}`)}
@@ -513,56 +864,26 @@ function PublishAllModal({
               ))}
             </div>
 
-            {error && (
-              <p
-                style={{
-                  fontFamily: T.font.body,
-                  fontSize: "0.8125rem",
-                  color: T.color.error,
-                  margin: "1rem 0 0",
-                }}
-              >
-                {error}
-              </p>
-            )}
+            {error && <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.error, margin: "1rem 0 0" }}>{error}</p>}
 
-            <div
-              style={{
-                display: "flex",
-                gap: "0.75rem",
-                justifyContent: "flex-end",
-                marginTop: "1.5rem",
-              }}
-            >
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "1.5rem" }}>
               <button
-                onClick={onClose}
-                disabled={isPending}
+                onClick={onClose} disabled={isPending}
                 style={{
-                  fontFamily: T.font.body,
-                  fontSize: "0.875rem",
-                  padding: "0.625rem 1.25rem",
-                  borderRadius: "0.625rem",
-                  border: `1px solid ${T.color.sandstone}`,
-                  background: "transparent",
-                  color: T.color.walnut,
-                  cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: "0.875rem", padding: "0.625rem 1.25rem",
+                  borderRadius: "0.625rem", border: `1px solid ${T.color.sandstone}`,
+                  background: "transparent", color: T.color.walnut, cursor: "pointer",
                 }}
               >
                 {t("cancel")}
               </button>
               <button
-                onClick={handlePublishAll}
-                disabled={isPending}
+                onClick={handlePublishAll} disabled={isPending}
                 style={{
-                  fontFamily: T.font.body,
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  padding: "0.625rem 1.5rem",
-                  borderRadius: "0.625rem",
-                  border: "none",
+                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                  padding: "0.625rem 1.5rem", borderRadius: "0.625rem", border: "none",
                   background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
-                  color: T.color.cream,
-                  cursor: isPending ? "wait" : "pointer",
+                  color: T.color.cream, cursor: isPending ? "wait" : "pointer",
                   opacity: isPending ? 0.6 : 1,
                 }}
               >

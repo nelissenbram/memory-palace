@@ -1,15 +1,62 @@
 import { T } from "@/lib/theme";
 
 export default function Loading() {
+  const shimmer = `linear-gradient(90deg, ${T.color.sandstone}20 25%, ${T.color.sandstone}40 50%, ${T.color.sandstone}20 75%)`;
+  const pulse = "pulse 1.8s ease-in-out infinite";
+
   return (
-    <div style={{ maxWidth: "42rem", margin: "0 auto", padding: "2rem 1rem", minHeight: "100vh", background: T.color.linen }}>
-      <div style={{ display: "flex", gap: "1rem", alignItems: "center", padding: "1.5rem", borderRadius: "1rem", background: T.color.cream }}>
-        <div style={{ width: "4rem", height: "4rem", borderRadius: "50%", background: T.color.sandstone, opacity: 0.3 }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ width: "60%", height: "1.5rem", borderRadius: "0.375rem", background: T.color.sandstone, opacity: 0.3, marginBottom: "0.5rem" }} />
-          <div style={{ width: "40%", height: "1rem", borderRadius: "0.375rem", background: T.color.sandstone, opacity: 0.2 }} />
+    <>
+      <style>{`@keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.7; } }`}</style>
+      <div style={{
+        minHeight: "100dvh",
+        background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
+        paddingTop: "3.5rem",
+      }}>
+        <div style={{ maxWidth: "56rem", margin: "0 auto", padding: "0 1rem" }}>
+          {/* Back button skeleton */}
+          <div style={{ padding: "1.5rem 0 1rem" }}>
+            <div style={{ width: "8rem", height: "1.5rem", borderRadius: "0.375rem", background: shimmer, animation: pulse }} />
+          </div>
+
+          {/* Profile card skeleton */}
+          <div style={{
+            padding: "1.5rem", borderRadius: "1rem",
+            background: T.color.cream,
+            boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+          }}>
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+              <div style={{ width: "4.5rem", height: "4.5rem", borderRadius: "50%", background: shimmer, animation: pulse, flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ width: "50%", height: "1.5rem", borderRadius: "0.375rem", background: shimmer, animation: pulse, marginBottom: "0.5rem" }} />
+                <div style={{ width: "30%", height: "1rem", borderRadius: "0.375rem", background: shimmer, animation: pulse, marginBottom: "0.75rem" }} />
+                <div style={{ width: "7rem", height: "2rem", borderRadius: "1rem", background: shimmer, animation: pulse }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Stats bar skeleton */}
+          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", padding: "1.25rem 0" }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} style={{ width: "4rem", height: "2.5rem", borderRadius: "0.5rem", background: shimmer, animation: pulse }} />
+            ))}
+          </div>
+
+          {/* Wings section skeleton */}
+          <div style={{ marginTop: "1.5rem" }}>
+            <div style={{ width: "10rem", height: "1.25rem", borderRadius: "0.375rem", background: shimmer, animation: pulse, marginBottom: "1rem" }} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16rem, 1fr))", gap: "0.875rem" }}>
+              {[1, 2, 3].map((i) => (
+                <div key={i} style={{
+                  height: "8rem", borderRadius: "0.75rem",
+                  background: T.color.cream,
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                  animation: pulse,
+                }} />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

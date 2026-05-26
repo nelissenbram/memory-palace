@@ -73,6 +73,16 @@ function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       );
+    case "sharing":
+      return (
+        <svg {...s}>
+          <circle cx="18" cy="5" r="3" />
+          <circle cx="6" cy="12" r="3" />
+          <circle cx="18" cy="19" r="3" />
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+        </svg>
+      );
     case "cookies":
       return (
         <svg {...s}>
@@ -104,6 +114,7 @@ const NAV_ITEMS = [
   { href: "/settings/connections", labelKey: "connections", iconKey: "connections" },
   { href: "/settings/notifications", labelKey: "alerts", iconKey: "notifications" },
   { href: "/settings/legacy", labelKey: "legacy", iconKey: "legacy" },
+  { href: "/settings/sharing", labelKey: "sharingSettings", iconKey: "sharing" },
   { href: "/settings/security", labelKey: "security", iconKey: "security" },
   { href: "/settings/cookies", labelKey: "cookies", iconKey: "cookies" },
 ] as const;

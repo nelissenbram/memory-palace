@@ -7,14 +7,19 @@ async function ensureProfilePublic(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string
 ): Promise<void> {
-  try {
+  // Try conditional update first (no-op if already public)
+  const { error } = await supabase
+    .from("profiles")
+    .update({ is_public: true })
+    .eq("id", userId)
+    .eq("is_public", false);
+
+  // If that failed, force-set without the is_public=false guard
+  if (error) {
     await supabase
       .from("profiles")
       .update({ is_public: true })
-      .eq("id", userId)
-      .eq("is_public", false); // no-op if already public
-  } catch {
-    // Non-fatal — publishing still succeeds
+      .eq("id", userId);
   }
 }
 

@@ -34,13 +34,23 @@ export async function GET(
   // Find the public share by slug
   const { data: share, error: shareError } = await supabase
     .from("public_shares")
-    .select("id, room_id, wing_id, slug, created_by, is_active")
+    .select("id, room_id, wing_id, slug, created_by, is_active, expires_at")
     .eq("slug", slug)
     .eq("is_active", true)
     .single();
 
   if (shareError || !share) {
     return NextResponse.json({ error: "Share not found or inactive" }, { status: 404 });
+  }
+
+  // Check expiry for time-limited shares
+  if (share.expires_at) {
+    const expiresAt = new Date(share.expires_at);
+    if (expiresAt < new Date()) {
+      // Auto-deactivate
+      await supabase.from("public_shares").update({ is_active: false }).eq("id", share.id);
+      return NextResponse.json({ error: "This share has expired" }, { status: 410 });
+    }
   }
 
   // Fetch room info

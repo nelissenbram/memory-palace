@@ -71,6 +71,7 @@ export interface PalaceSubNavProps {
   onSharingSettings: () => void;
   onBack: () => void;
   onPublish?: () => void;
+  onPasscode?: () => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -724,6 +725,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
         controlledPending={props.pending}
         onPendingChange={props.onPendingChange}
         onPublish={props.onPublish}
+        onPasscode={props.onPasscode}
       />
     );
   }
@@ -774,45 +776,84 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
       >
         {renderBreadcrumbs()}
 
-        {/* Publish button — shown in corridor/room view */}
-        {props.onPublish && (view === "corridor" || view === "room") && (
+        {/* Publish + Passcode buttons — shown in corridor/room view */}
+        {(props.onPublish || props.onPasscode) && (view === "corridor" || view === "room") && (
           <>
             <span style={{ flex: 1 }} />
-            <button
-              onClick={props.onPublish}
-              title={t("publishAction")}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.3125rem",
-                padding: "0.25rem 0.625rem",
-                borderRadius: "0.5rem",
-                border: `1px solid ${T.color.gold}55`,
-                background: `${T.color.gold}10`,
-                fontFamily: T.font.body,
-                fontSize: "0.75rem",
-                fontWeight: 500,
-                color: T.color.goldDark,
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-                flexShrink: 0,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `${T.color.gold}25`;
-                e.currentTarget.style.borderColor = T.color.gold;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = `${T.color.gold}10`;
-                e.currentTarget.style.borderColor = `${T.color.gold}55`;
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-                <polyline points="16 6 12 2 8 6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-              {t("publishAction")}
-            </button>
+            {props.onPasscode && (
+              <button
+                onClick={props.onPasscode}
+                title={t("passcodeAction")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.3125rem",
+                  padding: "0.25rem 0.625rem",
+                  borderRadius: "0.5rem",
+                  border: `1px solid ${T.color.walnut}40`,
+                  background: `${T.color.walnut}08`,
+                  fontFamily: T.font.body,
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  color: T.color.walnut,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  flexShrink: 0,
+                  marginRight: "0.375rem",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `${T.color.walnut}15`;
+                  e.currentTarget.style.borderColor = `${T.color.walnut}70`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = `${T.color.walnut}08`;
+                  e.currentTarget.style.borderColor = `${T.color.walnut}40`;
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                {t("passcodeAction")}
+              </button>
+            )}
+            {props.onPublish && (
+              <button
+                onClick={props.onPublish}
+                title={t("publishAction")}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.3125rem",
+                  padding: "0.25rem 0.625rem",
+                  borderRadius: "0.5rem",
+                  border: `1px solid ${T.color.gold}55`,
+                  background: `${T.color.gold}10`,
+                  fontFamily: T.font.body,
+                  fontSize: "0.75rem",
+                  fontWeight: 500,
+                  color: T.color.goldDark,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                  flexShrink: 0,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `${T.color.gold}25`;
+                  e.currentTarget.style.borderColor = T.color.gold;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = `${T.color.gold}10`;
+                  e.currentTarget.style.borderColor = `${T.color.gold}55`;
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+                  <polyline points="16 6 12 2 8 6" />
+                  <line x1="12" y1="2" x2="12" y2="15" />
+                </svg>
+                {t("publishAction")}
+              </button>
+            )}
           </>
         )}
       </div>
@@ -841,6 +882,7 @@ interface MobileThreeBarNavProps {
   controlledPending?: PalacePending;
   onPendingChange?: (p: PalacePending) => void;
   onPublish?: () => void;
+  onPasscode?: () => void;
 }
 
 type Pending = PalacePending;
@@ -848,7 +890,7 @@ type Pending = PalacePending;
 function MobileThreeBarNav(props: MobileThreeBarNavProps) {
   const { view, wingName, wingAccent, roomId, wings, wingRooms,
     onExitToPalace, onEntranceHall, onSwitchWing, onNavigateRoom,
-    barBackground, barBorder, barShadow, onPublish } = props;
+    barBackground, barBorder, barShadow, onPublish, onPasscode } = props;
   const { t } = useTranslation("palace");
   const { t: tWings } = useTranslation("wings");
 
@@ -1082,7 +1124,38 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
       })}
     </div>
 
-    {/* Publish button — mobile corridor/room only */}
+    {/* Passcode + Publish buttons — mobile corridor/room only */}
+    {onPasscode && (view === "corridor" || view === "room") && (
+      <button
+        onClick={onPasscode}
+        aria-label={t("passcodeAction")}
+        style={{
+          position: "fixed",
+          top: `calc(${safeT} + ${BAR_H} * 3 + 0.5rem)`,
+          right: `calc(${safeR} + ${onPublish ? "4.25rem" : "0.75rem"})`,
+          zIndex: 43,
+          width: "2.75rem",
+          height: "2.75rem",
+          borderRadius: "50%",
+          border: `1px solid ${T.color.walnut}40`,
+          background: `${T.color.linen}ee`,
+          backdropFilter: "blur(0.5rem)",
+          WebkitBackdropFilter: "blur(0.5rem)",
+          color: T.color.walnut,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 0.125rem 0.5rem rgba(44,44,42,0.1)",
+          transition: "all 0.15s ease",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </button>
+    )}
     {onPublish && (view === "corridor" || view === "room") && (
       <button
         onClick={onPublish}
