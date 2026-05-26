@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export interface DirectoryPalace {
   user_id: string;
@@ -19,7 +19,8 @@ export interface DirectoryPalace {
 export async function getFeatured(
   limit = 12
 ): Promise<DirectoryPalace[]> {
-  const supabase = await createClient();
+  // Use admin client to bypass RLS — directory queries need cross-user reads
+  const supabase = createAdminClient();
 
   const { data: featured } = await supabase
     .from("featured_palaces")
@@ -36,7 +37,7 @@ export async function getFeatured(
 export async function getTrending(
   limit = 12
 ): Promise<DirectoryPalace[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const weekAgo = new Date();
   weekAgo.setDate(weekAgo.getDate() - 7);
 
@@ -101,7 +102,7 @@ export async function searchPalaces(
   query: string,
   limit = 20
 ): Promise<DirectoryPalace[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const q = query.trim().toLowerCase();
   if (!q || q.length < 2) return [];
 
@@ -150,7 +151,7 @@ export async function searchPalaces(
 export async function getNewPalaces(
   limit = 12
 ): Promise<DirectoryPalace[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Find users who recently published a wing
   const { data: wings } = await supabase
@@ -173,8 +174,7 @@ export async function getNewPalaces(
     }
   }
 
-  // Users with published wings should appear — don't filter by is_public
-  // since ensureProfilePublic may not have run yet
+  // Admin client bypasses RLS — fetch profiles for users with published wings
   const { data: profiles } = await supabase
     .from("public_profiles")
     .select("id, display_name, username, avatar_url, bio")
@@ -217,8 +217,10 @@ export async function getNewPalaces(
 export async function getFollowingPalaces(
   limit = 12
 ): Promise<(DirectoryPalace & { latest_published_at: string | null })[]> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Need user-scoped client for auth, admin client for cross-user reads
+  const userClient = await createClient();
+  const supabase = createAdminClient();
+  const { data: { user } } = await userClient.auth.getUser();
   if (!user) return [];
 
   // Get followed user IDs
@@ -287,7 +289,7 @@ export async function getFollowingPalaces(
 
 // Helper to enrich featured entries with profile data
 async function enrichPalaces(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createAdminClient>,
   entries: { user_id: string; category?: string | null; featured_at?: string | null }[]
 ): Promise<DirectoryPalace[]> {
   const userIds = entries.map((e) => e.user_id);

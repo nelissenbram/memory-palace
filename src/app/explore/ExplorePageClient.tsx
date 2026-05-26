@@ -354,33 +354,6 @@ export default function ExplorePageClient({
               </section>
             ) : activeTab === "discover" || !isAuthenticated ? (
               <>
-                {/* ── Publish CTA ──────────────────────────── */}
-                {isAuthenticated && (
-                  <div data-nudge="explore_publish" style={{
-                    textAlign: "center", marginBottom: "2rem",
-                    animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.2s both`,
-                  }}>
-                    <button
-                      onClick={() => setShowPublishModal(true)}
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: "0.5rem",
-                        fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                        padding: "0.75rem 1.75rem", borderRadius: "2rem",
-                        border: "none",
-                        background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
-                        color: T.color.cream, cursor: "pointer",
-                        boxShadow: `0 2px 12px ${T.color.gold}35`,
-                        transition: `transform 0.2s ${EASE}, box-shadow 0.2s ${EASE}`,
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = `0 4px 16px ${T.color.gold}45`; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 2px 12px ${T.color.gold}35`; }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                      {t("publishYourPalace")}
-                    </button>
-                  </div>
-                )}
-
                 {/* ── Featured ──────────────────────────────── */}
                 {featured.length > 0 && (
                   <section data-nudge="explore_cards" style={{ marginBottom: "2.5rem", animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out 0.1s both` }}>
