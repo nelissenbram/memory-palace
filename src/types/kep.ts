@@ -188,13 +188,24 @@ export interface WhatsAppMessage {
   from: string;
   id: string;
   timestamp: string;
-  type: "text" | "image" | "video" | "audio" | "document" | "sticker" | "reaction";
+  type: "text" | "image" | "video" | "audio" | "document" | "sticker" | "reaction" | "interactive";
   chat_id?: string;
   text?: { body: string };
   image?: WhatsAppMedia;
   video?: WhatsAppMedia;
   audio?: WhatsAppMedia;
   document?: WhatsAppMedia & { filename?: string };
+  context?: {
+    forwarded?: boolean;
+    frequently_forwarded?: boolean;
+    from?: string;
+    id?: string;
+  };
+  interactive?: {
+    type: "button_reply" | "list_reply";
+    button_reply?: { id: string; title: string };
+    list_reply?: { id: string; title: string; description?: string };
+  };
 }
 
 export interface WhatsAppMedia {

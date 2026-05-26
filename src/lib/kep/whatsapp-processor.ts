@@ -9,7 +9,14 @@ import type { WhatsAppMessage } from "@/types/kep";
 import { downloadAndStoreMedia } from "./whatsapp-media";
 import { enqueueJob } from "@/lib/queue";
 import { autoRouteToRoom } from "./auto-route";
-import { sendWelcomeMessage, sendGroupWelcomeMessage } from "./whatsapp-disclosure";
+import { suggestRouting } from "./ai-route";
+import {
+  sendWelcomeMessage,
+  sendGroupWelcomeMessage,
+  sendTextMessage,
+  sendRoomConfirmation,
+  sendRoomPicker,
+} from "./whatsapp-disclosure";
 
 const COMMANDS = {
   STOP: "STOP",
@@ -47,6 +54,12 @@ export async function processWhatsAppMessage(
   phoneNumberId: string,
 ): Promise<void> {
   const chatId = isGroupMessage(message) ? message.chat_id! : null;
+
+  // Handle interactive responses (button taps, list selections)
+  if (message.type === "interactive" && message.interactive) {
+    await handleInteractiveResponse(supabase, message, phoneNumberId);
+    return;
+  }
 
   // Check if this is a text command
   if (message.type === "text" && message.text?.body) {
@@ -282,10 +295,10 @@ async function processMessageWithLink(
   // Check if link-level stop is active
   if (link.stopped) return;
 
-  const isGroup = isGroupMessage(message);
+  const isGroupMsg = isGroupMessage(message);
 
   // First-message detection (1:1 only — for groups, welcome is sent on auto-create)
-  if (!isGroup) {
+  if (!isGroupMsg) {
     const { count: priorCount } = await supabase
       .from("kep_captures")
       .select("id", { count: "exact", head: true })
@@ -309,6 +322,9 @@ async function processMessageWithLink(
     // Sender has opted out — skip
     return;
   }
+
+  // Detect forwarded messages
+  const isForwarded = message.context?.forwarded || message.context?.frequently_forwarded;
 
   // Determine media type and handle accordingly
   const mediaType = getMediaType(message);
@@ -354,6 +370,10 @@ async function processMessageWithLink(
     payloadPreview = { text: message.text?.body || "" };
   }
 
+  if (isForwarded) {
+    payloadPreview.forwarded = true;
+  }
+
   // Create capture record
   const captureId = await createCapture(supabase, {
     kep_id: kep.id as string,
@@ -389,12 +409,106 @@ async function processMessageWithLink(
     return;
   }
 
-  // Enqueue processing job (no target room yet — use AI routing queue)
+  // 1:1 messages: inline AI routing with interactive room picker
+  // Group messages: use job queue (no interactive response possible)
+  if (!isGroupMsg) {
+    await inlineAiRoute(supabase, message, kep, captureId, mediaType, mediaUrl, mediaSize, payloadPreview);
+    return;
+  }
+
+  // Enqueue processing job for group messages
   await enqueueJob(supabase, "kep_capture", {
     captureId,
     kepId: kep.id as string,
     userId: kep.user_id as string,
   });
+}
+
+/**
+ * Inline AI routing for 1:1 messages — suggests a room or shows a picker.
+ */
+async function inlineAiRoute(
+  supabase: SupabaseClient,
+  message: WhatsAppMessage,
+  kep: Record<string, unknown>,
+  captureId: string,
+  mediaType: string,
+  mediaUrl: string | null,
+  mediaSize: number | null,
+  payloadPreview: Record<string, unknown>,
+): Promise<void> {
+  const userId = kep.user_id as string;
+  const kepId = kep.id as string;
+
+  // Load user's rooms
+  const { data: rooms } = await supabase
+    .from("rooms")
+    .select("id, name, wing_id, wings(id, slug, custom_name, name)")
+    .eq("user_id", userId);
+
+  if (!rooms || rooms.length === 0) {
+    await sendTextMessage(
+      message.from,
+      "You don't have any rooms yet. Create your first wing at thememorypalace.ai",
+    );
+    await supabase
+      .from("kep_captures")
+      .update({ status: "processed" })
+      .eq("id", captureId);
+    return;
+  }
+
+  // Build room context for AI
+  const roomContext = rooms.map((r: any) => ({
+    wing_id: r.wings?.id || r.wing_id,
+    wing_name: r.wings?.custom_name || r.wings?.name || r.wings?.slug || "",
+    room_id: r.id,
+    room_name: r.name,
+  }));
+
+  const suggestion = await suggestRouting(
+    {
+      media_type: mediaType,
+      transcription: null,
+      caption: (payloadPreview.caption as string) || (payloadPreview.text as string) || null,
+      sender: message.from,
+      timestamp: new Date().toISOString(),
+      payload_preview: payloadPreview,
+    },
+    roomContext,
+    (kep.routing_rules as any[]) || [],
+  );
+
+  if (suggestion && suggestion.confidence >= 0.8) {
+    // High confidence: auto-route + send confirmation with buttons
+    await autoRouteToRoom(
+      supabase,
+      {
+        media_url: mediaUrl,
+        media_type: mediaType,
+        media_size: mediaSize,
+        payload_preview: payloadPreview,
+        source_sender: message.from,
+      },
+      captureId,
+      suggestion.room_id,
+      kepId,
+      userId,
+    );
+    await sendRoomConfirmation(
+      message.from,
+      suggestion.room_name,
+      suggestion.wing_name,
+      captureId,
+    );
+  } else {
+    // Low confidence: send room picker list
+    await sendRoomPicker(message.from, rooms as any[], captureId);
+    await supabase
+      .from("kep_captures")
+      .update({ status: "processed", ai_suggestion: suggestion })
+      .eq("id", captureId);
+  }
 }
 
 /**
@@ -458,6 +572,134 @@ async function handleCommand(
         .eq("phone_number", senderPhone);
     }
     // INFO command — could send a reply message (future enhancement)
+  }
+}
+
+/**
+ * Handle interactive responses — button taps and list selections from room picker.
+ */
+async function handleInteractiveResponse(
+  supabase: SupabaseClient,
+  message: WhatsAppMessage,
+  phoneNumberId: string,
+): Promise<void> {
+  const interactive = message.interactive!;
+  const replyId = interactive.button_reply?.id || interactive.list_reply?.id;
+  if (!replyId) return;
+
+  const parts = replyId.split(":");
+
+  if (parts[0] === "confirm") {
+    // User tapped "OK" — already routed, nothing to do
+    return;
+  }
+
+  if (parts[0] === "delete" && parts[1]) {
+    const captureId = parts[1];
+    // Delete the capture's memory and mark as rejected
+    const { data: capture } = await supabase
+      .from("kep_captures")
+      .select("memory_id, kep_id")
+      .eq("id", captureId)
+      .single();
+
+    if (capture?.memory_id) {
+      await supabase.from("memories").delete().eq("id", capture.memory_id);
+    }
+    await supabase
+      .from("kep_captures")
+      .update({ status: "rejected", rejection_reason: "user_deleted", memory_id: null })
+      .eq("id", captureId);
+
+    await sendTextMessage(message.from, "Deleted");
+    return;
+  }
+
+  if (parts[0] === "move" && parts[1]) {
+    const captureId = parts[1];
+    // Look up the capture to find the user, then send room picker
+    const { data: capture } = await supabase
+      .from("kep_captures")
+      .select("user_id")
+      .eq("id", captureId)
+      .single();
+
+    if (!capture) return;
+
+    const { data: rooms } = await supabase
+      .from("rooms")
+      .select("id, name, wing_id, wings(id, slug, custom_name, name)")
+      .eq("user_id", capture.user_id);
+
+    if (rooms && rooms.length > 0) {
+      await sendRoomPicker(message.from, rooms as any[], captureId);
+    }
+    return;
+  }
+
+  if (parts[0] === "route" && parts[1] && parts[2]) {
+    const captureId = parts[1];
+    const roomId = parts[2];
+
+    // Load capture data
+    const { data: capture } = await supabase
+      .from("kep_captures")
+      .select("*, keps(id, user_id)")
+      .eq("id", captureId)
+      .single();
+
+    if (!capture) return;
+
+    const kep = capture.keps as Record<string, unknown>;
+    const userId = (kep?.user_id || capture.user_id) as string;
+    const kepId = (kep?.id || capture.kep_id) as string;
+
+    // If already routed to a different room, move the memory
+    if (capture.memory_id) {
+      await supabase
+        .from("memories")
+        .update({ room_id: roomId })
+        .eq("id", capture.memory_id);
+
+      await supabase
+        .from("kep_captures")
+        .update({ status: "routed" })
+        .eq("id", captureId);
+    } else {
+      // Route to selected room
+      await autoRouteToRoom(
+        supabase,
+        {
+          media_url: capture.media_url,
+          media_type: capture.media_type,
+          media_size: capture.media_size,
+          payload_preview: capture.payload_preview,
+          source_sender: capture.source_sender,
+          transcription: capture.transcription,
+        },
+        captureId,
+        roomId,
+        kepId,
+        userId,
+      );
+    }
+
+    // Send confirmation
+    const { data: room } = await supabase
+      .from("rooms")
+      .select("name, wing_id, wings(custom_name, name, slug)")
+      .eq("id", roomId)
+      .single();
+
+    const roomName = room?.name || "Room";
+    const wing = room?.wings as unknown as Record<string, unknown> | null;
+    const wingName = (wing?.custom_name || wing?.name || wing?.slug || "Palace") as string;
+
+    const movedText = capture.memory_id
+      ? `Moved to ${wingName} / ${roomName}`
+      : `Saved to ${wingName} / ${roomName}`;
+    await sendTextMessage(message.from, movedText);
+    return;
   }
 }
 
