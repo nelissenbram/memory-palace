@@ -521,7 +521,7 @@ function NavigationBar({
                     if (onNavigate) {
                       onNavigate("/explore");
                     } else {
-                      router.push("/explore");
+                      router.replace("/explore");
                     }
                   } else if (isMe) {
                     if (onSettings) {

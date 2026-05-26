@@ -272,7 +272,6 @@ export async function getVisitorWingData(
       .from("rooms")
       .select("id, name, icon, cover_hue")
       .eq("wing_id", wing.id)
-      .not("published_at", "is", null)
       .order("sort_order", { ascending: true }),
     supabase
       .from("public_profiles")
@@ -281,10 +280,10 @@ export async function getVisitorWingData(
       .single(),
   ]);
 
-  if (!rooms || rooms.length === 0) return null;
+  const safeRooms = rooms || [];
 
   // Get all memories for all rooms in parallel
-  const roomIds = rooms.map((r) => r.id);
+  const roomIds = safeRooms.map((r) => r.id);
   const { data: allMemories } = await supabase
     .from("memories")
     .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, room_id, displayed, sort_order")
@@ -312,7 +311,7 @@ export async function getVisitorWingData(
       wall_color: defaultWing?.wall || "#DDD4C6",
       floor_color: defaultWing?.floor || "#9E8264",
     },
-    rooms: rooms.map((r) => ({
+    rooms: safeRooms.map((r) => ({
       id: r.id,
       name: r.name,
       icon: r.icon,

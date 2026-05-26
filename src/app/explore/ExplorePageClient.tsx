@@ -82,7 +82,7 @@ export default function ExplorePageClient({
   // Navigate to app modes via full page navigation (not soft nav)
   // to avoid conflicts with MemoryPalace's history management
   const handleModeChange = (mode: "atrium" | "library" | "3d") => {
-    window.location.href = mode === "3d" ? "/palace" : `/${mode}`;
+    window.location.replace(mode === "3d" ? "/palace" : `/${mode}`);
   };
 
   const hasContent = featured.length > 0 || trending.length > 0 || newest.length > 0;
