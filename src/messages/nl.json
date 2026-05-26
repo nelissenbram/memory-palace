@@ -4889,6 +4889,8 @@
     "guestbook": "Gastenboek",
     "backToWing": "Terug naar {name}",
     "memoryGallery": "Herinneringen",
-    "noMemories": "Nog geen herinneringen in deze kamer"
+    "noMemories": "Nog geen herinneringen in deze kamer",
+    "visitorMode": "Bezoekersmodus",
+    "walkThrough3D": "Doorloop in 3D"
   }
 }

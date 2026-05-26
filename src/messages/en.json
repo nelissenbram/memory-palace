@@ -4887,6 +4887,8 @@
     "guestbook": "Guestbook",
     "backToWing": "Back to {name}",
     "memoryGallery": "Memories",
-    "noMemories": "No memories in this room yet"
+    "noMemories": "No memories in this room yet",
+    "visitorMode": "Visitor mode",
+    "walkThrough3D": "Walk through in 3D"
   }
 }

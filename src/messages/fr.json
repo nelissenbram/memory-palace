@@ -4887,6 +4887,8 @@
     "guestbook": "Livre d'or",
     "backToWing": "Retour à {name}",
     "memoryGallery": "Souvenirs",
-    "noMemories": "Pas encore de souvenirs dans cette pièce"
+    "noMemories": "Pas encore de souvenirs dans cette pièce",
+    "visitorMode": "Mode visiteur",
+    "walkThrough3D": "Parcourir en 3D"
   }
 }

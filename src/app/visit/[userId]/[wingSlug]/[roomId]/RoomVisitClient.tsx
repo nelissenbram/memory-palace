@@ -55,7 +55,7 @@ function MemoryCard({
       padding="0"
       style={{
         overflow: "hidden",
-        animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease ${index * 0.06}s both`,
+        animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease ${0.1 + index * 0.06}s both`,
       }}
     >
       {/* Image / thumbnail */}
@@ -175,118 +175,140 @@ export default function RoomVisitClient({
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
         padding: isMobile ? "1rem 0.75rem 4rem" : "2rem 1rem 4rem",
       }}
     >
       <div style={{ maxWidth: "56rem", margin: "0 auto" }}>
-        {/* Back button */}
-        <a
-          href={`/visit/${owner?.id}/${wing.slug}`}
+        {/* Breadcrumb navigation */}
+        <div
           style={{
-            display: "inline-flex",
+            display: "flex",
             alignItems: "center",
-            gap: "0.375rem",
-            fontFamily: T.font.body,
-            fontSize: "0.875rem",
-            color: T.color.walnut,
-            textDecoration: "none",
-            padding: "0.5rem 0",
+            gap: "0.5rem",
             marginBottom: "1rem",
-            transition: "color 0.15s ease",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.color = T.color.goldDark;
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.color = T.color.walnut;
+            flexWrap: "wrap",
+            animation: `${ANIM.tuscanFadeSlideUp} 0.4s ease-out both`,
           }}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <a
+            href="/explore"
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.8125rem",
+              color: T.color.muted,
+              textDecoration: "none",
+              transition: "color 0.15s ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = T.color.muted; }}
           >
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          {t("backToWing", { name: wing.name })}
-        </a>
+            {t("exploreBackToExplore")}
+          </a>
+          <span style={{ color: T.color.muted, fontSize: "0.75rem" }}>/</span>
+
+          {owner && (
+            <>
+              <a
+                href={owner.username ? `/u/${owner.username}` : `/visit/${owner.id}/${wing.slug}`}
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  color: T.color.muted,
+                  textDecoration: "none",
+                  transition: "color 0.15s ease",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = T.color.muted; }}
+              >
+                {owner.name || t("anonymous")}
+              </a>
+              <span style={{ color: T.color.muted, fontSize: "0.75rem" }}>/</span>
+            </>
+          )}
+
+          <a
+            href={`/visit/${owner?.id}/${wing.slug}`}
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.8125rem",
+              color: T.color.walnut,
+              textDecoration: "none",
+              fontWeight: 500,
+              transition: "color 0.15s ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = T.color.goldDark; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = T.color.walnut; }}
+          >
+            {wing.name}
+          </a>
+        </div>
 
         {/* Room header */}
         <TuscanCard
           variant="glass"
-          padding="1.5rem"
+          padding="0"
           style={{
+            overflow: "hidden",
             animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease both`,
           }}
         >
+          {/* Room color banner */}
           <div
             style={{
+              height: isMobile ? "3.5rem" : "4.5rem",
+              background: `linear-gradient(135deg, hsl(${room.coverHue}, 45%, 65%), hsl(${room.coverHue}, 35%, 50%))`,
               display: "flex",
               alignItems: "center",
-              gap: "0.75rem",
+              justifyContent: "center",
+              fontSize: isMobile ? "1.5rem" : "2rem",
             }}
           >
-            <div
-              style={{
-                width: "3rem",
-                height: "3rem",
-                borderRadius: "0.75rem",
-                background: `linear-gradient(135deg, hsl(${room.coverHue}, 45%, 65%), hsl(${room.coverHue}, 35%, 50%))`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "1.5rem",
-                flexShrink: 0,
-              }}
-            >
-              {room.icon}
-            </div>
-            <div>
-              <h1
-                style={{
-                  fontFamily: T.font.display,
-                  fontSize: isMobile ? "1.375rem" : "1.75rem",
-                  fontWeight: 600,
-                  color: T.color.charcoal,
-                  margin: 0,
-                }}
-              >
-                {room.name}
-              </h1>
-              {owner && (
-                <p
-                  style={{
-                    fontFamily: T.font.body,
-                    fontSize: "0.8125rem",
-                    color: T.color.muted,
-                    margin: "0.25rem 0 0",
-                  }}
-                >
-                  {wing.name} &middot; {owner.name || t("anonymous")}
-                </p>
-              )}
-            </div>
+            {room.icon}
           </div>
 
-          {/* Reactions */}
-          <div style={{ marginTop: "1rem" }}>
-            <ReactionBar
-              targetType="room"
-              targetId={room.id}
-              initialReactions={initialReactions}
-            />
+          <div style={{ padding: isMobile ? "1.25rem 1rem 1.5rem" : "1.5rem 1.5rem 1.75rem" }}>
+            <h1
+              style={{
+                fontFamily: T.font.display,
+                fontSize: isMobile ? "1.375rem" : "1.75rem",
+                fontWeight: 600,
+                color: T.color.charcoal,
+                margin: 0,
+              }}
+            >
+              {room.name}
+            </h1>
+            {owner && (
+              <p
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  color: T.color.muted,
+                  margin: "0.375rem 0 0",
+                }}
+              >
+                {wing.name} &middot; {owner.name || t("anonymous")}
+              </p>
+            )}
+
+            {/* Reactions */}
+            <div style={{ marginTop: "1rem" }}>
+              <ReactionBar
+                targetType="room"
+                targetId={room.id}
+                initialReactions={initialReactions}
+              />
+            </div>
           </div>
         </TuscanCard>
 
         {/* Memory gallery */}
-        <section style={{ marginTop: "2rem" }}>
+        <section style={{
+          marginTop: "2rem",
+          animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.15s both`,
+        }}>
           <TuscanSectionHeader>{t("memoryGallery")}</TuscanSectionHeader>
 
           {memories.length === 0 ? (
@@ -326,14 +348,14 @@ export default function RoomVisitClient({
         </section>
 
         {/* Guestbook */}
-        <section style={{ marginTop: "2.5rem" }}>
+        <section style={{
+          marginTop: "2.5rem",
+          animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.3s both`,
+        }}>
           <TuscanSectionHeader>{t("guestbook")}</TuscanSectionHeader>
           <TuscanCard
             variant="glass"
             padding="1.25rem"
-            style={{
-              animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease 0.2s both`,
-            }}
           >
             <CommentThread
               targetType="room"

@@ -213,6 +213,132 @@ export async function recordVisit(input: {
   }
 }
 
+/** Get full 3D-ready data for a published wing (rooms + memories) */
+export interface VisitorWingData {
+  wing: {
+    id: string;
+    slug: string;
+    name: string;
+    accent_color: string;
+    wall_color: string;
+    floor_color: string;
+  };
+  rooms: {
+    id: string;
+    name: string;
+    icon: string;
+    coverHue: number;
+    memories: {
+      id: string;
+      title: string;
+      desc: string | null;
+      type: string;
+      hue: number;
+      s: number;
+      l: number;
+      dataUrl: string | null;
+      thumbnailUrl: string | null;
+      displayed: boolean;
+    }[];
+  }[];
+  owner: {
+    id: string;
+    name: string | null;
+    username: string | null;
+    styleEra: string;
+  };
+}
+
+export async function getVisitorWingData(
+  userId: string,
+  wingSlug: string
+): Promise<VisitorWingData | null> {
+  const supabase = createAdminClient();
+
+  // Get wing
+  const { data: wing } = await supabase
+    .from("wings")
+    .select("id, slug, custom_name, accent_color")
+    .eq("user_id", userId)
+    .eq("slug", wingSlug)
+    .not("published_at", "is", null)
+    .single();
+
+  if (!wing) return null;
+
+  // Get rooms + owner profile in parallel
+  const [{ data: rooms }, { data: profile }] = await Promise.all([
+    supabase
+      .from("rooms")
+      .select("id, name, icon, cover_hue")
+      .eq("wing_id", wing.id)
+      .not("published_at", "is", null)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("public_profiles")
+      .select("display_name, username")
+      .eq("id", userId)
+      .single(),
+  ]);
+
+  if (!rooms || rooms.length === 0) return null;
+
+  // Get all memories for all rooms in parallel
+  const roomIds = rooms.map((r) => r.id);
+  const { data: allMemories } = await supabase
+    .from("memories")
+    .select("id, title, description, type, hue, saturation, lightness, file_url, thumbnail_url, room_id, displayed, sort_order")
+    .in("room_id", roomIds)
+    .order("sort_order", { ascending: true });
+
+  // Group memories by room
+  const memsByRoom = new Map<string, typeof allMemories>();
+  for (const m of allMemories || []) {
+    const list = memsByRoom.get(m.room_id) || [];
+    list.push(m);
+    memsByRoom.set(m.room_id, list);
+  }
+
+  // Find wing accent from WINGS defaults
+  const { WINGS } = await import("@/lib/constants/wings");
+  const defaultWing = WINGS.find((w) => w.id === wing.slug);
+
+  return {
+    wing: {
+      id: wing.id,
+      slug: wing.slug,
+      name: wing.custom_name || wing.slug,
+      accent_color: wing.accent_color || defaultWing?.accent || "#C66B3D",
+      wall_color: defaultWing?.wall || "#DDD4C6",
+      floor_color: defaultWing?.floor || "#9E8264",
+    },
+    rooms: rooms.map((r) => ({
+      id: r.id,
+      name: r.name,
+      icon: r.icon,
+      coverHue: r.cover_hue,
+      memories: (memsByRoom.get(r.id) || []).map((m) => ({
+        id: m.id,
+        title: m.title,
+        desc: m.description,
+        type: m.type,
+        hue: m.hue ?? 30,
+        s: m.saturation ?? 50,
+        l: m.lightness ?? 60,
+        dataUrl: m.file_url,
+        thumbnailUrl: m.thumbnail_url,
+        displayed: m.displayed !== false,
+      })),
+    })),
+    owner: {
+      id: userId,
+      name: profile?.display_name || null,
+      username: profile?.username || null,
+      styleEra: "roman",
+    },
+  };
+}
+
 /** Get visit count for a wing or room */
 export async function getVisitCount(
   targetType: "wing" | "room",
