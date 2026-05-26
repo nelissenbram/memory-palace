@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
+import { ANIM } from "@/components/ui/TuscanStyles";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TuscanCard, { TuscanSectionHeader } from "@/components/ui/TuscanCard";
 import CommentThread from "@/components/social/CommentThread";
@@ -38,6 +40,7 @@ export default function VisitPageClient({
   currentUserId,
 }: VisitPageClientProps) {
   const { t } = useTranslation("social");
+  const router = useRouter();
 
   return (
     <div
@@ -45,12 +48,12 @@ export default function VisitPageClient({
         maxWidth: "48rem",
         margin: "0 auto",
         padding: "2rem 1rem 4rem",
-        minHeight: "100vh",
-        background: T.color.linen,
+        minHeight: "100dvh",
+        background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
       }}
     >
       {/* Wing header */}
-      <TuscanCard variant="glass" padding="1.5rem">
+      <TuscanCard variant="glass" padding="1.5rem" style={{ animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out both` }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <h1
@@ -128,7 +131,7 @@ export default function VisitPageClient({
 
       {/* Rooms list */}
       {rooms.length > 0 && (
-        <section style={{ marginTop: "2rem" }}>
+        <section style={{ marginTop: "2rem", animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.15s both` }}>
           <TuscanSectionHeader>{t("rooms")}</TuscanSectionHeader>
           <div
             style={{
@@ -137,18 +140,63 @@ export default function VisitPageClient({
               gap: "0.75rem",
             }}
           >
-            {rooms.map((room) => (
-              <TuscanCard key={room.id} variant="elevated" padding="1rem">
+            {rooms.map((room, i) => (
+              <div
+                key={room.id}
+                role="button"
+                tabIndex={0}
+                style={{
+                  cursor: "pointer",
+                  transition: "transform 0.2s ease, box-shadow 0.2s ease",
+                  animation: `${ANIM.tuscanFadeSlideUp} 0.5s ease-out ${0.2 + i * 0.06}s both`,
+                  borderRadius: "0.75rem",
+                }}
+                onClick={() =>
+                  owner && router.push(`/visit/${owner.id}/${wing.slug}/${room.id}`)
+                }
+                onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && owner) { e.preventDefault(); router.push(`/visit/${owner.id}/${wing.slug}/${room.id}`); } }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-3px)";
+                  e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "";
+                }}
+              >
+              <TuscanCard
+                variant="elevated"
+                padding="1rem"
+              >
                 <div
                   style={{
-                    fontFamily: T.font.display,
-                    fontSize: "1.125rem",
-                    fontWeight: 600,
-                    color: T.color.charcoal,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  <span style={{ marginRight: "0.5rem" }}>{room.icon}</span>
-                  {room.name}
+                  <div
+                    style={{
+                      fontFamily: T.font.display,
+                      fontSize: "1.125rem",
+                      fontWeight: 600,
+                      color: T.color.charcoal,
+                    }}
+                  >
+                    <span style={{ marginRight: "0.5rem" }}>{room.icon}</span>
+                    {room.name}
+                  </div>
+                  <span
+                    style={{
+                      fontFamily: T.font.body,
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      color: T.color.gold,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {t("exploreVisitWing")} →
+                  </span>
                 </div>
                 <div
                   style={{
@@ -168,13 +216,14 @@ export default function VisitPageClient({
                   </span>
                 </div>
               </TuscanCard>
+              </div>
             ))}
           </div>
         </section>
       )}
 
       {/* Comments */}
-      <section style={{ marginTop: "2rem" }}>
+      <section style={{ marginTop: "2rem", animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.3s both` }}>
         <TuscanSectionHeader>{t("comments")}</TuscanSectionHeader>
         <TuscanCard variant="glass" padding="1.25rem">
           <CommentThread

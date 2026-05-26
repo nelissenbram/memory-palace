@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 export interface PublishedWing {
   id: string;
@@ -33,7 +33,7 @@ export interface PublishedRoom {
 export async function getPublishedWings(
   userId: string
 ): Promise<PublishedWing[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: wings } = await supabase
     .from("wings")
@@ -82,7 +82,7 @@ export async function getPublishedWings(
 export async function getPublishedRooms(
   wingId: string
 ): Promise<PublishedRoom[]> {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data: rooms } = await supabase
     .from("rooms")
@@ -121,6 +121,45 @@ export async function getPublishedRooms(
     owner_id: r.user_id,
     memory_count: memoryCounts.get(r.id) || 0,
     visit_count: visitCounts.get(r.id) || 0,
+  }));
+}
+
+export interface PublishedMemory {
+  id: string;
+  title: string;
+  description: string | null;
+  type: string;
+  file_url: string | null;
+  thumbnail_url: string | null;
+  hue: number;
+  saturation: number;
+  lightness: number;
+}
+
+/** Get memories for a room (admin client to bypass RLS for cross-user reads) */
+export async function getPublishedMemories(
+  roomId: string
+): Promise<PublishedMemory[]> {
+  const supabase = createAdminClient();
+
+  const { data: memories } = await supabase
+    .from("memories")
+    .select("id, title, description, type, file_url, thumbnail_url, hue, saturation, lightness")
+    .eq("room_id", roomId)
+    .order("sort_order", { ascending: true });
+
+  if (!memories || memories.length === 0) return [];
+
+  return memories.map((m) => ({
+    id: m.id,
+    title: m.title,
+    description: m.description,
+    type: m.type,
+    file_url: m.file_url,
+    thumbnail_url: m.thumbnail_url,
+    hue: m.hue ?? 30,
+    saturation: m.saturation ?? 50,
+    lightness: m.lightness ?? 60,
   }));
 }
 

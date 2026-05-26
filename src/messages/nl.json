@@ -4885,6 +4885,10 @@
     "valuePropVisitDesc": "Loop door gepubliceerde vleugels en ervaar de herinneringen van anderen.",
     "enterPalaceButton": "Betreed Paleis",
     "memberSince": "Lid sinds",
-    "exploreFollowEmpty": "Volg makers om hun updates hier te zien"
+    "exploreFollowEmpty": "Volg makers om hun updates hier te zien",
+    "guestbook": "Gastenboek",
+    "backToWing": "Terug naar {name}",
+    "memoryGallery": "Herinneringen",
+    "noMemories": "Nog geen herinneringen in deze kamer"
   }
 }

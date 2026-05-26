@@ -4883,6 +4883,10 @@
     "valuePropVisitDesc": "Recorre alas publicadas y experimenta los recuerdos de otras personas.",
     "enterPalaceButton": "Entrar al Palacio",
     "memberSince": "Miembro desde",
-    "exploreFollowEmpty": "Sigue a creadores para ver sus actualizaciones aquí"
+    "exploreFollowEmpty": "Sigue a creadores para ver sus actualizaciones aquí",
+    "guestbook": "Libro de visitas",
+    "backToWing": "Volver a {name}",
+    "memoryGallery": "Recuerdos",
+    "noMemories": "Aún no hay recuerdos en esta habitación"
   }
 }

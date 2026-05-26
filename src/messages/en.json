@@ -4883,6 +4883,10 @@
     "valuePropVisitDesc": "Walk through published wings and experience other people's memories.",
     "enterPalaceButton": "Enter Palace",
     "memberSince": "Member since",
-    "exploreFollowEmpty": "Follow creators to see their updates here"
+    "exploreFollowEmpty": "Follow creators to see their updates here",
+    "guestbook": "Guestbook",
+    "backToWing": "Back to {name}",
+    "memoryGallery": "Memories",
+    "noMemories": "No memories in this room yet"
   }
 }

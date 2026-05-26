@@ -4883,6 +4883,10 @@
     "valuePropVisitDesc": "Gehe durch veröffentlichte Flügel und erlebe die Erinnerungen anderer.",
     "enterPalaceButton": "Palast betreten",
     "memberSince": "Mitglied seit",
-    "exploreFollowEmpty": "Folge Erstellern, um ihre Updates hier zu sehen"
+    "exploreFollowEmpty": "Folge Erstellern, um ihre Updates hier zu sehen",
+    "guestbook": "Gästebuch",
+    "backToWing": "Zurück zu {name}",
+    "memoryGallery": "Erinnerungen",
+    "noMemories": "Noch keine Erinnerungen in diesem Raum"
   }
 }

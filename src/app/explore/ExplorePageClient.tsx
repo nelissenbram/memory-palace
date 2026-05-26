@@ -490,7 +490,7 @@ function EnhancedPalaceCard({
     <TuscanCard
       variant={featured ? "elevated" : "glass"}
       padding="0"
-      style={{ cursor: "pointer" }}
+      style={{ cursor: "pointer", overflow: "hidden" }}
     >
       <div
         onClick={onClick}
@@ -498,100 +498,185 @@ function EnhancedPalaceCard({
         tabIndex={0}
         aria-label={palace.display_name || t("anonymous")}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-        style={{ padding: "1.25rem" }}
       >
-        {/* Top row: avatar + info */}
-        <div style={{ display: "flex", gap: "0.875rem", alignItems: "flex-start" }}>
-          {/* Avatar */}
-          <div style={{
-            width: featured ? "3.5rem" : "3rem", height: featured ? "3.5rem" : "3rem",
-            borderRadius: "50%", flexShrink: 0,
-            background: palace.avatar_url
-              ? `url(${palace.avatar_url}) center/cover`
-              : `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
-            border: `2px solid ${featured ? T.color.gold : T.color.sandstone}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: T.color.cream, fontFamily: T.font.display,
-            fontSize: featured ? "1.375rem" : "1.125rem", fontWeight: 600,
-          }}>
-            {!palace.avatar_url && (palace.display_name?.[0]?.toUpperCase() || "?")}
-          </div>
+        {/* Tuscan villa illustration header */}
+        <div style={{
+          width: "100%", height: "5rem", overflow: "hidden",
+          background: `linear-gradient(135deg, ${T.color.gold}18, ${T.color.terracotta}12)`,
+          display: "flex", alignItems: "flex-end", justifyContent: "center",
+        }}>
+          <svg
+            width="100%" height="100%"
+            viewBox="0 0 320 80"
+            preserveAspectRatio="xMidYMax meet"
+            style={{ display: "block" }}
+          >
+            {/* Ground line */}
+            <rect x="0" y="72" width="320" height="8" fill={T.color.terracotta} opacity="0.12" />
 
-          {/* Name + username */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontFamily: T.font.display, fontSize: featured ? "1.1875rem" : "1.0625rem",
-              fontWeight: 600, color: T.color.charcoal,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-            }}>
-              {palace.display_name || t("anonymous")}
-            </div>
-            {palace.username && (
-              <div style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem",
-                color: T.color.muted, marginTop: "0.0625rem",
-              }}>
-                @{palace.username}
-              </div>
-            )}
-          </div>
+            {/* Left cypress tree */}
+            <ellipse cx="60" cy="44" rx="7" ry="26" fill={T.color.charcoal} opacity="0.18" />
+            <rect x="58" y="68" width="4" height="6" fill={T.color.walnut} opacity="0.25" />
 
-          {/* Category badge or visit count */}
-          {palace.category ? (
-            <span style={{
-              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
-              padding: "0.1875rem 0.5rem", borderRadius: "1rem",
-              background: `${T.color.gold}12`, color: T.color.goldDark,
-              whiteSpace: "nowrap", flexShrink: 0,
-            }}>
-              {palace.category}
-            </span>
-          ) : palace.total_visit_count > 0 ? (
-            <span style={{
-              fontFamily: T.font.body, fontSize: "0.6875rem",
-              color: T.color.muted, flexShrink: 0,
-            }}>
-              {palace.total_visit_count} {t("visits")}
-            </span>
-          ) : null}
+            {/* Right cypress tree */}
+            <ellipse cx="260" cy="44" rx="7" ry="26" fill={T.color.charcoal} opacity="0.18" />
+            <rect x="258" y="68" width="4" height="6" fill={T.color.walnut} opacity="0.25" />
+
+            {/* Main building body */}
+            <rect x="110" y="34" width="100" height="38" fill={T.color.cream} opacity="0.5" stroke={T.color.terracotta} strokeWidth="0.5" strokeOpacity="0.3" />
+
+            {/* Terracotta roof / pediment */}
+            <polygon points="105,34 160,12 215,34" fill={T.color.terracotta} opacity="0.4" />
+            <line x1="105" y1="34" x2="215" y2="34" stroke={T.color.terracotta} strokeWidth="1" strokeOpacity="0.35" />
+
+            {/* Roof ridge detail */}
+            <line x1="160" y1="12" x2="160" y2="34" stroke={T.color.terracotta} strokeWidth="0.5" strokeOpacity="0.2" />
+
+            {/* Left wing */}
+            <rect x="80" y="44" width="30" height="28" fill={T.color.cream} opacity="0.4" stroke={T.color.terracotta} strokeWidth="0.5" strokeOpacity="0.25" />
+            <rect x="80" y="40" width="30" height="4" fill={T.color.terracotta} opacity="0.35" rx="0.5" />
+
+            {/* Right wing */}
+            <rect x="210" y="44" width="30" height="28" fill={T.color.cream} opacity="0.4" stroke={T.color.terracotta} strokeWidth="0.5" strokeOpacity="0.25" />
+            <rect x="210" y="40" width="30" height="4" fill={T.color.terracotta} opacity="0.35" rx="0.5" />
+
+            {/* Arched doorway */}
+            <rect x="150" y="50" width="20" height="22" fill={T.color.walnut} opacity="0.3" rx="1" />
+            <path d="M150,54 A10,10 0 0,1 170,54" fill={T.color.walnut} opacity="0.25" />
+            {/* Door step */}
+            <rect x="148" y="70" width="24" height="2" fill={T.color.sandstone} opacity="0.4" rx="0.5" />
+
+            {/* Left window with shutters */}
+            <rect x="120" y="44" width="14" height="16" fill={T.color.gold} opacity="0.15" rx="1" stroke={T.color.walnut} strokeWidth="0.6" strokeOpacity="0.25" />
+            <rect x="116" y="43" width="4" height="18" fill={T.color.terracotta} opacity="0.3" rx="0.5" />
+            <rect x="134" y="43" width="4" height="18" fill={T.color.terracotta} opacity="0.3" rx="0.5" />
+            {/* Window cross */}
+            <line x1="127" y1="44" x2="127" y2="60" stroke={T.color.walnut} strokeWidth="0.4" strokeOpacity="0.25" />
+            <line x1="120" y1="52" x2="134" y2="52" stroke={T.color.walnut} strokeWidth="0.4" strokeOpacity="0.25" />
+
+            {/* Right window with shutters */}
+            <rect x="186" y="44" width="14" height="16" fill={T.color.gold} opacity="0.15" rx="1" stroke={T.color.walnut} strokeWidth="0.6" strokeOpacity="0.25" />
+            <rect x="182" y="43" width="4" height="18" fill={T.color.terracotta} opacity="0.3" rx="0.5" />
+            <rect x="200" y="43" width="4" height="18" fill={T.color.terracotta} opacity="0.3" rx="0.5" />
+            {/* Window cross */}
+            <line x1="193" y1="44" x2="193" y2="60" stroke={T.color.walnut} strokeWidth="0.4" strokeOpacity="0.25" />
+            <line x1="186" y1="52" x2="200" y2="52" stroke={T.color.walnut} strokeWidth="0.4" strokeOpacity="0.25" />
+
+            {/* Left wing window */}
+            <rect x="88" y="52" width="10" height="12" fill={T.color.gold} opacity="0.12" rx="0.5" stroke={T.color.walnut} strokeWidth="0.4" strokeOpacity="0.2" />
+
+            {/* Right wing window */}
+            <rect x="222" y="52" width="10" height="12" fill={T.color.gold} opacity="0.12" rx="0.5" stroke={T.color.walnut} strokeWidth="0.4" strokeOpacity="0.2" />
+
+            {/* Columns / pilasters at entrance */}
+            <rect x="146" y="38" width="3" height="34" fill={T.color.sandstone} opacity="0.35" rx="0.5" />
+            <rect x="171" y="38" width="3" height="34" fill={T.color.sandstone} opacity="0.35" rx="0.5" />
+            {/* Column capitals */}
+            <rect x="145" y="36" width="5" height="3" fill={T.color.sandstone} opacity="0.4" rx="0.5" />
+            <rect x="170" y="36" width="5" height="3" fill={T.color.sandstone} opacity="0.4" rx="0.5" />
+
+            {/* Balustrade */}
+            <line x1="80" y1="72" x2="110" y2="72" stroke={T.color.sandstone} strokeWidth="0.8" strokeOpacity="0.3" />
+            <line x1="210" y1="72" x2="240" y2="72" stroke={T.color.sandstone} strokeWidth="0.8" strokeOpacity="0.3" />
+          </svg>
         </div>
 
-        {/* Bio */}
-        {palace.bio && (
-          <p style={{
-            fontFamily: T.font.body, fontSize: "0.8125rem",
-            color: T.color.walnut, margin: "0.75rem 0 0",
-            lineHeight: 1.5, display: "-webkit-box",
-            WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-          }}>
-            {palace.bio}
-          </p>
-        )}
-
-        {/* Wing count bar + Visit */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: "0.5rem",
-          marginTop: "0.75rem", paddingTop: "0.625rem",
-          borderTop: `1px solid ${T.color.lineFaint}`,
-        }}>
-          {palace.published_wing_count > 0 && (
-            <>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
-              <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
-                {palace.published_wing_count} {palace.published_wing_count === 1 ? "wing" : "wings"}
-              </span>
-            </>
-          )}
-          {palace.first_wing_slug && (
-            <span style={{
-              marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.25rem",
-              fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500, color: T.color.goldDark,
+        {/* Card content */}
+        <div style={{ padding: "1rem 1.25rem 1.25rem" }}>
+          {/* Top row: avatar + info */}
+          <div style={{ display: "flex", gap: "0.875rem", alignItems: "flex-start" }}>
+            {/* Avatar */}
+            <div style={{
+              width: featured ? "3.5rem" : "3rem", height: featured ? "3.5rem" : "3rem",
+              borderRadius: "50%", flexShrink: 0,
+              background: palace.avatar_url
+                ? `url(${palace.avatar_url}) center/cover`
+                : `linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
+              border: `2px solid ${featured ? T.color.gold : T.color.sandstone}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: T.color.cream, fontFamily: T.font.display,
+              fontSize: featured ? "1.375rem" : "1.125rem", fontWeight: 600,
+              marginTop: "-1.5rem", boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
             }}>
-              {t("exploreVisitPalace")} →
-            </span>
+              {!palace.avatar_url && (palace.display_name?.[0]?.toUpperCase() || "?")}
+            </div>
+
+            {/* Name + username */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: T.font.display, fontSize: featured ? "1.1875rem" : "1.0625rem",
+                fontWeight: 600, color: T.color.charcoal,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {palace.display_name || t("anonymous")}
+              </div>
+              {palace.username && (
+                <div style={{
+                  fontFamily: T.font.body, fontSize: "0.8125rem",
+                  color: T.color.muted, marginTop: "0.0625rem",
+                }}>
+                  @{palace.username}
+                </div>
+              )}
+            </div>
+
+            {/* Category badge or visit count */}
+            {palace.category ? (
+              <span style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
+                padding: "0.1875rem 0.5rem", borderRadius: "1rem",
+                background: `${T.color.gold}12`, color: T.color.goldDark,
+                whiteSpace: "nowrap", flexShrink: 0,
+              }}>
+                {palace.category}
+              </span>
+            ) : palace.total_visit_count > 0 ? (
+              <span style={{
+                fontFamily: T.font.body, fontSize: "0.6875rem",
+                color: T.color.muted, flexShrink: 0,
+              }}>
+                {palace.total_visit_count} {t("visits")}
+              </span>
+            ) : null}
+          </div>
+
+          {/* Bio */}
+          {palace.bio && (
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.8125rem",
+              color: T.color.walnut, margin: "0.75rem 0 0",
+              lineHeight: 1.5, display: "-webkit-box",
+              WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+            }}>
+              {palace.bio}
+            </p>
           )}
+
+          {/* Wing count bar + Visit */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0.5rem",
+            marginTop: "0.75rem", paddingTop: "0.625rem",
+            borderTop: `1px solid ${T.color.lineFaint}`,
+          }}>
+            {palace.published_wing_count > 0 && (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
+                  {palace.published_wing_count} {palace.published_wing_count === 1 ? "wing" : "wings"}
+                </span>
+              </>
+            )}
+            {palace.first_wing_slug && (
+              <span style={{
+                marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.25rem",
+                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500, color: T.color.goldDark,
+              }}>
+                {t("exploreVisitPalace")} →
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </TuscanCard>

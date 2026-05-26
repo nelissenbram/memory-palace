@@ -4883,6 +4883,10 @@
     "valuePropVisitDesc": "Parcourez les ailes publiées et découvrez les souvenirs des autres.",
     "enterPalaceButton": "Entrer dans le Palais",
     "memberSince": "Membre depuis",
-    "exploreFollowEmpty": "Suivez des créateurs pour voir leurs mises à jour ici"
+    "exploreFollowEmpty": "Suivez des créateurs pour voir leurs mises à jour ici",
+    "guestbook": "Livre d'or",
+    "backToWing": "Retour à {name}",
+    "memoryGallery": "Souvenirs",
+    "noMemories": "Pas encore de souvenirs dans cette pièce"
   }
 }

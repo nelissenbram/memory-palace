@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getPublishedRooms, recordVisit } from "@/lib/social/visit-actions";
 import { getProfile } from "@/lib/social/profile-actions";
 import { getComments, getReactions } from "@/lib/social/comment-actions";
@@ -12,9 +12,9 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { userId, wingSlug } = await params;
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
-  const { data: wing } = await supabase
+  const { data: wing } = await admin
     .from("wings")
     .select("custom_name, slug, publish_description")
     .eq("user_id", userId)
@@ -43,9 +43,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function VisitPage({ params }: Props) {
   const { userId, wingSlug } = await params;
   const supabase = await createClient();
+  const admin = createAdminClient();
 
-  // Get the published wing
-  const { data: wing } = await supabase
+  // Get the published wing (admin client bypasses wings RLS for cross-user reads)
+  const { data: wing } = await admin
     .from("wings")
     .select("id, slug, custom_name, accent_color, publish_description, published_at, user_id")
     .eq("user_id", userId)
