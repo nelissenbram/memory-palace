@@ -339,6 +339,108 @@ export async function sendRoomPicker(
   }
 }
 
+/**
+ * Send a message asking the user to link their WhatsApp number in their Palace profile.
+ * This is the fallback (Option B) when no profile has a matching whatsapp_phone.
+ */
+export async function sendLinkAccountMessage(
+  recipientPhone: string,
+  locale: string = "en",
+): Promise<boolean> {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneNumberId) return false;
+
+  const message = getLinkAccountText(locale);
+
+  try {
+    const res = await fetch(
+      `${GRAPH_API_BASE}/${phoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: recipientPhone,
+          type: "text",
+          text: { preview_url: true, body: message },
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`[Kep LinkAccount] Failed to send: ${res.status} ${err}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[Kep LinkAccount] Error:", err);
+    return false;
+  }
+}
+
+function getLinkAccountText(locale: string): string {
+  const texts: Record<string, string> = {
+    en: [
+      "\uD83D\uDCF8 Memory Palace Kep",
+      "",
+      "Hi! I'd love to save your forwarded messages, but I don't recognize your phone number yet.",
+      "",
+      "To get started, add your WhatsApp number in your Palace profile:",
+      `${BASE_URL}/settings/profile`,
+      "",
+      "Once linked, just forward any photo, video, or message and I'll file it in the right room.",
+    ].join("\n"),
+    nl: [
+      "\uD83D\uDCF8 Memory Palace Kep",
+      "",
+      "Hoi! Ik wil graag je doorgestuurde berichten opslaan, maar ik herken je telefoonnummer nog niet.",
+      "",
+      "Om te beginnen, voeg je WhatsApp-nummer toe in je Palace-profiel:",
+      `${BASE_URL}/settings/profile`,
+      "",
+      "Zodra het gekoppeld is, stuur je gewoon een foto, video of bericht door en ik sla het op in de juiste kamer.",
+    ].join("\n"),
+    de: [
+      "\uD83D\uDCF8 Memory Palace Kep",
+      "",
+      "Hallo! Ich w\u00fcrde gerne deine weitergeleiteten Nachrichten speichern, aber ich erkenne deine Telefonnummer noch nicht.",
+      "",
+      "Um loszulegen, f\u00fcge deine WhatsApp-Nummer in deinem Palace-Profil hinzu:",
+      `${BASE_URL}/settings/profile`,
+      "",
+      "Sobald sie verkn\u00fcpft ist, leite einfach ein Foto, Video oder eine Nachricht weiter und ich ordne sie dem richtigen Raum zu.",
+    ].join("\n"),
+    es: [
+      "\uD83D\uDCF8 Memory Palace Kep",
+      "",
+      "\u00a1Hola! Me encantar\u00eda guardar tus mensajes reenviados, pero a\u00fan no reconozco tu n\u00famero de tel\u00e9fono.",
+      "",
+      "Para empezar, a\u00f1ade tu n\u00famero de WhatsApp en tu perfil del Palace:",
+      `${BASE_URL}/settings/profile`,
+      "",
+      "Una vez vinculado, solo reenv\u00eda cualquier foto, video o mensaje y lo archivar\u00e9 en la sala correcta.",
+    ].join("\n"),
+    fr: [
+      "\uD83D\uDCF8 Memory Palace Kep",
+      "",
+      "Bonjour ! J'aimerais sauvegarder vos messages transf\u00e9r\u00e9s, mais je ne reconnais pas encore votre num\u00e9ro de t\u00e9l\u00e9phone.",
+      "",
+      "Pour commencer, ajoutez votre num\u00e9ro WhatsApp dans votre profil Palace :",
+      `${BASE_URL}/settings/profile`,
+      "",
+      "Une fois li\u00e9, transf\u00e9rez simplement une photo, vid\u00e9o ou message et je le classerai dans la bonne salle.",
+    ].join("\n"),
+  };
+
+  return texts[locale] || texts.en;
+}
+
 function getInteractiveTexts(locale: string): {
   savedTo: string;
   whereSave: string;

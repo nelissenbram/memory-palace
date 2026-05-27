@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
-import { updateProfile, requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
+import { updateProfile, requestPasswordReset, deleteAccount, uploadAvatar } from "@/lib/auth/profile-actions";
 import { updateProfile as updateSocialProfile } from "@/lib/social/profile-actions";
 import MFASetup from "@/components/settings/MFASetup";
 import ExportPanel from "@/components/settings/ExportPanel";
@@ -22,6 +22,7 @@ interface ProfileData {
   avatar_url: string;
   username: string;
   is_public: boolean;
+  whatsapp_phone: string;
 }
 
 /** Format hour (0-24 float) as HH:MM */
@@ -61,6 +62,7 @@ export default function ProfilePage() {
   const [styleEra, setStyleEra] = useState("");
   const [aiConsent, setAiConsent] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState("");
   const [personaType, setPersonaType] = useState<string | null>(null);
   const { t: tPersona } = useTranslation("persona" as "common");
   const router = useRouter();
@@ -109,11 +111,13 @@ export default function ProfilePage() {
             avatar_url: data.avatar_url || "",
             username: data.username || "",
             is_public: !!data.is_public,
+            whatsapp_phone: data.whatsapp_phone || "",
           };
           setProfile(p);
           setDisplayName(p.display_name);
           setBio(p.bio);
           setUsername(p.username);
+          setWhatsappPhone(p.whatsapp_phone);
           setIsPublic(!!data.is_public);
           setStyleEra(data.style_era || "roman");
           setAiConsent(!!data.ai_consent);
@@ -131,13 +135,15 @@ export default function ProfilePage() {
     profile &&
     (displayName !== profile.display_name ||
       bio !== profile.bio ||
-      username !== profile.username);
+      username !== profile.username ||
+      whatsappPhone !== profile.whatsapp_phone);
 
   const handleSave = async () => {
     setSaving(true);
     const result = await updateProfile({
       displayName,
       bio,
+      whatsappPhone: whatsappPhone || null,
     });
 
     if (result.error) {
@@ -160,7 +166,7 @@ export default function ProfilePage() {
     // Optimistic update
     setProfile((prev) =>
       prev
-        ? { ...prev, display_name: displayName, bio, username }
+        ? { ...prev, display_name: displayName, bio, username, whatsapp_phone: whatsappPhone }
         : prev
     );
     showToast(t("profileSaved"), "success");
@@ -200,23 +206,17 @@ export default function ProfilePage() {
     }
     setAvatarUploading(true);
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `avatars/${user.id}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("profile-photos")
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (uploadError) {
-        showToast(uploadError.message, "error");
+      const formData = new FormData();
+      formData.append("file", file);
+      const result = await uploadAvatar(formData);
+      if (result.error) {
+        showToast(result.error, "error");
         return;
       }
-      const { data: urlData } = supabase.storage.from("profile-photos").getPublicUrl(path);
-      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-      await updateProfile({ avatarUrl: publicUrl });
-      setProfile((prev) => prev ? { ...prev, avatar_url: publicUrl } : prev);
-      showToast(t("avatarSaved"), "success");
+      if (result.url) {
+        setProfile((prev) => prev ? { ...prev, avatar_url: result.url! } : prev);
+        showToast(t("avatarSaved"), "success");
+      }
     } catch {
       showToast(t("avatarUploadError"), "error");
     }
@@ -250,7 +250,7 @@ export default function ProfilePage() {
         padding: "3rem", textAlign: "center",
         fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted,
       }}>
-        {t("profileLoadError")}
+        {loading ? "..." : t("profileLoadError")}
       </div>
     );
   }
@@ -477,6 +477,27 @@ export default function ProfilePage() {
                 lineHeight: 1.6,
               }}
             />
+          </div>
+
+          {/* WhatsApp Phone (for Kep) */}
+          <div>
+            <label htmlFor="profile-whatsapp-phone" style={labelStyle}>{t("whatsappPhone")}</label>
+            <input
+              id="profile-whatsapp-phone"
+              className="mp-settings-input"
+              type="tel"
+              value={whatsappPhone}
+              onChange={(e) => setWhatsappPhone(e.target.value.replace(/[^\d+\s()-]/g, ""))}
+              placeholder={t("whatsappPhonePlaceholder")}
+              maxLength={20}
+              style={inputStyle}
+            />
+            <p style={{
+              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+              margin: "0.375rem 0 0", lineHeight: 1.4,
+            }}>
+              {t("whatsappPhoneHelp")}
+            </p>
           </div>
 
           {/* Profile Visibility */}

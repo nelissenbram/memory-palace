@@ -164,6 +164,7 @@ export async function updateProfile(data: {
   bustPedestals?: Record<number, { faceUrl: string; name: string; gender: string }>;
   aiConsent?: boolean;
   aiBiometricConsent?: boolean;
+  whatsappPhone?: string | null;
 }) {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return { success: true };
@@ -191,6 +192,7 @@ export async function updateProfile(data: {
   if (data.bustPedestals !== undefined) updates.bust_pedestals = JSON.stringify(data.bustPedestals);
   if (data.aiConsent !== undefined) updates.ai_consent = data.aiConsent;
   if (data.aiBiometricConsent !== undefined) updates.ai_biometric_consent = data.aiBiometricConsent;
+  if (data.whatsappPhone !== undefined) updates.whatsapp_phone = data.whatsappPhone || null;
 
   if (Object.keys(updates).length === 0) {
     { const t = await serverError(); return { error: t("noFieldsToUpdate") }; }
@@ -206,6 +208,48 @@ export async function updateProfile(data: {
   }
 
   return { success: true };
+}
+
+/** Upload avatar via admin client (bypasses storage RLS) */
+export async function uploadAvatar(formData: FormData): Promise<{ url?: string; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const file = formData.get("file") as File;
+  if (!file || !(file instanceof File)) return { error: "No file provided" };
+  if (!file.type.startsWith("image/")) return { error: "Invalid file type" };
+  if (file.size > 5 * 1024 * 1024) return { error: "File too large (max 5MB)" };
+
+  const admin = createAdminClient();
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `avatars/${user.id}.${ext}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error: uploadError } = await admin.storage
+    .from("profile-photos")
+    .upload(path, buffer, { upsert: true, contentType: file.type });
+
+  if (uploadError) {
+    // If bucket doesn't exist, try creating it
+    if (uploadError.message?.includes("not found") || uploadError.message?.includes("Bucket")) {
+      await admin.storage.createBucket("profile-photos", { public: true });
+      const { error: retryError } = await admin.storage
+        .from("profile-photos")
+        .upload(path, buffer, { upsert: true, contentType: file.type });
+      if (retryError) return { error: retryError.message };
+    } else {
+      return { error: uploadError.message };
+    }
+  }
+
+  const { data: urlData } = admin.storage.from("profile-photos").getPublicUrl(path);
+  const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+  // Update profile with new avatar URL
+  await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+
+  return { url: publicUrl };
 }
 
 export async function requestPasswordReset() {

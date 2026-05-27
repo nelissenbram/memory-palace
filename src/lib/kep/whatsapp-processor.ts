@@ -16,6 +16,7 @@ import {
   sendTextMessage,
   sendRoomConfirmation,
   sendRoomPicker,
+  sendLinkAccountMessage,
 } from "./whatsapp-disclosure";
 
 const COMMANDS = {
@@ -201,29 +202,72 @@ async function autoCreateGroupLink(
 }
 
 /**
+ * Normalize a phone number to digits-only (with leading +).
+ * E.g. "+31 6 1234 5678" → "31612345678", "0031612345678" → "31612345678"
+ */
+function normalizePhone(phone: string): string {
+  let digits = phone.replace(/[\s\-()]/g, "");
+  if (digits.startsWith("+")) digits = digits.slice(1);
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  return digits;
+}
+
+/**
+ * Look up a Palace user by their registered WhatsApp phone number.
+ * Returns the user_id if found, null otherwise.
+ */
+async function lookupUserByPhone(
+  supabase: SupabaseClient,
+  senderPhone: string,
+): Promise<string | null> {
+  const normalized = normalizePhone(senderPhone);
+
+  // Try exact match first, then normalized match
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, whatsapp_phone")
+    .not("whatsapp_phone", "is", null);
+
+  if (!profiles || profiles.length === 0) return null;
+
+  for (const p of profiles) {
+    if (normalizePhone(p.whatsapp_phone) === normalized) {
+      return p.id;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Auto-create a Kep + whatsapp_link when a 1:1 DM arrives with no existing link.
+ * Uses phone→profile lookup (Option A) with fallback to ask-to-link (Option B).
  */
 async function autoCreateDMLink(
   supabase: SupabaseClient,
   phoneNumberId: string,
   senderPhone: string,
 ): Promise<Record<string, unknown> | null> {
-  const defaultUserId = process.env.KEP_DEFAULT_USER_ID;
-  if (!defaultUserId) {
-    console.error("[WhatsApp] KEP_DEFAULT_USER_ID not configured — cannot auto-create DM link");
+  // Option A: Look up user by registered WhatsApp phone number
+  const matchedUserId = await lookupUserByPhone(supabase, senderPhone);
+
+  if (!matchedUserId) {
+    // Option B fallback: no registered phone found — ask user to link their account
+    console.log(`[WhatsApp] No profile found for phone +${senderPhone}, sending link-account message`);
+    await sendLinkAccountMessage(senderPhone);
     return null;
   }
 
   const inviteCode = generateInviteCode();
 
   try {
-    // Create the Kep
+    // Create the Kep — owned by the matched user
     const { data: kep, error: kepError } = await supabase
       .from("keps")
       .insert({
-        user_id: defaultUserId,
+        user_id: matchedUserId,
         name: `DM +${senderPhone}`,
-        icon: "💬",
+        icon: "\uD83D\uDCAC",
         source_type: "whatsapp",
         source_config: { sender_phone: senderPhone },
         status: "active",
@@ -245,7 +289,7 @@ async function autoCreateDMLink(
       .from("whatsapp_links")
       .insert({
         kep_id: kep.id,
-        user_id: defaultUserId,
+        user_id: matchedUserId,
         wa_group_id: null,
         wa_sender_phone: senderPhone,
         phone_number_id: phoneNumberId,
@@ -270,7 +314,7 @@ async function autoCreateDMLink(
     // Send welcome message to the sender
     await sendWelcomeMessage(senderPhone, inviteCode);
 
-    console.log(`[WhatsApp] Auto-created DM link for +${senderPhone} with invite ${inviteCode}`);
+    console.log(`[WhatsApp] Auto-created DM link for +${senderPhone} (user: ${matchedUserId}) with invite ${inviteCode}`);
     return link;
   } catch (err) {
     console.error("[WhatsApp] autoCreateDMLink error:", err);
