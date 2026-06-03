@@ -11,6 +11,20 @@ import { initPushNotifications } from "@/lib/native/push-notifications";
  */
 export default function NativeInit() {
   useEffect(() => {
+    // Temporary diagnostics — remove after Apple approval
+    try {
+      fetch("/api/diagnostics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          milestone: "react-mounted",
+          elapsed: performance.now(),
+          isNative: isNative(),
+          diag: (window as any).__mpDiag || null,
+        }),
+      }).catch(() => {});
+    } catch {}
+
     initDeepLinkListener();
     initPushNotifications();
 

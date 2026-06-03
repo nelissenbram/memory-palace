@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
     // Load from live production server — the app uses Server Actions and
     // API routes which are incompatible with static export. This also means
     // web deploys instantly update the native app (no Play Store release needed).
-    url: 'https://thememorypalace.ai',
+    url: 'https://www.thememorypalace.ai',
     androidScheme: 'https',
   },
   plugins: {
@@ -18,7 +18,7 @@ const config: CapacitorConfig = {
     },
     SplashScreen: {
       launchShowDuration: 3000,
-      launchAutoHide: false,
+      launchAutoHide: true,
       launchFadeOutDuration: 500,
       backgroundColor: '#F2EDE4',
       showSpinner: true,
