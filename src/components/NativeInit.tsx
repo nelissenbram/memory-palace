@@ -34,7 +34,7 @@ export default function NativeInit() {
     }
 
     // Hide splash screen after the page has rendered real content.
-    // launchAutoHide is disabled so we control the timing here.
+    // launchAutoHide is enabled (3s) as a backstop; this call hides it sooner.
     const hideSplash = () => {
       import("@capacitor/splash-screen").then(({ SplashScreen }) => {
         SplashScreen.hide().catch(() => {});
@@ -52,7 +52,7 @@ export default function NativeInit() {
     // Universal safety net: force-hide splash after 2s regardless of isNative().
     // If the Capacitor bridge failed to inject, isNative() returns false but
     // the splash may still be visible. The import fails silently on web.
-    // launchAutoHide is set to 10s as a backstop; this JS call hides it much sooner.
+    // launchAutoHide is set to 3s as a backstop; this JS call hides it sooner.
     setTimeout(hideSplash, 2000);
   }, []);
 

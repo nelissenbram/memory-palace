@@ -10,6 +10,7 @@ const config: CapacitorConfig = {
     // web deploys instantly update the native app (no Play Store release needed).
     url: 'https://www.thememorypalace.ai',
     androidScheme: 'https',
+    errorPath: 'error.html',
   },
   plugins: {
     StatusBar: {
@@ -17,7 +18,7 @@ const config: CapacitorConfig = {
       backgroundColor: '#F2EDE4',
     },
     SplashScreen: {
-      launchShowDuration: 10000,
+      launchShowDuration: 3000,
       launchAutoHide: true,
       launchFadeOutDuration: 500,
       backgroundColor: '#F2EDE4',
