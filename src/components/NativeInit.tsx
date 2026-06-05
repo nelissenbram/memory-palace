@@ -49,11 +49,11 @@ export default function NativeInit() {
       });
     }
 
-    // Universal safety net: force-hide splash after 3s regardless of isNative().
+    // Universal safety net: force-hide splash after 2s regardless of isNative().
     // If the Capacitor bridge failed to inject, isNative() returns false but
     // the splash may still be visible. The import fails silently on web.
-    // launchAutoHide is disabled — we control all splash hiding from JS + native safety net.
-    setTimeout(hideSplash, 3000);
+    // launchAutoHide is set to 10s as a backstop; this JS call hides it much sooner.
+    setTimeout(hideSplash, 2000);
   }, []);
 
   return null;
