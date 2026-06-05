@@ -288,17 +288,21 @@ jobs:
                   return true
               }
 
-              /// Removes any non-WKWebView subviews from the root view controller.
-              /// The Capacitor SplashScreen plugin adds a UIView overlay; this strips it.
+              /// Removes splash overlay subviews without touching the WKWebView or its container.
               private func forceHideSplash() {
                   guard let vc = window?.rootViewController else { return }
-                  for subview in vc.view.subviews where !(subview is WKWebView) {
+                  for subview in vc.view.subviews where !containsWebView(subview) {
                       UIView.animate(withDuration: 0.3, animations: {
                           subview.alpha = 0
                       }) { _ in
                           subview.removeFromSuperview()
                       }
                   }
+              }
+
+              private func containsWebView(_ view: UIView) -> Bool {
+                  if view is WKWebView { return true }
+                  return view.subviews.contains { containsWebView($0) }
               }
 
               func application(_ app: UIApplication, open url: URL,
