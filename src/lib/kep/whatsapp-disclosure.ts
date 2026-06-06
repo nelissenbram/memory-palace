@@ -1,158 +1,19 @@
 /**
- * WhatsApp disclosure message sender.
- * Sends privacy disclosure to groups when a Kep is first activated.
+ * WhatsApp message sender — all outgoing Kep messages.
+ * 1:1 DM only, no group support.
  */
+
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const GRAPH_API_BASE = "https://graph.facebook.com/v21.0";
-
-/**
- * Send a disclosure message to a WhatsApp group.
- */
-export async function sendDisclosureMessage(
-  groupId: string,
-  locale: string = "en",
-): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-  if (!token || !phoneNumberId) {
-    console.error("[Kep Disclosure] WhatsApp credentials not configured");
-    return false;
-  }
-
-  const message = getDisclosureText(locale);
-
-  try {
-    const res = await fetch(
-      `${GRAPH_API_BASE}/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: groupId,
-          type: "text",
-          text: { body: message },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`[Kep Disclosure] Failed to send: ${res.status} ${err}`);
-      return false;
-    }
-
-    return true;
-  } catch (err) {
-    console.error("[Kep Disclosure] Error:", err);
-    return false;
-  }
-}
-
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://thememorypalace.ai";
 
-/**
- * Send a branded welcome message to a new sender.
- * Includes links for virtual room and palace room creation.
- */
-export async function sendWelcomeMessage(
-  recipientPhone: string,
-  inviteCode: string | null,
-  locale: string = "en",
-): Promise<boolean> {
+// ── Core send helpers ────────────────────────────────────────
+
+function getCredentials() {
   const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-  if (!token || !phoneNumberId) {
-    console.error("[Kep Welcome] WhatsApp credentials not configured");
-    return false;
-  }
-
-  const message = getWelcomeText(inviteCode, locale);
-
-  try {
-    const res = await fetch(
-      `${GRAPH_API_BASE}/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: recipientPhone,
-          type: "text",
-          text: { preview_url: true, body: message },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`[Kep Welcome] Failed to send: ${res.status} ${err}`);
-      return false;
-    }
-
-    return true;
-  } catch (err) {
-    console.error("[Kep Welcome] Error:", err);
-    return false;
-  }
-}
-
-/**
- * Send a combined welcome + disclosure message TO a WhatsApp group.
- * Sent once when the group link is auto-created.
- */
-export async function sendGroupWelcomeMessage(
-  groupChatId: string,
-  inviteCode: string,
-  locale: string = "en",
-): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-  if (!token || !phoneNumberId) {
-    console.error("[Kep Group Welcome] WhatsApp credentials not configured");
-    return false;
-  }
-
-  const message = getGroupWelcomeText(inviteCode, locale);
-
-  try {
-    const res = await fetch(
-      `${GRAPH_API_BASE}/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: groupChatId,
-          type: "text",
-          text: { preview_url: true, body: message },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`[Kep Group Welcome] Failed to send: ${res.status} ${err}`);
-      return false;
-    }
-
-    return true;
-  } catch (err) {
-    console.error("[Kep Group Welcome] Error:", err);
-    return false;
-  }
+  return { token, phoneNumberId };
 }
 
 /**
@@ -162,9 +23,7 @@ export async function sendTextMessage(
   recipientPhone: string,
   text: string,
 ): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
+  const { token, phoneNumberId } = getCredentials();
   if (!token || !phoneNumberId) return false;
 
   try {
@@ -180,7 +39,7 @@ export async function sendTextMessage(
           messaging_product: "whatsapp",
           to: recipientPhone,
           type: "text",
-          text: { body: text },
+          text: { preview_url: true, body: text },
         }),
       },
     );
@@ -197,22 +56,12 @@ export async function sendTextMessage(
   }
 }
 
-/**
- * Send room confirmation with action buttons after high-confidence auto-route.
- */
-export async function sendRoomConfirmation(
+async function sendInteractiveMessage(
   recipientPhone: string,
-  roomName: string,
-  wingName: string,
-  captureId: string,
-  locale: string = "en",
+  interactive: Record<string, unknown>,
 ): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
+  const { token, phoneNumberId } = getCredentials();
   if (!token || !phoneNumberId) return false;
-
-  const t = getInteractiveTexts(locale);
 
   try {
     const res = await fetch(
@@ -227,32 +76,117 @@ export async function sendRoomConfirmation(
           messaging_product: "whatsapp",
           to: recipientPhone,
           type: "interactive",
-          interactive: {
-            type: "button",
-            body: { text: t.savedTo.replace("{wing}", wingName).replace("{room}", roomName) },
-            action: {
-              buttons: [
-                { type: "reply", reply: { id: `confirm:${captureId}`, title: "OK" } },
-                { type: "reply", reply: { id: `move:${captureId}`, title: t.moveIt } },
-                { type: "reply", reply: { id: `delete:${captureId}`, title: t.deleteBtn } },
-              ],
-            },
-          },
+          interactive,
         }),
       },
     );
 
     if (!res.ok) {
       const err = await res.text();
-      console.error(`[Kep] Failed to send confirmation: ${res.status} ${err}`);
+      console.error(`[Kep] Failed to send interactive: ${res.status} ${err}`);
       return false;
     }
     return true;
   } catch (err) {
-    console.error("[Kep] sendRoomConfirmation error:", err);
+    console.error("[Kep] sendInteractiveMessage error:", err);
     return false;
   }
 }
+
+// ── Welcome & Onboarding ────────────────────────────────────
+
+/**
+ * Send welcome message to a new 1:1 sender (known user, first message).
+ */
+export async function sendWelcomeMessage(
+  recipientPhone: string,
+  locale: string = "en",
+): Promise<boolean> {
+  const t = getWelcomeTexts(locale);
+  const message = [
+    t.header,
+    "",
+    t.intro,
+    "",
+    t.forward,
+    "",
+    `${t.setRoom}: ROOM [name]`,
+    `${t.seeRooms}: ROOMS`,
+    `${t.allCommands}: HELP`,
+    "",
+    t.letsStart,
+  ].join("\n");
+
+  return sendTextMessage(recipientPhone, message);
+}
+
+/**
+ * Send link-account message for unknown phone numbers.
+ * Covers both no-account AND unlinked-phone scenarios.
+ */
+export async function sendLinkAccountMessage(
+  recipientPhone: string,
+  locale: string = "en",
+): Promise<boolean> {
+  const t = getLinkAccountTexts(locale);
+  const message = [
+    t.header,
+    "",
+    t.dontRecognize,
+    "",
+    t.alreadyHaveAccount,
+    `  ${t.addNumber}: ${BASE_URL}/settings/profile`,
+    "",
+    t.newToMemoryPalace,
+    `  ${t.createPalace}: ${BASE_URL}/register`,
+    "",
+    t.onceLlinked,
+  ].join("\n");
+
+  return sendTextMessage(recipientPhone, message);
+}
+
+// ── Room confirmation ────────────────────────────────────────
+
+/**
+ * Send room confirmation with action buttons after auto-route.
+ */
+export async function sendRoomConfirmation(
+  recipientPhone: string,
+  roomName: string,
+  wingName: string,
+  captureId: string,
+  locale: string = "en",
+): Promise<boolean> {
+  const t = getInteractiveTexts(locale);
+
+  return sendInteractiveMessage(recipientPhone, {
+    type: "button",
+    body: { text: t.savedTo.replace("{wing}", wingName).replace("{room}", roomName) },
+    action: {
+      buttons: [
+        { type: "reply", reply: { id: `confirm:${captureId}`, title: "OK" } },
+        { type: "reply", reply: { id: `move:${captureId}`, title: t.moveIt } },
+        { type: "reply", reply: { id: `delete:${captureId}`, title: t.deleteBtn } },
+      ],
+    },
+  });
+}
+
+/**
+ * Send room switch confirmation.
+ */
+export async function sendRoomSwitchConfirmation(
+  recipientPhone: string,
+  wingName: string,
+  roomName: string,
+  locale: string = "en",
+): Promise<boolean> {
+  const t = getRoomSwitchTexts(locale);
+  return sendTextMessage(recipientPhone, t.activeRoom.replace("{wing}", wingName).replace("{room}", roomName));
+}
+
+// ── Room pickers ─────────────────────────────────────────────
 
 interface RoomForPicker {
   id: string;
@@ -262,8 +196,7 @@ interface RoomForPicker {
 }
 
 /**
- * Send a room picker list message when AI confidence is low.
- * Rooms are grouped by wing as sections. Max 10 rows.
+ * Send a room picker list for routing a specific capture.
  */
 export async function sendRoomPicker(
   recipientPhone: string,
@@ -271,14 +204,8 @@ export async function sendRoomPicker(
   captureId: string,
   locale: string = "en",
 ): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-
-  if (!token || !phoneNumberId) return false;
-
   const t = getInteractiveTexts(locale);
 
-  // Group rooms by wing, limit to 10 total
   const wingMap = new Map<string, { wingName: string; rows: { id: string; title: string }[] }>();
   let totalRows = 0;
 
@@ -302,155 +229,272 @@ export async function sendRoomPicker(
     rows,
   }));
 
-  try {
-    const res = await fetch(
-      `${GRAPH_API_BASE}/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: recipientPhone,
-          type: "interactive",
-          interactive: {
-            type: "list",
-            body: { text: t.whereSave },
-            action: {
-              button: t.pickRoom,
-              sections,
-            },
-          },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`[Kep] Failed to send room picker: ${res.status} ${err}`);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("[Kep] sendRoomPicker error:", err);
-    return false;
-  }
+  return sendInteractiveMessage(recipientPhone, {
+    type: "list",
+    body: { text: t.whereSave },
+    action: {
+      button: t.pickRoom,
+      sections,
+    },
+  });
 }
 
 /**
- * Send a message asking the user to link their WhatsApp number in their Palace profile.
- * This is the fallback (Option B) when no profile has a matching whatsapp_phone.
+ * Send a room picker for switching active room (setroom: prefix).
  */
-export async function sendLinkAccountMessage(
+export async function sendRoomPickerForSwitch(
+  recipientPhone: string,
+  rooms: RoomForPicker[],
+  locale: string = "en",
+): Promise<boolean> {
+  const t = getRoomSwitchTexts(locale);
+
+  const wingMap = new Map<string, { wingName: string; rows: { id: string; title: string }[] }>();
+  let totalRows = 0;
+  let totalRooms = rooms.length;
+
+  // Sort alphabetically
+  const sorted = [...rooms].sort((a, b) => a.name.localeCompare(b.name));
+
+  for (const room of sorted) {
+    if (totalRows >= 10) break;
+    const wingName = room.wings?.custom_name || room.wings?.name || room.wings?.slug || "Palace";
+    const wingId = room.wings?.id || room.wing_id;
+
+    if (!wingMap.has(wingId)) {
+      wingMap.set(wingId, { wingName, rows: [] });
+    }
+    wingMap.get(wingId)!.rows.push({
+      id: `setroom:${room.id}`,
+      title: (room.name || "Room").slice(0, 24),
+    });
+    totalRows++;
+  }
+
+  const sections = Array.from(wingMap.values()).map(({ wingName, rows }) => ({
+    title: wingName.slice(0, 24),
+    rows,
+  }));
+
+  let bodyText = t.pickActiveRoom;
+  if (totalRooms > 10) {
+    bodyText += ` (${t.showing.replace("{shown}", "10").replace("{total}", String(totalRooms))})`;
+  }
+
+  return sendInteractiveMessage(recipientPhone, {
+    type: "list",
+    body: { text: bodyText },
+    action: {
+      button: t.pickRoom,
+      sections,
+    },
+  });
+}
+
+// ── Status, Help, Paused ─────────────────────────────────────
+
+/**
+ * Send status message with active room + capture stats.
+ */
+export async function sendStatusMessage(
+  recipientPhone: string,
+  link: Record<string, unknown>,
+  supabase: SupabaseClient,
+  locale: string = "en",
+): Promise<boolean> {
+  const t = getStatusTexts(locale);
+
+  let activeRoomText = t.aiRouting;
+  if (link.active_room_id) {
+    const { data: room } = await supabase
+      .from("rooms")
+      .select("name, wings(custom_name, name, slug)")
+      .eq("id", link.active_room_id as string)
+      .single();
+
+    if (room) {
+      const wing = room.wings as unknown as Record<string, unknown> | null;
+      const wingName = (wing?.custom_name || wing?.name || wing?.slug || "Palace") as string;
+      activeRoomText = `${wingName} / ${room.name}`;
+    }
+  }
+
+  // Get capture stats
+  const { count: totalCaptures } = await supabase
+    .from("kep_captures")
+    .select("id", { count: "exact", head: true })
+    .eq("kep_id", link.kep_id as string);
+
+  const { count: routedCaptures } = await supabase
+    .from("kep_captures")
+    .select("id", { count: "exact", head: true })
+    .eq("kep_id", link.kep_id as string)
+    .eq("status", "routed");
+
+  const status = link.stopped ? t.paused : t.active;
+
+  const message = [
+    t.header,
+    "",
+    `${t.statusLabel}: ${status}`,
+    `${t.activeRoomLabel}: ${activeRoomText}`,
+    `${t.capturesLabel}: ${routedCaptures || 0} / ${totalCaptures || 0}`,
+  ].join("\n");
+
+  return sendTextMessage(recipientPhone, message);
+}
+
+/**
+ * Send help message with all available commands.
+ */
+export async function sendHelpMessage(
   recipientPhone: string,
   locale: string = "en",
 ): Promise<boolean> {
-  const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const t = getHelpTexts(locale);
 
-  if (!token || !phoneNumberId) return false;
+  const message = [
+    t.header,
+    "",
+    `ROOM [${t.name}] — ${t.roomDesc}`,
+    `ROOMS — ${t.roomsDesc}`,
+    `STATUS — ${t.statusDesc}`,
+    `CLEAR — ${t.clearDesc}`,
+    `STOP — ${t.stopDesc}`,
+    `START — ${t.startDesc}`,
+    `HELP — ${t.helpDesc}`,
+    "",
+    t.tip,
+  ].join("\n");
 
-  const message = getLinkAccountText(locale);
-
-  try {
-    const res = await fetch(
-      `${GRAPH_API_BASE}/${phoneNumberId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          to: recipientPhone,
-          type: "text",
-          text: { preview_url: true, body: message },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`[Kep LinkAccount] Failed to send: ${res.status} ${err}`);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("[Kep LinkAccount] Error:", err);
-    return false;
-  }
+  return sendTextMessage(recipientPhone, message);
 }
 
-function getLinkAccountText(locale: string): string {
-  const texts: Record<string, string> = {
-    en: [
-      "\uD83D\uDCF8 Memory Palace Kep",
-      "",
-      "Hi! I'd love to save your forwarded messages, but I don't recognize your phone number yet.",
-      "",
-      "To get started, add your WhatsApp number in your Palace profile:",
-      `${BASE_URL}/settings/profile`,
-      "",
-      "Once linked, just forward any photo, video, or message and I'll file it in the right room.",
-    ].join("\n"),
-    nl: [
-      "\uD83D\uDCF8 Memory Palace Kep",
-      "",
-      "Hoi! Ik wil graag je doorgestuurde berichten opslaan, maar ik herken je telefoonnummer nog niet.",
-      "",
-      "Om te beginnen, voeg je WhatsApp-nummer toe in je Palace-profiel:",
-      `${BASE_URL}/settings/profile`,
-      "",
-      "Zodra het gekoppeld is, stuur je gewoon een foto, video of bericht door en ik sla het op in de juiste kamer.",
-    ].join("\n"),
-    de: [
-      "\uD83D\uDCF8 Memory Palace Kep",
-      "",
-      "Hallo! Ich w\u00fcrde gerne deine weitergeleiteten Nachrichten speichern, aber ich erkenne deine Telefonnummer noch nicht.",
-      "",
-      "Um loszulegen, f\u00fcge deine WhatsApp-Nummer in deinem Palace-Profil hinzu:",
-      `${BASE_URL}/settings/profile`,
-      "",
-      "Sobald sie verkn\u00fcpft ist, leite einfach ein Foto, Video oder eine Nachricht weiter und ich ordne sie dem richtigen Raum zu.",
-    ].join("\n"),
-    es: [
-      "\uD83D\uDCF8 Memory Palace Kep",
-      "",
-      "\u00a1Hola! Me encantar\u00eda guardar tus mensajes reenviados, pero a\u00fan no reconozco tu n\u00famero de tel\u00e9fono.",
-      "",
-      "Para empezar, a\u00f1ade tu n\u00famero de WhatsApp en tu perfil del Palace:",
-      `${BASE_URL}/settings/profile`,
-      "",
-      "Una vez vinculado, solo reenv\u00eda cualquier foto, video o mensaje y lo archivar\u00e9 en la sala correcta.",
-    ].join("\n"),
-    fr: [
-      "\uD83D\uDCF8 Memory Palace Kep",
-      "",
-      "Bonjour ! J'aimerais sauvegarder vos messages transf\u00e9r\u00e9s, mais je ne reconnais pas encore votre num\u00e9ro de t\u00e9l\u00e9phone.",
-      "",
-      "Pour commencer, ajoutez votre num\u00e9ro WhatsApp dans votre profil Palace :",
-      `${BASE_URL}/settings/profile`,
-      "",
-      "Une fois li\u00e9, transf\u00e9rez simplement une photo, vid\u00e9o ou message et je le classerai dans la bonne salle.",
-    ].join("\n"),
-  };
+/**
+ * Send a paused reminder when receiving messages while stopped.
+ */
+export async function sendPausedReminder(
+  recipientPhone: string,
+  locale: string = "en",
+): Promise<boolean> {
+  const t = getPausedTexts(locale);
+  return sendTextMessage(recipientPhone, t.paused);
+}
 
+// ── i18n text getters (5 locales) ────────────────────────────
+
+function getWelcomeTexts(locale: string) {
+  const texts: Record<string, {
+    header: string; intro: string; forward: string;
+    setRoom: string; seeRooms: string; allCommands: string; letsStart: string;
+  }> = {
+    en: {
+      header: "Welcome to Kep!",
+      intro: "I'll save your memories to your Memory Palace.",
+      forward: "Just send me any photo, video, voice note, or message.",
+      setRoom: "Set your active room",
+      seeRooms: "See all rooms",
+      allCommands: "All commands",
+      letsStart: "Let's start — pick a room:",
+    },
+    nl: {
+      header: "Welkom bij Kep!",
+      intro: "Ik sla je herinneringen op in je Memory Palace.",
+      forward: "Stuur me gewoon een foto, video, spraakbericht of bericht.",
+      setRoom: "Actieve kamer instellen",
+      seeRooms: "Alle kamers bekijken",
+      allCommands: "Alle commando's",
+      letsStart: "Laten we beginnen — kies een kamer:",
+    },
+    de: {
+      header: "Willkommen bei Kep!",
+      intro: "Ich speichere deine Erinnerungen in deinem Memory Palace.",
+      forward: "Schick mir einfach ein Foto, Video, eine Sprachnachricht oder Nachricht.",
+      setRoom: "Aktiven Raum festlegen",
+      seeRooms: "Alle Raume anzeigen",
+      allCommands: "Alle Befehle",
+      letsStart: "Los geht's — wahle einen Raum:",
+    },
+    es: {
+      header: "Bienvenido a Kep!",
+      intro: "Guardare tus recuerdos en tu Memory Palace.",
+      forward: "Solo envlame cualquier foto, video, nota de voz o mensaje.",
+      setRoom: "Establecer sala activa",
+      seeRooms: "Ver todas las salas",
+      allCommands: "Todos los comandos",
+      letsStart: "Empecemos — elige una sala:",
+    },
+    fr: {
+      header: "Bienvenue sur Kep !",
+      intro: "Je sauvegarderai vos souvenirs dans votre Memory Palace.",
+      forward: "Envoyez-moi simplement une photo, video, note vocale ou message.",
+      setRoom: "Definir la salle active",
+      seeRooms: "Voir toutes les salles",
+      allCommands: "Toutes les commandes",
+      letsStart: "Commencons — choisissez une salle :",
+    },
+  };
+  return texts[locale] || texts.en;
+}
+
+function getLinkAccountTexts(locale: string) {
+  const texts: Record<string, {
+    header: string; dontRecognize: string;
+    alreadyHaveAccount: string; addNumber: string;
+    newToMemoryPalace: string; createPalace: string; onceLlinked: string;
+  }> = {
+    en: {
+      header: "Hi! I'm Kep — your Memory Palace assistant.",
+      dontRecognize: "I don't recognize your phone number yet.",
+      alreadyHaveAccount: "Already have an account?",
+      addNumber: "Add your number",
+      newToMemoryPalace: "New to Memory Palace?",
+      createPalace: "Create your free palace",
+      onceLlinked: "Once linked, text me again!",
+    },
+    nl: {
+      header: "Hoi! Ik ben Kep — je Memory Palace assistent.",
+      dontRecognize: "Ik herken je telefoonnummer nog niet.",
+      alreadyHaveAccount: "Heb je al een account?",
+      addNumber: "Voeg je nummer toe",
+      newToMemoryPalace: "Nieuw bij Memory Palace?",
+      createPalace: "Maak je gratis paleis",
+      onceLlinked: "Zodra gekoppeld, stuur me opnieuw een bericht!",
+    },
+    de: {
+      header: "Hallo! Ich bin Kep — dein Memory Palace Assistent.",
+      dontRecognize: "Ich erkenne deine Telefonnummer noch nicht.",
+      alreadyHaveAccount: "Hast du schon ein Konto?",
+      addNumber: "Nummer hinzufugen",
+      newToMemoryPalace: "Neu bei Memory Palace?",
+      createPalace: "Erstelle deinen kostenlosen Palast",
+      onceLlinked: "Sobald verknupft, schreib mir nochmal!",
+    },
+    es: {
+      header: "Hola! Soy Kep — tu asistente de Memory Palace.",
+      dontRecognize: "Aun no reconozco tu numero de telefono.",
+      alreadyHaveAccount: "Ya tienes una cuenta?",
+      addNumber: "Agrega tu numero",
+      newToMemoryPalace: "Nuevo en Memory Palace?",
+      createPalace: "Crea tu palacio gratis",
+      onceLlinked: "Una vez vinculado, enviame un mensaje de nuevo!",
+    },
+    fr: {
+      header: "Bonjour ! Je suis Kep — votre assistant Memory Palace.",
+      dontRecognize: "Je ne reconnais pas encore votre numero de telephone.",
+      alreadyHaveAccount: "Vous avez deja un compte ?",
+      addNumber: "Ajoutez votre numero",
+      newToMemoryPalace: "Nouveau sur Memory Palace ?",
+      createPalace: "Creez votre palais gratuit",
+      onceLlinked: "Une fois lie, envoyez-moi un message !",
+    },
+  };
   return texts[locale] || texts.en;
 }
 
 function getInteractiveTexts(locale: string): {
-  savedTo: string;
-  whereSave: string;
-  pickRoom: string;
-  moveIt: string;
-  deleteBtn: string;
-  deleted: string;
-  movedTo: string;
-  noRoomsYet: string;
-  welcomeForward: string;
+  savedTo: string; whereSave: string; pickRoom: string;
+  moveIt: string; deleteBtn: string;
 } {
   const texts: Record<string, ReturnType<typeof getInteractiveTexts>> = {
     en: {
@@ -459,10 +503,6 @@ function getInteractiveTexts(locale: string): {
       pickRoom: "Pick a room",
       moveIt: "Move it",
       deleteBtn: "Delete",
-      deleted: "Deleted",
-      movedTo: "Moved to {wing} / {room}",
-      noRoomsYet: "You don't have any rooms yet. Create your first wing at thememorypalace.ai",
-      welcomeForward: "Forward photos, videos, or messages from any chat and I'll help you file them in the right room.",
     },
     nl: {
       savedTo: "Opgeslagen in {wing} / {room}",
@@ -470,179 +510,203 @@ function getInteractiveTexts(locale: string): {
       pickRoom: "Kies een kamer",
       moveIt: "Verplaats",
       deleteBtn: "Verwijder",
-      deleted: "Verwijderd",
-      movedTo: "Verplaatst naar {wing} / {room}",
-      noRoomsYet: "Je hebt nog geen kamers. Maak je eerste vleugel aan op thememorypalace.ai",
-      welcomeForward: "Stuur foto's, video's of berichten door vanuit elke chat en ik help je ze in de juiste kamer te plaatsen.",
     },
     de: {
       savedTo: "Gespeichert in {wing} / {room}",
       whereSave: "Wo soll ich das speichern?",
-      pickRoom: "Raum w\u00e4hlen",
+      pickRoom: "Raum wahlen",
       moveIt: "Verschieben",
-      deleteBtn: "L\u00f6schen",
-      deleted: "Gel\u00f6scht",
-      movedTo: "Verschoben nach {wing} / {room}",
-      noRoomsYet: "Du hast noch keine R\u00e4ume. Erstelle deinen ersten Fl\u00fcgel auf thememorypalace.ai",
-      welcomeForward: "Leite Fotos, Videos oder Nachrichten aus jedem Chat weiter und ich helfe dir, sie im richtigen Raum abzulegen.",
+      deleteBtn: "Loschen",
     },
     es: {
       savedTo: "Guardado en {wing} / {room}",
-      whereSave: "\u00bfD\u00f3nde quieres guardar esto?",
+      whereSave: "Donde quieres guardar esto?",
       pickRoom: "Elige una sala",
       moveIt: "Mover",
       deleteBtn: "Eliminar",
-      deleted: "Eliminado",
-      movedTo: "Movido a {wing} / {room}",
-      noRoomsYet: "A\u00fan no tienes salas. Crea tu primera ala en thememorypalace.ai",
-      welcomeForward: "Reenv\u00eda fotos, videos o mensajes de cualquier chat y te ayudar\u00e9 a archivarlos en la sala correcta.",
     },
     fr: {
-      savedTo: "Enregistr\u00e9 dans {wing} / {room}",
-      whereSave: "O\u00f9 dois-je enregistrer ceci ?",
+      savedTo: "Enregistre dans {wing} / {room}",
+      whereSave: "Ou dois-je enregistrer ceci ?",
       pickRoom: "Choisir une salle",
-      moveIt: "D\u00e9placer",
+      moveIt: "Deplacer",
       deleteBtn: "Supprimer",
-      deleted: "Supprim\u00e9",
-      movedTo: "D\u00e9plac\u00e9 vers {wing} / {room}",
-      noRoomsYet: "Vous n'avez pas encore de salles. Cr\u00e9ez votre premi\u00e8re aile sur thememorypalace.ai",
-      welcomeForward: "Transf\u00e9rez des photos, vid\u00e9os ou messages de n'importe quel chat et je vous aiderai \u00e0 les classer dans la bonne salle.",
     },
   };
-
   return texts[locale] || texts.en;
 }
 
-function getGroupWelcomeText(inviteCode: string, locale: string): string {
-  const texts: Record<string, (code: string) => string> = {
-    en: (code) => [
-      "📸 Memory Palace Kep",
-      "",
-      "Hi! I'm Kep — I capture photos, videos, and messages shared in this group and save them to a Memory Palace room.",
-      "",
-      `👉 Create a room for this group:`,
-      `${BASE_URL}/kep/join/${code}`,
-      "",
-      "📋 Privacy: Media shared here may be automatically saved. Reply STOP to opt out your messages, or STOP KEP to deactivate me entirely.",
-    ].join("\n"),
-    nl: (code) => [
-      "📸 Memory Palace Kep",
-      "",
-      "Hoi! Ik ben Kep — ik bewaar foto's, video's en berichten uit deze groep in een Memory Palace kamer.",
-      "",
-      `👉 Maak een kamer voor deze groep:`,
-      `${BASE_URL}/kep/join/${code}`,
-      "",
-      "📋 Privacy: Gedeelde media kan automatisch worden opgeslagen. Antwoord STOP om je berichten uit te sluiten, of STOP KEP om mij volledig te deactiveren.",
-    ].join("\n"),
-    de: (code) => [
-      "📸 Memory Palace Kep",
-      "",
-      "Hallo! Ich bin Kep — ich speichere Fotos, Videos und Nachrichten aus dieser Gruppe in einem Memory Palace Raum.",
-      "",
-      `👉 Erstelle einen Raum für diese Gruppe:`,
-      `${BASE_URL}/kep/join/${code}`,
-      "",
-      "📋 Datenschutz: Geteilte Medien können automatisch gespeichert werden. Antworte STOP um deine Nachrichten auszuschließen, oder STOP KEP um mich vollständig zu deaktivieren.",
-    ].join("\n"),
-    es: (code) => [
-      "📸 Memory Palace Kep",
-      "",
-      "¡Hola! Soy Kep — guardo fotos, videos y mensajes de este grupo en una sala de Memory Palace.",
-      "",
-      `👉 Crea una sala para este grupo:`,
-      `${BASE_URL}/kep/join/${code}`,
-      "",
-      "📋 Privacidad: Los medios compartidos pueden guardarse automáticamente. Responde STOP para excluir tus mensajes, o STOP KEP para desactivarme por completo.",
-    ].join("\n"),
-    fr: (code) => [
-      "📸 Memory Palace Kep",
-      "",
-      "Salut ! Je suis Kep — je sauvegarde les photos, vidéos et messages de ce groupe dans une salle Memory Palace.",
-      "",
-      `👉 Créez une salle pour ce groupe :`,
-      `${BASE_URL}/kep/join/${code}`,
-      "",
-      "📋 Confidentialité : Les médias partagés peuvent être automatiquement sauvegardés. Répondez STOP pour exclure vos messages, ou STOP KEP pour me désactiver entièrement.",
-    ].join("\n"),
-  };
-
-  const textFn = texts[locale] || texts.en;
-  return textFn(inviteCode);
-}
-
-function getWelcomeText(inviteCode: string | null, locale: string = "en"): string {
-  const texts: Record<string, { intro: string; forward: string; viewRoom: string; palaceRoom: string; stop: string }> = {
+function getRoomSwitchTexts(locale: string) {
+  const texts: Record<string, {
+    activeRoom: string; pickActiveRoom: string; pickRoom: string;
+    showing: string;
+  }> = {
     en: {
-      intro: "I'm Kep \u2014 I save your memories to your Memory Palace.",
-      forward: "Forward photos, videos, or messages from any chat and I'll help you file them in the right room.",
-      viewRoom: "View room (anyone):",
-      palaceRoom: "Add to your palace (host only):",
-      stop: "Reply STOP KEP to deactivate.",
+      activeRoom: "Active room: {wing} / {room}",
+      pickActiveRoom: "Pick your active room",
+      pickRoom: "Pick a room",
+      showing: "showing {shown} of {total}",
     },
     nl: {
-      intro: "Ik ben Kep \u2014 ik bewaar je herinneringen in je Memory Palace.",
-      forward: "Stuur foto's, video's of berichten door vanuit elke chat en ik help je ze in de juiste kamer te plaatsen.",
-      viewRoom: "Bekijk kamer (iedereen):",
-      palaceRoom: "Voeg toe aan je paleis (alleen host):",
-      stop: "Antwoord STOP KEP om te deactiveren.",
+      activeRoom: "Actieve kamer: {wing} / {room}",
+      pickActiveRoom: "Kies je actieve kamer",
+      pickRoom: "Kies een kamer",
+      showing: "{shown} van {total} weergegeven",
     },
     de: {
-      intro: "Ich bin Kep \u2014 ich speichere deine Erinnerungen in deinem Memory Palace.",
-      forward: "Leite Fotos, Videos oder Nachrichten aus jedem Chat weiter und ich helfe dir, sie im richtigen Raum abzulegen.",
-      viewRoom: "Raum ansehen (jeder):",
-      palaceRoom: "Zu deinem Palast hinzuf\u00fcgen (nur Host):",
-      stop: "Antworte STOP KEP zum Deaktivieren.",
+      activeRoom: "Aktiver Raum: {wing} / {room}",
+      pickActiveRoom: "Wahle deinen aktiven Raum",
+      pickRoom: "Raum wahlen",
+      showing: "{shown} von {total} angezeigt",
     },
     es: {
-      intro: "Soy Kep \u2014 guardo tus recuerdos en tu Memory Palace.",
-      forward: "Reenv\u00eda fotos, videos o mensajes de cualquier chat y te ayudar\u00e9 a archivarlos en la sala correcta.",
-      viewRoom: "Ver sala (cualquiera):",
-      palaceRoom: "A\u00f1adir a tu palacio (solo anfitri\u00f3n):",
-      stop: "Responde STOP KEP para desactivar.",
+      activeRoom: "Sala activa: {wing} / {room}",
+      pickActiveRoom: "Elige tu sala activa",
+      pickRoom: "Elige una sala",
+      showing: "mostrando {shown} de {total}",
     },
     fr: {
-      intro: "Je suis Kep \u2014 je sauvegarde vos souvenirs dans votre Memory Palace.",
-      forward: "Transf\u00e9rez des photos, vid\u00e9os ou messages de n'importe quel chat et je vous aiderai \u00e0 les classer dans la bonne salle.",
-      viewRoom: "Voir la salle (tout le monde) :",
-      palaceRoom: "Ajouter \u00e0 votre palais (h\u00f4te uniquement) :",
-      stop: "R\u00e9pondez STOP KEP pour d\u00e9sactiver.",
+      activeRoom: "Salle active : {wing} / {room}",
+      pickActiveRoom: "Choisissez votre salle active",
+      pickRoom: "Choisir une salle",
+      showing: "{shown} sur {total} affiches",
     },
   };
-
-  const t = texts[locale] || texts.en;
-  const lines = [
-    "\ud83d\udcf8 Memory Palace Kep",
-    "",
-    t.intro,
-    "",
-    t.forward,
-  ];
-
-  if (inviteCode) {
-    lines.push(
-      "",
-      `\ud83d\udc49 ${t.viewRoom}`,
-      `${BASE_URL}/kep/view/${inviteCode}`,
-      "",
-      `\ud83d\udc49 ${t.palaceRoom}`,
-      `${BASE_URL}/kep/palace/${inviteCode}`,
-    );
-  }
-
-  lines.push("", t.stop);
-
-  return lines.join("\n");
+  return texts[locale] || texts.en;
 }
 
-function getDisclosureText(locale: string): string {
-  const texts: Record<string, string> = {
-    en: "📋 Privacy Notice: This group is connected to a Memory Palace Kep. Media shared here may be automatically saved to a private memory collection. Reply STOP at any time to opt out of capture for your messages.",
-    nl: "📋 Privacymelding: Deze groep is verbonden met een Memory Palace Kep. Gedeelde media kan automatisch worden opgeslagen in een privé-herinneringenverzameling. Antwoord STOP om je berichten uit te sluiten van opname.",
-    de: "📋 Datenschutzhinweis: Diese Gruppe ist mit einem Memory Palace Kep verbunden. Geteilte Medien können automatisch in einer privaten Erinnerungssammlung gespeichert werden. Antworten Sie STOP, um Ihre Nachrichten von der Aufnahme auszuschließen.",
-    es: "📋 Aviso de privacidad: Este grupo está conectado a un Kep de Memory Palace. Los medios compartidos pueden guardarse automáticamente en una colección privada de recuerdos. Responde STOP para excluir tus mensajes de la captura.",
-    fr: "📋 Avis de confidentialité : Ce groupe est connecté à un Kep Memory Palace. Les médias partagés peuvent être automatiquement sauvegardés dans une collection de souvenirs privée. Répondez STOP pour exclure vos messages de la capture.",
+function getStatusTexts(locale: string) {
+  const texts: Record<string, {
+    header: string; statusLabel: string; activeRoomLabel: string;
+    capturesLabel: string; active: string; paused: string; aiRouting: string;
+  }> = {
+    en: {
+      header: "Kep Status",
+      statusLabel: "Status",
+      activeRoomLabel: "Active room",
+      capturesLabel: "Routed / Total captures",
+      active: "Active",
+      paused: "Paused",
+      aiRouting: "AI routing (no fixed room)",
+    },
+    nl: {
+      header: "Kep Status",
+      statusLabel: "Status",
+      activeRoomLabel: "Actieve kamer",
+      capturesLabel: "Gerouteerd / Totaal",
+      active: "Actief",
+      paused: "Gepauzeerd",
+      aiRouting: "AI-routering (geen vaste kamer)",
+    },
+    de: {
+      header: "Kep Status",
+      statusLabel: "Status",
+      activeRoomLabel: "Aktiver Raum",
+      capturesLabel: "Geroutet / Gesamt",
+      active: "Aktiv",
+      paused: "Pausiert",
+      aiRouting: "KI-Routing (kein fester Raum)",
+    },
+    es: {
+      header: "Estado de Kep",
+      statusLabel: "Estado",
+      activeRoomLabel: "Sala activa",
+      capturesLabel: "Enrutados / Total",
+      active: "Activo",
+      paused: "Pausado",
+      aiRouting: "Enrutamiento IA (sin sala fija)",
+    },
+    fr: {
+      header: "Statut Kep",
+      statusLabel: "Statut",
+      activeRoomLabel: "Salle active",
+      capturesLabel: "Routes / Total",
+      active: "Actif",
+      paused: "En pause",
+      aiRouting: "Routage IA (pas de salle fixe)",
+    },
   };
+  return texts[locale] || texts.en;
+}
 
+function getHelpTexts(locale: string) {
+  const texts: Record<string, {
+    header: string; name: string;
+    roomDesc: string; roomsDesc: string; statusDesc: string;
+    clearDesc: string; stopDesc: string; startDesc: string; helpDesc: string;
+    tip: string;
+  }> = {
+    en: {
+      header: "Kep Commands",
+      name: "name",
+      roomDesc: "Set active room",
+      roomsDesc: "Show all your rooms",
+      statusDesc: "Show active room + stats",
+      clearDesc: "Clear active room (use AI routing)",
+      stopDesc: "Pause Kep",
+      startDesc: "Resume Kep",
+      helpDesc: "Show this help",
+      tip: "Just send a photo, video, or message and Kep saves it!",
+    },
+    nl: {
+      header: "Kep Commando's",
+      name: "naam",
+      roomDesc: "Stel actieve kamer in",
+      roomsDesc: "Toon al je kamers",
+      statusDesc: "Toon actieve kamer + statistieken",
+      clearDesc: "Wis actieve kamer (gebruik AI-routering)",
+      stopDesc: "Pauzeer Kep",
+      startDesc: "Hervat Kep",
+      helpDesc: "Toon deze hulp",
+      tip: "Stuur gewoon een foto, video of bericht en Kep slaat het op!",
+    },
+    de: {
+      header: "Kep Befehle",
+      name: "Name",
+      roomDesc: "Aktiven Raum festlegen",
+      roomsDesc: "Alle Raume anzeigen",
+      statusDesc: "Aktiven Raum + Statistiken anzeigen",
+      clearDesc: "Aktiven Raum loschen (KI-Routing nutzen)",
+      stopDesc: "Kep pausieren",
+      startDesc: "Kep fortsetzen",
+      helpDesc: "Diese Hilfe anzeigen",
+      tip: "Schick einfach ein Foto, Video oder eine Nachricht und Kep speichert es!",
+    },
+    es: {
+      header: "Comandos de Kep",
+      name: "nombre",
+      roomDesc: "Establecer sala activa",
+      roomsDesc: "Mostrar todas tus salas",
+      statusDesc: "Mostrar sala activa + estadisticas",
+      clearDesc: "Borrar sala activa (usar enrutamiento IA)",
+      stopDesc: "Pausar Kep",
+      startDesc: "Reanudar Kep",
+      helpDesc: "Mostrar esta ayuda",
+      tip: "Solo envia una foto, video o mensaje y Kep lo guarda!",
+    },
+    fr: {
+      header: "Commandes Kep",
+      name: "nom",
+      roomDesc: "Definir la salle active",
+      roomsDesc: "Afficher toutes vos salles",
+      statusDesc: "Afficher salle active + statistiques",
+      clearDesc: "Effacer la salle active (routage IA)",
+      stopDesc: "Mettre Kep en pause",
+      startDesc: "Reprendre Kep",
+      helpDesc: "Afficher cette aide",
+      tip: "Envoyez simplement une photo, video ou message et Kep le sauvegarde !",
+    },
+  };
+  return texts[locale] || texts.en;
+}
+
+function getPausedTexts(locale: string) {
+  const texts: Record<string, { paused: string }> = {
+    en: { paused: "Kep is paused. Send START to resume." },
+    nl: { paused: "Kep is gepauzeerd. Stuur START om te hervatten." },
+    de: { paused: "Kep ist pausiert. Sende START zum Fortsetzen." },
+    es: { paused: "Kep esta pausado. Envia START para reanudar." },
+    fr: { paused: "Kep est en pause. Envoyez START pour reprendre." },
+  };
   return texts[locale] || texts.en;
 }

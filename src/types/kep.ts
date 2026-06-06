@@ -1,5 +1,6 @@
 /**
  * Kep system types — conduits that auto-feed memories into palace Rooms.
+ * Simplified: 1:1 DM only, no group/virtual room support.
  */
 
 // ── Source types ─────────────────────────────────────────────
@@ -82,41 +83,15 @@ export interface WhatsAppLink {
   id: string;
   kep_id: string;
   user_id: string;
-  wa_group_id: string | null;
-  wa_group_name: string | null;
-  phone_number_id: string | null;
+  wa_sender_phone: string;
+  phone_number_id: string;
   verified: boolean;
-  verified_at: string | null;
-  disclosure_sent: boolean;
-  disclosure_sent_at: string | null;
-  last_message_at: string | null;
-  target_room_id: string | null;
-  palace_room_created: boolean;
-  invite_code: string | null;
+  verified_at?: string;
+  active_room_id?: string;
   stopped: boolean;
-  stopped_by: string | null;
-  stopped_at: string | null;
+  stopped_at?: string;
+  last_message_at?: string;
   created_at: string;
-}
-
-export interface VirtualRoom {
-  id: string;
-  user_id: string;
-  name: string;
-  wing_id: string | null;
-  is_virtual: boolean;
-  virtual_title: string | null;
-  source_kep_id: string | null;
-  allocated_at: string | null;
-  created_at: string;
-}
-
-export interface KepExclusion {
-  id: string;
-  kep_id: string;
-  phone_number: string;
-  reason: string;
-  excluded_at: string;
 }
 
 // ── API request/response types ───────────────────────────────

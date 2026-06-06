@@ -31,18 +31,6 @@ export function KepCreationWizard() {
     const payload = buildCreatePayload(data);
     const kep = await createKep(payload);
     if (kep) {
-      // If WhatsApp, verify group
-      if (data.source_type === "whatsapp" && data.wa_group_id) {
-        await fetch("/api/keps/whatsapp/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            kep_id: kep.id,
-            wa_group_id: data.wa_group_id,
-            wa_group_name: data.wa_group_name,
-          }),
-        });
-      }
       router.push(`/palace/keps/${kep.id}`);
     }
   };
@@ -180,28 +168,7 @@ function StepConfigure({ data, update, t }: { data: WizardData; update: (d: Part
         />
       </div>
 
-      {/* Source-specific config */}
-      {data.source_type === "whatsapp" && (
-        <div style={{ marginBottom: "1rem" }}>
-          <label style={{ fontSize: "0.875rem", fontWeight: 500, display: "block", marginBottom: "0.375rem" }}>{t("whatsappGroupId")} *</label>
-          <input
-            value={data.wa_group_id}
-            onChange={(e) => update({ wa_group_id: e.target.value })}
-            placeholder={t("wizardGroupIdPlaceholder")}
-            style={inputStyle}
-          />
-          <div style={{ marginTop: "0.75rem" }}>
-            <label style={{ fontSize: "0.875rem", fontWeight: 500, display: "block", marginBottom: "0.375rem" }}>{t("whatsappGroupName")}</label>
-            <input
-              value={data.wa_group_name}
-              onChange={(e) => update({ wa_group_name: e.target.value })}
-              placeholder={t("wizardGroupNamePlaceholder")}
-              style={inputStyle}
-            />
-          </div>
-        </div>
-      )}
-
+      {/* Photos-specific config */}
       {data.source_type === "photos" && (
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ fontSize: "0.875rem", fontWeight: 500, display: "block", marginBottom: "0.375rem" }}>{t("wizardDateRange")}</label>
@@ -290,9 +257,6 @@ function StepReview({ data, t }: { data: WizardData; t: (key: string, params?: R
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", fontSize: "0.875rem" }}>
             <div><span style={{ color: "#6b7280" }}>{t("wizardReviewSource")}:</span> {data.source_type === "whatsapp" ? "\u{1F4AC} WhatsApp" : "\u{1F4F8} Google Photos"}</div>
             <div><span style={{ color: "#6b7280" }}>{t("wizardReviewAutoRoute")}:</span> {data.auto_route_enabled ? `\u2705 ${t("wizardOn")}` : `\u274C ${t("wizardOff")}`}</div>
-            {data.source_type === "whatsapp" && data.wa_group_name && (
-              <div><span style={{ color: "#6b7280" }}>{t("wizardReviewGroup")}:</span> {data.wa_group_name}</div>
-            )}
           </div>
         </div>
       </TuscanCard>

@@ -1,6 +1,6 @@
 /**
  * Auto-route: directly create a memory in a target room (skip job queue).
- * Used when a WhatsApp link has a target_room_id set.
+ * Used when a WhatsApp link has an active_room_id set or AI routing picks a room.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";

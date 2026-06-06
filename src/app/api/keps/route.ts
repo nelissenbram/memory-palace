@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/rate-limit";
 import type { CreateKepRequest } from "@/types/kep";
-import crypto from "crypto";
+
 
 /**
  * GET /api/keps — List user's keps
@@ -73,16 +73,6 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  // Auto-generate invite_code on associated whatsapp_links rows
-  if (data && data.id) {
-    const inviteCode = `KEP-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
-    await supabase
-      .from("whatsapp_links")
-      .update({ invite_code: inviteCode })
-      .eq("kep_id", data.id)
-      .is("invite_code", null);
-  }
 
   return NextResponse.json(data, { status: 201 });
 }

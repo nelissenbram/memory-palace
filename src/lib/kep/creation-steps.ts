@@ -15,9 +15,6 @@ export interface WizardData {
   description: string;
   icon: string;
   source_type: KepSourceType | null;
-  // WhatsApp-specific
-  wa_group_id: string;
-  wa_group_name: string;
   // Photos-specific
   photos_album_id: string;
   photos_date_from: string;
@@ -32,10 +29,8 @@ export interface WizardData {
 export const INITIAL_WIZARD_DATA: WizardData = {
   name: "",
   description: "",
-  icon: "📥",
+  icon: "\uD83D\uDCE5",
   source_type: null,
-  wa_group_id: "",
-  wa_group_name: "",
   photos_album_id: "",
   photos_date_from: "",
   photos_date_to: "",
@@ -56,30 +51,24 @@ export const WIZARD_STEPS: WizardStep[] = [
     key: "step2",
     isValid: (data) => {
       if (!data.name.trim()) return false;
-      if (data.source_type === "whatsapp") {
-        return data.wa_group_id.trim().length > 0;
-      }
-      if (data.source_type === "photos") {
-        return true; // Photos config is optional (can scan all)
-      }
-      return false;
+      return true;
     },
   },
   {
     id: 3,
     key: "step3",
-    isValid: () => true, // Routing is optional (AI handles it)
+    isValid: () => true,
   },
   {
     id: 4,
     key: "step4",
-    isValid: () => true, // Review step always valid
+    isValid: () => true,
   },
 ];
 
 export const SOURCE_ICONS: Record<KepSourceType, string> = {
-  whatsapp: "💬",
-  photos: "📸",
+  whatsapp: "\uD83D\uDCAC",
+  photos: "\uD83D\uDCF8",
 };
 
 /**

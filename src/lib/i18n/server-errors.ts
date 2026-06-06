@@ -430,7 +430,7 @@ const errors: Record<string, Record<Locale, string>> = {
     fr: "Partage introuvable ou inactif",
   },
 
-  // ── Kep (join-actions.ts) ──
+  // ── Kep ──
   invalidInviteCode: {
     en: "Invalid invite code",
     nl: "Ongeldige uitnodigingscode",
