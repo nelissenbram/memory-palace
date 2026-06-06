@@ -5,6 +5,11 @@
 ALTER TABLE whatsapp_links ADD COLUMN IF NOT EXISTS active_room_id uuid REFERENCES rooms(id) ON DELETE SET NULL;
 UPDATE whatsapp_links SET active_room_id = target_room_id WHERE target_room_id IS NOT NULL;
 
+-- Drop RLS policies that depend on invite_code / target_room_id
+DROP POLICY IF EXISTS "Authenticated users can lookup link by invite code" ON whatsapp_links;
+DROP POLICY IF EXISTS "Authenticated users can view keps via invite link" ON keps;
+DROP POLICY IF EXISTS "Authenticated users can update target_room on invite links" ON whatsapp_links;
+
 -- Drop group/virtual columns from whatsapp_links
 ALTER TABLE whatsapp_links
   DROP COLUMN IF EXISTS wa_group_id,
