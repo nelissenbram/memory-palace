@@ -6,8 +6,6 @@ import { usePushNotificationStore, NotificationPreferences } from "@/lib/stores/
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
-import { seedTestActivities } from "@/lib/auth/notification-actions";
-import { useNotificationStore } from "@/lib/stores/notificationStore";
 
 // ── Custom SVG Icons (Roman/Tuscan aesthetic) ──
 
@@ -594,103 +592,7 @@ export default function NotificationsPage() {
         </p>
       </div>
 
-      {/* Test Activities — dev helper */}
-      <div style={{
-        marginTop: "1.5rem", padding: "1.25rem", borderRadius: "0.875rem",
-        background: `${T.color.gold}08`,
-        border: `1px solid ${T.color.gold}25`,
-      }}>
-        <div style={{
-          fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600,
-          color: T.color.charcoal, marginBottom: "0.25rem",
-        }}>
-          {t("testSectionHeader")}
-        </div>
-        <div style={{
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-          marginBottom: "0.875rem", lineHeight: 1.5,
-        }}>
-          {t("testSectionDesc")}
-        </div>
-        <button
-          type="button"
-          onClick={async () => {
-            let diag: Awaited<ReturnType<typeof seedTestActivities>> | null = null;
-            let threw: string | null = null;
-            try {
-              diag = await seedTestActivities();
-              // eslint-disable-next-line no-console
-              console.log("[seedTestActivities]", diag);
-            } catch (err) {
-              threw = (err as Error)?.message || String(err);
-              // eslint-disable-next-line no-console
-              console.error("[seedTestActivities] threw", err);
-            }
 
-            // Always inject the samples locally so the bell shows them,
-            // even if the notifications DB table is missing.
-            const samples = diag?.samples || [
-              { type: "welcome",          message: `✧ ${t("testSampleWelcome")}` },
-              { type: "achievement",      message: `⚜ ${t("testSampleAchievement1")}` },
-              { type: "achievement",      message: `❀ ${t("testSampleAchievement2")}` },
-              { type: "family_invite",    message: `❦ ${t("testSampleFamilyInvite")}` },
-              { type: "new_contribution", message: `✎ ${t("testSampleContribution")}` },
-              { type: "on_this_day",      message: `❧ ${t("testSampleOnThisDay")}` },
-              { type: "reminder",         message: `⧗ ${t("testSampleReminder")}` },
-              { type: "system",           message: `⚜ ${t("testSampleSystem")}` },
-            ];
-            try {
-              const store = useNotificationStore.getState();
-              for (const s of samples) {
-                store.addLocal({
-                  user_id: "",
-                  type: s.type,
-                  message: s.message,
-                  room_id: null,
-                  room_name: null,
-                  wing_id: null,
-                  from_user_id: null,
-                  from_user_name: null,
-                  read: false,
-                });
-              }
-              // Do NOT call store.load() — that would overwrite the local rows
-              // if the server returns an empty list.
-            } catch { /* ignore */ }
-
-            // Build a diagnostic toast
-            if (diag) {
-              const parts: string[] = [];
-              parts.push(`DB: ${diag.dbInserted}/${samples.length}`);
-              parts.push(`Push: ${diag.pushSent}`);
-              parts.push(`Devices: ${diag.subscriptionCount}`);
-              parts.push(`VAPID: ${diag.vapidConfigured ? "✓" : "✗"}`);
-              if (diag.dbError) parts.push(`DBErr: ${diag.dbError.slice(0, 40)}`);
-              if (diag.pushError) parts.push(`PushErr: ${diag.pushError.slice(0, 200)}`);
-              setToast({
-                message: `${t("testResultLocal")} · ${parts.join(" · ")}`,
-                type: "success",
-              });
-            } else {
-              setToast({
-                message: t("testResultServerError", { error: (threw || "unknown").slice(0, 60) }),
-                type: "success",
-              });
-            }
-          }}
-          style={{
-            fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-            color: "#FFF",
-            background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-            border: "none", borderRadius: "0.625rem",
-            padding: "0.625rem 1.125rem", cursor: "pointer",
-            minHeight: "2.75rem",
-            boxShadow: "0 2px 8px rgba(198,107,61,.2)",
-          }}
-        >
-          {t("sendTest")}
-        </button>
-      </div>
 
     </div>
   );

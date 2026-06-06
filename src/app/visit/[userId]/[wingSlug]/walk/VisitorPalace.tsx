@@ -90,7 +90,7 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
         setView("corridor");
       });
     } else {
-      router.push(`/visit/${data.owner.id}/${data.wing.slug}`);
+      router.push(`/visit/${data.owner.id}`);
     }
   }, [view, fade, router, data.owner.id, data.wing.slug]);
 

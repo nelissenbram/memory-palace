@@ -28,7 +28,13 @@ HOW IT WORKS:
 
 Your memories deserve a palace, not a folder.
 
-**What's New:** 3D virtual palace, AI interviews, family tree, time capsules, 5 languages. Your memories deserve a palace.
+**What's New (v1.2.0):**
+- Social features: explore other palaces, follow creators, leave guestbook entries
+- Kep: capture memories via WhatsApp — forward photos and stories directly to your palace
+- Cinematic flyover when you first enter your palace
+- Improved 3D performance on mobile devices
+- Family tree visual improvements
+- Bug fixes and stability improvements
 
 **Promotional Text:** Step inside your family's story. Build a 3D palace of memories, record voices, grow your tree. Start preserving today.
 
@@ -62,7 +68,13 @@ HOE HET WERKT:
 
 Je herinneringen verdienen een paleis, geen map.
 
-**What's New:** 3D virtueel paleis, AI-interviews, stamboom, tijdcapsules, 5 talen. Je herinneringen verdienen een paleis.
+**What's New (v1.2.0):**
+- Sociaal: ontdek andere paleizen, volg makers, laat gastenboekberichten achter
+- Kep: leg herinneringen vast via WhatsApp — stuur foto's en verhalen direct naar je paleis
+- Filmische rondvlucht bij je eerste bezoek
+- Verbeterde 3D-prestaties op mobiel
+- Visuele verbeteringen stamboom
+- Bugfixes en stabiliteitsverbeteringen
 
 **Promotional Text:** Stap binnen in het verhaal van je familie. Bouw een 3D-paleis van herinneringen en bewaar ze voor altijd.
 
@@ -96,7 +108,13 @@ SO FUNKTIONIERT ES:
 
 Deine Erinnerungen verdienen einen Palast, keinen Ordner.
 
-**What's New:** 3D-Palast, KI-Interviews, Stammbaum, Zeitkapseln, 5 Sprachen. Deine Erinnerungen verdienen einen Palast.
+**What's New (v1.2.0):**
+- Soziale Funktionen: entdecke andere Palaste, folge Erstellern, hinterlasse Gastebucheintrage
+- Kep: Erinnerungen uber WhatsApp erfassen — Fotos und Geschichten direkt an deinen Palast senden
+- Filmischer Rundflug beim ersten Besuch
+- Verbesserte 3D-Leistung auf Mobilgeraten
+- Visuelle Verbesserungen am Stammbaum
+- Fehlerbehebungen und Stabilitatsverbesserungen
 
 **Promotional Text:** Betritt die Geschichte deiner Familie. Baue einen 3D-Palast der Erinnerungen und bewahre sie fur immer.
 
@@ -130,7 +148,13 @@ COMO FUNCIONA:
 
 Tus recuerdos merecen un palacio, no una carpeta.
 
-**What's New:** Palacio 3D, entrevistas IA, arbol genealogico, capsulas de tiempo, 5 idiomas. Tus recuerdos merecen un palacio.
+**What's New (v1.2.0):**
+- Social: explora otros palacios, sigue a creadores, deja entradas en el libro de visitas
+- Kep: captura recuerdos por WhatsApp — envia fotos e historias directamente a tu palacio
+- Sobrevuelo cinematico en tu primera visita
+- Rendimiento 3D mejorado en moviles
+- Mejoras visuales en el arbol genealogico
+- Correcciones de errores y mejoras de estabilidad
 
 **Promotional Text:** Entra en la historia de tu familia. Construye un palacio 3D de recuerdos y preservalos para siempre.
 
@@ -164,6 +188,12 @@ COMMENT CA MARCHE:
 
 Tes souvenirs meritent un palais, pas un dossier.
 
-**What's New:** Palais 3D, interviews IA, arbre genealogique, capsules temporelles, 5 langues. Tes souvenirs meritent un palais.
+**What's New (v1.2.0):**
+- Social : explore d'autres palais, suis des createurs, laisse des messages dans le livre d'or
+- Kep : capture des souvenirs via WhatsApp — envoie photos et histoires directement dans ton palais
+- Survol cinematique lors de ta premiere visite
+- Performances 3D ameliorees sur mobile
+- Ameliorations visuelles de l'arbre genealogique
+- Corrections de bugs et ameliorations de stabilite
 
 **Promotional Text:** Entre dans l'histoire de ta famille. Construis un palais 3D de souvenirs et preserve-les pour toujours.

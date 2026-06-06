@@ -249,7 +249,7 @@ export default function MemoryPalace(){
   const setShowWingManager = useUIPanelStore((s) => s.setShowWingManager);
   const showStatistics = useUIPanelStore((s) => s.showStatistics);
   const setShowStatistics = useUIPanelStore((s) => s.setShowStatistics);
-  const [publishTarget, setPublishTarget] = useState<{ type: "wing" | "room"; id: string; name: string } | null>(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
   const [sharedWings, setSharedWings] = useState<SharedWingDoor[]>([]);
   // sharedContext removed — was never read
@@ -1036,13 +1036,7 @@ export default function MemoryPalace(){
         onShare={() => setShowSharing(true)}
         onSharingSettings={() => setShowSharingSettings(true)}
         onBack={() => { view === "room" ? exitToCorridor() : view === "corridor" ? exitToEntrance() : exitToPalace(); }}
-        onPublish={() => {
-          if (view === "room" && activeRoomId && activeRoomData) {
-            setPublishTarget({ type: "room", id: activeRoomId, name: activeRoomData.nameKey ? (tWings(activeRoomData.nameKey) || activeRoomData.name) : activeRoomData.name });
-          } else if (view === "corridor" && activeWing && wingData) {
-            setPublishTarget({ type: "wing", id: wingData.id, name: wingData.nameKey ? (tWings(wingData.nameKey) || wingData.name) : wingData.name });
-          }
-        }}
+        onPublish={() => setShowPublishModal(true)}
         onPasscode={() => setShowPasscodeModal(true)}
       />
 
@@ -1084,7 +1078,7 @@ export default function MemoryPalace(){
       {/* MobileBottomBar removed — replaced by PalaceSubNav */}
 
       {/* Panels + overlays */}
-      {publishTarget && <Suspense fallback={lazyFallback}><PublishModal type={publishTarget.type} id={publishTarget.id} name={publishTarget.name} onClose={() => setPublishTarget(null)} /></Suspense>}
+      {showPublishModal && <Suspense fallback={lazyFallback}><PublishModal onClose={() => setShowPublishModal(false)} /></Suspense>}
       {showPasscodeModal && <Suspense fallback={lazyFallback}><PasscodeModal wings={allWings.map(w => ({ id: w.id, name: w.nameKey ? (tWings(w.nameKey) || w.name) : w.name }))} currentWingId={wingData?.id} currentRoomId={view === "room" ? activeRoomId ?? undefined : undefined} currentRoomName={view === "room" && activeRoomData ? (activeRoomData.nameKey ? (tWings(activeRoomData.nameKey) || activeRoomData.name) : activeRoomData.name) : undefined} onClose={() => setShowPasscodeModal(false)} /></Suspense>}
       {showUpload&&activeRoomId&&<UploadPanel wing={wingData} room={activeRoomData} onClose={()=>setShowUpload(false)} onAdd={(mem: any)=>{
         const wasFirst = Object.values(userMems).every(a => a.length === 0) && allRoomMems.length === 0;

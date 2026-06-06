@@ -452,7 +452,7 @@ export default function LibraryView() {
   const [selectMode, setSelectMode] = useState(false);
   const [lightboxMem, setLightboxMem] = useState<Mem | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [publishTarget, setPublishTarget] = useState<{ type: "wing" | "room"; id: string; name: string } | null>(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSortOpen, setMobileSortOpen] = useState(false);
   const [batchTagInput, setBatchTagInput] = useState("");
@@ -1495,16 +1495,7 @@ export default function LibraryView() {
           })}
           {/* Publish button */}
           <button onClick={() => {
-            if (selectedRoom) {
-              const r = wingRooms.find(r => r.id === selectedRoom);
-              setPublishTarget({ type: "room", id: selectedRoom, name: r ? translateRoomName(r, tWings) : selectedRoom });
-            } else if (selectedWing && selectedWing !== "__all__") {
-              const w = wings.find(w => w.id === selectedWing);
-              setPublishTarget({ type: "wing", id: selectedWing, name: w?.nameKey ? tWings(w.nameKey) || w.name : w?.name || selectedWing });
-            } else {
-              setToolbarHint(true);
-              setTimeout(() => setToolbarHint(false), 2500);
-            }
+            setShowPublishModal(true);
           }}
             style={{
               display: "flex", alignItems: "center", gap: isMobile ? "0.25rem" : "0.5rem",
@@ -3584,13 +3575,10 @@ export default function LibraryView() {
 
       {/* ═══ MOVED TOAST ═══ */}
       {/* Publish modal */}
-      {publishTarget && (
+      {showPublishModal && (
         <Suspense fallback={null}>
           <PublishModal
-            type={publishTarget.type}
-            id={publishTarget.id}
-            name={publishTarget.name}
-            onClose={() => setPublishTarget(null)}
+            onClose={() => setShowPublishModal(false)}
           />
         </Suspense>
       )}

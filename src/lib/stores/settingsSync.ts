@@ -109,6 +109,25 @@ export async function syncSettingsFromServer() {
 }
 
 /**
+ * Immediately push current localStorage settings to server (non-debounced).
+ * Use before server-side queries that depend on local_settings.
+ */
+export async function flushSettingsToServer() {
+  const sb = getSupabase();
+  if (!sb) return;
+  try {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return;
+    const settings = gatherLocal();
+    await sb.from("profiles")
+      .update({ local_settings: settings })
+      .eq("id", user.id);
+  } catch (e) {
+    console.warn("[settingsSync] flush failed:", e);
+  }
+}
+
+/**
  * Debounced save of current localStorage settings to server.
  * Call this whenever a synced key changes.
  */
