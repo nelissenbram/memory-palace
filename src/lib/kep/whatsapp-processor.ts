@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WhatsAppMessage } from "@/types/kep";
+import { WING_ROOMS } from "@/lib/constants/wings";
 import { downloadAndStoreMedia } from "./whatsapp-media";
 import { autoRouteToRoom } from "./auto-route";
 import { suggestRouting } from "./ai-route";
@@ -19,6 +20,7 @@ import {
   sendHelpMessage,
   sendRoomPickerForSwitch,
   sendPausedReminder,
+  sendWingPicker,
 } from "./whatsapp-disclosure";
 
 /**
@@ -33,6 +35,15 @@ export async function processWhatsAppMessage(
   if (message.type === "interactive" && message.interactive) {
     await handleInteractiveResponse(supabase, message, phoneNumberId);
     return;
+  }
+
+  // Check for pending action (e.g. waiting for room name)
+  if (message.type === "text" && message.text?.body) {
+    const pending = await checkPendingAction(supabase, phoneNumberId, message.from);
+    if (pending === "create_room") {
+      await finishCreateRoom(supabase, message.from, phoneNumberId, message.text.body.trim());
+      return;
+    }
   }
 
   // Check if this is a text command (parse before stopped check — HELP/STATUS always work)
@@ -63,6 +74,10 @@ export async function processWhatsAppMessage(
     }
     if (upper === "CLEAR") {
       await handleCommand(supabase, message.from, phoneNumberId, "CLEAR");
+      return;
+    }
+    if (upper.startsWith("NEW ")) {
+      await handleNewRoomCommand(supabase, message.from, phoneNumberId, raw.slice(4).trim());
       return;
     }
     if (upper.startsWith("ROOM ")) {
@@ -205,10 +220,7 @@ async function autoCreateDMLink(
     }
 
     // Load user's rooms for welcome picker
-    const { data: rooms } = await supabase
-      .from("rooms")
-      .select("id, name, wing_id, wings(id, slug, custom_name, name)")
-      .eq("user_id", matchedUserId);
+    const rooms = await fetchRoomsWithWings(supabase, matchedUserId);
 
     // Send welcome message + room picker
     await sendWelcomeMessage(senderPhone);
@@ -326,20 +338,155 @@ async function processMessageWithLink(
       kep.user_id as string,
     );
     // Send confirmation
-    const { data: room } = await supabase
-      .from("rooms")
-      .select("name, wing_id, wings(custom_name, name, slug)")
-      .eq("id", link.active_room_id as string)
-      .single();
-    const roomName = room?.name || "Room";
-    const wing = room?.wings as unknown as Record<string, unknown> | null;
-    const wingName = (wing?.custom_name || wing?.name || wing?.slug || "Palace") as string;
-    await sendRoomConfirmation(message.from, roomName, wingName, captureId);
+    const roomInfo = await fetchRoomWithWing(supabase, link.active_room_id as string);
+    await sendRoomConfirmation(message.from, roomInfo?.name || "Room", roomInfo?.wingName || "Palace", captureId);
     return;
   }
 
   // No active room — use inline AI routing
   await inlineAiRoute(supabase, message, kep, captureId, mediaType, mediaUrl, mediaSize, payloadPreview);
+}
+
+/**
+ * Build a map of room short IDs → display names from WING_ROOMS constants
+ * and user's custom rooms (stored in profiles.local_settings).
+ */
+function buildRoomNameMap(): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const rooms of Object.values(WING_ROOMS)) {
+    for (const r of rooms) {
+      map[r.id] = r.name; // e.g. "ro1" → "Me, Over Time"
+    }
+  }
+  return map;
+}
+
+const DEFAULT_ROOM_NAMES = buildRoomNameMap();
+
+/**
+ * Resolve the display name for a room. Checks custom rooms first,
+ * then falls back to WING_ROOMS constants, then humanizes slug IDs.
+ */
+function resolveRoomDisplayName(
+  dbName: string,
+  customRooms: Record<string, Array<{ id: string; name: string }>> | null,
+): string {
+  // Check custom rooms (user renamed or created rooms)
+  if (customRooms) {
+    for (const rooms of Object.values(customRooms)) {
+      const match = rooms.find(r => r.id === dbName);
+      if (match) return match.name;
+    }
+  }
+  // Check default room constants
+  if (DEFAULT_ROOM_NAMES[dbName]) return DEFAULT_ROOM_NAMES[dbName];
+  // If it looks like a slug ID (e.g. "kr2", "ro5"), show as "Room N"
+  const slugMatch = dbName.match(/^[a-z]{2,3}(\d+)$/);
+  if (slugMatch) return `Room ${slugMatch[1]}`;
+  // Fallback: use the DB name as-is
+  return dbName;
+}
+
+/**
+ * Fetch rooms with wing info for a user. Uses separate queries to avoid
+ * PostgREST join issues after schema changes. Resolves display names
+ * from WING_ROOMS constants and custom room settings.
+ */
+async function fetchRoomsWithWings(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Array<Record<string, unknown>>> {
+  const { data: rooms, error: roomsErr } = await supabase
+    .from("rooms")
+    .select("id, name, wing_id")
+    .eq("user_id", userId)
+    .order("name");
+
+  if (roomsErr || !rooms || rooms.length === 0) {
+    if (roomsErr) console.error("[WhatsApp] Rooms query failed:", roomsErr.message);
+    return [];
+  }
+
+  // Fetch wings separately
+  const wingIds = [...new Set(rooms.map((r: any) => r.wing_id).filter(Boolean))];
+  let wingsMap: Record<string, Record<string, unknown>> = {};
+  if (wingIds.length > 0) {
+    const { data: wings } = await supabase
+      .from("wings")
+      .select("id, slug, custom_name")
+      .in("id", wingIds);
+    if (wings) {
+      for (const w of wings) {
+        wingsMap[w.id] = w;
+      }
+    }
+  }
+
+  // Fetch custom room names from user's local_settings
+  let customRooms: Record<string, Array<{ id: string; name: string }>> | null = null;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("local_settings")
+    .eq("id", userId)
+    .single();
+  if (profile?.local_settings?.mp_custom_rooms) {
+    try {
+      customRooms = typeof profile.local_settings.mp_custom_rooms === "string"
+        ? JSON.parse(profile.local_settings.mp_custom_rooms)
+        : profile.local_settings.mp_custom_rooms;
+    } catch { /* ignore parse errors */ }
+  }
+
+  return rooms.map((r: any) => ({
+    ...r,
+    name: resolveRoomDisplayName(r.name, customRooms),
+    wings: wingsMap[r.wing_id] || null,
+  }));
+}
+
+/**
+ * Fetch a single room with resolved display name and wing info.
+ */
+async function fetchRoomWithWing(
+  supabase: SupabaseClient,
+  roomId: string,
+  userId?: string,
+): Promise<{ name: string; wingName: string } | null> {
+  const query = supabase.from("rooms").select("name, wing_id, user_id").eq("id", roomId);
+  if (userId) query.eq("user_id", userId);
+  const { data: room } = await query.single();
+  if (!room) return null;
+
+  // Resolve wing name
+  let wingName = "Palace";
+  if (room.wing_id) {
+    const { data: wing } = await supabase
+      .from("wings")
+      .select("slug, custom_name")
+      .eq("id", room.wing_id)
+      .single();
+    if (wing) wingName = (wing.custom_name || wing.slug) as string;
+  }
+
+  // Resolve room display name
+  let customRooms: Record<string, Array<{ id: string; name: string }>> | null = null;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("local_settings")
+    .eq("id", room.user_id)
+    .single();
+  if (profile?.local_settings?.mp_custom_rooms) {
+    try {
+      customRooms = typeof profile.local_settings.mp_custom_rooms === "string"
+        ? JSON.parse(profile.local_settings.mp_custom_rooms)
+        : profile.local_settings.mp_custom_rooms;
+    } catch { /* ignore */ }
+  }
+
+  return {
+    name: resolveRoomDisplayName(room.name, customRooms),
+    wingName,
+  };
 }
 
 /**
@@ -358,10 +505,7 @@ async function inlineAiRoute(
   const userId = kep.user_id as string;
   const kepId = kep.id as string;
 
-  const { data: rooms } = await supabase
-    .from("rooms")
-    .select("id, name, wing_id, wings(id, slug, custom_name, name)")
-    .eq("user_id", userId);
+  const rooms = await fetchRoomsWithWings(supabase, userId);
 
   if (!rooms || rooms.length === 0) {
     await sendTextMessage(
@@ -377,7 +521,7 @@ async function inlineAiRoute(
 
   const roomContext = rooms.map((r: any) => ({
     wing_id: r.wings?.id || r.wing_id,
-    wing_name: r.wings?.custom_name || r.wings?.name || r.wings?.slug || "",
+    wing_name: r.wings?.custom_name || r.wings?.slug || "",
     room_id: r.id,
     room_name: r.name,
   }));
@@ -474,13 +618,9 @@ async function handleCommand(
       break;
 
     case "ROOMS": {
-      const { data: rooms } = await supabase
-        .from("rooms")
-        .select("id, name, wing_id, wings(id, slug, custom_name, name)")
-        .eq("user_id", link.user_id)
-        .order("name");
+      const rooms = await fetchRoomsWithWings(supabase, link.user_id as string);
 
-      if (!rooms || rooms.length === 0) {
+      if (rooms.length === 0) {
         await sendTextMessage(senderPhone, "You don't have any rooms yet. Create your first room at thememorypalace.ai");
       } else {
         await sendRoomPickerForSwitch(senderPhone, rooms as any[]);
@@ -516,12 +656,9 @@ async function handleRoomCommand(
 
   if (!link) return;
 
-  const { data: rooms } = await supabase
-    .from("rooms")
-    .select("id, name, wing_id, wings(id, slug, custom_name, name)")
-    .eq("user_id", link.user_id);
+  const rooms = await fetchRoomsWithWings(supabase, link.user_id as string);
 
-  if (!rooms || rooms.length === 0) {
+  if (rooms.length === 0) {
     await sendTextMessage(senderPhone, "You don't have any rooms yet. Create your first room at thememorypalace.ai");
     return;
   }
@@ -537,13 +674,222 @@ async function handleRoomCommand(
       .eq("id", link.id);
 
     const wing = room.wings as Record<string, unknown> | null;
-    const wingName = (wing?.custom_name || wing?.name || wing?.slug || "Palace") as string;
+    const wingName = (wing?.custom_name || wing?.slug || "Palace") as string;
     await sendRoomSwitchConfirmation(senderPhone, wingName, room.name);
   } else if (matches.length > 1) {
     await sendRoomPickerForSwitch(senderPhone, matches as any[]);
   } else {
     await sendTextMessage(senderPhone, `No room found matching "${searchTerm}". Text ROOMS to see your rooms.`);
   }
+}
+
+/**
+ * Create a new room in the user's first wing, save display name,
+ * set as active room, and send confirmation.
+ */
+async function createRoomForUser(
+  supabase: SupabaseClient,
+  senderPhone: string,
+  linkId: string,
+  userId: string,
+  roomName: string,
+  targetWingId?: string,
+): Promise<void> {
+  // Get the target wing or default to first wing
+  let wingQuery = supabase.from("wings").select("id, slug, custom_name").eq("user_id", userId);
+  if (targetWingId) {
+    wingQuery = wingQuery.eq("id", targetWingId);
+  } else {
+    wingQuery = wingQuery.order("sort_order").limit(1);
+  }
+  const { data: wing } = await wingQuery.single();
+
+  if (!wing) {
+    await sendTextMessage(senderPhone, "No wings found. Visit thememorypalace.ai to set up your palace first.");
+    return;
+  }
+
+  // Generate room slug ID: wing prefix (first 2 chars of slug) + next number
+  const prefix = (wing.slug as string).slice(0, 2);
+  const { data: existingRooms } = await supabase
+    .from("rooms")
+    .select("name")
+    .eq("user_id", userId)
+    .eq("wing_id", wing.id);
+
+  let maxNum = 0;
+  if (existingRooms) {
+    for (const r of existingRooms) {
+      const m = (r.name as string).match(/^[a-z]{2,3}(\d+)$/);
+      if (m) maxNum = Math.max(maxNum, parseInt(m[1]));
+    }
+  }
+  const roomSlugId = `${prefix}${maxNum + 1}`;
+
+  // Create room in DB
+  const { data: newRoom, error: roomErr } = await supabase
+    .from("rooms")
+    .insert({
+      wing_id: wing.id,
+      user_id: userId,
+      name: roomSlugId,
+      icon: "📁",
+      cover_hue: Math.floor(Math.random() * 360),
+    })
+    .select("id")
+    .single();
+
+  if (roomErr) {
+    console.error("[WhatsApp] Failed to create room:", roomErr.message);
+    await sendTextMessage(senderPhone, "Couldn't create the room. Please try again.");
+    return;
+  }
+
+  // Save display name to user's custom rooms in local_settings
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("local_settings")
+    .eq("id", userId)
+    .single();
+
+  let localSettings = profile?.local_settings || {};
+  let customRooms: Record<string, Array<Record<string, unknown>>> = {};
+  if (localSettings.mp_custom_rooms) {
+    try {
+      customRooms = typeof localSettings.mp_custom_rooms === "string"
+        ? JSON.parse(localSettings.mp_custom_rooms)
+        : localSettings.mp_custom_rooms;
+    } catch { /* ignore */ }
+  }
+
+  const wingSlug = wing.slug as string;
+  if (!customRooms[wingSlug]) {
+    customRooms[wingSlug] = (WING_ROOMS[wingSlug] || []).map(r => ({ ...r }));
+  }
+  customRooms[wingSlug].push({
+    id: roomSlugId,
+    name: roomName,
+    icon: "📁",
+    shared: false,
+    sharedWith: [],
+    coverHue: Math.floor(Math.random() * 360),
+  });
+
+  await supabase
+    .from("profiles")
+    .update({
+      local_settings: {
+        ...localSettings,
+        mp_custom_rooms: JSON.stringify(customRooms),
+      },
+    })
+    .eq("id", userId);
+
+  // Set as active room
+  await supabase
+    .from("whatsapp_links")
+    .update({ active_room_id: newRoom.id, pending_action: null })
+    .eq("id", linkId);
+
+  const wingName = (wing.custom_name || wing.slug) as string;
+  await sendRoomSwitchConfirmation(senderPhone, wingName, roomName);
+}
+
+/**
+ * Handle NEW <name> command — create a new room and set it as active.
+ */
+async function handleNewRoomCommand(
+  supabase: SupabaseClient,
+  senderPhone: string,
+  phoneNumberId: string,
+  roomName: string,
+): Promise<void> {
+  if (!roomName) {
+    await sendTextMessage(senderPhone, "Please provide a name: NEW My Vacation Photos");
+    return;
+  }
+
+  const { data: link } = await supabase
+    .from("whatsapp_links")
+    .select("id, user_id")
+    .eq("phone_number_id", phoneNumberId)
+    .eq("wa_sender_phone", senderPhone)
+    .single();
+
+  if (!link) return;
+
+  await createRoomForUser(supabase, senderPhone, link.id, link.user_id, roomName);
+}
+
+/**
+ * Check if user has a pending action (e.g. waiting for room name input).
+ */
+async function checkPendingAction(
+  supabase: SupabaseClient,
+  phoneNumberId: string,
+  senderPhone: string,
+): Promise<string | null> {
+  const { data: link } = await supabase
+    .from("whatsapp_links")
+    .select("pending_action")
+    .eq("phone_number_id", phoneNumberId)
+    .eq("wa_sender_phone", senderPhone)
+    .single();
+
+  return link?.pending_action || null;
+}
+
+/**
+ * Complete the "create room" flow — user's text is the room name.
+ * Shows a wing picker so user can choose where to create the room.
+ */
+async function finishCreateRoom(
+  supabase: SupabaseClient,
+  senderPhone: string,
+  phoneNumberId: string,
+  roomName: string,
+): Promise<void> {
+  const { data: link } = await supabase
+    .from("whatsapp_links")
+    .select("id, user_id")
+    .eq("phone_number_id", phoneNumberId)
+    .eq("wa_sender_phone", senderPhone)
+    .single();
+
+  if (!link) return;
+
+  if (!roomName || roomName.length < 1) {
+    await supabase
+      .from("whatsapp_links")
+      .update({ pending_action: null })
+      .eq("id", link.id);
+    await sendTextMessage(senderPhone, "Room creation cancelled.");
+    return;
+  }
+
+  // Store the room name in pending_action for the next step
+  await supabase
+    .from("whatsapp_links")
+    .update({ pending_action: `create_room_wing:${roomName}` })
+    .eq("id", link.id);
+
+  // Show wing picker
+  const { data: wings } = await supabase
+    .from("wings")
+    .select("id, slug, custom_name")
+    .eq("user_id", link.user_id)
+    .order("sort_order");
+
+  if (!wings || wings.length === 0) {
+    await supabase
+      .from("whatsapp_links")
+      .update({ pending_action: null })
+      .eq("id", link.id);
+    await sendTextMessage(senderPhone, "No wings found. Visit thememorypalace.ai to set up your palace first.");
+    return;
+  }
+
+  await sendWingPicker(senderPhone, wings, roomName);
 }
 
 /**
@@ -564,6 +910,51 @@ async function handleInteractiveResponse(
     return;
   }
 
+  if (parts[0] === "newroom") {
+    // User tapped "New room" in picker — ask for the name
+    const { data: link } = await supabase
+      .from("whatsapp_links")
+      .select("id")
+      .eq("phone_number_id", phoneNumberId)
+      .eq("wa_sender_phone", message.from)
+      .single();
+
+    if (!link) return;
+
+    await supabase
+      .from("whatsapp_links")
+      .update({ pending_action: "create_room" })
+      .eq("id", link.id);
+
+    await sendTextMessage(message.from, "What should the room be called?");
+    return;
+  }
+
+  if (parts[0] === "newroom_wing" && parts[1]) {
+    // User picked a wing for the new room
+    const wingId = parts[1];
+    const { data: link } = await supabase
+      .from("whatsapp_links")
+      .select("id, user_id, pending_action")
+      .eq("phone_number_id", phoneNumberId)
+      .eq("wa_sender_phone", message.from)
+      .single();
+
+    if (!link) return;
+
+    // Extract room name from pending_action
+    const pendingAction = link.pending_action as string || "";
+    if (!pendingAction.startsWith("create_room_wing:")) {
+      await sendTextMessage(message.from, "Something went wrong. Try again with ROOMS.");
+      await supabase.from("whatsapp_links").update({ pending_action: null }).eq("id", link.id);
+      return;
+    }
+
+    const roomName = pendingAction.slice("create_room_wing:".length);
+    await createRoomForUser(supabase, message.from, link.id, link.user_id, roomName, wingId);
+    return;
+  }
+
   if (parts[0] === "setroom" && parts[1]) {
     // Room switch from interactive picker
     const roomId = parts[1];
@@ -577,23 +968,22 @@ async function handleInteractiveResponse(
     if (!link) return;
 
     // Verify user owns the room
-    const { data: room } = await supabase
+    const { data: roomCheck } = await supabase
       .from("rooms")
-      .select("id, name, wing_id, wings(custom_name, name, slug)")
+      .select("id")
       .eq("id", roomId)
       .eq("user_id", link.user_id)
       .single();
 
-    if (!room) return;
+    if (!roomCheck) return;
 
     await supabase
       .from("whatsapp_links")
       .update({ active_room_id: roomId })
       .eq("id", link.id);
 
-    const wing = room.wings as unknown as Record<string, unknown> | null;
-    const wingName = (wing?.custom_name || wing?.name || wing?.slug || "Palace") as string;
-    await sendRoomSwitchConfirmation(message.from, wingName, room.name);
+    const roomInfo = await fetchRoomWithWing(supabase, roomId);
+    await sendRoomSwitchConfirmation(message.from, roomInfo?.wingName || "Palace", roomInfo?.name || "Room");
     return;
   }
 
@@ -627,12 +1017,9 @@ async function handleInteractiveResponse(
 
     if (!capture) return;
 
-    const { data: rooms } = await supabase
-      .from("rooms")
-      .select("id, name, wing_id, wings(id, slug, custom_name, name)")
-      .eq("user_id", capture.user_id);
+    const rooms = await fetchRoomsWithWings(supabase, capture.user_id as string);
 
-    if (rooms && rooms.length > 0) {
+    if (rooms.length > 0) {
       await sendRoomPicker(message.from, rooms as any[], captureId);
     }
     return;
@@ -681,15 +1068,9 @@ async function handleInteractiveResponse(
       );
     }
 
-    const { data: room } = await supabase
-      .from("rooms")
-      .select("name, wing_id, wings(custom_name, name, slug)")
-      .eq("id", roomId)
-      .single();
-
-    const roomName = room?.name || "Room";
-    const wing = room?.wings as unknown as Record<string, unknown> | null;
-    const wingName = (wing?.custom_name || wing?.name || wing?.slug || "Palace") as string;
+    const roomInfo = await fetchRoomWithWing(supabase, roomId);
+    const roomName = roomInfo?.name || "Room";
+    const wingName = roomInfo?.wingName || "Palace";
 
     const movedText = capture.memory_id
       ? `Moved to ${wingName} / ${roomName}`

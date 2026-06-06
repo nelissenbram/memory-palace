@@ -78,11 +78,10 @@ export async function handleKepCaptureJob(
   // Get user's rooms for routing context
   const { data: rooms } = await supabase
     .from("rooms")
-    .select("id, name, wing_id, wings(id, name)")
+    .select("id, name, wing_id")
     .eq("user_id", userId);
 
   if (!rooms || rooms.length === 0) {
-    // No rooms to route to — leave as pending
     await supabase
       .from("kep_captures")
       .update({ status: "processed" })
@@ -90,13 +89,29 @@ export async function handleKepCaptureJob(
     return;
   }
 
+  // Fetch wings separately
+  const wingIds = [...new Set(rooms.map((r: any) => r.wing_id).filter(Boolean))];
+  const wingsMap: Record<string, Record<string, unknown>> = {};
+  if (wingIds.length > 0) {
+    const { data: wings } = await supabase
+      .from("wings")
+      .select("id, slug, name")
+      .in("id", wingIds);
+    if (wings) {
+      for (const w of wings) wingsMap[w.id] = w;
+    }
+  }
+
   // Build room context for AI
-  const roomContext = rooms.map((r: Record<string, unknown>) => ({
-    wing_id: (r.wings as Record<string, unknown>)?.id as string || r.wing_id as string,
-    wing_name: (r.wings as Record<string, unknown>)?.name as string || "Unknown",
-    room_id: r.id as string,
-    room_name: r.name as string,
-  }));
+  const roomContext = rooms.map((r: Record<string, unknown>) => {
+    const wing = wingsMap[r.wing_id as string];
+    return {
+      wing_id: wing?.id as string || r.wing_id as string,
+      wing_name: (wing?.custom_name || wing?.slug || "Unknown") as string,
+      room_id: r.id as string,
+      room_name: r.name as string,
+    };
+  });
 
   // Get AI suggestion
   const suggestion = await suggestRouting(

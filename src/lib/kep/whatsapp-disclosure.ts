@@ -211,7 +211,7 @@ export async function sendRoomPicker(
 
   for (const room of rooms) {
     if (totalRows >= 10) break;
-    const wingName = room.wings?.custom_name || room.wings?.name || room.wings?.slug || "Palace";
+    const wingName = room.wings?.custom_name || room.wings?.slug || "Palace";
     const wingId = room.wings?.id || room.wing_id;
 
     if (!wingMap.has(wingId)) {
@@ -252,13 +252,14 @@ export async function sendRoomPickerForSwitch(
   const wingMap = new Map<string, { wingName: string; rows: { id: string; title: string }[] }>();
   let totalRows = 0;
   let totalRooms = rooms.length;
+  const maxRoomRows = 9; // Reserve 1 slot for "New room"
 
   // Sort alphabetically
   const sorted = [...rooms].sort((a, b) => a.name.localeCompare(b.name));
 
   for (const room of sorted) {
-    if (totalRows >= 10) break;
-    const wingName = room.wings?.custom_name || room.wings?.name || room.wings?.slug || "Palace";
+    if (totalRows >= maxRoomRows) break;
+    const wingName = room.wings?.custom_name || room.wings?.slug || "Palace";
     const wingId = room.wings?.id || room.wing_id;
 
     if (!wingMap.has(wingId)) {
@@ -276,9 +277,16 @@ export async function sendRoomPickerForSwitch(
     rows,
   }));
 
+  // Add "New room" option in its own section
+  const newRoomLabel = getNewRoomLabel(locale);
+  sections.push({
+    title: "➕",
+    rows: [{ id: "newroom:", title: newRoomLabel.slice(0, 24) }],
+  });
+
   let bodyText = t.pickActiveRoom;
-  if (totalRooms > 10) {
-    bodyText += ` (${t.showing.replace("{shown}", "10").replace("{total}", String(totalRooms))})`;
+  if (totalRooms > maxRoomRows) {
+    bodyText += ` (${t.showing.replace("{shown}", String(maxRoomRows)).replace("{total}", String(totalRooms))})`;
   }
 
   return sendInteractiveMessage(recipientPhone, {
@@ -287,6 +295,59 @@ export async function sendRoomPickerForSwitch(
     action: {
       button: t.pickRoom,
       sections,
+    },
+  });
+}
+
+function getNewRoomLabel(locale: string): string {
+  const labels: Record<string, string> = {
+    en: "Create new room",
+    nl: "Nieuwe kamer maken",
+    de: "Neuen Raum erstellen",
+    es: "Crear nueva sala",
+    fr: "Créer nouvelle salle",
+  };
+  return labels[locale] || labels.en;
+}
+
+/**
+ * Send a wing picker for choosing where to create a new room.
+ */
+export async function sendWingPicker(
+  recipientPhone: string,
+  wings: Array<{ id: string; slug: string; custom_name?: string | null }>,
+  roomName: string,
+  locale: string = "en",
+): Promise<boolean> {
+  const wingIcons: Record<string, string> = {
+    roots: "🌱", nest: "🪺", craft: "🛠", travel: "🧭", passions: "✨", attic: "📦",
+  };
+  const bodyTexts: Record<string, string> = {
+    en: `Where should "${roomName}" go?`,
+    nl: `Waar moet "${roomName}" komen?`,
+    de: `Wo soll "${roomName}" hin?`,
+    es: `¿Dónde va "${roomName}"?`,
+    fr: `Où placer "${roomName}" ?`,
+  };
+  const buttonTexts: Record<string, string> = {
+    en: "Pick wing", nl: "Kies vleugel", de: "Flügel wählen",
+    es: "Elegir ala", fr: "Choisir aile",
+  };
+
+  const rows = wings
+    .filter(w => w.slug !== "attic")
+    .slice(0, 10)
+    .map(w => ({
+      id: `newroom_wing:${w.id}`,
+      title: `${wingIcons[w.slug] || "🏛"} ${(w.custom_name || w.slug).slice(0, 20)}`,
+    }));
+
+  return sendInteractiveMessage(recipientPhone, {
+    type: "list",
+    body: { text: bodyTexts[locale] || bodyTexts.en },
+    action: {
+      button: buttonTexts[locale] || buttonTexts.en,
+      sections: [{ title: "Wings", rows }],
     },
   });
 }
@@ -308,13 +369,20 @@ export async function sendStatusMessage(
   if (link.active_room_id) {
     const { data: room } = await supabase
       .from("rooms")
-      .select("name, wings(custom_name, name, slug)")
+      .select("name, wing_id")
       .eq("id", link.active_room_id as string)
       .single();
 
     if (room) {
-      const wing = room.wings as unknown as Record<string, unknown> | null;
-      const wingName = (wing?.custom_name || wing?.name || wing?.slug || "Palace") as string;
+      let wingName = "Palace";
+      if (room.wing_id) {
+        const { data: wing } = await supabase
+          .from("wings")
+          .select("slug, custom_name")
+          .eq("id", room.wing_id)
+          .single();
+        if (wing) wingName = (wing.custom_name || wing.slug) as string;
+      }
       activeRoomText = `${wingName} / ${room.name}`;
     }
   }
@@ -358,6 +426,7 @@ export async function sendHelpMessage(
     "",
     `ROOM [${t.name}] — ${t.roomDesc}`,
     `ROOMS — ${t.roomsDesc}`,
+    `NEW [${t.name}] — ${t.newDesc}`,
     `STATUS — ${t.statusDesc}`,
     `CLEAR — ${t.clearDesc}`,
     `STOP — ${t.stopDesc}`,
@@ -632,7 +701,7 @@ function getStatusTexts(locale: string) {
 function getHelpTexts(locale: string) {
   const texts: Record<string, {
     header: string; name: string;
-    roomDesc: string; roomsDesc: string; statusDesc: string;
+    roomDesc: string; roomsDesc: string; newDesc: string; statusDesc: string;
     clearDesc: string; stopDesc: string; startDesc: string; helpDesc: string;
     tip: string;
   }> = {
@@ -641,6 +710,7 @@ function getHelpTexts(locale: string) {
       name: "name",
       roomDesc: "Set active room",
       roomsDesc: "Show all your rooms",
+      newDesc: "Create a new room",
       statusDesc: "Show active room + stats",
       clearDesc: "Clear active room (use AI routing)",
       stopDesc: "Pause Kep",
@@ -653,6 +723,7 @@ function getHelpTexts(locale: string) {
       name: "naam",
       roomDesc: "Stel actieve kamer in",
       roomsDesc: "Toon al je kamers",
+      newDesc: "Maak een nieuwe kamer",
       statusDesc: "Toon actieve kamer + statistieken",
       clearDesc: "Wis actieve kamer (gebruik AI-routering)",
       stopDesc: "Pauzeer Kep",
@@ -665,6 +736,7 @@ function getHelpTexts(locale: string) {
       name: "Name",
       roomDesc: "Aktiven Raum festlegen",
       roomsDesc: "Alle Raume anzeigen",
+      newDesc: "Neuen Raum erstellen",
       statusDesc: "Aktiven Raum + Statistiken anzeigen",
       clearDesc: "Aktiven Raum loschen (KI-Routing nutzen)",
       stopDesc: "Kep pausieren",
@@ -677,6 +749,7 @@ function getHelpTexts(locale: string) {
       name: "nombre",
       roomDesc: "Establecer sala activa",
       roomsDesc: "Mostrar todas tus salas",
+      newDesc: "Crear una nueva sala",
       statusDesc: "Mostrar sala activa + estadisticas",
       clearDesc: "Borrar sala activa (usar enrutamiento IA)",
       stopDesc: "Pausar Kep",
@@ -689,6 +762,7 @@ function getHelpTexts(locale: string) {
       name: "nom",
       roomDesc: "Definir la salle active",
       roomsDesc: "Afficher toutes vos salles",
+      newDesc: "Creer une nouvelle salle",
       statusDesc: "Afficher salle active + statistiques",
       clearDesc: "Effacer la salle active (routage IA)",
       stopDesc: "Mettre Kep en pause",
