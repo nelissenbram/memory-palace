@@ -52,7 +52,7 @@ async function getDeliveryData(token: string) {
   // Get the contact info
   const { data: contact } = await supabase
     .from("legacy_contacts")
-    .select("contact_name, access_level, wing_access, room_access")
+    .select("contact_name, access_level")
     .eq("id", delivery.contact_id)
     .single();
 
@@ -69,8 +69,8 @@ async function getDeliveryData(token: string) {
 
   // Get shared memories based on access level
   const accessLevel = contact?.access_level || "full";
-  const wingAccess = (contact?.wing_access as string[]) || [];
-  const roomAccess = (contact?.room_access as string[]) || [];
+  const wingAccess: string[] = [];
+  const roomAccess: string[] = [];
 
   let wings: Array<{ id: string; name: string; description: string | null }> = [];
   let rooms: Array<{ id: string; name: string; wing_id: string; description: string | null }> = [];

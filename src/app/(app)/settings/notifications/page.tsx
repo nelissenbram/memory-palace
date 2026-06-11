@@ -292,7 +292,7 @@ export default function NotificationsPage() {
       const reg = await navigator.serviceWorker.ready;
 
       stage = "vapidKey";
-      const vapidKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "").replace(/\r?\n/g, "").replace("\\n", "").trim() || undefined;
+      const vapidKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "").replace(/[\r\n]/g, "").replace("\\n", "").trim() || undefined;
       if (!vapidKey) {
         setToast({ message: t("pushErrorNoVapid"), type: "error" });
         setSubscribing(false);

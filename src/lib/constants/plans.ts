@@ -52,8 +52,8 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     taglineKey: "keeperTagline",
     price: 9.99,
     monthlyPrice: 12.99,
-    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_KEEPER_PRICE_ID || "").replace(/\r?\n/g, "").replace("\\n", "").trim(),
-    monthlyStripePriceId: (process.env.NEXT_PUBLIC_STRIPE_KEEPER_MONTHLY_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_KEEPER_PRICE_ID || "").replace(/\r?\n/g, "").replace("\\n", "").trim(),
+    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_KEEPER_PRICE_ID || "").replace(/[\r\n]/g, "").replace("\\n", "").trim(),
+    monthlyStripePriceId: (process.env.NEXT_PUBLIC_STRIPE_KEEPER_MONTHLY_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_KEEPER_PRICE_ID || "").replace(/[\r\n]/g, "").replace("\\n", "").trim(),
     limits: {
       wings: 3,
       rooms: 10,
@@ -79,8 +79,8 @@ export const PLANS: Record<PlanId, PlanDefinition> = {
     taglineKey: "guardianTagline",
     price: 19.99,
     monthlyPrice: 24.99,
-    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_PRICE_ID || "").replace(/\r?\n/g, "").replace("\\n", "").trim(),
-    monthlyStripePriceId: (process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_MONTHLY_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_PRICE_ID || "").replace(/\r?\n/g, "").replace("\\n", "").trim(),
+    stripePriceId: (process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_PRICE_ID || "").replace(/[\r\n]/g, "").replace("\\n", "").trim(),
+    monthlyStripePriceId: (process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_MONTHLY_PRICE_ID || process.env.NEXT_PUBLIC_STRIPE_GUARDIAN_PRICE_ID || "").replace(/[\r\n]/g, "").replace("\\n", "").trim(),
     limits: {
       wings: -1,
       rooms: -1,

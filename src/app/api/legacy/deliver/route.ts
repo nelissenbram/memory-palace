@@ -99,7 +99,7 @@ export async function POST(request: Request) {
   // ── 2. Get active legacy contacts ──
   const { data: contacts, error: contactsError } = await supabase
     .from("legacy_contacts")
-    .select("id, contact_name, contact_email, access_level, wing_access, room_access")
+    .select("id, contact_name, contact_email, access_level")
     .eq("user_id", userId)
     .eq("is_active", true);
 

@@ -5,7 +5,7 @@ import { PLANS, type PlanId, type BillingInterval } from "@/lib/constants/plans"
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 
 function getStripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY!.replace(/\r?\n/g, "").replace("\\n", "").trim(), {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!.replace(/[\r\n]/g, "").replace("\\n", "").trim(), {
     maxNetworkRetries: 2,
     timeout: 10000,
   });
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       mode: "subscription",
       line_items: [
         {
-          price: priceId.replace(/\r?\n/g, "").replace("\\n", "").trim(),
+          price: priceId.replace(/[\r\n]/g, "").replace("\\n", "").trim(),
           quantity: 1,
         },
       ],

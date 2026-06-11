@@ -285,7 +285,7 @@ export async function sendEmail(opts: {
   if (process.env.RESEND_API_KEY) {
     try {
       const payload: Record<string, unknown> = {
-        from: (process.env.RESEND_FROM_EMAIL || "The Memory Palace <onboarding@resend.dev>").replace(/\r?\n/g, "").replace("\\n", "").trim(),
+        from: (process.env.RESEND_FROM_EMAIL || "The Memory Palace <onboarding@resend.dev>").replace(/[\r\n]/g, "").replace("\\n", "").trim(),
         to: [to],
         subject,
         html,
@@ -299,7 +299,7 @@ export async function sendEmail(opts: {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${(process.env.RESEND_API_KEY || "").replace(/\r?\n/g, "").replace("\\n", "").trim()}`,
+          Authorization: `Bearer ${(process.env.RESEND_API_KEY || "").replace(/[\r\n]/g, "").replace("\\n", "").trim()}`,
         },
         body: JSON.stringify(payload),
       });

@@ -13,8 +13,8 @@ export interface LegacyContact {
   contact_email: string;
   relationship: string | null;
   access_level: string;
-  wing_access: string[];
-  room_access: string[];
+  wing_access?: string[];
+  room_access?: string[];
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -59,13 +59,20 @@ async function getAuthUser() {
 
 export async function fetchLegacyContacts(): Promise<LegacyContact[]> {
   const { supabase, user } = await getAuthUser();
-  if (!supabase || !user) return [];
+  if (!supabase || !user) {
+    console.warn("[fetchLegacyContacts] No authenticated user — returning empty");
+    return [];
+  }
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("legacy_contacts")
-    .select("id, user_id, contact_name, contact_email, relationship, access_level, wing_access, room_access, is_active, created_at, updated_at")
+    .select("id, user_id, contact_name, contact_email, relationship, access_level, is_active, created_at, updated_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("[fetchLegacyContacts] Query failed:", error.message, error.code);
+  }
 
   return (data as LegacyContact[]) || [];
 }
@@ -118,7 +125,7 @@ export async function createLegacyContact(input: {
 
   let { data, error } = await supabase
     .from("legacy_contacts")
-    .insert(withAccess)
+    .upsert(withAccess, { onConflict: "user_id,contact_email" })
     .select()
     .single();
 
@@ -128,20 +135,23 @@ export async function createLegacyContact(input: {
   if (error && /wing_access|room_access/i.test(error.message)) {
     const retry = await supabase
       .from("legacy_contacts")
-      .insert(basePayload)
+      .upsert(basePayload, { onConflict: "user_id,contact_email" })
       .select()
       .single();
     data = retry.data;
     error = retry.error;
   }
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error("[createLegacyContact] Upsert failed:", error.message, error.code, { userId: user.id, email: input.contact_email });
+    return { error: error.message };
+  }
 
   // Send welcome email to the new trustee (non-blocking)
   try {
     const { data: senderProfile } = await supabase
       .from("profiles")
-      .select("display_name, locale")
+      .select("display_name, preferred_locale")
       .eq("id", user.id)
       .single();
     const senderName =
@@ -153,7 +163,7 @@ export async function createLegacyContact(input: {
       recipientName: input.contact_name,
       senderName,
       relationship: input.relationship || null,
-      locale: (senderProfile?.locale as string | undefined) || "en",
+      locale: (senderProfile?.preferred_locale as string | undefined) || "en",
     });
     if (!result.success) {
       console.error("[createLegacyContact] Email send failed:", result.error);
@@ -317,6 +327,32 @@ export async function createLegacyMessage(input: {
     .single();
 
   if (error) return { error: error.message };
+
+  // For "immediately" messages, trigger delivery now instead of waiting for daily cron
+  if ((input.deliver_on === "immediately") && data) {
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      const cronSecret = process.env.CRON_SECRET;
+      if (cronSecret) {
+        const res = await fetch(`${siteUrl}/api/legacy/deliver`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${cronSecret}`,
+          },
+          body: JSON.stringify({ userId: user.id, messageIds: [(data as LegacyMessage).id] }),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(() => "");
+          console.error("[createLegacyMessage] Immediate delivery response:", res.status, body.slice(0, 300));
+        }
+      }
+    } catch (e) {
+      console.error("[createLegacyMessage] Immediate delivery failed:", e);
+      // Non-blocking — message is saved, cron will pick it up as fallback
+    }
+  }
+
   return { message: data as LegacyMessage };
 }
 

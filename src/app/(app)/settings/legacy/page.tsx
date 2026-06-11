@@ -708,7 +708,7 @@ function ContactsSection({
                   marginTop: "0.25rem",
                 }}>
                   {t("access")}: {(() => { const al = ACCESS_LEVELS.find((a) => a.value === c.access_level); return al ? t(al.labelKey) : c.access_level; })()}
-                  {c.access_level === "wings_only" && c.wing_access.length > 0 && (
+                  {c.access_level === "wings_only" && c.wing_access && c.wing_access.length > 0 && (
                     <span style={{ marginLeft: "0.375rem", color: T.color.muted }}>
                       ({c.wing_access.map((w) => { const found = wings.find((wing) => wing.id === w); return found ? found.name : w; }).join(", ")})
                     </span>
