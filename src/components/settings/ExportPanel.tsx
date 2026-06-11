@@ -8,6 +8,8 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { scanExportTree, fetchSharedRoomMemoriesForExport } from "@/lib/auth/export-scan-action";
 import type { ExportTree, ExportWingNode, ExportSharedWingNode } from "@/lib/auth/export-scan-action";
 import { WingIcon, RoomIcon, WING_ICON_MAP, ROOM_ICON_MAP } from "@/components/ui/WingRoomIcons";
+import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
+import { useRoomStore } from "@/lib/stores/roomStore";
 
 const META_CATEGORIES = [
   { key: "interviews", table: "interview_sessions", col: "user_id" },
@@ -64,6 +66,21 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
+  const getWingRooms = useRoomStore((s) => s.getWingRooms);
+  const getWings = useRoomStore((s) => s.getWings);
+
+  const resolveRoomName = (room: { nameKey?: string; name: string; localId?: string }, wingSlug: string) => {
+    if (room.nameKey) {
+      const translated = tWings(room.nameKey);
+      if (translated && translated !== room.nameKey) return translated;
+    }
+    // Look up custom display name from roomStore
+    const wingRooms = getWingRooms(wingSlug);
+    const slug = room.localId || room.name;
+    const match = wingRooms.find((wr) => wr.id === slug);
+    if (match) return match.name;
+    return room.name;
+  };
   const [exportOpen, setExportOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [tree, setTree] = useState<ExportTree | null>(null);
@@ -290,12 +307,29 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
         return { ...rest, access_token: "[redacted]", refresh_token: "[redacted]" };
       });
 
+      // Enrich wing/room names (DB stores slugs like "ro1", display names come from roomStore)
+      const allWings = getWings();
+      const enrichedWings = (wings || []).map((w: Record<string, unknown>) => {
+        const def = allWings.find((wd) => wd.id === w.slug);
+        return def ? { ...w, name: def.name } : w;
+      });
+      const enrichedRooms = (rooms || []).map((r: Record<string, unknown>) => {
+        // Find the wing this room belongs to, then look up its display name
+        const wingRow = (wings || []).find((w: Record<string, unknown>) => w.id === r.wing_id);
+        if (wingRow) {
+          const wingRooms = getWingRooms(wingRow.slug as string);
+          const match = wingRooms.find((wr) => wr.id === r.name);
+          if (match) return { ...r, name: match.name };
+        }
+        return r;
+      });
+
       // Build data.json
       const exportData: Record<string, unknown> = {
         exported_at: new Date().toISOString(),
         profile: profile || null,
-        wings: wings || [],
-        rooms: rooms || [],
+        wings: enrichedWings,
+        rooms: enrichedRooms,
         memories: ownMemories,
       };
       if (sharedMemories.length > 0) exportData.shared_memories = sharedMemories;
@@ -515,7 +549,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                                 ? <RoomIcon roomId={room.roomId} wingId={wing.slug} size={14} color={T.color.walnut} />
                                 : room.icon}
                             </span>
-                            <span style={{ flex: 1 }}>{(room.nameKey && tWings(room.nameKey)) || room.name}</span>
+                            <span style={{ flex: 1 }}>{resolveRoomName(room, wing.slug)}</span>
                             <span style={{ fontSize: "0.6875rem", color: T.color.muted }}>
                               {room.memoryCount}{room.photoCount > 0 ? ` · ${room.photoCount} ${t("exportPhotoLabel")}` : ""}
                             </span>
@@ -592,7 +626,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                                     ? <RoomIcon roomId={room.roomId} wingId={sw.wingSlug} size={14} color={T.color.walnut} />
                                     : room.icon}
                                 </span>
-                                <span style={{ flex: 1 }}>{(room.nameKey && tWings(room.nameKey)) || room.name}</span>
+                                <span style={{ flex: 1 }}>{resolveRoomName(room, sw.wingSlug)}</span>
                                 <span style={{ fontSize: "0.6875rem", color: T.color.muted }}>
                                   {room.memoryCount}{room.photoCount > 0 ? ` · ${room.photoCount} ${t("exportPhotoLabel")}` : ""}
                                 </span>

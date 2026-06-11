@@ -198,21 +198,30 @@ export default function LegacyPage() {
     }
   }, [activeSection]);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await fetchAllLegacyData();
-        setContacts(data.contacts);
-        setMessages(data.messages);
-        setSettings(data.settings);
-        if (data.wings) setWings(data.wings);
-      } catch {
-        showToast(t("fetchError"), "error");
-      }
-      setLoading(false);
+  const loadData = useCallback(async () => {
+    try {
+      const data = await fetchAllLegacyData();
+      setContacts(data.contacts);
+      setMessages(data.messages);
+      setSettings(data.settings);
+      if (data.wings) setWings(data.wings);
+    } catch {
+      showToast(t("fetchError"), "error");
     }
-    load();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadData().then(() => setLoading(false));
+  }, [loadData]);
+
+  // Re-fetch on visibility change (handles sign-out/sign-in race)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") loadData();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [loadData]);
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, ReactNode } from "react";
+import { useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import { T } from "@/lib/theme";
 import { usePushNotificationStore, NotificationPreferences } from "@/lib/stores/pushNotificationStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -194,6 +194,11 @@ export default function NotificationsPage() {
   const [subscribing, setSubscribing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastData | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const pushEnabledRef = useRef(prefs.pushEnabled);
+  const subscribingRef = useRef(false);
+
+  useEffect(() => { pushEnabledRef.current = prefs.pushEnabled; }, [prefs.pushEnabled]);
 
   useEffect(() => {
     init();
@@ -224,13 +229,17 @@ export default function NotificationsPage() {
         }
       } catch {
         // Silently fail — localStorage default will be used
+      } finally {
+        setLoaded(true);
       }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTogglePush = useCallback(async () => {
-    if (prefs.pushEnabled) {
+    if (subscribingRef.current) return;
+    if (pushEnabledRef.current) {
       // Disable: unsubscribe from push and remove server-side subscription
+      subscribingRef.current = true;
       setSubscribing(true);
       try {
         const reg = await navigator.serviceWorker?.ready;
@@ -249,11 +258,13 @@ export default function NotificationsPage() {
         console.error("Failed to unsubscribe:", err);
         setToast({ message: t("pushDisableFailed"), type: "error" });
       }
+      subscribingRef.current = false;
       setSubscribing(false);
       return;
     }
 
     // Enable: request permission, subscribe, save to server
+    subscribingRef.current = true;
     setSubscribing(true);
     let stage = "init";
     try {
@@ -281,7 +292,7 @@ export default function NotificationsPage() {
       const reg = await navigator.serviceWorker.ready;
 
       stage = "vapidKey";
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      const vapidKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "").replace(/\r?\n/g, "").replace("\\n", "").trim() || undefined;
       if (!vapidKey) {
         setToast({ message: t("pushErrorNoVapid"), type: "error" });
         setSubscribing(false);
@@ -327,11 +338,13 @@ export default function NotificationsPage() {
       const msg = (err as Error).message || String(err);
       setToast({ message: t("pushErrorStage", { stage, msg: msg.slice(0, 180) }), type: "error" });
     }
+    subscribingRef.current = false;
     setSubscribing(false);
-  }, [prefs.pushEnabled, setPrefs, t]);
+  }, [setPrefs, t]);
 
   const handleToggleCategory = useCallback(async (key: keyof NotificationPreferences) => {
-    const newVal = !prefs[key];
+    const currentPrefs = usePushNotificationStore.getState().prefs;
+    const newVal = !currentPrefs[key];
     setPrefs({ [key]: newVal });
 
     setSaving(true);
@@ -346,10 +359,18 @@ export default function NotificationsPage() {
       setToast({ message: t("saveFailed"), type: "error" });
     }
     setSaving(false);
-  }, [prefs, setPrefs, t]);
+  }, [setPrefs, t]);
 
   const isUnsupported = permission === "unsupported";
   const isDenied = permission === "denied";
+
+  if (!loaded) {
+    return (
+      <div style={{ padding: "3rem", textAlign: "center", fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>
+        {t("loading") || "Loading..."}
+      </div>
+    );
+  }
 
   return (
     <div>

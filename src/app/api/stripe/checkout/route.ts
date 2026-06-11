@@ -5,7 +5,7 @@ import { PLANS, type PlanId, type BillingInterval } from "@/lib/constants/plans"
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 
 function getStripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY!.trim(), {
+  return new Stripe(process.env.STRIPE_SECRET_KEY!.replace(/\r?\n/g, "").replace("\\n", "").trim(), {
     maxNetworkRetries: 2,
     timeout: 10000,
   });
@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
       interval === "monthly"
         ? planDef.monthlyStripePriceId
         : planDef.stripePriceId;
+
+    console.log("[checkout] plan:", plan, "interval:", interval, "priceId:", JSON.stringify(priceId), "priceId.length:", priceId?.length, "monthlyId:", JSON.stringify(planDef.monthlyStripePriceId), "annualId:", JSON.stringify(planDef.stripePriceId));
 
     if (!priceId) {
       return NextResponse.json({ error: "Plan has no price configured" }, { status: 400 });
@@ -89,7 +91,7 @@ export async function POST(req: NextRequest) {
       mode: "subscription",
       line_items: [
         {
-          price: priceId.trim(),
+          price: priceId.replace(/\r?\n/g, "").replace("\\n", "").trim(),
           quantity: 1,
         },
       ],
@@ -122,6 +124,9 @@ export async function POST(req: NextRequest) {
     const stripeCode = (err as { code?: string })?.code;
     const stripeType = (err as { type?: string })?.type;
     console.error("Checkout error:", { message, stripeCode, stripeType, details });
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    const userMsg = stripeCode === "resource_missing"
+      ? "Price configuration error — please contact support."
+      : "Payment service error — please try again.";
+    return NextResponse.json({ error: userMsg }, { status: 500 });
   }
 }

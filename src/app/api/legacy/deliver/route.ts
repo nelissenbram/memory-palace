@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
   const supabase = createSupabaseAdmin(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    (process.env.SUPABASE_SERVICE_ROLE_KEY || "").replace(/[\r\n]/g, "").replace("\\n", "").trim()
   );
 
   const deliveryStart = Date.now();
