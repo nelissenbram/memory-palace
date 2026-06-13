@@ -301,6 +301,20 @@ const fallbackNames: Record<string, Record<string, string>> = {
     es: "{name} reaccion\u00f3 a tu {target}.",
     fr: "{name} a r\u00e9agi \u00e0 votre {target}.",
   },
+  notif_comment_reply: {
+    en: "{name} replied to your comment.",
+    nl: "{name} reageerde op je reactie.",
+    de: "{name} hat auf deinen Kommentar geantwortet.",
+    es: "{name} respondió a tu comentario.",
+    fr: "{name} a répondu à votre commentaire.",
+  },
+  notif_followed_published: {
+    en: "{name} published new content.",
+    nl: "{name} heeft nieuwe inhoud gepubliceerd.",
+    de: "{name} hat neue Inhalte veröffentlicht.",
+    es: "{name} publicó nuevo contenido.",
+    fr: "{name} a publié du nouveau contenu.",
+  },
 };
 
 /**

@@ -17,6 +17,72 @@ export interface NotificationRow {
   created_at: string;
 }
 
+// ── Resolve the owner of a target (room, wing, palace, memory) ──
+export async function resolveTargetOwner(
+  targetType: string,
+  targetId: string,
+): Promise<string | null> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return null;
+  const supabase = await createClient();
+  try {
+    switch (targetType) {
+      case "palace":
+      case "user":
+        return targetId; // targetId IS the userId
+      case "room": {
+        const { data } = await supabase.from("rooms").select("user_id").eq("id", targetId).single();
+        return data?.user_id || null;
+      }
+      case "wing": {
+        const { data } = await supabase.from("wings").select("user_id").eq("id", targetId).single();
+        return data?.user_id || null;
+      }
+      case "memory": {
+        const { data } = await supabase.from("memories").select("room_id").eq("id", targetId).single();
+        if (!data?.room_id) return null;
+        const { data: room } = await supabase.from("rooms").select("user_id").eq("id", data.room_id).single();
+        return room?.user_id || null;
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+// ── Bulk-insert notifications (for fan-out to followers) ──
+export async function createBulkNotifications(items: {
+  userId: string;
+  type: string;
+  message: string;
+  fromUserId?: string | null;
+  fromUserName?: string | null;
+  wingId?: string | null;
+  roomId?: string | null;
+}[]) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return;
+  if (items.length === 0) return;
+  try {
+    const supabase = await createClient();
+    await supabase.from("notifications").insert(
+      items.map((i) => ({
+        user_id: i.userId,
+        type: i.type,
+        message: i.message,
+        from_user_id: i.fromUserId ?? null,
+        from_user_name: i.fromUserName ?? null,
+        wing_id: i.wingId ?? null,
+        room_id: i.roomId ?? null,
+        room_name: null,
+        read: false,
+      })),
+    );
+  } catch {
+    // Table may not exist
+  }
+}
+
 // ── Create a notification for the room owner when a contributor adds a memory ──
 export async function createContributionNotification(data: {
   roomDbId: string;

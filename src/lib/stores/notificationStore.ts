@@ -5,6 +5,12 @@ import {
   markAllNotificationsRead,
   type NotificationRow,
 } from "@/lib/auth/notification-actions";
+import {
+  groupNotifications,
+  filterByTab,
+  type NotificationTab,
+  type GroupedNotification,
+} from "@/lib/utils/notification-grouping";
 
 // ── localStorage fallback helpers ──
 const LS_KEY = "mp_notifications";
@@ -42,6 +48,7 @@ interface NotificationState {
   loading: boolean;
   open: boolean;
   useLocalFallback: boolean;
+  activeTab: NotificationTab;
 
   setOpen: (v: boolean) => void;
   toggle: () => void;
@@ -50,6 +57,9 @@ interface NotificationState {
   markAllRead: () => Promise<void>;
   addLocal: (n: Omit<NotificationRow, "id" | "created_at">) => void;
   unreadCount: () => number;
+  setTab: (tab: NotificationTab) => void;
+  filteredNotifications: () => NotificationRow[];
+  groupedNotifications: () => GroupedNotification[];
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
@@ -57,11 +67,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   loading: false,
   open: false,
   useLocalFallback: false,
+  activeTab: "all" as NotificationTab,
 
   setOpen: (v) => set({ open: v }),
   toggle: () => set((s) => ({ open: !s.open })),
 
   unreadCount: () => get().notifications.filter((n) => !n.read).length,
+  setTab: (tab) => set({ activeTab: tab }),
+  filteredNotifications: () => filterByTab(get().notifications, get().activeTab),
+  groupedNotifications: () => groupNotifications(filterByTab(get().notifications, get().activeTab)),
 
   load: async () => {
     set({ loading: true });

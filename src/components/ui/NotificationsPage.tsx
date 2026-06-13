@@ -1,12 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useNotificationStore } from "@/lib/stores/notificationStore";
 import type { NotificationRow } from "@/lib/auth/notification-actions";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import {
+  groupNotifications,
+  filterByTab,
+  getDateSection,
+  getNotificationAction,
+  buildGroupMessage,
+  type NotificationTab,
+  type GroupedNotification,
+  type DateSection,
+} from "@/lib/utils/notification-grouping";
 
 const TUTORIAL_KEY = "mp_activity_tutorial_v1";
 
@@ -31,14 +42,15 @@ const EMOJI: Record<string, string> = {
   welcome:          "\u2727", // ✧
   reminder:         "\u29D7", // ⧗
   system:           "\u2756", // ❖
+  kep_capture:      "\uD83D\uDCF8", // 📸
+  new_follower:     "\u2726", // ✦
+  collab_invite:    "\u2694", // ⚔
+  comment_reply:    "\u270E", // ✎
+  reaction:         "\u2764", // ❤
+  palace_visit:     "\u21E8", // ⇨
+  followed_published: "\u2726", // ✦
 };
 
-/**
- * Re-translate a notification message using the viewer's current locale.
- * Uses the notification `type` plus stored fields (from_user_name, room_name)
- * to reconstruct a translated string from the i18n keys.
- * Falls back to the pre-rendered `n.message` when no template exists.
- */
 function getTranslatedMessage(
   n: NotificationRow,
   t: (key: string, params?: Record<string, string>) => string,
@@ -51,13 +63,9 @@ function getTranslatedMessage(
       if (name && room) return t("msg_new_contribution", { name, room });
       break;
     case "achievement": {
-      // Achievement messages may be milestone or first-in-room.
-      // Try first-in-room if room_name is present.
       if (room) return t("msg_first_in_room", { room });
-      // Generic achievement fallback
-      const achKey = "msg_achievement";
-      const achMsg = t(achKey);
-      if (achMsg !== achKey) return achMsg;
+      const achMsg = t("msg_achievement");
+      if (achMsg !== "msg_achievement") return achMsg;
       break;
     }
     case "family_invite":
@@ -67,9 +75,6 @@ function getTranslatedMessage(
       if (name) return t("msg_share_accepted", { name });
       break;
     case "on_this_day": {
-      // Try to extract {years} and {title} from the pre-rendered English message.
-      // Pattern: "On this day, X years ago — "Title"."
-      // Also handle other locale patterns loosely.
       const otdMatch = n.message.match(
         /(\d+)\s+(?:years?|jaar|Jahren?|años?|ans?)\s.*[—–-]\s*"?(.+?)"?\.?\s*$/i,
       );
@@ -79,33 +84,69 @@ function getTranslatedMessage(
       break;
     }
     case "welcome": {
-      const wKey = "msg_welcome";
-      const wMsg = t(wKey);
-      if (wMsg !== wKey) return wMsg;
+      const wMsg = t("msg_welcome");
+      if (wMsg !== "msg_welcome") return wMsg;
       break;
     }
     case "reminder": {
-      const rKey = "msg_reminder";
-      const rMsg = t(rKey);
-      if (rMsg !== rKey) return rMsg;
+      const rMsg = t("msg_reminder");
+      if (rMsg !== "msg_reminder") return rMsg;
       break;
     }
     case "system": {
-      const sKey = "msg_system";
-      const sMsg = t(sKey);
-      if (sMsg !== sKey) return sMsg;
+      const sMsg = t("msg_system");
+      if (sMsg !== "msg_system") return sMsg;
       break;
     }
+    case "palace_visit":
+      if (name) return t("msg_palace_visit", { name });
+      break;
+    case "comment_reply":
+      if (name) return t("msg_comment_reply", { name });
+      break;
+    case "reaction":
+      if (name) return t("msg_reaction", { name, target: n.room_name || "content" });
+      break;
+    case "new_follower":
+      if (name) return t("msg_new_follower", { name });
+      break;
+    case "followed_published":
+      if (name) return t("msg_followed_published", { name });
+      break;
+    case "collab_invite":
+      if (name) return t("msg_collab_invite", { name });
+      break;
   }
 
-  // Fallback: return the pre-rendered message from the DB
   return n.message;
 }
+
+const TABS: { key: NotificationTab; labelKey: string }[] = [
+  { key: "all", labelKey: "tabAll" },
+  { key: "yourPalace", labelKey: "tabYourPalace" },
+  { key: "following", labelKey: "tabFollowing" },
+  { key: "system", labelKey: "tabSystem" },
+];
+
+const EMPTY_KEYS: Record<NotificationTab, string> = {
+  all: "emptySubtitle",
+  yourPalace: "emptyYourPalace",
+  following: "emptyFollowing",
+  system: "emptySystem",
+};
+
+const DATE_SECTION_KEYS: Record<DateSection, string> = {
+  today: "today",
+  yesterday: "yesterday",
+  thisWeek: "thisWeek",
+  earlier: "earlier",
+};
 
 export default function NotificationsPage() {
   const { t } = useTranslation("notificationBell");
   const isMobile = useIsMobile();
-  const { notifications, loading, load, markRead, markAllRead } = useNotificationStore();
+  const router = useRouter();
+  const { notifications, loading, load, markRead, markAllRead, activeTab, setTab } = useNotificationStore();
   const unread = notifications.filter((n) => !n.read).length;
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
@@ -124,6 +165,34 @@ export default function NotificationsPage() {
   const closeTutorial = () => {
     setTutorialOpen(false);
     try { window.localStorage.setItem(TUTORIAL_KEY, "1"); } catch { /* ignore */ }
+  };
+
+  const filtered = useMemo(() => filterByTab(notifications, activeTab), [notifications, activeTab]);
+  const grouped = useMemo(() => groupNotifications(filtered), [filtered]);
+
+  // Group by date section
+  const sections = useMemo(() => {
+    const map = new Map<DateSection, GroupedNotification[]>();
+    for (const g of grouped) {
+      const section = getDateSection(g.primary.created_at);
+      const list = map.get(section) || [];
+      list.push(g);
+      map.set(section, list);
+    }
+    return map;
+  }, [grouped]);
+
+  const sectionOrder: DateSection[] = ["today", "yesterday", "thisWeek", "earlier"];
+
+  const handleNotificationClick = (group: GroupedNotification) => {
+    const n = group.primary;
+    if (!n.read) markRead(n.id);
+    // Mark all items in group as read
+    for (const item of group.items) {
+      if (!item.read) markRead(item.id);
+    }
+    const url = getNotificationAction(n);
+    if (url) router.push(url);
   };
 
   return (
@@ -184,6 +253,40 @@ export default function NotificationsPage() {
         )}
       </div>
 
+      {/* Filter tabs */}
+      <div style={{
+        display: "flex",
+        gap: "0.375rem",
+        padding: isMobile ? "0 1rem 0.75rem" : "0 2.5rem 1rem",
+        overflowX: "auto",
+      }}>
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setTab(tab.key)}
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.8125rem",
+              fontWeight: activeTab === tab.key ? 600 : 500,
+              color: activeTab === tab.key ? T.color.white : T.color.charcoal,
+              background: activeTab === tab.key
+                ? `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`
+                : "rgba(255,255,255,0.6)",
+              border: activeTab === tab.key
+                ? "none"
+                : `0.0625rem solid ${T.color.cream}`,
+              borderRadius: "1.25rem",
+              padding: "0.375rem 0.875rem",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              transition: "all 0.2s",
+            }}
+          >
+            {t(tab.labelKey)}
+          </button>
+        ))}
+      </div>
+
       {/* Notification list */}
       <div style={{
         maxWidth: "40rem",
@@ -201,7 +304,7 @@ export default function NotificationsPage() {
           </div>
         )}
 
-        {!loading && notifications.length === 0 && (
+        {!loading && filtered.length === 0 && (
           <div style={{
             textAlign: "center",
             padding: "4rem 1rem",
@@ -214,65 +317,102 @@ export default function NotificationsPage() {
             <p style={{ fontSize: "0.9375rem", fontWeight: 500, color: T.color.charcoal, marginBottom: "0.25rem" }}>
               {t("emptyTitle")}
             </p>
-            <p style={{ fontSize: "0.8125rem" }}>{t("emptySubtitle")}</p>
+            <p style={{ fontSize: "0.8125rem" }}>{t(EMPTY_KEYS[activeTab])}</p>
           </div>
         )}
 
-        {notifications.map((n) => (
-          <div
-            key={n.id}
-            onClick={() => { if (!n.read) markRead(n.id); }}
-            style={{
-              display: "flex",
-              gap: "0.75rem",
-              padding: "1rem",
-              marginBottom: "0.5rem",
-              borderRadius: "0.75rem",
-              background: n.read ? "rgba(255,255,255,0.5)" : `rgba(255,255,255,0.85)`,
-              border: `0.0625rem solid ${n.read ? T.color.cream : T.color.terracotta + "25"}`,
-              cursor: n.read ? "default" : "pointer",
-              transition: "all 0.15s",
-              animation: "fadeIn 0.3s ease both",
-            }}
-          >
-            <span style={{
-              fontSize: "1.25rem",
-              lineHeight: 1,
-              flexShrink: 0,
-              marginTop: "0.125rem",
-            }}>
-              {EMOJI[n.type] || "\u2726"}
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{
-                fontSize: "0.875rem",
-                fontWeight: n.read ? 500 : 600,
-                color: T.color.charcoal,
-                margin: 0,
-                lineHeight: 1.4,
-              }}>
-                {getTranslatedMessage(n, t)}
-              </p>
-              <p style={{
-                fontSize: "0.75rem",
+        {sectionOrder.map((sectionKey) => {
+          const items = sections.get(sectionKey);
+          if (!items || items.length === 0) return null;
+          return (
+            <div key={sectionKey}>
+              {/* Date section header */}
+              <div style={{
+                fontSize: "0.6875rem",
+                fontWeight: 600,
                 color: T.color.muted,
-                margin: "0.25rem 0 0",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                padding: "0.75rem 0.25rem 0.375rem",
+                marginTop: "0.25rem",
               }}>
-                {timeAgo(n.created_at, t)}
-              </p>
+                {t(DATE_SECTION_KEYS[sectionKey])}
+              </div>
+
+              {items.map((group) => (
+                <div
+                  key={group.primary.id}
+                  onClick={() => handleNotificationClick(group)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleNotificationClick(group); }}
+                  style={{
+                    display: "flex",
+                    gap: "0.75rem",
+                    padding: "1rem",
+                    marginBottom: "0.5rem",
+                    borderRadius: "0.75rem",
+                    background: group.primary.read ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.85)",
+                    border: `0.0625rem solid ${group.primary.read ? T.color.cream : T.color.terracotta + "25"}`,
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                    animation: "fadeIn 0.3s ease both",
+                  }}
+                >
+                  <span style={{
+                    fontSize: "1.25rem",
+                    lineHeight: 1,
+                    flexShrink: 0,
+                    marginTop: "0.125rem",
+                  }}>
+                    {EMOJI[group.primary.type] || "\u2726"}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      fontSize: "0.875rem",
+                      fontWeight: group.primary.read ? 500 : 600,
+                      color: T.color.charcoal,
+                      margin: 0,
+                      lineHeight: 1.4,
+                    }}>
+                      {group.grouped
+                        ? buildGroupMessage(group, (c) => t("andOthers", { count: c }))
+                        : getTranslatedMessage(group.primary, t)
+                      }
+                    </p>
+                    {group.grouped && group.count > 1 && (
+                      <p style={{
+                        fontSize: "0.6875rem",
+                        color: T.color.muted,
+                        margin: "0.125rem 0 0",
+                        fontStyle: "italic",
+                      }}>
+                        {group.count} {t("tabAll").toLowerCase()}
+                      </p>
+                    )}
+                    <p style={{
+                      fontSize: "0.75rem",
+                      color: T.color.muted,
+                      margin: "0.25rem 0 0",
+                    }}>
+                      {timeAgo(group.primary.created_at, t)}
+                    </p>
+                  </div>
+                  {!group.primary.read && (
+                    <span style={{
+                      width: "0.5rem",
+                      height: "0.5rem",
+                      borderRadius: "50%",
+                      background: T.color.terracotta,
+                      flexShrink: 0,
+                      marginTop: "0.375rem",
+                    }} />
+                  )}
+                </div>
+              ))}
             </div>
-            {!n.read && (
-              <span style={{
-                width: "0.5rem",
-                height: "0.5rem",
-                borderRadius: "50%",
-                background: T.color.terracotta,
-                flexShrink: 0,
-                marginTop: "0.375rem",
-              }} />
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {tutorialOpen && typeof document !== "undefined" && createPortal(

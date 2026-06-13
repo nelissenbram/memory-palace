@@ -62,6 +62,51 @@ export async function publishWing(input: {
     // Feed may not exist
   }
 
+  // Notify followers about the publish
+  try {
+    const { createBulkNotifications } = await import("@/lib/auth/notification-actions");
+    const { getUserLocale, serverTf } = await import("@/lib/i18n/server");
+    // Throttle: skip if same user published within last hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60_000).toISOString();
+    const { count: recentPublishes } = await supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("from_user_id", user.id)
+      .eq("type", "followed_published")
+      .gte("created_at", oneHourAgo);
+    if ((recentPublishes || 0) === 0) {
+      const { data: followers } = await supabase
+        .from("follows")
+        .select("follower_id")
+        .eq("following_id", user.id)
+        .limit(500);
+      if (followers && followers.length > 0) {
+        const { data: myProfile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .single();
+        const myName = myProfile?.display_name || "Someone";
+        const items = await Promise.all(
+          followers.map(async (f) => {
+            const locale = await getUserLocale(f.follower_id);
+            return {
+              userId: f.follower_id,
+              type: "followed_published",
+              message: serverTf("notif_followed_published", locale, { name: myName }),
+              fromUserId: user.id,
+              fromUserName: myName,
+              wingId: input.wingId,
+            };
+          }),
+        );
+        await createBulkNotifications(items);
+      }
+    }
+  } catch {
+    // Notifications may not be available
+  }
+
   return { ok: true };
 }
 
@@ -128,6 +173,50 @@ export async function publishRoom(input: {
     });
   } catch {
     // Feed may not exist
+  }
+
+  // Notify followers about the publish
+  try {
+    const { createBulkNotifications } = await import("@/lib/auth/notification-actions");
+    const { getUserLocale, serverTf } = await import("@/lib/i18n/server");
+    const oneHourAgo = new Date(Date.now() - 60 * 60_000).toISOString();
+    const { count: recentPublishes } = await supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("from_user_id", user.id)
+      .eq("type", "followed_published")
+      .gte("created_at", oneHourAgo);
+    if ((recentPublishes || 0) === 0) {
+      const { data: followers } = await supabase
+        .from("follows")
+        .select("follower_id")
+        .eq("following_id", user.id)
+        .limit(500);
+      if (followers && followers.length > 0) {
+        const { data: myProfile } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .single();
+        const myName = myProfile?.display_name || "Someone";
+        const items = await Promise.all(
+          followers.map(async (f) => {
+            const locale = await getUserLocale(f.follower_id);
+            return {
+              userId: f.follower_id,
+              type: "followed_published",
+              message: serverTf("notif_followed_published", locale, { name: myName }),
+              fromUserId: user.id,
+              fromUserName: myName,
+              roomId: dbRoomId,
+            };
+          }),
+        );
+        await createBulkNotifications(items);
+      }
+    }
+  } catch {
+    // Notifications may not be available
   }
 
   return { ok: true };
@@ -226,119 +315,93 @@ export async function getMyPublishableContent(): Promise<PublishableWing[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data: wings } = await supabase
-    .from("wings")
-    .select("id, slug, custom_name, published_at")
-    .eq("user_id", user.id)
-    .order("slug", { ascending: true });
-
-  if (!wings || wings.length === 0) return [];
-
-  const wingIds = wings.map((w) => w.id);
-  const { data: rooms } = await supabase
-    .from("rooms")
-    .select("id, name, icon, wing_id, published_at")
-    .in("wing_id", wingIds)
-    .order("sort_order", { ascending: true });
-
-  // Cross-reference with constants for display names
-  // DB room.name stores the local room ID (e.g. "ro1", "kr2"), not the display name
   const { WINGS, WING_ROOMS } = await import("@/lib/constants/wings");
+  type Wing = (typeof WINGS)[number];
 
-  // Also load user's custom rooms from profile local_settings
+  // ── 1. Load effective room/wing config from profiles.local_settings (source of truth) ──
   const { data: profile } = await supabase
     .from("profiles")
     .select("local_settings")
     .eq("id", user.id)
     .single();
+
   let customRooms: Record<string, { id: string; name: string; icon: string }[]> = {};
   let customWings: Record<string, { name?: string; icon?: string }> = {};
+  let extraWings: Wing[] = [];
   try {
     const ls = profile?.local_settings as Record<string, unknown> | null;
     if (ls) {
-      // mp_custom_rooms: may be a JSON string (from localStorage sync) or already parsed
       const rawRooms = ls.mp_custom_rooms;
       if (typeof rawRooms === "string") {
-        customRooms = JSON.parse(rawRooms);
+        try { customRooms = JSON.parse(rawRooms); } catch { /* ignore */ }
       } else if (rawRooms && typeof rawRooms === "object") {
         customRooms = rawRooms as typeof customRooms;
       }
-      // mp_custom_wings: same treatment
       const rawWings = ls.mp_custom_wings;
       if (typeof rawWings === "string") {
-        customWings = JSON.parse(rawWings);
+        try { customWings = JSON.parse(rawWings); } catch { /* ignore */ }
       } else if (rawWings && typeof rawWings === "object") {
         customWings = rawWings as typeof customWings;
+      }
+      const rawExtra = ls.mp_extra_wings;
+      if (typeof rawExtra === "string") {
+        try { extraWings = JSON.parse(rawExtra); } catch { /* ignore */ }
+      } else if (Array.isArray(rawExtra)) {
+        extraWings = rawExtra as Wing[];
       }
     }
   } catch {}
 
-  // Build a flat lookup: localRoomId → display name, across ALL wings in customRooms
-  const roomNameMap = new Map<string, { name: string; icon: string }>();
-  for (const wingRooms of Object.values(customRooms)) {
-    if (Array.isArray(wingRooms)) {
-      for (const cr of wingRooms) {
-        if (cr.id && cr.name) roomNameMap.set(cr.id, { name: cr.name, icon: cr.icon });
-      }
-    }
-  }
-  // Also add defaults
-  for (const defRooms of Object.values(WING_ROOMS)) {
-    for (const dr of defRooms) {
-      if (!roomNameMap.has(dr.id)) {
-        roomNameMap.set(dr.id, { name: dr.name, icon: dr.icon });
-      }
-    }
-  }
+  // Build effective wing list (standard + extra, excluding attic)
+  const allWingDefs = [...WINGS.filter((w) => w.id !== "attic"), ...extraWings];
 
-  // Build DB room lookup: localRoomId → { dbId, wingId, published, icon }
-  const dbRoomMap = new Map<string, { id: string; wing_id: string; published: boolean; icon: string }>();
-  for (const r of rooms || []) {
-    dbRoomMap.set(`${r.wing_id}:${r.name}`, { id: r.id, wing_id: r.wing_id, published: !!r.published_at, icon: r.icon });
+  // ── 2. Query DB for publish status ──
+  const { data: dbWings } = await supabase
+    .from("wings")
+    .select("id, slug, published_at")
+    .eq("user_id", user.id);
+
+  const { data: dbRooms } = await supabase
+    .from("rooms")
+    .select("id, name, icon, wing_id, published_at")
+    .eq("user_id", user.id);
+
+  // Map: wing slug → DB wing row
+  const dbWingMap = new Map<string, { id: string; published: boolean }>();
+  for (const w of dbWings || []) {
+    dbWingMap.set(w.slug, { id: w.id, published: !!w.published_at });
   }
 
-  return wings.map((w) => {
-    const defaultWing = WINGS.find((dw) => dw.id === w.slug);
-    const cw = customWings[w.slug];
+  // Map: room localId → DB room row (use localId since rooms may be in different wings in DB vs roomStore)
+  const dbRoomMap = new Map<string, { id: string; published: boolean; icon: string }>();
+  for (const r of dbRooms || []) {
+    dbRoomMap.set(r.name, { id: r.id, published: !!r.published_at, icon: r.icon });
+  }
 
-    // Build the full room list from client-side sources (customRooms or WING_ROOMS)
-    // then overlay DB publish status
-    const clientRooms: { id: string; name: string; icon: string }[] =
-      customRooms[w.slug] && Array.isArray(customRooms[w.slug]) && customRooms[w.slug].length > 0
-        ? customRooms[w.slug]
-        : WING_ROOMS[w.slug] || [];
+  // ── 3. Build wing tree from effective config with DB publish status ──
+  return allWingDefs
+    .map((w) => {
+      const cw = customWings[w.id];
+      const effectiveRooms = customRooms[w.id] || WING_ROOMS[w.id] || [];
+      const dbWing = dbWingMap.get(w.id);
 
-    // Also include any DB-only rooms not in the client list (edge case)
-    const clientRoomIds = new Set(clientRooms.map((cr) => cr.id));
-    const dbOnlyRooms = (rooms || [])
-      .filter((r) => r.wing_id === w.id && !clientRoomIds.has(r.name))
-      .map((r) => {
-        const mapped = roomNameMap.get(r.name);
-        let displayName = mapped?.name || r.name;
-        if (!mapped && /^[a-z]{2}\d+$/.test(r.name)) {
-          displayName = `Room ${r.name.replace(/^[a-z]+/, "")}`;
-        }
-        return { id: r.name, name: displayName, icon: r.icon || mapped?.icon || "📁" };
-      });
-
-    const allRooms = [...clientRooms, ...dbOnlyRooms];
-
-    return {
-      id: w.id,
-      slug: w.slug,
-      name: w.custom_name || cw?.name || defaultWing?.name || w.slug,
-      published: !!w.published_at,
-      rooms: allRooms.map((cr) => {
-        const dbRoom = dbRoomMap.get(`${w.id}:${cr.id}`);
-        return {
-          id: dbRoom?.id || cr.id, // Use DB UUID if exists, else local room ID
-          name: cr.name,
-          icon: cr.icon || "📁",
-          published: dbRoom?.published || false,
-        };
-      }),
-    };
-  });
+      return {
+        id: dbWing?.id || w.id,
+        slug: w.id,
+        name: cw?.name || w.name,
+        published: dbWing?.published || false,
+        rooms: effectiveRooms.map((cr) => {
+          const dbRoom = dbRoomMap.get(cr.id);
+          return {
+            id: dbRoom?.id || cr.id,
+            name: cr.name,
+            icon: cr.icon || dbRoom?.icon || "📁",
+            published: dbRoom?.published || false,
+          };
+        }),
+      };
+    })
+    .filter((w) => w.rooms.length > 0);
 }
 
 /** Unpublish a room */

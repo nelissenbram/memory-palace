@@ -45,10 +45,13 @@ export async function addComment(input: {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not authenticated" };
 
-  // Subscription gate: free users cannot comment
-  const sub = await getUserPlan(user.id);
-  if (sub.plan === "free") {
-    return { ok: false, error: "Upgrade to comment" };
+  // Subscription gate: free users cannot comment (except guestbook: palace/wing/room)
+  const guestbookTypes = ["palace", "wing", "room"];
+  if (!guestbookTypes.includes(input.targetType)) {
+    const sub = await getUserPlan(user.id);
+    if (sub.plan === "free") {
+      return { ok: false, error: "Upgrade to comment" };
+    }
   }
 
   const body = input.body.trim().slice(0, 2000);
@@ -86,6 +89,48 @@ export async function addComment(input: {
     });
   } catch {
     // Feed may not exist yet
+  }
+
+  // Notify content owner about the comment
+  try {
+    const { resolveTargetOwner, createNotification } = await import("@/lib/auth/notification-actions");
+    const { getUserLocale } = await import("@/lib/i18n/server");
+    const { serverTf } = await import("@/lib/i18n/server");
+    const ownerId = await resolveTargetOwner(input.targetType, input.targetId);
+    if (ownerId && ownerId !== user.id) {
+      const ownerLocale = await getUserLocale(ownerId);
+      const fromName = profile?.display_name || "Someone";
+      const msg = serverTf("notif_comment", ownerLocale, { name: fromName, target: input.targetType });
+      await createNotification({
+        userId: ownerId,
+        type: "comment_reply",
+        message: msg,
+        fromUserId: user.id,
+        fromUserName: fromName,
+      });
+    }
+    // If this is a reply, also notify the parent comment author
+    if (input.parentId) {
+      const { data: parentComment } = await supabase
+        .from("comments")
+        .select("user_id")
+        .eq("id", input.parentId)
+        .single();
+      if (parentComment && parentComment.user_id !== user.id && parentComment.user_id !== ownerId) {
+        const parentLocale = await getUserLocale(parentComment.user_id);
+        const fromName = profile?.display_name || "Someone";
+        const msg = serverTf("notif_comment_reply", parentLocale, { name: fromName });
+        await createNotification({
+          userId: parentComment.user_id,
+          type: "comment_reply",
+          message: msg,
+          fromUserId: user.id,
+          fromUserName: fromName,
+        });
+      }
+    }
+  } catch {
+    // Notifications may not be available
   }
 
   return {
@@ -238,6 +283,43 @@ export async function toggleReaction(input: {
     });
   } catch {
     // Feed may not exist yet
+  }
+
+  // Notify content owner about the reaction (with 10-min dedup)
+  try {
+    const { resolveTargetOwner, createNotification } = await import("@/lib/auth/notification-actions");
+    const { getUserLocale, serverTf } = await import("@/lib/i18n/server");
+    const ownerId = await resolveTargetOwner(input.targetType, input.targetId);
+    if (ownerId && ownerId !== user.id) {
+      // Dedup: skip if same user→same owner reaction notification in last 10 min
+      const tenMinAgo = new Date(Date.now() - 10 * 60_000).toISOString();
+      const { count } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", ownerId)
+        .eq("type", "reaction")
+        .eq("from_user_id", user.id)
+        .gte("created_at", tenMinAgo);
+      if ((count || 0) === 0) {
+        const ownerLocale = await getUserLocale(ownerId);
+        const { data: myProfile } = await supabase
+          .from("public_profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .single();
+        const fromName = myProfile?.display_name || "Someone";
+        const msg = serverTf("notif_reaction", ownerLocale, { name: fromName, target: input.targetType });
+        await createNotification({
+          userId: ownerId,
+          type: "reaction",
+          message: msg,
+          fromUserId: user.id,
+          fromUserName: fromName,
+        });
+      }
+    }
+  } catch {
+    // Notifications may not be available
   }
 
   return { reacted: true };

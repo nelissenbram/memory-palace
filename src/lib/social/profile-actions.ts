@@ -188,10 +188,13 @@ export async function toggleFollow(
       .eq("id", user.id)
       .single();
     const myName = myProfile?.display_name || "Someone";
+    const { getUserLocale, serverTf } = await import("@/lib/i18n/server");
+    const targetLocale = await getUserLocale(targetUserId);
+    const msg = serverTf("notif_new_follower", targetLocale, { name: myName });
     await createNotification({
       userId: targetUserId,
       type: "new_follower",
-      message: `${myName} started following you`,
+      message: msg,
       fromUserId: user.id,
       fromUserName: myName,
     });

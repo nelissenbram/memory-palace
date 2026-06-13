@@ -1,11 +1,17 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useNotificationStore } from "@/lib/stores/notificationStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import {
+  groupNotifications,
+  getNotificationAction,
+  buildGroupMessage,
+} from "@/lib/utils/notification-grouping";
 
 function timeAgo(dateStr: string, t: (key: string, params?: Record<string, string>) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -19,23 +25,64 @@ function timeAgo(dateStr: string, t: (key: string, params?: Record<string, strin
   return t("daysAgo", { count: String(days) });
 }
 
+const ICON_MAP: Record<string, string> = {
+  new_contribution: "\u270E",
+  achievement:      "\u269C",
+  family_invite:    "\u2766",
+  on_this_day:      "\u2767",
+  welcome:          "\u2727",
+  reminder:         "\u29D7",
+  system:           "\u2756",
+  kep_capture:      "\uD83D\uDCF8",
+  new_follower:     "\u2726",
+  collab_invite:    "\u2694",
+  comment_reply:    "\u270E",
+  reaction:         "\u2764",
+  palace_visit:     "\u21E8",
+  followed_published: "\u2726",
+};
+
 export default function NotificationBell() {
   const { t } = useTranslation("notificationBell");
   const isMobile = useIsMobile();
+  const router = useRouter();
   const { notifications, open, loading, setOpen, toggle, load, markRead, markAllRead, unreadCount } =
     useNotificationStore();
   const panelRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const count = unreadCount();
 
-  // Load notifications on mount and every 60s
+  // Grouped notifications for dropdown (max 8)
+  const grouped = useMemo(() => groupNotifications(notifications).slice(0, 8), [notifications]);
+
+  // Phase 5: Adaptive polling — 30s visible, 120s hidden, immediate on focus
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
   useEffect(() => {
     load();
-    const interval = setInterval(load, 60_000);
-    return () => clearInterval(interval);
+    let interval: ReturnType<typeof setInterval>;
+
+    const startPolling = () => {
+      clearInterval(interval);
+      const delay = document.hidden ? 120_000 : 30_000;
+      interval = setInterval(() => loadRef.current(), delay);
+    };
+
+    const handleVisibility = () => {
+      if (!document.hidden) loadRef.current(); // immediate poll on focus
+      startPolling();
+    };
+
+    startPolling();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [load]);
 
-  // Close on outside click/touch — check both panelRef (bell) and dropdownRef (portal)
+  // Close on outside click/touch
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent | TouchEvent) => {
@@ -64,7 +111,18 @@ export default function NotificationBell() {
     return () => document.removeEventListener("keydown", handler);
   }, [open, setOpen]);
 
-  /* ── Shared dropdown content (header + list) ── */
+  const handleItemClick = useCallback((group: typeof grouped[number]) => {
+    const n = group.primary;
+    if (!n.read) markRead(n.id);
+    for (const item of group.items) {
+      if (!item.read) markRead(item.id);
+    }
+    setOpen(false);
+    const url = getNotificationAction(n);
+    if (url) router.push(url);
+  }, [markRead, setOpen, router]);
+
+  /* ── Shared dropdown content (header + list + footer) ── */
   const dropdownContent = (
     <>
       {/* Header */}
@@ -86,6 +144,19 @@ export default function NotificationBell() {
           }}
         >
           {t("title")}
+          {count > 0 && (
+            <span style={{
+              marginLeft: "0.375rem",
+              fontSize: "0.6875rem",
+              fontWeight: 600,
+              color: T.color.terracotta,
+              background: `${T.color.terracotta}12`,
+              padding: "0.0625rem 0.375rem",
+              borderRadius: "0.625rem",
+            }}>
+              {count}
+            </span>
+          )}
         </span>
         {count > 0 && (
           <button
@@ -162,13 +233,10 @@ export default function NotificationBell() {
           </div>
         )}
 
-        {notifications.map((n) => (
+        {grouped.map((group) => (
           <button
-            key={n.id}
-            onClick={() => {
-              if (!n.read) markRead(n.id);
-              setOpen(false);
-            }}
+            key={group.primary.id}
+            onClick={() => handleItemClick(group)}
             style={{
               display: "flex",
               alignItems: "flex-start",
@@ -176,17 +244,17 @@ export default function NotificationBell() {
               width: "100%",
               padding: "0.625rem 1rem",
               border: "none",
-              background: n.read ? "transparent" : `${T.color.terracotta}06`,
+              background: group.primary.read ? "transparent" : `${T.color.terracotta}06`,
               cursor: "pointer",
               textAlign: "left",
               transition: "background .15s",
-              borderLeft: n.read ? "3px solid transparent" : `3px solid ${T.color.terracotta}`,
+              borderLeft: group.primary.read ? "3px solid transparent" : `3px solid ${T.color.terracotta}`,
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.background = `${T.color.sandstone}18`;
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = n.read
+              (e.currentTarget as HTMLElement).style.background = group.primary.read
                 ? "transparent"
                 : `${T.color.terracotta}06`;
             }}
@@ -197,7 +265,7 @@ export default function NotificationBell() {
                 width: "2rem",
                 height: "2rem",
                 borderRadius: "0.625rem",
-                background: n.read
+                background: group.primary.read
                   ? `${T.color.sandstone}18`
                   : `${T.color.terracotta}12`,
                 display: "flex",
@@ -208,24 +276,7 @@ export default function NotificationBell() {
                 marginTop: "0.0625rem",
               }}
             >
-              {(() => {
-                switch (n.type) {
-                  case "new_contribution": return "\u270E"; // ✎
-                  case "achievement":      return "\u269C"; // ⚜
-                  case "family_invite":    return "\u2766"; // ❦
-                  case "on_this_day":      return "\u2767"; // ❧
-                  case "welcome":          return "\u2727"; // ✧
-                  case "reminder":         return "\u29D7"; // ⧗
-                  case "system":           return "\u2756"; // ❖
-                  case "kep_capture":      return "\uD83D\uDCF8"; // 📸
-                  case "new_follower":     return "\u2726"; // ✦
-                  case "collab_invite":    return "\u2694"; // ⚔
-                  case "comment_reply":    return "\u270E"; // ✎
-                  case "reaction":         return "\u2764"; // ❤
-                  case "palace_visit":     return "\u21E8"; // ⇨
-                  default:                 return "\u2726"; // ✦
-                }
-              })()}
+              {ICON_MAP[group.primary.type] || "\u2726"}
             </div>
 
             {/* Content */}
@@ -234,12 +285,15 @@ export default function NotificationBell() {
                 style={{
                   fontFamily: T.font.body,
                   fontSize: "0.75rem",
-                  fontWeight: n.read ? 500 : 600,
-                  color: n.read ? T.color.muted : T.color.charcoal,
+                  fontWeight: group.primary.read ? 500 : 600,
+                  color: group.primary.read ? T.color.muted : T.color.charcoal,
                   lineHeight: 1.4,
                 }}
               >
-                {n.message}
+                {group.grouped
+                  ? buildGroupMessage(group, (c) => t("andOthers", { count: c }))
+                  : group.primary.message
+                }
               </div>
               <div
                 style={{
@@ -249,12 +303,12 @@ export default function NotificationBell() {
                   marginTop: "0.125rem",
                 }}
               >
-                {timeAgo(n.created_at, t)}
+                {timeAgo(group.primary.created_at, t)}
               </div>
             </div>
 
             {/* Unread dot */}
-            {!n.read && (
+            {!group.primary.read && (
               <div
                 style={{
                   width: "0.375rem",
@@ -269,6 +323,42 @@ export default function NotificationBell() {
           </button>
         ))}
       </div>
+
+      {/* Footer — See all activity link */}
+      {notifications.length > 0 && (
+        <div style={{
+          borderTop: `1px solid ${T.color.cream}`,
+          padding: "0.5rem 1rem",
+          textAlign: "center",
+        }}>
+          <button
+            onClick={() => {
+              setOpen(false);
+              router.push("/palace?view=activities");
+            }}
+            style={{
+              fontFamily: T.font.body,
+              fontSize: "0.6875rem",
+              fontWeight: 600,
+              color: T.color.terracotta,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "0.25rem 0.5rem",
+              borderRadius: "0.375rem",
+              transition: "background .15s",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = `${T.color.terracotta}08`;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = "none";
+            }}
+          >
+            {t("seeAllActivity")}
+          </button>
+        </div>
+      )}
     </>
   );
 
@@ -330,26 +420,52 @@ export default function NotificationBell() {
           />
         </svg>
 
-        {/* Subtle unread indicator — soft gold dot with gentle pulse */}
+        {/* Unread badge — count when > 3, dot otherwise */}
         {count > 0 && (
           <>
             <style>{`
               @keyframes mpBellPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.55);} 50% { box-shadow:0 0 0 0.375rem rgba(212,175,55,0);} }
             `}</style>
-            <span
-              aria-label={t("unreadNotifications", { count: String(count) })}
-              style={{
-                position: "absolute",
-                top: "0.25rem",
-                right: "0.25rem",
-                width: "0.5rem",
-                height: "0.5rem",
-                borderRadius: "50%",
-                background: `radial-gradient(circle, #F5D76E 0%, ${T.color.gold} 70%)`,
-                border: `1.5px solid ${T.color.linen}`,
-                animation: "mpBellPulse 2.2s ease-in-out infinite",
-              }}
-            />
+            {count > 3 ? (
+              <span
+                aria-label={t("unreadNotifications", { count: String(count) })}
+                style={{
+                  position: "absolute",
+                  top: "-0.125rem",
+                  right: "-0.125rem",
+                  minWidth: "1rem",
+                  height: "1rem",
+                  borderRadius: "0.5rem",
+                  background: T.color.terracotta,
+                  border: `1.5px solid ${T.color.linen}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "0.5625rem",
+                  fontWeight: 700,
+                  color: "#FFF",
+                  padding: "0 0.1875rem",
+                  fontFamily: T.font.body,
+                }}
+              >
+                {count > 99 ? "99+" : count}
+              </span>
+            ) : (
+              <span
+                aria-label={t("unreadNotifications", { count: String(count) })}
+                style={{
+                  position: "absolute",
+                  top: "0.25rem",
+                  right: "0.25rem",
+                  width: "0.5rem",
+                  height: "0.5rem",
+                  borderRadius: "50%",
+                  background: `radial-gradient(circle, #F5D76E 0%, ${T.color.gold} 70%)`,
+                  border: `1.5px solid ${T.color.linen}`,
+                  animation: "mpBellPulse 2.2s ease-in-out infinite",
+                }}
+              />
+            )}
           </>
         )}
       </button>
