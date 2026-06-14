@@ -381,6 +381,60 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
+      - name: Enable In-App Purchase capability
+        run: |
+          cd ios/App
+          # Add In-App Purchase entitlement
+          ENTITLEMENTS="App/App.entitlements"
+          if [ ! -f "$ENTITLEMENTS" ]; then
+            cat > "$ENTITLEMENTS" << 'ENTEOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>com.apple.developer.in-app-payments</key>
+            <array>
+              <string>merchant.ai.thememorypalace.app</string>
+            </array>
+          </dict>
+          </plist>
+          ENTEOF
+          else
+            /usr/libexec/PlistBuddy -c "Add :com.apple.developer.in-app-payments array" "$ENTITLEMENTS" 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Add :com.apple.developer.in-app-payments:0 string merchant.ai.thememorypalace.app" "$ENTITLEMENTS" 2>/dev/null || true
+          fi
+
+          # Reference the entitlements file in the Xcode project
+          python3 << 'PYEOF'
+          import re
+
+          with open("App.xcodeproj/project.pbxproj", "r") as f:
+              content = f.read()
+
+          def add_entitlements(match):
+              block = match.group(0)
+              if "INFOPLIST_FILE" not in block:
+                  return block
+              if "CODE_SIGN_ENTITLEMENTS" not in block:
+                  block = block.replace(
+                      "buildSettings = {",
+                      'buildSettings = {\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = App/App.entitlements;'
+                  )
+              return block
+
+          content = re.sub(
+              r'buildSettings = \{[^}]+\}',
+              add_entitlements,
+              content,
+              flags=re.DOTALL
+          )
+
+          with open("App.xcodeproj/project.pbxproj", "w") as f:
+              f.write(content)
+
+          print("In-App Purchase entitlements configured")
+          PYEOF
+
       - name: Bump build number
         run: |
           PLIST="ios/App/App/Info.plist"

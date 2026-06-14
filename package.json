@@ -35,6 +35,7 @@
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
     "capacitor-rate-app": "^4.0.3",
+    "cordova-plugin-purchase": "^13.16.1",
     "d3-hierarchy": "^3.1.2",
     "exceljs": "^4.4.0",
     "exifr": "^7.1.3",

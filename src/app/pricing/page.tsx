@@ -8,6 +8,7 @@ import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
+import { initIAP, getIAPProductId, getProduct, purchase } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -23,6 +24,8 @@ export default function PricingPage() {
   const [currency, setCurrency] = useState<SupportedCurrency>("EUR");
   const [loading, setLoading] = useState<PlanId | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
+  const [iapReady, setIapReady] = useState(false);
+  const isApple = isIOS();
   const router = useRouter();
   const { t, locale, setLocale } = useTranslation("pricing");
 
@@ -35,16 +38,42 @@ export default function PricingPage() {
   const { t: tc } = useTranslation("common");
 
   // Redirect away from pricing page on Android — Google Play forbids
-  // directing users to external payment flows. iOS allowed via External Purchase Link entitlement.
+  // directing users to external payment flows.
   useEffect(() => {
     if (isAndroid()) {
       router.replace("/atrium");
     }
   }, [router]);
 
+  // Initialize IAP on iOS
+  useEffect(() => {
+    if (isApple) {
+      initIAP().then((ok) => setIapReady(ok));
+    }
+  }, [isApple]);
+
   const handleSubscribe = async (planId: PlanId) => {
     if (planId === "free") {
       window.location.href = "/register";
+      return;
+    }
+
+    // Use IAP on iOS
+    if (isApple && iapReady) {
+      setLoading(planId);
+      try {
+        const productId = getIAPProductId(planId as "keeper" | "guardian", interval);
+        const success = await purchase(productId);
+        if (success) {
+          setToast({ message: t("subscriptionActivated") || "Subscription activated!", type: "success" });
+          setTimeout(() => router.push("/settings/subscription"), 1500);
+        } else {
+          setToast({ message: t("somethingWentWrong"), type: "error" });
+        }
+      } catch {
+        setToast({ message: t("couldNotConnect"), type: "error" });
+      }
+      setLoading(null);
       return;
     }
 

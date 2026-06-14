@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
 import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
+import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
@@ -34,8 +35,10 @@ export default function SubscriptionPage() {
   const { t, locale } = useTranslation("subscription");
   const { t: tp } = useTranslation("plans");
   const { t: tPricing } = useTranslation("pricing");
-  const nativeApp = isAndroid();
+  const isApple = isIOS();
+  const nativeApp = isAndroid() || isApple;
   const isMobile = useIsMobile();
+  const [iapReady, setIapReady] = useState(false);
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,8 +77,31 @@ export default function SubscriptionPage() {
           supabase.from("memories").select("file_size").eq("user_id", user.id),
         ]);
 
-        if (subRes.data) {
-          setSub(subRes.data as SubscriptionData);
+        let subData = subRes.data as SubscriptionData | null;
+
+        // If DB says "free" but has a Stripe customer, sync with Stripe to detect missed webhooks
+        if (subData?.stripe_customer_id && subData.plan === "free") {
+          try {
+            const syncRes = await fetch("/api/stripe/sync", { method: "POST" });
+            if (syncRes.ok) {
+              const syncData = await syncRes.json();
+              if (syncData.synced && syncData.plan !== "free") {
+                // Re-fetch the updated subscription record
+                const { data: refreshed } = await supabase
+                  .from("subscriptions")
+                  .select("plan, status, current_period_end, stripe_customer_id")
+                  .eq("user_id", user.id)
+                  .single();
+                if (refreshed) subData = refreshed as SubscriptionData;
+              }
+            }
+          } catch {
+            // non-critical — user still sees manage billing button as fallback
+          }
+        }
+
+        if (subData) {
+          setSub(subData);
         } else {
           setSub({ plan: "free", status: "active", current_period_end: null, stripe_customer_id: null });
         }
@@ -130,6 +156,52 @@ export default function SubscriptionPage() {
     load();
   }, [load]);
 
+  // Initialize Apple IAP on iOS
+  useEffect(() => {
+    if (isApple) {
+      initIAP().then((ok) => setIapReady(ok));
+    }
+  }, [isApple]);
+
+  /** Handle IAP purchase on iOS */
+  const handleIAPUpgrade = async (planId: PlanId) => {
+    if (upgradeLoading || planId === "free") return;
+    setUpgradeLoading(planId);
+    try {
+      const productId = getIAPProductId(
+        planId as "keeper" | "guardian",
+        interval
+      );
+      const success = await purchase(productId);
+      if (success) {
+        showToast(t("activated"), "success");
+        setTimeout(() => load(), 1500);
+      } else {
+        showToast(t("checkoutError"), "error");
+      }
+    } catch {
+      showToast(t("paymentConnectError"), "error");
+    }
+    setUpgradeLoading(null);
+  };
+
+  /** Restore previous IAP purchases */
+  const handleRestore = async () => {
+    setPortalLoading(true);
+    try {
+      const success = await restorePurchases();
+      if (success) {
+        showToast(t("restoreSuccess") || "Purchases restored", "success");
+        setTimeout(() => load(), 1500);
+      } else {
+        showToast(t("restoreFailed") || "No purchases to restore", "error");
+      }
+    } catch {
+      showToast(t("restoreFailed") || "Restore failed", "error");
+    }
+    setPortalLoading(false);
+  };
+
   const handleManageBilling = async () => {
     setPortalLoading(true);
     try {
@@ -139,6 +211,9 @@ export default function SubscriptionPage() {
       const data = await res.json();
       if (data.url) {
         if (isIOS()) { await openInExternalBrowser(data.url); } else { window.location.href = data.url; }
+      } else if (res.status === 400) {
+        // No billing account — redirect to checkout instead
+        showToast(t("noBillingAccount"), "error");
       } else {
         showToast(data.error || t("billingError"), "error");
       }
@@ -149,6 +224,10 @@ export default function SubscriptionPage() {
   };
 
   const handleUpgrade = async (planId: PlanId) => {
+    // Route to IAP on iOS
+    if (isApple && iapReady) {
+      return handleIAPUpgrade(planId);
+    }
     if (upgradeLoading) return;
     setUpgradeLoading(planId);
     try {
@@ -171,10 +250,12 @@ export default function SubscriptionPage() {
       if (data.url) {
         if (isIOS()) { await openInExternalBrowser(data.url); } else { window.location.href = data.url; }
       } else {
+        console.error("[Subscription] Checkout error:", data);
         showToast(data.error || t("checkoutError"), "error");
         setUpgradeLoading(null);
       }
-    } catch {
+    } catch (err) {
+      console.error("[Subscription] Checkout exception:", err);
       showToast(t("paymentConnectError"), "error");
       setUpgradeLoading(null);
     }
@@ -194,6 +275,7 @@ export default function SubscriptionPage() {
   const limits = currentPlan.limits;
   const isFree = sub?.plan === "free";
   const isPaid = sub?.plan === "keeper" || sub?.plan === "guardian";
+  const hasStripeAccount = !!sub?.stripe_customer_id;
 
   const statusLabel: Record<string, { text: string; color: string }> = {
     active: { text: t("statusActive"), color: C.sage },
@@ -305,10 +387,11 @@ export default function SubscriptionPage() {
           </p>
         )}
 
-        {/* Actions — hidden in native app (Google Play policy: no external payment links) */}
-        {!nativeApp && (
+        {/* Actions — hidden on Android (Google Play: no external payment links) */}
+        {/* On iOS: show IAP buttons. On web: show Stripe buttons. */}
+        {!isAndroid() && (
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-            {isPaid && (
+            {isPaid && !isApple && (
               <>
                 <button
                   onClick={handleManageBilling}
@@ -343,23 +426,70 @@ export default function SubscriptionPage() {
                 </button>
               </>
             )}
+            {isPaid && isApple && (
+              <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: C.muted, margin: 0 }}>
+                {t("manageInSettings") || "Manage your subscription in Settings > Apple ID > Subscriptions"}
+              </p>
+            )}
             {isFree && (
-              <button
-                onClick={() => handleUpgrade("keeper")}
-                disabled={!!upgradeLoading}
-                style={{
-                  padding: "0.75rem 1.5rem",
-                  borderRadius: "0.75rem",
-                  border: "none",
-                  background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                  fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: upgradeLoading ? C.muted : C.white,
-                  cursor: upgradeLoading ? "wait" : "pointer",
-                  transition: "all .15s",
-                }}
-              >
-                {upgradeLoading === "keeper" ? t("upgrading") : t("upgradePlan")}
-              </button>
+              <>
+                <button
+                  onClick={() => handleUpgrade("keeper")}
+                  disabled={!!upgradeLoading}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "0.75rem",
+                    border: "none",
+                    background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                    fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
+                    color: upgradeLoading ? C.muted : C.white,
+                    cursor: upgradeLoading ? "wait" : "pointer",
+                    transition: "all .15s",
+                  }}
+                >
+                  {upgradeLoading === "keeper" ? t("upgrading") : t("upgradePlan")}
+                  {isApple && iapReady && (() => {
+                    const p = getProduct(getIAPProductId("keeper", interval));
+                    return p ? ` (${p.price})` : "";
+                  })()}
+                </button>
+                {!isApple && hasStripeAccount && (
+                  <button
+                    onClick={handleManageBilling}
+                    disabled={portalLoading}
+                    style={{
+                      padding: "0.75rem 1.5rem",
+                      borderRadius: "0.75rem",
+                      border: `1px solid ${C.cream}`,
+                      background: C.white,
+                      fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
+                      color: C.muted,
+                      cursor: portalLoading ? "wait" : "pointer",
+                      transition: "all .15s",
+                    }}
+                  >
+                    {portalLoading ? t("opening") : t("manageBilling")}
+                  </button>
+                )}
+                {isApple && iapReady && (
+                  <button
+                    onClick={handleRestore}
+                    disabled={portalLoading}
+                    style={{
+                      padding: "0.75rem 1.5rem",
+                      borderRadius: "0.75rem",
+                      border: `1px solid ${C.cream}`,
+                      background: C.white,
+                      fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
+                      color: C.muted,
+                      cursor: portalLoading ? "wait" : "pointer",
+                      transition: "all .15s",
+                    }}
+                  >
+                    {portalLoading ? t("opening") : (t("restorePurchases") || "Restore Purchases")}
+                  </button>
+                )}
+              </>
             )}
             {sub?.plan === "keeper" && (
               <button
@@ -377,6 +507,10 @@ export default function SubscriptionPage() {
                 }}
               >
                 {upgradeLoading === "guardian" ? t("upgrading") : t("upgradeToGuardian")}
+                {isApple && iapReady && (() => {
+                  const p = getProduct(getIAPProductId("guardian", interval));
+                  return p ? ` (${p.price})` : "";
+                })()}
               </button>
             )}
           </div>
@@ -510,7 +644,7 @@ export default function SubscriptionPage() {
         </div>
 
         {/* Near-limit upgrade prompt — hidden in native app */}
-        {!nativeApp && isFree && usage && (usage.wings >= 2 || usage.rooms >= 4 || usage.memories >= 80) && (
+        {!isAndroid() && isFree && usage && (usage.wings >= 2 || usage.rooms >= 4 || usage.memories >= 80) && (
           <div style={{
             marginTop: "1.25rem",
             padding: "1rem 1.25rem",
