@@ -312,6 +312,20 @@ function NavigationBar({
   const notifCount = useNotificationStore((s) => s.notifications.filter(n => !n.read).length);
   const nudgeActive = useNudgeStore((s) => s.activeNudge !== null || s.queue.length > 0);
   const [helpToast, setHelpToast] = useState(false);
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
+  const helpMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close help menu on outside click
+  useEffect(() => {
+    if (!helpMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (helpMenuRef.current && !helpMenuRef.current.contains(e.target as Node)) {
+        setHelpMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [helpMenuOpen]);
 
   // Prefetch routes for instant navigation
   useEffect(() => {
@@ -530,30 +544,7 @@ function NavigationBar({
                       router.push("/settings");
                     }
                   } else if (isHelp) {
-                    if (isSettingsRoute) {
-                      useSettingsTourStore.getState().setOpen(true);
-                      return;
-                    }
-                    // Activity tab tutorial — dispatch custom event
-                    if (activeTab === "notifications") {
-                      window.dispatchEvent(new Event("mp:open-activity-tutorial"));
-                      return;
-                    }
-                    // Palace exterior (3D) tutorial
-                    if (currentMode === "3d") {
-                      window.dispatchEvent(new Event("mp:open-palace-tutorial"));
-                      return;
-                    }
-                    // reset() sets _forceCurrentPage + increments _resetCount,
-                    // which triggers NudgeProvider's useEffect → initPage()
-                    useNudgeStore.getState().reset();
-                    // Check after the useEffect has time to run
-                    setTimeout(() => {
-                      if (!useNudgeStore.getState().isNudging()) {
-                        setHelpToast(true);
-                        setTimeout(() => setHelpToast(false), 3000);
-                      }
-                    }, 200);
+                    setHelpMenuOpen(!helpMenuOpen);
                   } else if (isNotifications) {
                     if (onNotifications) {
                       onNotifications();
@@ -571,15 +562,15 @@ function NavigationBar({
                   flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "0.125rem",
-                  padding: "0.5rem 0 0.375rem",
+                  gap: "0.1875rem",
+                  padding: "0.5rem 0.125rem 0.375rem",
                   minHeight: "2.75rem",
                   background: "none",
                   border: "none",
                   cursor: "pointer",
                   color,
                   fontFamily: T.font.body,
-                  fontSize: "0.625rem",
+                  fontSize: "0.6875rem",
                   fontWeight: isActive ? 600 : 500,
                   letterSpacing: "0.03em",
                   textTransform: "uppercase" as const,
@@ -645,6 +636,93 @@ function NavigationBar({
             );
           })}
         </nav>
+
+        {/* Mobile help menu dropdown */}
+        {helpMenuOpen && (
+          <>
+            <div
+              onClick={() => setHelpMenuOpen(false)}
+              style={{ position: "fixed", inset: 0, zIndex: 55 }}
+            />
+            <div
+              ref={helpMenuRef}
+              role="menu"
+              style={{
+                position: "fixed",
+                bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))",
+                right: "0.5rem",
+                width: "12rem",
+                background: `${T.color.linen}f8`,
+                backdropFilter: "blur(1rem)",
+                WebkitBackdropFilter: "blur(1rem)",
+                borderRadius: "0.75rem",
+                border: `1px solid ${T.color.cream}`,
+                boxShadow: "0 -4px 24px rgba(44,44,42,.18)",
+                overflow: "hidden",
+                zIndex: 60,
+                animation: "navSlideUp .2s ease both",
+              }}
+            >
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setHelpMenuOpen(false);
+                  if (isSettingsRoute) {
+                    useSettingsTourStore.getState().setOpen(true);
+                    return;
+                  }
+                  if (activeTab === "notifications") {
+                    window.dispatchEvent(new Event("mp:open-activity-tutorial"));
+                    return;
+                  }
+                  if (currentMode === "3d") {
+                    window.dispatchEvent(new Event("mp:open-palace-tutorial"));
+                    return;
+                  }
+                  useNudgeStore.getState().reset();
+                  setTimeout(() => {
+                    if (!useNudgeStore.getState().isNudging()) {
+                      setHelpToast(true);
+                      setTimeout(() => setHelpToast(false), 3000);
+                    }
+                  }, 200);
+                }}
+                style={{
+                  width: "100%", padding: "0.875rem 1rem",
+                  display: "flex", alignItems: "center", gap: "0.625rem",
+                  background: "none", border: "none",
+                  borderBottom: `1px solid ${T.color.cream}`,
+                  cursor: "pointer", fontFamily: T.font.body,
+                  fontSize: "0.875rem", fontWeight: 500,
+                  color: T.color.charcoal, textAlign: "left",
+                  minHeight: "2.75rem",
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
+                {t("startTutorial")}
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setHelpMenuOpen(false);
+                  router.push("/help");
+                }}
+                style={{
+                  width: "100%", padding: "0.875rem 1rem",
+                  display: "flex", alignItems: "center", gap: "0.625rem",
+                  background: "none", border: "none",
+                  cursor: "pointer", fontFamily: T.font.body,
+                  fontSize: "0.875rem", fontWeight: 500,
+                  color: T.color.charcoal, textAlign: "left",
+                  minHeight: "2.75rem",
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><circle cx="12" cy="10" r="0.5" fill={T.color.walnut} stroke="none" /><path d="M10 7.5a2 2 0 1 1 2.5 1.94V12" /></svg>
+                {t("helpCenter")}
+              </button>
+            </div>
+          </>
+        )}
 
         {/* Help toast — shown when no tutorial available for current page */}
         {helpToast && (
@@ -942,49 +1020,127 @@ function NavigationBar({
 
         {/* ---- help / restart tutorial ---- */}
         {!minimal && (
-          <button
-            data-nudge="atrium_help_button"
-            onClick={() => {
-              if (isSettingsRoute) {
-                useSettingsTourStore.getState().setOpen(true);
-                return;
-              }
-              if (activeTab === "notifications") {
-                window.dispatchEvent(new Event("mp:open-activity-tutorial"));
-                return;
-              }
-              if (currentMode === "3d") {
-                window.dispatchEvent(new Event("mp:open-palace-tutorial"));
-                return;
-              }
-              // reset() sets _forceCurrentPage + increments _resetCount,
-              // which triggers NudgeProvider's useEffect → initPage()
-              useNudgeStore.getState().reset();
-            }}
-            aria-label={t("helpTutorial")}
-            style={{
-              width: "2.25rem",
-              height: "2.25rem",
-              borderRadius: "50%",
-              border: `0.0625rem solid ${T.color.cream}`,
-              background: "transparent",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              transition: `all 0.25s ${EASE}`,
-              marginRight: "0.375rem",
-              flexShrink: 0,
-              fontFamily: T.font.display,
-              fontSize: "0.8125rem",
-              fontWeight: 600,
-              color: T.color.muted,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = T.color.terracotta; e.currentTarget.style.color = T.color.terracotta; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = T.color.cream; e.currentTarget.style.color = T.color.muted; }}
-          >
-            ?
-          </button>
+          <div ref={helpMenuRef} style={{ position: "relative", flexShrink: 0, marginRight: "0.375rem" }}>
+            <button
+              data-nudge="atrium_help_button"
+              onClick={() => setHelpMenuOpen(!helpMenuOpen)}
+              aria-label={t("helpTutorial")}
+              aria-haspopup="true"
+              aria-expanded={helpMenuOpen}
+              style={{
+                width: "2.25rem",
+                height: "2.25rem",
+                borderRadius: "50%",
+                border: `0.0625rem solid ${helpMenuOpen ? T.color.sandstone : T.color.cream}`,
+                background: helpMenuOpen ? `${T.color.sandstone}30` : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                transition: `all 0.25s ${EASE}`,
+                fontFamily: T.font.display,
+                fontSize: "0.8125rem",
+                fontWeight: 600,
+                color: helpMenuOpen ? T.color.terracotta : T.color.muted,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = T.color.terracotta; e.currentTarget.style.color = T.color.terracotta; }}
+              onMouseLeave={e => { if (!helpMenuOpen) { e.currentTarget.style.borderColor = T.color.cream; e.currentTarget.style.color = T.color.muted; } }}
+            >
+              ?
+            </button>
+
+            {helpMenuOpen && (
+              <div
+                role="menu"
+                style={{
+                  position: "absolute",
+                  bottom: isMobile ? "3.25rem" : undefined,
+                  top: isMobile ? undefined : "2.75rem",
+                  right: 0,
+                  width: "12rem",
+                  background: `${T.color.linen}f8`,
+                  backdropFilter: "blur(1rem)",
+                  WebkitBackdropFilter: "blur(1rem)",
+                  borderRadius: "0.75rem",
+                  border: `1px solid ${T.color.cream}`,
+                  boxShadow: "0 8px 32px rgba(44,44,42,.15)",
+                  overflow: "hidden",
+                  zIndex: 200,
+                  animation: "fadeUp .15s ease",
+                }}
+              >
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setHelpMenuOpen(false);
+                    if (isSettingsRoute) {
+                      useSettingsTourStore.getState().setOpen(true);
+                      return;
+                    }
+                    if (activeTab === "notifications") {
+                      window.dispatchEvent(new Event("mp:open-activity-tutorial"));
+                      return;
+                    }
+                    if (currentMode === "3d") {
+                      window.dispatchEvent(new Event("mp:open-palace-tutorial"));
+                      return;
+                    }
+                    useNudgeStore.getState().reset();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.625rem",
+                    background: "none",
+                    border: "none",
+                    borderBottom: `1px solid ${T.color.cream}`,
+                    cursor: "pointer",
+                    fontFamily: T.font.body,
+                    fontSize: "0.8125rem",
+                    fontWeight: 500,
+                    color: T.color.charcoal,
+                    textAlign: "left",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${T.color.sandstone}15`; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
+                  {t("startTutorial")}
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setHelpMenuOpen(false);
+                    router.push("/help");
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem 1rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.625rem",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: T.font.body,
+                    fontSize: "0.8125rem",
+                    fontWeight: 500,
+                    color: T.color.charcoal,
+                    textAlign: "left",
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${T.color.sandstone}15`; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><circle cx="12" cy="10" r="0.5" fill={T.color.walnut} stroke="none" /><path d="M10 7.5a2 2 0 1 1 2.5 1.94V12" /></svg>
+                  {t("helpCenter")}
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {/* user avatar removed — Me button is now in the nav pill group */}

@@ -146,13 +146,13 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               border: `1px solid ${T.color.sandstone}`, cursor: view!=="exterior"?"pointer":"default", padding: 0,
             }}><span aria-hidden="true">{"\u{1F3DB}\uFE0F"}</span></button>
             {/* Current location breadcrumb */}
-            <nav aria-label={t("breadcrumb")} style={{ display: "flex", alignItems: "center", gap: "0.25rem", overflow: "hidden", minWidth: 0 }}>
+            <nav aria-label={t("breadcrumb")} style={{ display: "flex", alignItems: "center", gap: "0.375rem", overflow: "hidden", minWidth: 0 }}>
               {crumbs.map((c, i) => (
-                <span key={i} style={{ display: "flex", alignItems: "center", gap: "0.1875rem", minWidth: 0 }}>
-                  {i > 0 && <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, flexShrink: 0 }}>/</span>}
+                <span key={i} style={{ display: "flex", alignItems: "center", gap: "0.25rem", minWidth: 0 }}>
+                  {i > 0 && <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, flexShrink: 0 }}>/</span>}
                   {c.action ? (
                     <button onClick={c.action} aria-current={i === crumbs.length - 1 ? "page" : undefined} style={{
-                      fontFamily: T.font.display, fontSize: i === crumbs.length - 1 ? "0.875rem" : "0.75rem",
+                      fontFamily: T.font.display, fontSize: i === crumbs.length - 1 ? "0.9375rem" : "0.8125rem",
                       fontWeight: 500, color: i === crumbs.length - 1 ? T.color.charcoal : T.color.muted,
                       background: "none", border: "none", cursor: "pointer", padding: 0,
                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
@@ -161,7 +161,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
                     }}>{c.label}</button>
                   ) : (
                     <span aria-current={i === crumbs.length - 1 ? "page" : undefined} style={{
-                      fontFamily: T.font.display, fontSize: i === crumbs.length - 1 ? "0.875rem" : "0.75rem",
+                      fontFamily: T.font.display, fontSize: i === crumbs.length - 1 ? "0.9375rem" : "0.8125rem",
                       fontWeight: 500, color: T.color.charcoal,
                       whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
                     }}>{c.label}</span>

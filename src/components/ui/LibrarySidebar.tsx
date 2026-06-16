@@ -23,6 +23,9 @@ interface LibrarySidebarProps {
   selectedRoomName?: string;
   sharedCount?: number;
   onSharedClick?: () => void;
+  onSelectRoom?: (roomId: string) => void;
+  selectedRoom?: string | null;
+  sharedWings?: { wingName: string; rooms: { id: string; name: string; icon: string }[] }[];
 }
 
 const PLAN_LIMIT = 500;
@@ -46,6 +49,9 @@ export default function LibrarySidebar({
   selectedRoomName,
   sharedCount,
   onSharedClick,
+  onSelectRoom,
+  selectedRoom,
+  sharedWings,
 }: LibrarySidebarProps) {
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
@@ -61,6 +67,7 @@ export default function LibrarySidebar({
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [sidebarQuery, setSidebarQuery] = useState("");
   const [colorPickerWing, setColorPickerWing] = useState<string | null>(null);
+  const [sharedExpanded, setSharedExpanded] = useState(false);
   const [wingColors, setWingColors] = useState<Record<string, string>>(() => {
     if (typeof window !== "undefined") {
       try { return JSON.parse(localStorage.getItem("mp_wing_colors") || "{}"); } catch { return {}; }
@@ -324,7 +331,7 @@ export default function LibrarySidebar({
               borderRadius: "0.5rem",
               border: `0.0625rem solid ${T.color.cream}`,
               background: "rgba(255,255,255,0.5)",
-              fontFamily: T.font.body, fontSize: "0.6875rem",
+              fontFamily: T.font.body, fontSize: "0.75rem",
               color: T.color.charcoal, outline: "none",
               boxSizing: "border-box" as const,
               transition: `border-color 0.2s ${EASE_OUT_EXPO}`,
@@ -395,7 +402,7 @@ export default function LibrarySidebar({
               width: "12.5rem", padding: "0.625rem 0.75rem",
               background: T.color.charcoal, color: T.color.linen,
               borderRadius: "0.5rem",
-              fontFamily: T.font.body, fontSize: "0.6875rem", lineHeight: 1.5,
+              fontFamily: T.font.body, fontSize: "0.75rem", lineHeight: 1.5,
               fontWeight: 500, letterSpacing: "0.01em",
               boxShadow: "0 0.25rem 1rem rgba(44,44,42,0.25)",
               animation: `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both`,
@@ -504,7 +511,7 @@ export default function LibrarySidebar({
                 <span
                   style={{
                     fontFamily: T.font.body,
-                    fontSize: "0.6875rem",
+                    fontSize: "0.75rem",
                     color: T.color.muted,
                     display: "block",
                     marginTop: "0.1875rem",
@@ -650,23 +657,30 @@ export default function LibrarySidebar({
                   {t("roomsInWing", { wing: w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings) })}
                 </div>
                 {/* Room items */}
-                {getWingRooms(w.id).map((room, ri) => (
+                {getWingRooms(w.id).map((room, ri) => {
+                  const isRoomActive = selectedRoom === room.id;
+                  return (
                   <div
                     key={room.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => onSelectRoom?.(room.id)}
+                    onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectRoom?.(room.id); } }}
                     style={{
                       display: "flex", alignItems: "center", gap: "0.5rem",
                       padding: "0.375rem 0.75rem 0.375rem 2.25rem",
                       borderRadius: "0.5rem",
                       cursor: "pointer",
                       transition: `all 0.2s ${EASE_OUT_EXPO}`,
-                      background: "transparent",
+                      background: isRoomActive ? "rgba(255,255,255,0.7)" : "transparent",
+                      borderLeft: isRoomActive ? `2px solid ${w.accent}` : "2px solid transparent",
                       animation: mounted ? `lsb-wing-enter 0.3s ${EASE_OUT_EXPO} ${ri * 0.04 + 0.1}s both` : "none",
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.background = "rgba(255,255,255,0.5)";
+                      if (!isRoomActive) e.currentTarget.style.background = "rgba(255,255,255,0.5)";
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.background = "transparent";
+                      if (!isRoomActive) e.currentTarget.style.background = "transparent";
                     }}
                   >
                     <RoomIcon roomId={room.id} size={14} color={T.color.muted} />
@@ -685,7 +699,8 @@ export default function LibrarySidebar({
                       {translateRoomName(room, tWings)}
                     </span>
                   </div>
-                ))}
+                  );
+                })}
               </>
             )}
             </div>
@@ -694,16 +709,16 @@ export default function LibrarySidebar({
       </div>
 
       {/* ── Shared with me ── */}
-      {onSharedClick && (sharedCount ?? 0) > 0 && (
+      {(sharedCount ?? 0) > 0 && (
         <div style={{ padding: "0.25rem 0.5rem 0" }}>
           <button
-            onClick={onSharedClick}
+            onClick={() => setSharedExpanded(!sharedExpanded)}
             style={{
               width: "100%",
               padding: "0.5rem 1rem",
               borderRadius: "0.625rem",
-              border: `0.0625rem solid ${T.color.cream}88`,
-              background: "rgba(255,255,255,0.35)",
+              border: `0.0625rem solid ${sharedExpanded ? `${T.color.gold}44` : `${T.color.cream}88`}`,
+              background: sharedExpanded ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.35)",
               backdropFilter: "blur(0.5rem)",
               WebkitBackdropFilter: "blur(0.5rem)",
               cursor: "pointer",
@@ -715,13 +730,68 @@ export default function LibrarySidebar({
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
               gap: "0.375rem",
             }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-            {t("sharedWithMe")} ({sharedCount})
+            <span style={{ flex: 1, textAlign: "left" }}>{t("sharedWithMe")} ({sharedCount})</span>
+            <span style={{ fontSize: "0.5rem", transform: sharedExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: `transform 0.2s ${EASE_OUT_EXPO}` }}>{"\u25BC"}</span>
           </button>
+          {/* Expanded shared rooms */}
+          {sharedExpanded && sharedWings && sharedWings.length > 0 && (
+            <div style={{ padding: "0.25rem 0 0 0.5rem" }}>
+              {sharedWings.map((sw) => (
+                <div key={sw.wingName}>
+                  <div style={{
+                    padding: "0.25rem 0.75rem 0.125rem",
+                    fontFamily: T.font.body,
+                    fontSize: "0.5625rem",
+                    fontWeight: 600,
+                    color: T.color.muted,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase" as const,
+                  }}>
+                    {sw.wingName}
+                  </div>
+                  {sw.rooms.map((room) => (
+                    <div
+                      key={room.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onSharedClick?.()}
+                      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSharedClick?.(); } }}
+                      style={{
+                        display: "flex", alignItems: "center", gap: "0.5rem",
+                        padding: "0.375rem 0.75rem 0.375rem 1.5rem",
+                        borderRadius: "0.5rem",
+                        cursor: "pointer",
+                        transition: `all 0.2s ${EASE_OUT_EXPO}`,
+                        background: selectedRoom === room.id ? "rgba(255,255,255,0.7)" : "transparent",
+                        borderLeft: selectedRoom === room.id ? `2px solid ${T.color.gold}` : "2px solid transparent",
+                      }}
+                      onMouseEnter={e => { if (selectedRoom !== room.id) e.currentTarget.style.background = "rgba(255,255,255,0.5)"; }}
+                      onMouseLeave={e => { if (selectedRoom !== room.id) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <span style={{ fontSize: "0.8125rem", flexShrink: 0 }}>{room.icon || "\uD83D\uDCC1"}</span>
+                      <span style={{
+                        fontFamily: T.font.body,
+                        fontSize: "0.75rem",
+                        fontWeight: 500,
+                        color: T.color.walnut,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        flex: 1,
+                        minWidth: 0,
+                      }}>
+                        {room.name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -815,7 +885,7 @@ export default function LibrarySidebar({
         <span
           style={{
             fontFamily: T.font.body,
-            fontSize: "0.6875rem",
+            fontSize: "0.75rem",
             color: T.color.muted,
             letterSpacing: "0.01em",
           }}
@@ -825,7 +895,7 @@ export default function LibrarySidebar({
         <span
           style={{
             fontFamily: T.font.body,
-            fontSize: "0.6875rem",
+            fontSize: "0.75rem",
             color: T.color.muted,
             letterSpacing: "0.01em",
           }}

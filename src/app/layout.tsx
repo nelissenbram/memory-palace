@@ -102,33 +102,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} className={`${cormorant.variable} ${manrope.variable}`}>
       <head>
-        {/* Boot diagnostics — sends environment info to /api/diagnostics (temporary, remove after Apple approval) */}
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function(){
-            try{
-              var d={
-                ts: new Date().toISOString(),
-                ua: navigator.userAgent,
-                platform: navigator.platform,
-                webkit: !!(window.webkit&&window.webkit.messageHandlers),
-                capacitor: !!window.Capacitor,
-                capNative: !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()),
-                url: location.href,
-                online: navigator.onLine,
-                sw: !!navigator.serviceWorker,
-                screen: screen.width+"x"+screen.height,
-                dpr: window.devicePixelRatio,
-                wkBridge: typeof window.webkit!=="undefined"?Object.keys(window.webkit.messageHandlers||{}).join(","):"none",
-                cookie: navigator.cookieEnabled,
-                storage: (function(){try{localStorage.setItem("_t","1");localStorage.removeItem("_t");return true}catch(e){return false}})()
-              };
-              fetch("/api/diagnostics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}).catch(function(){});
-              window.__mpDiag=d;
-            }catch(e){
-              try{fetch("/api/diagnostics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({error:e.message,stack:e.stack})}).catch(function(){});}catch(e2){}
-            }
-          })();
-        `}} />
+        {/* Boot diagnostics removed — was sending device info without consent (Apple Guideline 5.1.2i) */}
         {/* Global reload circuit breaker — caps ALL reloads at 5 per session to prevent infinite loops */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
@@ -313,7 +287,7 @@ export default async function RootLayout({
           The Memory Palace
         </div>
         <script dangerouslySetInnerHTML={{ __html: `
-          (function(){var el=document.getElementById("mp-loading");if(!el)return;var t=setTimeout(function(){el.style.display="none"},8000);window.__mpHideLoading=function(){clearTimeout(t);if(el&&el.parentNode){el.style.opacity="0";el.style.transition="opacity 0.3s";setTimeout(function(){el.style.display="none"},300)}}; try{fetch("/api/diagnostics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({milestone:"body-script",elapsed:performance.now()})}).catch(function(){});}catch(e){}})();
+          (function(){var el=document.getElementById("mp-loading");if(!el)return;var t=setTimeout(function(){el.style.display="none"},8000);window.__mpHideLoading=function(){clearTimeout(t);if(el&&el.parentNode){el.style.opacity="0";el.style.transition="opacity 0.3s";setTimeout(function(){el.style.display="none"},300)}}})();
         `}} />
         <a href="#main-content" className="skip-to-content">
           {{ en: "Skip to content", nl: "Ga naar inhoud", de: "Zum Inhalt springen", es: "Saltar al contenido", fr: "Aller au contenu" }[locale] || "Skip to content"}
