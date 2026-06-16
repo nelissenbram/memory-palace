@@ -30,6 +30,10 @@ export interface IAPProduct {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let store: any = null;
 let initialized = false;
+let initError: string | null = null;
+
+/** Returns the last initialization error message, or null if init succeeded. */
+export function getIAPError(): string | null { return initError; }
 
 function getCdv(): any {
   if (typeof window !== "undefined" && (window as any).CdvPurchase) {
@@ -49,8 +53,10 @@ export async function initIAP(): Promise<boolean> {
   if (initialized) return true;
   if (!isIOS()) return false;
 
+  initError = null;
   store = getStore();
   if (!store) {
+    initError = "IAP store not available. Please restart the app.";
     console.warn("[IAP] CdvPurchase.store not available");
     return false;
   }
@@ -112,10 +118,16 @@ export async function initIAP(): Promise<boolean> {
     receipt.finish();
   });
 
-  await store.initialize([cdv.Platform.APPLE_APPSTORE]);
-  initialized = true;
-  console.log("[IAP] Initialized successfully");
-  return true;
+  try {
+    await store.initialize([cdv.Platform.APPLE_APPSTORE]);
+    initialized = true;
+    console.log("[IAP] Initialized successfully");
+    return true;
+  } catch (err) {
+    initError = "Could not connect to the App Store. Check your internet connection.";
+    console.error("[IAP] Initialization failed:", err);
+    return false;
+  }
 }
 
 /** Get product info (price, title, etc.) */

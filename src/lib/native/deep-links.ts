@@ -24,6 +24,10 @@ export function initDeepLinkListener() {
 
       // Handle OAuth callback
       if (parsedUrl.pathname === "/auth/callback") {
+        // Close the in-app browser (SFSafariViewController) if still open
+        import("@capacitor/browser").then(({ Browser }) => {
+          Browser.close().catch(() => {});
+        }).catch(() => {});
         // Supabase appends tokens as hash fragments or query params
         // Navigate to the callback URL so the existing auth handler picks it up
         const params = parsedUrl.hash || parsedUrl.search;

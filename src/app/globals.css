@@ -265,6 +265,45 @@ canvas {
   }
 }
 
+/* ── Tablet (iPad) touch optimizations ──
+   Apple Guideline 4: ensure content is easy to read and interact with on iPad.
+   Targets touch devices between 768-1366px (iPad mini through iPad Pro). */
+@media (pointer: coarse) and (min-width: 768px) and (max-width: 1366px) {
+  /* Slightly increase base font size for readability on tablet */
+  html {
+    font-size: 17px;
+  }
+
+  /* Larger touch targets — 48px minimum on tablets */
+  button, a, [role="button"], [role="tab"], [role="menuitem"] {
+    min-height: 3rem;
+    min-width: 3rem;
+  }
+
+  /* More generous input sizing */
+  input, select, textarea {
+    min-height: 3rem;
+    font-size: 1rem !important;
+  }
+
+  /* Increase spacing in grid/flex layouts to reduce crowding */
+  [style*="gap"] {
+    /* Can't override inline styles, but this helps Tailwind-based layouts */
+  }
+
+  /* Ensure form labels are readable */
+  label {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+
+  /* Wider scrollbars for touch precision */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+}
+
 /* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

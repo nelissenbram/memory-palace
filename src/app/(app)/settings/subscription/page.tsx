@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
 import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
-import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases } from "@/lib/native/iap";
+import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, getIAPError } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
@@ -159,7 +159,13 @@ export default function SubscriptionPage() {
   // Initialize Apple IAP on iOS
   useEffect(() => {
     if (isApple) {
-      initIAP().then((ok) => setIapReady(ok));
+      initIAP().then((ok) => {
+        setIapReady(ok);
+        if (!ok) {
+          const err = getIAPError();
+          if (err) showToast(err, "error");
+        }
+      });
     }
   }, [isApple]);
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { defaultLocale, locales, type Locale } from "@/i18n/config";
+import { isNative } from "@/lib/native/platform";
 import enMessages from "@/messages/en.json";
 
 type Messages = typeof enMessages;
@@ -20,21 +21,29 @@ async function loadMessages(locale: Locale): Promise<Messages> {
   if (cached) return cached;
 
   let messages: Messages;
-  switch (locale) {
-    case "nl":
-      messages = (await import("@/messages/nl.json")).default as Messages;
-      break;
-    case "de":
-      messages = (await import("@/messages/de.json")).default as Messages;
-      break;
-    case "es":
-      messages = (await import("@/messages/es.json")).default as Messages;
-      break;
-    case "fr":
-      messages = (await import("@/messages/fr.json")).default as Messages;
-      break;
-    default:
-      messages = enMessages;
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("locale load timeout")), 8000)
+    );
+    const load = async (): Promise<Messages> => {
+      switch (locale) {
+        case "nl":
+          return (await import("@/messages/nl.json")).default as Messages;
+        case "de":
+          return (await import("@/messages/de.json")).default as Messages;
+        case "es":
+          return (await import("@/messages/es.json")).default as Messages;
+        case "fr":
+          return (await import("@/messages/fr.json")).default as Messages;
+        default:
+          return enMessages;
+      }
+    };
+    messages = await Promise.race([load(), timeout]);
+  } catch {
+    // Fallback to English if locale fails to load
+    console.warn(`Failed to load ${locale} messages, falling back to English`);
+    return enMessages;
   }
   messageCache.set(locale, messages);
   return messages;
@@ -114,10 +123,12 @@ export function useTranslation<S extends Section>(section: S) {
 
   const setLocale = useCallback((newLocale: Locale) => {
     localStorage.setItem("mp_locale", newLocale);
-    // Only set cookie if user accepted cookie consent (preference cookie)
-    const consent = localStorage.getItem("mp_cookie_consent");
-    if (consent !== "rejected") {
-      document.cookie = `mp_locale=${newLocale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+    // Skip cookies on native iOS/Android (Apple Guideline 5.1.2i)
+    if (!isNative()) {
+      const consent = localStorage.getItem("mp_cookie_consent");
+      if (consent !== "rejected") {
+        document.cookie = `mp_locale=${newLocale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+      }
     }
     // Sync the lang attribute on <html> for accessibility
     document.documentElement.lang = newLocale;
@@ -129,9 +140,11 @@ export function useTranslation<S extends Section>(section: S) {
   /** Change locale without reload — for onboarding flow where reload would destroy state */
   const setLocaleNoReload = useCallback((newLocale: Locale) => {
     localStorage.setItem("mp_locale", newLocale);
-    const consent = localStorage.getItem("mp_cookie_consent");
-    if (consent !== "rejected") {
-      document.cookie = `mp_locale=${newLocale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+    if (!isNative()) {
+      const consent = localStorage.getItem("mp_cookie_consent");
+      if (consent !== "rejected") {
+        document.cookie = `mp_locale=${newLocale};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`;
+      }
     }
     document.documentElement.lang = newLocale;
     setLocaleState(newLocale);

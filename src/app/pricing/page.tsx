@@ -8,7 +8,7 @@ import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
-import { initIAP, getIAPProductId, getProduct, purchase } from "@/lib/native/iap";
+import { initIAP, getIAPProductId, getProduct, purchase, getIAPError } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -25,6 +25,7 @@ export default function PricingPage() {
   const [loading, setLoading] = useState<PlanId | null>(null);
   const [toast, setToast] = useState<ToastData | null>(null);
   const [iapReady, setIapReady] = useState(false);
+  const [iapError, setIapError] = useState<string | null>(null);
   const isApple = isIOS();
   const router = useRouter();
   const { t, locale, setLocale } = useTranslation("pricing");
@@ -48,7 +49,10 @@ export default function PricingPage() {
   // Initialize IAP on iOS
   useEffect(() => {
     if (isApple) {
-      initIAP().then((ok) => setIapReady(ok));
+      initIAP().then((ok) => {
+        setIapReady(ok);
+        if (!ok) setIapError(getIAPError());
+      });
     }
   }, [isApple]);
 
@@ -59,6 +63,10 @@ export default function PricingPage() {
     }
 
     // Use IAP on iOS
+    if (isApple && !iapReady) {
+      setToast({ message: iapError || "Subscriptions are loading. Please try again in a moment.", type: "error" });
+      return;
+    }
     if (isApple && iapReady) {
       setLoading(planId);
       try {
@@ -439,6 +447,36 @@ export default function PricingPage() {
           </div>
         ))}
       </div>
+
+      {/* IAP error banner for iOS */}
+      {isApple && iapError && (
+        <div style={{
+          maxWidth: 600, margin: "1.5rem auto 0", padding: "1rem 1.25rem",
+          background: `${C.terracotta}10`, border: `1px solid ${C.terracotta}30`,
+          borderRadius: 12, textAlign: "center",
+        }}>
+          <p style={{ fontSize: 14, color: C.charcoal, margin: 0, fontFamily: F.body }}>
+            {iapError}
+          </p>
+          <button
+            onClick={() => {
+              setIapError(null);
+              initIAP().then((ok) => {
+                setIapReady(ok);
+                if (!ok) setIapError(getIAPError());
+              });
+            }}
+            style={{
+              marginTop: 8, padding: "0.5rem 1.25rem", borderRadius: 8,
+              border: `1px solid ${C.terracotta}`, background: "transparent",
+              color: C.terracotta, fontFamily: F.body, fontSize: 13,
+              fontWeight: 600, cursor: "pointer",
+            }}
+          >
+            {tc("retry") !== "retry" ? tc("retry") : "Try Again"}
+          </button>
+        </div>
+      )}
 
       {/* Plan Cards */}
       <section
