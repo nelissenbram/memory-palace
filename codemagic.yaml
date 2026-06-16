@@ -100,6 +100,9 @@ workflows:
             <key>com.apple.developer.associated-domains</key>
             <array>
               <string>applinks:thememorypalace.ai</string>
+              <string>applinks:www.thememorypalace.ai</string>
+              <string>webcredentials:thememorypalace.ai</string>
+              <string>webcredentials:www.thememorypalace.ai</string>
             </array>
           </dict>
           </plist>

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og", "/api/diagnostics"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og", "/api/diagnostics"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -16,12 +16,14 @@ export async function middleware(request: NextRequest) {
   // Fast-path: skip auth entirely for public/static routes that never need session
   if (
     path === "/" ||
+    path.startsWith("/.well-known/") ||
     path.startsWith("/video/") ||
     path.startsWith("/api/cron/") ||
     path.startsWith("/api/webhooks/") ||
     path.startsWith("/api/stripe/webhook") ||
     // Note: /api/admin/ is NOT fast-pathed — it needs session refresh for admin auth fallback
     path.startsWith("/api/email/") ||
+    path.startsWith("/api/legacy/") ||
     path.startsWith("/api/notifications/send") ||
     path.startsWith("/api/diagnostics")
   ) {
