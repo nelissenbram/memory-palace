@@ -2,7 +2,7 @@
 
 import { useState, lazy, Suspense, memo } from "react";
 import { T } from "@/lib/theme";
-import { isNative } from "@/lib/native/platform";
+import { isIOS } from "@/lib/native/platform";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
@@ -82,7 +82,7 @@ function SettingsInline() {
   const { t: tc } = useTranslation("common");
   const [tourOpen, setTourOpen] = useSettingsTutorial();
 
-  const filteredItems = NAV_ITEMS.filter((item) => !(item.hideInNative && isNative()));
+  const filteredItems = NAV_ITEMS.filter((item) => !(item.hideInNative && isIOS()));
   const ActivePage = PAGE_MAP[activeTab];
 
   return (

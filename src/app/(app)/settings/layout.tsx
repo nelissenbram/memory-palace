@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
-import { isNative } from "@/lib/native/platform";
+import { isIOS } from "@/lib/native/platform";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
@@ -127,7 +127,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const { t: tc } = useTranslation("common");
 
   const settingsRouter = useRouter();
-  const filteredItems = NAV_ITEMS.filter((item) => !("hideInNative" in item && item.hideInNative && isNative()));
+  const filteredItems = NAV_ITEMS.filter((item) => !("hideInNative" in item && item.hideInNative && isIOS()));
   const navMode = usePalaceStore((s) => s.navMode);
   const setNavMode = usePalaceStore((s) => s.setNavMode);
   const [tourOpen, setTourOpen] = useSettingsTutorial();
