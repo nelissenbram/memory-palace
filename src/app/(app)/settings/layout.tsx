@@ -140,7 +140,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       inset: 0,
       overflowY: "auto",
       WebkitOverflowScrolling: "touch",
-      paddingTop: isMobile ? "env(safe-area-inset-top, 0px)" : "3.5rem",
+      paddingTop: isMobile ? 0 : "3.5rem",
       paddingBottom: isMobile ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
       background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
       zIndex: 1,
@@ -202,13 +202,14 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           {/* Horizontal scrollable tab bar */}
           <nav aria-label={tc("settingsNavigation")} style={{
             position: "sticky",
-            top: "env(safe-area-inset-top, 0px)",
+            top: 0,
             zIndex: 10,
             overflowX: "auto",
             whiteSpace: "nowrap",
             borderBottom: `1px solid ${T.color.cream}`,
             background: T.color.white,
             padding: "0.25rem 0.5rem",
+            paddingTop: "calc(0.25rem + env(safe-area-inset-top, 0px))",
             WebkitOverflowScrolling: "touch",
           }}>
             {filteredItems.map((item) => {
