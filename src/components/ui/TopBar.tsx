@@ -133,9 +133,10 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
           }
         `}</style>
         <div data-topbar style={{
-          position: "absolute", top: 0, left: 0, right: 0, height: "3rem",
+          position: "absolute", top: 0, left: 0, right: 0,
+          height: "calc(3rem + env(safe-area-inset-top, 0px))",
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 0.75rem", zIndex: 40,
+          padding: "0 0.75rem", paddingTop: "env(safe-area-inset-top, 0px)", zIndex: 40,
           background: "linear-gradient(180deg,rgba(221,213,200,.95),rgba(221,213,200,0))",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", minWidth: 0, flex: 1 }}>
