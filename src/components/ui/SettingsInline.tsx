@@ -107,6 +107,7 @@ function SettingsInline() {
             borderBottom: `1px solid ${T.color.cream}`,
             background: T.color.white,
             padding: "0.25rem 0.5rem",
+            paddingTop: "calc(0.25rem + env(safe-area-inset-top, 0px))",
             WebkitOverflowScrolling: "touch",
             scrollbarWidth: "none",
             msOverflowStyle: "none",
