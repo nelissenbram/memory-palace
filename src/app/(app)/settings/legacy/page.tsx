@@ -1091,7 +1091,11 @@ function MessagesSection({
         showToast(result.error, "error");
       } else if (result.message) {
         setMessages((prev) => prev.map((m) => (m.id === editingId ? result.message! : m)));
-        showToast(t("messageUpdated"), "success");
+        if (result.delivery) {
+          showToast(result.delivery.sent ? t("messageDelivered") : t("messageDeliveryFailed"), result.delivery.sent ? "success" : "error");
+        } else {
+          showToast(t("messageUpdated"), "success");
+        }
         resetForm();
       }
     } else {
@@ -1106,7 +1110,11 @@ function MessagesSection({
         showToast(result.error, "error");
       } else if (result.message) {
         setMessages((prev) => [...prev, result.message!]);
-        showToast(t("messageSaved"), "success");
+        if (result.delivery) {
+          showToast(result.delivery.sent ? t("messageDelivered") : t("messageDeliveryFailed"), result.delivery.sent ? "success" : "error");
+        } else {
+          showToast(t("messageSaved"), "success");
+        }
         resetForm();
       }
     }

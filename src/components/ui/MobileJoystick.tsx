@@ -26,13 +26,17 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
   const KNOB_R = 20;  // knob radius
   const DEAD_ZONE = 0.15;
 
-  // Dispatch synthetic keyboard events to drive the 3D scene
+  // Dispatch synthetic keyboard events to drive the 3D scene.
+  // When pulled far (>0.7), also press shift for fast walk.
   const updateKeys = useCallback((nx: number, ny: number) => {
     const newKeys = new Set<string>();
     if (ny < -DEAD_ZONE) newKeys.add("w");
     if (ny > DEAD_ZONE) newKeys.add("s");
     if (nx < -DEAD_ZONE) newKeys.add("a");
     if (nx > DEAD_ZONE) newKeys.add("d");
+    // Fast mode when joystick is pulled far from center
+    const magnitude = Math.sqrt(nx * nx + ny * ny);
+    if (magnitude > 0.7) newKeys.add("shift");
 
     // Release old keys
     activeKeysRef.current.forEach(k => {

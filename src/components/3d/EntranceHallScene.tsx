@@ -281,7 +281,19 @@ function EntranceHallScene({
     const TOTAL_H = WALL_H + DOME_H;
     const OCULUS_R = 3.0;
     const NUM_COLS = 24;
-    const NUM_DOORS = NUM_HALL_DOORS;
+    // Build dynamic door list from actual wings (excluding attic)
+    const userWings = WINGS.filter(w => w.id !== "attic");
+    const doorDefs = userWings.map(w => ({ id: w.id, locked: false }));
+    // Add locked slots for shared wings (up to 2)
+    const maxSharedSlots = Math.max(0, 2 - Math.max(0, doorDefs.length - 5));
+    for (let s = 0; s < maxSharedSlots; s++) doorDefs.push({ id: `locked${s + 1}`, locked: true });
+    const NUM_DOORS = doorDefs.length;
+    // Compute door angles dynamically
+    const doorAngles = doorDefs.map((_, i) => {
+      let a = (i / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
+      while (a < 0) a += Math.PI * 2;
+      return a;
+    });
 
     // ── DOOR DIMENSIONS (MASSIVE) ──
     const DOOR_H = 7.0;
@@ -519,7 +531,7 @@ function EntranceHallScene({
     const colH = WALL_H - 0.5;
     const COL_SKIP_THRESHOLD = 0.22; // skip columns within ~12.5° of a door center
     const EXIT_PORTAL_ANGLE = Math.PI / 2;
-    const SKIP_ANGLES = [...DOOR_ANGLES, EXIT_PORTAL_ANGLE]; // skip near doors AND exit
+    const SKIP_ANGLES = [...doorAngles, EXIT_PORTAL_ANGLE]; // skip near doors AND exit
     const validColAngles: number[] = [];
     for (let i = 0; i < NUM_COLS; i++) {
       let colAngle = (i / NUM_COLS) * Math.PI * 2;
@@ -607,13 +619,13 @@ function EntranceHallScene({
 
     // Map shared wings to locked door slots
     const sharedWingsArr = sharedWings || [];
-    const lockedSlots = HALL_DOORS.map((d, idx) => ({ ...d, idx })).filter(d => d.locked);
+    const lockedSlots = doorDefs.map((d, idx) => ({ ...d, idx })).filter(d => d.locked);
     const sharedDoorMap: Record<number, SharedWingDoor> = {};
     lockedSlots.forEach((slot, si) => {
       if (si < sharedWingsArr.length) sharedDoorMap[slot.idx] = sharedWingsArr[si];
     });
 
-    HALL_DOORS.forEach((doorDef, i) => {
+    doorDefs.forEach((doorDef, i) => {
       const sharedWingForSlot = sharedDoorMap[i];
       const wingId = sharedWingForSlot ? `shared:${sharedWingForSlot.wingId}:${sharedWingForSlot.shareId}` : doorDef.id;
       const wing = WINGS.find(ww => ww.id === doorDef.id);
@@ -917,7 +929,7 @@ function EntranceHallScene({
       // ── ELEGANT WING NAME LABEL (upper portion of door/niche) ──
       const effectiveLabel = isSharedDoor
         ? (sharedWingRef?.name?.toUpperCase() || sharedWingForSlot!.wingId.toUpperCase())
-        : (wing?.nameKey ? tw(wing.nameKey).toUpperCase() : "");
+        : (wing ? (() => { if (wing.nameKey) { const tr = tw(wing.nameKey); if (tr && tr !== wing.nameKey) return tr.toUpperCase(); } return wing.name.toUpperCase(); })() : "");
       if (effectiveLabel) {
         const labelCanvas = document.createElement("canvas");
         labelCanvas.width = 1024;
@@ -1202,7 +1214,7 @@ function EntranceHallScene({
 
       // ── Coat of Arms above entrance ──
       {
-        const entranceAngle = DOOR_ANGLES[0]; // first door
+        const entranceAngle = doorAngles[0]; // first door
         const coaR = RADIUS - 0.15;
         const coaX = Math.cos(entranceAngle) * coaR;
         const coaZ = Math.sin(entranceAngle) * coaR;
@@ -1409,7 +1421,7 @@ function EntranceHallScene({
           const a2 = validColAngles[(ci + 1) % validColAngles.length];
           const aMid = (a1 + a2) / 2;
           // Skip panels that overlap with doors or exit portal
-          const tooCloseToDoor = DOOR_ANGLES.some(da => {
+          const tooCloseToDoor = doorAngles.some(da => {
             let diff = Math.abs(aMid - da); if (diff > Math.PI) diff = Math.PI * 2 - diff;
             return diff < 0.28; // ~16° clearance
           });
@@ -1468,7 +1480,7 @@ function EntranceHallScene({
           const a2 = validColAngles[(ci + 1) % validColAngles.length];
           // Skip garlands that cross door openings
           const gMid = (a1 + a2) / 2;
-          const crossesDoor = DOOR_ANGLES.some(da => {
+          const crossesDoor = doorAngles.some(da => {
             let diff = Math.abs(gMid - da); if (diff > Math.PI) diff = Math.PI * 2 - diff;
             return diff < 0.25;
           });
@@ -1574,7 +1586,7 @@ function EntranceHallScene({
         const amphoraAngles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
         amphoraAngles.forEach((aAngle) => {
           // Check not too close to a door
-          const tooClose = DOOR_ANGLES.some(da => {
+          const tooClose = doorAngles.some(da => {
             let diff = Math.abs(aAngle - da);
             if (diff > Math.PI) diff = Math.PI * 2 - diff;
             return diff < Math.PI / 6;
@@ -1955,7 +1967,7 @@ function EntranceHallScene({
       // ── Auto-walk toward target door ──
       const awTarget = autoWalkToRef.current;
       if (awTarget) {
-        const doorIdx = HALL_DOORS.findIndex(d => d.id === awTarget);
+        const doorIdx = doorDefs.findIndex(d => d.id === awTarget);
         if (doorIdx >= 0) {
           const doorAngle = (doorIdx / NUM_DOORS) * Math.PI * 2 - Math.PI / 2;
           const approachR = RADIUS - 4;
@@ -2349,7 +2361,8 @@ function EntranceHallScene({
       returnRenderer(ren);
       scene.environment=null;scene.background=null;scene.fog=null;
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wingsProp]);
 
   // Handle audio ref muting (always unmuted now — mute button removed)
   useEffect(() => {

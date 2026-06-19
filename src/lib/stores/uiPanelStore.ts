@@ -20,6 +20,7 @@ interface UIPanelState {
   showStoragePlayer: boolean;
   showWingManager: boolean;
   showImportHub: boolean;
+  showKepCapture: boolean;
 
   // Gallery initial memory — when clicking a 3D object, open gallery at that memory
   galleryInitialMemId: string | null;
@@ -49,6 +50,7 @@ interface UIPanelState {
   setShowStoragePlayer: (v: boolean) => void;
   setShowWingManager: (v: boolean) => void;
   setShowImportHub: (v: boolean) => void;
+  setShowKepCapture: (v: boolean) => void;
   setGalleryInitialMemId: (id: string | null) => void;
 
   // Convenience: close all panels
@@ -80,6 +82,7 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
   showStoragePlayer: false,
   showWingManager: false,
   showImportHub: false,
+  showKepCapture: false,
 
   // Setters
   setShowFamilyTree: (v) => set({ showFamilyTree: v }),
@@ -101,6 +104,7 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
   setShowStoragePlayer: (v) => set({ showStoragePlayer: v }),
   setShowWingManager: (v) => set({ showWingManager: v }),
   setShowImportHub: (v) => set({ showImportHub: v }),
+  setShowKepCapture: (v) => set({ showKepCapture: v }),
 
   // Close all panels at once
   closeAllPanels: () =>
@@ -126,5 +130,6 @@ export const useUIPanelStore = create<UIPanelState>((set) => ({
       showStoragePlayer: false,
       showWingManager: false,
       showImportHub: false,
+      showKepCapture: false,
     }),
 }));

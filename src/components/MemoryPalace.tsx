@@ -13,6 +13,7 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useAchievementStore } from "@/lib/stores/achievementStore";
 import { requestAppRating } from "@/lib/native/rating";
 import { useTrackStore } from "@/lib/stores/trackStore";
+import { getKepSocialStats, type KepSocialStats } from "@/lib/social/stats-actions";
 import { useNavigation } from "@/lib/hooks/useNavigation";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomMemories } from "@/lib/hooks/useRoomMemories";
@@ -25,6 +26,7 @@ const UploadPanel = lazy(() => import("@/components/ui/UploadPanel"));
 const SharingPanel = lazy(() => import("@/components/ui/SharingPanel"));
 const MemoryDetail = lazy(() => import("@/components/ui/MemoryDetail"));
 import NavigationBar from "@/components/ui/NavigationBar";
+import StorageBanner from "@/components/ui/StorageBanner";
 import NotificationsPage from "@/components/ui/NotificationsPage";
 import SettingsInline from "@/components/ui/SettingsInline";
 const RoomManagerPanel = lazy(() => import("@/components/ui/RoomManagerPanel"));
@@ -32,6 +34,7 @@ const WingManagerPanel = lazy(() => import("@/components/ui/WingManagerPanel"));
 const AchievementsPanel = lazy(() => import("@/components/ui/AchievementsPanel"));
 import { AchievementIcon } from "@/components/ui/AtriumWidgets";
 import TracksPanel from "@/components/ui/TracksPanel";
+import KepCapturePanel from "@/components/ui/KepCapturePanel";
 import TrackDetailPanel from "@/components/ui/TrackDetailPanel";
 import LegacyPanel from "@/components/ui/LegacyPanel";
 import PointsDisplay from "@/components/ui/PointsDisplay";
@@ -141,6 +144,8 @@ export default function MemoryPalace(){
   const loadProfile = useUserStore((s) => s.loadProfile);
   const finishOnboarding = useUserStore((s) => s.finishOnboarding);
   const setStyleEra = useUserStore((s) => s.setStyleEra);
+  const storageMb = useUserStore((s) => s.storageMb);
+  const storageLimitMb = useUserStore((s) => s.storageLimitMb);
 
   const navMode = usePalaceStore((s) => s.navMode);
   const view = usePalaceStore((s) => s.view);
@@ -235,6 +240,8 @@ export default function MemoryPalace(){
   const setShowSharingSettings = useUIPanelStore((s) => s.setShowSharingSettings);
   const showCorridorGallery = useUIPanelStore((s) => s.showCorridorGallery);
   const setShowCorridorGallery = useUIPanelStore((s) => s.setShowCorridorGallery);
+  const showKepCapture = useUIPanelStore((s) => s.showKepCapture);
+  const setShowKepCapture = useUIPanelStore((s) => s.setShowKepCapture);
   const showEraPicker = useUIPanelStore((s) => s.showEraPicker);
   const setShowEraPicker = useUIPanelStore((s) => s.setShowEraPicker);
   const showUpgradePrompt = useUIPanelStore((s) => s.showUpgradePrompt);
@@ -264,6 +271,12 @@ export default function MemoryPalace(){
     }
     return false;
   });
+  // Listen for bell dropdown "See all activity" event
+  useEffect(() => {
+    const handler = () => { setShowNotificationsPage(true); setShowSettings(false); };
+    window.addEventListener("mp:open-notifications-page", handler);
+    return () => window.removeEventListener("mp:open-notifications-page", handler);
+  }, []);
   const [showSettings, setShowSettings] = useState(false);
   const walkthroughActive = useWalkthroughStore((s) => s.isActive);
   const showDiscoveryMenu = useWalkthroughStore((s) => s.showDiscoveryMenu);
@@ -447,7 +460,7 @@ export default function MemoryPalace(){
         (prevView === "room" && view === "entrance");
       if (needsLoading) {
         setSceneLoading(true);
-        const t = setTimeout(() => setSceneLoading(false), 1200);
+        const t = setTimeout(() => setSceneLoading(false), 2000);
         return () => clearTimeout(t);
       }
     }
@@ -483,36 +496,36 @@ export default function MemoryPalace(){
   const setCorridorTourOpen = useCorridorTourStore((s) => s.setOpen);
   const roomTourOpen = useRoomTourStore((s) => s.open);
   const setRoomTourOpen = useRoomTourStore((s) => s.setOpen);
-  // Consolidate tour flag reads into a single localStorage pass at mount
-  const tourFlags = useRef<Record<string, boolean>>({});
-  useEffect(() => {
-    try {
-      for (const key of ["mp_corridor_tour_seen_v1", "mp_entrance_tour_seen_v1", "mp_palace_tour_seen_v1", "mp_room_tour_seen_v1"]) {
-        tourFlags.current[key] = !!window.localStorage.getItem(key);
-      }
-    } catch {}
-  }, []);
+  // Track which tour auto-opens have already fired this session
+  const tourFired = useRef<Record<string, boolean>>({});
 
   // Auto-open room tutorial on first room visit
   useEffect(() => {
     if (view !== "room") return;
+    const key = "mp_room_tour_seen_v1";
+    if (tourFired.current[key]) return;
     try {
-      const key = "mp_room_tour_seen_v1";
-      if (typeof window !== "undefined" && !tourFlags.current[key]) {
-        setTimeout(() => setRoomTourOpen(true), 800);
+      if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
+        tourFired.current[key] = true;
         window.localStorage.setItem(key, "1");
-        tourFlags.current[key] = true;
+        setTimeout(() => setRoomTourOpen(true), 800);
+      } else {
+        tourFired.current[key] = true;
       }
     } catch {}
   }, [view, setRoomTourOpen]);
 
   useEffect(() => {
     if (navMode !== "3d" || view !== "corridor") return;
+    const key = "mp_corridor_tour_seen_v1";
+    if (tourFired.current[key]) return;
     try {
-      if (!tourFlags.current["mp_corridor_tour_seen_v1"]) {
+      if (!window.localStorage.getItem(key)) {
+        tourFired.current[key] = true;
+        window.localStorage.setItem(key, "1");
         setCorridorTourOpen(true);
-        window.localStorage.setItem("mp_corridor_tour_seen_v1", "1");
-        tourFlags.current["mp_corridor_tour_seen_v1"] = true;
+      } else {
+        tourFired.current[key] = true;
       }
     } catch {}
   }, [navMode, view, setCorridorTourOpen]);
@@ -525,11 +538,15 @@ export default function MemoryPalace(){
 
   useEffect(() => {
     if (navMode !== "3d" || view !== "entrance") return;
+    const key = "mp_entrance_tour_seen_v1";
+    if (tourFired.current[key]) return;
     try {
-      if (!tourFlags.current["mp_entrance_tour_seen_v1"]) {
-        setEntranceTourOpen(true);
-        window.localStorage.setItem("mp_entrance_tour_seen_v1", "1");
-        tourFlags.current["mp_entrance_tour_seen_v1"] = true;
+      if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
+        tourFired.current[key] = true;
+        window.localStorage.setItem(key, "1");
+        setTimeout(() => setEntranceTourOpen(true), 800);
+      } else {
+        tourFired.current[key] = true;
       }
     } catch {}
   }, [navMode, view, setEntranceTourOpen]);
@@ -549,11 +566,15 @@ export default function MemoryPalace(){
   // Auto-open the tour on first visit to the palace exterior
   useEffect(() => {
     if (navMode !== "3d" || view !== "exterior") return;
+    const key = "mp_palace_tour_seen_v1";
+    if (tourFired.current[key]) return;
     try {
-      if (!tourFlags.current["mp_palace_tour_seen_v1"]) {
-        setPalaceTourOpen(true);
-        window.localStorage.setItem("mp_palace_tour_seen_v1", "1");
-        tourFlags.current["mp_palace_tour_seen_v1"] = true;
+      if (typeof window !== "undefined" && !window.localStorage.getItem(key)) {
+        tourFired.current[key] = true;
+        window.localStorage.setItem(key, "1");
+        setTimeout(() => setPalaceTourOpen(true), 800);
+      } else {
+        tourFired.current[key] = true;
       }
     } catch {}
   }, [navMode, view, setPalaceTourOpen]);
@@ -644,6 +665,10 @@ export default function MemoryPalace(){
     };
   }, []);
 
+  // ── Kep/Social stats (shared by achievements + tracks) ──
+  const [kepSocialStats, setKepSocialStats] = useState<KepSocialStats | null>(null);
+  useEffect(() => { getKepSocialStats().then(setKepSocialStats).catch(() => {}); }, []);
+
   // ── Achievement tracking ──
   const userMems = useMemoryStore((s) => s.userMems);
   const roomSharingData = useMemoryStore((s) => s.roomSharing);
@@ -651,10 +676,14 @@ export default function MemoryPalace(){
 
   useEffect(() => {
     const t = setTimeout(() => {
-      checkAchievements(userMems, customRooms, roomLayouts, roomSharingData);
+      checkAchievements(
+        userMems, customRooms, roomLayouts, roomSharingData,
+        kepSocialStats ? { captures: kepSocialStats.kepCaptureCount, audioCaptures: kepSocialStats.kepAudioCaptures } : undefined,
+        kepSocialStats ? { published: kepSocialStats.hasPublishedPalace, followers: kepSocialStats.followerCount, following: kepSocialStats.followingCount, comments: kepSocialStats.commentsLeft, visits: kepSocialStats.palacesVisited } : undefined,
+      );
     }, 300);
     return () => clearTimeout(t);
-  }, [userMems, customRooms, roomLayouts, roomSharingData, checkAchievements]);
+  }, [userMems, customRooms, roomLayouts, roomSharingData, kepSocialStats, checkAchievements]);
 
   // ── In-app rating prompt (after 3rd achievement or 25th memory) ──
   const earnedAchCount = useAchievementStore((s) => s.earnedIds.length);
@@ -731,8 +760,10 @@ export default function MemoryPalace(){
       window.history.replaceState({}, "", window.location.pathname);
       setNavMode(modeParam);
     }
-    // Clean up ?notifications=1 param (read synchronously in useState initializer)
+    // Handle ?notifications=1 param (also triggers on navigation from other pages)
     if (params.get("notifications") === "1") {
+      setShowNotificationsPage(true);
+      setShowSettings(false);
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -771,6 +802,7 @@ export default function MemoryPalace(){
   useEffect(() => { loadTrackProgress(); }, [loadTrackProgress]);
 
   useEffect(() => {
+    const ks = kepSocialStats;
     const t = setTimeout(() => {
       runProgressCheck({
         userMems, customRooms, roomLayouts, roomSharing: roomSharingData,
@@ -779,10 +811,18 @@ export default function MemoryPalace(){
         legacyWingAccessConfigured: false,
         legacyReviewed,
         hasUsedMassImport,
+        kepCaptureCount: ks?.kepCaptureCount ?? 0,
+        kepAudioCaptures: ks?.kepAudioCaptures ?? 0,
+        kepHasSetRoom: ks?.kepHasSetRoom ?? false,
+        hasPublishedPalace: ks?.hasPublishedPalace ?? false,
+        followingCount: ks?.followingCount ?? 0,
+        followerCount: ks?.followerCount ?? 0,
+        commentsLeft: ks?.commentsLeft ?? 0,
+        palacesVisited: ks?.palacesVisited ?? 0,
       });
     }, 500);
     return () => clearTimeout(t);
-  }, [userMems, customRooms, roomLayouts, roomSharingData, visitedWings, customWings, legacyReviewed, hasUsedMassImport, runProgressCheck]);
+  }, [userMems, customRooms, roomLayouts, roomSharingData, visitedWings, customWings, legacyReviewed, hasUsedMassImport, kepSocialStats, runProgressCheck]);
 
   useEffect(() => {
     if (!trackToast) return;
@@ -923,7 +963,8 @@ export default function MemoryPalace(){
     {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
     {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)} highlightId={achHighlightId}/>}
     {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"ro"}1`),600);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
+    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"ro"}1`),600);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
+    {showKepCapture&&<KepCapturePanel onClose={()=>setShowKepCapture(false)}/>}
     {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
     {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
     {showInterview&&<Suspense fallback={lazyFallback}><InterviewPanel onClose={()=>{setShowInterviewPanel(false);markChecklistItem("complete_interview");}} onCreateMemory={(mem, wingId)=>{
@@ -982,7 +1023,7 @@ export default function MemoryPalace(){
         {/* ExteriorScene mounted persistently via body-level portal (see warmPalaceScene) */}
         {warmPalaceScene}
         {view==="entrance"&&<Suspense fallback={null}><EntranceHallScene key={dlKey} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>}
-        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
+        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
         {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} onMemoryUpdate={handleUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/></Suspense>}
       </div>
 
@@ -993,9 +1034,16 @@ export default function MemoryPalace(){
       {view==="room"&&<RoomTutorial open={roomTourOpen} onClose={()=>setRoomTourOpen(false)} />}
 
       {/* Scene loading overlay — fades out after 3D canvas initializes */}
-      {sceneLoading&&<PalaceLoadingScreen overlay fadeDelay={sceneLoadFromLibraryRef.current ? 1 : 0} />}
+      {(sceneLoading||portalAnim)&&<PalaceLoadingScreen overlay fadeDelay={sceneLoading ? (sceneLoadFromLibraryRef.current ? 1.2 : 0.8) : 0.2} />}
 
       {/* TopBar hidden — replaced by PalaceSubNav */}
+
+      {/* Storage warning banner */}
+      {storageLimitMb > 0 && (storageMb / storageLimitMb) >= 0.5 && !selMem && !showUpload && !walkthroughActive && (
+        <div style={{ position: "absolute", bottom: isMobile ? "5.5rem" : "5rem", left: "1rem", right: "1rem", zIndex: 90, maxWidth: "28rem", margin: "0 auto" }}>
+          <StorageBanner storageMb={storageMb} limitMb={storageLimitMb} onUpgrade={() => window.open("/pricing", "_blank")} />
+        </div>
+      )}
 
       {/* NavigationBar — mode switcher (atrium / library / 3D) */}
       <NavigationBar
@@ -1284,14 +1332,14 @@ export default function MemoryPalace(){
         </div>
       </div>}
 
-      {/* Upgrade prompt overlay — triggered by clicking locked inlays */}
+      {/* Storage full prompt overlay — triggered when storage quota is exceeded */}
       {showUpgradePrompt && <div aria-hidden="true" style={{position:"absolute",inset:0,zIndex:95,display:"flex",alignItems:"center",justifyContent:"center",background:"rgba(44,44,42,.5)",backdropFilter:"blur(0.25rem)"}}
         onClick={()=>setShowUpgradePrompt(false)}>
         <TuscanCard variant="elevated" padding="2rem 2.25rem" style={{maxWidth:"23.75rem",textAlign:"center",borderRadius:"1.125rem"}} animate>
           <div role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{if(e.key==="Escape")setShowUpgradePrompt(false);}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:"2.5rem",marginBottom:"0.75rem"}}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" stroke={T.color.terracotta} strokeWidth="1.5"/><path d="M7 11V7a5 5 0 1 1 10 0v4" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="16.5" r="1.5" fill={T.color.terracotta}/></svg></div>
-            <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,marginBottom:"0.5rem"}}>{view==="entrance"?tPalace("lockedWing"):tPalace("lockedRoom")}</h3>
-            <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,lineHeight:1.5,marginBottom:"1.25rem"}}>{view==="entrance"?tPalace("upgradeWing"):tPalace("upgradeRoom")}</p>
+            <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,marginBottom:"0.5rem"}}>{tPalace("storageFull") || "Storage Full"}</h3>
+            <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,lineHeight:1.5,marginBottom:"1.25rem"}}>{tPalace("storageFullDesc") || "Your storage is full. Upgrade your plan for more space."}</p>
             <div style={{display:"flex",flexDirection:"column",gap:"0.5rem"}}>
               <button onClick={()=>{setShowUpgradePrompt(false);window.open("/pricing","_blank");}}
                 style={{fontFamily:T.font.body,fontSize:"0.9375rem",fontWeight:600,padding:"0.75rem 2rem",borderRadius:"0.625rem",border:"none",
@@ -1328,7 +1376,8 @@ export default function MemoryPalace(){
       {showSharingSettings&&<SharingSettingsPanel open={showSharingSettings} onClose={()=>setShowSharingSettings(false)}/>}
 
       {/* Interview panels */}
-      {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
+      {showKepCapture&&<KepCapturePanel onClose={()=>setShowKepCapture(false)}/>}
+    {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
       {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
       {showInterview&&<Suspense fallback={lazyFallback}><InterviewPanel onClose={()=>{setShowInterviewPanel(false);markChecklistItem("complete_interview");}} onCreateMemory={(mem, wingId)=>{
         // Place interview memory in the first room of the relevant wing (or attic if general)
@@ -1340,7 +1389,7 @@ export default function MemoryPalace(){
 
       {/* Track panels */}
       {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"ro"}1`),600);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;default:break;}}}/>}
+      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"ro"}1`),600);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
       {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
 
       {/* Track step completion toast */}

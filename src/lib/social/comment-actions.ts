@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getUserPlan } from "@/lib/auth/plan-limits";
 
 export interface Comment {
   id: string;
@@ -44,15 +43,6 @@ export async function addComment(input: {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "Not authenticated" };
-
-  // Subscription gate: free users cannot comment (except guestbook: palace/wing/room)
-  const guestbookTypes = ["palace", "wing", "room"];
-  if (!guestbookTypes.includes(input.targetType)) {
-    const sub = await getUserPlan(user.id);
-    if (sub.plan === "free") {
-      return { ok: false, error: "Upgrade to comment" };
-    }
-  }
 
   const body = input.body.trim().slice(0, 2000);
   if (!body) return { ok: false, error: "Comment cannot be empty" };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
@@ -9,8 +9,10 @@ import { useNotificationStore } from "@/lib/stores/notificationStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import {
   groupNotifications,
+  filterByTab,
   getNotificationAction,
   buildGroupMessage,
+  type NotificationTab,
 } from "@/lib/utils/notification-grouping";
 
 function timeAgo(dateStr: string, t: (key: string, params?: Record<string, string>) => string): string {
@@ -52,8 +54,14 @@ export default function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const count = unreadCount();
 
-  // Grouped notifications for dropdown (max 8)
-  const grouped = useMemo(() => groupNotifications(notifications).slice(0, 8), [notifications]);
+  // Mobile filter tab (local state, separate from full-page tab)
+  const [mobileTab, setMobileTab] = useState<NotificationTab>("all");
+
+  // Grouped notifications for dropdown (max 8), filtered by tab on mobile
+  const grouped = useMemo(() => {
+    const filtered = isMobile ? filterByTab(notifications, mobileTab) : notifications;
+    return groupNotifications(filtered).slice(0, 8);
+  }, [notifications, isMobile, mobileTab]);
 
   // Phase 5: Adaptive polling — 30s visible, 120s hidden, immediate on focus
   const loadRef = useRef(load);
@@ -81,6 +89,11 @@ export default function NotificationBell() {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [load]);
+
+  // Reset mobile tab when dropdown closes
+  useEffect(() => {
+    if (!open) setMobileTab("all");
+  }, [open]);
 
   // Close on outside click/touch
   useEffect(() => {
@@ -124,7 +137,7 @@ export default function NotificationBell() {
 
   /* ── Shared dropdown content (header + list + footer) ── */
   const dropdownContent = (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", maxHeight: "inherit", height: "100%" }}>
       {/* Header */}
       <div
         style={{
@@ -133,6 +146,7 @@ export default function NotificationBell() {
           justifyContent: "space-between",
           padding: "0.875rem 1rem 0.625rem",
           borderBottom: `1px solid ${T.color.cream}`,
+          flexShrink: 0,
         }}
       >
         <span
@@ -189,8 +203,43 @@ export default function NotificationBell() {
         )}
       </div>
 
+      {/* Mobile filter tabs */}
+      {isMobile && (
+        <div style={{
+          display: "flex",
+          gap: "0.375rem",
+          padding: "0.5rem 1rem",
+          borderBottom: `1px solid ${T.color.cream}`,
+          flexShrink: 0,
+          overflowX: "auto",
+        }}>
+          {(["all", "yourPalace", "following", "system"] as NotificationTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setMobileTab(tab)}
+              style={{
+                fontFamily: T.font.body,
+                fontSize: "0.6875rem",
+                fontWeight: mobileTab === tab ? 600 : 500,
+                color: mobileTab === tab ? T.color.white : T.color.walnut,
+                background: mobileTab === tab ? T.color.terracotta : `${T.color.sandstone}20`,
+                border: "none",
+                borderRadius: "1rem",
+                padding: "0.3125rem 0.625rem",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                minHeight: "1.75rem",
+                transition: "background .15s, color .15s",
+              }}
+            >
+              {t(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}` as "tabAll")}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* List */}
-      <div style={{ overflowY: "auto", maxHeight: isMobile ? "60dvh" : "21.25rem", padding: "0.25rem 0", contain: "layout" }}>
+      <div style={{ overflowY: "auto", flex: 1, minHeight: 0, padding: "0.25rem 0", contain: "layout" }}>
         {loading && notifications.length === 0 && (
           <div
             style={{
@@ -330,11 +379,16 @@ export default function NotificationBell() {
           borderTop: `1px solid ${T.color.cream}`,
           padding: "0.5rem 1rem",
           textAlign: "center",
+          flexShrink: 0,
         }}>
           <button
             onClick={() => {
               setOpen(false);
-              router.push("/palace?view=activities");
+              if (window.location.pathname.startsWith("/palace")) {
+                window.dispatchEvent(new CustomEvent("mp:open-notifications-page"));
+              } else {
+                router.push("/palace?notifications=1");
+              }
             }}
             style={{
               fontFamily: T.font.body,
@@ -359,7 +413,7 @@ export default function NotificationBell() {
           </button>
         </div>
       )}
-    </>
+    </div>
   );
 
   return (

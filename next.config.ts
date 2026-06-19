@@ -139,7 +139,7 @@ const cspDirectives = [
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`,
   `img-src 'self' data: blob: ${supabaseUrl} https://*.supabase.co https://*.r2.cloudflarestorage.com https://lh3.googleusercontent.com https://upload.wikimedia.org`,
   `font-src 'self' https://fonts.gstatic.com`,
-  `connect-src 'self' ${supabaseUrl} https://*.supabase.co https://*.r2.cloudflarestorage.com https://api.anthropic.com https://nominatim.openstreetmap.org https://upload.wikimedia.org`,
+  `connect-src 'self' ${supabaseUrl} https://*.supabase.co https://*.r2.cloudflarestorage.com https://api.anthropic.com https://nominatim.openstreetmap.org https://upload.wikimedia.org https://*.posthog.com https://*.i.posthog.com https://eu-assets.i.posthog.com`,
   `media-src 'self' blob: ${supabaseUrl} https://*.supabase.co https://*.r2.cloudflarestorage.com`,
   "object-src 'none'",
   "frame-ancestors 'none'",

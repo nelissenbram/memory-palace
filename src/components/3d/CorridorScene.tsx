@@ -49,7 +49,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const scene=new THREE.Scene();scene.background=new THREE.Color(wing.wall);
     // Add atmospheric fog for depth
     scene.fog=new THREE.FogExp2(wing.wall,.008*dlPreset.fogDensity);
-    const camera=new THREE.PerspectiveCamera(55,w/h,0.1,80);
+    const camera=new THREE.PerspectiveCamera(55,w/h,0.3,80);
     const Q=getQuality();
     const ren=borrowRenderer(w,h);
     ren.shadowMap.enabled=Q.shadowsEnabled;if(Q.shadowsEnabled){ren.shadowMap.type=Q.shadowMapSize>=1024?THREE.PCFShadowMap:THREE.BasicShadowMap;ren.shadowMap.autoUpdate=false;ren.shadowMap.needsUpdate=true;}ren.toneMapping=THREE.ACESFilmicToneMapping;ren.toneMappingExposure=1.8*dlPreset.exposure;
@@ -151,33 +151,36 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
     // ── FLOOR (varies by wing) ──
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(cW,cL),MS.floor);fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;scene.add(fl);
+    MS.floor.polygonOffset=true;MS.floor.polygonOffsetFactor=4;MS.floor.polygonOffsetUnits=4;
+    MS.wall.polygonOffset=true;MS.wall.polygonOffsetFactor=4;MS.wall.polygonOffsetUnits=4;
     if(C.floorPat==="herringbone"){
       for(let fz=-cL/2+1;fz<cL/2;fz+=1.5)for(let fx=-cW/2+1;fx<cW/2;fx+=1.5)
-        scene.add(mk(new THREE.BoxGeometry(.6,.003,.3),MS.floorL,fx+((Math.floor(fz)%2)?.4:0),.002,fz));
+        scene.add(mk(new THREE.BoxGeometry(.6,.003,.3),MS.floorL,fx+((Math.floor(fz)%2)?.4:0),.01,fz));
     }else if(C.floorPat==="marble_strip"){
-      scene.add(mk(new THREE.BoxGeometry(cW-2,.004,cL-3),MS.floorL,0,.003,0));
-      for(let s=-1;s<=1;s+=2)scene.add(mk(new THREE.BoxGeometry(.08,.005,cL-4),MS.gold,s*(cW/2-1.2),.004,0));
+      scene.add(mk(new THREE.BoxGeometry(cW-2,.004,cL-3),MS.floorL,0,.01,0));
+      for(let s=-1;s<=1;s+=2)scene.add(mk(new THREE.BoxGeometry(.08,.005,cL-4),MS.gold,s*(cW/2-1.2),.015,0));
     }else if(C.floorPat==="checkerboard"){
       for(let fz=-cL/2+1;fz<cL/2;fz+=1.2)for(let fx=-cW/2+1;fx<cW/2;fx+=1.2)
-        if((Math.floor(fx+50)+Math.floor(fz+50))%2===0)scene.add(mk(new THREE.BoxGeometry(1.1,.003,1.1),MS.floorL,fx,.002,fz));
+        if((Math.floor(fx+50)+Math.floor(fz+50))%2===0)scene.add(mk(new THREE.BoxGeometry(1.1,.003,1.1),MS.floorL,fx,.01,fz));
     }else if(C.floorPat==="dark_parquet"){
-      scene.add(mk(new THREE.BoxGeometry(cW-1,.004,cL-2),MS.floorD,0,.003,0));
-      scene.add(mk(new THREE.BoxGeometry(cW-2,.005,cL-3),MS.floorL,0,.004,0));
+      scene.add(mk(new THREE.BoxGeometry(cW-1,.004,cL-2),MS.floorD,0,.01,0));
+      scene.add(mk(new THREE.BoxGeometry(cW-2,.005,cL-3),MS.floorL,0,.015,0));
     }else{
       // Pre-generate a shared palette of 10 mosaic tile materials instead of one per tile
       const mosaicPalette=Array.from({length:10},(_,i)=>new THREE.MeshStandardMaterial({color:`hsl(${30+i*2},${25+i*1.5}%,${55+i*1.5}%)`,roughness:.6}));
       for(let fz=-cL/2+1;fz<cL/2;fz+=2)for(let fx=-cW/2+1;fx<cW/2;fx+=2){
-        scene.add(mk(new THREE.BoxGeometry(.8,.003,.8),mosaicPalette[Math.floor(Math.random()*mosaicPalette.length)],fx,.002,fz));}
+        scene.add(mk(new THREE.BoxGeometry(.8,.003,.8),mosaicPalette[Math.floor(Math.random()*mosaicPalette.length)],fx,.01,fz));}
     }
 
     // ═══ FLOOR GOLD TRIM STRIPS along both walls ═══
     for(let s of[-1,1]){
-      scene.add(mk(new THREE.BoxGeometry(.06,.008,cL-.5),MS.floorGoldStrip,s*(cW/2-.15),.005,0));
-      scene.add(mk(new THREE.BoxGeometry(.03,.008,cL-.5),MS.floorGoldStrip,s*(cW/2-.35),.005,0));
+      scene.add(mk(new THREE.BoxGeometry(.06,.008,cL-.5),MS.floorGoldStrip,s*(cW/2-.15),.01,0));
+      scene.add(mk(new THREE.BoxGeometry(.03,.008,cL-.5),MS.floorGoldStrip,s*(cW/2-.35),.01,0));
     }
 
     // ── CEILING (varies by wing) ──
     const ceil=new THREE.Mesh(new THREE.PlaneGeometry(cW,cL),MS.ceil);ceil.rotation.x=Math.PI/2;ceil.position.set(0,cH,0);scene.add(ceil);
+    MS.ceil.polygonOffset=true;MS.ceil.polygonOffsetFactor=4;MS.ceil.polygonOffsetUnits=4;
     if(C.ceilStyle==="coffered"){
       for(let i=0;i<Math.floor(cL/3);i++){const bz=-cL/2+1.5+i*3;scene.add(mk(new THREE.BoxGeometry(cW-.5,.18,.14),MS.trim,0,cH-.09,bz));}
       for(let s=-1;s<=1;s+=2)scene.add(mk(new THREE.BoxGeometry(.14,.18,cL-.5),MS.trim,s*(cW/2-1.5),cH-.09,0));
@@ -337,20 +340,20 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       for (const seg of wainSegments) {
         const segLen = seg.end - seg.start;
         const segCenter = (seg.start + seg.end) / 2;
-        scene.add(mk(new THREE.BoxGeometry(.04,1.4,segLen),MS.wain,s*(cW/2-.02),.7,segCenter));
-        scene.add(mk(new THREE.BoxGeometry(.05,.07,segLen),MS.gold,s*(cW/2-.025),1.43,segCenter));
-        scene.add(mk(new THREE.BoxGeometry(.06,.12,segLen),MS.dkW,s*(cW/2-.03),.06,segCenter));
+        scene.add(mk(new THREE.BoxGeometry(.04,1.4,segLen),MS.wain,s*(cW/2-.06),.7,segCenter));
+        scene.add(mk(new THREE.BoxGeometry(.05,.07,segLen),MS.gold,s*(cW/2-.06),1.43,segCenter));
+        scene.add(mk(new THREE.BoxGeometry(.06,.12,segLen),MS.dkW,s*(cW/2-.06),.06,segCenter));
       }
       // Crown molding at ceiling (continuous, doesn't clip doors)
-      scene.add(mk(new THREE.BoxGeometry(.10,.14,cL-.2),MS.gold,s*(cW/2-.05),cH-.07,0));
-      scene.add(mk(new THREE.BoxGeometry(.06,.08,cL-.2),MS.trim,s*(cW/2-.03),cH-.18,0));
+      scene.add(mk(new THREE.BoxGeometry(.10,.14,cL-.2),MS.gold,s*(cW/2-.08),cH-.07,0));
+      scene.add(mk(new THREE.BoxGeometry(.06,.08,cL-.2),MS.trim,s*(cW/2-.06),cH-.18,0));
       // Wainscoting lower panels between doors (skip zones occupied by doors)
       const pnl=Math.floor(cL/3);
       for(let p=0;p<pnl;p++){
         const pz = -cL/2 + 1.5 + p * 3;
         const blocked = occupiedZones.some(z => Math.abs(pz - z.center) < z.halfW);
         if (blocked) continue;
-        scene.add(mk(new THREE.BoxGeometry(.01,.55,1.4),MS.wainP,s*(cW/2-.01),.7,pz));
+        scene.add(mk(new THREE.BoxGeometry(.01,.55,1.4),MS.wainP,s*(cW/2-.05),.7,pz));
       }
     }
 
@@ -497,8 +500,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       }
     }
 
-    // ── RUNNER RUG (single layer to avoid z-fighting) ──
-    scene.add(mk(new THREE.BoxGeometry(2,.012,cL-5),MS.rug,0,.006,0));
+    // ── RUNNER RUG (raised above floor details to avoid z-fighting) ──
+    scene.add(mk(new THREE.BoxGeometry(2,.012,cL-5),MS.rug,0,.02,0));
 
     // ── CHANDELIERS ──
     const nCh=Math.max(2,Math.ceil(cL/14));
@@ -1511,8 +1514,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
         paintingClickMeshes.forEach(pm=>{const h=_rc.intersectObject(pm.mesh);if(h.length>0){onPaintingClick?.();}});
       }};
 
-    const onKD=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};
-    const onKU=(e: KeyboardEvent)=>{keys[e.key.toLowerCase()]=false;};
+    const _cMap:Record<string,string>={"KeyW":"w","KeyA":"a","KeyS":"s","KeyD":"d","ShiftLeft":"shift","ShiftRight":"shift","ArrowUp":"arrowup","ArrowDown":"arrowdown","ArrowLeft":"arrowleft","ArrowRight":"arrowright"};
+    const onKD=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys[k]=true;if(k.startsWith("arrow"))e.preventDefault();};
+    const onKU=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys[k]=false;};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);
     window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);window.addEventListener("resize",onRs);

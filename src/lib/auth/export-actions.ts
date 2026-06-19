@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 
 export interface UserDataExport {
   exported_at: string;
@@ -137,6 +138,24 @@ export async function exportUserData(
       }
     }
 
+    // Enrich room names — DB stores IDs like "fr3", resolve to display names
+    const enrichedRooms = rooms.map((room) => {
+      const dbName = room.name as string;
+      for (const wingRooms of Object.values(WING_ROOMS)) {
+        const match = wingRooms.find((r: { id: string; name: string }) => r.id === dbName);
+        if (match) return { ...room, name: match.name };
+      }
+      return room;
+    });
+
+    // Enrich wing names
+    const enrichedWings = wings.map((wing) => {
+      const slug = wing.slug as string;
+      const def = WINGS.find((w) => w.id === slug);
+      if (def) return { ...wing, name: def.name };
+      return wing;
+    });
+
     // Strip sensitive fields from connected accounts (tokens)
     const sanitizedConnectedAccounts = connectedAccounts.map((account) => {
       const { access_token, refresh_token, ...safe } = account;
@@ -148,8 +167,8 @@ export async function exportUserData(
     const exportData: UserDataExport = {
       exported_at: new Date().toISOString(),
       profile,
-      wings,
-      rooms,
+      wings: enrichedWings,
+      rooms: enrichedRooms,
       memories,
       room_shares: roomShares,
       public_shares: publicShares,

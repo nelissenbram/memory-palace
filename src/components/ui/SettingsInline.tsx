@@ -17,10 +17,11 @@ const SubscriptionPage = lazy(() => import("@/app/(app)/settings/subscription/pa
 const ConnectionsPage = lazy(() => import("@/app/(app)/settings/connections/page"));
 const NotificationsSettingsPage = lazy(() => import("@/app/(app)/settings/notifications/page"));
 const LegacyPage = lazy(() => import("@/app/(app)/settings/legacy/page"));
+const SharingPage = lazy(() => import("@/app/(app)/settings/sharing/page"));
 const SecurityPage = lazy(() => import("@/app/(app)/settings/security/page"));
 const CookiesPage = lazy(() => import("@/app/(app)/settings/cookies/page"));
 
-type SettingsTab = "profile" | "family" | "subscription" | "connections" | "notifications" | "legacy" | "security" | "cookies";
+type SettingsTab = "profile" | "family" | "subscription" | "connections" | "notifications" | "legacy" | "sharing" | "security" | "cookies";
 
 function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
   const s = {
@@ -36,6 +37,7 @@ function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
     case "notifications": return <svg {...s}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" /></svg>;
     case "legacy": return <svg {...s}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>;
     case "security": return <svg {...s}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>;
+    case "sharing": return <svg {...s}><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>;
     case "cookies": return <svg {...s}><circle cx="12" cy="12" r="9" /><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none" /><circle cx="14" cy="8.5" r="0.75" fill="currentColor" stroke="none" /><circle cx="10.5" cy="14.5" r="0.9" fill="currentColor" stroke="none" /><circle cx="15" cy="13.5" r="1" fill="currentColor" stroke="none" /></svg>;
     case "signOut": return <svg {...s}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>;
     default: return null;
@@ -49,6 +51,7 @@ const NAV_ITEMS: { tab: SettingsTab; labelKey: string; iconKey: string; hideInNa
   { tab: "connections", labelKey: "connections", iconKey: "connections" },
   { tab: "notifications", labelKey: "alerts", iconKey: "notifications" },
   { tab: "legacy", labelKey: "legacy", iconKey: "legacy" },
+  { tab: "sharing", labelKey: "sharingSettings", iconKey: "sharing" },
   { tab: "security", labelKey: "security", iconKey: "security" },
   { tab: "cookies", labelKey: "cookies", iconKey: "cookies" },
 ];
@@ -60,6 +63,7 @@ const PAGE_MAP: Record<SettingsTab, React.LazyExoticComponent<any>> = {
   connections: ConnectionsPage,
   notifications: NotificationsSettingsPage,
   legacy: LegacyPage,
+  sharing: SharingPage,
   security: SecurityPage,
   cookies: CookiesPage,
 };

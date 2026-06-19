@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getPublishedWings, getPublishedRooms, recordVisit } from "@/lib/social/visit-actions";
 import { getProfile } from "@/lib/social/profile-actions";
 import { getComments, getReactions } from "@/lib/social/comment-actions";
+import { WINGS } from "@/lib/constants/wings";
 import PalaceOverviewClient from "./PalaceOverviewClient";
 
 interface Props {
@@ -53,7 +54,7 @@ export default async function PalaceOverviewPage({ params }: Props) {
       wings={wingsWithRooms.map((w) => ({
         id: w.id,
         slug: w.slug,
-        name: w.custom_name || w.slug,
+        name: w.custom_name || WINGS.find(dw => dw.id === w.slug)?.name || w.slug,
         accentColor: w.accent_color,
         description: w.publish_description,
         roomCount: w.rooms.length,
@@ -70,6 +71,7 @@ export default async function PalaceOverviewPage({ params }: Props) {
       initialReactions={reactions}
       currentUserId={currentUser?.id}
       isAuthenticated={!!currentUser}
+      isFollowing={profile?.is_following ?? false}
     />
   );
 }

@@ -16,6 +16,8 @@ export interface FeatureDiscoveryProps {
   onTimeline: () => void;
   onStatistics: () => void;
   onFamilyTree: () => void;
+  onKep: () => void;
+  onExplore: () => void;
   isMobile: boolean;
 }
 
@@ -127,6 +129,40 @@ function FamilyTreeIcon() {
   );
 }
 
+function KepIcon() {
+  return (
+    <svg width="2rem" height="2rem" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      {/* Chat bubble */}
+      <path d="M6 8C6 6.34 7.34 5 9 5H23C24.66 5 26 6.34 26 8V18C26 19.66 24.66 21 23 21H14L9 25V21H9C7.34 21 6 19.66 6 18V8Z" fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" />
+      {/* Camera/photo icon inside */}
+      <rect x="12" y="10" width="8" height="6" rx="1" fill={T.color.gold} opacity="0.9" />
+      <circle cx="16" cy="13" r="1.5" fill="rgba(255,255,255,0.9)" />
+      {/* WhatsApp green accent */}
+      <circle cx="24" cy="7" r="3" fill="#25D366" />
+      <path d="M23 7L24 8L26 6" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+
+function ExploreIcon() {
+  return (
+    <svg width="2rem" height="2rem" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      {/* Compass outer circle */}
+      <circle cx="16" cy="16" r="12" stroke="rgba(255,255,255,0.7)" strokeWidth="1.5" />
+      {/* Compass diamond/needle */}
+      <path d="M16 6L18 14L16 16L14 14Z" fill={T.color.gold} />
+      <path d="M16 26L14 18L16 16L18 18Z" fill="rgba(255,255,255,0.6)" />
+      <path d="M6 16L14 14L16 16L14 18Z" fill="rgba(255,255,255,0.5)" />
+      <path d="M26 16L18 18L16 16L18 14Z" fill="rgba(255,255,255,0.5)" />
+      {/* Center dot */}
+      <circle cx="16" cy="16" r="1.5" fill={T.color.gold} />
+      {/* People accent dots */}
+      <circle cx="22" cy="8" r="1.5" fill="rgba(255,255,255,0.5)" />
+      <circle cx="9" cy="22" r="1.5" fill="rgba(255,255,255,0.5)" />
+    </svg>
+  );
+}
+
 /* ── Feature card data ── */
 
 interface FeatureCardDef {
@@ -170,6 +206,22 @@ const FEATURES: FeatureCardDef[] = [
     descKey: "familyDesc",
     gradient: `linear-gradient(135deg, ${T.color.terracotta}, #A86840, #8A5030)`,
     glowColor: "rgba(193, 127, 89, 0.35)",
+  },
+  {
+    key: "kep",
+    icon: KepIcon,
+    titleKey: "kepTitle",
+    descKey: "kepDesc",
+    gradient: `linear-gradient(135deg, #6B8E7B, #4A7A5A, #3A6A48)`,
+    glowColor: "rgba(107, 142, 123, 0.4)",
+  },
+  {
+    key: "explore",
+    icon: ExploreIcon,
+    titleKey: "exploreTitle",
+    descKey: "exploreDesc",
+    gradient: `linear-gradient(135deg, #7B6B8E, #5A4A7A, #483A6A)`,
+    glowColor: "rgba(123, 107, 142, 0.4)",
   },
 ];
 
@@ -297,11 +349,13 @@ export default function FeatureDiscovery({
   onTimeline,
   onStatistics,
   onFamilyTree,
+  onKep,
+  onExplore,
   isMobile,
 }: FeatureDiscoveryProps) {
   const { t } = useTranslation("discover");
 
-  const handlers = [onMemoryMap, onTimeline, onStatistics, onFamilyTree];
+  const handlers = [onMemoryMap, onTimeline, onStatistics, onFamilyTree, onKep, onExplore];
 
   return (
     <section aria-label={t("sectionTitle")}>
@@ -341,7 +395,7 @@ export default function FeatureDiscovery({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
+            gridTemplateColumns: "repeat(3, 1fr)",
             gap: "1rem",
           }}
         >

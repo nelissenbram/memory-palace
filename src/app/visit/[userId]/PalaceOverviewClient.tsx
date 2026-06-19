@@ -44,6 +44,7 @@ interface PalaceOverviewClientProps {
   initialReactions: ReactionSummary[];
   currentUserId?: string;
   isAuthenticated?: boolean;
+  isFollowing?: boolean;
 }
 
 /* ── SVG Illustrations ─────────────────────────────── */
@@ -189,10 +190,24 @@ export default function PalaceOverviewClient({
   initialReactions,
   currentUserId,
   isAuthenticated,
+  isFollowing: initialIsFollowing,
 }: PalaceOverviewClientProps) {
   const { t } = useTranslation("social");
   const router = useRouter();
   const isMobile = useIsMobile();
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing ?? false);
+  const [isFollowPending, startFollowTransition] = useTransition();
+
+  const showFollowButton = isAuthenticated && owner && currentUserId !== owner.id;
+
+  const handleToggleFollow = () => {
+    if (!owner) return;
+    startFollowTransition(async () => {
+      const { toggleFollow } = await import("@/lib/social/profile-actions");
+      const { following } = await toggleFollow(owner.id);
+      setIsFollowing(following);
+    });
+  };
 
   const totalRooms = wings.reduce((sum, w) => sum + w.roomCount, 0);
   const totalVisits = wings.reduce((sum, w) => sum + w.visitCount, 0);
@@ -306,7 +321,7 @@ export default function PalaceOverviewClient({
                 >
                   {!owner.avatarUrl && (owner.name?.[0]?.toUpperCase() || "?")}
                 </div>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <h1
                     style={{
                       fontFamily: T.font.display,
@@ -333,6 +348,33 @@ export default function PalaceOverviewClient({
                     </a>
                   )}
                 </div>
+                {showFollowButton && (
+                  <button
+                    onClick={handleToggleFollow}
+                    disabled={isFollowPending}
+                    aria-label={isFollowing ? t("unfollowUser") : t("followUser")}
+                    style={{
+                      fontFamily: T.font.body,
+                      fontSize: "0.8125rem",
+                      fontWeight: 600,
+                      padding: "0.5rem 1.25rem",
+                      borderRadius: "2rem",
+                      border: isFollowing
+                        ? `1px solid ${T.color.sandstone}`
+                        : "none",
+                      background: isFollowing
+                        ? "transparent"
+                        : `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                      color: isFollowing ? T.color.walnut : T.color.cream,
+                      cursor: isFollowPending ? "wait" : "pointer",
+                      opacity: isFollowPending ? 0.6 : 1,
+                      transition: "all 0.2s ease",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {isFollowing ? t("following") : t("follow")}
+                  </button>
+                )}
               </div>
             )}
 
@@ -378,7 +420,7 @@ export default function PalaceOverviewClient({
               flexWrap: "wrap",
             }}>
               <a
-                href={`/visit/${owner?.id}/${wings[0]?.slug}/walk`}
+                href={`/visit/${owner?.id}/walk`}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",

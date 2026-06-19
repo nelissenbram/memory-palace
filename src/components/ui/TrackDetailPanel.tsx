@@ -221,6 +221,9 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                        step.navigateTo === "wings" ? t("exploreWings") :
                        step.navigateTo === "corridor" ? t("goToCorridor") :
                        step.navigateTo === "interview" ? t("startInterview") :
+                       step.navigateTo === "keps" ? t("goToKep") :
+                       step.navigateTo === "explore" ? t("goToExplore") :
+                       step.navigateTo === "settings" ? t("goToSettings") :
                        t("continue")} {"\u2192"}
                     </button>
                   )}

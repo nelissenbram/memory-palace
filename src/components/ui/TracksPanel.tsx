@@ -240,8 +240,8 @@ export default function TracksPanel({ onClose }: TracksPanelProps) {
             const progress = tracks[track.id];
             const stepsCompleted = progress?.stepsCompleted.length || 0;
             const totalSteps = track.steps.length;
-            const pct = progress?.percentage || 0;
-            const isComplete = !!progress?.completedAt;
+            const pct = Math.min(100, totalSteps > 0 ? Math.round((stepsCompleted / totalSteps) * 100) : 0);
+            const isComplete = pct >= 100;
             const isRecommended = goalPriority[0] === track.id;
             const nextStep = track.steps.find((s) => !progress?.stepsCompleted.includes(s.id));
 

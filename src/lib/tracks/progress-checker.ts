@@ -26,6 +26,22 @@ export interface TrackCheckState {
   legacyReviewed: boolean;
   /** Whether user has used mass import */
   hasUsedMassImport: boolean;
+  /** Kep: total WhatsApp captures */
+  kepCaptureCount: number;
+  /** Kep: captures with audio type */
+  kepAudioCaptures: number;
+  /** Kep: whether user has set an active room */
+  kepHasSetRoom: boolean;
+  /** Social: whether palace is published */
+  hasPublishedPalace: boolean;
+  /** Social: number of users followed */
+  followingCount: number;
+  /** Social: number of followers */
+  followerCount: number;
+  /** Social: number of comments left */
+  commentsLeft: number;
+  /** Social: number of distinct palaces visited */
+  palacesVisited: number;
 }
 
 export type CompletedStepsMap = Record<string, string[]>;
@@ -234,6 +250,24 @@ export function checkAllTrackProgress(state: TrackCheckState): CompletedStepsMap
   if (wingsWithSharedRooms(state.customRooms, state.roomSharing) >= 3) cocreate.push("c_3_wings");
   if (uniqueSharedPeople(state.customRooms, state.roomSharing) >= 5) cocreate.push("c_5_people");
   result["cocreate"] = cocreate;
+
+  // ─── Track 7: Capture (Kep) ───
+  const capture: string[] = [];
+  if (state.kepCaptureCount >= 1) capture.push("k_first_capture");
+  if (state.kepCaptureCount >= 5) capture.push("k_5_captures");
+  if (state.kepHasSetRoom) capture.push("k_set_room");
+  if (state.kepAudioCaptures >= 1) capture.push("k_voice_note");
+  if (state.kepCaptureCount >= 25) capture.push("k_25_captures");
+  result["capture"] = capture;
+
+  // ─── Track 8: Connect & Explore ───
+  const connect: string[] = [];
+  if (state.hasPublishedPalace) connect.push("s_publish");
+  if (state.followingCount >= 1) connect.push("s_first_follow");
+  if (state.commentsLeft >= 1) connect.push("s_first_comment");
+  if (state.followerCount >= 1) connect.push("s_get_follower");
+  if (state.palacesVisited >= 3) connect.push("s_visit_palace");
+  result["connect"] = connect;
 
   return result;
 }

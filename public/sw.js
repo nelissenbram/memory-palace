@@ -1,7 +1,7 @@
 // Service Worker — CacheFirst for static assets, NetworkFirst for pages
 // Dramatically reduces load times for 3D scenes, textures, and fonts
 
-const CACHE_VERSION = 'v2026-04-23a';
+const CACHE_VERSION = 'v2026-06-10a';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const ASSET_CACHE = `assets-${CACHE_VERSION}`;
 const PAGE_CACHE = `pages-${CACHE_VERSION}`;

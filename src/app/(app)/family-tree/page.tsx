@@ -1370,27 +1370,6 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "0.5rem" : "0.75rem" }}>
-            <button
-              onClick={() => onClose ? onClose() : router.back()}
-              style={{
-                width: "2.25rem",
-                height: "2.25rem",
-                borderRadius: "50%",
-                background: "transparent",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: `0.0625rem solid ${T.color.cream}`,
-                cursor: "pointer",
-                transition: "all 0.25s cubic-bezier(0.22, 1, 0.36, 1)",
-                flexShrink: 0,
-                padding: 0,
-              }}
-              aria-label={t("backToAtrium")}
-              title={t("backToAtrium")}
-            >
-              <CloseIcon size={14} color={T.color.walnut} />
-            </button>
             <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
               <TreeBranchIcon size={isMobile ? 18 : 22} color={T.color.walnut} />
               <div>
@@ -1493,6 +1472,30 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
             </div>
           )}
 
+          {/* Close button — top-right, consistent with other submenus */}
+          <button
+            onClick={() => onClose ? onClose() : router.back()}
+            style={{
+              width: "2.25rem",
+              height: "2.25rem",
+              minWidth: "2.75rem",
+              minHeight: "2.75rem",
+              borderRadius: "50%",
+              background: "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: `0.0625rem solid ${T.color.cream}`,
+              cursor: "pointer",
+              transition: "all 0.25s cubic-bezier(0.22, 1, 0.36, 1)",
+              flexShrink: 0,
+              padding: 0,
+            }}
+            aria-label={t("backToAtrium")}
+            title={t("backToAtrium")}
+          >
+            <CloseIcon size={14} color={T.color.walnut} />
+          </button>
         </div>
         {/* Row 2: Actions bar — scrollable pills on mobile, flex-end on desktop */}
         <div

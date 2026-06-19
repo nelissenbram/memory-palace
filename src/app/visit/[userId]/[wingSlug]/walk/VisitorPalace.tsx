@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useCallback, useMemo, lazy, Suspense } from "react";
-import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { ANIM } from "@/components/ui/TuscanStyles";
+import PalaceLoadingScreen from "@/components/ui/PalaceLoadingScreen";
+import MobileJoystick from "@/components/ui/MobileJoystick";
 import type { VisitorWingData } from "@/lib/social/visit-actions";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import type { Mem } from "@/lib/constants/defaults";
@@ -18,14 +19,15 @@ interface VisitorPalaceProps {
 }
 
 export default function VisitorPalace({ data }: VisitorPalaceProps) {
-  const router = useRouter();
   const { t } = useTranslation("social");
   const { t: tPalace } = useTranslation("palace");
+  const { t: tCommon } = useTranslation("common");
   const isMobile = useIsMobile();
   const [view, setView] = useState<"corridor" | "room">("corridor");
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [hoveredDoor, setHoveredDoor] = useState<string | null>(null);
   const [opacity, setOpacity] = useState(1);
+  const [sceneLoading, setSceneLoading] = useState(false);
 
   // Transform data to 3D-compatible formats
   const wingData: Wing = useMemo(() => ({
@@ -66,17 +68,24 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
         dataUrl: m.dataUrl,
         thumbnailUrl: m.thumbnailUrl,
         displayed: m.displayed,
+        displayUnit: m.displayUnit,
       }));
     }
     return map;
   }, [data.rooms]);
 
   const fade = useCallback((cb: () => void) => {
+    setSceneLoading(true);
     setOpacity(0);
-    setTimeout(() => { cb(); setOpacity(1); }, 400);
+    setTimeout(() => { cb(); setOpacity(1); setTimeout(() => setSceneLoading(false), 600); }, 400);
   }, []);
 
   const handleDoorClick = useCallback((roomId: string) => {
+    // Portal door = back to own palace
+    if (roomId === "__portal__") {
+      window.location.href = "/explore";
+      return;
+    }
     fade(() => {
       setActiveRoomId(roomId);
       setView("room");
@@ -84,15 +93,16 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
   }, [fade]);
 
   const handleBack = useCallback(() => {
-    if (view === "room") {
-      fade(() => {
-        setActiveRoomId(null);
-        setView("corridor");
-      });
-    } else {
-      router.push(`/visit/${data.owner.id}`);
-    }
-  }, [view, fade, router, data.owner.id, data.wing.slug]);
+    window.location.href = "/explore";
+  }, []);
+
+  const handleRoomNav = useCallback((roomId: string) => {
+    if (roomId === activeRoomId) return;
+    fade(() => {
+      setActiveRoomId(roomId);
+      setView("room");
+    });
+  }, [fade, activeRoomId]);
 
   const currentMems = activeRoomId ? (roomMemories[activeRoomId] || []) : [];
 
@@ -105,6 +115,9 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
         overflow: "hidden",
       }}
     >
+      {/* Loading screen during transitions */}
+      {sceneLoading && <PalaceLoadingScreen overlay fadeDelay={0.2} />}
+
       {/* 3D Scene */}
       <div
         role="application"
@@ -118,7 +131,7 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
         }}
       >
         {view === "corridor" && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<PalaceLoadingScreen />}>
             <CorridorScene
               wingId={data.wing.slug}
               rooms={wingRooms}
@@ -133,12 +146,16 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
           </Suspense>
         )}
         {view === "room" && activeRoomId && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<PalaceLoadingScreen />}>
             <InteriorScene
               roomId={data.wing.slug}
               actualRoomId={activeRoomId}
               memories={currentMems}
-              onMemoryClick={() => {}}
+              onMemoryClick={(mem: unknown) => {
+                if (mem === "__back__") {
+                  fade(() => { setActiveRoomId(null); setView("corridor"); });
+                }
+              }}
               wingData={wingData}
               styleEra={data.owner.styleEra || "roman"}
               isMobile={isMobile}
@@ -154,7 +171,7 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
           top: 0,
           left: 0,
           right: 0,
-          padding: isMobile ? "0.75rem" : "1rem 1.5rem",
+          padding: isMobile ? "calc(env(safe-area-inset-top, 0px) + 0.5rem) 0.75rem 0.5rem" : "1rem 1.5rem",
           display: "flex",
           alignItems: "center",
           gap: "0.75rem",
@@ -189,7 +206,7 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
-          {view === "room" ? t("backToWing", { name: data.wing.name }) : t("exploreBackToExplore")}
+          {tCommon("backToPalace")}
         </button>
 
         {/* Current location */}
@@ -217,6 +234,71 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
         </div>
       </div>
 
+      {/* Room navigation pills (visitor PalaceSubNav) */}
+      {wingRooms.length > 1 && (
+        <div
+          style={{
+            position: "absolute",
+            top: isMobile ? "calc(env(safe-area-inset-top, 0px) + 3.5rem)" : "4rem",
+            left: "50%",
+            transform: "translateX(-50%)",
+            display: "flex",
+            gap: "0.375rem",
+            padding: "0.375rem",
+            borderRadius: "2rem",
+            background: "rgba(0,0,0,0.5)",
+            backdropFilter: "blur(0.5rem)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            zIndex: 10,
+            maxWidth: "90vw",
+            overflowX: "auto",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          <button
+            onClick={() => { if (view !== "corridor") fade(() => { setActiveRoomId(null); setView("corridor"); }); }}
+            style={{
+              pointerEvents: "auto",
+              padding: "0.375rem 0.75rem",
+              borderRadius: "1.5rem",
+              border: "none",
+              background: view === "corridor" ? "rgba(255,255,255,0.25)" : "transparent",
+              color: "#fff",
+              fontFamily: T.font.body,
+              fontSize: "0.75rem",
+              fontWeight: view === "corridor" ? 600 : 400,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+              transition: "background 0.15s ease",
+            }}
+          >
+            {data.wing.name}
+          </button>
+          {wingRooms.map((room) => (
+            <button
+              key={room.id}
+              onClick={() => handleRoomNav(room.id)}
+              style={{
+                pointerEvents: "auto",
+                padding: "0.375rem 0.75rem",
+                borderRadius: "1.5rem",
+                border: "none",
+                background: activeRoomId === room.id ? "rgba(255,255,255,0.25)" : "transparent",
+                color: "#fff",
+                fontFamily: T.font.body,
+                fontSize: "0.75rem",
+                fontWeight: activeRoomId === room.id ? 600 : 400,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "background 0.15s ease",
+              }}
+            >
+              {room.icon} {room.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Door hover tooltip */}
       {view === "corridor" && hoveredDoor && (
         <div
@@ -243,6 +325,14 @@ export default function VisitorPalace({ data }: VisitorPalaceProps) {
           {wingRooms.find((r) => r.id === hoveredDoor)?.icon}{" "}
           {wingRooms.find((r) => r.id === hoveredDoor)?.name}
         </div>
+      )}
+
+      {/* Mobile joystick */}
+      {isMobile && (
+        <MobileJoystick
+          visible={true}
+          onMove={() => {}}
+        />
       )}
     </div>
   );

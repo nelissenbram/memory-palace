@@ -28,6 +28,9 @@ import {
   FeatureFamilyTreeIcon,
   FeatureMemoryTracksIcon,
   FeatureMemoryMapIcon,
+  FeatureKepIcon,
+  FeatureReceiveIcon,
+  FeatureExploreIcon,
   AudienceHeritageIcon,
   AudienceGuardianIcon,
   AudienceArchivistIcon,
@@ -447,7 +450,8 @@ function LandingPageContent() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
   const exitShownRef = useRef(false);
-  const { locale, setLocale } = useTranslation("landing");
+  const { locale, setLocale: setLocaleReload, setLocaleNoReload } = useTranslation("landing");
+  const setLocale = setLocaleNoReload; // Landing page has all locale data statically imported — no reload needed
   const landing = (landingMessages[locale] || enMessages).landing;
   const router = useRouter();
 
@@ -461,16 +465,37 @@ function LandingPageContent() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const featuresAny = landing.features as any;
-  const FEATURES = [
-    { Icon: FeaturePalaceIcon, title: landing.features.palace3d, desc: landing.features.palace3dDesc },
-    { Icon: FeatureInterviewIcon, title: landing.features.aiInterviews, desc: landing.features.aiInterviewsDesc },
-    { Icon: FeatureFamilyTreeIcon, title: featuresAny?.familyTree ?? "Family Tree", desc: featuresAny?.familyTreeDesc ?? "" },
-    { Icon: FeatureMemoryTracksIcon, title: featuresAny?.memoryTracks ?? "Guided Memory Journeys", desc: featuresAny?.memoryTracksDesc ?? "" },
-    { Icon: FeatureMemoryMapIcon, title: featuresAny?.memoryMap ?? "Memory Map", desc: featuresAny?.memoryMapDesc ?? "" },
-    { Icon: FeatureCloudIcon, title: landing.features.cloudImport, desc: landing.features.cloudImportDesc },
-    { Icon: FeatureTimeCapsuleIcon, title: landing.features.timeCapsules, desc: landing.features.timeCapsuleDesc },
-    { Icon: FeatureSharingIcon, title: landing.features.sharingTitle, desc: landing.features.sharingDesc },
-    { Icon: FeatureLegacyIcon, title: landing.features.legacyTitle, desc: landing.features.legacyDesc },
+  const FEATURE_GROUPS = [
+    {
+      groupTitle: featuresAny?.captureGroupTitle ?? "Capture Memories",
+      groupSubtitle: featuresAny?.captureGroupSubtitle ?? "",
+      features: [
+        { Icon: FeatureKepIcon, title: featuresAny?.kepCapture ?? "WhatsApp Capture", desc: featuresAny?.kepCaptureDesc ?? "" },
+        { Icon: FeatureReceiveIcon, title: featuresAny?.receiveSharing ?? "Receive Shared Memories", desc: featuresAny?.receiveSharingDesc ?? "" },
+        { Icon: FeatureCloudIcon, title: landing.features.cloudImport, desc: landing.features.cloudImportDesc },
+        { Icon: FeatureInterviewIcon, title: landing.features.aiInterviews, desc: landing.features.aiInterviewsDesc },
+      ],
+    },
+    {
+      groupTitle: featuresAny?.enrichGroupTitle ?? "Enrich Your Memories",
+      groupSubtitle: featuresAny?.enrichGroupSubtitle ?? "",
+      features: [
+        { Icon: FeaturePalaceIcon, title: landing.features.palace3d, desc: landing.features.palace3dDesc },
+        { Icon: FeatureMemoryMapIcon, title: featuresAny?.memoryMap ?? "Memory Map", desc: featuresAny?.memoryMapDesc ?? "" },
+        { Icon: FeatureFamilyTreeIcon, title: featuresAny?.familyTree ?? "Family Tree", desc: featuresAny?.familyTreeDesc ?? "" },
+        { Icon: FeatureMemoryTracksIcon, title: featuresAny?.memoryTracks ?? "Guided Memory Journeys", desc: featuresAny?.memoryTracksDesc ?? "" },
+      ],
+    },
+    {
+      groupTitle: featuresAny?.shareGroupTitle ?? "Share Your Memories",
+      groupSubtitle: featuresAny?.shareGroupSubtitle ?? "",
+      features: [
+        { Icon: FeatureTimeCapsuleIcon, title: landing.features.timeCapsules, desc: landing.features.timeCapsuleDesc },
+        { Icon: FeatureSharingIcon, title: landing.features.sharingTitle, desc: landing.features.sharingDesc },
+        { Icon: FeatureExploreIcon, title: featuresAny?.socialExplore ?? "Explore & Connect", desc: featuresAny?.socialExploreDesc ?? "" },
+        { Icon: FeatureLegacyIcon, title: landing.features.legacyTitle, desc: landing.features.legacyDesc },
+      ],
+    },
   ];
 
   const STEPS = [
@@ -542,6 +567,11 @@ function LandingPageContent() {
       category: comparison?.["row7Label"] ?? "",
       left: comparison?.["row7Left"] ?? "",
       right: comparison?.["row7Right"] ?? "",
+    },
+    {
+      category: comparison?.["row8Label"] ?? "",
+      left: comparison?.["row8Left"] ?? "",
+      right: comparison?.["row8Right"] ?? "",
     },
   ];
 
@@ -629,7 +659,7 @@ function LandingPageContent() {
               },
               {
                 "@type": "FAQPage",
-                mainEntity: [1, 2, 3, 4, 5, 6, 7, 8]
+                mainEntity: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
                   .filter((n) => lAny?.faq?.[`q${n}`] && lAny?.faq?.[`a${n}`])
                   .map((n) => ({
                     "@type": "Question",
@@ -1152,7 +1182,7 @@ function LandingPageContent() {
             </button>
             <button
               onClick={() => {
-                document.getElementById("showcase")?.scrollIntoView({ behavior: "smooth" });
+                document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" });
               }}
               className="lp-hero-secondary"
               style={{
@@ -1327,33 +1357,58 @@ function LandingPageContent() {
             <p style={sectionLabel}>{landing.features.title}</p>
             <h2 style={sectionTitle}>{featuresAny?.subtitle ?? landing.features.subtitle}</h2>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: isSmall
-                  ? "1fr"
-                  : isMobile
-                  ? "repeat(2, 1fr)"
-                  : "repeat(3, 1fr)",
-                gap: isMobile ? "1.25rem" : "1.75rem",
-                marginTop: isMobile ? "2.25rem" : "3.5rem",
-              }}
-            >
-              {FEATURES.map((f, i) => (
-                <ScrollFadeIn key={f.title} delay={0.05 + i * 0.07}>
-                  <div
-                    className="lp-card"
-                    style={featureCard}
-                  >
-                    <div style={{ marginBottom: "1.125rem" }}>
-                      <f.Icon size={48} />
-                    </div>
-                    <h3 style={featureTitle}>{f.title}</h3>
-                    <p style={featureDesc}>{f.desc}</p>
-                  </div>
+            {FEATURE_GROUPS.map((group, gi) => (
+              <div key={gi} style={{ marginTop: gi === 0 ? (isMobile ? "2.25rem" : "3.5rem") : (isMobile ? "3rem" : "4rem") }}>
+                <ScrollFadeIn delay={0.05}>
+                  <h3 style={{
+                    fontFamily: F.display,
+                    fontSize: isMobile ? "1.25rem" : "1.5rem",
+                    fontWeight: 400,
+                    color: C.terracotta,
+                    marginBottom: "0.375rem",
+                    letterSpacing: "-0.01em",
+                  }}>
+                    {group.groupTitle}
+                  </h3>
+                  {group.groupSubtitle && (
+                    <p style={{
+                      fontSize: "0.9375rem",
+                      color: C.walnut,
+                      marginBottom: isMobile ? "1.25rem" : "1.5rem",
+                      lineHeight: 1.5,
+                    }}>
+                      {group.groupSubtitle}
+                    </p>
+                  )}
                 </ScrollFadeIn>
-              ))}
-            </div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: isSmall
+                      ? "1fr"
+                      : isMobile
+                      ? "repeat(2, 1fr)"
+                      : group.features.length <= 3 ? "repeat(3, 1fr)" : "repeat(4, 1fr)",
+                    gap: isMobile ? "1.25rem" : "1.75rem",
+                  }}
+                >
+                  {group.features.map((f, i) => (
+                    <ScrollFadeIn key={f.title} delay={0.05 + i * 0.07}>
+                      <div
+                        className="lp-card"
+                        style={featureCard}
+                      >
+                        <div style={{ marginBottom: "1.125rem" }}>
+                          <f.Icon size={48} />
+                        </div>
+                        <h3 style={featureTitle}>{f.title}</h3>
+                        <p style={featureDesc}>{f.desc}</p>
+                      </div>
+                    </ScrollFadeIn>
+                  ))}
+                </div>
+              </div>
+            ))}
           </section>
         </LazySection>
 
@@ -2076,12 +2131,56 @@ function LandingPageContent() {
               {lAny?.faq?.title}
             </h2>
             <div style={{ marginTop: "2.5rem" }}>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => {
                 const q = lAny?.faq?.[`q${n}`];
                 const a = lAny?.faq?.[`a${n}`];
                 if (!q || !a) return null;
                 return <FaqItem key={n} question={q} answer={a} />;
               })}
+              {/* App Store badges */}
+              <div style={{
+                display: "flex",
+                gap: "1rem",
+                justifyContent: "center",
+                marginTop: "2rem",
+                flexWrap: "wrap",
+              }}>
+                <a
+                  href={lAny?.faq?.appStoreUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={lAny?.faq?.appStoreLabel ?? "Download on the App Store"}
+                  style={{ display: "inline-block" }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40" width="135" height="45" aria-hidden="true">
+                    <rect width="120" height="40" rx="6" fill={C.charcoal} />
+                    <text x="42" y="15" fill={C.cream} fontFamily={F.body} fontSize="7" fontWeight="400">Download on the</text>
+                    <text x="42" y="28" fill={C.white} fontFamily={F.display} fontSize="13" fontWeight="500">App Store</text>
+                    <g transform="translate(12,8)" fill={C.white}>
+                      <path d="M14.1 12.3c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.6.9-.7 0-1.9-.8-3.1-.8-1.6 0-3.1.9-3.9 2.4-1.7 2.9-.4 7.3 1.2 9.7.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.1.8c1.3 0 2.2-1.2 3-2.4.9-1.4 1.3-2.7 1.3-2.8-.1 0-2.7-1-2.7-4.1zM11.6 5.3c.7-.8 1.1-2 1-3.1-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.9-1 3 1 .1 2.1-.6 2.8-1.4z"/>
+                    </g>
+                  </svg>
+                </a>
+                <a
+                  href={lAny?.faq?.playStoreUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={lAny?.faq?.playStoreLabel ?? "Get it on Google Play"}
+                  style={{ display: "inline-block" }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 135 40" width="152" height="45" aria-hidden="true">
+                    <rect width="135" height="40" rx="6" fill={C.charcoal} />
+                    <text x="50" y="14" fill={C.cream} fontFamily={F.body} fontSize="6.5" fontWeight="400">GET IT ON</text>
+                    <text x="50" y="28" fill={C.white} fontFamily={F.display} fontSize="12.5" fontWeight="500">Google Play</text>
+                    <g transform="translate(12,8)">
+                      <path d="M1.2 0.5L13.5 12 1.2 23.5c-.3-.3-.5-.7-.5-1.2V1.7c0-.5.2-.9.5-1.2z" fill="#4285F4"/>
+                      <path d="M17.6 8.3L13.5 12l4.1 3.7 4.6-2.6c.5-.3.8-.8.8-1.4 0-.6-.3-1.1-.8-1.4l-4.6-2z" fill="#FBBC04"/>
+                      <path d="M13.5 12L1.2 0.5C1.5.2 2 0 2.5.1L17.6 8.3 13.5 12z" fill="#34A853"/>
+                      <path d="M13.5 12l4.1 3.7L2.5 23.9c-.5.1-1-.1-1.3-.4L13.5 12z" fill="#EA4335"/>
+                    </g>
+                  </svg>
+                </a>
+              </div>
             </div>
           </div>
         </section>
@@ -2260,6 +2359,17 @@ function LandingPageContent() {
                 }}
               >
                 {landing.footer.blog}
+              </Link>
+              <Link
+                href="/help"
+                className="lp-footer-link"
+                style={{
+                  fontSize: "0.875rem",
+                  color: MUTED_ON_DARK,
+                  textDecoration: "none",
+                }}
+              >
+                {landing.footer.helpCenter}
               </Link>
               <Link
                 href="/login"

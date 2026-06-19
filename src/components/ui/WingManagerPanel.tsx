@@ -54,16 +54,21 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   const { t } = useTranslation("wingManager");
   const { t: tc } = useTranslation("common");
   const { containerRef, handleKeyDown } = useFocusTrap(true);
-  const { getWings, renameWing, changeWingIcon, changeWingAccent, changeWingDesc } = useRoomStore();
+  const { getWings, renameWing, changeWingIcon, changeWingAccent, changeWingDesc, addWing, deleteWing, extraWings } = useRoomStore();
   const wings = getWings();
+  const extraWingIds = new Set(extraWings.map(w => w.id));
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [pickingIconId, setPickingIconId] = useState<string | null>(null);
   const [pickingColorId, setPickingColorId] = useState<string | null>(null);
+  const [newWingName, setNewWingName] = useState("");
 
   const STANDARD_WING_IDS = Object.keys(WING_ICON_MAP);
+  // Count non-attic wings for the limit
+  const wingCount = wings.filter(w => w.id !== "attic").length;
+  const canAddWing = wingCount < 7;
 
   const startEdit = (id: string, name: string, desc?: string) => {
     setEditingId(id);
@@ -130,7 +135,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
   );
 
   return (
-    <div role="button" tabIndex={0} onClick={onClose} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } }} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(8px)", zIndex: 55, animation: "fadeIn .2s ease" }}>
+    <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(8px)", zIndex: 55, animation: "fadeIn .2s ease" }}>
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: isMobile ? "100%" : "26.25rem", background: `${T.color.linen}f8`, backdropFilter: "blur(20px)", borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`, padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem", overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)" }}>
         <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
 
@@ -145,7 +150,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
 
         {/* Wing list */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
-          {wings.map(wing => (
+          {wings.filter(w => w.id !== "attic").map(wing => (
             <div key={wing.id} style={{ background: T.color.white, borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`, padding: "0.875rem 1rem", transition: "all .15s" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                 {/* Icon button */}
@@ -210,9 +215,76 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                 changeWingAccent(wing.id, color);
                 setPickingColorId(null);
               })}
+
+              {/* Delete button for custom wings */}
+              {extraWingIds.has(wing.id) && (
+                <button
+                  onClick={() => { if (confirm(t("deleteConfirm"))) deleteWing(wing.id); }}
+                  style={{
+                    marginTop: "0.5rem", padding: "0.375rem 0.75rem",
+                    borderRadius: "0.5rem", border: `1px solid ${T.color.error}30`,
+                    background: `${T.color.error}08`, color: T.color.error,
+                    fontSize: "0.6875rem", fontWeight: 600, fontFamily: T.font.body,
+                    cursor: "pointer", width: "100%",
+                    transition: "all .15s",
+                  }}
+                >
+                  {t("deleteWing")}
+                </button>
+              )}
             </div>
           ))}
         </div>
+
+        {/* Add Wing section */}
+        {canAddWing && (
+          <div style={{
+            marginTop: "1rem", padding: "1rem",
+            background: T.color.white, borderRadius: "0.875rem",
+            border: `1.5px dashed ${T.color.gold}44`,
+          }}>
+            <div style={{
+              fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
+              color: T.color.charcoal, marginBottom: "0.5rem",
+            }}>
+              {t("addWingTitle")}
+            </div>
+            <form onSubmit={e => {
+              e.preventDefault();
+              if (!newWingName.trim()) return;
+              addWing(newWingName.trim(), "\uD83C\uDFDB\uFE0F", ACCENT_PALETTE[Math.floor(Math.random() * ACCENT_PALETTE.length)].color);
+              setNewWingName("");
+            }} style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                value={newWingName}
+                onChange={e => setNewWingName(e.target.value)}
+                placeholder={t("newWingPlaceholder")}
+                style={{
+                  flex: 1, padding: "0.5rem 0.75rem",
+                  borderRadius: "0.5rem", border: `1.5px solid ${T.color.cream}`,
+                  background: T.color.linen, fontFamily: T.font.body,
+                  fontSize: "0.875rem", color: T.color.charcoal, outline: "none",
+                }}
+              />
+              <button type="submit" disabled={!newWingName.trim()} style={{
+                padding: "0.5rem 1rem", borderRadius: "0.5rem",
+                border: "none", background: newWingName.trim() ? T.color.terracotta : T.color.cream,
+                color: newWingName.trim() ? T.color.cream : T.color.muted,
+                fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                cursor: newWingName.trim() ? "pointer" : "default",
+                transition: "all .15s",
+              }}>
+                {tc("add")}
+              </button>
+            </form>
+            <div style={{
+              fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted,
+              marginTop: "0.375rem",
+            }}>
+              {t("wingLimit", { current: String(wingCount), max: "7" })}
+            </div>
+          </div>
+        )}
 
         {/* Footer hint */}
         <div style={{ marginTop: "1.25rem", padding: "0.75rem 1rem", background: `${T.color.warmStone}80`, borderRadius: "0.625rem", fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.5 }}>

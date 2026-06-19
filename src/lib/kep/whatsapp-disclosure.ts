@@ -121,12 +121,43 @@ export async function sendWelcomeMessage(
 }
 
 /**
- * Send link-account message for unknown phone numbers.
- * Covers both no-account AND unlinked-phone scenarios.
+ * Send link-account intro for unknown phone numbers.
+ * Step 1: Kep porter image + language selector.
  */
 export async function sendLinkAccountMessage(
   recipientPhone: string,
-  locale: string = "en",
+): Promise<boolean> {
+  // Send porter image first
+  await sendImageMessage(recipientPhone, `${BASE_URL}/kep-porter.png`, "Kep — Your Memory Palace Porter");
+
+  // Then send language selector
+  return sendInteractiveMessage(recipientPhone, {
+    type: "list",
+    body: {
+      text: "Hi! I'm Kep — your Memory Palace porter.\nChoose your language / Kies je taal:",
+    },
+    action: {
+      button: "Language / Taal",
+      sections: [{
+        title: "Language",
+        rows: [
+          { id: "lang:en", title: "English" },
+          { id: "lang:nl", title: "Nederlands" },
+          { id: "lang:de", title: "Deutsch" },
+          { id: "lang:es", title: "Espanol" },
+          { id: "lang:fr", title: "Francais" },
+        ],
+      }],
+    },
+  });
+}
+
+/**
+ * Send the link-account instructions in the chosen language.
+ */
+export async function sendLinkAccountIntro(
+  recipientPhone: string,
+  locale: string,
 ): Promise<boolean> {
   const t = getLinkAccountTexts(locale);
   const message = [
@@ -140,10 +171,53 @@ export async function sendLinkAccountMessage(
     t.newToMemoryPalace,
     `  ${t.createPalace}: ${BASE_URL}/register`,
     "",
+    t.phoneTip,
+    "",
     t.onceLlinked,
   ].join("\n");
 
   return sendTextMessage(recipientPhone, message);
+}
+
+/**
+ * Send an image message.
+ */
+async function sendImageMessage(
+  recipientPhone: string,
+  imageUrl: string,
+  caption?: string,
+): Promise<boolean> {
+  const { token, phoneNumberId } = getCredentials();
+  if (!token || !phoneNumberId) return false;
+
+  try {
+    const body: Record<string, unknown> = {
+      messaging_product: "whatsapp",
+      to: recipientPhone,
+      type: "image",
+      image: { link: imageUrl, ...(caption ? { caption } : {}) },
+    };
+    const res = await fetch(
+      `${GRAPH_API_BASE}/${phoneNumberId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      },
+    );
+    if (!res.ok) {
+      const err = await res.text();
+      console.error(`[Kep] Failed to send image: ${res.status} ${err}`);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[Kep] sendImageMessage error:", err);
+    return false;
+  }
 }
 
 // ── Room confirmation ────────────────────────────────────────
@@ -510,52 +584,58 @@ function getLinkAccountTexts(locale: string) {
   const texts: Record<string, {
     header: string; dontRecognize: string;
     alreadyHaveAccount: string; addNumber: string;
-    newToMemoryPalace: string; createPalace: string; onceLlinked: string;
+    newToMemoryPalace: string; createPalace: string;
+    phoneTip: string; onceLlinked: string;
   }> = {
     en: {
-      header: "Hi! I'm Kep — your Memory Palace assistant.",
+      header: "Nice to meet you! I'm Kep — your Memory Palace porter.",
       dontRecognize: "I don't recognize your phone number yet.",
       alreadyHaveAccount: "Already have an account?",
-      addNumber: "Add your number",
+      addNumber: "Add your WhatsApp number in your profile",
       newToMemoryPalace: "New to Memory Palace?",
       createPalace: "Create your free palace",
-      onceLlinked: "Once linked, text me again!",
+      phoneTip: "Make sure your WhatsApp number matches your profile — include the country code (e.g. +32497...).",
+      onceLlinked: "Once linked, text me again and I'll take care of your memories!",
     },
     nl: {
-      header: "Hoi! Ik ben Kep — je Memory Palace assistent.",
+      header: "Leuk je te ontmoeten! Ik ben Kep — je Memory Palace portier.",
       dontRecognize: "Ik herken je telefoonnummer nog niet.",
       alreadyHaveAccount: "Heb je al een account?",
-      addNumber: "Voeg je nummer toe",
+      addNumber: "Voeg je WhatsApp-nummer toe in je profiel",
       newToMemoryPalace: "Nieuw bij Memory Palace?",
       createPalace: "Maak je gratis paleis",
-      onceLlinked: "Zodra gekoppeld, stuur me opnieuw een bericht!",
+      phoneTip: "Zorg dat je WhatsApp-nummer overeenkomt met je profiel — inclusief landcode (bv. +32497...).",
+      onceLlinked: "Zodra gekoppeld, stuur me opnieuw een bericht en ik bewaar je herinneringen!",
     },
     de: {
-      header: "Hallo! Ich bin Kep — dein Memory Palace Assistent.",
+      header: "Freut mich! Ich bin Kep — dein Memory Palace Portier.",
       dontRecognize: "Ich erkenne deine Telefonnummer noch nicht.",
       alreadyHaveAccount: "Hast du schon ein Konto?",
-      addNumber: "Nummer hinzufugen",
+      addNumber: "Trage deine WhatsApp-Nummer in deinem Profil ein",
       newToMemoryPalace: "Neu bei Memory Palace?",
       createPalace: "Erstelle deinen kostenlosen Palast",
-      onceLlinked: "Sobald verknupft, schreib mir nochmal!",
+      phoneTip: "Stelle sicher, dass deine WhatsApp-Nummer mit deinem Profil ubereinstimmt — mit Landesvorwahl (z.B. +49...).",
+      onceLlinked: "Sobald verknupft, schreib mir nochmal und ich kummere mich um deine Erinnerungen!",
     },
     es: {
-      header: "Hola! Soy Kep — tu asistente de Memory Palace.",
+      header: "Mucho gusto! Soy Kep — tu portero de Memory Palace.",
       dontRecognize: "Aun no reconozco tu numero de telefono.",
       alreadyHaveAccount: "Ya tienes una cuenta?",
-      addNumber: "Agrega tu numero",
+      addNumber: "Agrega tu numero de WhatsApp en tu perfil",
       newToMemoryPalace: "Nuevo en Memory Palace?",
       createPalace: "Crea tu palacio gratis",
-      onceLlinked: "Una vez vinculado, enviame un mensaje de nuevo!",
+      phoneTip: "Asegurate de que tu numero de WhatsApp coincida con tu perfil — incluye el codigo de pais (ej. +34...).",
+      onceLlinked: "Una vez vinculado, enviame un mensaje y me encargare de tus recuerdos!",
     },
     fr: {
-      header: "Bonjour ! Je suis Kep — votre assistant Memory Palace.",
+      header: "Enchante ! Je suis Kep — votre portier Memory Palace.",
       dontRecognize: "Je ne reconnais pas encore votre numero de telephone.",
       alreadyHaveAccount: "Vous avez deja un compte ?",
-      addNumber: "Ajoutez votre numero",
+      addNumber: "Ajoutez votre numero WhatsApp dans votre profil",
       newToMemoryPalace: "Nouveau sur Memory Palace ?",
       createPalace: "Creez votre palais gratuit",
-      onceLlinked: "Une fois lie, envoyez-moi un message !",
+      phoneTip: "Assurez-vous que votre numero WhatsApp correspond a votre profil — avec l'indicatif pays (ex. +33...).",
+      onceLlinked: "Une fois lie, ecrivez-moi et je prendrai soin de vos souvenirs !",
     },
   };
   return texts[locale] || texts.en;

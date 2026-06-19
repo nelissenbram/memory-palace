@@ -14,7 +14,7 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { ensureValidToken } from "@/lib/integrations/token-refresh";
 import { downloadPhoto } from "@/lib/integrations/onedrive";
 import { createClient } from "@/lib/supabase/server";
-import { checkLimit } from "@/lib/auth/plan-limits";
+import { checkLimit, getUserPlan } from "@/lib/auth/plan-limits";
 import { r2Upload, r2Remove, isR2Configured } from "@/lib/storage/r2";
 
 export async function POST(request: NextRequest) {
@@ -23,6 +23,12 @@ export async function POST(request: NextRequest) {
 
     if (!(await checkRateLimit(`import:${user.id}`, 10, 60_000))) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
+    // OneDrive import requires Keeper plan or higher
+    const sub = await getUserPlan(user.id);
+    if (sub.plan === "free") {
+      return NextResponse.json({ error: "OneDrive import requires a Keeper or Guardian plan" }, { status: 403 });
     }
 
     const account = await getConnectedAccount(user.id, "onedrive");

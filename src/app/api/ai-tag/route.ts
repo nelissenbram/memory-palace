@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiConsent } from "@/lib/ai/check-consent";
 import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
+import { checkAutoTagQuota, incrementAutoTagCount } from "@/lib/auth/plan-limits";
 
 // TODO: Add a first-use consent dialog in the client UI to improve UX
 // instead of relying solely on the settings page toggles.
@@ -38,6 +39,15 @@ export async function POST(req: NextRequest) {
     const consent = await checkAiConsent(supabase, user.id);
     if (!consent.ok) {
       return NextResponse.json({ error: consent.error }, { status: 403 });
+    }
+
+    // Check auto-tag quota (free users: 5/day)
+    const tagQuota = await checkAutoTagQuota(user.id);
+    if (!tagQuota.allowed) {
+      return NextResponse.json({
+        error: "Auto-tag daily limit reached",
+        quota: { used: tagQuota.used, limit: tagQuota.limit },
+      }, { status: 403 });
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -178,6 +188,8 @@ Respond ONLY with a JSON array, no other text.`,
     }
 
     const suggestions = JSON.parse(jsonMatch[0]);
+    // Increment daily auto-tag counter for free users
+    await incrementAutoTagCount(user.id, items.length);
     return NextResponse.json({ suggestions }, {
       headers: { "Cache-Control": "no-store" },
     });

@@ -117,6 +117,8 @@ const SECTIONS: SectionDef[] = [
       { labelKey: "privacyDeleteLabel", detailKey: "privacyDeleteDetail" },
       { labelKey: "privacyCookieLabel", detailKey: "privacyCookieDetail" },
       { labelKey: "privacyNoTrackingLabel", detailKey: "privacyNoTrackingDetail" },
+      { labelKey: "privacyKepLabel", detailKey: "privacyKepDetail" },
+      { labelKey: "privacySocialLabel", detailKey: "privacySocialDetail" },
       { labelKey: "privacyLegacyLabel", detailKey: "privacyLegacyDetail" },
     ],
   },

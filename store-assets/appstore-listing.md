@@ -28,12 +28,14 @@ HOW IT WORKS:
 
 Your memories deserve a palace, not a folder.
 
-**What's New (v1.2.0):**
-- Social features: explore other palaces, follow creators, leave guestbook entries
-- Kep: capture memories via WhatsApp — forward photos and stories directly to your palace
-- Cinematic flyover when you first enter your palace
-- Improved 3D performance on mobile devices
-- Family tree visual improvements
+**What's New (v1.3.0):**
+- New pricing: unlimited wings, rooms & memories for all users
+- Storage-based plans: Free (1 GB), Keeper (25 GB), Guardian (100 GB)
+- AI interviews with monthly respawns for free users
+- AI auto-tagging with daily quota for free users
+- Family tree: 25 people free, unlimited for Keeper+
+- Collaborate with up to 5 family members (Keeper) or unlimited (Guardian)
+- Storage usage warnings at 50%, 80%, 95%, and 100%
 - Bug fixes and stability improvements
 
 **Promotional Text:** Step inside your family's story. Build a 3D palace of memories, record voices, grow your tree. Start preserving today.
@@ -68,12 +70,14 @@ HOE HET WERKT:
 
 Je herinneringen verdienen een paleis, geen map.
 
-**What's New (v1.2.0):**
-- Sociaal: ontdek andere paleizen, volg makers, laat gastenboekberichten achter
-- Kep: leg herinneringen vast via WhatsApp — stuur foto's en verhalen direct naar je paleis
-- Filmische rondvlucht bij je eerste bezoek
-- Verbeterde 3D-prestaties op mobiel
-- Visuele verbeteringen stamboom
+**What's New (v1.3.0):**
+- Nieuwe prijzen: onbeperkte vleugels, kamers & herinneringen voor alle gebruikers
+- Opslagplannen: Gratis (1 GB), Bewaarder (25 GB), Beschermer (100 GB)
+- AI-interviews met maandelijkse hernieuwingen voor gratis gebruikers
+- AI auto-tagging met dagelijks limiet voor gratis gebruikers
+- Stamboom: 25 personen gratis, onbeperkt voor Bewaarder+
+- Samenwerken met 5 familieleden (Bewaarder) of onbeperkt (Beschermer)
+- Opslagwaarschuwingen bij 50%, 80%, 95% en 100%
 - Bugfixes en stabiliteitsverbeteringen
 
 **Promotional Text:** Stap binnen in het verhaal van je familie. Bouw een 3D-paleis van herinneringen en bewaar ze voor altijd.
@@ -108,12 +112,14 @@ SO FUNKTIONIERT ES:
 
 Deine Erinnerungen verdienen einen Palast, keinen Ordner.
 
-**What's New (v1.2.0):**
-- Soziale Funktionen: entdecke andere Palaste, folge Erstellern, hinterlasse Gastebucheintrage
-- Kep: Erinnerungen uber WhatsApp erfassen — Fotos und Geschichten direkt an deinen Palast senden
-- Filmischer Rundflug beim ersten Besuch
-- Verbesserte 3D-Leistung auf Mobilgeraten
-- Visuelle Verbesserungen am Stammbaum
+**What's New (v1.3.0):**
+- Neue Preise: unbegrenzte Flugel, Raume & Erinnerungen fur alle Nutzer
+- Speicherplane: Kostenlos (1 GB), Huter (25 GB), Wachter (100 GB)
+- KI-Interviews mit monatlichen Erneuerungen fur Gratisnutzer
+- KI Auto-Tagging mit taglichem Limit fur Gratisnutzer
+- Stammbaum: 25 Personen kostenlos, unbegrenzt fur Huter+
+- Zusammenarbeit mit 5 Familienmitgliedern (Huter) oder unbegrenzt (Wachter)
+- Speicherwarnungen bei 50%, 80%, 95% und 100%
 - Fehlerbehebungen und Stabilitatsverbesserungen
 
 **Promotional Text:** Betritt die Geschichte deiner Familie. Baue einen 3D-Palast der Erinnerungen und bewahre sie fur immer.
@@ -148,12 +154,14 @@ COMO FUNCIONA:
 
 Tus recuerdos merecen un palacio, no una carpeta.
 
-**What's New (v1.2.0):**
-- Social: explora otros palacios, sigue a creadores, deja entradas en el libro de visitas
-- Kep: captura recuerdos por WhatsApp — envia fotos e historias directamente a tu palacio
-- Sobrevuelo cinematico en tu primera visita
-- Rendimiento 3D mejorado en moviles
-- Mejoras visuales en el arbol genealogico
+**What's New (v1.3.0):**
+- Nuevos precios: alas, salas y recuerdos ilimitados para todos los usuarios
+- Planes de almacenamiento: Gratis (1 GB), Guardian (25 GB), Custodio (100 GB)
+- Entrevistas IA con renovaciones mensuales para usuarios gratuitos
+- Etiquetado IA con limite diario para usuarios gratuitos
+- Arbol genealogico: 25 personas gratis, ilimitado para Guardian+
+- Colaborar con 5 familiares (Guardian) o ilimitado (Custodio)
+- Avisos de almacenamiento al 50%, 80%, 95% y 100%
 - Correcciones de errores y mejoras de estabilidad
 
 **Promotional Text:** Entra en la historia de tu familia. Construye un palacio 3D de recuerdos y preservalos para siempre.
@@ -188,12 +196,14 @@ COMMENT CA MARCHE:
 
 Tes souvenirs meritent un palais, pas un dossier.
 
-**What's New (v1.2.0):**
-- Social : explore d'autres palais, suis des createurs, laisse des messages dans le livre d'or
-- Kep : capture des souvenirs via WhatsApp — envoie photos et histoires directement dans ton palais
-- Survol cinematique lors de ta premiere visite
-- Performances 3D ameliorees sur mobile
-- Ameliorations visuelles de l'arbre genealogique
+**What's New (v1.3.0):**
+- Nouveaux tarifs : ailes, salles et souvenirs illimites pour tous les utilisateurs
+- Plans de stockage : Gratuit (1 Go), Gardien (25 Go), Protecteur (100 Go)
+- Interviews IA avec renouvellements mensuels pour les utilisateurs gratuits
+- Etiquetage IA avec limite quotidienne pour les utilisateurs gratuits
+- Arbre genealogique : 25 personnes gratuites, illimite pour Gardien+
+- Collaborer avec 5 membres de la famille (Gardien) ou illimite (Protecteur)
+- Avertissements de stockage a 50%, 80%, 95% et 100%
 - Corrections de bugs et ameliorations de stabilite
 
 **Promotional Text:** Entre dans l'histoire de ta famille. Construis un palais 3D de souvenirs et preserve-les pour toujours.

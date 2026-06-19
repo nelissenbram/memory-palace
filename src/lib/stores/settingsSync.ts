@@ -15,6 +15,7 @@ import { createBrowserClient } from "@supabase/ssr";
 const SYNCED_KEYS = [
   "mp_custom_rooms",
   "mp_custom_wings",
+  "mp_extra_wings",
   "mp_room_layouts",
   "mp_important_dates",
   "mp_demos_hidden",

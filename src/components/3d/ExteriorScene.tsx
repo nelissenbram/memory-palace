@@ -171,8 +171,8 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       skx.beginPath();skx.arc(Math.random()*4096,sy,Math.random()*1.2,.0,Math.PI*2);skx.fill();
     }
     const skyTex=new THREE.CanvasTexture(skyC);skyTex.colorSpace=THREE.SRGBColorSpace;
-    // Release canvas memory after texture upload
-    skyC.width=0;skyC.height=0;
+    // Release canvas memory AFTER first render ensures GPU texture upload completed
+    requestAnimationFrame(()=>{requestAnimationFrame(()=>{skyC.width=0;skyC.height=0;});});
     // Procedural sky sphere used as fallback only — hidden when HDRI background loads
     const skySphere=new THREE.Mesh(skyGeo,new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide}));
     scene.add(skySphere);

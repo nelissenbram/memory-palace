@@ -8,11 +8,15 @@ export const MAX_ROOMS_PER_WING = 8;
 
 type WingCustom = Partial<{ name: string; icon: string; accent: string; desc: string }>;
 
+export const MAX_WINGS = 7; // 5 standard + 2 custom (excluding attic)
+
 interface RoomState {
   // Per-wing custom room lists. If a wing has an entry here, it overrides WING_ROOMS entirely.
   customRooms: Record<string, WingRoom[]>;
   // Per-wing customizations (name, icon, accent)
   customWings: Record<string, WingCustom>;
+  // User-created wings (on top of the 5 standard ones)
+  extraWings: Wing[];
 
   // Get effective rooms for a wing (custom if set, else defaults)
   getWingRooms: (wingId: string) => WingRoom[];
@@ -24,6 +28,8 @@ interface RoomState {
   changeWingIcon: (wingId: string, icon: string) => void;
   changeWingAccent: (wingId: string, accent: string) => void;
   changeWingDesc: (wingId: string, desc: string) => void;
+  addWing: (name: string, icon: string, accent: string) => string | null;
+  deleteWing: (wingId: string) => void;
 
   // Actions
   renameRoom: (wingId: string, roomId: string, name: string) => void;
@@ -83,6 +89,25 @@ function debouncedSaveWings(wings: Record<string, WingCustom>) {
   _wingSaveTimer = setTimeout(() => { saveCustomWings(wings); syncSettingsToServer(); }, 500);
 }
 
+function loadExtraWings(): Wing[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("mp_extra_wings");
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveExtraWings(wings: Wing[]) {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem("mp_extra_wings", JSON.stringify(wings)); } catch {}
+}
+
+let _extraWingSaveTimer: ReturnType<typeof setTimeout> | null = null;
+function debouncedSaveExtraWings(wings: Wing[]) {
+  if (_extraWingSaveTimer) clearTimeout(_extraWingSaveTimer);
+  _extraWingSaveTimer = setTimeout(() => { saveExtraWings(wings); syncSettingsToServer(); }, 500);
+}
+
 function applyWingCustom(wing: Wing, custom?: WingCustom): Wing {
   if (!custom) return wing;
   return {
@@ -97,6 +122,7 @@ function applyWingCustom(wing: Wing, custom?: WingCustom): Wing {
 export const useRoomStore = create<RoomState>((set, get) => ({
   customRooms: loadCustomRooms(),
   customWings: loadCustomWings(),
+  extraWings: loadExtraWings(),
 
   getWingRooms: (wingId: string) => {
     const { customRooms } = get();
@@ -104,14 +130,15 @@ export const useRoomStore = create<RoomState>((set, get) => ({
   },
 
   getWing: (wingId: string) => {
-    const base = WINGS.find(w => w.id === wingId);
+    const base = WINGS.find(w => w.id === wingId) || get().extraWings.find(w => w.id === wingId);
     if (!base) return WINGS[0]; // fallback
     return applyWingCustom(base, get().customWings[wingId]);
   },
 
   getWings: () => {
-    const { customWings } = get();
-    return WINGS.map(w => applyWingCustom(w, customWings[w.id]));
+    const { customWings, extraWings } = get();
+    const all = [...WINGS, ...extraWings];
+    return all.map(w => applyWingCustom(w, customWings[w.id]));
   },
 
   renameWing: (wingId, name) => {
@@ -136,6 +163,55 @@ export const useRoomStore = create<RoomState>((set, get) => ({
     const customWings = { ...get().customWings, [wingId]: { ...get().customWings[wingId], desc: desc.trim() || undefined } };
     set({ customWings });
     debouncedSaveWings(customWings);
+  },
+
+  addWing: (name, icon, accent) => {
+    const { extraWings } = get();
+    // Count non-attic wings: 5 standard + extras
+    const standardCount = WINGS.filter(w => w.id !== "attic").length;
+    if (standardCount + extraWings.length >= MAX_WINGS) return null;
+
+    // Generate unique ID
+    const id = `cw${Date.now().toString(36)}`;
+    const newWing: Wing = {
+      id,
+      name: name.trim() || "New Wing",
+      nameKey: "",
+      icon,
+      accent,
+      wall: "#DDD4C6",
+      floor: "#9E8264",
+      desc: "",
+      descKey: "",
+      layout: "L-shaped gallery",
+    };
+    const updated = [...extraWings, newWing];
+    set({ extraWings: updated });
+    debouncedSaveExtraWings(updated);
+
+    // Create a default first room
+    const roomId = `${id.slice(0, 2)}1`;
+    const defaultRoom: WingRoom = { id: roomId, name: "Room 1", icon: "\uD83D\uDCC1", shared: false, sharedWith: [], coverHue: 30 };
+    const customRooms = { ...get().customRooms, [id]: [defaultRoom] };
+    set({ customRooms });
+    debouncedSaveRooms(customRooms);
+
+    return id;
+  },
+
+  deleteWing: (wingId) => {
+    const { extraWings, customRooms, customWings } = get();
+    // Only allow deleting user-created wings
+    if (!extraWings.find(w => w.id === wingId)) return;
+    const updated = extraWings.filter(w => w.id !== wingId);
+    const newCustomRooms = { ...customRooms };
+    delete newCustomRooms[wingId];
+    const newCustomWings = { ...customWings };
+    delete newCustomWings[wingId];
+    set({ extraWings: updated, customRooms: newCustomRooms, customWings: newCustomWings });
+    debouncedSaveExtraWings(updated);
+    debouncedSaveRooms(newCustomRooms);
+    debouncedSaveWings(newCustomWings);
   },
 
   renameRoom: (wingId, roomId, name) => {

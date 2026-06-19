@@ -31,6 +31,15 @@ export interface PalaceStats {
   layoutsChanged: number;
   totalRoomsInPalace: number;
   roomsVisited: number;
+  // Kep stats
+  kepCaptures: number;
+  kepAudioCaptures: number;
+  // Social stats
+  publishedPalace: boolean;
+  followersCount: number;
+  followingCount: number;
+  commentsGiven: number;
+  palacesVisited: number;
 }
 
 // ─── Achievement definitions ───
@@ -60,6 +69,18 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "dj", titleKey: "achievements.dj.title", descKey: "achievements.dj.desc", icon: "dj", category: "create", check: (s) => s.hasAudio },
   { id: "time_traveler", titleKey: "achievements.time_traveler.title", descKey: "achievements.time_traveler.desc", icon: "time_traveler", category: "create", check: (s) => s.hasTimeCapsule },
   { id: "storyteller", titleKey: "achievements.storyteller.title", descKey: "achievements.storyteller.desc", icon: "storyteller", category: "create", check: (s) => s.memoriesWithDesc >= 10 },
+
+  // Kep
+  { id: "first_capture", titleKey: "achievements.first_capture.title", descKey: "achievements.first_capture.desc", icon: "first_capture", category: "memories", check: (s) => s.kepCaptures >= 1 },
+  { id: "kep_regular", titleKey: "achievements.kep_regular.title", descKey: "achievements.kep_regular.desc", icon: "kep_regular", category: "memories", check: (s) => s.kepCaptures >= 25 },
+  { id: "kep_power_user", titleKey: "achievements.kep_power_user.title", descKey: "achievements.kep_power_user.desc", icon: "kep_power_user", category: "memories", check: (s) => s.kepCaptures >= 100 },
+  { id: "voice_collector", titleKey: "achievements.voice_collector.title", descKey: "achievements.voice_collector.desc", icon: "voice_collector", category: "create", check: (s) => s.kepAudioCaptures >= 5 },
+
+  // Social (publishing, follows, comments)
+  { id: "publisher", titleKey: "achievements.publisher.title", descKey: "achievements.publisher.desc", icon: "publisher", category: "social", check: (s) => s.publishedPalace },
+  { id: "first_follower", titleKey: "achievements.first_follower.title", descKey: "achievements.first_follower.desc", icon: "first_follower", category: "social", check: (s) => s.followersCount >= 1 },
+  { id: "influencer", titleKey: "achievements.influencer.title", descKey: "achievements.influencer.desc", icon: "influencer", category: "social", check: (s) => s.followersCount >= 10 },
+  { id: "commenter", titleKey: "achievements.commenter.title", descKey: "achievements.commenter.desc", icon: "commenter", category: "social", check: (s) => s.commentsGiven >= 5 },
 ];
 
 // ─── Store ───
@@ -82,6 +103,8 @@ interface AchievementState {
     customRooms: Record<string, WingRoom[]>,
     roomLayouts: Record<string, string>,
     roomSharing: Record<string, { shared: boolean; sharedWith: string[] }>,
+    kepStats?: { captures: number; audioCaptures: number },
+    socialStats?: { published: boolean; followers: number; following: number; comments: number; visits: number },
   ) => void;
   dismissToast: () => void;
   getProgress: () => { earned: number; total: number; percentage: number };
@@ -139,6 +162,8 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
     memoryTypes: new Set(), hasTimeCapsule: false, hasVideo: false, hasAudio: false,
     daysActive: 0, consecutiveDays: 0, memoriesWithDesc: 0, roomsRenamed: 0,
     roomsAdded: 0, layoutsChanged: 0, totalRoomsInPalace: 0, roomsVisited: 0,
+    kepCaptures: 0, kepAudioCaptures: 0,
+    publishedPalace: false, followersCount: 0, followingCount: 0, commentsGiven: 0, palacesVisited: 0,
   },
   showPanel: false,
   highlightId: null,
@@ -170,7 +195,7 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
     }
   },
 
-  checkAchievements: (mems, customRooms, roomLayouts, roomSharing) => {
+  checkAchievements: (mems, customRooms, roomLayouts, roomSharing, kepStats, socialStats) => {
     const { earnedIds, visitedWings, visitedRooms, activeDays } = get();
 
     // Compute stats
@@ -222,6 +247,13 @@ export const useAchievementStore = create<AchievementState>((set, get) => ({
       layoutsChanged: Object.keys(roomLayouts).length,
       totalRoomsInPalace: allRooms.length,
       roomsVisited: visitedRooms.length,
+      kepCaptures: kepStats?.captures ?? 0,
+      kepAudioCaptures: kepStats?.audioCaptures ?? 0,
+      publishedPalace: socialStats?.published ?? false,
+      followersCount: socialStats?.followers ?? 0,
+      followingCount: socialStats?.following ?? 0,
+      commentsGiven: socialStats?.comments ?? 0,
+      palacesVisited: socialStats?.visits ?? 0,
     };
 
     // Check for newly earned achievements

@@ -258,14 +258,14 @@ function ConnectionsContent() {
                 background: T.color.white,
                 borderRadius: "1rem",
                 border: `1px solid ${isConnected ? `${provider.accentColor}30` : T.color.cream}`,
-                padding: "1.25rem 1.5rem",
+                padding: isMobile ? "1rem" : "1.25rem 1.5rem",
                 boxShadow: isConnected
                   ? `0 0.125rem 0.75rem ${provider.accentColor}10`
                   : "0 0.125rem 0.5rem rgba(44,44,42,.04)",
                 transition: "all .2s",
                 ...(isComingSoon ? { opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" as const } : {}),
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", gap: isMobile ? "0.75rem" : "1rem", flexWrap: isMobile ? "wrap" : "nowrap" }}>
                   {/* Icon */}
                   <div style={{
                     width: "3.25rem", height: "3.25rem", borderRadius: "0.875rem", flexShrink: 0,
@@ -322,8 +322,9 @@ function ConnectionsContent() {
                     {/* Connection details */}
                     {isConnected && account && (
                       <div style={{
-                        display: "flex", gap: "1rem", marginTop: "0.5rem",
+                        display: "flex", gap: isMobile ? "0.5rem" : "1rem", marginTop: "0.5rem",
                         fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                        flexWrap: "wrap",
                       }}>
                         {account.provider_email && (
                           <span>{account.provider_email}</span>
@@ -337,7 +338,7 @@ function ConnectionsContent() {
                   </div>
 
                   {/* Action button */}
-                  <div style={{ flexShrink: 0 }}>
+                  <div style={{ flexShrink: 0, ...(isMobile ? { width: "100%" } : {}) }}>
                     {isConnected ? (
                       <button
                         onClick={() => setConfirmDisconnect(provider.id)}

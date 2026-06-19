@@ -25,9 +25,6 @@ interface SubscriptionData {
 }
 
 interface UsageData {
-  wings: number;
-  rooms: number;
-  memories: number;
   storageMb: number;
 }
 
@@ -41,6 +38,7 @@ export default function SubscriptionPage() {
   const [iapReady, setIapReady] = useState(false);
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
+  const [effectiveStorageLimitMb, setEffectiveStorageLimitMb] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState<PlanId | null>(null);
@@ -64,16 +62,13 @@ export default function SubscriptionPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Parallelize all queries — subscription, usage counts, and storage
-        const [subRes, wingsRes, roomsRes, memoriesRes, storageRes] = await Promise.all([
+        // Parallelize queries — subscription and storage
+        const [subRes, storageRes] = await Promise.all([
           supabase
             .from("subscriptions")
             .select("plan, status, current_period_end, stripe_customer_id")
             .eq("user_id", user.id)
             .single(),
-          supabase.from("wings").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-          supabase.from("rooms").select("*", { count: "exact", head: true }).eq("user_id", user.id),
-          supabase.from("memories").select("*", { count: "exact", head: true }).eq("user_id", user.id),
           supabase.from("memories").select("file_size").eq("user_id", user.id),
         ]);
 
@@ -112,11 +107,16 @@ export default function SubscriptionPage() {
           : 0;
 
         setUsage({
-          wings: wingsRes.count || 0,
-          rooms: roomsRes.count || 0,
-          memories: memoriesRes.count || 0,
           storageMb: totalStorageMb,
         });
+        // Fetch effective storage limit (applies grandfathering for legacy free users)
+        try {
+          const storageLimitRes = await fetch("/api/storage/limit");
+          if (storageLimitRes.ok) {
+            const slData = await storageLimitRes.json();
+            setEffectiveStorageLimitMb(slData.limitMb ?? null);
+          }
+        } catch { /* non-critical */ }
         // Fetch referral info
         try {
           const refRes = await fetch("/api/referral");
@@ -278,7 +278,9 @@ export default function SubscriptionPage() {
   const translateFeatureKey = (featureKey: string) => tp(featureKey);
 
   const currentPlan = sub ? PLANS[sub.plan] : PLANS.free;
-  const limits = currentPlan.limits;
+  const limits = effectiveStorageLimitMb != null
+    ? { ...currentPlan.limits, storageMb: effectiveStorageLimitMb }
+    : currentPlan.limits;
   const isFree = sub?.plan === "free";
   const isPaid = sub?.plan === "keeper" || sub?.plan === "guardian";
   const hasStripeAccount = !!sub?.stripe_customer_id;
@@ -540,59 +542,6 @@ export default function SubscriptionPage() {
         </h3>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {([
-            { label: t("wings"), current: usage?.wings || 0, limit: limits.wings },
-            { label: t("rooms"), current: usage?.rooms || 0, limit: limits.rooms },
-            { label: t("memories"), current: usage?.memories || 0, limit: limits.memories },
-          ] as const).map((item) => {
-            const isUnlimited = item.limit === -1;
-            const percentage = isUnlimited ? 0 : Math.min((item.current / item.limit) * 100, 100);
-            const isNearLimit = !isUnlimited && percentage >= 80;
-
-            return (
-              <div key={item.label}>
-                <div style={{
-                  display: "flex", justifyContent: "space-between",
-                  marginBottom: "0.375rem",
-                }}>
-                  <span style={{ fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500, color: C.charcoal }}>
-                    {item.label}
-                  </span>
-                  <span style={{
-                    fontFamily: F.body, fontSize: "0.8125rem",
-                    color: isNearLimit ? C.terracotta : C.muted,
-                    fontWeight: isNearLimit ? 600 : 500,
-                  }}>
-                    {item.current} / {isUnlimited ? "\u221E" : item.limit}
-                  </span>
-                </div>
-                <div
-                  role="progressbar"
-                  aria-valuenow={item.current}
-                  aria-valuemin={0}
-                  aria-valuemax={isUnlimited ? undefined : item.limit}
-                  aria-label={t("usageProgress", { label: item.label, current: String(item.current), max: isUnlimited ? "\u221E" : String(item.limit) })}
-                  style={{
-                    height: "0.375rem",
-                    borderRadius: 3,
-                    background: `${C.sandstone}30`,
-                    overflow: "hidden",
-                  }}
-                >
-                  <div style={{
-                    height: "100%",
-                    borderRadius: 3,
-                    width: isUnlimited ? "0%" : `${percentage}%`,
-                    background: isNearLimit
-                      ? `linear-gradient(90deg, ${C.terracotta}, ${C.error})`
-                      : `linear-gradient(90deg, ${C.sage}, ${C.sage}cc)`,
-                    transition: "width 0.5s ease",
-                  }} />
-                </div>
-              </div>
-            );
-          })}
-
           {/* Storage usage bar */}
           {usage && (
             <div>
@@ -650,7 +599,7 @@ export default function SubscriptionPage() {
         </div>
 
         {/* Near-limit upgrade prompt — hidden in native app */}
-        {!isAndroid() && isFree && usage && (usage.wings >= 2 || usage.rooms >= 4 || usage.memories >= 80) && (
+        {!isAndroid() && isFree && usage && limits.storageMb > 0 && (usage.storageMb / limits.storageMb) >= 0.8 && (
           <div style={{
             marginTop: "1.25rem",
             padding: "1rem 1.25rem",

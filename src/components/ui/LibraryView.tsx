@@ -962,6 +962,20 @@ export default function LibraryView() {
     return count;
   }, [wings, getWingRooms]);
 
+  const sharedWingsData = useMemo(() => {
+    const result: { wingName: string; rooms: { id: string; name: string; icon: string }[] }[] = [];
+    for (const w of wings) {
+      const sharedRooms = getWingRooms(w.id).filter(r => r.shared);
+      if (sharedRooms.length > 0) {
+        result.push({
+          wingName: translateWingName(w, tWings),
+          rooms: sharedRooms.map(r => ({ id: r.id, name: translateRoomName(r, tWings), icon: r.icon })),
+        });
+      }
+    }
+    return result;
+  }, [wings, getWingRooms, tWings]);
+
   const handleBackToRooms = useCallback(() => {
     setSelectedRoom(null);
     setQuery("");
@@ -1067,6 +1081,8 @@ export default function LibraryView() {
                 wings={wings}
                 selectedWing={selectedWing}
                 onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); setQuery(""); setFilterType(null); setMobileSidebarOpen(false); }}
+                onSelectRoom={(roomId: string) => { setSelectedRoom(roomId); setMobileSidebarOpen(false); }}
+                selectedRoom={selectedRoom}
                 wingMemCount={wingMemCount}
                 onEnter3D={handleEnter3D}
                 isMobile={isMobile}
@@ -1076,6 +1092,7 @@ export default function LibraryView() {
                 selectedRoomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
                 sharedCount={sharedCount}
                 onSharedClick={() => setShowSharedWithMe(true)}
+                sharedWings={sharedWingsData}
               />
             </div>
           </div>
@@ -1085,6 +1102,8 @@ export default function LibraryView() {
           wings={wings}
           selectedWing={selectedWing}
           onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); setQuery(""); setFilterType(null); }}
+          onSelectRoom={(roomId: string) => { setSelectedRoom(roomId); }}
+          selectedRoom={selectedRoom}
           wingMemCount={wingMemCount}
           onEnter3D={handleEnter3D}
           isMobile={isMobile}
@@ -1094,6 +1113,7 @@ export default function LibraryView() {
           selectedRoomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
           sharedCount={sharedCount}
           onSharedClick={() => setShowSharedWithMe(true)}
+          sharedWings={sharedWingsData}
         />
       )}
 

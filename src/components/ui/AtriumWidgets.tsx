@@ -368,6 +368,10 @@ export function TrackProgress({
 
   return (
     <div style={{ animation: "aw-fadeSlideUp 0.5s ease-out 0.15s both" }}>
+      <style>{`
+        @keyframes aw-fadeSlideUp{from{opacity:0;transform:translateY(0.75rem)}to{opacity:1;transform:translateY(0)}}
+        @keyframes aw-shimmer{0%{background-position:-12.5rem 0}100%{background-position:12.5rem 0}}
+      `}</style>
       {/* Section header */}
       <div style={{ marginBottom: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -574,7 +578,7 @@ const TrackCard = React.memo(function TrackCard({
   isRecommended?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
-  const pct = track.total > 0 ? (track.progress / track.total) * 100 : 0;
+  const pct = Math.min(100, track.total > 0 ? (track.progress / track.total) * 100 : 0);
   const trackColor = track.color || T.color.gold;
   const isStarted = track.progress > 0;
   const isComplete = track.progress >= track.total;
@@ -748,7 +752,7 @@ const TrackCard = React.memo(function TrackCard({
                 borderRadius: "0.25rem",
                 width: `${pct}%`,
                 background: `linear-gradient(90deg, ${trackColor}, ${trackColor}BB)`,
-                animation: `aw-barFill 1s cubic-bezier(0.4, 0, 0.2, 1) ${0.4 + index * 0.1}s both`,
+                transition: "width 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
                 position: "relative",
               }}
             >
@@ -1302,6 +1306,82 @@ export const AchievementIcon = React.memo(function AchievementIcon({ id, size = 
           {/* feather pen accent */}
           <path d="M14 3c-1 1-2 3-2.5 5" stroke={terracotta} strokeWidth="0.8" fill="none" strokeLinecap="round" />
           <path d="M14 3c.5-.5 1.5-1 2-.5" stroke={terracotta} strokeWidth="0.6" fill="none" strokeLinecap="round" />
+        </svg>
+      );
+
+    case "first_capture": // WhatsApp chat bubble with checkmark
+      return (
+        <svg {...props}>
+          <path d="M4 5C4 4.2 4.6 3.5 5.5 3.5H14.5C15.4 3.5 16 4.2 16 5V12C16 12.8 15.4 13.5 14.5 13.5H9L6 16V13.5H5.5C4.6 13.5 4 12.8 4 12V5Z" stroke={sage} strokeWidth={sw} fill={`${sage}15`} />
+          <path d="M7.5 8.5L9 10L12.5 6.5" stroke={gold} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          <circle cx="15" cy="4.5" r="2.5" fill="#25D366" stroke="none" />
+        </svg>
+      );
+    case "kep_regular": // mailbox with multiple envelopes
+      return (
+        <svg {...props}>
+          <rect x="4" y="6" width="12" height="9" rx="1" stroke={gold} strokeWidth={sw} fill={`${gold}12`} />
+          <path d="M4 7l6 4 6-4" stroke={gold} strokeWidth="0.8" fill="none" strokeLinecap="round" />
+          <rect x="6" y="3" width="8" height="5" rx="0.5" stroke={sage} strokeWidth="0.6" fill={`${sage}10`} />
+          <path d="M6 4l4 2.5 4-2.5" stroke={sage} strokeWidth="0.5" fill="none" />
+          <circle cx="15" cy="5" r="2" fill={gold} stroke="none" />
+          <text x="15" y="6.2" textAnchor="middle" fontSize="2.5" fill="white" fontWeight="bold">25</text>
+        </svg>
+      );
+    case "kep_power_user": // lightning bolt with chat
+      return (
+        <svg {...props}>
+          <path d="M4 5C4 4.2 4.6 3.5 5.5 3.5H14.5C15.4 3.5 16 4.2 16 5V12C16 12.8 15.4 13.5 14.5 13.5H9L6 16V13.5H5.5C4.6 13.5 4 12.8 4 12V5Z" stroke={sage} strokeWidth={sw} fill={`${sage}10`} />
+          <path d="M11 4.5L8.5 9H11.5L9 14" stroke={gold} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        </svg>
+      );
+    case "voice_collector": // microphone with sound waves
+      return (
+        <svg {...props}>
+          <rect x="8" y="3" width="4" height="7" rx="2" stroke={terracotta} strokeWidth={sw} fill={`${terracotta}15`} />
+          <path d="M6 9a4 4 0 0 0 8 0" stroke={gold} strokeWidth={sw} fill="none" strokeLinecap="round" />
+          <line x1="10" y1="13" x2="10" y2="16" stroke={gold} strokeWidth={sw} strokeLinecap="round" />
+          <line x1="7.5" y1="16" x2="12.5" y2="16" stroke={gold} strokeWidth="0.8" strokeLinecap="round" />
+          <path d="M15 6c1 1 1.5 2.5 0 4" stroke={sage} strokeWidth="0.6" fill="none" strokeLinecap="round" />
+          <path d="M16.5 4.5c1.5 1.5 2 4 0 6" stroke={sage} strokeWidth="0.5" fill="none" strokeLinecap="round" />
+        </svg>
+      );
+    case "publisher": // globe with palace
+      return (
+        <svg {...props}>
+          <circle cx="10" cy="10" r="7" stroke={gold} strokeWidth={sw} fill={`${gold}10`} />
+          <ellipse cx="10" cy="10" rx="3" ry="7" stroke={gold} strokeWidth="0.5" fill="none" />
+          <line x1="3" y1="10" x2="17" y2="10" stroke={gold} strokeWidth="0.5" />
+          <path d="M8 6h4l.5 1H7.5L8 6Z" fill={terracotta} stroke={terracotta} strokeWidth="0.3" />
+          <rect x="8.5" y="7" width="1" height="2.5" fill={terracotta} stroke="none" />
+          <rect x="10.5" y="7" width="1" height="2.5" fill={terracotta} stroke="none" />
+        </svg>
+      );
+    case "first_follower": // star with person silhouette
+      return (
+        <svg {...props}>
+          <circle cx="10" cy="7" r="2.5" stroke={gold} strokeWidth={sw} fill={`${gold}15`} />
+          <path d="M5.5 16c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5" stroke={gold} strokeWidth={sw} fill="none" strokeLinecap="round" />
+          <path d="M15 4l.8 1.6 1.7.3-1.2 1.2.3 1.7L15 8l-1.6.8.3-1.7-1.2-1.2 1.7-.3Z" fill={terracotta} stroke="none" />
+        </svg>
+      );
+    case "influencer": // crown
+      return (
+        <svg {...props}>
+          <path d="M3 14L5 7l3 3 2-5 2 5 3-3 2 7Z" stroke={gold} strokeWidth={sw} fill={`${gold}20`} strokeLinejoin="round" />
+          <line x1="3.5" y1="15.5" x2="16.5" y2="15.5" stroke={gold} strokeWidth="1" strokeLinecap="round" />
+          <circle cx="10" cy="5" r="0.8" fill={terracotta} stroke="none" />
+          <circle cx="5" cy="7" r="0.6" fill={terracotta} stroke="none" />
+          <circle cx="15" cy="7" r="0.6" fill={terracotta} stroke="none" />
+        </svg>
+      );
+    case "commenter": // speech bubbles
+      return (
+        <svg {...props}>
+          <path d="M3 4C3 3.4 3.6 3 4.2 3H12.8C13.4 3 14 3.4 14 4V9C14 9.6 13.4 10 12.8 10H7L4.5 12V10H4.2C3.6 10 3 9.6 3 9V4Z" stroke={gold} strokeWidth={sw} fill={`${gold}12`} />
+          <path d="M7 11.5h5.8c.6 0 1.2.4 1.2 1v3.5c0 .6-.6 1-1.2 1H12L10 18.5V17H7.2c-.6 0-1.2-.4-1.2-1v-3.5c0-.6.6-1 1.2-1Z" stroke={sage} strokeWidth="0.7" fill={`${sage}10`} />
+          <line x1="5" y1="5.5" x2="12" y2="5.5" stroke={gold} strokeWidth="0.5" strokeLinecap="round" />
+          <line x1="5" y1="7.5" x2="10" y2="7.5" stroke={gold} strokeWidth="0.5" strokeLinecap="round" />
         </svg>
       );
 

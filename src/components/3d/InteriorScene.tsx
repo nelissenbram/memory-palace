@@ -2163,7 +2163,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       else if(hovMem.current.isStation)onMemoryClickRef.current("__upload__");
       else onMemoryClickRef.current(hovMem.current);
     }};
-    const onKD=(e: KeyboardEvent)=>{keys.current[e.key.toLowerCase()]=true;if(["arrowup","arrowdown","arrowleft","arrowright"].includes(e.key.toLowerCase()))e.preventDefault();};const onKU=(e: KeyboardEvent)=>{keys.current[e.key.toLowerCase()]=false;};
+    const _cMap:Record<string,string>={"KeyW":"w","KeyA":"a","KeyS":"s","KeyD":"d","ShiftLeft":"shift","ShiftRight":"shift","ArrowUp":"arrowup","ArrowDown":"arrowdown","ArrowLeft":"arrowleft","ArrowRight":"arrowright"};
+    const onKD=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=true;if(k.startsWith("arrow"))e.preventDefault();};const onKU=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=false;};
     const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);
     window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);window.addEventListener("resize",onRs);

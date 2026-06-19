@@ -10,6 +10,7 @@ import type { ExportTree, ExportWingNode, ExportSharedWingNode } from "@/lib/aut
 import { WingIcon, RoomIcon, WING_ICON_MAP, ROOM_ICON_MAP } from "@/components/ui/WingRoomIcons";
 import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
 import { useRoomStore } from "@/lib/stores/roomStore";
+import { flushSettingsToServer } from "@/lib/stores/settingsSync";
 
 const META_CATEGORIES = [
   { key: "interviews", table: "interview_sessions", col: "user_id" },
@@ -101,7 +102,52 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
     setExportOpen(true);
     setScanning(true);
     try {
+      // Flush latest roomStore settings to server before scanning,
+      // so the server scan uses the exact same room tree the user sees.
+      await flushSettingsToServer();
+
       const result = await scanExportTree();
+
+      // Build a lookup from the server result: localId → { roomId (UUID), memoryCount, photoCount }
+      const serverRoomMap: Record<string, { roomId: string; memoryCount: number; photoCount: number }> = {};
+      for (const wing of result.wings) {
+        for (const room of wing.rooms) {
+          serverRoomMap[room.localId] = {
+            roomId: room.roomId,
+            memoryCount: room.memoryCount,
+            photoCount: room.photoCount,
+          };
+        }
+      }
+
+      // Rebuild the wings array entirely from client-side roomStore (source of truth for structure)
+      // and apply memory counts from the server result.
+      const clientWings = getWings().filter((w) => w.id !== "attic");
+      const rebuiltWings: ExportWingNode[] = clientWings
+        .map((cw) => {
+          const rooms = getWingRooms(cw.id);
+          return {
+            slug: cw.id,
+            name: cw.name,
+            icon: cw.icon,
+            rooms: rooms.map((r) => {
+              const srv = serverRoomMap[r.id];
+              return {
+                roomId: srv?.roomId || `local:${r.id}`,
+                localId: r.id,
+                name: r.name,
+                nameKey: r.nameKey,
+                icon: r.icon,
+                memoryCount: srv?.memoryCount || 0,
+                photoCount: srv?.photoCount || 0,
+              };
+            }),
+          };
+        })
+        .filter((w) => w.rooms.length > 0);
+
+      result.wings = rebuiltWings;
+
       setTree(result);
 
       // Default: select all own rooms
@@ -243,8 +289,8 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
       // Fetch profile
       const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
 
-      // Fetch own memories for selected rooms
-      const ownRoomIds = Array.from(selectedRooms);
+      // Fetch own memories for selected rooms (filter out local-only rooms without DB entries)
+      const ownRoomIds = Array.from(selectedRooms).filter(id => !id.startsWith("local:"));
       let ownMemories: Record<string, unknown>[] = [];
       if (ownRoomIds.length > 0) {
         const { data } = await supabase.from("memories").select("*").in("room_id", ownRoomIds);
@@ -283,7 +329,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
       const [familyTreePersons, familyTreeRels, familyGroups, familyMembers] = await Promise.all([
         sel.family_tree ? sq("family_tree_persons", "user_id") : [],
         sel.family_tree ? sq("family_tree_relationships", "user_id") : [],
-        sel.family_groups ? sq("family_groups", "owner_id") : [],
+        sel.family_groups ? sq("family_groups", "created_by") : [],
         sel.family_groups ? sq("family_members", "user_id") : [],
       ]);
       const [legacyContacts, legacyMessages, legacySettings, legacyDeliveries] = await Promise.all([
@@ -523,7 +569,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                           : wing.icon}
                       </span>
                       <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.charcoal, flex: 1 }}>
-                        {tWings(wing.slug) || wing.name}
+                        {(() => { const tr = tWings(wing.slug); return tr && tr !== wing.slug ? tr : wing.name; })()}
                       </span>
                       <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
                         {totalMems} {t("exportMemLabel")}{totalPhotos > 0 ? ` · ${totalPhotos} ${t("exportPhotoLabel")}` : ""}

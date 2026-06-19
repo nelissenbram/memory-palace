@@ -105,6 +105,12 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   const recorder = useAudioRecorder();
   const speech = useSpeechRecognition();
 
+  // Interview quota (free users: limited interviews)
+  const [quota, setQuota] = useState<{ allowed: boolean; unlimited: boolean; used: number; limit: number; nextRespawnDate: string | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/ai-interview/quota").then(r => r.ok ? r.json() : null).then(setQuota).catch(() => {});
+  }, []);
+
   // Local states
   const [phase, setPhase] = useState<"intro" | "question" | "recording" | "transcribing" | "ai-responding" | "review-ai" | "summary" | "complete">("intro");
   const [transcript, setTranscript] = useState("");
@@ -466,14 +472,14 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               {t("encouragement2")}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
-              <button onClick={handleStart} style={{
+              <button onClick={handleStart} disabled={quota !== null && !quota.allowed} style={{
                 padding: isMobile ? "1.125rem 3rem" : "1rem 2.5rem", borderRadius: "1.75rem",
-                border: "none", background: `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
+                border: "none", background: quota && !quota.allowed ? DARK.border : `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
                 color: "#FFF", fontFamily: T.font.body, fontSize: isMobile ? "1.125rem" : "1rem", fontWeight: 600,
-                cursor: "pointer", boxShadow: `0 8px 32px ${accentColor}40`,
-                transition: "transform 0.2s", minHeight: "3.5rem",
+                cursor: quota && !quota.allowed ? "not-allowed" : "pointer", boxShadow: quota && !quota.allowed ? "none" : `0 8px 32px ${accentColor}40`,
+                transition: "transform 0.2s", minHeight: "3.5rem", opacity: quota && !quota.allowed ? 0.5 : 1,
               }}>
-                {t("beginInterview")}
+                {quota && !quota.allowed ? (t("interviewQuotaReached") || "Interview quota reached") : t("beginInterview")}
               </button>
               <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: DARK_PALETTE.sublabel }}>
                 {t("aboutMinutes", { minutes: String(currentTemplate.estimatedTotalMinutes), count: String(currentTemplate.questions.length) })}
@@ -520,6 +526,29 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 ))}
               </div>
             </div>
+
+            {/* Interview quota for free users */}
+            {quota && !quota.unlimited && (
+              <div style={{ marginTop: "1.5rem", padding: "0.75rem 1rem", borderRadius: "0.75rem", background: quota.allowed ? `${DARK.accent}12` : `${T.color.terracotta}20`, border: `1px solid ${quota.allowed ? DARK.border : T.color.terracotta}40` }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: quota.allowed ? DARK_PALETTE.body : T.color.terracotta, margin: 0 }}>
+                  {`${quota.limit - quota.used} / ${quota.limit} ${t("interviewsRemaining") || "interviews remaining"}`}
+                </p>
+                {!quota.allowed && quota.nextRespawnDate && (
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: DARK_PALETTE.sublabel, margin: "0.375rem 0 0" }}>
+                    {t("nextInterviewDate") || "Next interview available"} {new Date(quota.nextRespawnDate).toLocaleDateString(locale as string)}
+                  </p>
+                )}
+                {!quota.allowed && (
+                  <button onClick={() => window.open("/pricing", "_blank")} style={{
+                    marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "1rem",
+                    border: "none", background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                    color: "#FFF", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
+                  }}>
+                    {t("upgradeForUnlimited") || "Upgrade for unlimited interviews"}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

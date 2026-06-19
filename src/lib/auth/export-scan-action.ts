@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { WINGS, WING_ROOMS } from "@/lib/constants/wings";
+import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { serverT, getServerLocale } from "@/lib/i18n/server";
 
 export interface ExportRoomNode {
@@ -36,28 +37,54 @@ export interface ExportTree {
   meta: Record<string, number>;
 }
 
-function roomDisplayName(dbName: string): string {
-  for (const rooms of Object.values(WING_ROOMS)) {
-    const match = rooms.find((r: { id: string; name: string }) => r.id === dbName);
-    if (match) return match.name;
-  }
-  return dbName;
-}
+/**
+ * Load the effective room/wing configuration from profiles.local_settings.
+ * This mirrors what the client-side roomStore computes from localStorage,
+ * giving us the true room tree the user sees in the palace.
+ */
+async function loadEffectiveConfig(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+) {
+  let customRooms: Record<string, WingRoom[]> = {};
+  let customWings: Record<string, Partial<{ name: string; icon: string; accent: string; desc: string }>> = {};
+  let extraWings: Wing[] = [];
 
-function roomDisplayNameKey(dbName: string): string | undefined {
-  for (const rooms of Object.values(WING_ROOMS)) {
-    const match = rooms.find((r: { id: string; nameKey?: string }) => r.id === dbName);
-    if (match?.nameKey) return match.nameKey;
-  }
-  return undefined;
-}
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("local_settings")
+      .eq("id", userId)
+      .single();
+    const ls = profile?.local_settings as Record<string, unknown> | null;
+    if (ls) {
+      // Custom rooms per wing
+      const rawRooms = ls.mp_custom_rooms;
+      if (typeof rawRooms === "string") {
+        try { customRooms = JSON.parse(rawRooms); } catch { /* ignore */ }
+      } else if (rawRooms && typeof rawRooms === "object") {
+        customRooms = rawRooms as typeof customRooms;
+      }
 
-function roomDisplayIcon(dbName: string): string {
-  for (const rooms of Object.values(WING_ROOMS)) {
-    const match = rooms.find((r: { id: string; icon: string }) => r.id === dbName);
-    if (match) return match.icon;
-  }
-  return "";
+      // Custom wing overrides (name, icon, accent)
+      const rawWings = ls.mp_custom_wings;
+      if (typeof rawWings === "string") {
+        try { customWings = JSON.parse(rawWings); } catch { /* ignore */ }
+      } else if (rawWings && typeof rawWings === "object") {
+        customWings = rawWings as typeof customWings;
+      }
+
+      // Extra user-created wings
+      const rawExtra = ls.mp_extra_wings;
+      if (typeof rawExtra === "string") {
+        try { extraWings = JSON.parse(rawExtra); } catch { /* ignore */ }
+      } else if (Array.isArray(rawExtra)) {
+        extraWings = rawExtra as Wing[];
+      }
+    }
+  } catch { /* proceed with defaults */ }
+
+  return { customRooms, customWings, extraWings };
 }
 
 export async function scanExportTree(): Promise<ExportTree> {
@@ -68,19 +95,39 @@ export async function scanExportTree(): Promise<ExportTree> {
   const admin = createAdminClient();
   const uid = user.id;
 
-  // Fetch user's wings and rooms
-  const [{ data: dbWings }, { data: dbRooms }] = await Promise.all([
-    supabase.from("wings").select("id, slug").eq("user_id", uid),
-    supabase.from("rooms").select("id, name, icon, wing_id").eq("user_id", uid),
-  ]);
+  // ── 1. Load the effective room/wing config (source of truth) ──
+  const { customRooms, customWings, extraWings } = await loadEffectiveConfig(supabase, uid);
 
-  // Fetch all memories (just room_id + file info for counting)
+  // Build effective wing list (standard + extra, excluding attic)
+  const allWingDefs = [
+    ...WINGS.filter(w => w.id !== "attic"),
+    ...extraWings,
+  ];
+
+  // Build effective rooms per wing (custom overrides defaults)
+  const effectiveRooms: Record<string, WingRoom[]> = {};
+  for (const w of allWingDefs) {
+    effectiveRooms[w.id] = customRooms[w.id] || WING_ROOMS[w.id] || [];
+  }
+
+  // ── 2. Query DB rooms to map localId → UUID ──
+  const { data: dbRooms } = await supabase
+    .from("rooms")
+    .select("id, name")
+    .eq("user_id", uid);
+
+  // Map: room local ID (e.g. "ro1", "ne1") → DB UUID
+  const localIdToUuid: Record<string, string> = {};
+  for (const r of dbRooms || []) {
+    localIdToUuid[r.name] = r.id;
+  }
+
+  // ── 3. Query all memories for counting ──
   const { data: allMems } = await supabase
     .from("memories")
     .select("room_id, file_path, file_url")
     .eq("user_id", uid);
 
-  // Count memories and photos per room
   const memCountByRoom: Record<string, number> = {};
   const photoCountByRoom: Record<string, number> = {};
   for (const m of allMems || []) {
@@ -90,40 +137,32 @@ export async function scanExportTree(): Promise<ExportTree> {
     }
   }
 
-  // Map wing UUID → slug
-  const wingUuidToSlug: Record<string, string> = {};
-  for (const w of dbWings || []) {
-    wingUuidToSlug[w.id] = w.slug;
-  }
-
-  // Build wing tree
-  const wingMap: Record<string, ExportRoomNode[]> = {};
-  for (const r of dbRooms || []) {
-    const slug = wingUuidToSlug[r.wing_id];
-    if (!slug) continue;
-    if (!wingMap[slug]) wingMap[slug] = [];
-    wingMap[slug].push({
-      roomId: r.id,
-      localId: r.name,
-      name: roomDisplayName(r.name),
-      nameKey: roomDisplayNameKey(r.name),
-      icon: r.icon || roomDisplayIcon(r.name),
-      memoryCount: memCountByRoom[r.id] || 0,
-      photoCount: photoCountByRoom[r.id] || 0,
-    });
-  }
-
-  const wings: ExportWingNode[] = WINGS
-    .filter(w => w.id !== "attic")
-    .map(w => ({
-      slug: w.id,
-      name: w.name,
-      icon: w.icon,
-      rooms: wingMap[w.id] || [],
-    }))
+  // ── 4. Build wing tree from effective config ──
+  const wings: ExportWingNode[] = allWingDefs
+    .map(w => {
+      const wc = customWings[w.id];
+      const rooms = effectiveRooms[w.id] || [];
+      return {
+        slug: w.id,
+        name: wc?.name || w.name,
+        icon: wc?.icon || w.icon,
+        rooms: rooms.map(r => {
+          const dbId = localIdToUuid[r.id];
+          return {
+            roomId: dbId || `local:${r.id}`,
+            localId: r.id,
+            name: r.name,
+            nameKey: r.nameKey,
+            icon: r.icon,
+            memoryCount: dbId ? (memCountByRoom[dbId] || 0) : 0,
+            photoCount: dbId ? (photoCountByRoom[dbId] || 0) : 0,
+          };
+        }),
+      };
+    })
     .filter(w => w.rooms.length > 0);
 
-  // Fetch shared wings (accepted)
+  // ── 5. Fetch shared wings (accepted) ──
   const { data: wingShares } = await admin
     .from("wing_shares")
     .select("id, wing_id, owner_id, permission")
@@ -135,14 +174,14 @@ export async function scanExportTree(): Promise<ExportTree> {
   if (wingShares && wingShares.length > 0) {
     // Resolve owner names
     const ownerIds = [...new Set(wingShares.map(s => s.owner_id))];
-    const nameMap: Record<string, string> = {};
+    const ownerNameMap: Record<string, string> = {};
     if (ownerIds.length > 0) {
       const { data: profiles } = await admin
         .from("profiles")
         .select("id, display_name")
         .in("id", ownerIds);
       for (const p of profiles || []) {
-        nameMap[p.id] = p.display_name || serverT("someone", expLocale);
+        ownerNameMap[p.id] = p.display_name || serverT("someone", expLocale);
       }
     }
 
@@ -181,18 +220,71 @@ export async function scanExportTree(): Promise<ExportTree> {
         }
       }
 
+      // For shared rooms, load owner's custom room names
+      let ownerNameMap2: Map<string, { name: string; nameKey?: string; icon: string }> | undefined;
+      try {
+        const { data: ownerProfile } = await admin
+          .from("profiles")
+          .select("local_settings")
+          .eq("id", share.owner_id)
+          .single();
+        const ownerLs = ownerProfile?.local_settings as Record<string, unknown> | null;
+        if (ownerLs) {
+          let ownerCustomRooms: Record<string, { id: string; name: string; nameKey?: string; icon: string }[]> = {};
+          const rawOwnerRooms = ownerLs.mp_custom_rooms;
+          if (typeof rawOwnerRooms === "string") {
+            try { ownerCustomRooms = JSON.parse(rawOwnerRooms); } catch { /* ignore */ }
+          } else if (rawOwnerRooms && typeof rawOwnerRooms === "object") {
+            ownerCustomRooms = rawOwnerRooms as typeof ownerCustomRooms;
+          }
+          ownerNameMap2 = new Map();
+          for (const wingRooms of Object.values(ownerCustomRooms)) {
+            if (Array.isArray(wingRooms)) {
+              for (const cr of wingRooms) {
+                if (cr.id && cr.name) ownerNameMap2.set(cr.id, { name: cr.name, nameKey: cr.nameKey, icon: cr.icon });
+              }
+            }
+          }
+        }
+      } catch { /* ignore */ }
+
+      const resolveSharedRoomName = (dbName: string): string => {
+        if (ownerNameMap2?.has(dbName)) return ownerNameMap2.get(dbName)!.name;
+        for (const defRooms of Object.values(WING_ROOMS)) {
+          const match = defRooms.find(r => r.id === dbName);
+          if (match) return match.name;
+        }
+        return dbName;
+      };
+      const resolveSharedRoomNameKey = (dbName: string): string | undefined => {
+        if (ownerNameMap2?.has(dbName)) return ownerNameMap2.get(dbName)!.nameKey;
+        for (const defRooms of Object.values(WING_ROOMS)) {
+          const match = defRooms.find(r => r.id === dbName);
+          if (match?.nameKey) return match.nameKey;
+        }
+        return undefined;
+      };
+      const resolveSharedRoomIcon = (dbName: string): string => {
+        if (ownerNameMap2?.has(dbName)) return ownerNameMap2.get(dbName)!.icon;
+        for (const defRooms of Object.values(WING_ROOMS)) {
+          const match = defRooms.find(r => r.id === dbName);
+          if (match) return match.icon;
+        }
+        return "";
+      };
+
       shared.push({
         shareId: share.id,
         wingSlug: share.wing_id,
         wingName: wingDef?.name || share.wing_id.charAt(0).toUpperCase() + share.wing_id.slice(1),
         wingIcon: wingDef?.icon || "",
-        ownerName: nameMap[share.owner_id] || serverT("someone", expLocale),
+        ownerName: ownerNameMap[share.owner_id] || serverT("someone", expLocale),
         rooms: (rooms || []).map((r: { id: string; name: string; icon: string }) => ({
           roomId: r.id,
           localId: r.name,
-          name: roomDisplayName(r.name),
-          nameKey: roomDisplayNameKey(r.name),
-          icon: r.icon || roomDisplayIcon(r.name),
+          name: resolveSharedRoomName(r.name),
+          nameKey: resolveSharedRoomNameKey(r.name),
+          icon: r.icon || resolveSharedRoomIcon(r.name),
           memoryCount: sharedMemsByRoom[r.id]?.total || 0,
           photoCount: sharedMemsByRoom[r.id]?.photos || 0,
         })),
@@ -200,7 +292,7 @@ export async function scanExportTree(): Promise<ExportTree> {
     }
   }
 
-  // Meta counts (non-palace data)
+  // ── 6. Meta counts (non-palace data) ──
   const sq = async (table: string, col: string) => {
     try {
       const { count } = await supabase.from(table).select("*", { count: "exact", head: true }).eq(col, uid);

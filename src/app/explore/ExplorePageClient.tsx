@@ -704,6 +704,42 @@ function EnhancedPalaceCard({
                 </span>
               </>
             )}
+            {/* Profile link (follow from there) */}
+            {palace.username && (
+              <a
+                href={`/u/${palace.username}`}
+                onClick={(e) => e.stopPropagation()}
+                aria-label={t("followUser")}
+                style={{
+                  marginLeft: palace.published_wing_count > 0 ? undefined : "auto",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "1.75rem", height: "1.75rem", borderRadius: "50%",
+                  border: `1px solid ${T.color.sandstone}`,
+                  background: "transparent",
+                  color: T.color.goldDark,
+                  textDecoration: "none",
+                  flexShrink: 0,
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`;
+                  e.currentTarget.style.color = T.color.cream;
+                  e.currentTarget.style.borderColor = "transparent";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = T.color.goldDark;
+                  e.currentTarget.style.borderColor = T.color.sandstone;
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <line x1="19" y1="8" x2="19" y2="14" />
+                  <line x1="22" y1="11" x2="16" y2="11" />
+                </svg>
+              </a>
+            )}
             {palace.first_wing_slug && (
               <span style={{
                 marginLeft: "auto", display: "flex", alignItems: "center", gap: "0.25rem",

@@ -23,6 +23,8 @@ interface UserState {
   bustGender: string | null;
   accessibilityMode: string;
   bustPedestals: Record<number, BustPedestalData>;
+  storageMb: number;
+  storageLimitMb: number;
   setAccessibilityMode: (v: string) => void;
   setOnboardStep: (step: number | ((s: number) => number)) => void;
   setUserName: (name: string) => void;
@@ -55,6 +57,8 @@ export const useUserStore = create<UserState>((set, get) => ({
   bustGender: null,
   accessibilityMode: "standard",
   bustPedestals: {},
+  storageMb: 0,
+  storageLimitMb: 0,
 
   setAccessibilityMode: (v) => set({ accessibilityMode: v }),
   setOnboardStep: (step) =>
@@ -116,6 +120,15 @@ export const useUserStore = create<UserState>((set, get) => ({
       else set({ onboarded: false });
     }
     set({ profileLoading: false });
+
+    // Fetch storage usage and effective limit (applies grandfathering server-side)
+    try {
+      const res = await fetch("/api/storage/limit");
+      if (res.ok) {
+        const data = await res.json();
+        set({ storageMb: data.storageMb ?? 0, storageLimitMb: data.limitMb ?? 1024 });
+      }
+    } catch { /* non-critical */ }
   },
 
   finishOnboarding: async () => {

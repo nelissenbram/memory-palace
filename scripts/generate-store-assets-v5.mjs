@@ -156,7 +156,7 @@ const SIZES = [
 
 // iOS sizes — rendered WITHOUT text overlay (Apple Guideline 2.3.3)
 const IOS_SIZES = [
-  { suffix: '-ios67',      w: 1290, h: 2796, dir: IOS_OUT },  // iOS iPhone 6.7"
+  { suffix: '-ios65',      w: 1284, h: 2778, dir: IOS_OUT },  // iOS iPhone 6.5"
   { suffix: '-ipad13',     w: 2064, h: 2752, dir: IOS_OUT },  // iOS iPad 13"
 ];
 

@@ -299,6 +299,15 @@ const errors: Record<string, Record<Locale, string>> = {
     fr: "Quelque chose s'est mal pass\u00e9",
   },
 
+  // ── Plan limits ──
+  familyTreeLimitReached: {
+    en: "Free plan allows up to 25 people in the family tree. Upgrade for unlimited.",
+    nl: "Het gratis abonnement staat maximaal 25 personen in de stamboom toe. Upgrade voor onbeperkt.",
+    de: "Der kostenlose Plan erlaubt bis zu 25 Personen im Stammbaum. Upgrade f\u00fcr unbegrenzt.",
+    es: "El plan gratuito permite hasta 25 personas en el \u00e1rbol geneal\u00f3gico. Mejora para ilimitado.",
+    fr: "Le plan gratuit autorise jusqu'\u00e0 25 personnes dans l'arbre g\u00e9n\u00e9alogique. Passez au niveau sup\u00e9rieur pour illimit\u00e9.",
+  },
+
   // ── Legacy extra (legacy-actions.ts) ──
   invalidWingOrRoomAccess: {
     en: "Invalid wing or room access",

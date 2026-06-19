@@ -440,7 +440,7 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
           display: "flex",
           alignItems: "center",
           gap: compact ? "0.25rem" : "0.375rem",
-          flexWrap: "wrap",
+          flexWrap: "nowrap",
         }}
       >
         {/* Vertical separator */}
@@ -762,16 +762,18 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
     >
       <style>{dropdownKeyframes}</style>
 
-      {/* Centered content with max-width */}
+      {/* Centered content — single line, never wraps */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: "0.125rem",
           width: "100%",
-          maxWidth: "72rem",
           padding: "0 1.25rem",
           justifyContent: "center",
+          flexWrap: "nowrap",
+          whiteSpace: "nowrap",
+          minWidth: 0,
         }}
       >
         {renderBreadcrumbs()}

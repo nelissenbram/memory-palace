@@ -136,6 +136,42 @@ export const TRACKS: Track[] = [
       { id: "c_5_people", titleKey: "tracks.cocreate.c_5_people.title", descriptionKey: "tracks.cocreate.c_5_people.desc", hintKey: "tracks.cocreate.c_5_people.hint", pointValue: 10, navigateTo: "share" },
     ],
   },
+
+  // ─── Track 7: Capture via WhatsApp (5.1.7) ───
+  {
+    id: "capture",
+    nameKey: "tracks.capture.name",
+    icon: "\uD83D\uDCF2",
+    descriptionKey: "tracks.capture.description",
+    color: "#6B8E7B", // sage-green
+    completionBonus: 50,
+    relevantGoals: ["preserve"],
+    steps: [
+      { id: "k_first_capture", titleKey: "tracks.capture.k_first_capture.title", descriptionKey: "tracks.capture.k_first_capture.desc", hintKey: "tracks.capture.k_first_capture.hint", pointValue: 10, navigateTo: "keps" },
+      { id: "k_5_captures", titleKey: "tracks.capture.k_5_captures.title", descriptionKey: "tracks.capture.k_5_captures.desc", hintKey: "tracks.capture.k_5_captures.hint", pointValue: 10, navigateTo: "keps" },
+      { id: "k_set_room", titleKey: "tracks.capture.k_set_room.title", descriptionKey: "tracks.capture.k_set_room.desc", hintKey: "tracks.capture.k_set_room.hint", pointValue: 10, navigateTo: "keps" },
+      { id: "k_voice_note", titleKey: "tracks.capture.k_voice_note.title", descriptionKey: "tracks.capture.k_voice_note.desc", hintKey: "tracks.capture.k_voice_note.hint", pointValue: 10, navigateTo: "keps" },
+      { id: "k_25_captures", titleKey: "tracks.capture.k_25_captures.title", descriptionKey: "tracks.capture.k_25_captures.desc", hintKey: "tracks.capture.k_25_captures.hint", pointValue: 10, navigateTo: "keps" },
+    ],
+  },
+
+  // ─── Track 8: Connect & Explore (5.1.8) ───
+  {
+    id: "connect",
+    nameKey: "tracks.connect.name",
+    icon: "\uD83C\uDF10",
+    descriptionKey: "tracks.connect.description",
+    color: "#7B6B8E", // purple
+    completionBonus: 50,
+    relevantGoals: ["share"],
+    steps: [
+      { id: "s_publish", titleKey: "tracks.connect.s_publish.title", descriptionKey: "tracks.connect.s_publish.desc", hintKey: "tracks.connect.s_publish.hint", pointValue: 10, navigateTo: "settings" },
+      { id: "s_first_follow", titleKey: "tracks.connect.s_first_follow.title", descriptionKey: "tracks.connect.s_first_follow.desc", hintKey: "tracks.connect.s_first_follow.hint", pointValue: 10, navigateTo: "explore" },
+      { id: "s_first_comment", titleKey: "tracks.connect.s_first_comment.title", descriptionKey: "tracks.connect.s_first_comment.desc", hintKey: "tracks.connect.s_first_comment.hint", pointValue: 10, navigateTo: "explore" },
+      { id: "s_get_follower", titleKey: "tracks.connect.s_get_follower.title", descriptionKey: "tracks.connect.s_get_follower.desc", hintKey: "tracks.connect.s_get_follower.hint", pointValue: 10, navigateTo: "settings" },
+      { id: "s_visit_palace", titleKey: "tracks.connect.s_visit_palace.title", descriptionKey: "tracks.connect.s_visit_palace.desc", hintKey: "tracks.connect.s_visit_palace.hint", pointValue: 10, navigateTo: "explore" },
+    ],
+  },
 ];
 
 // Quick lookup
@@ -144,8 +180,8 @@ export const TRACK_IDS = TRACKS.map((t) => t.id);
 
 // Goal → recommended track order
 export const GOAL_TRACK_PRIORITY: Record<string, string[]> = {
-  preserve: ["preserve", "enhance", "resolutions", "visualize", "cocreate", "legacy"],
-  legacy: ["legacy", "enhance", "resolutions", "preserve", "visualize", "cocreate"],
-  share: ["cocreate", "preserve", "visualize", "enhance", "resolutions", "legacy"],
-  organize: ["visualize", "preserve", "enhance", "cocreate", "resolutions", "legacy"],
+  preserve: ["preserve", "capture", "enhance", "resolutions", "visualize", "cocreate", "connect", "legacy"],
+  legacy: ["legacy", "enhance", "resolutions", "preserve", "capture", "visualize", "cocreate", "connect"],
+  share: ["cocreate", "connect", "preserve", "capture", "visualize", "enhance", "resolutions", "legacy"],
+  organize: ["visualize", "preserve", "capture", "enhance", "cocreate", "connect", "resolutions", "legacy"],
 };

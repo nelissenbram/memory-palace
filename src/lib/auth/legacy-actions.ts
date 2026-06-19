@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { sendTrusteeWelcomeEmail } from "@/lib/email/send-legacy";
 import { serverError } from "@/lib/i18n/server-errors";
 
@@ -303,6 +304,41 @@ export async function fetchLegacyMessages(): Promise<LegacyMessage[]> {
   return (data as LegacyMessage[]) || [];
 }
 
+/** Trigger immediate delivery for a specific message via the deliver endpoint. */
+async function triggerImmediateDelivery(userId: string, messageId: string): Promise<{ sent: boolean; detail?: string }> {
+  try {
+    // Derive URL from incoming request headers to avoid cross-origin redirects
+    // (redirects strip the Authorization header per the Fetch spec)
+    const h = await headers();
+    const host = h.get("host") || h.get("x-forwarded-host");
+    const proto = h.get("x-forwarded-proto") || "https";
+    const siteUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
+    const cronSecret = process.env.CRON_SECRET;
+    if (!cronSecret) {
+      console.error("[triggerImmediateDelivery] CRON_SECRET not configured");
+      return { sent: false, detail: "CRON_SECRET not configured" };
+    }
+    const res = await fetch(`${siteUrl}/api/legacy/deliver`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cronSecret}`,
+      },
+      body: JSON.stringify({ userId, messageIds: [messageId] }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error("[triggerImmediateDelivery] Response:", res.status, body.slice(0, 300));
+      return { sent: false, detail: `HTTP ${res.status}: ${body.slice(0, 100)}` };
+    }
+    const result = await res.json().catch(() => ({}));
+    return { sent: (result.sent || 0) > 0, detail: JSON.stringify(result) };
+  } catch (e) {
+    console.error("[triggerImmediateDelivery] Failed:", e);
+    return { sent: false, detail: e instanceof Error ? e.message : "Unknown error" };
+  }
+}
+
 export async function createLegacyMessage(input: {
   recipient_email: string;
   subject: string;
@@ -328,32 +364,13 @@ export async function createLegacyMessage(input: {
 
   if (error) return { error: error.message };
 
-  // For "immediately" messages, trigger delivery now instead of waiting for daily cron
-  if ((input.deliver_on === "immediately") && data) {
-    try {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-      const cronSecret = process.env.CRON_SECRET;
-      if (cronSecret) {
-        const res = await fetch(`${siteUrl}/api/legacy/deliver`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${cronSecret}`,
-          },
-          body: JSON.stringify({ userId: user.id, messageIds: [(data as LegacyMessage).id] }),
-        });
-        if (!res.ok) {
-          const body = await res.text().catch(() => "");
-          console.error("[createLegacyMessage] Immediate delivery response:", res.status, body.slice(0, 300));
-        }
-      }
-    } catch (e) {
-      console.error("[createLegacyMessage] Immediate delivery failed:", e);
-      // Non-blocking — message is saved, cron will pick it up as fallback
-    }
+  // For "immediately" messages, trigger delivery now
+  let deliveryResult: { sent: boolean; detail?: string } | undefined;
+  if (input.deliver_on === "immediately" && data) {
+    deliveryResult = await triggerImmediateDelivery(user.id, (data as LegacyMessage).id);
   }
 
-  return { message: data as LegacyMessage };
+  return { message: data as LegacyMessage, delivery: deliveryResult };
 }
 
 export async function updateLegacyMessage(
@@ -387,7 +404,15 @@ export async function updateLegacyMessage(
     .single();
 
   if (error) return { error: error.message };
-  return { message: data as LegacyMessage };
+
+  // For "immediately" messages, trigger delivery now
+  const effectiveDeliverOn = updates.deliver_on ?? (data as LegacyMessage).deliver_on;
+  let deliveryResult: { sent: boolean; detail?: string } | undefined;
+  if (effectiveDeliverOn === "immediately" && data) {
+    deliveryResult = await triggerImmediateDelivery(user.id, (data as LegacyMessage).id);
+  }
+
+  return { message: data as LegacyMessage, delivery: deliveryResult };
 }
 
 export async function deleteLegacyMessage(messageId: string) {

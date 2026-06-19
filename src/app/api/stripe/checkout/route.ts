@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const rl = await rateLimit(`checkout:${user.id}`, 5, 3_600_000);
+    const rl = await rateLimit(`checkout:${user.id}`, 20, 3_600_000);
     if (!rl.success) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: rateLimitHeaders(rl) });
     }
@@ -55,6 +55,16 @@ export async function POST(req: NextRequest) {
       .single();
 
     let customerId = subscription?.stripe_customer_id;
+
+    // Verify customer exists on current Stripe account (handles account migration)
+    if (customerId) {
+      try {
+        await stripe.customers.retrieve(customerId);
+      } catch {
+        // Customer from old/different Stripe account — reset so we create a new one
+        customerId = undefined;
+      }
+    }
 
     // Create Stripe customer if needed, and persist to DB
     if (!customerId) {

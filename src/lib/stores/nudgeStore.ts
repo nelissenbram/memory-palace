@@ -3,7 +3,9 @@ import { create } from "zustand";
 const STORAGE_KEY = "mp_nudges_seen";
 const ONBOARD_DATE_KEY = "mp_onboard_date";
 const SKIPPED_KEY = "mp_nudges_skipped";
-const MAX_AGE_DAYS = 7;
+/* No time limit — tutorials auto-fire on first visit to each page,
+   regardless of when the user signed up. The "skipped" flag and
+   per-page seen tracking prevent re-showing. */
 
 export type NudgeId =
   | "atrium_nav_modes"
@@ -138,10 +140,7 @@ function shouldShowNudges(): boolean {
     // Once skipped, never auto-start again (? button clears this flag)
     if (localStorage.getItem(SKIPPED_KEY) === "true") return false;
 
-    // Always respect the onboarding window — stop nudges after MAX_AGE_DAYS
-    const d = localStorage.getItem(ONBOARD_DATE_KEY);
-    if (d && Date.now() - new Date(d).getTime() > MAX_AGE_DAYS * 86400000) return false;
-
+    // Show nudges if there are any unseen ones on any page
     const raw = localStorage.getItem(STORAGE_KEY);
     const seen = raw ? JSON.parse(raw) : [];
     if (seen.length === 0) return true;
@@ -173,21 +172,23 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
   setAutoWalking: (val) => set({ autoWalking: val }),
 
   initPage: (page, isMobile) => {
-    const { activePage, activeNudge: currentNudge, queue: currentQueue, _advanceTimer: prev, _forceCurrentPage: forceCurrent } = get();
+    const { activePage, activeNudge: currentNudge, queue: currentQueue, _advanceTimer: prev, _forceCurrentPage: forceCurrent, seenNudges: currentSeen } = get();
 
-    // If this page's nudge sequence is already running with an active nudge
-    // or queued nudges, don't reset it.  This prevents a duplicate initPage
-    // call (e.g. from a delayed setTimeout or React re-render) from blinking
-    // the active nudge off and on again.
-    // Only block when a nudge is actually visible or queued — a pending timer
-    // alone should NOT block, because the timer might belong to a stale setup
-    // that never produced a visible nudge (e.g. race after onboarding).
+    // If this page's nudge sequence is already running, don't reset it.
     // Skip this guard when _forceCurrentPage is set (from reset() / help button).
     if (!forceCurrent && activePage === page && (currentNudge || currentQueue.length > 0)) {
       return;
     }
 
     if (prev) clearTimeout(prev);
+
+    // If switching away from a page with active/queued nudges, mark them all
+    // as seen so they never re-fire when the user returns.
+    if (currentNudge || currentQueue.length > 0) {
+      if (currentNudge) currentSeen.add(currentNudge);
+      for (const id of currentQueue) currentSeen.add(id);
+      saveSeen(currentSeen);
+    }
 
     if (!shouldShowNudges()) {
       set({ activeNudge: null, queue: [], activePage: page, _advanceTimer: null, _forceCurrentPage: false });
@@ -202,25 +203,9 @@ export const useNudgeStore = create<NudgeState>((set, get) => ({
         for (const id of ONBOARD_WALK_NUDGES) seen.add(id);
       }
     } catch {}
-    const forceCurrentPage = get()._forceCurrentPage;
-    const nudges = isMobile ? MOBILE_PAGE_NUDGES[page] : PAGE_NUDGES[page];
-    // Also count desktop nudges as "seen" for cross-page ordering
-    const allAtriumSeen = [...PAGE_NUDGES.atrium, ...MOBILE_PAGE_NUDGES.atrium];
-    let candidates = nudges.filter((id) => !seen.has(id));
 
-    // Cross-page ordering: only require the bridge nudge from the previous page
-    // (or any nudge on the previous page), not ALL previous nudges
-    if (!forceCurrentPage) {
-      if (page === "library") {
-        const atriumVisited = allAtriumSeen.some((id) => seen.has(id));
-        if (!atriumVisited) candidates = [];
-      }
-      if (page === "palace") {
-        const libraryVisited = PAGE_NUDGES.library.some((id) => seen.has(id));
-        const atriumVisited = allAtriumSeen.some((id) => seen.has(id));
-        if (!libraryVisited && !atriumVisited) candidates = [];
-      }
-    }
+    const nudges = isMobile ? MOBILE_PAGE_NUDGES[page] : PAGE_NUDGES[page];
+    const candidates = nudges.filter((id) => !seen.has(id));
 
     if (candidates.length === 0) {
       set({ seenNudges: seen, activeNudge: null, queue: [], activePage: page, _advanceTimer: null, _forceCurrentPage: false });

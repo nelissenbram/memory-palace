@@ -146,7 +146,7 @@ const MOBILE_QUALITY: QualitySettings = {
   bloom: false,
   smaa: true,
   vegetationDensity: 0.5,
-  loadBackgroundHDRI: false,
+  loadBackgroundHDRI: true,
   loadEnvHDRI: true,
   textureRes: "1k",
   maxEagerTextureSets: 4,

@@ -396,7 +396,7 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
         animation: "spFadeIn .25s ease",
         display: "flex",
         justifyContent: "center",
-        alignItems: isMobile ? "flex-end" : "center",
+        alignItems: isMobile ? "stretch" : "center",
       }}
     >
       <style>{`
@@ -414,12 +414,15 @@ export default function StatisticsPanel({ onClose }: StatisticsPanelProps) {
         style={{
           position: "relative",
           width: isMobile ? "100%" : "min(40rem, 92vw)",
-          maxHeight: isMobile ? "92vh" : "88vh",
+          height: isMobile ? "100%" : undefined,
+          maxHeight: isMobile ? undefined : "88vh",
           background: T.color.linen,
-          borderRadius: isMobile ? "1rem 1rem 0 0" : "1rem",
+          borderRadius: isMobile ? 0 : "1rem",
           boxShadow: "0 1.5rem 4rem rgba(42,34,24,.25)",
           overflowY: "auto",
           animation: "spSlideUp .3s cubic-bezier(.23,1,.32,1)",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         {/* ── Weekly Digest Overlay ── */}

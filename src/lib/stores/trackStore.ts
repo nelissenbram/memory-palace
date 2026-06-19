@@ -241,7 +241,7 @@ export const useTrackStore = create<TrackState>((set, get) => ({
 
       if (newlyCompleted.length > 0) {
         const mergedSteps = [...new Set([...existing.stepsCompleted, ...newSteps])];
-        const pct = Math.round((mergedSteps.length / track.steps.length) * 100);
+        const pct = Math.min(100, Math.round((mergedSteps.length / track.steps.length) * 100));
         const isNowComplete = pct >= 100 && !existing.completedAt;
 
         newTracks[track.id] = {

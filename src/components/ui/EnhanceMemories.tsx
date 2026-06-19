@@ -19,6 +19,8 @@ export interface EnhanceMemoriesProps {
   onSetupGallery: () => void;
   onCreateFamilyGroup: () => void;
   onCreateTimeCapsule: () => void;
+  onSendViaWhatsApp: () => void;
+  onPublishExplore: () => void;
   isMobile: boolean;
 }
 
@@ -213,6 +215,52 @@ function IconTimeCapsule() {
   );
 }
 
+function IconWhatsApp() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* Phone/chat bubble */}
+      <path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-6l-4 4v-4H5a2 2 0 0 1-2-2V5z" />
+      {/* Camera icon inside */}
+      <rect x="9" y="7" width="6" height="4.5" rx="0.5" />
+      <circle cx="12" cy="9.25" r="1.2" />
+      {/* Green dot accent */}
+      <circle cx="19" cy="5" r="2" fill="#25D366" stroke="none" />
+    </svg>
+  );
+}
+
+function IconPublishExplore() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {/* Globe */}
+      <circle cx="12" cy="12" r="9" />
+      <ellipse cx="12" cy="12" rx="4" ry="9" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      {/* People dots */}
+      <circle cx="18" cy="6" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="6" cy="18" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function IconHelp() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <circle cx="12" cy="17" r="0.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function IconContribute() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+    </svg>
+  );
+}
+
 /* ── Action card config ── */
 
 interface ActionCardConfig {
@@ -233,6 +281,8 @@ export default function EnhanceMemories({
   onSetupGallery,
   onCreateFamilyGroup,
   onCreateTimeCapsule,
+  onSendViaWhatsApp,
+  onPublishExplore,
   isMobile,
 }: EnhanceMemoriesProps) {
   const { t } = useTranslation("enhance");
@@ -293,6 +343,34 @@ export default function EnhanceMemories({
       descKey: "blogDesc",
       accent: T.color.inkSoft || "#403B36",
       onClick: () => window.open("/blog", "_blank"),
+    },
+    {
+      icon: <IconWhatsApp />,
+      titleKey: "whatsappTitle",
+      descKey: "whatsappDesc",
+      accent: "#25D366",
+      onClick: onSendViaWhatsApp,
+    },
+    {
+      icon: <IconPublishExplore />,
+      titleKey: "publishTitle",
+      descKey: "publishDesc",
+      accent: "#7B6B8E",
+      onClick: onPublishExplore,
+    },
+    {
+      icon: <IconHelp />,
+      titleKey: "helpTitle",
+      descKey: "helpDesc",
+      accent: T.color.sandstone,
+      onClick: () => window.open("/help", "_blank"),
+    },
+    {
+      icon: <IconContribute />,
+      titleKey: "contributeTitle",
+      descKey: "contributeDesc",
+      accent: "#FF4500",
+      onClick: () => window.open("https://www.reddit.com/r/TheMemoryPalace/", "_blank"),
     },
   ];
 

@@ -17,9 +17,9 @@ let vapidInitError: string | null = null;
 function ensureVapid(): { ok: boolean; error?: string } {
   if (vapidConfigured) return { ok: true };
   if (vapidInitError) return { ok: false, error: vapidInitError };
-  const pub = (process.env.VAPID_PUBLIC_KEY || "").trim();
-  const priv = (process.env.VAPID_PRIVATE_KEY || "").trim();
-  const subject = (process.env.VAPID_SUBJECT || "mailto:info@thememorypalace.ai").trim();
+  const pub = (process.env.VAPID_PUBLIC_KEY || "").replace(/\\n/g, "").trim();
+  const priv = (process.env.VAPID_PRIVATE_KEY || "").replace(/\\n/g, "").trim();
+  const subject = (process.env.VAPID_SUBJECT || "mailto:info@thememorypalace.ai").replace(/\\n/g, "").trim();
   if (!pub || !priv) {
     vapidInitError = `missing env (pub=${!!pub} priv=${!!priv})`;
     return { ok: false, error: vapidInitError };

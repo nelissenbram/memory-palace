@@ -51,8 +51,8 @@ export async function inviteCollaborator(input: {
       .from("room_collaborators")
       .select("*", { count: "exact", head: true })
       .eq("room_id", input.roomId);
-    if ((count || 0) >= 3) {
-      return { ok: false, error: "Keeper plan allows up to 3 collaborators per room" };
+    if ((count || 0) >= 5) {
+      return { ok: false, error: "Keeper plan allows up to 5 collaborators per room" };
     }
   }
 

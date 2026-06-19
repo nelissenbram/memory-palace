@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkAiConsent } from "@/lib/ai/check-consent";
 import { rateLimitStrict, rateLimitHeaders } from "@/lib/rate-limit";
+import { checkInterviewQuota } from "@/lib/auth/plan-limits";
 
 // TODO: Add a first-use consent dialog in the client UI to improve UX
 // instead of relying solely on the settings page toggles.
@@ -40,6 +41,15 @@ export async function POST(req: NextRequest) {
     const consent = await checkAiConsent(supabase, user.id);
     if (!consent.ok) {
       return NextResponse.json({ error: consent.error }, { status: 403 });
+    }
+
+    // Check interview quota (free users: 2 base + monthly respawns)
+    const quota = await checkInterviewQuota(user.id);
+    if (!quota.allowed) {
+      return NextResponse.json({
+        error: "Interview quota reached",
+        quota: { used: quota.used, limit: quota.limit, nextRespawnDate: quota.nextRespawnDate },
+      }, { status: 403 });
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;

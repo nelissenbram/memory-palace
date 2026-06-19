@@ -397,6 +397,9 @@ export default function NotificationsPage() {
         </div>
       )}
 
+      {/* ── Push Notifications Section (mobile only) ── */}
+      {isMobile && <>
+
       {/* Browser support warning */}
       {isUnsupported && (
         <div style={{
@@ -428,8 +431,6 @@ export default function NotificationsPage() {
           </p>
         </div>
       )}
-
-      {/* ── Push Notifications Section ── */}
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
@@ -530,6 +531,8 @@ export default function NotificationsPage() {
           </>
         )}
       </div>
+
+      </>}
 
       {/* ── Email Notifications Section ── */}
       <div style={{

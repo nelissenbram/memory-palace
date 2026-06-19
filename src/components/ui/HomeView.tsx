@@ -162,10 +162,10 @@ function ConfettiOverlay({ onDone }: { onDone: () => void }) {
 
 /* ─── PERSONA → RECOMMENDED TRACKS (ordered by relevance) ─── */
 const PERSONA_TRACKS: Record<string, string[]> = {
-  historian: ["preserve", "enhance", "legacy"],
-  storyteller: ["enhance", "resolutions", "cocreate"],
-  curator: ["visualize", "preserve", "enhance"],
-  explorer: ["resolutions", "cocreate", "visualize"],
+  historian: ["preserve", "capture", "enhance", "legacy"],
+  storyteller: ["enhance", "resolutions", "cocreate", "connect"],
+  curator: ["visualize", "preserve", "capture", "enhance"],
+  explorer: ["resolutions", "cocreate", "connect", "visualize"],
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -222,6 +222,7 @@ export default function HomeView() {
   const setShowStatistics = useUIPanelStore((s) => s.setShowStatistics);
   const setShowSharedWithMe = useUIPanelStore((s) => s.setShowSharedWithMe);
   const setShowFamilyTree = useUIPanelStore((s) => s.setShowFamilyTree);
+  const setShowKepCapture = useUIPanelStore((s) => s.setShowKepCapture);
 
 
   const { startTransition, transitionProps } = useModeTransition();
@@ -304,12 +305,8 @@ export default function HomeView() {
   // Total memories
   const totalMemories = allMemories.length;
 
-  // Wings with at least 1 memory
-  const totalWings = useMemo(() => {
-    const used = new Set<string>();
-    for (const { wing } of allMemories) used.add(wing.id);
-    return used.size;
-  }, [allMemories]);
+  // Total wings (always all defined wings, for coverage map denominator)
+  const totalWings = wings.length;
 
   // Total rooms across all wings
   const totalRooms = useMemo(() => {
@@ -654,6 +651,8 @@ export default function HomeView() {
               onTimeline={() => setShowTimeline(true)}
               onStatistics={() => setShowStatistics(true)}
               onFamilyTree={() => setShowFamilyTree(true)}
+              onKep={() => setShowKepCapture(true)}
+              onExplore={() => router.push("/explore")}
               isMobile={isMobile}
             />
           </div>
@@ -799,6 +798,8 @@ export default function HomeView() {
                 localStorage.setItem("mp_upload_time_capsule", "true");
                 handleNavigateLibrary();
               }}
+              onSendViaWhatsApp={() => setShowKepCapture(true)}
+              onPublishExplore={() => router.push("/explore")}
               isMobile={isMobile}
             />
           </div>

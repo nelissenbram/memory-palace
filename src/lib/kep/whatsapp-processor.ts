@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WhatsAppMessage } from "@/types/kep";
 import { WING_ROOMS } from "@/lib/constants/wings";
+import { getEffectiveStorageLimit } from "@/lib/auth/plan-limits";
 import { downloadAndStoreMedia } from "./whatsapp-media";
 import { autoRouteToRoom } from "./auto-route";
 import { suggestRouting } from "./ai-route";
@@ -15,6 +16,7 @@ import {
   sendRoomConfirmation,
   sendRoomPicker,
   sendLinkAccountMessage,
+  sendLinkAccountIntro,
   sendRoomSwitchConfirmation,
   sendStatusMessage,
   sendHelpMessage,
@@ -237,6 +239,66 @@ async function autoCreateDMLink(
 }
 
 /**
+ * Check user's storage usage as a percentage of their plan limit.
+ * Returns { storageMb, limitMb, pct } or null on error.
+ */
+async function checkStorageUsage(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<{ storageMb: number; limitMb: number; pct: number } | null> {
+  try {
+    const storageRes = await supabase
+      .from("memories")
+      .select("file_size")
+      .eq("user_id", userId);
+    const totalBytes = (storageRes.data || []).reduce(
+      (sum: number, m: any) => sum + (m.file_size || 0),
+      0,
+    );
+    const storageMb = Math.round(totalBytes / (1024 * 1024));
+
+    // Use getEffectiveStorageLimit for grandfathering support
+    const limitMb = await getEffectiveStorageLimit(userId);
+    const pct = limitMb > 0 ? (storageMb / limitMb) * 100 : 0;
+
+    return { storageMb, limitMb, pct };
+  } catch (err) {
+    console.error("[WhatsApp] Storage check failed:", err);
+    return null;
+  }
+}
+
+/**
+ * Send a storage warning message if usage is at 80%+.
+ * Does nothing if usage is below 80% or if the check fails.
+ */
+async function sendStorageWarningIfNeeded(
+  supabase: SupabaseClient,
+  userId: string,
+  recipientPhone: string,
+): Promise<void> {
+  try {
+    const usage = await checkStorageUsage(supabase, userId);
+    if (!usage) return;
+
+    if (usage.pct >= 100) {
+      await sendTextMessage(
+        recipientPhone,
+        "⚠️ Your storage is full. New memories can't be saved until you upgrade or free up space. Visit thememorypalace.ai/pricing",
+      );
+    } else if (usage.pct >= 80) {
+      await sendTextMessage(
+        recipientPhone,
+        `📦 Storage notice: you've used ${Math.round(usage.pct)}% of your storage. Upgrade at thememorypalace.ai/pricing for more space.`,
+      );
+    }
+  } catch (err) {
+    // Don't block the main flow
+    console.error("[WhatsApp] Storage warning send failed:", err);
+  }
+}
+
+/**
  * Process a message once we have a valid link.
  */
 async function processMessageWithLink(
@@ -266,6 +328,23 @@ async function processMessageWithLink(
   let mediaUrl: string | null = null;
   let mediaSize: number | null = null;
   let payloadPreview: Record<string, unknown> = {};
+
+  // Block media download if storage is full
+  if (mediaType !== "text") {
+    try {
+      const usage = await checkStorageUsage(supabase, kep.user_id as string);
+      if (usage && usage.pct >= 100) {
+        await sendTextMessage(
+          message.from,
+          "⚠️ Your storage is full. New memories can't be saved until you upgrade or free up space. Visit thememorypalace.ai/pricing",
+        );
+        return;
+      }
+    } catch (err) {
+      // Don't block on storage check failure — proceed with download
+      console.error("[WhatsApp] Pre-download storage check failed:", err);
+    }
+  }
 
   // Download media if applicable
   if (mediaType !== "text") {
@@ -340,6 +419,8 @@ async function processMessageWithLink(
     // Send confirmation
     const roomInfo = await fetchRoomWithWing(supabase, link.active_room_id as string);
     await sendRoomConfirmation(message.from, roomInfo?.name || "Room", roomInfo?.wingName || "Palace", captureId);
+    // Warn if storage is running low
+    await sendStorageWarningIfNeeded(supabase, kep.user_id as string, message.from);
     return;
   }
 
@@ -560,6 +641,8 @@ async function inlineAiRoute(
       suggestion.wing_name,
       captureId,
     );
+    // Warn if storage is running low
+    await sendStorageWarningIfNeeded(supabase, userId, message.from);
   } else {
     await sendRoomPicker(message.from, rooms as any[], captureId);
     await supabase
@@ -907,6 +990,13 @@ async function handleInteractiveResponse(
   const parts = replyId.split(":");
 
   if (parts[0] === "confirm") {
+    return;
+  }
+
+  if (parts[0] === "lang" && parts[1]) {
+    // Language selection from first-contact message
+    const locale = parts[1];
+    await sendLinkAccountIntro(message.from, locale);
     return;
   }
 

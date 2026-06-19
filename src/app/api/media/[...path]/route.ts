@@ -74,7 +74,11 @@ export async function GET(
 
   // Check ownership: file_path matches the video OR thumbnail_url references this path
   // (thumbnails are uploaded as separate files but linked via thumbnail_url)
-  let { data: memory } = await supabase
+  // Use admin client to bypass RLS — authorization is checked below
+  const { createAdminClient } = await import("@/lib/supabase/server");
+  const adminClient = createAdminClient();
+
+  let { data: memory } = await adminClient
     .from("memories")
     .select("id, user_id, storage_backend, room_id")
     .eq("file_path", filePath)
@@ -84,7 +88,7 @@ export async function GET(
   if (!memory) {
     // Try matching by thumbnail_url. Use ilike with %filePath% to handle any URL format
     // (proxy path, full URL with token, signed URL, etc.) — the file path is unique enough.
-    const { data: thumbMatch } = await supabase
+    const { data: thumbMatch } = await adminClient
       .from("memories")
       .select("id, user_id, storage_backend, room_id")
       .ilike("thumbnail_url", `%${filePath}%`)
@@ -111,6 +115,24 @@ export async function GET(
       .limit(1)
       .single();
     authorized = !!share;
+  }
+
+  // Check published wing access — visitors can view memories in published wings
+  if (!authorized && memory.room_id) {
+    const { data: room } = await adminClient
+      .from("rooms")
+      .select("wing_id")
+      .eq("id", memory.room_id)
+      .single();
+    if (room) {
+      const { data: wing } = await adminClient
+        .from("wings")
+        .select("id")
+        .eq("id", room.wing_id)
+        .not("published_at", "is", null)
+        .single();
+      authorized = !!wing;
+    }
   }
 
   if (!authorized) {

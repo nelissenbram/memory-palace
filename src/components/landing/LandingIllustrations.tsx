@@ -674,3 +674,95 @@ export function AudienceArchivistIcon({ style, size = 48 }: IconProps) {
     </svg>
   );
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   9. FeatureKepIcon — Kep porter with WhatsApp bubble
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export function FeatureKepIcon({ style, size = 48 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      style={style}
+      aria-hidden="true"
+    >
+      {/* WhatsApp chat bubble */}
+      <path d="M8 12C8 9.79 9.79 8 12 8H30C32.21 8 34 9.79 34 12V26C34 28.21 32.21 30 30 30H18L12 35V30C9.79 30 8 28.21 8 26V12Z" fill="none" stroke="#8B7355" strokeWidth="1.6" />
+      {/* Camera icon inside bubble */}
+      <rect x="15" y="15" width="12" height="9" rx="1.5" fill="#C66B3D" opacity="0.6" />
+      <circle cx="21" cy="19.5" r="2.5" fill="#C66B3D" opacity="0.8" />
+      {/* WhatsApp green accent badge */}
+      <circle cx="36" cy="12" r="6" fill="#25D366" />
+      <path d="M33.5 12L35.5 14L39 10.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {/* Small media icons (voice, document) */}
+      <circle cx="14" cy="38" r="3" fill="#4A6741" opacity="0.3" />
+      <rect x="19" y="35" width="6" height="6" rx="1" fill="#8B7355" opacity="0.2" />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   10. FeatureExploreIcon — Connected palaces with compass
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export function FeatureReceiveIcon({ style, size = 48 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      style={style}
+      aria-hidden="true"
+    >
+      {/* Inbox tray */}
+      <path d="M8 28L14 18H34L40 28V38H8V28Z" fill="none" stroke="#8B7355" strokeWidth="1.6" strokeLinejoin="round" />
+      <line x1="8" y1="28" x2="18" y2="28" stroke="#8B7355" strokeWidth="1.6" />
+      <path d="M18 28A6 6 0 0 0 30 28" fill="none" stroke="#8B7355" strokeWidth="1.6" />
+      <line x1="30" y1="28" x2="40" y2="28" stroke="#8B7355" strokeWidth="1.6" />
+      {/* Arrow pointing down into tray */}
+      <line x1="24" y1="6" x2="24" y2="20" stroke="#C66B3D" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M19 16L24 22L29 16" fill="none" stroke="#C66B3D" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Small heart on the arriving item */}
+      <path d="M24 10C24 8.5 25.5 7.5 26.5 8.5C27.5 7.5 29 8.5 29 10C29 12 26.5 13.5 26.5 13.5C26.5 13.5 24 12 24 10Z" fill="#4A6741" opacity="0.5" />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   10. FeatureExploreIcon — Connected palaces with compass
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+export function FeatureExploreIcon({ style, size = 48 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      style={style}
+      aria-hidden="true"
+    >
+      {/* Compass outer circle */}
+      <circle cx="24" cy="24" r="16" fill="none" stroke="#8B7355" strokeWidth="1.6" />
+      {/* Compass inner ring */}
+      <circle cx="24" cy="24" r="10" fill="none" stroke="#8B7355" strokeWidth="0.8" opacity="0.3" />
+      {/* North needle */}
+      <path d="M24 10L26 22L24 24L22 22Z" fill="#C66B3D" opacity="0.8" />
+      {/* South needle */}
+      <path d="M24 38L22 26L24 24L26 26Z" fill="#8B7355" opacity="0.5" />
+      {/* East-West needles */}
+      <path d="M38 24L26 26L24 24L26 22Z" fill="#8B7355" opacity="0.4" />
+      <path d="M10 24L22 22L24 24L22 26Z" fill="#8B7355" opacity="0.4" />
+      {/* Center dot */}
+      <circle cx="24" cy="24" r="2" fill="#C66B3D" />
+      {/* People dots around */}
+      <circle cx="36" cy="12" r="2.5" fill="#4A6741" opacity="0.5" />
+      <circle cx="12" cy="36" r="2.5" fill="#4A6741" opacity="0.5" />
+      <circle cx="38" cy="34" r="2" fill="#C66B3D" opacity="0.4" />
+    </svg>
+  );
+}

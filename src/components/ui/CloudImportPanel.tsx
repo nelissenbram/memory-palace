@@ -5,6 +5,7 @@ import { T } from "@/lib/theme";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
+import { createClient } from "@/lib/supabase/client";
 import Image from "next/image";
 
 // ── Types ──
@@ -89,12 +90,14 @@ function formatBytes(b: number): string {
 // ═══ Main CloudImportPanel ═══
 export default function CloudImportPanel({ onClose, embedded }: Props) {
   const { t } = useTranslation("import");
+  const { t: tp } = useTranslation("palace");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
   const { containerRef, handleKeyDown: handleTrapKeyDown } = useFocusTrap(!embedded);
   const { getWings, getWingRooms } = useRoomStore();
   const wings = getWings();
 
+  const [userPlan, setUserPlan] = useState<string>("free");
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
   const [activeProvider, setActiveProvider] = useState<string | null>(null);
@@ -124,13 +127,30 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
   const [targetWingId, setTargetWingId] = useState<string>("");
   const [targetRoomId, setTargetRoomId] = useState<string>("");
 
-  // Fetch connected accounts
+  // Fetch connected accounts + user plan
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/integrations/accounts");
-        if (res.ok) {
-          const data = await res.json();
+        const [accountsRes] = await Promise.all([
+          fetch("/api/integrations/accounts"),
+          // Fetch user plan from Supabase
+          (async () => {
+            try {
+              const supabase = createClient();
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const { data } = await supabase
+                  .from("subscriptions")
+                  .select("plan")
+                  .eq("user_id", user.id)
+                  .single();
+                if (data?.plan) setUserPlan(data.plan);
+              }
+            } catch { /* keep default "free" */ }
+          })(),
+        ]);
+        if (accountsRes.ok) {
+          const data = await accountsRes.json();
           const accs = (data.accounts || []) as ConnectedAccount[];
           setAccounts(accs);
           // Auto-select first connected account
@@ -338,17 +358,33 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 const meta = PROVIDER_META[account.provider];
                 if (!meta) return null;
                 const isActive = activeProvider === account.provider;
+                const isLocked = account.provider !== "google_photos" && userPlan === "free";
                 return (
-                  <button key={account.provider} onClick={() => setActiveProvider(account.provider)} style={{
+                  <button key={account.provider} onClick={() => {
+                    if (isLocked) {
+                      window.location.href = "/pricing";
+                      return;
+                    }
+                    setActiveProvider(account.provider);
+                  }} style={{
                     padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: "none",
                     background: isActive ? T.color.white : "transparent",
                     color: isActive ? T.color.charcoal : T.color.muted,
                     fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: isActive ? 600 : 500,
                     cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem",
                     whiteSpace: "nowrap", transition: "all .15s", minHeight: "2.75rem",
+                    opacity: isLocked ? 0.7 : 1,
                   }}>
                     <span>{meta.icon}</span>
                     {meta.name}
+                    {isLocked && (
+                      <span style={{
+                        fontSize: "0.5625rem", fontWeight: 700,
+                        padding: "0.125rem 0.375rem", borderRadius: "0.25rem",
+                        background: `${T.color.gold}20`, color: T.color.gold,
+                        textTransform: "uppercase", letterSpacing: "0.5px",
+                      }}>Keeper</span>
+                    )}
                   </button>
                 );
               })}
@@ -524,8 +560,32 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             </div>
           )}
 
+          {/* Keeper-only gate for non-Google providers */}
+          {activeProvider && activeProvider !== "google_photos" && userPlan === "free" && !importing && !importProgress && (
+            <div style={{
+              textAlign: "center", padding: "2.5rem 1.5rem",
+            }}>
+              <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>{PROVIDER_META[activeProvider]?.icon}</div>
+              <h3 style={{
+                fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 500,
+                color: T.color.charcoal, margin: "0 0 0.5rem",
+              }}>
+                {tp("cloudImportKeeperOnly")}
+              </h3>
+              <a href="/pricing" style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                padding: "0.75rem 1.5rem", borderRadius: "0.75rem", marginTop: "1rem",
+                background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.walnut})`,
+                color: "#FFF", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+                textDecoration: "none", minHeight: "2.75rem",
+              }}>
+                Upgrade to Keeper
+              </a>
+            </div>
+          )}
+
           {/* Browse view (only when not importing / not showing results) */}
-          {activeProvider && !importing && !importProgress && (
+          {activeProvider && !(activeProvider !== "google_photos" && userPlan === "free") && !importing && !importProgress && (
             <>
               {/* Folder breadcrumb (file-based services) */}
               {isFileProvider && folderPath.length > 0 && (

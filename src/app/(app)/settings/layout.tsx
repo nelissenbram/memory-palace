@@ -140,7 +140,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       inset: 0,
       overflowY: "auto",
       WebkitOverflowScrolling: "touch",
-      paddingTop: isMobile ? undefined : "3.5rem",
+      paddingTop: isMobile ? "env(safe-area-inset-top, 0px)" : "3.5rem",
       paddingBottom: isMobile ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
       background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
       zIndex: 1,
@@ -187,6 +187,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             {tc("settings")}
           </h1>
           <div style={{ flex: 1 }} />
+          <span style={{ fontSize: "0.625rem", color: T.color.muted, opacity: 0.5 }}>v0610a</span>
         </header>
       )}
 
@@ -201,7 +202,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           {/* Horizontal scrollable tab bar */}
           <nav aria-label={tc("settingsNavigation")} style={{
             position: "sticky",
-            top: 0,
+            top: "env(safe-area-inset-top, 0px)",
             zIndex: 10,
             overflowX: "auto",
             whiteSpace: "nowrap",
@@ -268,8 +269,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           <nav aria-label={tc("settingsNavigation")} style={{
             width: "13.75rem",
             flexShrink: 0,
-            display: "flex",
-            flexDirection: "column",
+            alignSelf: "flex-start",
           }}>
             <div style={{
               background: T.color.white,
@@ -279,7 +279,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               boxShadow: "0 2px 8px rgba(44,44,42,.04)",
               display: "flex",
               flexDirection: "column",
-              flex: 1,
             }}>
               {filteredItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + "/");

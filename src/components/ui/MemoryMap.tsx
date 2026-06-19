@@ -759,29 +759,40 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
 
         {/* Wing filter tabs */}
         <div style={{
-          padding: "0.625rem 1.5rem", display: "flex", gap: "0.375rem", flexShrink: 0,
+          padding: isMobile ? "0.5rem 0.75rem" : "0.625rem 1.5rem",
+          display: "flex", gap: "0.375rem", flexShrink: 0,
           borderBottom: `1px solid ${T.color.cream}`, overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
         }}>
           <button
             onClick={() => setFilterWing(null)}
             aria-pressed={!filterWing}
             style={{
-              padding: "0.375rem 0.875rem", borderRadius: "0.5rem", border: `1px solid ${!filterWing ? T.color.walnut : T.color.cream}`,
+              padding: isMobile ? "0.3125rem 0.625rem" : "0.375rem 0.875rem",
+              borderRadius: "0.5rem", border: `1px solid ${!filterWing ? T.color.walnut : T.color.cream}`,
               background: !filterWing ? `${T.color.walnut}15` : T.color.white,
-              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: !filterWing ? 600 : 500,
-              color: !filterWing ? T.color.walnut : T.color.muted, cursor: "pointer", whiteSpace: "nowrap",
+              fontFamily: T.font.body, fontSize: isMobile ? "0.625rem" : "0.6875rem",
+              fontWeight: !filterWing ? 600 : 500,
+              color: !filterWing ? T.color.walnut : T.color.muted, cursor: "pointer",
+              whiteSpace: "nowrap", flexShrink: 0,
             }}
           >{t("allWings")}</button>
           {WINGS.map(w => (
             <button key={w.id} onClick={() => setFilterWing(w.id)} aria-pressed={filterWing === w.id} style={{
-              padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
+              padding: isMobile ? "0.3125rem 0.5rem" : "0.375rem 0.875rem",
+              borderRadius: "0.5rem",
               border: `1px solid ${filterWing === w.id ? w.accent : T.color.cream}`,
               background: filterWing === w.id ? `${w.accent}15` : T.color.white,
-              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: filterWing === w.id ? 600 : 500,
+              fontFamily: T.font.body, fontSize: isMobile ? "0.625rem" : "0.6875rem",
+              fontWeight: filterWing === w.id ? 600 : 500,
               color: filterWing === w.id ? w.accent : T.color.muted, cursor: "pointer",
-              whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.25rem",
+              whiteSpace: "nowrap", flexShrink: 0,
+              display: "flex", alignItems: "center", gap: "0.25rem",
+              maxWidth: isMobile ? "7rem" : "none",
+              overflow: "hidden", textOverflow: "ellipsis",
             }}>
-              <WingIcon wingId={w.id} size={13} color={filterWing === w.id ? w.accent : T.color.muted} /> {tw(w.nameKey) || w.name}
+              <WingIcon wingId={w.id} size={isMobile ? 11 : 13} color={filterWing === w.id ? w.accent : T.color.muted} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tw(w.nameKey) || w.name}</span>
             </button>
           ))}
         </div>
