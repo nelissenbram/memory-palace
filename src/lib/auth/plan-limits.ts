@@ -59,31 +59,9 @@ export async function getPlanLimits(plan: PlanId): Promise<PlanLimits> {
   return PLANS[plan].limits;
 }
 
-// ── Storage grandfathering ──
-// Free users created before the pricing change (2GB -> 1GB) keep their old 2GB limit.
-const STORAGE_PRICING_CHANGE_DATE = new Date("2026-06-17T00:00:00Z");
-const LEGACY_FREE_STORAGE_MB = 2048;
-
 export async function getEffectiveStorageLimit(userId: string): Promise<number> {
   const subscription = await getUserPlan(userId);
-  const baseLimitMb = PLANS[subscription.plan].limits.storageMb;
-
-  if (subscription.plan === "free" && baseLimitMb === 1024) {
-    const supabase = await createClient();
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("created_at")
-      .eq("id", userId)
-      .single();
-    if (
-      profile?.created_at &&
-      new Date(profile.created_at) < STORAGE_PRICING_CHANGE_DATE
-    ) {
-      return LEGACY_FREE_STORAGE_MB;
-    }
-  }
-
-  return baseLimitMb;
+  return PLANS[subscription.plan].limits.storageMb;
 }
 
 export type ResourceType = "wings" | "rooms" | "memories" | "storageMb" | "familyTreePersons";
