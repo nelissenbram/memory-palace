@@ -1055,7 +1055,7 @@ export default function LibraryView() {
   return (
     <div style={{
       width: "100vw", height: "100dvh", display: "flex", flexDirection: isMobile ? "column" : "row",
-      paddingTop: isMobile ? undefined : "4.5rem",
+      paddingTop: isMobile ? "env(safe-area-inset-top, 0px)" : "4.5rem",
       background: `linear-gradient(175deg, ${T.color.linen} 0%, ${T.color.warmStone} 55%, ${T.color.cream} 100%)`, fontFamily: T.font.body, overflow: "hidden",
     }}>
       <LibraryStyles />
