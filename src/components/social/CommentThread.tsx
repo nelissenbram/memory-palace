@@ -5,6 +5,7 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Comment } from "@/lib/social/comment-actions";
 import { addComment, deleteComment } from "@/lib/social/comment-actions";
+import SafetyMenu from "./SafetyMenu";
 
 interface CommentThreadProps {
   targetType: string;
@@ -177,6 +178,15 @@ function SingleComment({
               >
                 {t("deleteComment")}
               </button>
+            )}
+            {/* Report / block other users' comments (Apple Guideline 1.2) */}
+            {currentUserId && currentUserId !== comment.user_id && (
+              <SafetyMenu
+                targetType="comment"
+                targetId={comment.id}
+                targetUserId={comment.user_id}
+                showBlock
+              />
             )}
           </div>
 

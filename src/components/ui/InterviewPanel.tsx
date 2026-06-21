@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { navigateInApp } from "@/lib/native/platform";
 import { useAudioRecorder } from "@/lib/hooks/useAudioRecorder";
 import { useSpeechRecognition } from "@/lib/hooks/useSpeechRecognition";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
@@ -104,6 +105,11 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
   const recorder = useAudioRecorder();
   const speech = useSpeechRecognition();
+
+  // Fall back to text input when speech recognition isn't available (iOS WKWebView)
+  useEffect(() => {
+    if (!speech.isSupported && inputMode === "voice") setInputMode("text");
+  }, [speech.isSupported, inputMode, setInputMode]);
 
   // Interview quota (free users: limited interviews)
   const [quota, setQuota] = useState<{ allowed: boolean; unlimited: boolean; used: number; limit: number; nextRespawnDate: string | null } | null>(null);
@@ -486,9 +492,10 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               </p>
             </div>
 
-            {/* Input mode toggle */}
+            {/* Input mode toggle — voice hidden when speech recognition is
+                unavailable (e.g. iOS WKWebView has no Web Speech API) */}
             <div style={{ marginTop: "2rem", display: "flex", gap: "0.5rem", justifyContent: "center" }}>
-              {(["voice", "text"] as const).map((mode) => (
+              {(["voice", "text"] as const).filter((mode) => mode === "text" || speech.isSupported).map((mode) => (
                 <button key={mode} onClick={() => setInputMode(mode)} style={{
                   padding: "0.625rem 1.25rem", borderRadius: "1.25rem",
                   border: inputMode === mode ? `1px solid ${accentColor}60` : "1px solid #4A453D",
@@ -539,7 +546,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   </p>
                 )}
                 {!quota.allowed && (
-                  <button onClick={() => window.open("/pricing", "_blank")} style={{
+                  <button onClick={() => navigateInApp("/pricing")} style={{
                     marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "1rem",
                     border: "none", background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                     color: "#FFF", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",

@@ -21,15 +21,18 @@ import {
 } from "../../tree-layout";
 import type { TreeNode } from "../../tree-layout";
 import { CoupleNode, TreeBranchIcon } from "../../PersonCard";
+import ReportButton from "@/components/social/ReportButton";
 
 const MIN_ZOOM = 0.15;
 const MAX_ZOOM = 2.5;
 
 export function SharedTreeView({
+  token,
   ownerName,
   persons,
   relationships,
 }: {
+  token: string;
   ownerName: string;
   persons: FamilyTreePerson[];
   relationships: FamilyTreeRelationship[];
@@ -370,6 +373,8 @@ export function SharedTreeView({
           </p>
         </div>
         <div style={{ flex: 1 }} />
+        {/* Report objectionable content (Apple Guideline 1.2) */}
+        <ReportButton targetType="family_tree" targetId={token} />
         <button
           onClick={fitToView}
           style={{

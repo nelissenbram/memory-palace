@@ -60,21 +60,10 @@ export async function initPushNotifications(): Promise<void> {
     if (status.receive === "granted") {
       // Already granted — register silently
       await push.register();
-    } else if (status.receive === "prompt") {
-      // Never asked yet — defer the permission request by 15s to avoid
-      // iPadOS 26 WKWebView-reload-on-alert bug during initial load
-      setTimeout(async () => {
-        try {
-          const result = await push.requestPermissions();
-          if (result.receive === "granted") {
-            await push.register();
-          }
-        } catch (e) {
-          console.warn("[push] Deferred permission request failed:", e);
-        }
-      }, 15000);
     }
-    // If "denied", do nothing — user must enable in Settings
+    // Otherwise do NOT auto-prompt. Apple (Guideline 4.5.4) and good UX require
+    // an explicit, contextual opt-in. The permission is requested only when the
+    // user enables notifications in settings via requestPushPermission().
   } catch (e) {
     console.warn("[push] Init failed:", e);
   }
@@ -90,7 +79,13 @@ export async function requestPushPermission(): Promise<boolean> {
     if (!push) return false;
 
     const result = await push.requestPermissions();
-    return result.receive === "granted";
+    if (result.receive === "granted") {
+      // Register now that the user has explicitly opted in (listeners were
+      // attached by initPushNotifications on app mount).
+      try { await push.register(); } catch { /* registration retried on next launch */ }
+      return true;
+    }
+    return false;
   } catch (e) {
     console.warn("[push] Permission request failed:", e);
     return false;

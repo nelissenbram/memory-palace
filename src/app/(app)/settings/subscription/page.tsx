@@ -209,6 +209,11 @@ export default function SubscriptionPage() {
   };
 
   const handleManageBilling = async () => {
+    // iOS subscriptions are managed by Apple, never the Stripe portal (Guideline 3.1.1).
+    if (isApple) {
+      showToast(t("manageInSettings"), "success");
+      return;
+    }
     setPortalLoading(true);
     try {
       const res = await fetch("/api/stripe/portal", {
@@ -230,9 +235,12 @@ export default function SubscriptionPage() {
   };
 
   const handleUpgrade = async (planId: PlanId) => {
-    // Route to IAP on iOS
-    if (isApple && iapReady) {
-      return handleIAPUpgrade(planId);
+    // On iOS, purchases must go through Apple IAP only — never fall back to
+    // web checkout / external browser (Apple Guideline 3.1.1).
+    if (isApple) {
+      if (iapReady) return handleIAPUpgrade(planId);
+      showToast(t("iapUnavailable"), "error");
+      return;
     }
     if (upgradeLoading) return;
     setUpgradeLoading(planId);
@@ -435,9 +443,27 @@ export default function SubscriptionPage() {
               </>
             )}
             {isPaid && isApple && (
-              <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: C.muted, margin: 0 }}>
-                {t("manageInSettings") || "Manage your subscription in Settings > Apple ID > Subscriptions"}
-              </p>
+              <>
+                <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: C.muted, margin: 0 }}>
+                  {t("manageInSettings") || "Manage your subscription in Settings > Apple ID > Subscriptions"}
+                </p>
+                <button
+                  onClick={handleRestore}
+                  disabled={portalLoading}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "0.75rem",
+                    border: `1px solid ${C.cream}`,
+                    background: C.white,
+                    fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
+                    color: C.muted,
+                    cursor: portalLoading ? "wait" : "pointer",
+                    transition: "all .15s",
+                  }}
+                >
+                  {portalLoading ? t("opening") : (t("restorePurchases") || "Restore Purchases")}
+                </button>
+              </>
             )}
             {isFree && (
               <>
@@ -521,6 +547,22 @@ export default function SubscriptionPage() {
                 })()}
               </button>
             )}
+          </div>
+        )}
+
+        {/* Subscription disclosures (Apple Guideline 3.1.2) */}
+        {(isFree || sub?.plan === "keeper") && (
+          <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: `1px solid ${C.cream}` }}>
+            {isApple && (
+              <p style={{ fontFamily: F.body, fontSize: "0.75rem", color: C.muted, lineHeight: 1.6, margin: "0 0 0.5rem" }}>
+                {t("autoRenewNotice")}
+              </p>
+            )}
+            <p style={{ fontFamily: F.body, fontSize: "0.75rem", color: C.muted, margin: 0 }}>
+              <a href="/terms" style={{ color: C.terracotta, textDecoration: "none" }}>{t("disclosureTerms")}</a>
+              {"  ·  "}
+              <a href="/privacy" style={{ color: C.terracotta, textDecoration: "none" }}>{t("disclosurePrivacy")}</a>
+            </p>
           </div>
         )}
       </div>
@@ -1038,8 +1080,9 @@ export default function SubscriptionPage() {
         )}
       </div>
 
-      {/* Refer a Friend */}
-      {referralCode && (
+      {/* Refer a Friend — hidden on iOS: rewards are web/Stripe promo codes that
+          can't apply to Apple IAP, so surfacing them on iOS steers off-platform (3.1.1) */}
+      {referralCode && !isApple && (
         <div style={{
           background: C.white,
           borderRadius: "1rem",

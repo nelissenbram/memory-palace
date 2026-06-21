@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og", "/api/diagnostics"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/help", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og", "/api/diagnostics"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
   const isResetPasswordPage = path.startsWith("/reset-password");
   const isApiRoute = path.startsWith("/api/");
   const isPricingPage = path.startsWith("/pricing");
-  const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security");
+  const isLegalPage = path.startsWith("/privacy") || path.startsWith("/terms") || path.startsWith("/security") || path.startsWith("/help");
   const isBlogPage = path.startsWith("/blog");
   const isSocialPage = path.startsWith("/explore") || path.startsWith("/u/") || path.startsWith("/visit/");
   if (user && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage && !isBlogPage && !isSocialPage) {

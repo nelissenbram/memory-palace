@@ -10,6 +10,7 @@ import TuscanCard, { TuscanSectionHeader } from "@/components/ui/TuscanCard";
 import NavigationBar from "@/components/ui/NavigationBar";
 import CommentThread from "@/components/social/CommentThread";
 import ReactionBar from "@/components/social/ReactionBar";
+import SafetyMenu from "@/components/social/SafetyMenu";
 import type { Comment, ReactionSummary } from "@/lib/social/comment-actions";
 
 interface WingRoom {
@@ -374,6 +375,15 @@ export default function PalaceOverviewClient({
                   >
                     {isFollowing ? t("following") : t("follow")}
                   </button>
+                )}
+                {/* Report / block this palace owner (Apple Guideline 1.2) */}
+                {isAuthenticated && owner && currentUserId !== owner.id && (
+                  <SafetyMenu
+                    targetType="palace"
+                    targetId={owner.id}
+                    targetUserId={owner.id}
+                    showBlock
+                  />
                 )}
               </div>
             )}

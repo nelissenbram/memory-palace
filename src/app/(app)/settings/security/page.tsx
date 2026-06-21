@@ -4,6 +4,7 @@ import React from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import BlockedAccountsPanel from "@/components/social/BlockedAccountsPanel";
 
 const F = T.font;
 const C = T.color;
@@ -208,6 +209,9 @@ export default function SecuritySettingsPage() {
           </div>
         </div>
       ))}
+
+      {/* Blocked accounts (Apple Guideline 1.2) */}
+      <BlockedAccountsPanel />
 
       {/* Commitment */}
       <div style={{

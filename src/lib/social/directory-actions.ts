@@ -30,7 +30,7 @@ export async function getFeatured(
 
   if (!featured || featured.length === 0) return [];
 
-  return enrichPalaces(supabase, featured);
+  return excludeBlocked(await enrichPalaces(supabase, featured));
 }
 
 /** Get trending palaces (most visited in last 7 days) */
@@ -83,7 +83,7 @@ export async function getTrending(
     if (!wingSlugMap.has(w.user_id)) wingSlugMap.set(w.user_id, w.slug);
   }
 
-  return profiles.map((p) => ({
+  return excludeBlocked(profiles.map((p) => ({
     user_id: p.id,
     display_name: p.display_name,
     username: p.username,
@@ -94,7 +94,7 @@ export async function getTrending(
     category: null,
     featured_at: null,
     first_wing_slug: wingSlugMap.get(p.id) || null,
-  }));
+  })));
 }
 
 /** Search public palaces by name or username */
@@ -133,7 +133,7 @@ export async function searchPalaces(
     if (!wingSlugMap.has(w.user_id)) wingSlugMap.set(w.user_id, w.slug);
   }
 
-  return profiles.map((p) => ({
+  return excludeBlocked(profiles.map((p) => ({
     user_id: p.id,
     display_name: p.display_name,
     username: p.username,
@@ -144,7 +144,7 @@ export async function searchPalaces(
     category: null,
     featured_at: null,
     first_wing_slug: wingSlugMap.get(p.id) || null,
-  }));
+  })));
 }
 
 /** Get newly published palaces */
@@ -193,7 +193,7 @@ export async function getNewPalaces(
   }
 
   const profileMap = new Map(profiles.map((p) => [p.id, p]));
-  return uniqueUserIds
+  return excludeBlocked(uniqueUserIds
     .map((uid) => {
       const p = profileMap.get(uid);
       if (!p) return null;
@@ -210,7 +210,7 @@ export async function getNewPalaces(
         first_wing_slug: firstWingSlug.get(p.id) || null,
       };
     })
-    .filter(Boolean) as DirectoryPalace[];
+    .filter(Boolean) as DirectoryPalace[]);
 }
 
 /** Get palaces from users the current user follows */
@@ -266,7 +266,7 @@ export async function getFollowingPalaces(
 
   if (!profiles) return [];
 
-  return profiles
+  return excludeBlocked(profiles
     .map((p) => ({
       user_id: p.id,
       display_name: p.display_name,
@@ -284,7 +284,27 @@ export async function getFollowingPalaces(
       const da = a.latest_published_at || "";
       const db = b.latest_published_at || "";
       return db.localeCompare(da);
-    });
+    }));
+}
+
+/**
+ * Remove palaces owned by users blocked in either direction with the current
+ * viewer (Guideline 1.2). No-op for signed-out visitors. These directory
+ * functions use the admin client, so blocking must be applied in code.
+ */
+async function excludeBlocked<T extends { user_id: string }>(
+  rows: T[]
+): Promise<T[]> {
+  if (!rows || rows.length === 0) return rows;
+  const userClient = await createClient();
+  const {
+    data: { user },
+  } = await userClient.auth.getUser();
+  if (!user) return rows;
+  const { getBlockedUserIds } = await import("./safety-actions");
+  const blocked = await getBlockedUserIds(userClient, user.id);
+  if (blocked.size === 0) return rows;
+  return rows.filter((r) => !blocked.has(r.user_id));
 }
 
 // Helper to enrich featured entries with profile data

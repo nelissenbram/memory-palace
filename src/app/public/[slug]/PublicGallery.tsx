@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { T } from "@/lib/theme";
 import { WINGS } from "@/lib/constants/wings";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import ReportButton from "@/components/social/ReportButton";
 import Image from "next/image";
 
 interface PublicMemory {
@@ -205,6 +206,11 @@ export default function PublicGallery({ slug }: { slug: string }) {
           margin: "20px auto 0",
           opacity: 0.5,
         }} />
+
+        {/* Report objectionable content (Apple Guideline 1.2) */}
+        <div style={{ marginTop: 12, textAlign: "center" }}>
+          <ReportButton targetType="gallery" targetId={slug} />
+        </div>
       </header>
 
       {/* Gallery grid */}

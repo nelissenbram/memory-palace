@@ -71,7 +71,12 @@ export async function getFeed(
     .eq("follower_id", user.id)
     .limit(500);
 
-  const followingIds = (followData || []).map((f) => f.following_id);
+  // Exclude blocked users in either direction (Guideline 1.2)
+  const { getBlockedUserIds } = await import("./safety-actions");
+  const blocked = await getBlockedUserIds(supabase, user.id);
+  const followingIds = (followData || [])
+    .map((f) => f.following_id)
+    .filter((id) => !blocked.has(id));
   const feedUserIds = [user.id, ...followingIds];
 
   // Batch IN clause to avoid PostgREST limits

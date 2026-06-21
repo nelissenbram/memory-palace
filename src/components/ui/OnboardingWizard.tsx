@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { navigateInApp } from "@/lib/native/platform";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
@@ -869,55 +870,6 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   )}
                 </button>
 
-                {/* Renaissance Florence — locked / coming soon */}
-                <div style={{
-                  flex: 1, padding: "1.5rem 0.875rem", borderRadius: "0.875rem",
-                  border: "2px solid rgba(255,255,255,0.04)",
-                  background: "rgba(255,255,255,0.02)",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: "0.625rem",
-                  position: "relative", overflow: "hidden",
-                  cursor: "default",
-                }}>
-                  {/* Blur + greyscale overlay */}
-                  <div style={{
-                    position: "absolute", inset: 0, borderRadius: "0.875rem",
-                    backdropFilter: "blur(2px) grayscale(0.5)", WebkitBackdropFilter: "blur(2px) grayscale(0.5)",
-                    background: "rgba(26,25,23,0.35)", zIndex: 1,
-                  }} />
-                  {/* "Coming soon" badge */}
-                  <div style={{
-                    position: "absolute", top: "0.5rem", right: "0.5rem", zIndex: 2,
-                    fontFamily: T.font.body, fontSize: "0.5rem", fontWeight: 700,
-                    color: T.era.renaissance.accent, letterSpacing: "1.5px", textTransform: "uppercase",
-                    background: "rgba(26,25,23,0.7)", padding: "0.25rem 0.5rem", borderRadius: "0.25rem",
-                    border: `1px solid ${T.era.renaissance.accent}30`,
-                  }}>
-                    {t("comingSoon")}
-                  </div>
-                  {/* Elegant dome silhouette icon */}
-                  <svg width="44" height="44" viewBox="0 0 44 44" fill="none" style={{ opacity: 0.4 }}>
-                    <path d="M22 6C22 6 12 14 12 24H32C32 14 22 6 22 6Z" stroke="#7A6F63" strokeWidth="1.2" fill="none" opacity="0.5" />
-                    <line x1="10" y1="24" x2="34" y2="24" stroke="#7A6F63" strokeWidth="1.2" opacity="0.6" />
-                    <line x1="12" y1="24" x2="12" y2="34" stroke="#7A6F63" strokeWidth="1" opacity="0.4" />
-                    <line x1="32" y1="24" x2="32" y2="34" stroke="#7A6F63" strokeWidth="1" opacity="0.4" />
-                    <line x1="10" y1="34" x2="34" y2="34" stroke="#7A6F63" strokeWidth="1.2" opacity="0.6" />
-                    <circle cx="22" cy="5" r="1.5" fill="#7A6F63" opacity="0.4" />
-                    <rect x="19" y="27" width="6" height="7" rx="3" stroke="#7A6F63" strokeWidth="0.8" fill="none" opacity="0.35" />
-                  </svg>
-                  <span style={{
-                    fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 500,
-                    color: "#7A6F63", opacity: 0.5,
-                    letterSpacing: "0.5px",
-                  }}>
-                    {tPalace("eraRenaissance")}
-                  </span>
-                  <span style={{
-                    fontFamily: T.font.body, fontSize: "0.6875rem",
-                    color: "#5A5248", lineHeight: 1.4, opacity: 0.5,
-                  }}>
-                    {tPalace("eraRenaissanceDesc")}
-                  </span>
-                </div>
               </div>
 
               {/* Buttons */}
@@ -1478,7 +1430,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
               <button
                 onClick={() => {
                   track("paywall_trial_clicked", { source: "onboarding" });
-                  window.open("/pricing", "_blank");
+                  navigateInApp("/pricing");
                   setPhase("done");
                 }}
                 style={{

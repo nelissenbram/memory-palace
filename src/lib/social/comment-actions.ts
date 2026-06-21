@@ -163,13 +163,24 @@ export async function getComments(
   targetId: string
 ): Promise<Comment[]> {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const { data: rows } = await supabase
+  const { data: rawRows } = await supabase
     .from("comments")
     .select("id, user_id, body, parent_id, created_at")
     .eq("target_type", targetType)
     .eq("target_id", targetId)
     .order("created_at", { ascending: true });
+
+  // Hide comments from users involved in a block with the viewer (Guideline 1.2)
+  let rows = rawRows;
+  if (user && rawRows && rawRows.length > 0) {
+    const { getBlockedUserIds } = await import("./safety-actions");
+    const blocked = await getBlockedUserIds(supabase, user.id);
+    if (blocked.size > 0) rows = rawRows.filter((r) => !blocked.has(r.user_id));
+  }
 
   if (!rows || rows.length === 0) return [];
 

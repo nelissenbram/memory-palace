@@ -54,6 +54,7 @@ export default async function SharedFamilyTreePage({
 
   return (
     <SharedTreeView
+      token={token}
       ownerName={result.ownerName || "Someone"}
       persons={result.persons}
       relationships={result.relationships || []}

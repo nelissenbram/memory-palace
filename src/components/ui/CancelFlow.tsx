@@ -64,7 +64,8 @@ export default function CancelFlow({ onClose, onProceedToPortal, planName }: Can
       cta: t("offerFeedbackCta"),
       action: () => {
         track("cancel_feedback_accepted");
-        window.open("mailto:support@thememorypalace.ai?subject=Feature%20Request", "_blank");
+        // Use same-window navigation; window.open(mailto, "_blank") leaves a blank tab in WKWebView
+        window.location.href = "mailto:support@thememorypalace.ai?subject=Feature%20Request";
         onClose();
       },
     },

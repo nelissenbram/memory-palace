@@ -115,8 +115,10 @@ export default function ActivityFeed({
           animate={false}
         >
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
-            {/* Actor avatar */}
-            <div
+            {/* Actor avatar — links to their profile, where report/block live (Guideline 1.2) */}
+            <a
+              href={`/visit/${item.actor_id}`}
+              aria-label={item.actor_name || undefined}
               style={{
                 width: "2.25rem",
                 height: "2.25rem",
@@ -133,11 +135,12 @@ export default function ActivityFeed({
                 fontFamily: T.font.display,
                 fontSize: "0.875rem",
                 fontWeight: 600,
+                textDecoration: "none",
               }}
             >
               {!item.actor_avatar &&
                 (item.actor_name?.[0]?.toUpperCase() || "?")}
-            </div>
+            </a>
 
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* Action icon + text */}

@@ -38,3 +38,16 @@ export async function openInExternalBrowser(url: string): Promise<void> {
     window.location.href = url;
   }
 }
+
+/**
+ * Navigate to an internal app route. Inside the native app we must stay in the
+ * WKWebView/WebView (opening a new tab dumps the user out to Safari/Chrome,
+ * which Apple flags under Guideline 4.2). On web we preserve new-tab behavior.
+ */
+export function navigateInApp(path: string): void {
+  if (isNative()) {
+    window.location.href = path;
+  } else {
+    window.open(path, "_blank", "noopener");
+  }
+}

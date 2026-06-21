@@ -63,3 +63,8 @@ public/workbox-*.js
 public/workbox-*.js.map
 
 .env*.local
+
+# Local junk (accidentally committable)
+.edge-profile-copy/
+tmp/
+_aab_download/

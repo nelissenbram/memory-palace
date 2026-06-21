@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
+import { navigateInApp } from "@/lib/native/platform";
 import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -1041,7 +1042,7 @@ export default function MemoryPalace(){
       {/* Storage warning banner */}
       {storageLimitMb > 0 && (storageMb / storageLimitMb) >= 0.5 && !selMem && !showUpload && !walkthroughActive && (
         <div style={{ position: "absolute", bottom: isMobile ? "5.5rem" : "5rem", left: "1rem", right: "1rem", zIndex: 90, maxWidth: "28rem", margin: "0 auto" }}>
-          <StorageBanner storageMb={storageMb} limitMb={storageLimitMb} onUpgrade={() => window.open("/pricing", "_blank")} />
+          <StorageBanner storageMb={storageMb} limitMb={storageLimitMb} onUpgrade={() => navigateInApp("/pricing")} />
         </div>
       )}
 
@@ -1341,7 +1342,7 @@ export default function MemoryPalace(){
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,marginBottom:"0.5rem"}}>{tPalace("storageFull") || "Storage Full"}</h3>
             <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,lineHeight:1.5,marginBottom:"1.25rem"}}>{tPalace("storageFullDesc") || "Your storage is full. Upgrade your plan for more space."}</p>
             <div style={{display:"flex",flexDirection:"column",gap:"0.5rem"}}>
-              <button onClick={()=>{setShowUpgradePrompt(false);window.open("/pricing","_blank");}}
+              <button onClick={()=>{setShowUpgradePrompt(false);navigateInApp("/pricing");}}
                 style={{fontFamily:T.font.body,fontSize:"0.9375rem",fontWeight:600,padding:"0.75rem 2rem",borderRadius:"0.625rem",border:"none",
                   background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer",width:"100%"}}>
                 {tPalace("viewPlans")}

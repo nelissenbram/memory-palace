@@ -184,6 +184,7 @@ export default function TermsOfServicePage() {
             <Li>{t("section3Li5")}</Li>
           </Ul>
           <P>{t("section3P2")}</P>
+          <P>{t("section3P3")}</P>
         </Section>
 
         <Section title={t("section4Title")}>

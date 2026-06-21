@@ -3,6 +3,7 @@
 import React, { useRef, useCallback } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { navigateInApp } from "@/lib/native/platform";
 import TuscanCard from "./TuscanCard";
 import { TuscanSectionHeader } from "./TuscanCard";
 import { EASE } from "./TuscanStyles";
@@ -342,7 +343,7 @@ export default function EnhanceMemories({
       titleKey: "blogTitle",
       descKey: "blogDesc",
       accent: T.color.inkSoft || "#403B36",
-      onClick: () => window.open("/blog", "_blank"),
+      onClick: () => navigateInApp("/blog"),
     },
     {
       icon: <IconWhatsApp />,
@@ -363,7 +364,7 @@ export default function EnhanceMemories({
       titleKey: "helpTitle",
       descKey: "helpDesc",
       accent: T.color.sandstone,
-      onClick: () => window.open("/help", "_blank"),
+      onClick: () => navigateInApp("/help"),
     },
     {
       icon: <IconContribute />,

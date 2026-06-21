@@ -7,6 +7,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { SocialProfile } from "@/lib/social/profile-actions";
 import { toggleFollow } from "@/lib/social/profile-actions";
 import { track } from "@/lib/analytics";
+import SafetyMenu from "./SafetyMenu";
 
 interface ProfileCardProps {
   profile: SocialProfile;
@@ -171,6 +172,20 @@ export default function ProfileCard({
           >
             {isFollowing ? t("following") : t("follow")}
           </button>
+        )}
+
+        {/* Report / block (Apple Guideline 1.2) */}
+        {!profile.is_own && (
+          <SafetyMenu
+            targetType="user"
+            targetId={profile.id}
+            targetUserId={profile.id}
+            showBlock
+            onBlocked={() => {
+              setIsFollowing(false);
+              onFollowChange?.(false);
+            }}
+          />
         )}
       </div>
     </TuscanCard>

@@ -585,28 +585,40 @@ export default function PricingPage() {
                     >
                       {t("free")}
                     </span>
-                  ) : (
-                    <>
-                      <span
-                        style={{
-                          fontFamily: F.display,
-                          fontSize: 42,
-                          fontWeight: 500,
-                          color: C.charcoal,
-                        }}
-                      >
-                        {formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 15,
-                          color: C.muted,
-                        }}
-                      >
-                        {t("perMonth")}
-                      </span>
-                    </>
-                  )}
+                  ) : (() => {
+                    // On iOS show the real StoreKit price (Apple Guideline 3.1.2),
+                    // not the converted web price. Annual IAP price is the yearly total.
+                    const iapProduct = isApple && iapReady
+                      ? getProduct(getIAPProductId(planId as "keeper" | "guardian", interval))
+                      : null;
+                    const priceLabel = iapProduct?.price
+                      ?? formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency);
+                    const showPerMonth = !iapProduct || interval === "monthly";
+                    return (
+                      <>
+                        <span
+                          style={{
+                            fontFamily: F.display,
+                            fontSize: 42,
+                            fontWeight: 500,
+                            color: C.charcoal,
+                          }}
+                        >
+                          {priceLabel}
+                        </span>
+                        {showPerMonth && (
+                          <span
+                            style={{
+                              fontSize: 15,
+                              color: C.muted,
+                            }}
+                          >
+                            {t("perMonth")}
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 {!isFree && interval === "annual" && (
                   <p style={{ fontSize: 12, color: C.muted, marginTop: -16, marginBottom: 8 }}>
@@ -659,6 +671,21 @@ export default function PricingPage() {
                     {" — "}
                     {t("noCardRequired") !== "noCardRequired" ? t("noCardRequired") : "no credit card required"}
                   </p>
+                )}
+                {/* Subscription disclosures (Apple Guideline 3.1.2) */}
+                {!isFree && (
+                  <div style={{ marginTop: -8, marginBottom: 20 }}>
+                    {isApple && (
+                      <p style={{ fontSize: 11, color: C.muted, lineHeight: 1.6, textAlign: "center" as const, margin: "0 0 6px" }}>
+                        {ts("autoRenewNotice")}
+                      </p>
+                    )}
+                    <p style={{ fontSize: 11, color: C.muted, textAlign: "center" as const, margin: 0 }}>
+                      <a href="/terms" style={{ color: C.terracotta, textDecoration: "none" }}>{ts("disclosureTerms")}</a>
+                      {"  ·  "}
+                      <a href="/privacy" style={{ color: C.terracotta, textDecoration: "none" }}>{ts("disclosurePrivacy")}</a>
+                    </p>
+                  </div>
                 )}
 
                 {/* Features */}
