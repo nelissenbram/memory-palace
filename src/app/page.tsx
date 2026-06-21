@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
+import { isIOS } from "@/lib/native/platform";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import enMessages from "@/messages/en.json";
@@ -449,6 +450,9 @@ function LandingPageContent() {
   const [ctaLoading, setCtaLoading] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  // Inside the iOS app we must never show Google Play references (Apple Guideline 2.3.10).
+  // isIOS() only resolves client-side, so gate via state set after mount to avoid a flash.
+  const [isIosApp, setIsIosApp] = useState(false);
   const exitShownRef = useRef(false);
   const { locale, setLocale: setLocaleReload, setLocaleNoReload } = useTranslation("landing");
   const setLocale = setLocaleNoReload; // Landing page has all locale data statically imported — no reload needed
@@ -574,6 +578,11 @@ function LandingPageContent() {
       right: comparison?.["row8Right"] ?? "",
     },
   ];
+
+  /* ─── Detect iOS app to hide Google Play references (Apple Guideline 2.3.10) ─── */
+  useEffect(() => {
+    setIsIosApp(isIOS());
+  }, []);
 
   /* ─── Set html lang attribute on locale change (P1 #5) ─── */
   useEffect(() => {
@@ -2134,7 +2143,8 @@ function LandingPageContent() {
             <div style={{ marginTop: "2.5rem" }}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => {
                 const q = lAny?.faq?.[`q${n}`];
-                const a = lAny?.faq?.[`a${n}`];
+                // On iOS, use the Google-Play-free variant of the download answer (Apple Guideline 2.3.10)
+                const a = (isIosApp && n === 8 && lAny?.faq?.a8_ios) ? lAny.faq.a8_ios : lAny?.faq?.[`a${n}`];
                 if (!q || !a) return null;
                 return <FaqItem key={n} question={q} answer={a} />;
               })}
@@ -2162,6 +2172,7 @@ function LandingPageContent() {
                     </g>
                   </svg>
                 </a>
+                {!isIosApp && (
                 <a
                   href={lAny?.faq?.playStoreUrl ?? "#"}
                   target="_blank"
@@ -2181,6 +2192,7 @@ function LandingPageContent() {
                     </g>
                   </svg>
                 </a>
+                )}
               </div>
             </div>
           </div>

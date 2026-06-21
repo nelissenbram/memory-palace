@@ -1337,6 +1337,7 @@
       "a7": "Yes. The Memory Palace includes a full genealogy module with fan charts, pedigree views, relationship mapping, and GEDCOM import. Map your lineage, then walk through the memories of each generation.",
       "q8": "Is there a mobile app?",
       "a8": "Yes! The Memory Palace is available on iOS and Android. Download it from the App Store or Google Play. The app also works beautifully in any modern browser on desktop, tablet, and mobile.",
+      "a8_ios": "Yes! The Memory Palace is available on the App Store for iPhone and iPad. The app also works beautifully in any modern browser on desktop, tablet, and mobile.",
       "q9": "How does AI work in The Memory Palace?",
       "a9": "AI helps you organize — it suggests rooms for uploaded photos, transcribes voice recordings, and asks interview questions to capture your stories. AI processing is opt-in, uses Anthropic's Claude (which does not train on your data), and all data stays on EU servers. You always stay in control.",
       "q10": "Who is behind The Memory Palace?",

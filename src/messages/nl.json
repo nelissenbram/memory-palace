@@ -1337,6 +1337,7 @@
       "a7": "Ja. The Memory Palace bevat een volledige genealogiemodule met waaierdiagrammen, stamreeksoverzichten, relatiekoppelingen en GEDCOM-import. Breng je afstamming in kaart en wandel vervolgens door de herinneringen van elke generatie.",
       "q8": "Is er een mobiele app?",
       "a8": "Ja! The Memory Palace is beschikbaar op iOS en Android. Download het via de App Store of Google Play. De app werkt ook uitstekend in elke moderne browser op desktop, tablet en mobiel.",
+      "a8_ios": "Ja! The Memory Palace is beschikbaar in de App Store voor iPhone en iPad. De app werkt ook uitstekend in elke moderne browser op desktop, tablet en mobiel.",
       "q9": "Hoe werkt AI in The Memory Palace?",
       "a9": "AI helpt je organiseren — het suggereert kamers voor geüploade foto's, transcribeert stemopnames en stelt interviewvragen om je verhalen vast te leggen. AI-verwerking is optioneel, gebruikt Anthropic's Claude (dat niet traint op je data) en alle data blijft op EU-servers. Jij houdt altijd de controle.",
       "q10": "Wie zit er achter The Memory Palace?",

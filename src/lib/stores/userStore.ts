@@ -117,7 +117,10 @@ export const useUserStore = create<UserState>((set, get) => ({
         // One-time wing slug migration (old→new wing names)
         migrateWingSlugs().catch(() => {});
       }
-      else set({ onboarded: false });
+      // Not yet onboarded: still surface any name we already have (e.g. captured
+      // from Sign in with Apple at /auth/callback) so the wizard can pre-fill it
+      // and never force the user to re-enter their name (Apple Guideline 4).
+      else set({ onboarded: false, userName: profile.display_name || "" });
     }
     set({ profileLoading: false });
 

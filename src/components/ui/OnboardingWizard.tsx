@@ -568,7 +568,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   onFocus={(e) => { e.target.style.borderColor = T.color.terracotta; }}
                   onBlur={(e) => { e.target.style.borderColor = "rgba(198,107,61,0.18)"; }}
                   autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter" && userName.trim()) setPhase("style_era"); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") setPhase("style_era"); }}
                 />
               </div>
 
@@ -586,14 +586,13 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                 </button>
                 <button
                   onClick={() => setPhase("style_era")}
-                  disabled={!userName.trim()}
                   style={{
                     flex: 1, fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
                     padding: "0.75rem 2rem", borderRadius: "0.5rem", minHeight: "3rem", border: "none",
-                    background: userName.trim() ? `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})` : "rgba(255,255,255,0.06)",
-                    color: userName.trim() ? "#FFF" : "#6B6155",
-                    cursor: userName.trim() ? "pointer" : "default",
-                    boxShadow: userName.trim() ? "0 0.25rem 1rem rgba(198,107,61,.3)" : "none",
+                    background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+                    color: "#FFF",
+                    cursor: "pointer",
+                    boxShadow: "0 0.25rem 1rem rgba(198,107,61,.3)",
                   }}
                 >
                   {t("continueButton")} {"\u2192"}
