@@ -250,9 +250,15 @@ function ConnectionsContent() {
         }}>
           {t("loading")}
         </div>
+      ) : hideComingSoon ? (
+        // On iOS the cloud OAuth connect flows are raw web redirects — hide the grid
+        // and show a neutral note instead of dead/heavyweight web surfaces (4.2 / 2.3.1).
+        <div style={{ textAlign: "center", padding: "2rem", fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted, lineHeight: 1.6 }}>
+          {t("cloudUnavailableNative") !== "cloudUnavailableNative" ? t("cloudUnavailableNative") : "Connecting external cloud photo services isn’t available in the app. You can still add photos and videos directly from your device."}
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {PROVIDERS.filter((provider) => !(hideComingSoon && provider.comingSoon)).map((provider) => {
+          {PROVIDERS.map((provider) => {
             const account = connectedMap.get(provider.id);
             const isConnected = !!account;
             const isComingSoon = !!provider.comingSoon;

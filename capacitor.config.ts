@@ -14,7 +14,8 @@ const config: CapacitorConfig = {
   },
   plugins: {
     StatusBar: {
-      style: 'LIGHT',
+      // DARK = dark glyphs, for our light cream UI. (LIGHT = white glyphs, invisible on cream.)
+      style: 'DARK',
       backgroundColor: '#F2EDE4',
       overlaysWebView: false,
     },

@@ -1,9 +1,13 @@
 "use client";
 
 import { useReportWebVitals } from "next/web-vitals";
+import { isNative } from "@/lib/native/platform";
 
 export default function WebVitals() {
   useReportWebVitals((metric) => {
+    // No telemetry network calls inside the native app (privacy posture + 5.1.2).
+    if (isNative()) return;
+
     // In development, log to console for debugging
     if (process.env.NODE_ENV === "development") {
       console.log(`[Web Vital] ${metric.name}:`, {

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/help", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og", "/api/diagnostics"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/reset-password", "/auth/callback", "/invite", "/kep", "/public", "/legacy", "/security", "/privacy", "/terms", "/help", "/pricing", "/blog", "/api/stripe/webhook", "/api/webhooks/", "/api/cron/", "/api/admin/", "/api/email/", "/api/notifications/send", "/api/legacy/", "/api/report", "/video", "/test-palazzo", "/explore", "/u", "/visit", "/api/og"];
 
 /** Check if path matches a public route (exact prefix boundary match) */
 function isPublicPath(path: string): boolean {
@@ -25,8 +25,7 @@ export async function middleware(request: NextRequest) {
     // Note: /api/admin/ is NOT fast-pathed — it needs session refresh for admin auth fallback
     path.startsWith("/api/email/") ||
     path.startsWith("/api/legacy/") ||
-    path.startsWith("/api/notifications/send") ||
-    path.startsWith("/api/diagnostics")
+    path.startsWith("/api/notifications/send")
   ) {
     return NextResponse.next();
   }

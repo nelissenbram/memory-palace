@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { serverT, serverTf, getUserLocale } from "@/lib/i18n/server";
 
 export async function POST() {
+  // Never expose dev/test endpoints in production builds (Apple Guideline 2.2).
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

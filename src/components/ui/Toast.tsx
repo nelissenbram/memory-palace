@@ -49,11 +49,11 @@ export default function Toast({ message, type, onDismiss }: ToastProps) {
     <>
       <div
         role={isError ? "alert" : "status"}
-        aria-live="polite"
+        aria-live={isError ? "assertive" : "polite"}
         style={{
           position: "fixed",
-          top: "1.5rem",
-          right: "1.5rem",
+          top: "calc(1.5rem + env(safe-area-inset-top, 0px))",
+          right: "calc(1.5rem + env(safe-area-inset-right, 0px))",
           zIndex: 100,
           padding: "0.875rem 1.25rem",
           borderRadius: "0.75rem",

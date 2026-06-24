@@ -92,6 +92,13 @@ button, a, [role="button"] {
     -webkit-user-select: none;
     user-select: none;
   }
+  /* Suppress the iOS Safari long-press callout (Save Image / Look Up / Share) on
+     images, the 3D canvas, and controls — the most recognizable "wrapped website"
+     tell in a photo app. Real text (p, span, inputs, descriptions) keeps the
+     default callout + selection so it stays copyable. */
+  img, canvas, button, a, nav, [role="button"] {
+    -webkit-touch-callout: none;
+  }
 }
 
 /* Animations used throughout the palace */

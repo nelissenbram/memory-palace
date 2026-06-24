@@ -3,7 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 
 /** DEV-ONLY: Reset onboarding state for the current user */
 export async function POST() {
-  // Temporarily enabled for production testing
+  // Never expose dev/test endpoints in production builds (Apple Guideline 2.2).
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
