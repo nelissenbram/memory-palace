@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
 import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
-import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, getIAPError } from "@/lib/native/iap";
+import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, getIAPError, manageSubscriptions } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
@@ -445,8 +445,23 @@ export default function SubscriptionPage() {
             {isPaid && isApple && (
               <>
                 <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: C.muted, margin: 0 }}>
-                  {t("manageInSettings") || "Manage your subscription in Settings > Apple ID > Subscriptions"}
+                  {t("manageInSettings") || "Manage or cancel your subscription through the App Store."}
                 </p>
+                <button
+                  onClick={() => { manageSubscriptions(); }}
+                  style={{
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "0.75rem",
+                    border: "none",
+                    background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                    fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
+                    color: C.white,
+                    cursor: "pointer",
+                    transition: "all .15s",
+                  }}
+                >
+                  {t("manageOrCancel") !== "manageOrCancel" ? t("manageOrCancel") : "Manage or Cancel Subscription"}
+                </button>
                 <button
                   onClick={handleRestore}
                   disabled={portalLoading}

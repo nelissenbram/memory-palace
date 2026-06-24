@@ -4,7 +4,6 @@ import React, { useState, useTransition } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import {
-  reportContent,
   blockUser,
   type ReportTargetType,
 } from "@/lib/social/safety-actions";
@@ -40,12 +39,26 @@ export default function SafetyMenu({
   const [reason, setReason] = useState<(typeof REASONS)[number]>("spam");
   const [details, setDetails] = useState("");
   const [done, setDone] = useState(false);
+  const [error, setError] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleReport = () => {
+    setError(false);
     startTransition(async () => {
-      await reportContent({ targetType, targetId, targetUserId, reason, details });
-      setDone(true);
+      // Use the public /api/report endpoint so reporting works for guests too
+      // (logged-out viewers must be able to flag UGC — Apple Guideline 1.2).
+      try {
+        const res = await fetch("/api/report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ targetType, targetId, targetUserId, reason, details }),
+        });
+        const data = await res.json().catch(() => ({ ok: false }));
+        if (data.ok) setDone(true);
+        else setError(true);
+      } catch {
+        setError(true);
+      }
     });
   };
 
@@ -53,7 +66,12 @@ export default function SafetyMenu({
     if (!targetUserId) return;
     if (!window.confirm(t("safetyBlockConfirm"))) return;
     startTransition(async () => {
-      await blockUser(targetUserId);
+      const res = await blockUser(targetUserId);
+      if (!res?.blocked) {
+        // Blocking requires an account; surface the failure rather than pretending it worked.
+        window.alert(res?.error || "Could not complete this action.");
+        return;
+      }
       setOpen(false);
       onBlocked?.();
     });
@@ -257,6 +275,15 @@ export default function SafetyMenu({
                     marginBottom: "1rem",
                   }}
                 />
+
+                {error && (
+                  <p role="alert" style={{
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.error,
+                    margin: "0 0 0.75rem", lineHeight: 1.5,
+                  }}>
+                    {t("safetyReportError") !== "safetyReportError" ? t("safetyReportError") : "Could not file your report. Please try again."}
+                  </p>
+                )}
 
                 <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
                   <button onClick={() => setDialog(null)} style={ghostBtn}>

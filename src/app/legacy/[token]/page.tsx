@@ -52,7 +52,7 @@ async function getDeliveryData(token: string) {
   // Get the contact info
   const { data: contact } = await supabase
     .from("legacy_contacts")
-    .select("contact_name, access_level")
+    .select("contact_name, access_level, wing_access, room_access")
     .eq("id", delivery.contact_id)
     .single();
 
@@ -67,10 +67,12 @@ async function getDeliveryData(token: string) {
     message = msg;
   }
 
-  // Get shared memories based on access level
-  const accessLevel = contact?.access_level || "full";
-  const wingAccess: string[] = [];
-  const roomAccess: string[] = [];
+  // Get shared memories based on access level.
+  // Fail CLOSED: an unknown/missing access level must NEVER default to full access
+  // (this would expose the entire private archive to a scoped contact).
+  const accessLevel = contact?.access_level || "none";
+  const wingAccess: string[] = (contact?.wing_access as string[] | null) || [];
+  const roomAccess: string[] = (contact?.room_access as string[] | null) || [];
 
   let wings: Array<{ id: string; name: string; description: string | null }> = [];
   let rooms: Array<{ id: string; name: string; wing_id: string; description: string | null }> = [];

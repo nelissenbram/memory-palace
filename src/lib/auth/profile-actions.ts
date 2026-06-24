@@ -368,7 +368,12 @@ export async function deleteAccount() {
     }
   }
 
-  // 3. Delete auth.users record using admin client (requires service role key)
+  // 3. Delete auth.users record using admin client (requires service role key).
+  // This is the authoritative deletion step: if it fails, the identity can still
+  // log back in — so we must NOT report success (Apple Guideline 5.1.1(v)).
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { error: "Account deletion is temporarily unavailable. Please contact support@thememorypalace.ai." };
+  }
   try {
     const adminClient = createAdminClient();
     const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(
@@ -376,10 +381,11 @@ export async function deleteAccount() {
     );
     if (deleteAuthError) {
       console.error("Failed to delete auth user:", deleteAuthError.message);
-      // Profile data is already deleted via cascade, so we proceed with sign-out
+      return { error: "We could not fully delete your account. Please try again or contact support@thememorypalace.ai." };
     }
   } catch (err) {
     console.error("Admin client error during account deletion:", err);
+    return { error: "We could not fully delete your account. Please try again or contact support@thememorypalace.ai." };
   }
 
   // 4. Sign out the current session

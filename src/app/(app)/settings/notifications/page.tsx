@@ -5,6 +5,7 @@ import { T } from "@/lib/theme";
 import { usePushNotificationStore, NotificationPreferences } from "@/lib/stores/pushNotificationStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { isNative } from "@/lib/native/platform";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 
 // ── Custom SVG Icons (Roman/Tuscan aesthetic) ──
@@ -195,6 +196,10 @@ export default function NotificationsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastData | null>(null);
   const [loaded, setLoaded] = useState(false);
+  // The web-push stack (Notification/serviceWorker/VAPID) does not function inside the
+  // native WKWebView, so the push card is a dead toggle there — hide it (Apple 2.1).
+  const [nativeApp, setNativeApp] = useState(false);
+  useEffect(() => { setNativeApp(isNative()); }, []);
   const pushEnabledRef = useRef(prefs.pushEnabled);
   const subscribingRef = useRef(false);
 
@@ -397,8 +402,8 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {/* ── Push Notifications Section (mobile only) ── */}
-      {isMobile && <>
+      {/* ── Push Notifications Section (mobile web only — dead inside native WKWebView) ── */}
+      {isMobile && !nativeApp && <>
 
       {/* Browser support warning */}
       {isUnsupported && (

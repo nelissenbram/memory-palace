@@ -418,7 +418,8 @@ export default function PricingPage() {
               </svg>
             ),
           },
-          {
+          // 30-day money-back guarantee is a web/Stripe concept — iOS refunds are Apple-managed.
+          ...(isApple ? [] : [{
             label: t("trustGuarantee"),
             icon: (
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -426,7 +427,7 @@ export default function PricingPage() {
                 <path d="M5 8.5l2 2 4-4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ),
-          },
+          }]),
         ].map((badge) => (
           <div
             key={badge.label}

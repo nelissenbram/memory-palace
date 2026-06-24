@@ -1502,6 +1502,17 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                 {t("paywallTrialCta")}
               </button>
 
+              {/* Subscription disclosure (Apple Guideline 3.1.2) */}
+              <p style={{
+                fontFamily: T.font.body, fontSize: "0.625rem", color: "#8A8073",
+                lineHeight: 1.5, margin: "-0.5rem 0 0", textAlign: "center", maxWidth: "22rem",
+              }}>
+                {t("paywallAutoRenew") !== "paywallAutoRenew" ? t("paywallAutoRenew") : "Auto-renewable subscription billed to your Apple ID. Cancel anytime in Settings."}{" "}
+                <a href="/terms" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallTerms") !== "paywallTerms" ? t("paywallTerms") : "Terms"}</a>
+                {" · "}
+                <a href="/privacy" style={{ color: T.color.terracotta, textDecoration: "none" }}>{t("paywallPrivacy") !== "paywallPrivacy" ? t("paywallPrivacy") : "Privacy"}</a>
+              </p>
+
               {/* Free continue */}
               <button
                 onClick={() => {

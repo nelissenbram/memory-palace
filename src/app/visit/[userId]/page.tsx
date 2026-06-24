@@ -3,6 +3,7 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getPublishedWings, getPublishedRooms, recordVisit } from "@/lib/social/visit-actions";
 import { getProfile } from "@/lib/social/profile-actions";
 import { getComments, getReactions } from "@/lib/social/comment-actions";
+import { getBlockedUserIds } from "@/lib/social/safety-actions";
 import { WINGS } from "@/lib/constants/wings";
 import PalaceOverviewClient from "./PalaceOverviewClient";
 
@@ -20,6 +21,14 @@ export default async function PalaceOverviewPage({ params }: Props) {
     getProfile(userId),
     getPublishedWings(userId),
   ]);
+
+  // Respect privacy: a non-public profile is not visitable by URL (mirror /u/[username]).
+  if (!profile || !profile.is_public) notFound();
+  // Respect blocks: a blocked relationship hides the palace entirely.
+  if (currentUser) {
+    const blocked = await getBlockedUserIds(supabase, currentUser.id);
+    if (blocked.has(userId)) notFound();
+  }
 
   if (!wings || wings.length === 0) notFound();
 

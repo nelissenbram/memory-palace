@@ -207,6 +207,25 @@ export async function purchase(productId: string): Promise<boolean> {
   });
 }
 
+/** Open the iOS system "Manage Subscriptions" UI (Apple Guideline 3.1.2). */
+export async function manageSubscriptions(): Promise<void> {
+  const cdv = getCdv();
+  try {
+    if (cdv?.store?.manageSubscriptions) {
+      await cdv.store.manageSubscriptions();
+      return;
+    }
+  } catch {
+    /* fall through to the App Store subscriptions URL */
+  }
+  try {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({ url: "https://apps.apple.com/account/subscriptions" });
+  } catch {
+    try { window.open("https://apps.apple.com/account/subscriptions", "_blank"); } catch {}
+  }
+}
+
 /** Restore previous purchases (e.g., after reinstall) */
 export async function restorePurchases(): Promise<boolean> {
   if (!store) return false;

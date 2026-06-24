@@ -9,6 +9,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { track } from "@/lib/analytics";
+import { isIOS } from "@/lib/native/platform";
 
 export default function RegisterPage() {
   return <Suspense><RegisterContent /></Suspense>;
@@ -65,12 +66,16 @@ function RegisterContent() {
         try {
           const storedRef = localStorage.getItem("mp_referral_code");
           if (storedRef) {
-            await fetch("/api/referral", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ code: storedRef }),
-            });
             localStorage.removeItem("mp_referral_code");
+            // Referral rewards mint a Stripe coupon — a web payment mechanism Apple
+            // forbids the app to facilitate. Never run this on iOS (Guideline 3.1.1).
+            if (!isIOS()) {
+              await fetch("/api/referral", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: storedRef }),
+              });
+            }
           }
         } catch {
           // non-critical — referral application is best-effort
