@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { T } from "@/lib/theme";
+import { confirmDialog } from "@/lib/ui/confirm";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -219,7 +220,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
               {/* Delete button for custom wings */}
               {extraWingIds.has(wing.id) && (
                 <button
-                  onClick={() => { if (confirm(t("deleteConfirm"))) deleteWing(wing.id); }}
+                  onClick={async () => { if (await confirmDialog({ message: t("deleteConfirm"), destructive: true })) deleteWing(wing.id); }}
                   style={{
                     marginTop: "0.5rem", padding: "0.375rem 0.75rem",
                     borderRadius: "0.5rem", border: `1px solid ${T.color.error}30`,

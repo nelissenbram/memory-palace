@@ -10,6 +10,7 @@ import { useThumbnailBackfill } from "@/lib/hooks/useThumbnailBackfill";
 import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 import { getDemoMems, demosVisible, setDemosHidden } from "@/lib/constants/defaults";
 import { isIOS } from "@/lib/native/platform";
+import { confirmDialog } from "@/lib/ui/confirm";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
@@ -2033,9 +2034,9 @@ export default function LibraryView() {
                       {selectedMemIds.size > 0 && (
                         <>
                           <button
-                            onClick={() => {
+                            onClick={async () => {
                               const count = selectedMemIds.size;
-                              if (!window.confirm(t("bulkDeleteConfirm", { count: String(count) }))) return;
+                              if (!(await confirmDialog({ message: t("bulkDeleteConfirm", { count: String(count) }), destructive: true }))) return;
                               for (const memId of selectedMemIds) {
                                 deleteMemory(selectedRoom!, memId);
                               }

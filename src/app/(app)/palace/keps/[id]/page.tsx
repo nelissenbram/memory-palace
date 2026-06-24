@@ -7,6 +7,7 @@ import { useKepStore } from "@/lib/stores/kepStore";
 import TuscanCard from "@/components/ui/TuscanCard";
 import { getMediaTypeIcon, getStatusColor, getStatusLabel } from "@/lib/kep/route-helpers";
 import { T } from "@/lib/theme";
+import { confirmDialog } from "@/lib/ui/confirm";
 import type { Kep, KepCapture, KepStats } from "@/types/kep";
 
 export default function KepDetailPage() {
@@ -36,7 +37,7 @@ export default function KepDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (confirm(t("deleteConfirm"))) {
+    if (await confirmDialog({ message: t("deleteConfirm"), destructive: true })) {
       await deleteKep(kepId);
       router.push("/palace/keps");
     }

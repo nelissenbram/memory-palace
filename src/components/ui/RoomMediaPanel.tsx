@@ -2,6 +2,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
+import { confirmDialog } from "@/lib/ui/confirm";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -473,8 +474,8 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
   // Sync initialTab from parent (e.g. clicking furniture in 3D)
   useEffect(() => { setActiveTab(initialTab); }, [initialTab]);
 
-  const handleDelete = useCallback((memId: string) => {
-    if (typeof window !== "undefined" && !window.confirm(t("confirmDelete"))) return;
+  const handleDelete = useCallback(async (memId: string) => {
+    if (!(await confirmDialog({ message: t("confirmDelete"), destructive: true }))) return;
     onDelete(memId);
   }, [onDelete, t]);
 
@@ -669,8 +670,8 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
     }
   }, [selectedIds.size, displayedMems]);
 
-  const handleDeleteSelected = useCallback(() => {
-    if (typeof window !== "undefined" && !window.confirm(t("confirmDelete"))) return;
+  const handleDeleteSelected = useCallback(async () => {
+    if (!(await confirmDialog({ message: t("confirmDelete"), destructive: true }))) return;
     for (const id of selectedIds) onDelete(id);
     setSelectedIds(new Set());
     setSelectMode(false);

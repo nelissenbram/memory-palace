@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { T } from "@/lib/theme";
+import { confirmDialog } from "@/lib/ui/confirm";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import type { Comment } from "@/lib/social/comment-actions";
 import { addComment, deleteComment } from "@/lib/social/comment-actions";
@@ -45,8 +46,8 @@ function SingleComment({
     });
   };
 
-  const handleDelete = () => {
-    if (!window.confirm(t("confirmDeleteComment"))) return;
+  const handleDelete = async () => {
+    if (!(await confirmDialog({ message: t("confirmDeleteComment"), destructive: true }))) return;
     startTransition(async () => {
       await onDelete(comment.id);
     });

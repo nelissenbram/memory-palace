@@ -6,6 +6,7 @@ import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
 import OfflineBanner from "@/components/OfflineBanner";
 import NativeInit from "@/components/NativeInit";
+import ConfirmHost from "@/components/ui/ConfirmHost";
 import { AccessibilityProvider } from "@/components/providers/AccessibilityProvider";
 import { DaylightProvider } from "@/components/providers/DaylightProvider";
 import WebVitals from "@/components/WebVitals";
@@ -318,6 +319,7 @@ export default async function RootLayout({
         <PWAInstallBanner />
         <OfflineBanner />
         <NativeInit />
+        <ConfirmHost />
         <AccessibilityProvider>
           <DaylightProvider>
             {children}

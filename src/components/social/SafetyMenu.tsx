@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { confirmDialog } from "@/lib/ui/confirm";
 import {
   blockUser,
   type ReportTargetType,
@@ -62,9 +63,9 @@ export default function SafetyMenu({
     });
   };
 
-  const handleBlock = () => {
+  const handleBlock = async () => {
     if (!targetUserId) return;
-    if (!window.confirm(t("safetyBlockConfirm"))) return;
+    if (!(await confirmDialog({ message: t("safetyBlockConfirm"), destructive: true }))) return;
     startTransition(async () => {
       const res = await blockUser(targetUserId);
       if (!res?.blocked) {
