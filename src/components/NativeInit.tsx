@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { isNative } from "@/lib/native/platform";
 import { initDeepLinkListener } from "@/lib/native/deep-links";
 import { initPushNotifications } from "@/lib/native/push-notifications";
+import { initExternalLinkHandler } from "@/lib/native/external-links";
 
 /**
  * Initializes native-only features (deep links, push notifications, splash screen, etc).
@@ -13,6 +14,7 @@ export default function NativeInit() {
   useEffect(() => {
     initDeepLinkListener();
     initPushNotifications();
+    initExternalLinkHandler();
 
     // Dismiss the server-rendered loading overlay now that React has mounted
     if (typeof window !== "undefined" && (window as any).__mpHideLoading) {
