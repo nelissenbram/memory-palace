@@ -2,6 +2,26 @@
 
 import { useEffect, useRef, useCallback } from "react";
 
+// Reference-counted body scroll lock so the background doesn't scroll/rubber-band
+// behind a modal (HIG Modality). A counter keeps nested modals from unlocking early.
+let scrollLockCount = 0;
+function lockBodyScroll() {
+  if (typeof document === "undefined") return;
+  scrollLockCount += 1;
+  if (scrollLockCount === 1) {
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "contain";
+  }
+}
+function unlockBodyScroll() {
+  if (typeof document === "undefined") return;
+  scrollLockCount = Math.max(0, scrollLockCount - 1);
+  if (scrollLockCount === 0) {
+    document.body.style.overflow = "";
+    document.body.style.overscrollBehavior = "";
+  }
+}
+
 export function useFocusTrap(active: boolean) {
   const containerRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -9,6 +29,7 @@ export function useFocusTrap(active: boolean) {
   useEffect(() => {
     if (!active) return;
 
+    lockBodyScroll();
     previousFocusRef.current = document.activeElement as HTMLElement;
 
     // Focus first focusable element
@@ -23,6 +44,7 @@ export function useFocusTrap(active: boolean) {
     }
 
     return () => {
+      unlockBodyScroll();
       // Return focus on unmount
       previousFocusRef.current?.focus();
     };
