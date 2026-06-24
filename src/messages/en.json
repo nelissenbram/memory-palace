@@ -1343,7 +1343,7 @@
       "a8": "Yes! The Memory Palace is available on iOS and Android. Download it from the App Store or Google Play. The app also works beautifully in any modern browser on desktop, tablet, and mobile.",
       "a8_ios": "Yes! The Memory Palace is available on the App Store for iPhone and iPad. The app also works beautifully in any modern browser on desktop, tablet, and mobile.",
       "q9": "How does AI work in The Memory Palace?",
-      "a9": "AI helps you organize — it suggests rooms for uploaded photos, transcribes voice recordings, and asks interview questions to capture your stories. AI processing is opt-in, uses Anthropic's Claude (which does not train on your data), and all data stays on EU servers. You always stay in control.",
+      "a9": "AI helps you organize — it suggests rooms for uploaded photos, transcribes voice recordings, and asks interview questions to capture your stories. AI processing is opt-in, uses Anthropic's Claude (which does not train on your data), and your memories are stored on EU servers (AI processing runs on Anthropic under standard data-protection safeguards). You always stay in control.",
       "q10": "Who is behind The Memory Palace?",
       "a10": "The Memory Palace is built by a small, independent European team passionate about preserving life stories. We're not backed by big tech or ad companies — your memories are our mission, not a product to sell.",
       "q11": "What file formats can I upload?",

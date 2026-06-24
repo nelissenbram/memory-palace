@@ -384,10 +384,11 @@ jobs:
       - name: Bump build number
         run: |
           PLIST="ios/App/App/Info.plist"
-          # Set version 1.0, build number from run number (auto-increments)
-          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0" $PLIST
+          # Marketing version must match the App Store listing's "What's New" (1.3.0);
+          # build number auto-increments from the run number.
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.3.0" $PLIST
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" $PLIST
-          echo "Version: 1.0 (${{ github.run_number }})"
+          echo "Version: 1.3.0 (${{ github.run_number }})"
 
       - name: Copy app icons
         run: cp -r memory-palace-ios-build/icons/* ios/App/App/Assets.xcassets/AppIcon.appiconset/

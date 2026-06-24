@@ -475,8 +475,10 @@ function LandingPageContent() {
       groupSubtitle: featuresAny?.captureGroupSubtitle ?? "",
       features: [
         { Icon: FeatureKepIcon, title: featuresAny?.kepCapture ?? "WhatsApp Capture", desc: featuresAny?.kepCaptureDesc ?? "" },
-        { Icon: FeatureReceiveIcon, title: featuresAny?.receiveSharing ?? "Receive Shared Memories", desc: featuresAny?.receiveSharingDesc ?? "" },
-        { Icon: FeatureCloudIcon, title: landing.features.cloudImport, desc: landing.features.cloudImportDesc },
+        // Receive-shared (PWA share target) + cloud import are unavailable in the iOS app —
+        // don't advertise features the app can't honor (Apple 2.3.1).
+        ...(isIosApp ? [] : [{ Icon: FeatureReceiveIcon, title: featuresAny?.receiveSharing ?? "Receive Shared Memories", desc: featuresAny?.receiveSharingDesc ?? "" }]),
+        ...(isIosApp ? [] : [{ Icon: FeatureCloudIcon, title: landing.features.cloudImport, desc: landing.features.cloudImportDesc }]),
         { Icon: FeatureInterviewIcon, title: landing.features.aiInterviews, desc: landing.features.aiInterviewsDesc },
       ],
     },

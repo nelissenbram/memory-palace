@@ -179,6 +179,13 @@ export async function updateProfile(data: {
     { const t = await serverError(); return { error: t("notAuthenticated") }; }
   }
 
+  // Filter objectionable display name / bio shown on public profiles (Apple 1.1/1.2).
+  const { moderateText } = await import("@/lib/social/moderate-text");
+  if ((data.displayName !== undefined && !moderateText(data.displayName).ok) ||
+      (data.bio !== undefined && !moderateText(data.bio).ok)) {
+    return { error: "This text violates our content policy." };
+  }
+
   const updates: Record<string, unknown> = {};
   if (data.displayName !== undefined) updates.display_name = data.displayName;
   if (data.goal !== undefined) updates.goal = data.goal;

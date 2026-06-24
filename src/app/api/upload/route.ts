@@ -22,12 +22,14 @@ function inferMimeType(filename: string, reportedType: string): string {
   return (ext && EXT_MAP[ext]) || reportedType;
 }
 
+// NOTE: image/svg+xml and text/plain are intentionally NOT allowed — both render/execute
+// same-origin when served from a public bucket (stored XSS / open file host, Apple 1.6).
 const ALLOWED_TYPES = new Set([
   "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic",
-  "image/heif", "image/tiff", "image/bmp", "image/svg+xml",
+  "image/heif", "image/tiff", "image/bmp",
   "video/mp4", "video/quicktime", "video/webm", "video/x-msvideo", "video/x-matroska",
   "audio/mpeg", "audio/wav", "audio/mp4", "audio/flac", "audio/ogg", "audio/aac",
-  "application/pdf", "text/plain",
+  "application/pdf",
   "model/gltf-binary", // bust .glb files
 ]);
 
@@ -75,6 +77,13 @@ export async function POST(request: NextRequest) {
   }
 
   const bucket = (formData.get("bucket") as string) === "busts" ? "busts" : "memories";
+  // Enforce per-bucket types: busts hold only .glb models; memories never hold models.
+  if (bucket === "busts" && contentType !== "model/gltf-binary") {
+    return NextResponse.json({ error: "File type not allowed for this upload" }, { status: 400 });
+  }
+  if (bucket === "memories" && contentType === "model/gltf-binary") {
+    return NextResponse.json({ error: "File type not allowed for this upload" }, { status: 400 });
+  }
   const ext = file.name?.split(".").pop()?.replace(/[^a-zA-Z0-9]/g, "") || "bin";
   const safeExt = ext.slice(0, 10);
   const path = `${user.id}/${Date.now()}_${randomUUID().slice(0, 8)}.${safeExt}`;

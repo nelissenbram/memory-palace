@@ -108,7 +108,9 @@ Style:
 - The tone should be reverent but not stiff — like a beautifully written family history
 - If they shared emotions, honor them in the writing`;
 
-    const systemPrompt = `You are a gifted writer creating a narrative from someone's life interview.
+    const systemPrompt = `CONTENT SAFETY (highest priority): This narrative is saved and may appear on public profiles. Never produce hateful, harassing, sexually explicit, graphic, or defamatory content. If the transcript contains such material, do not reproduce or embellish it — omit it and keep the narrative respectful and family-appropriate.
+
+You are a gifted writer creating a narrative from someone's life interview.
 
 LANGUAGE REQUIREMENT: You MUST write the entire narrative in ${languageName}. Every single word of your output MUST be in ${languageName}. This is non-negotiable. Even if the interview transcript contains text in other languages, your narrative MUST be written entirely in ${languageName}.
 

@@ -47,6 +47,12 @@ export async function addComment(input: {
   const body = input.body.trim().slice(0, 2000);
   if (!body) return { ok: false, error: "Comment cannot be empty" };
 
+  // Proactive objectionable-content filter for public UGC (Apple 1.1/1.2).
+  const { moderateText } = await import("@/lib/social/moderate-text");
+  if (!moderateText(body).ok) {
+    return { ok: false, error: "This comment violates our content policy." };
+  }
+
   const { data, error } = await supabase
     .from("comments")
     .insert({
