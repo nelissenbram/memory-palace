@@ -9,6 +9,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useThumbnailBackfill } from "@/lib/hooks/useThumbnailBackfill";
 import { syncSettingsToServer } from "@/lib/stores/settingsSync";
 import { getDemoMems, demosVisible, setDemosHidden } from "@/lib/constants/defaults";
+import { isIOS } from "@/lib/native/platform";
 import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
@@ -446,6 +447,10 @@ export default function LibraryView() {
   const [locationLng, setLocationLng] = useState("");
   const [showAiSortBanner, setShowAiSortBanner] = useState(false);
   const [showManualSortBanner, setShowManualSortBanner] = useState(false);
+  // Hide not-yet-shipped "coming soon" features on iOS (Apple Guideline 2.3.1).
+  // Set post-mount to avoid an SSR/client hydration mismatch.
+  const [hideComingSoon, setHideComingSoon] = useState(false);
+  useEffect(() => { setHideComingSoon(isIOS()); }, []);
   const [visibleMemCount, setVisibleMemCount] = useState(50);
   const [sortMode, setSortMode] = useState<"newest" | "oldest" | "alpha" | "type">("newest");
   const [selectedMemIds, setSelectedMemIds] = useState<Set<string>>(new Set());
@@ -1729,8 +1734,8 @@ export default function LibraryView() {
             />
           )}
 
-          {/* AI SMART SORT BAR - Attic wing only */}
-          {!selectedRoom && !crossWingResults && selectedWing === "attic" && allWingMems.length > 0 && (
+          {/* AI SMART SORT BAR - Attic wing only (hidden on iOS until shipped) */}
+          {!hideComingSoon && !selectedRoom && !crossWingResults && selectedWing === "attic" && allWingMems.length > 0 && (
             <div style={{
               marginBottom: "1.5rem",
               padding: isMobile ? "1rem" : "1.125rem 1.5rem",
@@ -1816,7 +1821,7 @@ export default function LibraryView() {
 
 
           {/* Coming soon banners for AI Sort / Manual Sort */}
-          {(showAiSortBanner || showManualSortBanner) && !selectedRoom && !crossWingResults && selectedWing === "attic" && (
+          {!hideComingSoon && (showAiSortBanner || showManualSortBanner) && !selectedRoom && !crossWingResults && selectedWing === "attic" && (
             <div style={{
               marginBottom: "1.25rem",
               padding: "1rem 1.25rem",

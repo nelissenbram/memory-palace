@@ -14,6 +14,7 @@ import Image from "next/image";
 import { useDaylight } from "@/components/providers/DaylightProvider";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRouter } from "next/navigation";
+import { isIOS } from "@/lib/native/platform";
 
 interface ProfileData {
   display_name: string;
@@ -51,6 +52,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  // Hide the not-yet-shipped Renaissance style on iOS (Apple Guideline 2.3.1).
+  const [hideComingSoon, setHideComingSoon] = useState(false);
+  useEffect(() => { setHideComingSoon(isIOS()); }, []);
   const [deleteText, setDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
   // Editable fields
@@ -580,7 +584,7 @@ export default function ProfilePage() {
               gridTemplateColumns: "1fr 1fr",
               gap: "0.625rem",
             }}>
-              {(["roman", "renaissance"] as const).map((era) => {
+              {(["roman", "renaissance"] as const).filter((era) => !(hideComingSoon && era === "renaissance")).map((era) => {
                 const isComingSoon = era === "renaissance";
                 return (
                 <button

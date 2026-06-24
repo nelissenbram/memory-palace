@@ -35,8 +35,10 @@ export function initDeepLinkListener() {
         return;
       }
 
-      // Handle other deep links — navigate to the path
-      if (parsedUrl.hostname === "thememorypalace.ai") {
+      // Handle other deep links — navigate to the path.
+      // Accept both the apex and www host (Universal Links + the live-load run on www).
+      const host = parsedUrl.hostname.replace(/^www\./, "");
+      if (host === "thememorypalace.ai") {
         window.location.href = parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
       }
     } catch {

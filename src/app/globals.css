@@ -42,6 +42,8 @@ body {
   min-height: 100%; /* fallback for older browsers */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent WKWebView pull-to-refresh (which reloads the whole SPA) and rubber-band. */
+  overscroll-behavior: none;
 }
 
 @supports (min-height: 100dvh) {

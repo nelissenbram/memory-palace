@@ -29,6 +29,9 @@ export default function OnboardingCelebration({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    // Honor Reduce Motion (Apple Guideline 4 accessibility) — skip the confetti.
+    if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 

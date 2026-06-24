@@ -130,6 +130,11 @@ export async function initIAP(): Promise<boolean> {
   }
 }
 
+/** True once the store is initialized and at least one product's price has loaded. */
+export function isIAPReady(): boolean {
+  return initialized && !!store && getAllProducts().length > 0;
+}
+
 /** Get product info (price, title, etc.) */
 export function getProduct(productId: string): IAPProduct | null {
   if (!store) return null;

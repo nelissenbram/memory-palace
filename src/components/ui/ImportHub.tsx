@@ -668,7 +668,8 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
               )}
             </div>
 
-            {/* ═══ D. CLOUD SERVICES ═══ */}
+            {/* ═══ D. CLOUD SERVICES — hidden during onboarding (lockRoom): the buttons are wired to a no-op there ═══ */}
+            {!lockRoom && (
             <div style={{ marginBottom: isMobile ? "0.75rem" : "1.25rem" }}>
               <p style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "0.8125rem" : "0.9375rem", fontWeight: 600,
@@ -722,6 +723,7 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
                 })}
               </div>
             </div>
+            )}
 
             {/* ═══ PREVIEW QUEUE ═══ */}
             {queue.length > 0 && (

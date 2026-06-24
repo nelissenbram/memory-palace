@@ -8,7 +8,7 @@ import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
 import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
-import { initIAP, getIAPProductId, getProduct, purchase, getIAPError } from "@/lib/native/iap";
+import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -478,6 +478,30 @@ export default function PricingPage() {
         </div>
       )}
 
+      {/* Restore Purchases — required on iOS (Apple Guideline 3.1.2) */}
+      {isApple && (
+        <div style={{ textAlign: "center", marginTop: "1rem" }}>
+          <button
+            onClick={async () => {
+              const ok = await restorePurchases();
+              setToast({
+                message: ok
+                  ? (tc("restoreDone") !== "restoreDone" ? tc("restoreDone") : "Purchases restored.")
+                  : (tc("restoreNone") !== "restoreNone" ? tc("restoreNone") : "No previous purchases found to restore."),
+                type: ok ? "success" : "error",
+              });
+            }}
+            style={{
+              background: "none", border: "none", color: C.terracotta,
+              fontFamily: F.body, fontSize: 14, fontWeight: 600, cursor: "pointer",
+              textDecoration: "underline", textUnderlineOffset: 3, minHeight: "2.75rem",
+            }}
+          >
+            {tc("restorePurchases") !== "restorePurchases" ? tc("restorePurchases") : "Restore Purchases"}
+          </button>
+        </div>
+      )}
+
       {/* Plan Cards */}
       <section
         style={{
@@ -489,7 +513,7 @@ export default function PricingPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isSmall
+            gridTemplateColumns: isMobile
               ? "1fr"
               : "repeat(3, 1fr)",
             gap: isMobile ? 20 : 28,
@@ -629,7 +653,7 @@ export default function PricingPage() {
                 {/* CTA */}
                 <button
                   onClick={() => handleSubscribe(planId)}
-                  disabled={loading !== null}
+                  disabled={loading !== null || (isApple && !isFree && !iapReady)}
                   style={{
                     width: "100%",
                     padding: "16px 24px",
@@ -644,9 +668,9 @@ export default function PricingPage() {
                     fontFamily: F.body,
                     fontSize: 16,
                     fontWeight: 600,
-                    cursor: loading ? "wait" : "pointer",
+                    cursor: loading ? "wait" : (isApple && !isFree && !iapReady ? "default" : "pointer"),
                     transition: "all 0.2s",
-                    opacity: loading && loading !== planId ? 0.5 : 1,
+                    opacity: (loading && loading !== planId) || (isApple && !isFree && !iapReady) ? 0.6 : 1,
                     marginBottom: 28,
                   }}
                 >
@@ -654,9 +678,11 @@ export default function PricingPage() {
                     ? t("redirecting")
                     : isFree
                       ? t("getStartedBtn")
-                      : plan.trial
-                        ? (t("startFreeTrial") !== "startFreeTrial" ? t("startFreeTrial") : `Start ${plan.trial}-day free trial`)
-                        : t("subscribe")}
+                      : (isApple && !iapReady)
+                        ? (t("preparingStore") !== "preparingStore" ? t("preparingStore") : "Preparing store…")
+                        : plan.trial
+                          ? (t("startFreeTrial") !== "startFreeTrial" ? t("startFreeTrial") : `Start ${plan.trial}-day free trial`)
+                          : t("subscribe")}
                 </button>
                 {plan.trial && (
                   <p style={{
@@ -668,8 +694,13 @@ export default function PricingPage() {
                     fontWeight: 500,
                   }}>
                     {t("trialNote") !== "trialNote" ? t("trialNote") : `${plan.trial}-day free trial, cancel anytime`}
-                    {" — "}
-                    {t("noCardRequired") !== "noCardRequired" ? t("noCardRequired") : "no credit card required"}
+                    {/* On iOS the Apple ID is always charged — never claim "no credit card" */}
+                    {!isApple && (
+                      <>
+                        {" — "}
+                        {t("noCardRequired") !== "noCardRequired" ? t("noCardRequired") : "no credit card required"}
+                      </>
+                    )}
                   </p>
                 )}
                 {/* Subscription disclosures (Apple Guideline 3.1.2) */}

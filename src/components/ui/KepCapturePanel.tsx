@@ -304,10 +304,18 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
                 <div style={{ flex: 1 }}>
                   <h3 style={stepTitle}>{t("quickStep2Title")}</h3>
                   <p style={stepDesc}>{t("quickStep2Text")}</p>
-                  <a href={waLink} target="_blank" rel="noopener noreferrer" style={btnWhatsApp}>
-                    <WhatsAppIcon size={16} />
-                    {t("quickStep2Button")}
-                  </a>
+                  {waPhone ? (
+                    <a href={waLink} target="_blank" rel="noopener noreferrer" style={btnWhatsApp}>
+                      <WhatsAppIcon size={16} />
+                      {t("quickStep2Button")}
+                    </a>
+                  ) : (
+                    // No WhatsApp number configured — render a disabled control rather than a dead href="#"
+                    <span style={{ ...btnWhatsApp, opacity: 0.5, cursor: "not-allowed" }} aria-disabled="true">
+                      <WhatsAppIcon size={16} />
+                      {t("quickStep2Button")}
+                    </span>
+                  )}
                 </div>
               </div>
             </TuscanCard>

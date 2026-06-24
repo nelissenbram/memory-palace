@@ -63,7 +63,7 @@ const TEXT_SIZE_SCALE: Record<TextSize, number> = { standard: 1, comfortable: 1.
 /* ── Branding header shared across all 3 setup screens ── */
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
-    <div style={{ position: "absolute", top: "2rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+    <div style={{ position: "absolute", top: "calc(2rem + env(safe-area-inset-top, 0px))", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "0.5rem", alignItems: "center" }}>
       {Array.from({ length: total }, (_, i) => (
         <div key={i} style={{
           width: i + 1 === current ? "1.5rem" : "0.375rem", height: "0.375rem", borderRadius: "0.1875rem",
@@ -224,11 +224,33 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     }
   }, [corridorEnterClicked, phase, setPhase]);
 
+  // Safety fallback for the auto-walk legs: the exterior/entrance scenes advance
+  // only when their WebGL loop fires a callback. If the scene stalls on iPhone
+  // (GL context loss, throttled rAF), never strand the user — advance after a ceiling.
+  useEffect(() => {
+    if (phase === "walk_exterior") {
+      const t = setTimeout(() => setPhase("walk_entrance"), 14000);
+      return () => clearTimeout(t);
+    }
+    if (phase === "walk_entrance") {
+      const t = setTimeout(() => setPhase("walk_corridor"), 14000);
+      return () => clearTimeout(t);
+    }
+    // walk_room invites a tap on the upload painting; if the reviewer never finds it,
+    // surface the upload step rather than leaving them stuck in the room forever.
+    if (phase === "walk_room") {
+      const t = setTimeout(() => setPhase("upload"), 30000);
+      return () => clearTimeout(t);
+    }
+  }, [phase, setPhase]);
+
   const handleRoomPaintingClick = useCallback((id: string) => {
-    if (id === "__upload_painting__" && phase === "walk_room" && roomStep >= 9) {
+    // Honor the painting tap as soon as the room is shown — gating on roomStep>=9
+    // left the painting dead for ~18s of cinematic clock, reading as "unresponsive".
+    if (id === "__upload_painting__" && phase === "walk_room") {
       setPhase("upload");
     }
-  }, [phase, roomStep, setPhase]);
+  }, [phase, setPhase]);
 
   // ── Upload ──
   const handleMemoryAdded = useCallback(() => {
@@ -308,6 +330,33 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     }} />
   );
 
+  // Visible fallback for lazy 3D scenes / panels: a spinner plus an always-clickable
+  // Skip, so a slow or failed chunk in WKWebView never leaves a frozen black screen.
+  const sceneLoadingFallback = (
+    <div style={{
+      position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: "1.5rem",
+      background: "#1a1917", zIndex: 30,
+      paddingBottom: "calc(2rem + env(safe-area-inset-bottom, 0px))",
+    }}>
+      <style>{`@keyframes onb-spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{
+        width: "2.5rem", height: "2.5rem", borderRadius: "50%",
+        border: "3px solid rgba(255,255,255,0.15)", borderTopColor: T.color.terracotta,
+        animation: "onb-spin 0.8s linear infinite",
+      }} />
+      <button onClick={handleSkip} style={{
+        fontFamily: T.font.body, fontSize: "0.8125rem",
+        color: "rgba(255,255,255,0.75)", background: "rgba(0,0,0,0.4)",
+        border: "1px solid rgba(255,255,255,0.2)", borderRadius: "0.5rem",
+        padding: "0.625rem 1.25rem", cursor: "pointer", minHeight: "2.75rem",
+        backdropFilter: "blur(4px)",
+      }}>
+        {t("skipExploreOwn")}
+      </button>
+    </div>
+  );
+
   // ══════════════════════════════════════════════
   // PHASE RENDERS
   // ══════════════════════════════════════════════
@@ -328,7 +377,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             setPhase("lang_a11y");
           }}
           style={{
-            position: "absolute", top: "1.5rem", right: "1.5rem", zIndex: 20,
+            position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
             fontFamily: T.font.body, fontSize: "0.75rem",
             color: "rgba(255,255,255,0.35)", background: "rgba(0,0,0,0.2)",
             border: "1px solid rgba(255,255,255,0.08)",
@@ -875,7 +924,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
               {/* Buttons */}
               <div style={{ display: "flex", gap: "0.75rem", width: "100%", marginTop: "0.25rem" }}>
                 <button
-                  onClick={() => setPhase("style_era")}
+                  onClick={() => setPhase("name")}
                   style={{
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                     padding: "0.75rem 1.5rem", borderRadius: "0.5rem",
@@ -946,7 +995,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
         {/* Title floats in from the bottom */}
         <div style={{
           position: "absolute",
-          bottom: isMobile ? "10vh" : "8vh",
+          bottom: isMobile ? "max(10vh, calc(2.5rem + env(safe-area-inset-bottom, 0px)))" : "8vh",
           left: "50%", transform: "translateX(-50%)",
           textAlign: "center", zIndex: 10, width: "90%",
         }}>
@@ -1029,6 +1078,9 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                 }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-0.125rem)"; e.currentTarget.style.boxShadow = `0 0.5rem 1.5rem ${T.color.terracotta}60`; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}40`; }}
+                onPointerDown={e => { e.currentTarget.style.transform = "scale(0.96)"; }}
+                onPointerUp={e => { e.currentTarget.style.transform = ""; }}
+                onPointerCancel={e => { e.currentTarget.style.transform = ""; }}
               >
                 {t("cinematicYes")}
               </button>
@@ -1041,7 +1093,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           onClick={() => setPhase("walk_exterior")}
           aria-label={t("cinematicSkip")}
           style={{
-            position: "absolute", top: "1.5rem", right: "1.5rem", zIndex: 20,
+            position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
             fontFamily: T.font.body, fontSize: "0.8125rem",
             color: "rgba(255,255,255,0.85)", background: "rgba(0,0,0,0.45)",
             border: "1px solid rgba(255,255,255,0.2)",
@@ -1084,7 +1136,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
         <style>{KEYFRAMES}</style>
-        <Suspense fallback={null}>
+        <Suspense fallback={sceneLoadingFallback}>
           <OnboardingSceneHost
             scene={currentScene}
             autoWalkTo={autoWalkTarget}
@@ -1122,7 +1174,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             {/* Title text overlay */}
             <div style={{
               position: "absolute",
-              bottom: isMobile ? "10vh" : "8vh",
+              bottom: isMobile ? "max(10vh, calc(2.5rem + env(safe-area-inset-bottom, 0px)))" : "8vh",
               left: "50%", transform: "translateX(-50%)",
               textAlign: "center", zIndex: 10, width: "90%", maxWidth: "36rem",
             }}>
@@ -1188,6 +1240,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
               {corridorStep >= 6 && !corridorEnterClicked && (
                 <button
                   onClick={() => setCorridorEnterClicked(true)}
+                  disabled={corridorEnterClicked}
                   style={{
                     marginTop: "1.25rem",
                     fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
@@ -1196,7 +1249,8 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                     background: T.color.terracotta,
                     color: "#FAFAF7",
                     border: "none", borderRadius: "0.5rem",
-                    cursor: "pointer",
+                    cursor: corridorEnterClicked ? "default" : "pointer",
+                    opacity: corridorEnterClicked ? 0.8 : 1,
                     boxShadow: `0 0.25rem 1rem ${T.color.terracotta}40`,
                     transition: "transform .15s ease, box-shadow .15s ease",
                     whiteSpace: "nowrap",
@@ -1205,8 +1259,11 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
                   }}
                   onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-0.125rem)"; e.currentTarget.style.boxShadow = `0 0.5rem 1.5rem ${T.color.terracotta}60`; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.terracotta}40`; }}
+                  onPointerDown={e => { if (!corridorEnterClicked) e.currentTarget.style.transform = "scale(0.96)"; }}
+                  onPointerUp={e => { e.currentTarget.style.transform = ""; }}
+                  onPointerCancel={e => { e.currentTarget.style.transform = ""; }}
                 >
-                  {t("corridorEnterRoom")}
+                  {corridorEnterClicked ? `${t("corridorEnterRoom")}…` : t("corridorEnterRoom")}
                 </button>
               )}
             </div>
@@ -1222,7 +1279,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             {/* Title text overlay */}
             <div style={{
               position: "absolute",
-              bottom: isMobile ? "10vh" : "8vh",
+              bottom: isMobile ? "max(10vh, calc(2.5rem + env(safe-area-inset-bottom, 0px)))" : "8vh",
               left: "50%", transform: "translateX(-50%)",
               textAlign: "center", zIndex: 10, width: "90%", maxWidth: "36rem",
               pointerEvents: "none",
@@ -1311,7 +1368,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           <button
             onClick={handleSkip}
             style={{
-              position: "absolute", top: "1.5rem", right: "1.5rem", zIndex: 20,
+              position: "absolute", top: "calc(1.5rem + env(safe-area-inset-top, 0px))", right: "calc(1.5rem + env(safe-area-inset-right, 0px))", zIndex: 20,
               fontFamily: T.font.body, fontSize: "0.75rem",
               color: "rgba(255,255,255,0.35)", background: "rgba(0,0,0,0.2)",
               border: "1px solid rgba(255,255,255,0.08)",
@@ -1325,7 +1382,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
 
         {/* Tooltip for exterior & other non-cinematic walk phases */}
         {!hideTooltip && (
-          <Suspense fallback={null}>
+          <Suspense fallback={sceneLoadingFallback}>
             <OnboardingTooltip
               message={tooltipMessage}
               nextLabel={showAddMemoryButton ? t("walkAddMemory") : t("walkNext")}
@@ -1353,7 +1410,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
         <style>{KEYFRAMES}</style>
-        <Suspense fallback={null}>
+        <Suspense fallback={sceneLoadingFallback}>
           <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
         </Suspense>
 
@@ -1471,11 +1528,11 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
         <style>{KEYFRAMES}</style>
-        <Suspense fallback={null}>
+        <Suspense fallback={sceneLoadingFallback}>
           <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} />
         </Suspense>
 
-        <Suspense fallback={null}>
+        <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
             onClose={() => { if (!memoryUploadedRef.current) setPhase("paywall"); }}
             onImportFiles={async (files) => {
@@ -1516,10 +1573,10 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
     return (
       <div style={{ width: "100vw", height: "100dvh", position: "relative", background: "#1a1917" }}>
         <style>{KEYFRAMES}</style>
-        <Suspense fallback={null}>
+        <Suspense fallback={sceneLoadingFallback}>
           <OnboardingSceneHost scene="room" wingId="roots" roomId="ro1" roomName={onboardingRoomName} isMobile={isMobile} memories={uploadedMemory ? [uploadedMemory] : []} initialCameraZ={0} />
         </Suspense>
-        <Suspense fallback={null}>
+        <Suspense fallback={sceneLoadingFallback}>
           <OnboardingCelebration
             title={t("celebrationTitle2")}
             subtitle={t("celebrationSubtitle2")}

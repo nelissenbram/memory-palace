@@ -411,23 +411,37 @@ jobs:
           done
           echo "Alpha channels stripped from all icons"
 
-      - name: Configure Info.plist (permissions, iPad support)
+      - name: Configure Info.plist (permissions, iPad support, portrait lock)
         run: |
           PLIST="ios/App/App/Info.plist"
-          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Take photos for your memory palace'" $PLIST 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Choose photos for your memory palace'" $PLIST 2>/dev/null || true
+          set_string() {
+            /usr/libexec/PlistBuddy -c "Set :$1 $2" "$PLIST" 2>/dev/null \
+              || /usr/libexec/PlistBuddy -c "Add :$1 string $2" "$PLIST"
+          }
+          # Purpose strings must name the in-context use (Apple Guideline 5.1.1).
+          set_string NSCameraUsageDescription "Take photos to place in the rooms of your 3D memory palace."
+          set_string NSPhotoLibraryUsageDescription "Choose photos and videos to display in the rooms of your memory palace."
+          set_string NSPhotoLibraryAddUsageDescription "Save images from your memory palace back to your photo library."
+          set_string NSMicrophoneUsageDescription "Record voice notes and answer guided life-story interviews in your memory palace."
+          set_string NSSpeechRecognitionUsageDescription "Transcribe your spoken answers during guided life-story interviews."
           # Ensure iPad support (Universal: iPhone + iPad)
           /usr/libexec/PlistBuddy -c "Delete :UIDeviceFamily" $PLIST 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:0 integer 1" $PLIST
           /usr/libexec/PlistBuddy -c "Add :UIDeviceFamily:1 integer 2" $PLIST
-          # Support all orientations on iPad
+          # Portrait-only on iPhone (Apple Guideline 4 — app is designed portrait-only)
+          /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations" $PLIST 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait" $PLIST
+          # Portrait-only on iPad too
           /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations~ipad" $PLIST 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad array" $PLIST
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:0 string UIInterfaceOrientationPortrait" $PLIST
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:1 string UIInterfaceOrientationPortraitUpsideDown" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:2 string UIInterfaceOrientationLandscapeLeft" $PLIST
-          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:3 string UIInterfaceOrientationLandscapeRight" $PLIST
+          # Fail the build if any required key is missing.
+          for k in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSMicrophoneUsageDescription NSSpeechRecognitionUsageDescription UISupportedInterfaceOrientations; do
+            /usr/libexec/PlistBuddy -c "Print :$k" "$PLIST" >/dev/null 2>&1 || { echo "ERROR: Info.plist missing required key $k"; exit 1; }
+          done
 
       - name: Write App Store Connect API key
         run: |

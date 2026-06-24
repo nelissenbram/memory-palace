@@ -3,6 +3,19 @@
 import React from "react";
 import { T } from "@/lib/theme";
 
+/** True for stale-deploy / failed dynamic-import errors that a reload can fix. */
+function isChunkError(error: unknown): boolean {
+  const m = (error as Error)?.message || String(error || "");
+  return /Loading chunk|Loading CSS chunk|ChunkLoadError|Failed to fetch dynamically imported module|Failed to load chunk|importing a module script failed/i.test(m);
+}
+
+/** Reload via the breaker-immune path when available (see app/layout.tsx). */
+function forceReload() {
+  const f = (window as unknown as { __mpForceReload?: () => void }).__mpForceReload;
+  if (f) f();
+  else window.location.reload();
+}
+
 interface ErrorBoundaryProps {
   children: React.ReactNode;
 }
@@ -35,6 +48,21 @@ export default class ErrorBoundary extends React.Component<
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     // eslint-disable-next-line no-console
     console.error("[ErrorBoundary]", error, info);
+    // A stale-chunk error means the in-memory module graph 404'd (e.g. a web deploy
+    // rotated chunk hashes mid-session). Re-rendering replays the same broken import,
+    // so reload to fetch fresh chunks — guarded to avoid a loop.
+    if (isChunkError(error)) {
+      try {
+        const KEY = "mp_eb_chunk_reload";
+        const n = parseInt(sessionStorage.getItem(KEY) || "0", 10);
+        if (n < 2) {
+          sessionStorage.setItem(KEY, String(n + 1));
+          forceReload();
+        }
+      } catch {
+        forceReload();
+      }
+    }
   }
 
   private getLocale(): string {
@@ -114,7 +142,7 @@ export default class ErrorBoundary extends React.Component<
             {message}
           </p>
           <button
-            onClick={() => this.setState({ hasError: false })}
+            onClick={() => forceReload()}
             style={{
               padding: "0.75rem 1.5rem",
               borderRadius: "0.75rem",

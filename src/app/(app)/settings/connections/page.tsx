@@ -6,6 +6,7 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { isIOS } from "@/lib/native/platform";
 
 // ── Provider definitions ──
 type ProviderIconKey = "photos" | "dropbox" | "cloud" | "folder" | "apple";
@@ -130,6 +131,9 @@ function ConnectionsContent() {
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState<string | null>(null);
+  // Hide not-yet-shipped "coming soon" providers on iOS (Apple Guideline 2.3.1).
+  const [hideComingSoon, setHideComingSoon] = useState(false);
+  useEffect(() => { setHideComingSoon(isIOS()); }, []);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -248,7 +252,7 @@ function ConnectionsContent() {
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {PROVIDERS.map((provider) => {
+          {PROVIDERS.filter((provider) => !(hideComingSoon && provider.comingSoon)).map((provider) => {
             const account = connectedMap.get(provider.id);
             const isConnected = !!account;
             const isComingSoon = !!provider.comingSoon;

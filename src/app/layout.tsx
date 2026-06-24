@@ -106,7 +106,11 @@ export default async function RootLayout({
         {/* Global reload circuit breaker — caps ALL reloads at 5 per session to prevent infinite loops */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
-            var K="mp_total_reloads",MAX=5;
+            var K="mp_total_reloads",MAX=10;
+            // Preserve a pristine reload immune to the breaker, for critical recovery
+            // paths (chunk-load failures) that must always be able to recover.
+            try{var _r=window.location.reload.bind(window.location);window.__mpForceReload=function(){_r();};}
+            catch(e){window.__mpForceReload=function(){window.location.href=window.location.href;};}
             try{
               var n=parseInt(sessionStorage.getItem(K)||"0",10);
               sessionStorage.setItem(K,String(n+1));
@@ -149,10 +153,13 @@ export default async function RootLayout({
             }catch(e){}
           })();
         `}} />
-        {/* Auto-reload on stale deployment chunks (ChunkLoadError) */}
+        {/* Auto-reload on stale deployment chunks (ChunkLoadError).
+            Runs on native too: server.url=live site means a mid-review web deploy
+            rotates chunk hashes and 404s the binary's lazy imports — without this the
+            WebView white-screens. Uses __mpForceReload so the global breaker can't
+            suppress chunk recovery; keeps its own MAX=3 to prevent loops. */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
-            try{if(window.webkit&&window.webkit.messageHandlers)return;if(window.Capacitor)return;if(navigator.userAgent.indexOf("CapacitorNative")!==-1)return;}catch(e){}
             var KEY="mp_chunk_reload";
             var MAX=3;
             function isChunk(m){
@@ -170,11 +177,12 @@ export default async function RootLayout({
                 if(n>=MAX)return;
                 sessionStorage.setItem(KEY,String(n+1));
               }catch(e){}
+              var doReload=window.__mpForceReload||function(){window.location.reload();};
               if("caches" in window){
                 caches.keys().then(function(k){
                   return Promise.all(k.map(function(c){return caches.delete(c)}));
-                }).then(function(){window.location.reload()}).catch(function(){window.location.reload()});
-              }else{window.location.reload();}
+                }).then(function(){doReload()}).catch(function(){doReload()});
+              }else{doReload();}
             }
             window.addEventListener("error",function(e){
               if(isChunk(e.message)||isChunk(String(e.error))){e.preventDefault();safeReload();}
@@ -287,7 +295,19 @@ export default async function RootLayout({
           The Memory Palace
         </div>
         <script dangerouslySetInnerHTML={{ __html: `
-          (function(){var el=document.getElementById("mp-loading");if(!el)return;var t=setTimeout(function(){el.style.display="none"},8000);window.__mpHideLoading=function(){clearTimeout(t);if(el&&el.parentNode){el.style.opacity="0";el.style.transition="opacity 0.3s";setTimeout(function(){el.style.display="none"},300)}}})();
+          (function(){
+            var el=document.getElementById("mp-loading");if(!el)return;
+            function hide(){if(!el)return;el.style.opacity="0";el.style.transition="opacity 0.3s";setTimeout(function(){el.style.display="none"},300);}
+            // Backstop: never hold the veil more than 2.5s (was 8s — long enough to look frozen).
+            var t=setTimeout(hide,2500);
+            // First user interaction always dismisses the veil so a tap is never "dead".
+            function onFirst(){clearTimeout(t);hide();document.removeEventListener("touchstart",onFirst);document.removeEventListener("click",onFirst);}
+            document.addEventListener("touchstart",onFirst,{passive:true});
+            document.addEventListener("click",onFirst);
+            // Let taps fall through to the app shortly after first paint, even if still fading.
+            setTimeout(function(){if(el)el.style.pointerEvents="none";},1200);
+            window.__mpHideLoading=function(){clearTimeout(t);hide();};
+          })();
         `}} />
         <a href="#main-content" className="skip-to-content">
           {{ en: "Skip to content", nl: "Ga naar inhoud", de: "Zum Inhalt springen", es: "Saltar al contenido", fr: "Aller au contenu" }[locale] || "Skip to content"}
