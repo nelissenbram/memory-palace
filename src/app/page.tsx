@@ -2156,8 +2156,11 @@ function LandingPageContent() {
                 marginTop: "2rem",
                 flexWrap: "wrap",
               }}>
+                {/* Hidden inside the iOS app — a self-referential "Download on the App Store"
+                    badge is a repackaged-website signal (Apple 4.2) and recreates Apple artwork (4.5). */}
+                {!isIosApp && (
                 <a
-                  href={lAny?.faq?.appStoreUrl ?? "#"}
+                  href={lAny?.faq?.appStoreUrl ?? "https://apps.apple.com/app/id6745108818"}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={lAny?.faq?.appStoreLabel ?? "Download on the App Store"}
@@ -2172,6 +2175,7 @@ function LandingPageContent() {
                     </g>
                   </svg>
                 </a>
+                )}
                 {!isIosApp && (
                 <a
                   href={lAny?.faq?.playStoreUrl ?? "#"}

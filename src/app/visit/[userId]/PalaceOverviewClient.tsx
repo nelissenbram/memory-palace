@@ -376,13 +376,14 @@ export default function PalaceOverviewClient({
                     {isFollowing ? t("following") : t("follow")}
                   </button>
                 )}
-                {/* Report / block this palace owner (Apple Guideline 1.2) */}
-                {isAuthenticated && owner && currentUserId !== owner.id && (
+                {/* Report (guests included) / block this palace owner (Apple Guideline 1.2).
+                    Reporting works logged-out via the public /api/report; Block stays login-only. */}
+                {owner && currentUserId !== owner.id && (
                   <SafetyMenu
                     targetType="palace"
                     targetId={owner.id}
                     targetUserId={owner.id}
-                    showBlock
+                    showBlock={isAuthenticated}
                   />
                 )}
               </div>

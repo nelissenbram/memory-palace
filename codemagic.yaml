@@ -126,7 +126,7 @@ workflows:
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait" "$PLIST"
           # Fail the build if any required key is missing — never ship a plist that triggers a 5.1.1/4 reject.
-          for k in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSMicrophoneUsageDescription NSSpeechRecognitionUsageDescription UISupportedInterfaceOrientations; do
+          for k in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSPhotoLibraryAddUsageDescription NSMicrophoneUsageDescription NSSpeechRecognitionUsageDescription UISupportedInterfaceOrientations; do
             /usr/libexec/PlistBuddy -c "Print :$k" "$PLIST" >/dev/null 2>&1 || { echo "ERROR: Info.plist missing required key $k"; exit 1; }
           done
           echo "Info.plist permission strings + portrait lock configured."

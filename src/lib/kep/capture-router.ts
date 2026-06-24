@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Job } from "@/lib/queue/types";
 import { suggestRouting } from "./ai-route";
 import { transcribeFromUrl } from "./transcribe";
+import { checkAiConsent } from "@/lib/ai/check-consent";
 
 const CONFIDENCE_THRESHOLD = 0.8;
 
@@ -37,6 +38,18 @@ export async function handleKepCaptureJob(
 
   if (capture.status !== "pending") {
     // Already processed, skip
+    return;
+  }
+
+  // No AI egress (OpenAI Whisper transcription / Anthropic routing) without the
+  // capture owner's AI consent (Apple 5.1.1 / 5.1.2, GDPR). If not consented, leave
+  // the capture for manual handling instead of sharing voice/content with third parties.
+  const consent = await checkAiConsent(supabase, userId);
+  if (!consent.ok) {
+    await supabase
+      .from("kep_captures")
+      .update({ status: "processed" })
+      .eq("id", captureId);
     return;
   }
 

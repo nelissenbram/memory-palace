@@ -1,6 +1,7 @@
 "use client";
 import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
+import { isNative } from "@/lib/native/platform";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
@@ -1023,7 +1024,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         style={{ ...inputStyle, flex: 1 }}
                       />
                     </div>
-                    <button
+                    {/* GPS uses CoreLocation on iOS with no NSLocation purpose string shipped — web only (5.1.5). */}
+                    {!isNative() && <button
                       onClick={() => {
                         if (navigator.geolocation) {
                           navigator.geolocation.getCurrentPosition(pos => {
@@ -1045,7 +1047,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       }}
                     >
                       <MapPinIcon color={accent} /> {t("useCurrentLocation")}
-                    </button>
+                    </button>}
                   </div>
                 </ActionCard>
 

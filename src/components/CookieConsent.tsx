@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { initAnalytics, optOutAnalytics } from "@/lib/analytics";
 
 const F = T.font;
 const C = T.color;
@@ -77,15 +78,20 @@ export default function CookieConsent() {
   function handleAccept() {
     try {
       localStorage.setItem(STORAGE_KEY, "accepted");
+      localStorage.setItem("mp-cookie-analytics", "1");
     } catch { /* noop */ }
     setConsent("accepted");
+    // Only now start analytics — never before this explicit opt-in.
+    initAnalytics();
   }
 
   function handleReject() {
     try {
       localStorage.setItem(STORAGE_KEY, "rejected");
+      localStorage.setItem("mp-cookie-analytics", "0");
     } catch { /* noop */ }
     setConsent("rejected");
+    optOutAnalytics();
   }
 
   return (

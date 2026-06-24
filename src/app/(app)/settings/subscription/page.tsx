@@ -5,7 +5,7 @@ import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
-import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
+import { isAndroid, isIOS } from "@/lib/native/platform";
 import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, getIAPError, manageSubscriptions } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
@@ -74,8 +74,9 @@ export default function SubscriptionPage() {
 
         let subData = subRes.data as SubscriptionData | null;
 
-        // If DB says "free" but has a Stripe customer, sync with Stripe to detect missed webhooks
-        if (subData?.stripe_customer_id && subData.plan === "free") {
+        // If DB says "free" but has a Stripe customer, sync with Stripe to detect missed webhooks.
+        // Never run the Stripe sync on iOS (entitlement there comes from IAP, not Stripe).
+        if (!isApple && subData?.stripe_customer_id && subData.plan === "free") {
           try {
             const syncRes = await fetch("/api/stripe/sync", { method: "POST" });
             if (syncRes.ok) {
@@ -221,7 +222,8 @@ export default function SubscriptionPage() {
       });
       const data = await res.json();
       if (data.url) {
-        if (isIOS()) { await openInExternalBrowser(data.url); } else { window.location.href = data.url; }
+        // Web only — handleManageBilling already returns early on iOS (Apple-managed).
+        window.location.href = data.url;
       } else if (res.status === 400) {
         // No billing account — redirect to checkout instead
         showToast(t("noBillingAccount"), "error");
@@ -262,7 +264,8 @@ export default function SubscriptionPage() {
         return;
       }
       if (data.url) {
-        if (isIOS()) { await openInExternalBrowser(data.url); } else { window.location.href = data.url; }
+        // Web only — handleUpgrade already returns early on iOS (IAP path).
+        window.location.href = data.url;
       } else {
         console.error("[Subscription] Checkout error:", data);
         showToast(data.error || t("checkoutError"), "error");

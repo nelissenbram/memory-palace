@@ -55,8 +55,8 @@ export default function PendingCapturesPage() {
     <div style={{ padding: "1.5rem", maxWidth: "64rem", margin: "0 auto" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
-        <button onClick={() => router.push("/palace/keps")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem" }}>
-          \u2190
+        <button onClick={() => router.push("/palace/keps")} aria-label={t("back") !== "back" ? t("back") : "Back"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", minHeight: "2.75rem", minWidth: "2.75rem" }}>
+          {"\u2190"}
         </button>
         <div>
           <h1 style={{ margin: 0, fontSize: "1.5rem" }}>{t("pendingCaptures")}</h1>

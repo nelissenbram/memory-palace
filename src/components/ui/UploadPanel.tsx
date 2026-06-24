@@ -302,9 +302,11 @@ export default function UploadPanel({wing,room,onClose,onAdd,roomMemories=[],onU
         <label style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,letterSpacing:".5px",textTransform:"uppercase",display:"block",marginBottom:"0.375rem"}}>{t("locationOptional")}</label>
         <div style={{display:"flex",gap:"0.375rem",marginBottom:"0.375rem"}}>
           <input value={locationName} onChange={e=>setLocationName(e.target.value)} placeholder={t("locationPlaceholder")} style={{flex:1,padding:"0.625rem 0.875rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.white,fontFamily:T.font.body,fontSize:"1rem",color:T.color.charcoal,outline:"none",boxSizing:"border-box"}}/>
-          <button onClick={useCurrentLocation} disabled={geoLoading} style={{padding:"0.625rem 0.75rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.walnut,cursor:geoLoading?"wait":"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:"0.25rem"}}>
+          {/* GPS uses CoreLocation on iOS; no NSLocation purpose string is shipped, so
+              keep it web-only to avoid an unprompted permission (Apple 5.1.5). */}
+          {!isNative() && <button onClick={useCurrentLocation} disabled={geoLoading} style={{padding:"0.625rem 0.75rem",borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,background:T.color.warmStone,fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.walnut,cursor:geoLoading?"wait":"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:"0.25rem"}}>
             {geoLoading?<span style={{display:"inline-block",width:"0.75rem",height:"0.75rem",border:"2px solid transparent",borderTopColor:T.color.walnut,borderRadius:"50%",animation:"spin .6s linear infinite"}}/>:"\uD83D\uDCCD"} {t("gps")}
-          </button>
+          </button>}
         </div>
         {lat!==null&&lng!==null&&<p style={{fontFamily:T.font.body,fontSize:"0.625rem",color:T.color.muted,margin:"0 0 0.75rem",paddingLeft:"0.125rem"}}>{t("coordinates", { lat: lat.toFixed(4), lng: lng.toFixed(4) })}</p>}
         {(lat===null||lng===null)&&<div style={{height:"0.75rem",marginBottom:"0.25rem"}}/>}

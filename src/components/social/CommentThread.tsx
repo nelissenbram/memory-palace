@@ -179,13 +179,14 @@ function SingleComment({
                 {t("deleteComment")}
               </button>
             )}
-            {/* Report / block other users' comments (Apple Guideline 1.2) */}
-            {currentUserId && currentUserId !== comment.user_id && (
+            {/* Report (guests included) / block other users' comments (Apple Guideline 1.2).
+                Reporting works logged-out via the public /api/report; Block stays login-only. */}
+            {(!currentUserId || currentUserId !== comment.user_id) && (
               <SafetyMenu
                 targetType="comment"
                 targetId={comment.id}
                 targetUserId={comment.user_id}
-                showBlock
+                showBlock={!!currentUserId}
               />
             )}
           </div>

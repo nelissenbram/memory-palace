@@ -3,12 +3,37 @@ import { isNative } from "@/lib/native/platform";
 
 let initialized = false;
 
+/**
+ * Analytics run only after explicit consent (GDPR ePrivacy / Apple 5.1.2). Default
+ * opted-out: a missing decision means NO analytics. Reads the per-category settings
+ * toggle first, then the consent-banner decision.
+ */
+export function hasAnalyticsConsent(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const analytics = localStorage.getItem("mp-cookie-analytics");
+    if (analytics === "1") return true;
+    if (analytics === "0") return false;
+    return localStorage.getItem("mp_cookie_consent") === "accepted";
+  } catch {
+    return false;
+  }
+}
+
+/** Stop tracking and clear any stored analytics identity (consent withdrawn). */
+export function optOutAnalytics() {
+  if (typeof window === "undefined" || isNative()) return;
+  try { posthog.opt_out_capturing(); posthog.reset(); } catch { /* not initialized */ }
+}
+
 export function initAnalytics() {
   if (initialized || typeof window === "undefined") return;
   // Do not load any analytics inside the native apps. Apple flags cookies/tracking
   // (Guideline 5.1.2i) and we don't use App Tracking Transparency. Keeping PostHog
   // out of the native shell entirely means no tracking network calls or cookies there.
   if (isNative()) return;
+  // Web: never initialize without explicit consent.
+  if (!hasAnalyticsConsent()) return;
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (!key) return;
 
@@ -24,12 +49,12 @@ export function initAnalytics() {
 }
 
 export function identify(userId: string, properties?: Record<string, unknown>) {
-  if (typeof window === "undefined" || isNative()) return;
+  if (typeof window === "undefined" || isNative() || !hasAnalyticsConsent()) return;
   posthog.identify(userId, properties);
 }
 
 export function track(event: string, properties?: Record<string, unknown>) {
-  if (typeof window === "undefined" || isNative()) return;
+  if (typeof window === "undefined" || isNative() || !hasAnalyticsConsent()) return;
   posthog.capture(event, properties);
 }
 
