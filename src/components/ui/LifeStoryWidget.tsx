@@ -2,6 +2,7 @@
 
 import React, { useState, useId } from "react";
 import { T } from "@/lib/theme";
+import { useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TuscanCard from "./TuscanCard";
 import { TuscanSectionHeader } from "./TuscanCard";
@@ -352,6 +353,9 @@ export default function LifeStoryWidget({
   isMobile,
 }: LifeStoryWidgetProps) {
   const { t } = useAtriumT();
+  // iPad portrait (768–1024px) gets the desktop 3-up area grid, which crams the
+  // cards at ~768px. Keep the 2-up mobile density on compact too.
+  const isCompact = useIsCompact();
 
   const motivationKey = getMotivationKey(overallCompleteness);
 
@@ -398,7 +402,7 @@ export default function LifeStoryWidget({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3, 1fr)",
+          gridTemplateColumns: (isMobile || isCompact) ? "1fr 1fr" : "repeat(3, 1fr)",
           gap: "0.625rem",
           marginBottom: "1.25rem",
         }}

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import NotificationBell from "@/components/ui/NotificationBell";
+import { useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useNudgeStore } from "@/lib/stores/nudgeStore";
 import { useSettingsTourStore } from "@/components/ui/SettingsTutorial";
 import { useNotificationStore } from "@/lib/stores/notificationStore";
@@ -306,6 +307,12 @@ function NavigationBar({
   // because the TypeScript namespace union type hasn't been regenerated to include it.
   // Fix: regenerate the Namespace type from the JSON keys, then remove `as any`.
   const { t } = useTranslation("navigation" as any);
+  // iPad portrait (768–1024px) is too narrow for the full desktop pill row
+  // (5 text labels + bell + help, long in DE/FR/ES) — it overflows. Route the
+  // full nav to the mobile bottom-bar treatment on compact viewports. The
+  // `minimal` 3D nav is only 3 icon buttons and fits fine, so leave it alone.
+  const isCompactViewport = useIsCompact();
+  const useMobileLayout = isMobile || (isCompactViewport && !minimal);
   const router = useRouter();
   const pathname = usePathname() || "";
   const isSettingsRoute = pathname.startsWith("/settings") || activeTab === "me";
@@ -359,7 +366,7 @@ function NavigationBar({
 
   /* ---- scroll-based shrink for desktop ---- */
   useEffect(() => {
-    if (isMobile) return;
+    if (useMobileLayout) return;
     let ticking = false;
     const onScroll = () => {
       if (!ticking) {
@@ -372,14 +379,14 @@ function NavigationBar({
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [isMobile]);
+  }, [useMobileLayout]);
 
   /* ---- sliding indicator position ---- */
   const updateIndicator = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    if (isMobile) {
+    if (useMobileLayout) {
       // Determine which tab is active — special tabs take priority
       const activeKey = activeTab ? activeTab : nudgeActive ? "help" : currentMode;
       const btn = allTabRefs.current[activeKey] || buttonRefs.current[currentMode];
@@ -401,7 +408,7 @@ function NavigationBar({
       // Desktop: pill is rendered directly on the active button (no separate indicator)
       setIndicatorStyle({});
     }
-  }, [currentMode, isMobile, activeTab, nudgeActive]);
+  }, [currentMode, useMobileLayout, activeTab, nudgeActive]);
 
   useEffect(() => {
     updateIndicator();
@@ -443,10 +450,10 @@ function NavigationBar({
   const userInitial = userName ? userName.charAt(0).toUpperCase() : null;
 
   /* ================================================================ */
-  /*  MOBILE                                                           */
+  /*  MOBILE  (also iPad portrait via useMobileLayout)                 */
   /* ================================================================ */
 
-  if (isMobile) {
+  if (useMobileLayout) {
     const mobileTabs: { mode: ModeKey | "notifications" | "me" | "help"; labelKey: string; nudgeId?: string }[] = minimal
       ? [
           { mode: "atrium",  labelKey: "mode_atrium" },

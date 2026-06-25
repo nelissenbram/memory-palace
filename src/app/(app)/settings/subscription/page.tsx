@@ -9,7 +9,7 @@ import { isAndroid, isIOS } from "@/lib/native/platform";
 import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, getIAPError, manageSubscriptions } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import CancelFlow from "@/components/ui/CancelFlow";
 import InviteFlow from "@/components/social/InviteFlow";
@@ -35,6 +35,7 @@ export default function SubscriptionPage() {
   const isApple = isIOS();
   const nativeApp = isAndroid() || isApple;
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   const [iapReady, setIapReady] = useState(false);
   const [sub, setSub] = useState<SubscriptionData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
@@ -900,8 +901,8 @@ export default function SubscriptionPage() {
               <div style={{
                 marginTop: "1.25rem",
                 display: "grid",
-                gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
-                gap: isMobile ? "1rem" : "1.25rem",
+                gridTemplateColumns: (isMobile || isCompact) ? "1fr" : "repeat(3, 1fr)",
+                gap: (isMobile || isCompact) ? "1rem" : "1.25rem",
                 alignItems: "start",
               }}>
                 {PLAN_ORDER.map((planId) => {
@@ -923,12 +924,12 @@ export default function SubscriptionPage() {
                           : isCurrent
                             ? `1.5px solid ${C.terracotta}30`
                             : `1px solid ${C.sandstone}50`,
-                        padding: isMobile ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
+                        padding: (isMobile || isCompact) ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
                         position: "relative",
                         boxShadow: isHighlighted
                           ? "0 0.5rem 2rem rgba(198,107,61,0.15)"
                           : "0 0.125rem 0.75rem rgba(0,0,0,0.04)",
-                        transform: isHighlighted && !isMobile ? "scale(1.03)" : undefined,
+                        transform: isHighlighted && !isMobile && !isCompact ? "scale(1.03)" : undefined,
                       }}
                     >
                       {/* Most Popular badge */}

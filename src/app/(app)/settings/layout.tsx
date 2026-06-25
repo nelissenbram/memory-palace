@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { T } from "@/lib/theme";
 import { isIOS } from "@/lib/native/platform";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -121,6 +121,11 @@ const NAV_ITEMS = [
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
+  // On iPad portrait (768–1024px) the desktop sidebar + content two-pane crams the
+  // content column. Use the stacked tab-bar layout there too — but keep the desktop
+  // NavigationBar / top bar (phones get the bottom bar via isMobile).
+  const stacked = isMobile || isCompact;
   const { signingOut, handleSignOut } = useSignOut();
   const { t: tc } = useTranslation("common");
 
@@ -189,8 +194,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
         </header>
       )}
 
-      {isMobile ? (
-        /* ── Mobile layout: tab bar on top + content below ── */
+      {stacked ? (
+        /* ── Stacked layout: tab bar on top + content below (phones + iPad portrait) ── */
         <div style={{
           display: "flex",
           flexDirection: "column",

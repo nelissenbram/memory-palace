@@ -2,7 +2,7 @@
 import { useState, useCallback, useRef, useEffect, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { isNative } from "@/lib/native/platform";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
@@ -249,6 +249,7 @@ interface MemoryDetailProps {
 
 export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpdate }: MemoryDetailProps) {
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   const { t, locale } = useTranslation("memoryDetail");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
@@ -412,7 +413,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
   const breadcrumb = [wing?.name, room?.name, mem.title].filter(Boolean).join("  /  ");
 
   // ── Panel dimensions ──
-  const panelWidth = isMobile ? "100%" : "32rem";
+  const panelWidth = (isMobile || isCompact) ? "100%" : "32rem";
 
   // ── Styles ──
   const labelStyle: React.CSSProperties = {

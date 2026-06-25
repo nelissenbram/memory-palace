@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import { T } from "@/lib/theme";
+import { useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TuscanCard from "./TuscanCard";
 import { WingIcon } from "./WingRoomIcons";
@@ -799,6 +800,9 @@ export default function PersonalProfile({
   isMobile,
 }: PersonalProfileProps) {
   const { t } = useAtriumT();
+  // iPad portrait (768–1024px) falls through to desktop; 3 chart cards / 4 stat
+  // cells crammed there. Stack/halve on compact while keeping phone behavior.
+  const isCompact = useIsCompact();
 
   /* Determine storyteller type label */
   const visual = memoryTypeCounts
@@ -978,7 +982,7 @@ export default function PersonalProfile({
         style={{
           position: "relative",
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+          gridTemplateColumns: (isMobile || isCompact) ? "1fr" : "repeat(3, 1fr)",
           gap: "0.75rem",
           marginBottom: "1.25rem",
         }}
@@ -1055,7 +1059,7 @@ export default function PersonalProfile({
         style={{
           position: "relative",
           display: "grid",
-          gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+          gridTemplateColumns: (isMobile || isCompact) ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
           gap: "0.75rem",
           marginBottom: "1.5rem",
           animation: "pp-fadeIn 0.5s ease-out 0.5s both",

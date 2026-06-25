@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
@@ -396,6 +396,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
 
 export default function LibraryView() {
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
@@ -1478,7 +1479,7 @@ export default function LibraryView() {
         )}
 
         {/* Room tools toolbar — always visible */}
-        <div data-nudge="library_tools" style={{ display: "flex", gap: isMobile ? "0.25rem" : "0.5rem", padding: isMobile ? "0.25rem 0.5rem 0.5rem" : "0.25rem 2.5rem 0.75rem", flexWrap: "nowrap", alignItems: "center", overflowX: isMobile ? "auto" : undefined }}>
+        <div data-nudge="library_tools" style={{ display: "flex", gap: isMobile ? "0.25rem" : "0.5rem", padding: isMobile ? "0.25rem 0.5rem 0.5rem" : isCompact ? "0.25rem 1.25rem 0.75rem" : "0.25rem 2.5rem 0.75rem", flexWrap: "nowrap", alignItems: "center", overflowX: (isMobile || isCompact) ? "auto" : undefined }}>
           {([
             { key: "writeStory" as const, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> },
             { key: "aiLabel" as const, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.09 6.26L20 10l-4.91 3.74L17.18 20 12 16.27 6.82 20l2.09-6.26L4 10l5.91-1.74z"/></svg> },

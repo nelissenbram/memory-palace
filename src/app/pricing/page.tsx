@@ -6,7 +6,7 @@ import Link from "next/link";
 import { T } from "@/lib/theme";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
-import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
 import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
@@ -20,6 +20,7 @@ const C = T.color;
 export default function PricingPage() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
+  const isCompact = useIsCompact();
   const [interval, setInterval] = useState<BillingInterval>("annual");
   const [currency, setCurrency] = useState<SupportedCurrency>("EUR");
   const [loading, setLoading] = useState<PlanId | null>(null);
@@ -516,10 +517,10 @@ export default function PricingPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile
+            gridTemplateColumns: (isMobile || isCompact)
               ? "1fr"
               : "repeat(3, 1fr)",
-            gap: isMobile ? 20 : 28,
+            gap: (isMobile || isCompact) ? 20 : 28,
             alignItems: "start",
           }}
         >
@@ -542,7 +543,7 @@ export default function PricingPage() {
                   boxShadow: isHighlighted
                     ? `0 8px 32px rgba(198,107,61,0.15)`
                     : "0 2px 12px rgba(0,0,0,0.04)",
-                  transform: isHighlighted && !isSmall ? "scale(1.03)" : undefined,
+                  transform: isHighlighted && !isSmall && !isCompact ? "scale(1.03)" : undefined,
                 }}
               >
                 {/* Badge */}

@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { searchPalaces } from "@/lib/social/directory-actions";
 import type { DirectoryPalace } from "@/lib/social/directory-actions";
 import NavigationBar from "@/components/ui/NavigationBar";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 // Note: do NOT import usePalaceStore — Explore is outside the (app) layout group
 import { ANIM, EASE } from "@/components/ui/TuscanStyles";
 import NudgeProvider from "@/components/ui/NudgeTooltip";
@@ -55,6 +55,9 @@ export default function ExplorePageClient({
   const { t } = useTranslation("social");
   const router = useRouter();
   const isMobile = useIsMobile();
+  // iPad portrait (768–1024px) gets the desktop 3-up value-prop grid, which is
+  // tight at the low end; stack to single column on compact like phones do.
+  const isCompact = useIsCompact();
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<DirectoryPalace[] | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -152,7 +155,7 @@ export default function ExplorePageClient({
         {/* ── Value Prop Cards ──────────────────────────── */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+          gridTemplateColumns: (isMobile || isCompact) ? "1fr" : "repeat(3, 1fr)",
           gap: "0.875rem",
           marginBottom: "1.75rem",
           animation: `${ANIM.tuscanFadeSlideUp} 0.6s ease-out 0.05s both`,

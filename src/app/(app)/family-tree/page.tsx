@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import {
   getPersons,
@@ -130,6 +130,10 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
   const { t } = useTranslation("familyTree");
   const router = useRouter();
   const isMobile = useIsMobile();
+  // iPad portrait (768–1024px) falls through to the desktop toolbar, whose
+  // non-scrolling flex-end action row can overflow horizontally. Treat it as
+  // compact so the action bar scrolls like it does on phones.
+  const isCompact = useIsCompact();
   const [persons, setPersons] = useState<FamilyTreePerson[]>([]);
   const [relationships, setRelationships] = useState<FamilyTreeRelationship[]>([]);
   const [selectedPerson, setSelectedPerson] = useState<FamilyTreePerson | null>(null);
@@ -1345,7 +1349,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
       }}
     >
       {/* Header — NavigationBar-style glass morphism toolbar */}
-      {isMobile && <style>{`.ft-mob-scroll::-webkit-scrollbar{display:none}`}</style>}
+      {(isMobile || isCompact) && <style>{`.ft-mob-scroll::-webkit-scrollbar{display:none}`}</style>}
       <div
         style={{
           position: "sticky",
@@ -1499,14 +1503,14 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
         </div>
         {/* Row 2: Actions bar — scrollable pills on mobile, flex-end on desktop */}
         <div
-          className={isMobile ? "ft-mob-scroll" : undefined}
+          className={(isMobile || isCompact) ? "ft-mob-scroll" : undefined}
           style={{
             padding: isMobile ? "0.375rem 0.75rem 0.5rem" : "0 1.5rem 0.75rem",
             display: "flex",
             alignItems: "center",
             gap: isMobile ? "0.375rem" : "0.75rem",
-            justifyContent: isMobile ? "flex-start" : "flex-end",
-            ...(isMobile ? {
+            justifyContent: (isMobile || isCompact) ? "flex-start" : "flex-end",
+            ...((isMobile || isCompact) ? {
               overflowX: "auto",
               overflowY: "hidden",
               WebkitOverflowScrolling: "touch",

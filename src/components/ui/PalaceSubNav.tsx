@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback, type CSSProperties, type ReactNode } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsCompact } from "@/lib/hooks/useIsMobile";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import { WingIcon, RoomIcon } from "./WingRoomIcons";
 
@@ -137,6 +138,12 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
 
   const { t } = useTranslation("palace");
   const { t: tWings } = useTranslation("wings");
+  // The desktop breadcrumb is a single non-wrapping line: Palace › Entrance ›
+  // all wing pills (icon + label) › Room + Publish/Passcode. On an iPad in
+  // portrait (768–1024px) that row overflows. The mobile 3-bar nav scrolls
+  // horizontally and handles narrow widths, so route iPad portrait to it.
+  const isCompactViewport = useIsCompact();
+  const useMobileLayout = isMobile || isCompactViewport;
   const [showWingPicker, setShowWingPicker] = useState(false);
   const [quickNavOpenWing, setQuickNavOpenWing] = useState<string | null>(null);
   const wingPickerRef = useRef<HTMLDivElement>(null);
@@ -703,10 +710,10 @@ export default function PalaceSubNav(props: PalaceSubNavProps) {
   }
 
   /* ---------------------------------------------------------------- */
-  /*  Mobile layout                                                    */
+  /*  Mobile layout  (also iPad portrait via useMobileLayout)          */
   /* ---------------------------------------------------------------- */
 
-  if (isMobile) {
+  if (useMobileLayout) {
     return (
       <MobileThreeBarNav
         view={view}
