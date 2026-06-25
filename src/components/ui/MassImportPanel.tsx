@@ -287,7 +287,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               <div style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.375rem" }}>{"\u{1F4E6}"}</div>
               <div>
                 <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>{t("heading")}</h3>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.125rem 0 0" }}>
+                <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted, margin: "0.125rem 0 0" }}>
                   {step === "drop" && t("dropToBegin")}
                   {step === "processing" && t("processing", { processed: String(progress.processed), total: String(progress.total) })}
                   {step === "review" && t("reviewConfirm")}
@@ -375,7 +375,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               }}>
                 <div style={{ fontSize: "1.5rem", marginBottom: "0.375rem" }}>{"\u2728"}</div>
                 <div style={{ fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600, color: mode === "ai" ? T.color.terracotta : T.color.charcoal }}>{t("aiAssisted")}</div>
-                <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.4, marginTop: "0.25rem" }}>{t("aiAssistedDesc")}</div>
+                <div style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: T.color.muted, lineHeight: 1.4, marginTop: "0.25rem" }}>{t("aiAssistedDesc")}</div>
               </button>
               <button onClick={() => store.setMode("manual")} style={{
                 padding: "1rem 0.875rem", borderRadius: "0.875rem",
@@ -385,7 +385,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               }}>
                 <div style={{ fontSize: "1.5rem", marginBottom: "0.375rem" }}>{"\u{1F4CB}"}</div>
                 <div style={{ fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600, color: mode === "manual" ? T.color.terracotta : T.color.charcoal }}>{t("manual")}</div>
-                <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, lineHeight: 1.4, marginTop: "0.25rem" }}>{t("manualDesc")}</div>
+                <div style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: T.color.muted, lineHeight: 1.4, marginTop: "0.25rem" }}>{t("manualDesc")}</div>
               </button>
             </div>
 
@@ -435,7 +435,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, margin: 0, fontWeight: 500 }}>
                 {items.length > 0 ? t("dropMoreOrBrowse") : t("dropOrBrowse")}
               </p>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
                 {t("supportedTypes")}
               </p>
             </div>
@@ -446,7 +446,7 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
             {/* Oversized files warning */}
             {skippedOversized > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", background: "#A63D3D10", border: "1px solid #A63D3D33", marginBottom: "0.75rem" }}>
-                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#A63D3D", lineHeight: 1.5, flex: 1 }}>
+                <span style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#A63D3D", lineHeight: 1.5, flex: 1 }}>
                   {t("filesSkipped", { count: String(skippedOversized) })}
                 </span>
                 <button onClick={() => setSkippedOversized(0)} aria-label={tc("dismiss")} style={{ background: "none", border: "none", color: "#A63D3D", fontSize: "0.875rem", cursor: "pointer", padding: "0.25rem", flexShrink: 0, minWidth: "2.75rem", minHeight: "2.75rem", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
@@ -466,8 +466,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                       <TypeIcon type={item.confirmed.type} size={18} color={T.color.walnut} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fileName}</div>
-                      <div style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>{formatBytes(item.fileSizeBytes)}</div>
+                      <div style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.fileName}</div>
+                      <div style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.625rem", color: T.color.muted }}>{formatBytes(item.fileSizeBytes)}</div>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); store.removeItem(item.localId); }}
                       aria-label={tc("remove")}
@@ -507,8 +507,8 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
               {items.map((item) => (
                 <div key={item.localId} style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.5rem 0", borderBottom: `1px solid ${T.color.cream}22` }}>
                   <StatusBadge status={item.status} />
-                  <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.fileName}</span>
-                  <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted }}>{t(`status_${item.status}`) || item.status}</span>
+                  <span style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.charcoal, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.fileName}</span>
+                  <span style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.625rem", color: T.color.muted }}>{t(`status_${item.status}`) || item.status}</span>
                 </div>
               ))}
             </div>
@@ -598,12 +598,12 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
                 return (
                   <>
                     {skippedItems.length > 0 && (
-                      <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#3B6E8F" }}>
+                      <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#3B6E8F" }}>
                         {t("itemsSkipped", { count: String(skippedItems.length) })}
                       </p>
                     )}
                     {realErrors.length > 0 && (
-                      <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#A63D3D" }}>
+                      <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#A63D3D" }}>
                         {t("itemsHadErrors", { count: String(realErrors.length) })}
                       </p>
                     )}

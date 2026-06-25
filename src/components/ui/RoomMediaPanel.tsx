@@ -752,7 +752,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
                 <h3 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500, color: T.color.charcoal, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {room?.name || t("title")}
                 </h3>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: accent, margin: "0.25rem 0 0" }}>
+                <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: accent, margin: "0.25rem 0 0" }}>
                   {wing?.name || ""} {t("wing")}
                 </p>
               </div>
@@ -1013,7 +1013,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
 
         {/* ═══ GALLERY TAB ═══ */}
         {activeTab === "gallery" && <>
-          <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: T.color.muted, margin: 0, lineHeight: 1.5 }}>
             {t("galleryHint")}
           </p>
 
@@ -1459,7 +1459,7 @@ export default function RoomMediaPanel({ mems, wing, room, onClose, onUpdate, on
               <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
                 {t("moveTo")}
               </h3>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
                 <strong>{movingMem.title}</strong>
               </p>
             </div>

@@ -392,7 +392,7 @@ export default function ProfilePage() {
               onClick={() => avatarInputRef.current?.click()}
               disabled={avatarUploading}
               style={{
-                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", fontWeight: 600,
                 color: T.color.terracotta, background: "none",
                 border: "none", padding: "0.25rem 0", cursor: avatarUploading ? "wait" : "pointer",
                 marginTop: "0.25rem", opacity: avatarUploading ? 0.6 : 1,
@@ -436,7 +436,7 @@ export default function ProfilePage() {
               }}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted,
               margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("emailReadonlyNote")}
@@ -457,7 +457,7 @@ export default function ProfilePage() {
               style={inputStyle}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted,
               margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("usernameHelp")}
@@ -497,7 +497,7 @@ export default function ProfilePage() {
               style={inputStyle}
             />
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted,
               margin: "0.375rem 0 0", lineHeight: 1.4,
             }}>
               {t("whatsappPhoneHelp")}
@@ -615,7 +615,7 @@ export default function ProfilePage() {
                     {era === "roman" ? t("romanName") : t("renaissanceName")}
                     {isComingSoon && <span style={{ fontSize: "0.6875rem", fontWeight: 600, marginLeft: "0.5rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("comingSoon")}</span>}
                   </div>
-                  <div style={{ fontSize: "0.75rem", fontWeight: 500, color: T.color.muted }}>
+                  <div style={{ fontSize: isMobile ? "0.8125rem" : "0.75rem", fontWeight: 500, color: T.color.muted }}>
                     {era === "roman" ? t("romanDesc") : t("renaissanceDesc")}
                   </div>
                 </button>
@@ -1038,7 +1038,7 @@ export default function ProfilePage() {
                   {tA11y(level)}
                 </span>
                 <span style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem",
+                  fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
                   color: T.color.muted, lineHeight: 1.3,
                 }}>
                   {tA11y(`${level}Desc`)}

@@ -1008,6 +1008,10 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     backdropFilter: "blur(0.75rem)",
     WebkitBackdropFilter: "blur(0.75rem)",
     borderBottom: barBorder,
+    // Subtle left/right edge fade so it reads as horizontally scrollable.
+    // Fades only the leading 1.25rem on each side; the label/pills stay crisp.
+    maskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
+    WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
   };
 
   const pillFor = (p: Pending, col: string) => {
@@ -1121,7 +1125,9 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
         const style = isCurr ? currentPill(accent) : isPending ? pendingPill(accent) : pillBase;
         return (
           <button
-            key={r.id}
+            // key includes focus wing so pills remount (and fade in) on wing switch
+            key={`${focusWingId}-${r.id}`}
+            className="mp-fade-in"
             onClick={() => setPending({ kind: "room", wingId: focusWingId!, roomId: r.id })}
             style={style}
             aria-current={isCurr ? "location" : undefined}

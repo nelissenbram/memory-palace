@@ -632,7 +632,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       ? t("opensInDays", { count: String(daysUntilReveal) })
                       : t("opensOn", { date: new Date(mem.revealDate! + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "long", day: "numeric", year: "numeric" }) })}
                 </div>
-                <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
+                <div style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted }}>
                   {t("capsuleSealed")}
                 </div>
                 {mem.resolution && (
@@ -642,7 +642,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                     border: `1px solid ${T.color.sage}30`,
                   }}>
                     <div style={{
-                      fontFamily: T.font.body, fontSize: "0.75rem", fontStyle: "italic",
+                      fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", fontStyle: "italic",
                       color: T.color.walnut, lineHeight: 1.5,
                     }}>
                       {t("resolutionGoal", { date: new Date(mem.revealDate! + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "long", day: "numeric", year: "numeric" }) })}
@@ -1212,7 +1212,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem", marginBottom: "0.5rem" }}>
                         {peopleTags.map((p, i) => (
                           <span key={i} style={{
-                            fontFamily: T.font.body, fontSize: "0.75rem",
+                            fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
                             background: `${accent}12`, color: accent,
                             padding: "0.25rem 0.625rem", borderRadius: "1rem",
                             display: "flex", alignItems: "center", gap: "0.25rem",
@@ -1354,7 +1354,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                                   background: isCurrent ? `${w.accent}08` : "transparent",
                                   border: "none", cursor: isCurrent ? "default" : "pointer",
                                   display: "flex", alignItems: "center", gap: "0.375rem",
-                                  fontFamily: T.font.body, fontSize: "0.75rem",
+                                  fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
                                   color: isCurrent ? T.color.muted : T.color.walnut,
                                   opacity: isCurrent ? 0.6 : 1,
                                 }}

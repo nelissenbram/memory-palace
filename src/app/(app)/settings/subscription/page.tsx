@@ -573,11 +573,11 @@ export default function SubscriptionPage() {
         {(isFree || sub?.plan === "keeper") && (
           <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: `1px solid ${C.cream}` }}>
             {isApple && (
-              <p style={{ fontFamily: F.body, fontSize: "0.75rem", color: C.muted, lineHeight: 1.6, margin: "0 0 0.5rem" }}>
+              <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: C.muted, lineHeight: 1.6, margin: "0 0 0.5rem" }}>
                 {t("autoRenewNotice")}
               </p>
             )}
-            <p style={{ fontFamily: F.body, fontSize: "0.75rem", color: C.muted, margin: 0 }}>
+            <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: C.muted, margin: 0 }}>
               <a href="/terms" style={{ color: C.terracotta, textDecoration: "none" }}>{t("disclosureTerms")}</a>
               {"  ·  "}
               <a href="/privacy" style={{ color: C.terracotta, textDecoration: "none" }}>{t("disclosurePrivacy")}</a>
@@ -1290,7 +1290,7 @@ export default function SubscriptionPage() {
                       </div>
                       <div style={{
                         fontFamily: F.body,
-                        fontSize: "0.75rem",
+                        fontSize: isMobile ? "0.8125rem" : "0.75rem",
                         color: C.muted,
                         marginTop: "0.125rem",
                       }}>

@@ -5,6 +5,7 @@ import { T } from "@/lib/theme";
 import { createClient } from "@/lib/supabase/client";
 import JSZip from "jszip";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { scanExportTree, fetchSharedRoomMemoriesForExport } from "@/lib/auth/export-scan-action";
 import type { ExportTree, ExportWingNode, ExportSharedWingNode } from "@/lib/auth/export-scan-action";
 import { WingIcon, RoomIcon, WING_ICON_MAP, ROOM_ICON_MAP } from "@/components/ui/WingRoomIcons";
@@ -67,6 +68,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
   const { t } = useTranslation("settings");
   const { t: tc } = useTranslation("common");
   const { t: tWings } = useTranslation("wings");
+  const isMobile = useIsMobile();
   const getWingRooms = useRoomStore((s) => s.getWingRooms);
   const getWings = useRoomStore((s) => s.getWings);
 
@@ -581,7 +583,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                         {wing.rooms.map(room => (
                           <label key={room.roomId} style={{
                             display: "flex", alignItems: "center", gap: "0.5rem",
-                            fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal,
+                            fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.charcoal,
                             cursor: "pointer", padding: "0.1875rem 0",
                           }}>
                             <input
@@ -658,7 +660,7 @@ export default function ExportPanel({ showToast }: ExportPanelProps) {
                             {sw.rooms.map(room => (
                               <label key={room.roomId} style={{
                                 display: "flex", alignItems: "center", gap: "0.5rem",
-                                fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal,
+                                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.charcoal,
                                 cursor: "pointer", padding: "0.1875rem 0",
                               }}>
                                 <input

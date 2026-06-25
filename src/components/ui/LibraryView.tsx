@@ -1150,6 +1150,9 @@ export default function LibraryView() {
               scrollbarWidth: "none",
               msOverflowStyle: "none",
               borderBottom: `0.0625rem solid ${T.color.cream}88`,
+              // Edge-fade hint: content scrolls off horizontally (compact/mobile)
+              maskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
             }}>
               {/* "W" section label */}
               <span style={{
@@ -1270,6 +1273,9 @@ export default function LibraryView() {
               scrollbarWidth: "none",
               msOverflowStyle: "none",
               borderBottom: `0.0625rem solid ${T.color.cream}66`,
+              // Edge-fade hint: content scrolls off horizontally (compact/mobile)
+              maskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
             }}>
               {/* "R" section label */}
               <span style={{
@@ -1479,7 +1485,9 @@ export default function LibraryView() {
         )}
 
         {/* Room tools toolbar — always visible */}
-        <div data-nudge="library_tools" style={{ display: "flex", gap: isMobile ? "0.25rem" : "0.5rem", padding: isMobile ? "0.25rem 0.5rem 0.5rem" : isCompact ? "0.25rem 1.25rem 0.75rem" : "0.25rem 2.5rem 0.75rem", flexWrap: "nowrap", alignItems: "center", overflowX: (isMobile || isCompact) ? "auto" : undefined }}>
+        <div data-nudge="library_tools" style={{ display: "flex", gap: isMobile ? "0.25rem" : "0.5rem", padding: isMobile ? "0.25rem 0.5rem 0.5rem" : isCompact ? "0.25rem 1.25rem 0.75rem" : "0.25rem 2.5rem 0.75rem", flexWrap: "nowrap", alignItems: "center", overflowX: (isMobile || isCompact) ? "auto" : undefined, scrollbarWidth: (isMobile || isCompact) ? "none" : undefined,
+          // Edge-fade hint: tools row scrolls off horizontally (compact/mobile only — desktop untouched)
+          ...((isMobile || isCompact) ? { maskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)" } : {}) }}>
           {([
             { key: "writeStory" as const, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> },
             { key: "aiLabel" as const, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.09 6.26L20 10l-4.91 3.74L17.18 20 12 16.27 6.82 20l2.09-6.26L4 10l5.91-1.74z"/></svg> },
@@ -1547,7 +1555,7 @@ export default function LibraryView() {
           </button>
           {toolbarHint && !selectedRoom && !spotlightTarget && (
             <span style={{
-              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.terracotta,
+              fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.terracotta,
               fontWeight: 500, animation: "libFadeIn 0.2s ease both",
             }}>
               {t("selectRoomFirst")}
@@ -1557,7 +1565,7 @@ export default function LibraryView() {
             <span
               onClick={() => setSpotlightTarget(null)}
               style={{
-                fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.terracotta,
+                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.terracotta,
                 fontWeight: 600, cursor: "pointer",
                 animation: "libFadeIn 0.3s ease both",
                 display: "flex", alignItems: "center", gap: "0.375rem",
@@ -1593,7 +1601,7 @@ export default function LibraryView() {
                 <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal }}>
                   {t("demoBannerTitle")}
                 </span>
-                <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginLeft: "0.5rem" }}>
+                <span style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted, marginLeft: "0.5rem" }}>
                   {t("demoBannerDesc")}
                 </span>
               </div>
@@ -3152,7 +3160,7 @@ export default function LibraryView() {
                                 </div>
                               </div>
                             ) : (<>
-                              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, margin: "0 0 0.25rem 0", lineHeight: 1.4 }}>{result.description}</p>
+                              <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.walnut, margin: "0 0 0.25rem 0", lineHeight: 1.4 }}>{result.description}</p>
                               {result.labels.length > 0 && (<div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginBottom: "0.375rem" }}>{result.labels.map((label, i) => (<span key={i} style={{ fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.0625rem 0.375rem", borderRadius: "0.25rem", background: `${T.color.sandstone}20`, color: T.color.walnut }}>{label}</span>))}</div>)}
                               <div style={{ display: "flex", gap: "0.375rem" }}>
                                 <button onClick={() => { setAiLabelEditing(memId); setAiLabelEditText(result.description); }} style={{ fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.125rem 0.375rem", borderRadius: "0.25rem", background: "none", color: T.color.muted, border: `0.0625rem solid ${T.color.cream}`, cursor: "pointer" }}>{t("aiLabelEditDesc")}</button>
@@ -3211,7 +3219,7 @@ export default function LibraryView() {
             <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${T.color.cream}`, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>{t("addLocationTitle")}</h3>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>{t("addLocationDesc")}</p>
+                <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>{t("addLocationDesc")}</p>
               </div>
               <button onClick={() => { setActiveToolPanel(null); setLocationName(""); setLocationLat(""); setLocationLng(""); }} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
             </div>
@@ -3233,7 +3241,7 @@ export default function LibraryView() {
                     style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, outline: "none" }} />
                 </div>
               </div>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, margin: 0, lineHeight: 1.4 }}>{t("locationOptionalHint")}</p>
+              <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: T.color.muted, margin: 0, lineHeight: 1.4 }}>{t("locationOptionalHint")}</p>
             </div>
             <div style={{ padding: "0.75rem 1.5rem", borderTop: `0.0625rem solid ${T.color.cream}`, display: "flex", justifyContent: "flex-end", gap: "0.625rem", flexShrink: 0 }}>
               <button onClick={() => { setActiveToolPanel(null); setLocationName(""); setLocationLat(""); setLocationLng(""); }}
@@ -3324,7 +3332,7 @@ export default function LibraryView() {
                 {t("moveTo")}
               </h3>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.75rem",
+                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
                 color: T.color.muted, margin: "0.25rem 0 0",
                 letterSpacing: "0.02em",
               }}>
@@ -3508,7 +3516,7 @@ export default function LibraryView() {
                 {t("moveSelected")}
               </h3>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.75rem",
+                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
                 color: T.color.muted, margin: "0.25rem 0 0",
                 letterSpacing: "0.02em",
               }}>

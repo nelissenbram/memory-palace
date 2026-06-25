@@ -138,6 +138,21 @@ button, a, [role="button"] {
   }
 }
 
+/* Tiny reusable entrance utility — subtler than fadeUp (4px vs 16px) */
+@keyframes mpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.mp-fade-in {
+  animation: mpFadeIn 0.2s ease both;
+}
+
 @keyframes portalFlash {
   0% {
     opacity: 0;
