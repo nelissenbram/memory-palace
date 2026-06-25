@@ -56,11 +56,19 @@ body {
    etc.) — NOT via html padding, because that creates inconsistent containing
    blocks for position:fixed elements across browsers. */
 
-/* Prevent iOS input zoom — ensure inputs are at least 16px */
-@media screen and (max-width: 767px) {
-  input, select, textarea {
+/* Prevent iOS input zoom — ensure inputs are at least 16px.
+   Also covers landscape phones (short viewport) now that the app auto-rotates. */
+@media screen and (max-width: 767px), screen and (max-height: 500px) {
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+  select, textarea {
     font-size: 16px !important;
   }
+}
+
+/* Native momentum scrolling + contained overscroll for any scrollable region. */
+.mp-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* Safe area insets for notched devices */
@@ -79,11 +87,13 @@ body {
    operations including programmatic scrolls, causing jank. Use CSS class or
    JS smooth-scroll selectively where needed instead. */
 
-/* Touch-action and iOS button reset for interactive elements */
+/* Touch-action and iOS button reset for interactive elements.
+   A faint warm tap-highlight + an :active press make taps feel acknowledged (native feel)
+   instead of dead — the app previously stripped the highlight with no replacement. */
 button, a, [role="button"] {
   touch-action: manipulation;
   -webkit-appearance: none;
-  -webkit-tap-highlight-color: transparent;
+  -webkit-tap-highlight-color: rgba(198, 107, 61, 0.12);
 }
 
 /* Prevent text selection on UI controls during touch */
@@ -91,6 +101,12 @@ button, a, [role="button"] {
   button, [role="button"] {
     -webkit-user-select: none;
     user-select: none;
+  }
+  /* Press feedback: compositor-only transform, never layout, so it can't shift content. */
+  button:active, a:active, [role="button"]:active, .mp-tappable:active {
+    transform: scale(0.97);
+    opacity: 0.85;
+    transition: transform 0.08s ease, opacity 0.08s ease;
   }
   /* Suppress the iOS Safari long-press callout (Save Image / Look Up / Share) on
      images, the 3D canvas, and controls — the most recognizable "wrapped website"
@@ -251,9 +267,11 @@ canvas {
   text-shadow: 0 0.125rem 0.375rem rgba(0,0,0,0.7), 0 0 0.75rem rgba(0,0,0,0.4);
 }
 
-/* Minimum touch target sizes — ensure 44x44px on touch devices */
+/* Minimum touch target sizes — ensure 44x44px on touch devices.
+   .mp-tappable opts in role-less clickable div/span elements; switches are excluded so
+   toggle pills don't stretch tall. */
 @media (pointer: coarse) {
-  button, a, [role="button"], [role="tab"], [role="menuitem"] {
+  button:not([role="switch"]), a, [role="button"], [role="tab"], [role="menuitem"], .mp-tappable {
     min-height: 2.75rem;
     min-width: 2.75rem;
   }

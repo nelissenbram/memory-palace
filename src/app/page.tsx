@@ -396,6 +396,10 @@ function LandingPageContent() {
   const [mounted, setMounted] = useState(false);
   const navCollapsed = !mounted || isMobile;
   const exitShownRef = useRef(false);
+  // Hide the sticky bottom CTA once the footer scrolls into view so it never occludes the
+  // legal links (native pattern — no permanent bottom gap).
+  const footerRef = useRef<HTMLElement>(null);
+  const [footerInView, setFooterInView] = useState(false);
   const { locale, setLocale: setLocaleReload, setLocaleNoReload } = useTranslation("landing");
   const setLocale = setLocaleNoReload; // Landing page has all locale data statically imported — no reload needed
   const landing = (landingMessages[locale] || enMessages).landing;
@@ -527,6 +531,14 @@ function LandingPageContent() {
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    const el = footerRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const obs = new IntersectionObserver(([e]) => setFooterInView(e.isIntersecting), { rootMargin: "0px 0px -35% 0px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   /* ─── Set html lang attribute on locale change (P1 #5) ─── */
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -553,9 +565,13 @@ function LandingPageContent() {
   }, []);
 
   const headerOpaque = scrollY > 60;
+  // The collapsed (mobile) nav is just a logo + hamburger over the hero video; thin light
+  // bars over a moving, partly-light video vanish. Make the bar solid whenever collapsed so
+  // the menu is always legible — not only after scrolling.
+  const navSolid = headerOpaque || navCollapsed;
 
   /* ─── Sticky bottom CTA visibility (mobile only, after hero) ─── */
-  const showStickyBottomCta = isSmall && scrollY > (typeof window !== "undefined" ? window.innerHeight : 800);
+  const showStickyBottomCta = isSmall && scrollY > (typeof window !== "undefined" ? window.innerHeight : 800) && !footerInView;
 
   /* ─── Exit-intent modal (desktop only, once per session) ─── */
   useEffect(() => {
@@ -577,9 +593,10 @@ function LandingPageContent() {
   return (
     <div
       id="landing-scroll"
+      className="mp-scroll"
       style={{
         width: "100vw",
-        height: "100vh",
+        height: "100dvh",
         overflowY: "auto",
         overflowX: "hidden",
         background: C.linen,
@@ -718,6 +735,10 @@ function LandingPageContent() {
         .lp-footer-link:hover {
           color: ${C.cream} !important;
         }
+        /* min-height is inert on inline links — make them flex so the 44pt floor applies. */
+        @media (pointer: coarse) {
+          .lp-footer-link { display: inline-flex; align-items: center; min-height: 2.75rem; }
+        }
         .lp-footer-accent:hover {
           color: ${C.gold} !important;
           text-decoration: underline !important;
@@ -803,14 +824,14 @@ function LandingPageContent() {
           padding: "0 clamp(1.25rem, 5vw, 3.75rem)",
           paddingTop: "env(safe-area-inset-top, 0px)",
           height: "calc(4rem + env(safe-area-inset-top, 0px))",
-          background: headerOpaque ? "rgba(250,250,247,0.92)" : "transparent",
-          backdropFilter: headerOpaque ? "blur(12px)" : "none",
-          WebkitBackdropFilter: headerOpaque ? "blur(12px)" : "none",
-          borderBottom: headerOpaque ? `1px solid ${C.sandstone}40` : "none",
+          background: navSolid ? "rgba(250,250,247,0.92)" : "transparent",
+          backdropFilter: navSolid ? "blur(12px)" : "none",
+          WebkitBackdropFilter: navSolid ? "blur(12px)" : "none",
+          borderBottom: navSolid ? `1px solid ${C.sandstone}40` : "none",
           transition: "all 0.3s",
         }}
       >
-        <PalaceLogo variant={navCollapsed ? "mark" : "full"} color={headerOpaque ? "dark" : "light"} size="md" />
+        <PalaceLogo variant={navCollapsed ? "mark" : "full"} color={navSolid ? "dark" : "light"} size="md" />
 
         <div style={{ display: "flex", gap: isMobile ? "0.5rem" : "0.75rem", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", minWidth: 0 }}>
           {!navCollapsed && (
@@ -898,13 +919,17 @@ function LandingPageContent() {
                 padding: "0.5rem",
                 display: "flex",
                 flexDirection: "column",
-                gap: "0.25rem",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.3125rem",
+                minWidth: "2.75rem",
+                minHeight: "2.75rem",
                 zIndex: 1001,
               }}
             >
-              <span style={{ width: "1.25rem", height: "0.125rem", background: headerOpaque ? C.charcoal : C.cream, borderRadius: "0.0625rem", transition: "transform 0.3s, opacity 0.3s, background 0.3s", transform: mobileMenuOpen ? "rotate(45deg) translate(0.25rem, 0.25rem)" : "none" }} />
-              <span style={{ width: "1.25rem", height: "0.125rem", background: headerOpaque ? C.charcoal : C.cream, borderRadius: "0.0625rem", transition: "opacity 0.3s, background 0.3s", opacity: mobileMenuOpen ? 0 : 1 }} />
-              <span style={{ width: "1.25rem", height: "0.125rem", background: headerOpaque ? C.charcoal : C.cream, borderRadius: "0.0625rem", transition: "transform 0.3s, opacity 0.3s, background 0.3s", transform: mobileMenuOpen ? "rotate(-45deg) translate(0.25rem, -0.25rem)" : "none" }} />
+              <span style={{ width: "1.4rem", height: "0.1875rem", background: navSolid ? C.charcoal : C.cream, borderRadius: "0.0625rem", transition: "transform 0.3s, opacity 0.3s, background 0.3s", transform: mobileMenuOpen ? "rotate(45deg) translate(0.3rem, 0.3rem)" : "none" }} />
+              <span style={{ width: "1.4rem", height: "0.1875rem", background: navSolid ? C.charcoal : C.cream, borderRadius: "0.0625rem", transition: "opacity 0.3s, background 0.3s", opacity: mobileMenuOpen ? 0 : 1 }} />
+              <span style={{ width: "1.4rem", height: "0.1875rem", background: navSolid ? C.charcoal : C.cream, borderRadius: "0.0625rem", transition: "transform 0.3s, opacity 0.3s, background 0.3s", transform: mobileMenuOpen ? "rotate(-45deg) translate(0.3rem, -0.3rem)" : "none" }} />
             </button>
           )}
         </div>
@@ -926,17 +951,19 @@ function LandingPageContent() {
             }}
           />
           <div
-            className="lp-mobile-menu"
+            className="lp-mobile-menu mp-scroll"
             style={{
               position: "fixed",
-              top: "4rem",
+              top: "calc(4rem + env(safe-area-inset-top, 0px))",
               left: 0,
               right: 0,
+              maxHeight: "calc(100dvh - 4rem - env(safe-area-inset-top, 0px))",
+              overflowY: "auto",
               background: "rgba(250,250,247,0.98)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
               borderBottom: `1px solid ${C.sandstone}40`,
-              padding: "1.5rem 1.25rem",
+              padding: "1.5rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom, 0px))",
               display: "flex",
               flexDirection: "column",
               gap: "1rem",
@@ -1337,25 +1364,25 @@ function LandingPageContent() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: isSmall
-                      ? "1fr"
-                      : isMobile
-                      ? "repeat(2, 1fr)"
+                    // Phones (incl. isSmall) get a compact 2-up — never one tall column.
+                    gridTemplateColumns: isMobile
+                      ? "repeat(2, minmax(0, 1fr))"
                       : group.features.length <= 3 ? "repeat(3, 1fr)" : "repeat(4, 1fr)",
-                    gap: isMobile ? "1.25rem" : "1.75rem",
+                    gap: isMobile ? "0.75rem" : "1.75rem",
                   }}
                 >
                   {group.features.map((f, i) => (
                     <ScrollFadeIn key={f.title} delay={0.05 + i * 0.07}>
                       <div
                         className="lp-card"
-                        style={{ ...featureCard, ...(isMobile ? { padding: "1.75rem 1.25rem", maxWidth: "26rem", marginLeft: "auto", marginRight: "auto" } : {}) }}
+                        style={{ ...featureCard, ...(isMobile ? { padding: "1.25rem 0.875rem", height: "100%" } : {}) }}
                       >
-                        <div style={{ marginBottom: "1.125rem" }}>
-                          <f.Icon size={48} />
+                        <div style={{ marginBottom: isMobile ? "0.625rem" : "1.125rem" }}>
+                          <f.Icon size={isSmall ? 34 : 48} />
                         </div>
-                        <h3 style={featureTitle}>{f.title}</h3>
-                        <p style={featureDesc}>{f.desc}</p>
+                        <h3 style={{ ...featureTitle, ...(isMobile ? { fontSize: "0.9375rem", marginBottom: "0.25rem" } : {}) }}>{f.title}</h3>
+                        {/* On small phones the cards are icon+title tiles (less text, the user's ask). */}
+                        {!isSmall && <p style={featureDesc}>{f.desc}</p>}
                       </div>
                     </ScrollFadeIn>
                   ))}
@@ -2226,11 +2253,12 @@ function LandingPageContent() {
       <footer
         style={{
           padding: isMobile
-            ? "2.5rem 1.25rem 1.75rem"
+            ? "2.5rem 1.25rem calc(1.75rem + env(safe-area-inset-bottom, 0px))"
             : "3.5rem clamp(1.25rem, 5vw, 3.75rem) 2.25rem",
           borderTop: `1px solid ${C.sandstone}40`,
           background: C.charcoal,
         }}
+        ref={footerRef}
       >
         <div
           style={{
