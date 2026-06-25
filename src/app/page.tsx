@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
-import { useIsMobile, useIsSmall } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { isIOS } from "@/lib/native/platform";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
@@ -384,6 +384,8 @@ function LandingErrorFallback() {
 function LandingPageContent() {
   const isMobile = useIsMobile();
   const isSmall = useIsSmall();
+  // iPad portrait (768–1024px) is too narrow for the desktop nav/grid — treat it as compact.
+  const isCompact = useIsCompact();
   const [scrollY, setScrollY] = useState(0);
   const [ctaLoading, setCtaLoading] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -394,7 +396,7 @@ function LandingPageContent() {
   // The nav collapses to a hamburger on phones. Until mounted it also collapses, so the
   // full desktop link row never flashes on a phone before the hooks resolve (SSR-false).
   const [mounted, setMounted] = useState(false);
-  const navCollapsed = !mounted || isMobile;
+  const navCollapsed = !mounted || isMobile || isCompact;
   const exitShownRef = useRef(false);
   // Hide the sticky bottom CTA once the footer scrolls into view so it never occludes the
   // legal links (native pattern — no permanent bottom gap).
@@ -1364,18 +1366,19 @@ function LandingPageContent() {
                 <div
                   style={{
                     display: "grid",
-                    // Phones (incl. isSmall) get a compact 2-up — never one tall column.
-                    gridTemplateColumns: isMobile
+                    // Phones AND iPad portrait get a compact 2-up — never one tall column,
+                    // never the overflowing 4-up.
+                    gridTemplateColumns: (isMobile || isCompact)
                       ? "repeat(2, minmax(0, 1fr))"
                       : group.features.length <= 3 ? "repeat(3, 1fr)" : "repeat(4, 1fr)",
-                    gap: isMobile ? "0.75rem" : "1.75rem",
+                    gap: (isMobile || isCompact) ? "0.875rem" : "1.75rem",
                   }}
                 >
                   {group.features.map((f, i) => (
                     <ScrollFadeIn key={f.title} delay={0.05 + i * 0.07}>
                       <div
                         className="lp-card"
-                        style={{ ...featureCard, ...(isMobile ? { padding: "1.25rem 0.875rem", height: "100%" } : {}) }}
+                        style={{ ...featureCard, ...((isMobile || isCompact) ? { height: "100%" } : {}), ...(isMobile ? { padding: "1.25rem 0.875rem" } : {}) }}
                       >
                         <div style={{ marginBottom: isMobile ? "0.625rem" : "1.125rem" }}>
                           <f.Icon size={isSmall ? 34 : 48} />
@@ -1914,7 +1917,7 @@ function LandingPageContent() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: isSmall ? "1fr" : isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+              gridTemplateColumns: isSmall ? "1fr" : (isMobile || isCompact) ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
               gap: "1.75rem",
               marginTop: "3.5rem",
             }}
@@ -2252,7 +2255,7 @@ function LandingPageContent() {
           ═══════════════════════════════════════════════════ */}
       <footer
         style={{
-          padding: isMobile
+          padding: (isMobile || isCompact)
             ? "2.5rem 1.25rem calc(1.75rem + env(safe-area-inset-bottom, 0px))"
             : "3.5rem clamp(1.25rem, 5vw, 3.75rem) 2.25rem",
           borderTop: `1px solid ${C.sandstone}40`,
@@ -2265,8 +2268,8 @@ function LandingPageContent() {
             maxWidth: "68.75rem",
             margin: "0 auto",
             display: "grid",
-            gridTemplateColumns: isSmall ? "1fr" : "2fr 1fr 1fr",
-            gap: isSmall ? "2rem" : "3rem",
+            gridTemplateColumns: (isSmall || isCompact) ? "1fr" : "2fr 1fr 1fr",
+            gap: (isSmall || isCompact) ? "2rem" : "3rem",
             marginBottom: "2.5rem",
           }}
         >

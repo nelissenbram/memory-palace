@@ -27,6 +27,22 @@ export function useIsSmall(): boolean {
 const MOBILE_QUERY = "(max-width: 767px), (max-height: 500px)";
 const SMALL_QUERY = "(max-width: 479px)";
 const TABLET_QUERY = "(min-width: 768px) and (max-width: 1024px) and (pointer: coarse)";
+const COMPACT_QUERY = "(max-width: 1024px)";
+
+/** True when the viewport is too narrow for a full desktop layout — phones AND tablets in
+ *  portrait (iPad portrait is 768–1024px wide). Use for nav collapse / grid density on
+ *  layouts that overflow on a tablet, where useIsMobile (max 767) wrongly reports desktop. */
+export function useIsCompact(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const mq = window.matchMedia(COMPACT_QUERY);
+      mq.addEventListener("change", cb);
+      return () => mq.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(COMPACT_QUERY).matches,
+    () => false,
+  );
+}
 
 function subscribeMobile(callback: () => void) {
   const mq = window.matchMedia(MOBILE_QUERY);
