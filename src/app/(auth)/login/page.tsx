@@ -202,8 +202,9 @@ function LoginContent() {
           style={{
             display: "flex",
             justifyContent: "center",
-            gap: "0.625rem",
+            gap: "clamp(0.25rem, 2vw, 0.625rem)",
             marginBottom: "1.75rem",
+            width: "100%",
           }}
           onPaste={handleMfaPaste}
         >
@@ -220,10 +221,12 @@ function LoginContent() {
               autoFocus={i === 0}
               aria-label={tc("mfaDigit", { n: String(i + 1), total: "6" })}
               style={{
-                width: "3.25rem",
-                height: "4rem",
+                flex: "1 1 0",
+                minWidth: 0,
+                maxWidth: "3.25rem",
+                height: "3.5rem",
                 textAlign: "center",
-                fontSize: "1.625rem",
+                fontSize: "1.5rem",
                 fontFamily: T.font.body,
                 fontWeight: 600,
                 color: T.color.charcoal,

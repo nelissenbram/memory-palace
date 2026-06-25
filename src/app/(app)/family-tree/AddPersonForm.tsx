@@ -107,8 +107,10 @@ export function AddPersonForm({
 
   return (
     <div
+      className="mp-scroll"
       style={{
         padding: isMobile ? "1rem" : "1.25rem 1.5rem",
+        paddingBottom: `calc(1rem + env(safe-area-inset-bottom, 0px))`,
         background: `${T.color.warmStone}E8`,
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
@@ -116,6 +118,9 @@ export function AddPersonForm({
         display: "flex",
         flexDirection: "column",
         gap: "0.75rem",
+        // Never let the form push its submit buttons off-screen — scroll within a cap.
+        maxHeight: "calc(100dvh - 7rem)",
+        overflowY: "auto",
       }}
     >
       <div

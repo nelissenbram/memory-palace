@@ -381,7 +381,10 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
       {/* ─── Top bar ─── */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: isMobile ? "0.625rem 0.75rem" : "0.75rem 1.25rem",
+        paddingTop: `max(${isMobile ? "0.625rem" : "0.75rem"}, env(safe-area-inset-top, 0px))`,
+        paddingBottom: isMobile ? "0.625rem" : "0.75rem",
+        paddingLeft: `max(${isMobile ? "0.75rem" : "1.25rem"}, env(safe-area-inset-left, 0px))`,
+        paddingRight: `max(${isMobile ? "0.75rem" : "1.25rem"}, env(safe-area-inset-right, 0px))`,
         flexShrink: 0, zIndex: 20,
       }}>
         {/* Counter */}
@@ -604,7 +607,10 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
       {/* ─── Thumbnail strip ─── */}
       <div style={{
         flexShrink: 0,
-        padding: isMobile ? "0.5rem 0.5rem 0.625rem" : "0.625rem 1rem 0.75rem",
+        paddingTop: isMobile ? "0.5rem" : "0.625rem",
+        paddingBottom: `max(${isMobile ? "0.625rem" : "0.75rem"}, env(safe-area-inset-bottom, 0px))`,
+        paddingLeft: `max(${isMobile ? "0.5rem" : "1rem"}, env(safe-area-inset-left, 0px))`,
+        paddingRight: `max(${isMobile ? "0.5rem" : "1rem"}, env(safe-area-inset-right, 0px))`,
         background: "rgba(0,0,0,0.5)",
         borderTop: "0.0625rem solid rgba(255,255,255,0.06)",
       }}>

@@ -405,7 +405,10 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       {/* Top bar */}
       <div style={{
         display: "flex", justifyContent: "space-between", alignItems: "center",
-        padding: isMobile ? "1rem 1.25rem" : "1.25rem 2rem",
+        paddingTop: `max(${isMobile ? "1rem" : "1.25rem"}, env(safe-area-inset-top, 0px))`,
+        paddingBottom: isMobile ? "1rem" : "1.25rem",
+        paddingLeft: `max(${isMobile ? "1.25rem" : "2rem"}, env(safe-area-inset-left, 0px))`,
+        paddingRight: `max(${isMobile ? "1.25rem" : "2rem"}, env(safe-area-inset-right, 0px))`,
         flexShrink: 0,
       }}>
         <div>
@@ -445,9 +448,12 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       )}
 
       {/* Main content area */}
-      <div style={{
+      <div className="mp-scroll" style={{
         flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        padding: isMobile ? "1.25rem 1.5rem" : "2rem 3rem",
+        paddingTop: isMobile ? "1.25rem" : "2rem",
+        paddingBottom: `max(${isMobile ? "1.25rem" : "2rem"}, env(safe-area-inset-bottom, 0px))`,
+        paddingLeft: isMobile ? "1.5rem" : "3rem",
+        paddingRight: isMobile ? "1.5rem" : "3rem",
         overflowY: "auto",
         maxWidth: "40rem", width: "100%", margin: "0 auto",
       }}>
