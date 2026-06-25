@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
 import { ANIM } from "@/components/ui/TuscanStyles";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import TuscanCard, { TuscanSectionHeader } from "@/components/ui/TuscanCard";
 import NavigationBar from "@/components/ui/NavigationBar";
 import CommentThread from "@/components/social/CommentThread";
@@ -196,6 +196,7 @@ export default function PalaceOverviewClient({
   const { t } = useTranslation("social");
   const router = useRouter();
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing ?? false);
   const [isFollowPending, startFollowTransition] = useTransition();
 
@@ -226,10 +227,10 @@ export default function PalaceOverviewClient({
       style={{
         minHeight: "100dvh",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
-        paddingTop: isAuthenticated && !isMobile
+        paddingTop: isAuthenticated && !isMobile && !isCompact
           ? "3.5rem"
           : "env(safe-area-inset-top, 0px)",
-        paddingBottom: isAuthenticated && isMobile
+        paddingBottom: isAuthenticated && (isMobile || isCompact)
           ? "calc(5rem + env(safe-area-inset-bottom, 0px))"
           : "max(4rem, env(safe-area-inset-bottom, 0px))",
         paddingLeft: isMobile ? "0.75rem" : "1rem",

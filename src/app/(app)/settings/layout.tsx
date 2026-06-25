@@ -143,8 +143,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       inset: 0,
       overflowY: "auto",
       WebkitOverflowScrolling: "touch",
-      paddingTop: isMobile ? 0 : "3.5rem",
-      paddingBottom: isMobile ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
+      paddingTop: stacked ? 0 : "3.5rem",
+      paddingBottom: stacked ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
       background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
       zIndex: 1,
     }}>

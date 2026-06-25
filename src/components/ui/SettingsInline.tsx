@@ -3,7 +3,7 @@
 import { useState, lazy, Suspense, memo } from "react";
 import { T } from "@/lib/theme";
 import { isIOS } from "@/lib/native/platform";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
@@ -77,6 +77,9 @@ const fallback = (
 function SettingsInline() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const isMobile = useIsMobile();
+  // iPad portrait drops the top nav to a bottom bar, so treat it like mobile for offsets/layout.
+  const isCompact = useIsCompact();
+  const compact = isMobile || isCompact;
   const { signingOut, handleSignOut } = useSignOut();
   const { scale } = useAccessibility();
   const { t: tc } = useTranslation("common");
@@ -93,13 +96,13 @@ function SettingsInline() {
       inset: 0,
       overflowY: "auto",
       WebkitOverflowScrolling: "touch",
-      paddingTop: isMobile ? undefined : "3.5rem",
+      paddingTop: compact ? undefined : "3.5rem",
       background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
-      paddingBottom: isMobile ? "calc(4.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
+      paddingBottom: compact ? "calc(4.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
       zIndex: 1,
     }}>
-      {/* Mobile: horizontal scrollable tab bar */}
-      {isMobile ? (
+      {/* Mobile + iPad portrait: horizontal scrollable tab bar */}
+      {compact ? (
         <div style={{ display: "flex", flexDirection: "column", maxWidth: 1100, margin: "0 auto" }}>
           <nav data-mp-settings-tabs aria-label={tc("settingsNavigation")} style={{
             position: "sticky", top: 0, zIndex: 10,

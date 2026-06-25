@@ -95,10 +95,12 @@ export default function ExplorePageClient({
       style={{
         minHeight: "100dvh",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
-        paddingTop: isAuthenticated && !isMobile
+        // On iPad portrait (compact) the nav drops to the bottom bar like mobile, so reserve
+        // bottom space (not top) — otherwise the top nav's 3.5rem becomes dead whitespace.
+        paddingTop: isAuthenticated && !isMobile && !isCompact
           ? "3.5rem"
           : "env(safe-area-inset-top, 0px)",
-        paddingBottom: isAuthenticated && isMobile
+        paddingBottom: isAuthenticated && (isMobile || isCompact)
           ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))"
           : "max(2rem, env(safe-area-inset-bottom, 0px))",
       }}

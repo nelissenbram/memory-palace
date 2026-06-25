@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import TuscanCard from "@/components/ui/TuscanCard";
 import NavigationBar from "@/components/ui/NavigationBar";
@@ -140,6 +140,7 @@ function WhatsAppIcon({ size = 20 }: { size?: number }) {
 export default function KepsPage() {
   const { t } = useTranslation("kepLanding");
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
 
@@ -182,7 +183,7 @@ export default function KepsPage() {
         maxWidth: isMobile ? "36rem" : "52rem",
         margin: "0 auto",
         padding: isMobile ? "1.25rem" : "1.5rem",
-        paddingTop: isMobile ? "1.25rem" : "4.5rem",
+        paddingTop: (isMobile || isCompact) ? "1.25rem" : "4.5rem",
       }}>
         {/* Header with title + close button (top-right, consistent with other submenus) */}
         <div style={{

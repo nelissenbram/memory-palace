@@ -9,7 +9,7 @@ import TuscanCard, { TuscanSectionHeader } from "@/components/ui/TuscanCard";
 import { ANIM, EASE } from "@/components/ui/TuscanStyles";
 import { useRouter } from "next/navigation";
 import NavigationBar from "@/components/ui/NavigationBar";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
 // Note: do NOT import usePalaceStore — Profile is outside the (app) layout group
 import type { SocialProfile } from "@/lib/social/profile-actions";
 import type { FeedItem } from "@/lib/social/feed-actions";
@@ -33,6 +33,7 @@ export default function ProfilePageClient({
   const { t } = useTranslation("social");
   const router = useRouter();
   const isMobile = useIsMobile();
+  const isCompact = useIsCompact();
   // Navigate to app modes via full page navigation (not soft nav)
   // to avoid conflicts with MemoryPalace's history management
   const handleModeChange = (mode: "atrium" | "library" | "3d") => {
@@ -44,10 +45,10 @@ export default function ProfilePageClient({
       style={{
         minHeight: "100dvh",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
-        paddingTop: isAuthenticated && !isMobile
+        paddingTop: isAuthenticated && !isMobile && !isCompact
           ? "3.5rem"
           : "env(safe-area-inset-top, 0px)",
-        paddingBottom: isAuthenticated && isMobile
+        paddingBottom: isAuthenticated && (isMobile || isCompact)
           ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))"
           : "max(2rem, env(safe-area-inset-bottom, 0px))",
       }}
