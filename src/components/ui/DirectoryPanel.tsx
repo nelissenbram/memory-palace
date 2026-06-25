@@ -141,11 +141,11 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
 
   return(
     <div role="button" tabIndex={0} onClick={onClose} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); } }} style={{position:"absolute",inset:0,background:"rgba(42,34,24,.4)",backdropFilter:"blur(8px)",zIndex:55,animation:"fadeIn .2s ease"}}>
-      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e)=>{if(e.key==="Escape")onClose();handleKeyDown(e);}} onClick={e=>e.stopPropagation()} style={{position:"absolute",left:0,top:0,bottom:0,width:isMobile?"100%":"min(23.75rem, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderRight:isMobile?"none":`1px solid ${T.color.cream}`,padding:0,overflowY:"auto",animation:"slideInLeft .3s cubic-bezier(.23,1,.32,1)"}}>
+      <div ref={containerRef} className="mp-scroll" role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e)=>{if(e.key==="Escape")onClose();handleKeyDown(e);}} onClick={e=>e.stopPropagation()} style={{position:"absolute",left:0,top:0,bottom:0,width:isMobile?"100%":"min(23.75rem, 92vw)",background:`${T.color.linen}f8`,backdropFilter:"blur(20px)",borderRight:isMobile?"none":`1px solid ${T.color.cream}`,padding:0,overflowY:"auto",animation:"slideInLeft .3s cubic-bezier(.23,1,.32,1)"}}>
         <style>{`@keyframes slideInLeft{from{opacity:0;transform:translateX(-2.5rem)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* Header */}
-        <div style={{padding:"1.5rem 1.5rem 0",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1rem"}}>
+        <div style={{padding:"1.5rem 1.5rem 0",paddingTop:"max(1.5rem, env(safe-area-inset-top, 0px))",paddingLeft:"max(1.5rem, env(safe-area-inset-left, 0px))",paddingRight:"max(1.5rem, env(safe-area-inset-right, 0px))",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1rem"}}>
           <div>
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,margin:0}}>{t("title")}</h3>
             <p style={{fontFamily:T.font.body,fontSize:"0.6875rem",color:T.color.muted,margin:"0.25rem 0 0"}}>{t("summary", { wings: String(WINGS.length), memories: String(totalMems) })}</p>
@@ -158,13 +158,13 @@ export default function DirectoryPanel({onClose, onNavigateSharedWing}: Director
           <div style={{background:T.color.white,borderRadius:"0.625rem",border:`1px solid ${T.color.cream}`,padding:"0.5rem 0.75rem",display:"flex",alignItems:"center",gap:"0.5rem"}}>
             <span style={{fontSize:"0.8125rem",opacity:.5}}>{"\uD83D\uDD0D"}</span>
             <input value={localQuery} onChange={e=>setLocalQuery(e.target.value)} placeholder={t("searchPlaceholder")}
-              style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:"0.8125rem",color:T.color.charcoal,outline:"none"}}/>
+              style={{flex:1,border:"none",background:"transparent",fontFamily:T.font.body,fontSize:"16px",color:T.color.charcoal,outline:"none"}}/>
             {localQuery&&<button onClick={()=>setLocalQuery("")} aria-label={tc("clearSearch")} style={{background:"none",border:"none",color:T.color.muted,fontSize:"0.75rem",cursor:"pointer"}}>&#x2715;</button>}
           </div>
         </div>
 
         {/* Tree */}
-        <div style={{padding:"0 0.75rem 1.5rem"}}>
+        <div style={{paddingLeft:"max(0.75rem, env(safe-area-inset-left, 0px))",paddingRight:"max(0.75rem, env(safe-area-inset-right, 0px))",paddingBottom:"max(1.5rem, env(safe-area-inset-bottom, 0px))"}}>
           {tree.map(wing=>{
             const wingExpanded=expanded[wing.id]??(!q);
             const rooms=q?wing.matchingRooms:wing.rooms;

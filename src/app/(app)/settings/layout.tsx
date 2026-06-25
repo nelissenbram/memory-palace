@@ -7,7 +7,6 @@ import { isIOS } from "@/lib/native/platform";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useSignOut } from "@/lib/hooks/useSignOut";
 import SignOutOverlay from "@/components/ui/SignOutOverlay";
-import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
@@ -123,7 +122,6 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const isMobile = useIsMobile();
   const { signingOut, handleSignOut } = useSignOut();
-  const { scale } = useAccessibility();
   const { t: tc } = useTranslation("common");
 
   const settingsRouter = useRouter();
@@ -181,7 +179,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </Link>
           <div style={{ width: 1, height: "1.25rem", background: T.color.cream }} />
           <h1 style={{
-            fontFamily: T.font.display, fontSize: `${1.375 * scale}rem`, fontWeight: 500,
+            fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
             color: T.color.charcoal, margin: 0,
           }}>
             {tc("settings")}
@@ -223,7 +221,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                   textDecoration: "none",
                   background: isActive ? `${T.color.terracotta}10` : "transparent",
                   color: isActive ? T.color.terracotta : T.color.charcoal,
-                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 500,
+                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: isActive ? 600 : 500,
                   transition: "all .15s",
                 }}>
                   <SettingsIcon name={item.iconKey} size={16} />
@@ -242,7 +240,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 border: "none",
                 background: "transparent",
                 color: T.color.muted,
-                fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 500,
+                fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                 cursor: "pointer",
                 transition: "all .15s",
               }}
@@ -290,7 +288,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                     textDecoration: "none",
                     background: isActive ? `${T.color.terracotta}10` : "transparent",
                     color: isActive ? T.color.terracotta : T.color.charcoal,
-                    fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 500,
+                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: isActive ? 600 : 500,
                     transition: "all .15s",
                   }}>
                     <SettingsIcon name={item.iconKey} size={16} />
@@ -308,7 +306,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                   border: "none",
                   background: "transparent",
                   color: T.color.muted,
-                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 500,
+                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                   cursor: "pointer",
                   transition: "all .15s",
                   width: "100%",
@@ -343,7 +341,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             font-size: 1rem !important;
             padding: 0.875rem 1rem !important;
           }
-          .mp-settings-mobile-content button {
+          .mp-settings-mobile-content button:not([role="switch"]) {
             min-height: 2.75rem;
           }
         `}</style>

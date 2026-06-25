@@ -137,9 +137,10 @@ export default function PublishModal({
       }}
       onClick={(e) => { if (e.target === e.currentTarget && !isPending) onClose(); }}
     >
-      <div style={{
-        width: "min(32rem, 92vw)", maxHeight: "85vh", overflow: "auto",
+      <div className="mp-scroll" style={{
+        width: "min(32rem, 92vw)", maxHeight: "90dvh", overflow: "auto",
         background: T.color.cream, borderRadius: "1rem", padding: "1.75rem",
+        paddingBottom: "max(1.75rem, env(safe-area-inset-bottom, 0px))",
         boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
       }}>
         <h2 id="publish-title" style={{

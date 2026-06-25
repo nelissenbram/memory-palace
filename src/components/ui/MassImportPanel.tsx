@@ -276,7 +276,12 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
         animation: isMobile ? "fadeIn .2s ease" : "fadeUp .3s ease",
       }}>
         {/* Header */}
-        <div style={{ padding: "1.5rem 1.75rem 0", flexShrink: 0 }}>
+        <div style={{
+          padding: "1.5rem 1.75rem 0", flexShrink: 0,
+          paddingTop: isMobile ? "max(1.5rem, env(safe-area-inset-top, 0px))" : undefined,
+          paddingLeft: isMobile ? "max(1.75rem, env(safe-area-inset-left, 0px))" : undefined,
+          paddingRight: isMobile ? "max(1.75rem, env(safe-area-inset-right, 0px))" : undefined,
+        }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <div style={{ width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.375rem" }}>{"\u{1F4E6}"}</div>
@@ -351,7 +356,12 @@ export default function MassImportPanel({ onClose, initialWingId, initialRoomId 
           </Suspense>
         ) : (
         /* Content area (scrollable) */
-        <div style={{ flex: 1, overflow: "auto", padding: "0 1.75rem 1.5rem" }}>
+        <div className="mp-scroll" style={{
+          flex: 1, overflow: "auto", padding: "0 1.75rem 1.5rem",
+          paddingBottom: isMobile ? "max(1.5rem, env(safe-area-inset-bottom, 0px))" : undefined,
+          paddingLeft: isMobile ? "max(1.75rem, env(safe-area-inset-left, 0px))" : undefined,
+          paddingRight: isMobile ? "max(1.75rem, env(safe-area-inset-right, 0px))" : undefined,
+        }}>
 
           {/* ════ STEP: DROP ════ */}
           {step === "drop" && <>
@@ -713,18 +723,18 @@ function ReviewCard({ item, wings, getWingRooms }: {
             <div>
               <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("title")}</label>
               <input value={item.confirmed.title} onChange={(e) => store.updateConfirmed(item.localId, { title: e.target.value })}
-                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "16px", color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
             </div>
             <div>
               <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("location")}</label>
               <input value={item.confirmed.locationName} onChange={(e) => store.updateConfirmed(item.localId, { locationName: e.target.value })} placeholder={t("locationPlaceholder")}
-                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "16px", color: T.color.charcoal, outline: "none", boxSizing: "border-box" }} />
             </div>
           </div>
           <div style={{ marginBottom: "0.625rem" }}>
             <label style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", display: "block", marginBottom: "0.25rem" }}>{t("description")}</label>
             <textarea value={item.confirmed.desc} onChange={(e) => store.updateConfirmed(item.localId, { desc: e.target.value })} rows={2} placeholder={t("descriptionPlaceholder")}
-              style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal, outline: "none", boxSizing: "border-box", resize: "none" }} />
+              style={{ width: "100%", padding: "0.5rem 0.625rem", borderRadius: "0.5rem", border: `1px solid ${T.color.cream}`, background: T.color.white, fontFamily: T.font.body, fontSize: "16px", color: T.color.charcoal, outline: "none", boxSizing: "border-box", resize: "none" }} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.625rem" }}>
             <div>

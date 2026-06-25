@@ -407,7 +407,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
 
   const inputStyle: React.CSSProperties = {
     fontFamily: T.font.body,
-    fontSize: "0.8125rem",
+    fontSize: "16px",
     color: T.color.charcoal,
     padding: "0.4375rem 0.625rem",
     borderRadius: "0.375rem",
@@ -547,6 +547,9 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
         <div
           style={{
             padding: "1.5rem 1.5rem 0",
+            paddingTop: "max(1.5rem, env(safe-area-inset-top, 0px))",
+            paddingLeft: "max(1.5rem, env(safe-area-inset-left, 0px))",
+            paddingRight: "max(1.5rem, env(safe-area-inset-right, 0px))",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -694,7 +697,7 @@ export default function MemoryTimeline({ onClose, onNavigateLibrary }: MemoryTim
         )}
 
         {/* Scrollable content */}
-        <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", padding: "0", contain: "layout" }}>
+        <div ref={scrollContainerRef} className="mp-scroll" style={{ flex: 1, overflowY: "auto", padding: "0", paddingBottom: "env(safe-area-inset-bottom, 0px)", contain: "layout" }}>
 
           {/* Inline add date form */}
           {showAddForm && (

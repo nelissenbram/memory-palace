@@ -94,7 +94,14 @@ export default function QRShareModal({ url, title, onClose }: QRShareModalProps)
       <TuscanCard
         variant="solid"
         padding="2rem"
-        style={{ width: "min(22rem, 90vw)", textAlign: "center" }}
+        className="mp-scroll"
+        style={{
+          width: "min(22rem, 90vw)",
+          textAlign: "center",
+          maxHeight: "90dvh",
+          overflowY: "auto",
+          paddingBottom: "max(2rem, env(safe-area-inset-bottom, 0px))",
+        }}
       >
         <h2
           id="qr-title"

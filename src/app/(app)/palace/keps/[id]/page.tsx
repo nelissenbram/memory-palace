@@ -25,7 +25,7 @@ export default function KepDetailPage() {
   }, [kepId, fetchKep, fetchCaptures, fetchStats]);
 
   if (isLoading && !currentKep) {
-    return <div style={{ padding: "3rem", textAlign: "center", color: "#6b7280" }}>{t("loading")}</div>;
+    return <div style={{ padding: "3rem", textAlign: "center", color: T.color.muted }}>{t("loading")}</div>;
   }
 
   if (!currentKep) {
@@ -44,11 +44,11 @@ export default function KepDetailPage() {
   };
 
   return (
-    <div style={{ padding: "1.5rem", maxWidth: "64rem", margin: "0 auto" }}>
+    <div style={{ padding: "1.5rem", paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))", maxWidth: "64rem", margin: "0 auto" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
-        <button onClick={() => router.push("/palace/keps")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem" }}>
-          ←
+        <button onClick={() => router.push("/palace/keps")} aria-label={t("back") !== "back" ? t("back") : "Back"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", minHeight: "2.75rem", minWidth: "2.75rem", display: "flex", alignItems: "center", justifyContent: "center", color: T.color.charcoal }}>
+          {"←"}
         </button>
         <span style={{ fontSize: "2rem" }}>{currentKep.icon}</span>
         <div style={{ flex: 1 }}>
@@ -57,7 +57,7 @@ export default function KepDetailPage() {
             <span style={{ fontSize: "0.75rem", color: getStatusColor(currentKep.status), fontWeight: 600 }}>
               ● {t(`status${currentKep.status.charAt(0).toUpperCase() + currentKep.status.slice(1)}`)}
             </span>
-            <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+            <span style={{ fontSize: "0.75rem", color: T.color.muted }}>
               {currentKep.source_type === "whatsapp" ? "💬" : "📸"} {currentKep.source_type}
             </span>
           </div>
@@ -66,21 +66,21 @@ export default function KepDetailPage() {
         {/* Action buttons */}
         <div style={{ display: "flex", gap: "0.5rem" }}>
           {currentKep.status === "draft" && (
-            <button onClick={() => handleStatusChange("active")} style={btnStyle("#10b981")}>
+            <button onClick={() => handleStatusChange("active")} style={btnStyle(T.color.sage)}>
               {t("activate")}
             </button>
           )}
           {currentKep.status === "active" && (
-            <button onClick={() => handleStatusChange("paused")} style={btnStyle("#f59e0b")}>
+            <button onClick={() => handleStatusChange("paused")} style={btnStyle(T.color.gold)}>
               {t("pause")}
             </button>
           )}
           {currentKep.status === "paused" && (
-            <button onClick={() => handleStatusChange("active")} style={btnStyle("#10b981")}>
+            <button onClick={() => handleStatusChange("active")} style={btnStyle(T.color.sage)}>
               {t("resume")}
             </button>
           )}
-          <button onClick={handleDelete} style={btnStyle("#ef4444")}>
+          <button onClick={handleDelete} style={btnStyle(T.color.error)}>
             {t("delete")}
           </button>
         </div>
@@ -90,7 +90,7 @@ export default function KepDetailPage() {
       <ActiveRoomSection kepId={kepId} t={t} />
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1.5rem", borderBottom: "1px solid #e5e7eb" }}>
+      <div style={{ display: "flex", gap: "0.25rem", marginBottom: "1.5rem", borderBottom: `1px solid ${T.color.cream}` }}>
         {(["captures", "settings", "stats"] as const).map((tab) => (
           <button
             key={tab}
@@ -99,8 +99,8 @@ export default function KepDetailPage() {
               padding: "0.625rem 1rem",
               background: "none",
               border: "none",
-              borderBottom: activeTab === tab ? "2px solid #b45309" : "2px solid transparent",
-              color: activeTab === tab ? "#b45309" : "#6b7280",
+              borderBottom: activeTab === tab ? `2px solid ${T.color.terracotta}` : "2px solid transparent",
+              color: activeTab === tab ? T.color.terracotta : T.color.muted,
               fontWeight: activeTab === tab ? 600 : 500,
               cursor: "pointer",
             }}
@@ -234,7 +234,7 @@ function ActiveRoomSection({ kepId, t }: { kepId: string; t: (key: string, param
 function CapturesTab({ captures, t }: { captures: KepCapture[]; t: (key: string, params?: Record<string, string>) => string }) {
   if (captures.length === 0) {
     return (
-      <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>
+      <div style={{ textAlign: "center", padding: "3rem", color: T.color.muted }}>
         <span style={{ fontSize: "2rem" }}>📭</span>
         <p>{t("noPending")}</p>
       </div>
@@ -251,7 +251,7 @@ function CapturesTab({ captures, t }: { captures: KepCapture[]; t: (key: string,
               <div style={{ fontWeight: 500, fontSize: "0.875rem" }}>
                 {(capture.payload_preview as Record<string, unknown>)?.text as string || capture.transcription?.slice(0, 80) || `${capture.media_type} capture`}
               </div>
-              <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.25rem" }}>
+              <div style={{ fontSize: "0.75rem", color: T.color.muted, marginTop: "0.25rem" }}>
                 {capture.source_sender && <span>{t("from", { name: capture.source_sender })} · </span>}
                 {new Date(capture.created_at).toLocaleString()}
               </div>
@@ -290,7 +290,7 @@ function StatsTab({ stats, t }: { stats: KepStats; t: (key: string, params?: Rec
         <TuscanCard key={item.label}>
           <div style={{ padding: "1rem", textAlign: "center" }}>
             <div style={{ fontSize: "1.5rem", fontWeight: 700 }}>{String(item.value)}</div>
-            <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem" }}>{item.label}</div>
+            <div style={{ fontSize: "0.75rem", color: T.color.muted, marginTop: "0.25rem" }}>{item.label}</div>
           </div>
         </TuscanCard>
       ))}
@@ -304,7 +304,7 @@ function SettingsTab({ kep, t }: { kep: Kep; t: (key: string, params?: Record<st
       <div style={{ padding: "1.25rem" }}>
         <div style={{ marginBottom: "1rem" }}>
           <label style={{ fontSize: "0.875rem", fontWeight: 500, display: "block", marginBottom: "0.25rem" }}>{t("autoRoute")}</label>
-          <p style={{ fontSize: "0.75rem", color: "#6b7280", margin: 0 }}>
+          <p style={{ fontSize: "0.75rem", color: T.color.muted, margin: 0 }}>
             {t("autoRouteDesc")}
           </p>
           <div style={{ marginTop: "0.5rem", fontWeight: 600 }}>
@@ -314,7 +314,7 @@ function SettingsTab({ kep, t }: { kep: Kep; t: (key: string, params?: Record<st
         {kep.description && (
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ fontSize: "0.875rem", fontWeight: 500, display: "block", marginBottom: "0.25rem" }}>{t("description")}</label>
-            <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{kep.description as string}</p>
+            <p style={{ fontSize: "0.875rem", color: T.color.inkSoft, margin: 0 }}>{kep.description as string}</p>
           </div>
         )}
       </div>

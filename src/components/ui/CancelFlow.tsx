@@ -95,10 +95,13 @@ export default function CancelFlow({ onClose, onProceedToPortal, planName }: Can
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        className="mp-scroll"
         style={{
           maxWidth: "26rem", width: "100%",
+          maxHeight: "90dvh", overflowY: "auto",
           background: C.white, borderRadius: "1.125rem",
           padding: "2rem",
+          paddingBottom: "max(2rem, env(safe-area-inset-bottom, 0px))",
           boxShadow: "0 1rem 3rem rgba(0,0,0,0.15)",
           animation: "onb-fadeUp .3s ease",
         }}

@@ -178,6 +178,9 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
         <div style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
           padding: isMobile ? "1rem 1.25rem" : "1.25rem 1.5rem",
+          paddingTop: isMobile ? "max(1rem, env(safe-area-inset-top, 0px))" : undefined,
+          paddingLeft: isMobile ? "max(1.25rem, env(safe-area-inset-left, 0px))" : undefined,
+          paddingRight: isMobile ? "max(1.25rem, env(safe-area-inset-right, 0px))" : undefined,
           borderBottom: `1px solid ${C.cream}`,
           background: `linear-gradient(180deg, ${C.warmStone} 0%, ${C.linen} 100%)`,
           flexShrink: 0,
@@ -204,9 +207,10 @@ export default function KepCapturePanel({ onClose }: KepCapturePanelProps) {
         </div>
 
         {/* Scrollable content */}
-        <div style={{
+        <div className="mp-scroll" style={{
           flex: 1, overflowY: "auto", overflowX: "hidden",
           padding: isMobile ? "1.25rem" : "1.5rem",
+          paddingBottom: isMobile ? "max(1.25rem, env(safe-area-inset-bottom, 0px))" : undefined,
         }}>
           {/* Hero: Porter + Title */}
           <div style={{

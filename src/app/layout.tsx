@@ -130,7 +130,7 @@ export default async function RootLayout({
             try{
               if(window.webkit&&window.webkit.messageHandlers)return;if(window.Capacitor)return;if(navigator.userAgent.indexOf("CapacitorNative")!==-1)return;
             }catch(e){return;}
-            var V="v62";
+            var V="v63";
             try{
               var s=localStorage.getItem("mp_v");
               if(s!==V){

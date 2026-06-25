@@ -14,11 +14,32 @@ export default function DataDeletionPage() {
         background: C.linen,
         fontFamily: F.body,
         color: C.charcoal,
-        padding: "2rem",
+        paddingTop: "max(2rem, env(safe-area-inset-top, 0px))",
+        paddingBottom: "max(2rem, env(safe-area-inset-bottom, 0px))",
+        paddingLeft: "max(2rem, env(safe-area-inset-left, 0px))",
+        paddingRight: "max(2rem, env(safe-area-inset-right, 0px))",
         maxWidth: 720,
         margin: "0 auto",
       }}
     >
+      <Link
+        href="/"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          color: C.walnut,
+          textDecoration: "none",
+          fontSize: "0.875rem",
+          marginBottom: "1.5rem",
+        }}
+      >
+        <svg width={16} height={16} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Back to home
+      </Link>
+
       <h1 style={{ fontFamily: F.display, fontSize: "2rem", marginBottom: "1.5rem" }}>
         Data Deletion Instructions
       </h1>

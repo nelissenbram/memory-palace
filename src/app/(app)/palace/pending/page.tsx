@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useKepStore } from "@/lib/stores/kepStore";
 import TuscanCard from "@/components/ui/TuscanCard";
+import { T } from "@/lib/theme";
 import { getMediaTypeIcon, formatConfidence, canRoute } from "@/lib/kep/route-helpers";
 import type { PendingCaptureWithSuggestion } from "@/types/kep";
 
@@ -52,7 +53,7 @@ export default function PendingCapturesPage() {
   };
 
   return (
-    <div style={{ padding: "1.5rem", maxWidth: "64rem", margin: "0 auto" }}>
+    <div style={{ padding: "1.5rem", paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom, 0px))", maxWidth: "64rem", margin: "0 auto" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
         <button onClick={() => router.push("/palace/keps")} aria-label={t("back") !== "back" ? t("back") : "Back"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.25rem", minHeight: "2.75rem", minWidth: "2.75rem" }}>
@@ -60,17 +61,17 @@ export default function PendingCapturesPage() {
         </button>
         <div>
           <h1 style={{ margin: 0, fontSize: "1.5rem" }}>{t("pendingCaptures")}</h1>
-          <p style={{ margin: "0.25rem 0 0", color: "#6b7280", fontSize: "0.875rem" }}>{t("pendingDesc")}</p>
+          <p style={{ margin: "0.25rem 0 0", color: T.color.muted, fontSize: "0.875rem" }}>{t("pendingDesc")}</p>
         </div>
       </div>
 
       {isLoading ? (
-        <div style={{ textAlign: "center", padding: "3rem", color: "#6b7280" }}>{t("loading")}</div>
+        <div style={{ textAlign: "center", padding: "3rem", color: T.color.muted }}>{t("loading")}</div>
       ) : pendingCaptures.length === 0 ? (
         <div style={{ textAlign: "center", padding: "4rem" }}>
-          <span style={{ fontSize: "3rem" }}>\u2705</span>
+          <span style={{ fontSize: "3rem" }}>{"\u2705"}</span>
           <h2 style={{ marginTop: "1rem" }}>{t("noPending")}</h2>
-          <p style={{ color: "#6b7280" }}>{t("noPendingDesc")}</p>
+          <p style={{ color: T.color.muted }}>{t("noPendingDesc")}</p>
         </div>
       ) : (
         <>
@@ -80,8 +81,8 @@ export default function PendingCapturesPage() {
               padding: "0.75rem 1rem",
               marginBottom: "1rem",
               borderRadius: "0.5rem",
-              background: "#f9fafb",
-              border: "1px solid #e5e7eb",
+              background: T.color.warmStone,
+              border: `1px solid ${T.color.cream}`,
               display: "flex",
               alignItems: "center",
               gap: "0.75rem",
@@ -92,12 +93,12 @@ export default function PendingCapturesPage() {
                 placeholder={t("routeRoomPlaceholder")}
                 value={routeRoomId}
                 onChange={(e) => setRouteRoomId(e.target.value)}
-                style={{ flex: 1, minWidth: "12rem", padding: "0.375rem 0.625rem", borderRadius: "0.25rem", border: "1px solid #d1d5db", fontSize: "0.8125rem" }}
+                style={{ flex: 1, minWidth: "12rem", padding: "0.375rem 0.625rem", borderRadius: "0.25rem", border: `1px solid ${T.color.sandstone}`, fontSize: "16px" }}
               />
-              <button onClick={handleRoute} disabled={!routeRoomId} style={{ padding: "0.375rem 0.75rem", borderRadius: "0.25rem", background: "#10b981", color: "#fff", border: "none", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 500 }}>
+              <button onClick={handleRoute} disabled={!routeRoomId} style={{ padding: "0.375rem 0.75rem", borderRadius: "0.25rem", background: T.color.sage, color: "#fff", border: "none", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 500 }}>
                 {t("routeTo")}
               </button>
-              <button onClick={handleReject} style={{ padding: "0.375rem 0.75rem", borderRadius: "0.25rem", background: "#ef4444", color: "#fff", border: "none", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 500 }}>
+              <button onClick={handleReject} style={{ padding: "0.375rem 0.75rem", borderRadius: "0.25rem", background: T.color.error, color: "#fff", border: "none", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 500 }}>
                 {t("reject")}
               </button>
             </div>
@@ -128,11 +129,11 @@ export default function PendingCapturesPage() {
                       <span style={{ fontWeight: 500, fontSize: "0.875rem" }}>
                         {(capture.payload_preview as Record<string, unknown>)?.text as string || capture.transcription?.slice(0, 60) || `${capture.media_type} from ${capture.source_sender || "unknown"}`}
                       </span>
-                      <span style={{ fontSize: "0.6875rem", color: "#9ca3af", background: "#f3f4f6", padding: "0.0625rem 0.375rem", borderRadius: "0.25rem" }}>
+                      <span style={{ fontSize: "0.6875rem", color: T.color.muted, background: T.color.warmStone, padding: "0.0625rem 0.375rem", borderRadius: "0.25rem" }}>
                         {capture.kep_icon} {capture.kep_name}
                       </span>
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: "0.25rem" }}>
+                    <div style={{ fontSize: "0.75rem", color: T.color.muted, marginTop: "0.25rem" }}>
                       {capture.source_sender && `${capture.source_sender} \u00B7 `}
                       {new Date(capture.created_at).toLocaleString()}
                     </div>
@@ -157,7 +158,7 @@ export default function PendingCapturesPage() {
                         </span>
                         <button
                           onClick={() => handleAcceptSuggestion(capture)}
-                          style={{ padding: "0.25rem 0.625rem", borderRadius: "0.25rem", background: "#10b981", color: "#fff", border: "none", cursor: "pointer", fontSize: "0.75rem", fontWeight: 500 }}
+                          style={{ padding: "0.25rem 0.625rem", borderRadius: "0.25rem", background: T.color.sage, color: "#fff", border: "none", cursor: "pointer", fontSize: "0.75rem", fontWeight: 500 }}
                         >
                           {t("acceptSuggestion")}
                         </button>

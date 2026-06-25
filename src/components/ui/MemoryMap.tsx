@@ -737,7 +737,11 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
       }}>
         {/* Header */}
         <div style={{
-          padding: "1.125rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "1.125rem 1.5rem",
+          paddingTop: isMobile ? "max(1.125rem, env(safe-area-inset-top, 0px))" : "1.125rem",
+          paddingLeft: isMobile ? "max(1.5rem, env(safe-area-inset-left, 0px))" : "1.5rem",
+          paddingRight: isMobile ? "max(1.5rem, env(safe-area-inset-right, 0px))" : "1.5rem",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
           borderBottom: `1px solid ${T.color.cream}`, flexShrink: 0,
         }}>
           <div>
@@ -865,7 +869,7 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
 
           {/* ── Selected pin detail panel ── */}
           {selectedPin && (
-            <div style={{
+            <div className="mp-scroll" style={{
               position: "absolute", bottom: 0, left: 0, right: 0,
               background: `${T.color.linen}f5`, backdropFilter: "blur(16px)",
               borderTop: `1px solid ${T.color.cream}`,
@@ -959,7 +963,9 @@ export default function MemoryMap({ userMems, onClose, onNavigate, onNavigateLib
 
         {/* Legend */}
         <div style={{
-          padding: "0.625rem 1.5rem 1rem", display: "flex", gap: "1rem", flexShrink: 0,
+          padding: "0.625rem 1.5rem 1rem",
+          paddingBottom: isMobile ? "max(1rem, env(safe-area-inset-bottom, 0px))" : "1rem",
+          display: "flex", gap: "1rem", flexShrink: 0,
           borderTop: `1px solid ${T.color.cream}`, alignItems: "center", flexWrap: "wrap",
         }}>
           <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted, textTransform: "uppercase", letterSpacing: ".5px" }}>{t("legend")}</span>

@@ -437,12 +437,16 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
         style={{
           position: "fixed", inset: 0, zIndex: 8001,
           display: "flex", alignItems: "center", justifyContent: "center",
-          padding: isMobile ? "1rem" : "2rem",
+          paddingTop: isMobile ? `max(1rem, env(safe-area-inset-top, 0px))` : "2rem",
+          paddingBottom: isMobile ? `max(1rem, env(safe-area-inset-bottom, 0px))` : "2rem",
+          paddingLeft: isMobile ? `max(1rem, env(safe-area-inset-left, 0px))` : "2rem",
+          paddingRight: isMobile ? `max(1rem, env(safe-area-inset-right, 0px))` : "2rem",
           pointerEvents: "none",
         }}
       >
         <div
           onClick={(e) => e.stopPropagation()}
+          className="mp-scroll"
           style={{
             pointerEvents: "auto",
             width: "100%",

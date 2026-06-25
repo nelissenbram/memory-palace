@@ -487,8 +487,9 @@ export default function MFASetup() {
               style={{
                 display: "flex",
                 justifyContent: "center",
-                gap: "0.625rem",
+                gap: "clamp(0.25rem, 2vw, 0.625rem)",
                 marginBottom: "1.25rem",
+                width: "100%",
               }}
               onPaste={handleCodePaste}
             >
@@ -503,7 +504,9 @@ export default function MFASetup() {
                   onChange={(e) => handleCodeChange(i, e.target.value)}
                   onKeyDown={(e) => handleCodeKeyDown(i, e)}
                   style={{
-                    width: "3.125rem",
+                    flex: "1 1 0",
+                    minWidth: 0,
+                    maxWidth: "3.25rem",
                     height: "3.75rem",
                     textAlign: "center",
                     fontSize: "1.5rem",

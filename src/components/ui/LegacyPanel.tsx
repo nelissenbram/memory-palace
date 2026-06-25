@@ -136,6 +136,10 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
     <div style={{
       position: "fixed", inset: 0, zIndex: 62,
       display: "flex", alignItems: "center", justifyContent: "center",
+      paddingTop: "env(safe-area-inset-top, 0px)",
+      paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      paddingLeft: "env(safe-area-inset-left, 0px)",
+      paddingRight: "env(safe-area-inset-right, 0px)",
     }}>
       <div onClick={onClose} style={{
         position: "absolute", inset: 0,
@@ -207,7 +211,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
         </div>
 
         {/* Content */}
-        <div style={{
+        <div className="mp-scroll" style={{
           flex: 1, overflowY: "auto", padding: "1rem 1.25rem 1.5rem",
           display: "flex", flexDirection: "column", gap: "0.875rem",
         }}>
@@ -326,7 +330,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                 style={{
                   width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.5rem",
                   border: `1px solid ${T.color.sandstone}40`, background: T.color.white,
-                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
+                  fontFamily: T.font.body, fontSize: "16px", color: T.color.charcoal,
                   marginTop: "0.25rem", marginBottom: "0.75rem", outline: "none",
                   boxSizing: "border-box",
                 }}
@@ -344,7 +348,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                 style={{
                   width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.5rem",
                   border: `1px solid ${T.color.sandstone}40`, background: T.color.white,
-                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
+                  fontFamily: T.font.body, fontSize: "16px", color: T.color.charcoal,
                   marginTop: "0.25rem", marginBottom: "0.75rem", outline: "none",
                   boxSizing: "border-box",
                 }}

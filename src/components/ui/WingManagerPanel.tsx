@@ -137,7 +137,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(8px)", zIndex: 55, animation: "fadeIn .2s ease" }}>
-      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: isMobile ? "100%" : "26.25rem", background: `${T.color.linen}f8`, backdropFilter: "blur(20px)", borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`, padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem", overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)" }}>
+      <div ref={containerRef} className="mp-scroll" role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: isMobile ? "100%" : "26.25rem", background: `${T.color.linen}f8`, backdropFilter: "blur(20px)", borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`, paddingTop: `max(${isMobile ? "1.25rem" : "1.75rem"}, env(safe-area-inset-top, 0px))`, paddingBottom: `max(${isMobile ? "1.25rem" : "1.75rem"}, env(safe-area-inset-bottom, 0px))`, paddingLeft: `max(${isMobile ? "1rem" : "1.5rem"}, env(safe-area-inset-left, 0px))`, paddingRight: `max(${isMobile ? "1rem" : "1.5rem"}, env(safe-area-inset-right, 0px))`, overflowY: "auto", animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)" }}>
         <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
 
         {/* Header */}
@@ -264,7 +264,7 @@ export default function WingManagerPanel({ onClose }: WingManagerPanelProps) {
                   flex: 1, padding: "0.5rem 0.75rem",
                   borderRadius: "0.5rem", border: `1.5px solid ${T.color.cream}`,
                   background: T.color.linen, fontFamily: T.font.body,
-                  fontSize: "0.875rem", color: T.color.charcoal, outline: "none",
+                  fontSize: "16px", color: T.color.charcoal, outline: "none",
                 }}
               />
               <button type="submit" disabled={!newWingName.trim()} style={{

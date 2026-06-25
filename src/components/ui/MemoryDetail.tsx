@@ -471,7 +471,10 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
         {/* ── Header bar ── */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0.75rem 1rem",
+          paddingTop: `max(0.75rem, env(safe-area-inset-top, 0px))`,
+          paddingBottom: "0.75rem",
+          paddingLeft: `max(1rem, env(safe-area-inset-left, 0px))`,
+          paddingRight: `max(1rem, env(safe-area-inset-right, 0px))`,
           borderBottom: `1px solid ${T.color.cream}`,
           background: T.color.white,
           flexShrink: 0,
@@ -497,7 +500,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
         </div>
 
         {/* ── Scrollable content ── */}
-        <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+        <div className="mp-scroll" style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
 
           {/* ═══ SECTION 1: MEDIA DISPLAY ═══ */}
           <div style={{

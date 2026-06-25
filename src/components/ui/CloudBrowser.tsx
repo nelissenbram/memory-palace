@@ -109,6 +109,10 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
       position: "fixed", inset: 0, zIndex: 9999,
       background: "rgba(44,44,42,.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
       display: "flex", alignItems: "center", justifyContent: "center",
+      paddingTop: "env(safe-area-inset-top, 0px)",
+      paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      paddingLeft: "env(safe-area-inset-left, 0px)",
+      paddingRight: "env(safe-area-inset-right, 0px)",
     }}>
       <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{
         background: "rgba(255,255,255,.96)", backdropFilter: "blur(1.5rem) saturate(1.4)", WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
@@ -162,7 +166,7 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: "auto", padding: "1.25rem 1.5rem" }}>
+        <div className="mp-scroll" style={{ flex: 1, overflow: "auto", padding: "1.25rem 1.5rem" }}>
           {status === "loading" && (
             <div style={{ textAlign: "center", padding: "3rem 0" }}>
               <div style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>{t("cloudBrowseLoading")}</div>

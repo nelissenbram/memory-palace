@@ -139,6 +139,8 @@ export default function PricingPage() {
         background: C.linen,
         fontFamily: F.body,
         color: C.charcoal,
+        paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
+        paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
       }}
     >
       {/* Nav */}

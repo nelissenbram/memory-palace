@@ -56,6 +56,9 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
       <div style={{
         width: "100%", maxWidth: "43.75rem", display: "flex", alignItems: "center",
         justifyContent: "space-between", padding: "1.25rem 1.5rem 0.75rem",
+        paddingTop: "max(1.25rem, env(safe-area-inset-top, 0px))",
+        paddingLeft: "max(1.5rem, env(safe-area-inset-left, 0px))",
+        paddingRight: "max(1.5rem, env(safe-area-inset-right, 0px))",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
           <span style={{ fontSize: "1.375rem" }}>{"\u{1F4E6}"}</span>
@@ -71,8 +74,11 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
       </div>
 
       {/* Player area */}
-      <div style={{
+      <div className="mp-scroll" style={{
         width: "100%", maxWidth: "43.75rem", flex: 1, overflow: "auto", padding: "0 1.5rem 1.5rem",
+        paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))",
+        paddingLeft: "max(1.5rem, env(safe-area-inset-left, 0px))",
+        paddingRight: "max(1.5rem, env(safe-area-inset-right, 0px))",
       }}>
         {mems.length === 0 ? (
           <div style={{

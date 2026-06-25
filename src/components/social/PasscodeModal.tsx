@@ -212,10 +212,12 @@ export default function PasscodeModal({
       <TuscanCard
         variant="solid"
         padding="2rem"
+        className="mp-scroll"
         style={{
           width: "min(30rem, 92vw)",
-          maxHeight: "85vh",
+          maxHeight: "90dvh",
           overflow: "auto",
+          paddingBottom: "max(2rem, env(safe-area-inset-bottom, 0px))",
         }}
       >
         <h2

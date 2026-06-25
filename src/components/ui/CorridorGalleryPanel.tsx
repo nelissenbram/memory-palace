@@ -139,7 +139,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
 
   return (
     <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(42,34,24,.4)", backdropFilter: "blur(8px)", zIndex: 55, animation: "fadeIn .2s ease" }}>
-      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
+      <div ref={containerRef} className="mp-scroll" role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
         position: "absolute", right: 0, top: 0, bottom: 0,
         width: isMobile ? "100%" : "min(27.5rem, 92vw)",
         background: "rgba(255,255,255,0.82)",
@@ -147,7 +147,10 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
         WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
         borderLeft: isMobile ? "none" : `0.0625rem solid ${T.color.cream}`,
         boxShadow: `-1rem 0 2.5rem rgba(44,44,42,0.12), inset 0 0.0625rem 0 rgba(255,255,255,0.7)`,
-        padding: isMobile ? "1.25rem 1rem" : "1.75rem 1.5rem",
+        paddingTop: `max(${isMobile ? "1.25rem" : "1.75rem"}, env(safe-area-inset-top, 0px))`,
+        paddingBottom: `max(${isMobile ? "1.25rem" : "1.75rem"}, env(safe-area-inset-bottom, 0px))`,
+        paddingLeft: `max(${isMobile ? "1rem" : "1.5rem"}, env(safe-area-inset-left, 0px))`,
+        paddingRight: `max(${isMobile ? "1rem" : "1.5rem"}, env(safe-area-inset-right, 0px))`,
         overflowY: "auto",
         animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)",
       }}>
@@ -288,7 +291,10 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
               background: "rgba(42,34,24,0.55)",
               backdropFilter: "blur(0.75rem)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              padding: "1rem",
+              paddingTop: "max(1rem, env(safe-area-inset-top, 0px))",
+              paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
+              paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))",
+              paddingRight: "max(1rem, env(safe-area-inset-right, 0px))",
               animation: "fadeIn .2s ease",
             }}
           >
@@ -352,7 +358,7 @@ export default function CorridorGalleryPanel({ wing, rooms, onClose, onPaintings
                   {t("noPhotos")}
                 </p>
               ) : (
-                <div style={{
+                <div className="mp-scroll" style={{
                   display: "flex",
                   flexDirection: "column",
                   gap: "0.5rem",

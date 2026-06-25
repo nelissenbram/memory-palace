@@ -92,6 +92,7 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
       onClick={onClose}
     >
       <div
+        className="mp-scroll"
         ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }}
         onClick={(e) => e.stopPropagation()}
         style={{
@@ -104,6 +105,10 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           border: isMobile ? "none" : `1px solid ${T.color.sandstone}44`,
           boxShadow: isMobile ? "none" : `0 1.5rem 5rem rgba(44,44,42,.35)`,
           padding: isMobile ? "1.25rem 1rem 1rem" : "2rem 1.75rem 1.75rem",
+          paddingTop: isMobile ? "max(1.25rem, env(safe-area-inset-top, 0px))" : undefined,
+          paddingBottom: isMobile ? "max(1rem, env(safe-area-inset-bottom, 0px))" : undefined,
+          paddingLeft: isMobile ? "max(1rem, env(safe-area-inset-left, 0px))" : undefined,
+          paddingRight: isMobile ? "max(1rem, env(safe-area-inset-right, 0px))" : undefined,
           animation: isMobile ? "fadeIn .2s ease" : "fadeUp .35s ease",
         }}
       >
