@@ -5,10 +5,10 @@ The app requires an account. Email sign-up needs email confirmation, which a rev
 cannot complete in-app, so a **pre-confirmed demo account with sample data** must be
 provided here.
 
-- Email: `review@thememorypalace.ai`   ← create + pre-confirm this, seed with sample memories
-- Password: `__________`               ← set a password and put it here
-- (Verify the reviewer can log in with email/password inside the app, reach the full
-  palace, and that the paywall opens the StoreKit sheet in the sandbox.)
+- Email: `apple-review@thememorypalace.ai`
+- Password: `AppleReview2026!`
+- (Verify: the email is CONFIRMED in Supabase auth — NOT "Waiting for verification" — and
+  that you can log in with these exact credentials inside the installed app on a device.)
 
 ## How to use the app (review walkthrough)
 1. Log in with the demo account above (email + password — do NOT use Sign in with Apple,
