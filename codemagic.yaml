@@ -108,7 +108,7 @@ workflows:
           </plist>
           PLIST
 
-      - name: Configure Info.plist (permissions + portrait lock)
+      - name: Configure Info.plist (permissions + orientations)
         script: |
           PLIST="ios/App/App/Info.plist"
           set_string() {
@@ -124,24 +124,26 @@ workflows:
           # Marketing version must match the App Store listing (1.3.0); build number from Codemagic.
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.3.0" "$PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :CFBundleShortVersionString string 1.3.0" "$PLIST"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$PLIST" 2>/dev/null || /usr/libexec/PlistBuddy -c "Add :CFBundleVersion string $BUILD_NUMBER" "$PLIST"
-          # Lock iPhone to portrait — the app is designed portrait-only (Apple Guideline 4).
+          # Auto-rotate: support portrait + landscape on iPhone.
           /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations array" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:0 string UIInterfaceOrientationPortrait" "$PLIST"
-          # Portrait-only on iPad too.
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:1 string UIInterfaceOrientationLandscapeLeft" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations:2 string UIInterfaceOrientationLandscapeRight" "$PLIST"
+          # All four orientations on iPad (satisfies iPad multitasking).
           /usr/libexec/PlistBuddy -c "Delete :UISupportedInterfaceOrientations~ipad" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad array" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:0 string UIInterfaceOrientationPortrait" "$PLIST"
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:1 string UIInterfaceOrientationPortraitUpsideDown" "$PLIST"
-          # A universal app that restricts orientations must opt out of iPad multitasking,
-          # or App Store validation rejects the bundle (otherwise all 4 orientations required).
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:2 string UIInterfaceOrientationLandscapeLeft" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:3 string UIInterfaceOrientationLandscapeRight" "$PLIST"
+          # Orientations are unrestricted now, so UIRequiresFullScreen is not needed.
           /usr/libexec/PlistBuddy -c "Delete :UIRequiresFullScreen" "$PLIST" 2>/dev/null || true
-          /usr/libexec/PlistBuddy -c "Add :UIRequiresFullScreen bool true" "$PLIST"
           # Fail the build if any required key is missing — never ship a plist that triggers a 5.1.1/4 reject.
           for k in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSPhotoLibraryAddUsageDescription NSMicrophoneUsageDescription NSSpeechRecognitionUsageDescription UISupportedInterfaceOrientations; do
             /usr/libexec/PlistBuddy -c "Print :$k" "$PLIST" >/dev/null 2>&1 || { echo "ERROR: Info.plist missing required key $k"; exit 1; }
           done
-          echo "Info.plist permission strings + portrait lock configured."
+          echo "Info.plist permission strings + orientations configured."
 
       - name: Set up code signing
         script: xcode-project use-profiles

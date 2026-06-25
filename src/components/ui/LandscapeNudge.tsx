@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { isNative } from "@/lib/native/platform";
 
 /**
  * Bottom strip on mobile portrait: three Palace logo marks, each paired with
@@ -14,9 +13,6 @@ import { isNative } from "@/lib/native/platform";
 export default function LandscapeNudge() {
   const { t } = useTranslation("exterior3d");
   const [visible, setVisible] = useState(false);
-  // On native, portrait is locked app-wide — a "rotate to landscape" hint is misleading.
-  const [nativeApp, setNativeApp] = useState(false);
-  useEffect(() => { setNativeApp(isNative()); }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -94,7 +90,7 @@ export default function LandscapeNudge() {
 
     {/* Bottom strip of three paired logo+instruction columns */}
     <div
-      aria-label={nativeApp ? t("dragHint") : t("rotateHint")}
+      aria-label={t("rotateHint")}
       style={{
         position: "absolute",
         left: 0,
@@ -139,22 +135,20 @@ export default function LandscapeNudge() {
         <span style={labelStyle}>{t("dragHint")}</span>
       </div>
 
-      {/* Column 3: Rocking logo → rotate for better view (web only — portrait is locked on native) */}
-      {!nativeApp && (
-        <div style={columnStyle}>
-          <div style={logoWrap}>
-            <div
-              style={{
-                transformOrigin: "50% 60%",
-                animation: `mpLNRock ${PERIOD} cubic-bezier(0.65,0,0.35,1) infinite`,
-              }}
-            >
-              <PalaceLogo variant="mark" color="dark" size="md" />
-            </div>
+      {/* Column 3: Rocking logo → rotate for better view */}
+      <div style={columnStyle}>
+        <div style={logoWrap}>
+          <div
+            style={{
+              transformOrigin: "50% 60%",
+              animation: `mpLNRock ${PERIOD} cubic-bezier(0.65,0,0.35,1) infinite`,
+            }}
+          >
+            <PalaceLogo variant="mark" color="dark" size="md" />
           </div>
-          <span style={labelStyle}>{t("rotateHint")}</span>
         </div>
-      )}
+        <span style={labelStyle}>{t("rotateHint")}</span>
+      </div>
     </div>
   </>);
 }

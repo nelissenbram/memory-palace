@@ -733,6 +733,31 @@ export function FeatureReceiveIcon({ style, size = 48 }: IconProps) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   FeatureUploadIcon — Photo frame with an upload arrow (add photos & videos)
+   ═══════════════════════════════════════════════════════════════════════════ */
+export function FeatureUploadIcon({ style, size = 48 }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 48 48"
+      width={size}
+      height={size}
+      style={style}
+      aria-hidden="true"
+    >
+      {/* Photo frame */}
+      <rect x="9" y="17" width="30" height="23" rx="2.5" fill="none" stroke="#8B7355" strokeWidth="1.6" />
+      {/* Sun + mountains inside */}
+      <circle cx="17" cy="25" r="2.4" fill="#C66B3D" opacity="0.6" />
+      <path d="M11 38L20 29L26 35L31 30L37 38" fill="none" stroke="#8B7355" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Upload arrow above the frame */}
+      <line x1="24" y1="6" x2="24" y2="16" stroke="#C66B3D" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M19 11L24 6L29 11" fill="none" stroke="#C66B3D" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    10. FeatureExploreIcon — Connected palaces with compass
    ═══════════════════════════════════════════════════════════════════════════ */
 

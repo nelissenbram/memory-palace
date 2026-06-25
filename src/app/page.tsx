@@ -22,7 +22,6 @@ import {
   HeroIllustration,
   FeaturePalaceIcon,
   FeatureInterviewIcon,
-  FeatureCloudIcon,
   FeatureTimeCapsuleIcon,
   FeatureSharingIcon,
   FeatureLegacyIcon,
@@ -31,6 +30,7 @@ import {
   FeatureMemoryMapIcon,
   FeatureKepIcon,
   FeatureReceiveIcon,
+  FeatureUploadIcon,
   FeatureExploreIcon,
   AudienceHeritageIcon,
   AudienceGuardianIcon,
@@ -97,68 +97,6 @@ function ScrollFadeIn({ children, delay = 0 }: { children: React.ReactNode; dela
       }}
     >
       {children}
-    </div>
-  );
-}
-
-/* ───────── Screenshot + BrowserFrame helpers ───────── */
-function Screenshot({ src, alt, sizes = "(max-width: 640px) 500px, (max-width: 1024px) 800px, 1200px" }: {
-  src: string; alt: string; sizes?: string;
-}) {
-  const basePath = src.replace(/\.webp$/, "");
-  return (
-    <img
-      src={`${basePath}-800w.webp`}
-      srcSet={`${basePath}-500w.webp 500w, ${basePath}-800w.webp 800w, ${basePath}-1200w.webp 1200w`}
-      sizes={sizes}
-      alt={alt}
-      loading="lazy"
-      decoding="async"
-      style={{
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-        display: "block",
-        borderRadius: "0 0 0.5rem 0.5rem",
-        filter: "sepia(0.25) saturate(0.9) hue-rotate(-5deg) brightness(0.95)",
-      }}
-    />
-  );
-}
-
-function BrowserFrame({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      borderRadius: "0.625rem",
-      overflow: "hidden",
-      background: "#1e1e1c",
-      boxShadow: "0 0.5rem 2rem rgba(212,175,55,0.08), 0 0.25rem 1rem rgba(0,0,0,0.3)",
-    }}>
-      {/* Browser chrome bar */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "0.375rem",
-        padding: "0.5rem 0.75rem",
-        background: "#2a2a28",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-      }}>
-        <span style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: "#ff5f57" }} />
-        <span style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: "#febc2e" }} />
-        <span style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: "#28c840" }} />
-        <div style={{
-          marginLeft: "0.5rem",
-          flex: 1,
-          height: "1.25rem",
-          borderRadius: "0.25rem",
-          background: "rgba(255,255,255,0.06)",
-          maxWidth: "14rem",
-        }} />
-      </div>
-      {/* Content */}
-      <div style={{ aspectRatio: "16 / 10", position: "relative", overflow: "hidden" }}>
-        {children}
-      </div>
     </div>
   );
 }
@@ -453,6 +391,10 @@ function LandingPageContent() {
   // Inside the iOS app we must never show Google Play references (Apple Guideline 2.3.10).
   // isIOS() only resolves client-side, so gate via state set after mount to avoid a flash.
   const [isIosApp, setIsIosApp] = useState(false);
+  // The nav collapses to a hamburger on phones. Until mounted it also collapses, so the
+  // full desktop link row never flashes on a phone before the hooks resolve (SSR-false).
+  const [mounted, setMounted] = useState(false);
+  const navCollapsed = !mounted || isMobile;
   const exitShownRef = useRef(false);
   const { locale, setLocale: setLocaleReload, setLocaleNoReload } = useTranslation("landing");
   const setLocale = setLocaleNoReload; // Landing page has all locale data statically imported — no reload needed
@@ -475,10 +417,8 @@ function LandingPageContent() {
       groupSubtitle: featuresAny?.captureGroupSubtitle ?? "",
       features: [
         { Icon: FeatureKepIcon, title: featuresAny?.kepCapture ?? "WhatsApp Capture", desc: featuresAny?.kepCaptureDesc ?? "" },
-        // Receive-shared (PWA share target) + cloud import are unavailable in the iOS app —
-        // don't advertise features the app can't honor (Apple 2.3.1).
-        ...(isIosApp ? [] : [{ Icon: FeatureReceiveIcon, title: featuresAny?.receiveSharing ?? "Receive Shared Memories", desc: featuresAny?.receiveSharingDesc ?? "" }]),
-        ...(isIosApp ? [] : [{ Icon: FeatureCloudIcon, title: landing.features.cloudImport, desc: landing.features.cloudImportDesc }]),
+        { Icon: FeatureReceiveIcon, title: featuresAny?.receiveSharing ?? "Receive Shared Memories", desc: featuresAny?.receiveSharingDesc ?? "" },
+        { Icon: FeatureUploadIcon, title: featuresAny?.uploadCapture ?? "Upload Photos & Videos", desc: featuresAny?.uploadCaptureDesc ?? "Add photos and videos straight from your device into any room." },
         { Icon: FeatureInterviewIcon, title: landing.features.aiInterviews, desc: landing.features.aiInterviewsDesc },
       ],
     },
@@ -584,6 +524,7 @@ function LandingPageContent() {
   /* ─── Detect iOS app to hide Google Play references (Apple Guideline 2.3.10) ─── */
   useEffect(() => {
     setIsIosApp(isIOS());
+    setMounted(true);
   }, []);
 
   /* ─── Set html lang attribute on locale change (P1 #5) ─── */
@@ -869,35 +810,35 @@ function LandingPageContent() {
           transition: "all 0.3s",
         }}
       >
-        <PalaceLogo variant="full" color={headerOpaque ? "dark" : "light"} size="md" />
+        <PalaceLogo variant={navCollapsed ? "mark" : "full"} color={headerOpaque ? "dark" : "light"} size="md" />
 
-        <div style={{ display: "flex", gap: isMobile ? "0.5rem" : "0.75rem", alignItems: "center" }}>
-          {!isSmall && (
+        <div style={{ display: "flex", gap: isMobile ? "0.5rem" : "0.75rem", alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", minWidth: 0 }}>
+          {!navCollapsed && (
             <a href="#features" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream, textDecoration: "none" }}>
               {landing.nav.features}
             </a>
           )}
-          {!isSmall && (
+          {!navCollapsed && (
             <a href="#how-it-works" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream, textDecoration: "none" }}>
               {landing.nav.howItWorks}
             </a>
           )}
-          {!isSmall && (
+          {!navCollapsed && (
             <Link href="/pricing" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream }}>
               {landing.nav.pricing}
             </Link>
           )}
-          {!isSmall && (
+          {!navCollapsed && (
             <Link href="/blog" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream }}>
               {landing.nav.blog}
             </Link>
           )}
-          {!isSmall && (
+          {!navCollapsed && (
             <Link href="/login" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream }}>
               {landing.nav.signIn}
             </Link>
           )}
-          {!isSmall && (
+          {!navCollapsed && (
             <select
               value={locale}
               onChange={(e) => setLocale(e.target.value as typeof locale)}
@@ -928,7 +869,7 @@ function LandingPageContent() {
               ))}
             </select>
           )}
-          {!isSmall && (
+          {!navCollapsed && (
             <button
               onClick={() => handleCtaClick("nav", "/register")}
               className="lp-nav-cta"
@@ -946,7 +887,7 @@ function LandingPageContent() {
             </button>
           )}
           {/* P1 #11: Hamburger menu for small screens */}
-          {isSmall && (
+          {navCollapsed && (
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label={mobileMenuOpen ? lAny?.a11y?.closeMenu : lAny?.a11y?.openMenu}
@@ -969,7 +910,7 @@ function LandingPageContent() {
         </div>
 
         {/* P1 #11: Mobile dropdown menu */}
-        {isSmall && mobileMenuOpen && (
+        {navCollapsed && mobileMenuOpen && (
           <>
           {/* Backdrop overlay */}
           <div
@@ -1408,7 +1349,7 @@ function LandingPageContent() {
                     <ScrollFadeIn key={f.title} delay={0.05 + i * 0.07}>
                       <div
                         className="lp-card"
-                        style={featureCard}
+                        style={{ ...featureCard, ...(isMobile ? { padding: "1.75rem 1.25rem", maxWidth: "26rem", marginLeft: "auto", marginRight: "auto" } : {}) }}
                       >
                         <div style={{ marginBottom: "1.125rem" }}>
                           <f.Icon size={48} />
@@ -1674,34 +1615,37 @@ function LandingPageContent() {
             className="lp-screenshot-carousel"
           >
             {[
-              { src: "/screenshots/corridor-gallery.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselCorridor ?? "Walk through torch-lit corridors of memory" },
-              { src: "/screenshots/interview-intro.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselInterview ?? "AI picks the perfect questions for your story" },
-              { src: "/screenshots/family-tree-view.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselFamilyTree ?? "Visualize generations of your family" },
-              { src: "/screenshots/library-nest.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselLibrary ?? "Your personal memory library" },
-              { src: "/screenshots/achievements.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselAchievements ?? "Earn badges as you preserve your story" },
-              { src: "/screenshots/quest-preserve.webp", caption: (lAny?.screenshots as Record<string, string>)?.carouselQuest ?? "Guided journeys to unlock memories" },
-            ].map((item, i) => (
+              "/screenshots/store/screenshot-1-exterior.webp",
+              "/screenshots/store/screenshot-2-entrance.webp",
+              "/screenshots/store/screenshot-3-room.webp",
+              "/screenshots/store/screenshot-4-family-tree.webp",
+              "/screenshots/store/screenshot-5-interview.webp",
+              "/screenshots/store/screenshot-6-explore.webp",
+              "/screenshots/store/screenshot-7-library.webp",
+              "/screenshots/store/screenshot-8-achievements.webp",
+            ].map((src, i) => (
               <div
                 key={i}
                 style={{
                   flex: "0 0 auto",
-                  width: isMobile ? "85vw" : "22rem",
+                  width: isMobile ? "58vw" : "15rem",
                   scrollSnapAlign: "start",
                 }}
               >
-                <BrowserFrame>
-                  <Screenshot src={item.src} alt={item.caption} />
-                </BrowserFrame>
-                <p style={{
-                  fontFamily: F.body,
-                  fontSize: "0.8125rem",
-                  color: MUTED_ON_DARK,
-                  textAlign: "center",
-                  marginTop: "0.75rem",
-                  lineHeight: 1.4,
-                }}>
-                  {item.caption}
-                </p>
+                {/* Portrait App Store screenshots (phone frame + captions already baked in). */}
+                <img
+                  src={src}
+                  alt={`The Memory Palace app — screen ${i + 1}`}
+                  loading="lazy"
+                  draggable={false}
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    display: "block",
+                    borderRadius: "1.5rem",
+                    boxShadow: "0 1.25rem 2.5rem rgba(0,0,0,0.35)",
+                  }}
+                />
               </div>
             ))}
           </div>
@@ -2045,7 +1989,8 @@ function LandingPageContent() {
                     border: "1px solid rgba(255,255,255,0.08)",
                     display: "flex",
                     flexDirection: "column",
-                    justifyContent: "space-between",
+                    justifyContent: "flex-start",
+                    gap: "1.25rem",
                     animation: `fadeUp 0.6s ease ${0.15 + i * 0.1}s both`,
                   }}
                 >
@@ -2509,7 +2454,7 @@ function LandingPageContent() {
           <p style={{ fontSize: "0.75rem", color: MUTED_ON_DARK }}>
             &copy; {new Date().getFullYear()} {landing.footer.copyright}
           </p>
-          <div style={{ display: "flex", gap: "1.25rem" }}>
+          <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", justifyContent: "center" }}>
             <Link
               href="/privacy"
               className="lp-footer-link"
@@ -2718,6 +2663,8 @@ const navLink: React.CSSProperties = {
   padding: "0.5rem 1rem",
   borderRadius: "0.5rem",
   transition: "color 0.2s",
+  whiteSpace: "nowrap",
+  flexShrink: 0,
 };
 
 const navCta: React.CSSProperties = {
