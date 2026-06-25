@@ -7,8 +7,11 @@ Agreement is still being finalized (tax form + banking verification in progress)
 StoreKit products are live**. Every feature in the app is available **at no cost** in this
 version. Subscriptions will be introduced in a later update once the agreement is active.
 
-Please review the **entire app as a free app**. There is no purchase flow to test in this
-build; any subscription/pricing screen is informational only and does not charge.
+Please review the **entire app as a free app**. **If you tap a subscription option or "Start
+trial," it will intentionally not complete a purchase in this version** — In-App Purchase is
+not active yet, so the StoreKit sheet will not appear. This is expected, not a defect: the app
+is fully functional and free without any purchase. The subscription UI remains only as a
+preview of a future update and can be disregarded for this review.
 
 ## Demo account (REQUIRED)
 The app requires an account; email sign-up needs email confirmation a reviewer can't complete
