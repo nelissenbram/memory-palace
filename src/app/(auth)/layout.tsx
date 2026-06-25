@@ -37,8 +37,9 @@ export default async function AuthLayout({
 
   return (
     <div
+      className="mp-scroll"
       style={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -46,7 +47,10 @@ export default async function AuthLayout({
           "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
         fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
         position: "relative",
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+        paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))",
       }}
     >
       {/* Decorative blobs */}

@@ -2176,7 +2176,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       for(let i=0;i<e.changedTouches.length;i++){
         const t=e.changedTouches[i];const rect=el.getBoundingClientRect();
         const rx=(t.clientX-rect.left)/rect.width,ry=(t.clientY-rect.top)/rect.height;
-        if(rx<.25&&ry>.75&&touchMoveId2===null){
+        if(rx<.25&&ry>.75&&touchMoveId2===null&&!document.querySelector("[data-mp-joystick]")){
           touchMoveId2=t.identifier;touchMoveDir2.x=0;touchMoveDir2.z=0;
           prev.current={x:t.clientX,y:t.clientY};
         }else if(touchLookId2===null){

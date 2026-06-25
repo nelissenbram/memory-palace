@@ -46,7 +46,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   }, [chunk]);
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: T.font.body, background: T.color.linen }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: T.font.body, background: T.color.linen, paddingTop: "env(safe-area-inset-top, 0px)", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <div style={{ textAlign: "center", maxWidth: "28rem", padding: "2rem" }}>
         <h2 style={{ fontFamily: T.font.display, fontSize: "1.5rem", color: T.color.charcoal, marginBottom: "1rem" }}>
           {t(chunk ? i.updateTitle : i.title)}

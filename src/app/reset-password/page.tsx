@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
   // Loading state while checking session
   if (hasSession === null) {
     return (
-      <div style={wrapperStyle}>
+      <div className="mp-scroll" style={wrapperStyle}>
         <main style={cardStyle}>
           <div style={{ textAlign: "center", padding: "2rem 0" }}>
             <div style={spinnerStyle} />
@@ -62,7 +62,7 @@ export default function ResetPasswordPage() {
   // No session — link expired or invalid
   if (!hasSession) {
     return (
-      <div style={wrapperStyle}>
+      <div className="mp-scroll" style={wrapperStyle}>
         <main style={cardStyle}>
           <div style={{ textAlign: "center" }}>
             <div style={iconContainerStyle}>
@@ -86,7 +86,7 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div style={wrapperStyle}>
+    <div className="mp-scroll" style={wrapperStyle}>
       <main style={cardStyle}>
         <form onSubmit={handleSubmit}>
           <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
@@ -160,14 +160,17 @@ export default function ResetPasswordPage() {
 }
 
 const wrapperStyle: React.CSSProperties = {
-  minHeight: "100vh",
+  minHeight: "100dvh",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   background: "linear-gradient(165deg, #FAFAF7 0%, #F2EDE7 50%, #D4C5B2 100%)",
   fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
   position: "relative",
-  overflow: "hidden",
+  overflowX: "hidden",
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
+  paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 0px))",
 };
 
 const cardStyle: React.CSSProperties = {
@@ -221,7 +224,7 @@ const inputStyle: React.CSSProperties = {
   border: `1.5px solid ${T.color.sandstone}`,
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: "0.875rem",
+  fontSize: "1rem",
   color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box",

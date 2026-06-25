@@ -1528,7 +1528,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       for(let i=0;i<e.changedTouches.length;i++){
         const t=e.changedTouches[i];const rect=el.getBoundingClientRect();
         const rx=(t.clientX-rect.left)/rect.width,ry=(t.clientY-rect.top)/rect.height;
-        if(rx<.25&&ry>.75&&touchMoveId===null){
+        if(rx<.25&&ry>.75&&touchMoveId===null&&!document.querySelector("[data-mp-joystick]")){
           touchMoveId=t.identifier;touchMoveDir.x=0;touchMoveDir.z=0;
           prev.x=t.clientX;prev.y=t.clientY;
         }else if(touchLookId===null){

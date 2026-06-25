@@ -1009,7 +1009,7 @@ function MobileThreeBarNav(props: MobileThreeBarNavProps) {
     return pillBase;
   };
 
-  const BAR_H = "2.5rem";
+  const BAR_H = "2.75rem";
   const bar1Top = safeT;
   const bar2Top = `calc(${safeT} + ${BAR_H})`;
   const bar3Top = `calc(${safeT} + ${BAR_H} * 2)`;

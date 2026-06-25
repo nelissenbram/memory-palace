@@ -40,7 +40,7 @@ export default function ProfileCard({
 
   return (
     <TuscanCard variant="glass" padding={compact ? "1rem" : "1.5rem"}>
-      <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+      <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
         {/* Avatar */}
         <div
           role="img"

@@ -226,10 +226,12 @@ export default function PalaceOverviewClient({
       style={{
         minHeight: "100dvh",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
-        paddingTop: isAuthenticated && !isMobile ? "3.5rem" : undefined,
+        paddingTop: isAuthenticated && !isMobile
+          ? "3.5rem"
+          : "env(safe-area-inset-top, 0px)",
         paddingBottom: isAuthenticated && isMobile
           ? "calc(5rem + env(safe-area-inset-bottom, 0px))"
-          : "4rem",
+          : "max(4rem, env(safe-area-inset-bottom, 0px))",
         paddingLeft: isMobile ? "0.75rem" : "1rem",
         paddingRight: isMobile ? "0.75rem" : "1rem",
       }}
@@ -299,6 +301,7 @@ export default function PalaceOverviewClient({
                 alignItems: "center",
                 gap: "0.875rem",
                 marginBottom: "1.25rem",
+                flexWrap: isMobile ? "wrap" : "nowrap",
               }}>
                 <div
                   style={{

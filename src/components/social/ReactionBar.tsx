@@ -157,13 +157,16 @@ export default function ReactionBar({
               left: "50%",
               transform: "translateX(-50%)",
               display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              maxWidth: "calc(100vw - 2rem)",
               gap: "0.25rem",
               padding: "0.5rem",
               borderRadius: "0.75rem",
               background: T.color.cream,
               border: `1px solid ${T.color.sandstone}`,
               boxShadow: "0 0.25rem 1rem rgba(0,0,0,0.1)",
-              zIndex: 10,
+              zIndex: 30,
             }}
           >
             {REACTION_EMOJIS.map((r) => (

@@ -101,7 +101,10 @@ export default function LandscapeNudge() {
         display: "flex",
         alignItems: "flex-end",
         justifyContent: "space-around",
-        padding: "0 1rem",
+        paddingTop: 0,
+        paddingBottom: 0,
+        paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))",
+        paddingRight: "max(1rem, env(safe-area-inset-right, 0px))",
         animation: "mpLNFadeIn 0.6s cubic-bezier(0.2,0.8,0.2,1) both",
       }}
     >

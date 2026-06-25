@@ -129,6 +129,7 @@ export default function SafetyMenu({
               top: "100%",
               zIndex: 41,
               minWidth: "11rem",
+              maxWidth: "calc(100vw - 2rem)",
               background: T.color.cream,
               border: `1px solid ${T.color.sandstone}`,
               borderRadius: "0.625rem",

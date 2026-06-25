@@ -349,7 +349,7 @@ const inputStyle: React.CSSProperties = {
   border: `1.5px solid ${T.color.sandstone}`,
   background: T.color.white,
   fontFamily: T.font.body,
-  fontSize: "0.875rem",
+  fontSize: "1rem",
   color: T.color.charcoal,
   outline: "none",
   boxSizing: "border-box",

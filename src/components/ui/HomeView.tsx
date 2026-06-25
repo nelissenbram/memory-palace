@@ -482,11 +482,14 @@ export default function HomeView() {
 
       {/* ── SCROLLABLE CONTENT AREA ── */}
       <div
+        className="mp-scroll"
         style={{
           flex: 1,
           overflowY: "auto",
           overflowX: "hidden",
           WebkitOverflowScrolling: "touch",
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         <div

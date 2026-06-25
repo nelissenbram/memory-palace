@@ -133,7 +133,7 @@ export default function MobileJoystick({ onMove, visible }: MobileJoystickProps)
       style={{
         position: "absolute",
         bottom: "calc(7.5rem + env(safe-area-inset-bottom, 0px))",
-        left: "1.25rem",
+        left: "calc(1.25rem + env(safe-area-inset-left, 0px))",
         width: `${OUTER_SIZE_REM}rem`,
         height: `${OUTER_SIZE_REM}rem`,
         borderRadius: "50%",

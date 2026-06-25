@@ -82,6 +82,8 @@ export default function PalaceLoadingScreen({
           fontFamily: T.font.display,
           animation: `sceneLoadFadeOut 0.8s ease-in-out ${fadeDelay}s forwards`,
           pointerEvents: "none",
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         {content}
@@ -101,6 +103,8 @@ export default function PalaceLoadingScreen({
         justifyContent: "center",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone} 100%)`,
         fontFamily: T.font.display,
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
       {content}

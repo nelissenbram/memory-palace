@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { navigateInApp } from "@/lib/native/platform";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
@@ -90,6 +91,10 @@ interface OnboardingWizardProps {
 
 export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
   const isMobile = useIsMobile();
+  const isPortrait = useIsPortrait();
+  // Landscape phone: full-screen centered setup cards clip at the top when taller
+  // than the short viewport. Switch to top-aligned + scrollable. Portrait unchanged.
+  const isLandscapePhone = isMobile && !isPortrait;
   const { t, locale, setLocaleNoReload } = useTranslation("onboarding");
   const { t: tPalace } = useTranslation("palace");
   const {
@@ -409,7 +414,9 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
         <div style={{
           position: "relative", zIndex: 2,
           width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: isLandscapePhone ? "flex-start" : "center",
+          overflowY: isLandscapePhone ? "auto" : undefined,
         }}>
           <StepIndicator current={1} total={3} />
 
@@ -563,7 +570,9 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
         <div style={{
           position: "relative", zIndex: 2,
           width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: isLandscapePhone ? "flex-start" : "center",
+          overflowY: isLandscapePhone ? "auto" : undefined,
         }}>
           <StepIndicator current={2} total={3} />
 
@@ -829,7 +838,9 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
         <div style={{
           position: "relative", zIndex: 2,
           width: "100%", height: "100%",
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: isLandscapePhone ? "flex-start" : "center",
+          overflowY: isLandscapePhone ? "auto" : undefined,
         }}>
           <StepIndicator current={3} total={3} />
 

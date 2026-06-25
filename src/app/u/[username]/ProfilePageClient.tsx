@@ -44,10 +44,12 @@ export default function ProfilePageClient({
       style={{
         minHeight: "100dvh",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
-        paddingTop: isAuthenticated && !isMobile ? "3.5rem" : undefined,
+        paddingTop: isAuthenticated && !isMobile
+          ? "3.5rem"
+          : "env(safe-area-inset-top, 0px)",
         paddingBottom: isAuthenticated && isMobile
           ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))"
-          : "2rem",
+          : "max(2rem, env(safe-area-inset-bottom, 0px))",
       }}
     >
       {/* Desktop NavigationBar */}

@@ -10,7 +10,8 @@ export default function Loading() {
       <div style={{
         minHeight: "100dvh",
         background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
-        paddingTop: "3.5rem",
+        paddingTop: "max(3.5rem, calc(3.5rem + env(safe-area-inset-top, 0px)))",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}>
         <div style={{ maxWidth: "56rem", margin: "0 auto", padding: "0 1rem" }}>
           {/* Back button skeleton */}
