@@ -4949,6 +4949,7 @@
     "safetyClose": "Fermer",
     "blockedAccounts": "Comptes bloqués",
     "blockedAccountsEmpty": "Vous n'avez bloqué personne.",
+    "blockedAccountsHint": "Bloquez quelqu’un pour l’empêcher de vous suivre ou d’interagir avec votre palais. Gérez ici les personnes que vous avez bloquées.",
     "unblock": "Débloquer",
     "feedEmpty": "Aucune activité pour le moment. Suivez d'autres créateurs de palais pour voir leurs mises à jour ici.",
     "feedPublished": "{name} a publié {target}",

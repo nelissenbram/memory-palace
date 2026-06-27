@@ -28,8 +28,8 @@ export default function BlockedAccountsPanel() {
     });
   };
 
-  // Hide the whole section until we know there's something to show
-  if (!users || users.length === 0) return null;
+  // Still loading — don't flash an empty state.
+  if (users === null) return null;
 
   return (
     <div
@@ -48,11 +48,37 @@ export default function BlockedAccountsPanel() {
           fontSize: "1.25rem",
           fontWeight: 500,
           color: T.color.charcoal,
-          margin: "0 0 1rem",
+          margin: "0 0 0.5rem",
         }}
       >
         {t("blockedAccounts")}
       </h3>
+      {/* Always-visible explainer so blocking/management is discoverable even
+          before anyone is blocked (Apple Guideline 1.2). */}
+      <p
+        style={{
+          fontFamily: T.font.body,
+          fontSize: "0.875rem",
+          color: T.color.walnut,
+          lineHeight: 1.5,
+          margin: "0 0 1rem",
+        }}
+      >
+        {t("blockedAccountsHint")}
+      </p>
+      {users.length === 0 ? (
+        <p
+          style={{
+            fontFamily: T.font.body,
+            fontSize: "0.875rem",
+            color: T.color.muted,
+            margin: 0,
+            fontStyle: "italic",
+          }}
+        >
+          {t("blockedAccountsEmpty")}
+        </p>
+      ) : (
       <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
         {users.map((u) => (
           <div
@@ -114,6 +140,7 @@ export default function BlockedAccountsPanel() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

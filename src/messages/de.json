@@ -4949,6 +4949,7 @@
     "safetyClose": "Schließen",
     "blockedAccounts": "Blockierte Konten",
     "blockedAccountsEmpty": "Du hast niemanden blockiert.",
+    "blockedAccountsHint": "Blockiere jemanden, damit er dir nicht mehr folgen oder mit deinem Palast interagieren kann. Verwalte hier alle blockierten Personen.",
     "unblock": "Entblocken",
     "feedEmpty": "Noch keine Aktivität. Folgen Sie anderen Palast-Erstellern, um deren Updates hier zu sehen.",
     "feedPublished": "{name} hat {target} veröffentlicht",

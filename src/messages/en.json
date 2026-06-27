@@ -4949,6 +4949,7 @@
     "safetyClose": "Close",
     "blockedAccounts": "Blocked accounts",
     "blockedAccountsEmpty": "You haven't blocked anyone.",
+    "blockedAccountsHint": "Block someone to stop them from following you or interacting with your palace. Manage anyone you have blocked here.",
     "unblock": "Unblock",
     "feedEmpty": "No activity yet. Follow other palace creators to see their updates here.",
     "feedPublished": "{name} published {target}",

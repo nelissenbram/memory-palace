@@ -4951,6 +4951,7 @@
     "safetyClose": "Sluiten",
     "blockedAccounts": "Geblokkeerde accounts",
     "blockedAccountsEmpty": "Je hebt niemand geblokkeerd.",
+    "blockedAccountsHint": "Blokkeer iemand om te voorkomen dat ze je volgen of met je paleis communiceren. Beheer hier wie je hebt geblokkeerd.",
     "unblock": "Deblokkeren",
     "feedEmpty": "Nog geen activiteit. Volg andere paleiscreators om hun updates hier te zien.",
     "feedPublished": "{name} heeft {target} gepubliceerd",
