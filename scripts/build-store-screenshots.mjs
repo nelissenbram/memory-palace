@@ -7,7 +7,7 @@ const APPSTORE = "store-assets/June2026b/appstore";
 const LANDING = "public/screenshots/store";
 fs.mkdirSync(APPSTORE, { recursive: true });
 
-const TARGET_W = 1290, TARGET_H = 2796; // App Store iPhone 6.7"/6.9"
+const TARGET_W = 1284, TARGET_H = 2778; // App Store iPhone 6.5" (1284×2778)
 
 async function edgeColor(buf, top) {
   const m = await sharp(buf).metadata();
