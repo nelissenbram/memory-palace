@@ -18,6 +18,19 @@
 import { createClient } from "@/lib/supabase/client";
 import { isNative } from "@/lib/native/platform";
 
+// Where Supabase sends the user back after the OAuth provider step.
+// - Web: the standard same-origin callback page.
+// - Native: a CUSTOM-SCHEME url. iOS does not reliably fire an https Universal
+//   Link for the OAuth redirect chain inside the in-app auth sheet, which left
+//   the app frozen on the login page. A custom scheme is handed back to the app
+//   by the OS every time (intercepted in src/lib/native/deep-links.ts).
+//   ⚠️ This scheme MUST be allowlisted in Supabase → Authentication → URL
+//   Configuration → Redirect URLs, or Supabase rejects the redirect.
+const NATIVE_OAUTH_REDIRECT = "ai.thememorypalace.app://auth/callback";
+function callbackRedirect(): string {
+  return isNative() ? NATIVE_OAUTH_REDIRECT : window.location.origin + "/auth/callback";
+}
+
 let browserListenerAdded = false;
 let pendingReset: (() => void) | null = null;
 
@@ -44,7 +57,7 @@ type OAuthOpts = { onDismiss?: () => void };
 
 export async function signInWithGoogle(opts?: OAuthOpts): Promise<{ error?: string }> {
   const supabase = createClient();
-  const redirectTo = window.location.origin + "/auth/callback";
+  const redirectTo = callbackRedirect();
 
   if (isNative()) {
     await ensureBrowserDismissReset();
@@ -84,7 +97,7 @@ export async function signInWithGoogle(opts?: OAuthOpts): Promise<{ error?: stri
 
 export async function signInWithApple(opts?: OAuthOpts): Promise<{ error?: string }> {
   const supabase = createClient();
-  const redirectTo = window.location.origin + "/auth/callback";
+  const redirectTo = callbackRedirect();
 
   if (isNative()) {
     await ensureBrowserDismissReset();

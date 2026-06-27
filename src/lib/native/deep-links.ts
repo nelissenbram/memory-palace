@@ -22,14 +22,21 @@ export function initDeepLinkListener() {
     try {
       const parsedUrl = new URL(url);
 
-      // Handle OAuth callback
-      if (parsedUrl.pathname === "/auth/callback") {
+      // Handle OAuth callback. It arrives either as our custom-scheme URL
+      // (ai.thememorypalace.app://auth/callback?…) — which iOS hands back to the
+      // app reliably — or, as a fallback, an https Universal Link (/auth/callback).
+      // For the custom scheme, the host is "auth" and the path is "/callback".
+      const isOAuthCallback =
+        parsedUrl.pathname === "/auth/callback" ||
+        (parsedUrl.host === "auth" && parsedUrl.pathname === "/callback");
+      if (isOAuthCallback) {
         // Close the in-app browser (SFSafariViewController) if still open
         import("@capacitor/browser").then(({ Browser }) => {
           Browser.close().catch(() => {});
         }).catch(() => {});
-        // Supabase appends tokens as hash fragments or query params
-        // Navigate to the callback URL so the existing auth handler picks it up
+        // Supabase appends tokens as hash fragments or the auth code as a query
+        // param. Replay them into the WebView so the existing /auth/callback
+        // handler completes the session.
         const params = parsedUrl.hash || parsedUrl.search;
         window.location.href = `/auth/callback${params}`;
         return;

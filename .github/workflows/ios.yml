@@ -273,10 +273,48 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :UISupportedInterfaceOrientations~ipad:3 string UIInterfaceOrientationLandscapeRight" $PLIST
           # Orientations are unrestricted now, so UIRequiresFullScreen is not needed.
           /usr/libexec/PlistBuddy -c "Delete :UIRequiresFullScreen" $PLIST 2>/dev/null || true
+          # OAuth deep-link return scheme. Registers ai.thememorypalace.app:// so the
+          # Supabase in-app auth sheet can redirect straight back into the app via
+          # appUrlOpen (see src/lib/auth/social-login.ts + src/lib/native/deep-links.ts).
+          /usr/libexec/PlistBuddy -c "Delete :CFBundleURLTypes" $PLIST 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes array" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0 dict" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLName string ai.thememorypalace.app" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes array" $PLIST
+          /usr/libexec/PlistBuddy -c "Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string ai.thememorypalace.app" $PLIST
           # Fail the build if any required key is missing.
           for k in NSCameraUsageDescription NSPhotoLibraryUsageDescription NSPhotoLibraryAddUsageDescription NSMicrophoneUsageDescription NSSpeechRecognitionUsageDescription UISupportedInterfaceOrientations; do
             /usr/libexec/PlistBuddy -c "Print :$k" "$PLIST" >/dev/null 2>&1 || { echo "ERROR: Info.plist missing required key $k"; exit 1; }
           done
+
+      - name: Embed app privacy manifest
+        run: |
+          # Apple 5.1.1 / ITMS-91053: ensure an app-target PrivacyInfo.xcprivacy is
+          # embedded. Capacitor ships only framework-level manifests, not an app one.
+          # Best-effort and NON-FATAL — the build proceeds even if this step fails.
+          set +e
+          cp ios-privacy-manifest.xcprivacy ios/App/App/PrivacyInfo.xcprivacy
+          gem install xcodeproj --no-document >/dev/null 2>&1
+          ruby -e '
+            begin
+              require "xcodeproj"
+              proj = Xcodeproj::Project.open("ios/App/App.xcodeproj")
+              t = proj.targets.find { |x| x.name == "App" } or raise "no App target"
+              grp = proj.main_group.find_subpath("App", true)
+              unless grp.files.any? { |f| f.display_name == "PrivacyInfo.xcprivacy" }
+                ref = grp.new_reference("PrivacyInfo.xcprivacy")
+                t.add_resources([ref])
+                proj.save
+                puts "Embedded PrivacyInfo.xcprivacy into App resources"
+              else
+                puts "PrivacyInfo.xcprivacy already referenced"
+              end
+            rescue => e
+              warn "privacy manifest embed skipped (non-fatal): #{e}"
+            end
+          '
+          /usr/libexec/PlistBuddy -c "Print" ios/App/App/PrivacyInfo.xcprivacy 2>/dev/null || true
+          exit 0
 
       - name: Write App Store Connect API key
         run: |
