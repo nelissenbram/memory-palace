@@ -7,15 +7,32 @@ const APP_VERSION = "2026-04-19a";
 
 export default function ServiceWorkerRegistration() {
   useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      !("serviceWorker" in navigator) ||
-      process.env.NODE_ENV !== "production" ||
-      // Skip SW entirely inside Capacitor native WKWebView — it conflicts with native caching
-      (window as unknown as Record<string, unknown>).Capacitor ||
-      // Fallback: webkit.messageHandlers is set by WKWebView natively, even if Capacitor bridge fails
-      ((window as any).webkit && (window as any).webkit.messageHandlers)
-    ) return;
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+    // Detect the Capacitor native WKWebView. webkit.messageHandlers is set
+    // natively even if the Capacitor JS bridge failed to inject.
+    const isNativeWebView =
+      !!(window as unknown as Record<string, unknown>).Capacitor ||
+      !!((window as any).webkit && (window as any).webkit.messageHandlers);
+
+    if (isNativeWebView) {
+      // Don't just SKIP registration — actively tear down any service worker an
+      // OLDER build registered before this skip-in-native logic existed. WKWebView
+      // storage persists across app UPDATES, so a stale SW can keep serving broken
+      // cached assets in the updated app → white/unresponsive screen on launch.
+      // (Apple tests the update path explicitly.) Best-effort, runs once per load.
+      navigator.serviceWorker.getRegistrations()
+        .then((regs) => { regs.forEach((r) => { r.unregister().catch(() => {}); }); })
+        .catch(() => {});
+      if ("caches" in window) {
+        caches.keys()
+          .then((keys) => Promise.all(keys.map((k) => caches.delete(k).catch(() => false))))
+          .catch(() => {});
+      }
+      return;
+    }
+
+    if (process.env.NODE_ENV !== "production") return;
 
     // On first load, clear ALL caches to bust stale PWA content
     const versionKey = "mp_app_version";

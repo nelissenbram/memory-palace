@@ -1,4 +1,16 @@
 <!DOCTYPE html>
+<!--
+  Native WKWebView fallback page (Capacitor server.url app).
+  Bundled into the iOS/Android app as BOTH out/index.html (webDir placeholder)
+  and out/error.html (errorPath shown when the remote load hard-fails).
+
+  Design rules — this page must NEVER look "not responsive after launch":
+    1. A primary button is ALWAYS visible and tappable (no bare spinner,
+       no dead-end "force-quit the app" message).
+    2. It actively self-heals: probes connectivity immediately and, on success,
+       jumps to the live app. No multi-second upfront delay.
+    3. It never permanently bricks itself (no sessionStorage retry lock).
+-->
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
@@ -7,16 +19,16 @@
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{background:#F2EDE4;font-family:-apple-system,system-ui,sans-serif;
-         display:flex;align-items:center;justify-content:center;min-height:100vh;
-         min-height:100dvh;color:#5C4A32;
-         padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-    .wrap{text-align:center;padding:2rem;max-width:24rem}
+         display:flex;align-items:center;justify-content:center;
+         min-height:100vh;min-height:100dvh;color:#5C4A32;
+         padding:env(safe-area-inset-top) 1.5rem env(safe-area-inset-bottom)}
+    .wrap{text-align:center;max-width:24rem}
     .spinner{width:40px;height:40px;margin:0 auto 1.5rem;
              border:3px solid #D4C5A9;border-top-color:#8B7355;
              border-radius:50%;animation:spin .8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
     h1{font-size:1.25rem;font-weight:600;margin-bottom:.5rem}
-    p{font-size:.875rem;color:#8B7355;margin-bottom:1.25rem;line-height:1.5}
+    p{font-size:.9rem;color:#8B7355;margin-bottom:1.25rem;line-height:1.5}
     button{background:#8B7355;color:#fff;border:none;padding:.85rem 1.75rem;
            border-radius:.5rem;font-size:1rem;font-weight:600;cursor:pointer;
            min-height:48px;min-width:64px;-webkit-appearance:none;
@@ -30,9 +42,7 @@
     <div class="spinner" id="sp"></div>
     <h1>The Memory Palace</h1>
     <p id="msg">Loading&hellip;</p>
-    <!-- The button is ALWAYS present so the screen is never a bare, unresponsive
-         spinner. A tap reloads the app immediately. -->
-    <button id="retry" type="button" onclick="go()">Open The Memory Palace</button>
+    <button id="open" type="button" onclick="go()">Open The Memory Palace</button>
   </div>
   <script>
     (function(){
@@ -43,7 +53,7 @@
       function tryLoad(){
         if(done)return;
         attempt++;
-        // Connectivity probe. Opaque (no-cors) resolves on any reachable response.
+        // Opaque connectivity probe — resolves on any reachable response.
         fetch(URL,{method:'HEAD',mode:'no-cors',cache:'no-store'})
           .then(go)
           .catch(function(){
@@ -51,16 +61,17 @@
               try{document.getElementById('msg').textContent='Reconnecting…';}catch(e){}
               setTimeout(tryLoad,DELAY);
             }else{
-              // Stop spinning and tell the user plainly. The Open button stays tappable.
+              // Stop spinning, keep the button tappable. Never tell the user to
+              // force-quit; never lock the page permanently.
               try{
                 document.getElementById('sp').classList.add('hidden');
-                document.getElementById('msg').textContent='Could not connect. Check your internet connection, then tap below to try again.';
+                document.getElementById('msg').textContent='Check your internet connection, then tap below to continue.';
               }catch(e){}
             }
           });
       }
-      // Attempt IMMEDIATELY — no upfront delay. A good connection recovers in well
-      // under a second; a flaky one always has the Open button to tap.
+      // Probe IMMEDIATELY. Good network recovers in well under a second; a flaky
+      // one always has the Open button to tap.
       tryLoad();
     })();
   </script>

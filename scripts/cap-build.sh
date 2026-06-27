@@ -10,27 +10,10 @@ echo "==> Preparing Capacitor build..."
 # Ensure the webDir exists (required by cap sync even when using server URL)
 mkdir -p out
 
-# Create a minimal index.html fallback (shown briefly before server loads)
-cat > out/index.html << 'HTML'
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>The Memory Palace</title>
-  <style>
-    body {
-      margin: 0; display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; background: #FAFAF7; font-family: system-ui;
-    }
-    .loader { color: #8B7355; font-size: 16px; }
-  </style>
-</head>
-<body>
-  <div class="loader">Loading...</div>
-</body>
-</html>
-HTML
+# Self-healing, always-tappable fallback pages (single source of truth).
+# Used as the webDir placeholder (index.html) and the WKWebView errorPath.
+cp public/native-fallback.html out/index.html
+cp public/native-fallback.html out/error.html
 
 # Sync native plugins and config to Android/iOS projects
 echo "    Syncing Capacitor plugins and config..."

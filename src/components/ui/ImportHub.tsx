@@ -5,6 +5,7 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
+import { isNative } from "@/lib/native/platform";
 
 /* ═══════════════════════════════════════════════════════
    SVG Icons — Roman / Tuscan style line-art
@@ -673,7 +674,11 @@ export default function ImportHub({ onClose, onImportFiles, onOpenCloudProvider,
             </div>
 
             {/* ═══ D. CLOUD SERVICES — hidden during onboarding (lockRoom): the buttons are wired to a no-op there ═══ */}
-            {!lockRoom && (
+            {/* Cloud import is WEB ONLY. It is hidden in native apps (matching our
+                App Review notes) to avoid external-account OAuth flows and to keep
+                third-party brand logos (Google Photos / OneDrive / Dropbox) off
+                iOS (Apple Guideline 2.3.10). */}
+            {!lockRoom && !isNative() && (
             <div style={{ marginBottom: isMobile ? "0.75rem" : "1.25rem" }}>
               <p style={{
                 fontFamily: T.font.display, fontSize: isMobile ? "0.8125rem" : "0.9375rem", fontWeight: 600,

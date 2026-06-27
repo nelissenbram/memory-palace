@@ -104,6 +104,24 @@ export default async function RootLayout({
     <html lang={locale} className={`${cormorant.variable} ${manrope.variable}`}>
       <head>
         {/* Boot diagnostics removed — was sending device info without consent (Apple Guideline 5.1.2i) */}
+        {/* Native WKWebView: tear down any service worker + caches left by an OLDER
+            build BEFORE framework JS runs. WKWebView storage persists across app
+            updates, so a stale SW serving dead chunk hashes triggers a ChunkLoadError
+            reload loop = repeated blank screens on launch. Runs only in native. */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            try{
+              var native=(window.Capacitor)||(window.webkit&&window.webkit.messageHandlers)||(navigator.userAgent.indexOf("CapacitorNative")!==-1);
+              if(!native)return;
+              if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){
+                navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister().catch(function(){})})}).catch(function(){});
+              }
+              if(window.caches&&caches.keys){
+                caches.keys().then(function(k){return Promise.all(k.map(function(n){return caches.delete(n).catch(function(){return false})}))}).catch(function(){});
+              }
+            }catch(e){}
+          })();
+        `}} />
         {/* Global reload circuit breaker — caps ALL reloads at 5 per session to prevent infinite loops */}
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){
@@ -292,6 +310,11 @@ export default async function RootLayout({
           display: "flex", alignItems: "center", justifyContent: "center",
           backgroundColor: "#F2EDE4", fontFamily: "var(--font-display, Georgia, serif)",
           color: "#7A5230", fontSize: "1.25rem", letterSpacing: "0.05em",
+          // CRITICAL: never intercept input. The veil is purely cosmetic; with
+          // pointerEvents:auto it used to swallow the user's first ~1.2s of taps,
+          // reading as "not responsive after launch". Taps now always fall through
+          // to the app underneath, hydrated or not.
+          pointerEvents: "none",
         }}>
           The Memory Palace
         </div>
@@ -299,14 +322,14 @@ export default async function RootLayout({
           (function(){
             var el=document.getElementById("mp-loading");if(!el)return;
             function hide(){if(!el)return;el.style.opacity="0";el.style.transition="opacity 0.3s";setTimeout(function(){el.style.display="none"},300);}
-            // Backstop: never hold the veil more than 2.5s (was 8s — long enough to look frozen).
-            var t=setTimeout(hide,2500);
-            // First user interaction always dismisses the veil so a tap is never "dead".
+            // Backstop in case __mpHideLoading never fires (e.g. hydration error).
+            // The veil is already click-through, so this only affects what's VISIBLE.
+            var t=setTimeout(hide,4000);
+            // First user interaction also dismisses it (belt-and-suspenders).
             function onFirst(){clearTimeout(t);hide();document.removeEventListener("touchstart",onFirst);document.removeEventListener("click",onFirst);}
             document.addEventListener("touchstart",onFirst,{passive:true});
             document.addEventListener("click",onFirst);
-            // Let taps fall through to the app shortly after first paint, even if still fading.
-            setTimeout(function(){if(el)el.style.pointerEvents="none";},1200);
+            // Dismissed for real by NativeInit once React has mounted real content.
             window.__mpHideLoading=function(){clearTimeout(t);hide();};
           })();
         `}} />

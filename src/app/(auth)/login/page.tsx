@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, Suspense } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth/actions";
@@ -8,6 +8,7 @@ import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { createMFAChallenge, verifyMFAChallenge } from "@/lib/auth/mfa-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
+import { isIOS } from "@/lib/native/platform";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 
 export default function LoginPage() {
@@ -21,6 +22,32 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
+
+  // OAuth (social) sign-in state. `appleFirst` is set after mount (not during
+  // render) to avoid an SSR/client hydration mismatch; on iOS, Apple is shown
+  // first for at-least-equal prominence (Apple Guideline 4.8).
+  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
+  const [appleFirst, setAppleFirst] = useState(false);
+  useEffect(() => { setAppleFirst(isIOS()); }, []);
+
+  async function handleOAuth(provider: "google" | "apple") {
+    if (oauthLoading) return;
+    setError("");
+    setOauthLoading(provider);
+    const fn = provider === "google" ? signInWithGoogle : signInWithApple;
+    try {
+      // onDismiss resets the spinner if the in-app auth sheet is closed without
+      // completing — so a cancelled/failed sign-in never leaves a dead screen.
+      const { error: oauthErr } = await fn({ onDismiss: () => setOauthLoading(null) });
+      if (oauthErr) {
+        setError(oauthErr);
+        setOauthLoading(null);
+      }
+    } catch {
+      setError(tc("somethingWentWrong") || "Sign-in failed. Please try again.");
+      setOauthLoading(null);
+    }
+  }
 
   // MFA state
   const [mfaStep, setMfaStep] = useState(false);
@@ -363,23 +390,34 @@ function LoginContent() {
         <span style={dividerLineStyle} />
       </div>
 
-      <button
-        type="button"
-        onClick={() => signInWithGoogle()}
-        style={googleButtonStyle}
-      >
-        <GoogleIcon />
-        {t("signInWithGoogle")}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => signInWithApple()}
-        style={appleButtonStyle}
-      >
-        <AppleIcon />
-        {t("signInWithApple")}
-      </button>
+      {(() => {
+        const googleBtn = (
+          <button
+            key="google"
+            type="button"
+            onClick={() => handleOAuth("google")}
+            disabled={!!oauthLoading}
+            style={googleButtonStyle}
+          >
+            <GoogleIcon />
+            {oauthLoading === "google" ? t("signingIn") : t("signInWithGoogle")}
+          </button>
+        );
+        const appleBtn = (
+          <button
+            key="apple"
+            type="button"
+            onClick={() => handleOAuth("apple")}
+            disabled={!!oauthLoading}
+            style={appleButtonStyle}
+          >
+            <AppleIcon />
+            {oauthLoading === "apple" ? t("signingIn") : t("signInWithApple")}
+          </button>
+        );
+        // Apple first on iOS (Guideline 4.8); Google first elsewhere.
+        return appleFirst ? [appleBtn, googleBtn] : [googleBtn, appleBtn];
+      })()}
 
       <p
         style={{

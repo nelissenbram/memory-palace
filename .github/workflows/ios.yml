@@ -42,73 +42,10 @@ jobs:
       - name: Build Capacitor iOS (debug)
         run: |
           mkdir -p out
-          cat > out/index.html << 'FALLBACK'
-          <!DOCTYPE html>
-          <html lang="en"><head><meta charset="utf-8"/><title>Loading</title>
-          <style>body{background:#F2EDE4;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui}
-          .s{width:40px;height:40px;border:3px solid #D4C5A9;border-top-color:#8B7355;border-radius:50%;animation:r .8s linear infinite;margin:0 auto 1rem}
-          @keyframes r{to{transform:rotate(360deg)}}
-          </style></head><body><div style="text-align:center"><div class="s"></div><p>Loading...</p></div></body></html>
-          FALLBACK
-          cat > out/error.html << 'ERRORPAGE'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8"/>
-            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-            <title>The Memory Palace</title>
-            <style>
-              *{margin:0;padding:0;box-sizing:border-box}
-              body{background:#F2EDE4;font-family:-apple-system,system-ui,sans-serif;
-                   display:flex;align-items:center;justify-content:center;height:100vh;
-                   color:#5C4A32}
-              .wrap{text-align:center;padding:2rem}
-              .spinner{width:40px;height:40px;margin:0 auto 1.5rem;
-                       border:3px solid #D4C5A9;border-top-color:#8B7355;
-                       border-radius:50%;animation:spin .8s linear infinite}
-              @keyframes spin{to{transform:rotate(360deg)}}
-              h1{font-size:1.25rem;font-weight:600;margin-bottom:.5rem}
-              p{font-size:.875rem;color:#8B7355;margin-bottom:1rem}
-              button{background:#8B7355;color:#fff;border:none;padding:.75rem 1.5rem;
-                     border-radius:.5rem;font-size:.875rem;cursor:pointer}
-              .hidden{display:none}
-            </style>
-          </head>
-          <body>
-            <div class="wrap">
-              <div class="spinner" id="sp"></div>
-              <h1>The Memory Palace</h1>
-              <p id="msg">Connecting...</p>
-              <div id="fail" class="hidden">
-                <p>Could not connect. Please check your internet connection.</p>
-                <button onclick="location.href='https://www.thememorypalace.ai'">Try Again</button>
-              </div>
-            </div>
-            <script>
-              (function(){
-                var URL='https://www.thememorypalace.ai';
-                var MAX=3, DELAY=3000, attempt=0;
-                function tryLoad(){
-                  attempt++;
-                  document.getElementById('msg').textContent='Connecting (attempt '+attempt+'/'+MAX+')...';
-                  fetch(URL,{method:'HEAD',mode:'no-cors'}).then(function(){
-                    location.href=URL;
-                  }).catch(function(){
-                    if(attempt<MAX){
-                      setTimeout(tryLoad,DELAY);
-                    }else{
-                      document.getElementById('sp').classList.add('hidden');
-                      document.getElementById('msg').classList.add('hidden');
-                      document.getElementById('fail').classList.remove('hidden');
-                    }
-                  });
-                }
-                setTimeout(tryLoad,DELAY);
-              })();
-            </script>
-          </body>
-          </html>
-          ERRORPAGE
+          # Bundled WKWebView fallback pages — single source of truth in
+          # public/native-fallback.html (self-healing, always-tappable).
+          cp public/native-fallback.html out/index.html
+          cp public/native-fallback.html out/error.html
           npx cap add ios
           npx cap sync ios
 
@@ -262,122 +199,13 @@ jobs:
       - name: Sync Capacitor iOS
         run: |
           mkdir -p out
-          cat > out/index.html << 'FALLBACK'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8"/>
-            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-            <title>The Memory Palace</title>
-            <style>
-              *{margin:0;padding:0;box-sizing:border-box}
-              body{background:#F2EDE4;font-family:-apple-system,system-ui,sans-serif;
-                   display:flex;align-items:center;justify-content:center;height:100vh;
-                   color:#5C4A32}
-              .wrap{text-align:center;padding:2rem}
-              .spinner{width:40px;height:40px;margin:0 auto 1.5rem;
-                       border:3px solid #D4C5A9;border-top-color:#8B7355;
-                       border-radius:50%;animation:spin .8s linear infinite}
-              @keyframes spin{to{transform:rotate(360deg)}}
-              h1{font-size:1.25rem;font-weight:600;margin-bottom:.5rem}
-              p{font-size:.875rem;color:#8B7355}
-              .err{display:none;margin-top:1.5rem}
-              .err button{background:#8B7355;color:#fff;border:none;padding:.75rem 1.5rem;
-                          border-radius:.5rem;font-size:.875rem;cursor:pointer}
-            </style>
-          </head>
-          <body>
-            <div class="wrap">
-              <div class="spinner" id="sp"></div>
-              <h1>The Memory Palace</h1>
-              <p id="msg">Loading your palace...</p>
-              <div class="err" id="err">
-                <p>Could not connect. Please close the app completely (swipe up from multitasking) and reopen it.</p>
-              </div>
-            </div>
-            <script>
-              // If the remote app hasn't replaced this page within 15s, show error
-              // Track retries — after 3 attempts, stop retrying
-              (function(){
-                var KEY='mp_fallback_retries';
-                var MAX=3;
-                var n=0;
-                try{n=parseInt(sessionStorage.getItem(KEY)||'0',10);}catch(e){}
-                setTimeout(function(){
-                  document.getElementById('sp').style.display='none';
-                  document.getElementById('msg').style.display='none';
-                  var errEl=document.getElementById('err');
-                  if(n>=MAX){
-                    errEl.innerHTML='<p>Something went wrong. Please close the app completely and try again later.</p>';
-                  }else{
-                    try{sessionStorage.setItem(KEY,String(n+1));}catch(e){}
-                  }
-                  errEl.style.display='block';
-                },15000);
-              })();
-            </script>
-          </body>
-          </html>
-          FALLBACK
-          cat > out/error.html << 'ERRORPAGE'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8"/>
-            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-            <title>The Memory Palace</title>
-            <style>
-              *{margin:0;padding:0;box-sizing:border-box}
-              body{background:#F2EDE4;font-family:-apple-system,system-ui,sans-serif;
-                   display:flex;align-items:center;justify-content:center;height:100vh;
-                   color:#5C4A32}
-              .wrap{text-align:center;padding:2rem}
-              .spinner{width:40px;height:40px;margin:0 auto 1.5rem;
-                       border:3px solid #D4C5A9;border-top-color:#8B7355;
-                       border-radius:50%;animation:spin .8s linear infinite}
-              @keyframes spin{to{transform:rotate(360deg)}}
-              h1{font-size:1.25rem;font-weight:600;margin-bottom:.5rem}
-              p{font-size:.875rem;color:#8B7355;margin-bottom:1rem}
-              button{background:#8B7355;color:#fff;border:none;padding:.75rem 1.5rem;
-                     border-radius:.5rem;font-size:.875rem;cursor:pointer}
-              .hidden{display:none}
-            </style>
-          </head>
-          <body>
-            <div class="wrap">
-              <div class="spinner" id="sp"></div>
-              <h1>The Memory Palace</h1>
-              <p id="msg">Connecting...</p>
-              <div id="fail" class="hidden">
-                <p>Could not connect. Please check your internet connection.</p>
-                <button onclick="location.href='https://www.thememorypalace.ai'">Try Again</button>
-              </div>
-            </div>
-            <script>
-              (function(){
-                var URL='https://www.thememorypalace.ai';
-                var MAX=3, DELAY=3000, attempt=0;
-                function tryLoad(){
-                  attempt++;
-                  document.getElementById('msg').textContent='Connecting (attempt '+attempt+'/'+MAX+')...';
-                  fetch(URL,{method:'HEAD',mode:'no-cors'}).then(function(){
-                    location.href=URL;
-                  }).catch(function(){
-                    if(attempt<MAX){
-                      setTimeout(tryLoad,DELAY);
-                    }else{
-                      document.getElementById('sp').classList.add('hidden');
-                      document.getElementById('msg').classList.add('hidden');
-                      document.getElementById('fail').classList.remove('hidden');
-                    }
-                  });
-                }
-                setTimeout(tryLoad,DELAY);
-              })();
-            </script>
-          </body>
-          </html>
-          ERRORPAGE
+          # Bundled WKWebView fallback pages — single source of truth in
+          # public/native-fallback.html (self-healing, always-tappable). The old
+          # inline index.html dead-ended after 15s with no retry button ("close
+          # the app completely"), which reads to a reviewer as "not responsive
+          # after launch" on any slow/stalled first load.
+          cp public/native-fallback.html out/index.html
+          cp public/native-fallback.html out/error.html
           npx cap add ios
           npx cap sync ios
 

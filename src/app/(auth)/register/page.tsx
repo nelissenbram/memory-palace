@@ -22,6 +22,11 @@ function RegisterContent() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
+  // OAuth state. `appleFirst` set after mount to avoid hydration mismatch; on
+  // iOS, Apple is shown first for equal prominence (Apple Guideline 4.8).
+  const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
+  const [appleFirst, setAppleFirst] = useState(false);
+  useEffect(() => { setAppleFirst(isIOS()); }, []);
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
   const refCode = searchParams.get("ref");
@@ -254,41 +259,56 @@ function RegisterContent() {
         <span style={dividerLineStyle} />
       </div>
 
-      <button
-        type="button"
-        onClick={() => {
+      {(() => {
+        const handleOAuth = async (provider: "google" | "apple") => {
+          if (oauthLoading) return;
           if (!ageConfirmed) {
             setError(t("ageRequiredForSocial"));
             return;
           }
-          signInWithGoogle();
-        }}
-        style={{
-          ...googleButtonStyle,
-          ...(!ageConfirmed ? { opacity: 0.6 } : {}),
-        }}
-      >
-        <GoogleIcon />
-        {t("signUpWithGoogle")}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          if (!ageConfirmed) {
-            setError(t("ageRequiredForSocial"));
-            return;
+          setError("");
+          setOauthLoading(provider);
+          const fn = provider === "google" ? signInWithGoogle : signInWithApple;
+          try {
+            // onDismiss resets the spinner if the in-app auth sheet closes without
+            // completing, so a cancelled/failed sign-up never looks frozen.
+            const { error: oauthErr } = await fn({ onDismiss: () => setOauthLoading(null) });
+            if (oauthErr) {
+              setError(oauthErr);
+              setOauthLoading(null);
+            }
+          } catch {
+            setError(tc("somethingWentWrong") || "Sign-up failed. Please try again.");
+            setOauthLoading(null);
           }
-          signInWithApple();
-        }}
-        style={{
-          ...appleButtonStyle,
-          ...(!ageConfirmed ? { opacity: 0.6 } : {}),
-        }}
-      >
-        <AppleIcon />
-        {t("signUpWithApple")}
-      </button>
+        };
+        const googleBtn = (
+          <button
+            key="google"
+            type="button"
+            onClick={() => handleOAuth("google")}
+            disabled={!!oauthLoading}
+            style={{ ...googleButtonStyle, ...(!ageConfirmed ? { opacity: 0.6 } : {}) }}
+          >
+            <GoogleIcon />
+            {oauthLoading === "google" ? t("signingUp") : t("signUpWithGoogle")}
+          </button>
+        );
+        const appleBtn = (
+          <button
+            key="apple"
+            type="button"
+            onClick={() => handleOAuth("apple")}
+            disabled={!!oauthLoading}
+            style={{ ...appleButtonStyle, ...(!ageConfirmed ? { opacity: 0.6 } : {}) }}
+          >
+            <AppleIcon />
+            {oauthLoading === "apple" ? t("signingUp") : t("signUpWithApple")}
+          </button>
+        );
+        // Apple first on iOS (Guideline 4.8); Google first elsewhere.
+        return appleFirst ? [appleBtn, googleBtn] : [googleBtn, appleBtn];
+      })()}
 
       <p
         style={{

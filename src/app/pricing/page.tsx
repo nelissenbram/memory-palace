@@ -7,7 +7,7 @@ import { T } from "@/lib/theme";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
-import { isAndroid, isIOS, openInExternalBrowser } from "@/lib/native/platform";
+import { isAndroid, isIOS } from "@/lib/native/platform";
 import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
@@ -39,10 +39,14 @@ export default function PricingPage() {
   const { t: tp } = useTranslation("plans");
   const { t: tc } = useTranslation("common");
 
-  // Redirect away from pricing page on Android — Google Play forbids
-  // directing users to external payment flows.
+  // Redirect away from the pricing page inside native apps. Android forbids
+  // external payment flows; on iOS, StoreKit is not yet active, so we keep the
+  // app cleanly free (Apple Guideline 3.1.1) by routing native users into the
+  // app instead of showing dead/"Preparing store" purchase buttons.
+  // TODO: when Apple IAP products are Approved, allow iOS here and drive
+  // purchases exclusively through initIAP()/purchase() below.
   useEffect(() => {
-    if (isAndroid()) {
+    if (isAndroid() || isIOS()) {
       router.replace("/atrium");
     }
   }, [router]);
@@ -113,11 +117,10 @@ export default function PricingPage() {
       }
 
       if (data.url) {
-        if (isIOS()) {
-          await openInExternalBrowser(data.url);
-        } else {
-          window.location.href = data.url;
-        }
+        // WEB ONLY. Native apps are routed away from this page and never reach
+        // here. We deliberately do NOT open Stripe in an external browser on iOS
+        // — steering users to an outside purchase is an Apple 3.1.1/3.1.3 reject.
+        window.location.href = data.url;
       } else {
         setToast({ message: data.error || t("somethingWentWrong"), type: "error" });
       }

@@ -486,6 +486,9 @@ export default function SubscriptionPage() {
             )}
             {isFree && (
               <>
+                {/* Paid CTA hidden on iOS until StoreKit/IAP is active (Apple 3.1.1);
+                    auto-returns when iapReady becomes true. */}
+                {(!isApple || iapReady) && (
                 <button
                   onClick={() => handleUpgrade("keeper")}
                   disabled={!!upgradeLoading}
@@ -506,6 +509,7 @@ export default function SubscriptionPage() {
                     return p ? ` (${p.price})` : "";
                   })()}
                 </button>
+                )}
                 {!isApple && hasStripeAccount && (
                   <button
                     onClick={handleManageBilling}
@@ -544,7 +548,9 @@ export default function SubscriptionPage() {
                 )}
               </>
             )}
-            {sub?.plan === "keeper" && (
+            {/* Paid CTA hidden on iOS until StoreKit/IAP is active (Apple 3.1.1);
+                auto-returns when iapReady becomes true. */}
+            {sub?.plan === "keeper" && (!isApple || iapReady) && (
               <button
                 onClick={() => handleUpgrade("guardian")}
                 disabled={!!upgradeLoading}
@@ -659,8 +665,9 @@ export default function SubscriptionPage() {
           )}
         </div>
 
-        {/* Near-limit upgrade prompt — hidden in native app */}
-        {!isAndroid() && isFree && usage && limits.storageMb > 0 && (usage.storageMb / limits.storageMb) >= 0.8 && (
+        {/* Near-limit upgrade prompt — hidden on Android, and on iOS until
+            StoreKit/IAP is active (Apple 3.1.1). Auto-returns when iapReady. */}
+        {!isAndroid() && (!isApple || iapReady) && isFree && usage && limits.storageMb > 0 && (usage.storageMb / limits.storageMb) >= 0.8 && (
           <div style={{
             marginTop: "1.25rem",
             padding: "1rem 1.25rem",

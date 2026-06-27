@@ -22,66 +22,12 @@ workflows:
       - name: Sync Capacitor iOS
         script: |
           mkdir -p out
-          echo '<!DOCTYPE html><html><body>Loading...</body></html>' > out/index.html
-          cat > out/error.html << 'ERRORPAGE'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="utf-8"/>
-            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-            <title>The Memory Palace</title>
-            <style>
-              *{margin:0;padding:0;box-sizing:border-box}
-              body{background:#F2EDE4;font-family:-apple-system,system-ui,sans-serif;
-                   display:flex;align-items:center;justify-content:center;height:100vh;
-                   color:#5C4A32}
-              .wrap{text-align:center;padding:2rem}
-              .spinner{width:40px;height:40px;margin:0 auto 1.5rem;
-                       border:3px solid #D4C5A9;border-top-color:#8B7355;
-                       border-radius:50%;animation:spin .8s linear infinite}
-              @keyframes spin{to{transform:rotate(360deg)}}
-              h1{font-size:1.25rem;font-weight:600;margin-bottom:.5rem}
-              p{font-size:.875rem;color:#8B7355;margin-bottom:1rem}
-              button{background:#8B7355;color:#fff;border:none;padding:.75rem 1.5rem;
-                     border-radius:.5rem;font-size:.875rem;cursor:pointer}
-              .hidden{display:none}
-            </style>
-          </head>
-          <body>
-            <div class="wrap">
-              <div class="spinner" id="sp"></div>
-              <h1>The Memory Palace</h1>
-              <p id="msg">Connecting...</p>
-              <div id="fail" class="hidden">
-                <p>Could not connect. Please check your internet connection.</p>
-                <button onclick="location.href='https://www.thememorypalace.ai'">Try Again</button>
-              </div>
-            </div>
-            <script>
-              (function(){
-                var URL='https://www.thememorypalace.ai';
-                var MAX=3, DELAY=3000, attempt=0;
-                function tryLoad(){
-                  attempt++;
-                  document.getElementById('msg').textContent='Connecting (attempt '+attempt+'/'+MAX+')...';
-                  fetch(URL,{method:'HEAD',mode:'no-cors'}).then(function(){
-                    location.href=URL;
-                  }).catch(function(){
-                    if(attempt<MAX){
-                      setTimeout(tryLoad,DELAY);
-                    }else{
-                      document.getElementById('sp').classList.add('hidden');
-                      document.getElementById('msg').classList.add('hidden');
-                      document.getElementById('fail').classList.remove('hidden');
-                    }
-                  });
-                }
-                setTimeout(tryLoad,DELAY);
-              })();
-            </script>
-          </body>
-          </html>
-          ERRORPAGE
+          # Self-healing, always-tappable launch/error pages (single source of
+          # truth: public/native-fallback.html). The old inline error page waited
+          # 3s before its first connection probe and showed a bare spinner with no
+          # retry button — reads as "not responsive after launch" on a slow start.
+          cp public/native-fallback.html out/index.html
+          cp public/native-fallback.html out/error.html
           npx cap sync ios
 
       - name: Copy app icons

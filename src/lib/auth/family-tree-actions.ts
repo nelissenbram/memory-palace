@@ -949,15 +949,17 @@ export async function getSharedTree(token: string): Promise<{
 
   if (rError) return { error: rError.message };
 
-  // Minimize PII exposed to anonymous holders of a public share link (Apple 1.6 / GDPR):
-  // never expose free-text notes, and redact precise dates/places of LIVING people
-  // (no death_date) — keep only a birth YEAR for tree context. Deceased ancestors are
-  // historical and shown in full.
+  // Minimize PII exposed to anonymous holders of a public share link (Apple 1.6 /
+  // 5.1.4 / GDPR): never expose free-text notes, redact the FACE PHOTO of LIVING
+  // people (which may be a minor), and redact precise dates/places of living
+  // people (no death_date) — keep only a birth YEAR for tree context. Deceased
+  // ancestors are historical and shown in full.
   const sanitizedPersons = (persons || []).map((p: Record<string, unknown>) => {
     const isLiving = !p.death_date;
     return {
       ...p,
       notes: null,
+      photo_path: isLiving ? null : p.photo_path,
       birth_place: isLiving ? null : p.birth_place,
       death_place: isLiving ? null : p.death_place,
       birth_date: isLiving && typeof p.birth_date === "string" && p.birth_date

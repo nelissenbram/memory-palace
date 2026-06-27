@@ -20,7 +20,13 @@ const config: CapacitorConfig = {
       overlaysWebView: false,
     },
     SplashScreen: {
-      launchShowDuration: 3000,
+      // Backstop only — NativeInit calls SplashScreen.hide() the moment the
+      // remote React app mounts (the fast path). The previous 3000ms auto-hide
+      // could fire BEFORE the remote HTML arrived on a slow/cold-start launch,
+      // revealing a blank WKWebView ("not responsive after launch"). A long
+      // backstop keeps the branded splash up until real content paints, while
+      // still guaranteeing the splash can never get permanently stuck.
+      launchShowDuration: 12000,
       launchAutoHide: true,
       launchFadeOutDuration: 500,
       backgroundColor: '#F2EDE4',
