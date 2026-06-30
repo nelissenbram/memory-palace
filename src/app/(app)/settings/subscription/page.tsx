@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { detectCurrency, convertPrice, formatPrice, type SupportedCurrency } from "@/lib/currency";
 import { isAndroid, isIOS } from "@/lib/native/platform";
-import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, getIAPError, manageSubscriptions } from "@/lib/native/iap";
+import { initIAP, getIAPProductId, getProduct, purchase, restorePurchases, waitForProducts, manageSubscriptions, IAP_ENABLED } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { localeDateCodes, type Locale } from "@/i18n/config";
 import { useIsMobile, useIsCompact } from "@/lib/hooks/useIsMobile";
@@ -158,15 +158,20 @@ export default function SubscriptionPage() {
     load();
   }, [load]);
 
-  // Initialize Apple IAP on iOS
+  // Initialize Apple IAP on iOS. Only flip iapReady once a product with a real
+  // price has actually loaded from the App Store — store.initialize() succeeding
+  // is NOT enough (products load async afterwards). Gating the Upgrade button on
+  // this prevents showing a button that errors on tap when IAP isn't truly
+  // available (Apple Guideline 2.1). No error toast on load: if products never
+  // load, we simply keep the button hidden and the app stays cleanly free.
   useEffect(() => {
-    if (isApple) {
-      initIAP().then((ok) => {
-        setIapReady(ok);
+    if (isApple && IAP_ENABLED) {
+      initIAP().then(async (ok) => {
         if (!ok) {
-          const err = getIAPError();
-          if (err) showToast(err, "error");
+          setIapReady(false);
+          return;
         }
+        setIapReady(await waitForProducts());
       });
     }
   }, [isApple]);

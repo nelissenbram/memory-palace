@@ -18,6 +18,16 @@ export const IAP_PRODUCTS = {
 
 export type IAPProductId = (typeof IAP_PRODUCTS)[keyof typeof IAP_PRODUCTS];
 
+/**
+ * Master switch for iOS In-App Purchases. While false, all iOS purchase UI stays
+ * hidden and the app is cleanly free on iOS (Apple Guideline 3.1.1 / 2.1) — no
+ * Upgrade button can render, so it can never error on tap. Flip to true ONLY once
+ * the IAP products are Approved in App Store Connect and attached to the submitted
+ * version; the Upgrade button then auto-appears with live prices via
+ * initIAP() + waitForProducts().
+ */
+export const IAP_ENABLED = false;
+
 export interface IAPProduct {
   id: string;
   title: string;
@@ -133,6 +143,28 @@ export async function initIAP(): Promise<boolean> {
 /** True once the store is initialized and at least one product's price has loaded. */
 export function isIAPReady(): boolean {
   return initialized && !!store && getAllProducts().length > 0;
+}
+
+/**
+ * Resolves true once at least one product with a real price has loaded from the
+ * App Store, or false after `timeoutMs`. cordova-plugin-purchase populates
+ * products asynchronously AFTER store.initialize() resolves, so a successful
+ * init alone does NOT mean anything is purchasable. Gate purchase UI on this —
+ * never on initIAP()'s return value — so we never show an Upgrade button that
+ * errors on tap when products aren't actually available (Apple Guideline 2.1).
+ */
+export async function waitForProducts(timeoutMs = 10000): Promise<boolean> {
+  if (!isIOS()) return false;
+  if (isIAPReady()) return true;
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const tick = () => {
+      if (isIAPReady()) return resolve(true);
+      if (Date.now() - start >= timeoutMs) return resolve(false);
+      setTimeout(tick, 300);
+    };
+    tick();
+  });
 }
 
 /** Get product info (price, title, etc.) */

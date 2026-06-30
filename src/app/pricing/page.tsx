@@ -8,7 +8,7 @@ import Toast, { type ToastData } from "@/components/ui/Toast";
 import { PLANS, PLAN_ORDER, type PlanId, type BillingInterval } from "@/lib/constants/plans";
 import { useIsMobile, useIsSmall, useIsCompact } from "@/lib/hooks/useIsMobile";
 import { isAndroid, isIOS } from "@/lib/native/platform";
-import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases } from "@/lib/native/iap";
+import { initIAP, getIAPProductId, getProduct, purchase, getIAPError, restorePurchases, IAP_ENABLED } from "@/lib/native/iap";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -53,7 +53,7 @@ export default function PricingPage() {
 
   // Initialize IAP on iOS
   useEffect(() => {
-    if (isApple) {
+    if (isApple && IAP_ENABLED) {
       initIAP().then((ok) => {
         setIapReady(ok);
         if (!ok) setIapError(getIAPError());
