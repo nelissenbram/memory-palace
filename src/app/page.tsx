@@ -641,6 +641,22 @@ function LandingPageContent() {
                     },
                   })),
               },
+              {
+                // VideoObject for the walkthrough video — supplies the thumbnail
+                // URL Google Search requires to index the video (Search Console:
+                // "No thumbnail URL provided"). Keep name/thumbnailUrl/contentUrl
+                // consistent with the <video> tag below.
+                "@type": "VideoObject",
+                name: lAny?.showcase?.title || "The Memory Palace — Walkthrough",
+                description:
+                  lAny?.showcase?.subtitle ||
+                  (locale === "nl"
+                    ? "Een rondleiding door The Memory Palace: een 3D-geheugenpaleis voor je foto's, video's en levensverhalen."
+                    : "A guided tour of The Memory Palace: a 3D virtual home for your photos, videos, and life stories."),
+                thumbnailUrl: "https://thememorypalace.ai/video/walkthrough-poster.jpg",
+                contentUrl: "https://thememorypalace.ai/video/walkthrough.mp4",
+                uploadDate: "2026-05-06",
+              },
             ],
           }),
         }}
@@ -1589,7 +1605,7 @@ function LandingPageContent() {
                 controls
                 preload="metadata"
                 playsInline
-                poster=""
+                poster="/video/walkthrough-poster.jpg"
                 style={{
                   width: "100%",
                   height: "100%",
