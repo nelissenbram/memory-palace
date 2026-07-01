@@ -342,6 +342,7 @@
     "upgradeRoom": "Upgrade to unlock additional rooms in this wing.",
     "storageFull": "Storage Full",
     "storageFullDesc": "Your storage is full. Upgrade your plan for more space.",
+    "storageFullDescNative": "Your storage is full. Please remove some memories to free up space.",
     "storageWarning50": "You've used 50% of your storage",
     "storageWarning80": "You've used 80% of your storage",
     "storageWarning95": "Almost full — 95% storage used",

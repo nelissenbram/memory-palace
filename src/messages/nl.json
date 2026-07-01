@@ -342,6 +342,7 @@
     "upgradeRoom": "Upgrade om extra kamers in deze vleugel te ontgrendelen.",
     "storageFull": "Opslag vol",
     "storageFullDesc": "Je opslag is vol. Upgrade je abonnement voor meer ruimte.",
+    "storageFullDescNative": "Je opslag is vol. Verwijder enkele herinneringen om ruimte vrij te maken.",
     "storageWarning50": "Je hebt 50% van je opslag gebruikt",
     "storageWarning80": "Je hebt 80% van je opslag gebruikt",
     "storageWarning95": "Bijna vol — 95% opslag gebruikt",

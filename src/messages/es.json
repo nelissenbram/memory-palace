@@ -342,6 +342,7 @@
     "upgradeRoom": "Actualiza para desbloquear salas adicionales.",
     "storageFull": "Almacenamiento lleno",
     "storageFullDesc": "Tu almacenamiento está lleno. Mejora tu plan para más espacio.",
+    "storageFullDescNative": "Tu almacenamiento está lleno. Elimina algunos recuerdos para liberar espacio.",
     "storageWarning50": "Has usado el 50% de tu almacenamiento",
     "storageWarning80": "Has usado el 80% de tu almacenamiento",
     "storageWarning95": "Casi lleno — 95% de almacenamiento usado",

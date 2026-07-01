@@ -342,6 +342,7 @@
     "upgradeRoom": "Upgrade, um zusätzliche Räume freizuschalten.",
     "storageFull": "Speicher voll",
     "storageFullDesc": "Dein Speicher ist voll. Upgrade deinen Plan für mehr Platz.",
+    "storageFullDescNative": "Dein Speicher ist voll. Bitte entferne einige Erinnerungen, um Platz freizugeben.",
     "storageWarning50": "Du hast 50% deines Speichers verwendet",
     "storageWarning80": "Du hast 80% deines Speichers verwendet",
     "storageWarning95": "Fast voll — 95% Speicher verwendet",

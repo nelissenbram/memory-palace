@@ -698,7 +698,12 @@ export default function SubscriptionPage() {
         )}
       </div>
 
-      {/* Plan Comparison */}
+      {/* Plan Comparison — hidden in native apps. No in-app purchase path is
+          available this round (iOS IAP disabled via IAP_ENABLED; Android has no
+          in-app billing), so rendering selectable-looking plan tiers with no
+          tap action is dead UI that Apple flags under Guideline 2.1(a). When
+          iOS IAP is re-enabled, revisit to show plans with working IAP buttons. */}
+      {!nativeApp && (
       <div style={{
         background: C.white,
         borderRadius: "1rem",
@@ -1110,6 +1115,7 @@ export default function SubscriptionPage() {
           </div>
         )}
       </div>
+      )}
 
       {/* Refer a Friend — hidden on iOS: rewards are web/Stripe promo codes that
           can't apply to Apple IAP, so surfacing them on iOS steers off-platform (3.1.1) */}

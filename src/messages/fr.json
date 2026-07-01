@@ -342,6 +342,7 @@
     "upgradeRoom": "Passez à un plan supérieur pour débloquer des salles supplémentaires.",
     "storageFull": "Stockage plein",
     "storageFullDesc": "Votre stockage est plein. Passez à un plan supérieur pour plus d'espace.",
+    "storageFullDescNative": "Votre stockage est plein. Supprimez quelques souvenirs pour libérer de l'espace.",
     "storageWarning50": "Vous avez utilisé 50% de votre stockage",
     "storageWarning80": "Vous avez utilisé 80% de votre stockage",
     "storageWarning95": "Presque plein — 95% du stockage utilisé",
