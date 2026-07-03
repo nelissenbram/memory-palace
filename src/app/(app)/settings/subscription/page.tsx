@@ -97,7 +97,14 @@ export default function SubscriptionPage() {
           }
         }
 
-        if (subData) {
+        // iOS is free-tier only (Apple Guideline 3.1.1): never surface a plan
+        // purchased outside the app. This page reads the subscriptions table
+        // directly (bypassing the server-side getUserPlan coercion), so force
+        // the displayed plan to free here too — no paid status, billing date,
+        // manage/cancel or restore UI can render.
+        if (isApple) {
+          setSub({ plan: "free", status: "active", current_period_end: null, stripe_customer_id: null });
+        } else if (subData) {
           setSub(subData);
         } else {
           setSub({ plan: "free", status: "active", current_period_end: null, stripe_customer_id: null });
@@ -580,10 +587,20 @@ export default function SubscriptionPage() {
           </div>
         )}
 
-        {/* Subscription disclosures (Apple Guideline 3.1.2) */}
+        {/* On iOS the app is free-tier only — state it plainly so the free
+            state reads as intentional (Apple Guideline 3.1.1). */}
+        {isApple && (
+          <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.875rem" : "0.8125rem", color: C.muted, lineHeight: 1.6, margin: "0.5rem 0 0" }}>
+            {t("iosFreeNote") !== "iosFreeNote" ? t("iosFreeNote") : "The Memory Palace is free to use on iPhone and iPad, with all core features included."}
+          </p>
+        )}
+
+        {/* Subscription disclosures. On iOS we no longer sell subscriptions, so
+            the auto-renew notice (an IAP-only requirement) is omitted; the
+            terms/privacy links stay. */}
         {(isFree || sub?.plan === "keeper") && (
           <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: `1px solid ${C.cream}` }}>
-            {isApple && (
+            {isApple && IAP_ENABLED && (
               <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: C.muted, lineHeight: 1.6, margin: "0 0 0.5rem" }}>
                 {t("autoRenewNotice")}
               </p>

@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies, headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { PLANS, type PlanId, type PlanLimits } from "@/lib/constants/plans";
 
@@ -11,7 +12,42 @@ export interface UserSubscription {
   stripeSubscriptionId: string | null;
 }
 
+const FREE_SUBSCRIPTION: UserSubscription = {
+  plan: "free",
+  status: "active",
+  currentPeriodEnd: null,
+  stripeCustomerId: null,
+  stripeSubscriptionId: null,
+};
+
+/**
+ * True when the current request originates from the iOS app. On iOS the app is
+ * free-tier only — subscriptions purchased on the web (or any other platform)
+ * are never unlocked (Apple Guideline 3.1.1 / 3.1.3). Detected via the
+ * `mp_platform=ios` cookie set in NativeInit and the `MemoryPalace-iOS` UA
+ * marker from capacitor.config.ts. Wrapped in try/catch because cookies()/
+ * headers() throw outside a request scope (e.g. cron jobs), where we correctly
+ * fall back to the real plan.
+ */
+async function isIOSRequest(): Promise<boolean> {
+  try {
+    const cookieStore = await cookies();
+    if (cookieStore.get("mp_platform")?.value === "ios") return true;
+  } catch { /* not in a request scope */ }
+  try {
+    const h = await headers();
+    if ((h.get("user-agent") || "").includes("MemoryPalace-iOS")) return true;
+  } catch { /* not in a request scope */ }
+  return false;
+}
+
 export async function getUserPlan(userId?: string): Promise<UserSubscription> {
+  // iOS is free-tier only — never surface or honor an externally-purchased plan.
+  // Every entitlement check flows through getUserPlan(), so coercing here forces
+  // storage, interviews, auto-tag, family-tree, collaboration and cloud imports
+  // all to free on iOS in one place.
+  if (await isIOSRequest()) return { ...FREE_SUBSCRIPTION };
+
   const supabase = await createClient();
 
   let uid = userId;

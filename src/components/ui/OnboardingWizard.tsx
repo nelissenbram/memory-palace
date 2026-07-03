@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react"
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
-import { navigateInApp } from "@/lib/native/platform";
+import { navigateInApp, isIOS } from "@/lib/native/platform";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
@@ -1556,7 +1556,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
 
         <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
-            onClose={() => { if (!memoryUploadedRef.current) setPhase("paywall"); }}
+            onClose={() => { if (!memoryUploadedRef.current) setPhase(isIOS() ? "done" : "paywall"); }}
             onImportFiles={async (files) => {
               if (files.length === 0) return;
               const f = files[0];
@@ -1603,7 +1603,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
             title={t("celebrationTitle2")}
             subtitle={t("celebrationSubtitle2")}
             buttonLabel={t("celebrationAtrium")}
-            onContinue={() => setPhase("paywall")}
+            onContinue={() => setPhase(isIOS() ? "done" : "paywall")}
             transparent
           />
         </Suspense>

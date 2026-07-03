@@ -6,6 +6,7 @@ import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useFocusTrap } from "@/lib/hooks/useFocusTrap";
 import { createClient } from "@/lib/supabase/client";
+import { isIOS } from "@/lib/native/platform";
 import Image from "next/image";
 
 // ── Types ──
@@ -151,7 +152,12 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
         ]);
         if (accountsRes.ok) {
           const data = await accountsRes.json();
-          const accs = (data.accounts || []) as ConnectedAccount[];
+          const raw = (data.accounts || []) as ConnectedAccount[];
+          // iOS is free-tier only: expose just the free Google Photos import so
+          // no paid (Keeper) provider — with its upgrade badge, "Upgrade to
+          // Keeper" CTA and /pricing steering — can ever render on iOS
+          // (Apple Guideline 3.1.1 / 3.1.3).
+          const accs = isIOS() ? raw.filter((a) => a.provider === "google_photos") : raw;
           setAccounts(accs);
           // Auto-select first connected account
           if (accs.length > 0) {

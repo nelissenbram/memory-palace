@@ -862,7 +862,7 @@ function LandingPageContent() {
               {landing.nav.howItWorks}
             </a>
           )}
-          {!navCollapsed && (
+          {!navCollapsed && !isIosApp && (
             <Link href="/pricing" className="lp-nav-link" style={{ ...navLink, color: headerOpaque ? C.walnut : C.cream }}>
               {landing.nav.pricing}
             </Link>
@@ -994,9 +994,11 @@ function LandingPageContent() {
             <a href="#how-it-works" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0", textDecoration: "none" }} onClick={() => setMobileMenuOpen(false)}>
               {landing.nav.howItWorks}
             </a>
+            {!isIosApp && (
             <Link href="/pricing" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0" }} onClick={() => setMobileMenuOpen(false)}>
               {landing.nav.pricing}
             </Link>
+            )}
             <Link href="/blog" className="lp-nav-link" style={{ ...navLink, padding: "0.75rem 0" }} onClick={() => setMobileMenuOpen(false)}>
               {landing.nav.blog}
             </Link>
@@ -2349,6 +2351,7 @@ function LandingPageContent() {
               >
                 {landing.footer.howItWorks}
               </a>
+              {!isIosApp && (
               <Link
                 href="/pricing"
                 className="lp-footer-link"
@@ -2360,6 +2363,7 @@ function LandingPageContent() {
               >
                 {landing.footer.pricing}
               </Link>
+              )}
               <Link
                 href="/blog"
                 className="lp-footer-link"

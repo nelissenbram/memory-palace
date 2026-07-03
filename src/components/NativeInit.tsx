@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { isNative } from "@/lib/native/platform";
+import { isNative, isIOS } from "@/lib/native/platform";
 import { initDeepLinkListener } from "@/lib/native/deep-links";
 import { initPushNotifications } from "@/lib/native/push-notifications";
 import { initExternalLinkHandler } from "@/lib/native/external-links";
@@ -15,6 +15,19 @@ export default function NativeInit() {
     initDeepLinkListener();
     initPushNotifications();
     initExternalLinkHandler();
+
+    // Tag every request from the iOS app so the server enforces free-tier
+    // entitlement on iOS (Apple Guideline 3.1.1 — the app never unlocks content
+    // purchased outside the app on iOS). This cookie is sent automatically with
+    // all fetches/server actions to the same origin and lives only in the iOS
+    // WKWebView cookie jar (never a desktop browser). Belt-and-suspenders with
+    // the `MemoryPalace-iOS` UA marker in capacitor.config.ts. iOS only —
+    // Android keeps its existing entitlement behaviour.
+    if (isIOS()) {
+      try {
+        document.cookie = "mp_platform=ios; path=/; max-age=31536000; SameSite=Lax; Secure";
+      } catch { /* non-fatal */ }
+    }
 
     // Dismiss the server-rendered loading overlay now that React has mounted
     if (typeof window !== "undefined" && (window as any).__mpHideLoading) {

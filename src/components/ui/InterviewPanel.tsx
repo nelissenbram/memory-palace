@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
-import { navigateInApp } from "@/lib/native/platform";
+import { navigateInApp, isIOS } from "@/lib/native/platform";
 import { useAudioRecorder } from "@/lib/hooks/useAudioRecorder";
 import { useSpeechRecognition } from "@/lib/hooks/useSpeechRecognition";
 import { useInterviewStore } from "@/lib/stores/interviewStore";
@@ -551,7 +551,9 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                     {t("nextInterviewDate") || "Next interview available"} {new Date(quota.nextRespawnDate).toLocaleDateString(locale as string)}
                   </p>
                 )}
-                {!quota.allowed && (
+                {/* No paid upsell on iOS — the app is free-tier only there and
+                    may not steer to an external purchase (Apple 3.1.1 / 3.1.3). */}
+                {!quota.allowed && !isIOS() && (
                   <button onClick={() => navigateInApp("/pricing")} style={{
                     marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "1rem",
                     border: "none", background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,

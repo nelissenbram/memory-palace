@@ -49,6 +49,12 @@ const config: CapacitorConfig = {
   },
   ios: {
     contentInset: 'automatic',
+    // Marks every request from the iOS WKWebView so the server can enforce
+    // free-tier entitlement on iOS (Apple Guideline 3.1.1 — no paid content
+    // purchased outside the app is unlocked on iOS). Read server-side in
+    // plan-limits.ts (getUserPlan); mirrored by the mp_platform=ios cookie set
+    // in NativeInit for requests where the UA is unavailable.
+    appendUserAgent: 'MemoryPalace-iOS',
   },
 };
 

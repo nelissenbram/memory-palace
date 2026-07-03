@@ -658,6 +658,7 @@
     "manageInSettings": "Manage your subscription in Settings > Apple ID > Subscriptions",
     "iapUnavailable": "In-app purchases aren't available right now. Please try again in a moment.",
     "autoRenewNotice": "Subscriptions renew automatically at the listed price until cancelled. Manage or cancel anytime in Settings > Apple ID > Subscriptions.",
+    "iosFreeNote": "The Memory Palace is free to use on iPhone and iPad, with all core features included.",
     "disclosureTerms": "Terms of Use",
     "disclosurePrivacy": "Privacy Policy",
     "restorePurchases": "Restore Purchases",
