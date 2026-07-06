@@ -8,6 +8,7 @@ import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import TuscanCard from "./TuscanCard";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { WingIcon, RoomIcon } from "./WingRoomIcons";
+import { isIOS } from "@/lib/native/platform";
 
 interface LibrarySidebarProps {
   wings: Wing[];
@@ -926,6 +927,9 @@ export default function LibrarySidebar({
             }}
           />
         </div>
+        {/* iOS is free-tier only (Apple 3.1.1) — no upgrade steering, even to an
+            internal page. Hidden on iOS; shown on web/Android. */}
+        {!isIOS() && (
         <a
           href="/settings/subscription"
           style={{
@@ -942,6 +946,7 @@ export default function LibrarySidebar({
         >
           {t("upgradeStorage")}
         </a>
+        )}
       </div>
 
       {/* ── Bottom section ── */}
