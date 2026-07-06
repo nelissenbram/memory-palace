@@ -307,6 +307,14 @@ const errors: Record<string, Record<Locale, string>> = {
     es: "El plan gratuito permite hasta 25 personas en el \u00e1rbol geneal\u00f3gico. Mejora para ilimitado.",
     fr: "Le plan gratuit autorise jusqu'\u00e0 25 personnes dans l'arbre g\u00e9n\u00e9alogique. Passez au niveau sup\u00e9rieur pour illimit\u00e9.",
   },
+  // iOS is free-tier only (Apple 3.1.1) \u2014 same limit, no upgrade steering.
+  familyTreeLimitReachedNative: {
+    en: "You can add up to 25 people in the family tree.",
+    nl: "Je kunt maximaal 25 personen in de stamboom toevoegen.",
+    de: "Du kannst bis zu 25 Personen im Stammbaum hinzuf\u00fcgen.",
+    es: "Puedes a\u00f1adir hasta 25 personas en el \u00e1rbol geneal\u00f3gico.",
+    fr: "Vous pouvez ajouter jusqu'\u00e0 25 personnes dans l'arbre g\u00e9n\u00e9alogique.",
+  },
 
   // ── Legacy extra (legacy-actions.ts) ──
   invalidWingOrRoomAccess: {

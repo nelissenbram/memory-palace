@@ -1,7 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getUserPlan } from "@/lib/auth/plan-limits";
+import { getUserPlan, isIOSRequest } from "@/lib/auth/plan-limits";
 
 export interface Collaborator {
   id: string;
@@ -43,7 +43,12 @@ export async function inviteCollaborator(input: {
   // Subscription gate: check collaborator limits
   const sub = await getUserPlan(user.id);
   if (sub.plan === "free") {
-    return { ok: false, error: "Upgrade to add collaborators" };
+    // iOS is free-tier only (Apple 3.1.1) — no upgrade steering in the error text.
+    const ios = await isIOSRequest();
+    return {
+      ok: false,
+      error: ios ? "Collaboration isn't available on this account" : "Upgrade to add collaborators",
+    };
   }
 
   if (sub.plan === "keeper") {

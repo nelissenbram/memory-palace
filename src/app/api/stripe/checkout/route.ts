@@ -14,6 +14,13 @@ function getStripe() {
 export async function POST(req: NextRequest) {
   const stripe = getStripe();
   try {
+    // iOS is free-tier only (Apple Guideline 3.1.1) — never create a Stripe
+    // checkout session for a native iOS request, even if a caller reaches here.
+    const ua = req.headers.get("user-agent") || "";
+    if (ua.includes("MemoryPalace-iOS") || req.cookies.get("mp_platform")?.value === "ios") {
+      return NextResponse.json({ error: "Not available" }, { status: 403 });
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 

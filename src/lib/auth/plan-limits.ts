@@ -29,7 +29,7 @@ const FREE_SUBSCRIPTION: UserSubscription = {
  * headers() throw outside a request scope (e.g. cron jobs), where we correctly
  * fall back to the real plan.
  */
-async function isIOSRequest(): Promise<boolean> {
+export async function isIOSRequest(): Promise<boolean> {
   try {
     const cookieStore = await cookies();
     if (cookieStore.get("mp_platform")?.value === "ios") return true;

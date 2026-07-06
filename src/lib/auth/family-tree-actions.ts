@@ -94,10 +94,16 @@ export async function addPerson(data: {
   if (!data.first_name.trim()) return { error: t("firstNameRequired") };
 
   // Check family tree person limit (free: 25, keeper/guardian: unlimited)
-  const { checkLimit } = await import("@/lib/auth/plan-limits");
+  const { checkLimit, isIOSRequest } = await import("@/lib/auth/plan-limits");
   const limitCheck = await checkLimit(user.id, "familyTreePersons");
   if (!limitCheck.allowed) {
-    return { error: t("familyTreeLimitReached") || "Free plan allows up to 25 people in the family tree. Upgrade for unlimited." };
+    // iOS is free-tier only (Apple 3.1.1) — neutral message, no upgrade steering.
+    const ios = await isIOSRequest();
+    return {
+      error: ios
+        ? (t("familyTreeLimitReachedNative") || "You can add up to 25 people in the family tree.")
+        : (t("familyTreeLimitReached") || "Free plan allows up to 25 people in the family tree. Upgrade for unlimited."),
+    };
   }
 
   const { data: person, error } = await supabase

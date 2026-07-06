@@ -13,6 +13,16 @@ function isPublicPath(path: string): boolean {
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
+  // iOS is free-tier only (Apple Guideline 3.1.1) — the pricing page never renders
+  // in the native iOS app. Redirect at the edge (before the client-side guard) so
+  // there is no one-frame flash of pricing/upgrade UI inside the WKWebView.
+  const isNativeIOS =
+    request.cookies.get("mp_platform")?.value === "ios" ||
+    (request.headers.get("user-agent") || "").includes("MemoryPalace-iOS");
+  if (isNativeIOS && path.startsWith("/pricing")) {
+    return NextResponse.redirect(new URL("/atrium", request.url));
+  }
+
   // Fast-path: skip auth entirely for public/static routes that never need session
   if (
     path === "/" ||

@@ -9,6 +9,7 @@ import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useTrackStore } from "@/lib/stores/trackStore";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { isIOS, isNative } from "@/lib/native/platform";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useAccessibility } from "@/components/providers/AccessibilityProvider";
 import { useDaylight } from "@/components/providers/DaylightProvider";
@@ -535,9 +536,16 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
   const { totalPoints, getLevelInfo } = useTrackStore();
   const levelInfo = getLevelInfo();
 
+  // iOS is free-tier only (Apple 3.1.1) — drop the Subscription link from the
+  // desktop user menu on native. This menu renders on iPad (viewport-width based),
+  // so without this the Subscription/billing link is reachable inside the iOS app.
+  const menuItems = USER_MENU_ITEMS.filter(
+    (item) => item.href !== "/settings/subscription" || !(isIOS() || isNative())
+  );
+
   // Total focusable items: menu links + 2 lang buttons + a11y toggle + daylight toggle + sign-out
   // When daylight panel is expanded, there's also the auto/manual button (+1)
-  const totalItems = USER_MENU_ITEMS.length + 5 + (daylightEnabled ? 1 : 0);
+  const totalItems = menuItems.length + 5 + (daylightEnabled ? 1 : 0);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "ArrowDown") {
@@ -638,7 +646,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
 
       {/* Menu items */}
       <div style={{ padding: "0.375rem" }}>
-        {USER_MENU_ITEMS.map((item, i) => {
+        {menuItems.map((item, i) => {
           const isFamilyTree = item.href === "/family-tree";
           const Tag = isFamilyTree ? "button" : "a";
           const extra = isFamilyTree
@@ -697,8 +705,8 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
               tabIndex={-1}
               aria-pressed={locale === l}
               onClick={() => { setLocale(l); onClose(); }}
-              onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + li)}
-              onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + li)}
+              onMouseEnter={() => setFocusIdx(menuItems.length + li)}
+              onFocus={() => setFocusIdx(menuItems.length + li)}
               style={{
                 padding: "0.3125rem 0.75rem", borderRadius: "0.5rem",
                 fontSize: "0.8125rem", fontFamily: T.font.body,
@@ -707,7 +715,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
                 background: locale === l ? `${T.color.terracotta}12` : T.color.white,
                 color: locale === l ? T.color.terracotta : T.color.muted,
                 cursor: "pointer",
-                ...(focusIdx === USER_MENU_ITEMS.length + li ? {
+                ...(focusIdx === menuItems.length + li ? {
                   outline: `2px solid ${T.color.terracotta}`,
                   outlineOffset: 1,
                 } : {}),
@@ -733,8 +741,8 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
               return (
                 <button key={lvl} onClick={() => setScaleLevel(lvl)} aria-pressed={isActive}
                   data-menu-item tabIndex={-1} title={lvl}
-                  onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + 2)}
-                  onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + 2)}
+                  onMouseEnter={() => setFocusIdx(menuItems.length + 2)}
+                  onFocus={() => setFocusIdx(menuItems.length + 2)}
                   style={{
                     padding: "0.25rem 0.625rem", borderRadius: "0.375rem", fontSize: "0.75rem", fontFamily: T.font.body,
                     fontWeight: isActive ? 700 : 500, border: "none", minHeight: "1.75rem",
@@ -768,8 +776,8 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
             data-menu-item
             tabIndex={-1}
             onClick={toggleDaylight}
-            onMouseEnter={() => setFocusIdx(USER_MENU_ITEMS.length + 3)}
-            onFocus={() => setFocusIdx(USER_MENU_ITEMS.length + 3)}
+            onMouseEnter={() => setFocusIdx(menuItems.length + 3)}
+            onFocus={() => setFocusIdx(menuItems.length + 3)}
             style={{
               width: "2.75rem", height: "1.5rem", borderRadius: "0.75rem",
               border: `1px solid ${daylightEnabled ? T.color.gold : T.color.cream}`,
@@ -777,7 +785,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
               cursor: "pointer", position: "relative",
               transition: "background 0.2s, border-color 0.2s",
               flexShrink: 0,
-              ...(focusIdx === USER_MENU_ITEMS.length + 3 ? {
+              ...(focusIdx === menuItems.length + 3 ? {
                 outline: `2px solid ${T.color.terracotta}`,
                 outlineOffset: 1,
               } : {}),

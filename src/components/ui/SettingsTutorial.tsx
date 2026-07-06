@@ -6,6 +6,7 @@ import { create } from "zustand";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { isIOS } from "@/lib/native/platform";
 
 const STORAGE_KEY = "mp_settings_tour_seen_v2";
 
@@ -149,10 +150,13 @@ export default function SettingsTutorial({ open, onClose }: Props) {
   }
 
   // ── Step 1: centered overview card with bullet list ──
-  let items: { title: string; desc: string }[] = FEATURE_KEYS.map((f) => ({
-    title: t(f.titleKey),
-    desc: t(f.descKey),
-  }));
+  // iOS is free-tier only (Apple 3.1.1) — drop the Subscription feature bullet.
+  let items: { title: string; desc: string }[] = FEATURE_KEYS
+    .filter((f) => !(isIOS() && f.titleKey === "feat_subscription_title"))
+    .map((f) => ({
+      title: t(f.titleKey),
+      desc: t(f.descKey),
+    }));
 
   const overlay2 = (
     <div role="dialog" aria-modal="true" aria-label={t("step2Title")} style={{

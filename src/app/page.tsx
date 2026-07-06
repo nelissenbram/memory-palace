@@ -2138,8 +2138,10 @@ function LandingPageContent() {
             <div style={{ marginTop: "2.5rem" }}>
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => {
                 const q = lAny?.faq?.[`q${n}`];
-                // On iOS, use the Google-Play-free variant of the download answer (Apple Guideline 2.3.10)
-                const a = (isIosApp && n === 8 && lAny?.faq?.a8_ios) ? lAny.faq.a8_ios : lAny?.faq?.[`a${n}`];
+                // On iOS, prefer an `a{n}_ios` variant when present: strips paid
+                // upgrade/subscription steering (a4, a6 — Apple 3.1.1) and the
+                // Google-Play download reference (a8 — Apple 2.3.10).
+                const a = (isIosApp && lAny?.faq?.[`a${n}_ios`]) ? lAny.faq[`a${n}_ios`] : lAny?.faq?.[`a${n}`];
                 if (!q || !a) return null;
                 return <FaqItem key={n} question={q} answer={a} />;
               })}

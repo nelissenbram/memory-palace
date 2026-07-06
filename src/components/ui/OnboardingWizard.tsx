@@ -1602,7 +1602,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           <OnboardingCelebration
             title={t("celebrationTitle2")}
             subtitle={t("celebrationSubtitle2")}
-            buttonLabel={t("celebrationAtrium")}
+            buttonLabel={isIOS() ? t("celebrationContinue") : t("celebrationAtrium")}
             onContinue={() => setPhase(isIOS() ? "done" : "paywall")}
             transparent
           />

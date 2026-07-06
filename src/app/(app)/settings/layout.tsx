@@ -109,7 +109,9 @@ function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
 const NAV_ITEMS = [
   { href: "/settings/profile", labelKey: "profile", iconKey: "profile" },
   { href: "/settings/family", labelKey: "family", iconKey: "family" },
-  { href: "/settings/subscription", labelKey: "subscription", iconKey: "subscription" },
+  // iOS is free-tier only (Apple 3.1.1) — hide the Subscription tab and its
+  // link to the billing/plan page inside the native app.
+  { href: "/settings/subscription", labelKey: "subscription", iconKey: "subscription", hideInNative: true },
   { href: "/settings/connections", labelKey: "connections", iconKey: "connections" },
   { href: "/settings/notifications", labelKey: "alerts", iconKey: "notifications" },
   { href: "/settings/legacy", labelKey: "legacy", iconKey: "legacy" },

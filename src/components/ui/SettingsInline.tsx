@@ -47,7 +47,8 @@ function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
 const NAV_ITEMS: { tab: SettingsTab; labelKey: string; iconKey: string; hideInNative?: boolean }[] = [
   { tab: "profile", labelKey: "profile", iconKey: "profile" },
   { tab: "family", labelKey: "family", iconKey: "family" },
-  { tab: "subscription", labelKey: "subscription", iconKey: "subscription" },
+  // iOS is free-tier only (Apple 3.1.1) — hide the Subscription tab in the native app.
+  { tab: "subscription", labelKey: "subscription", iconKey: "subscription", hideInNative: true },
   { tab: "connections", labelKey: "connections", iconKey: "connections" },
   { tab: "notifications", labelKey: "alerts", iconKey: "notifications" },
   { tab: "legacy", labelKey: "legacy", iconKey: "legacy" },

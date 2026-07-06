@@ -7,6 +7,7 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { locales } from "@/i18n/config";
 import PalaceLogo from "@/components/landing/PalaceLogo";
+import { isIOS } from "@/lib/native/platform";
 
 const F = T.font;
 const C = T.color;
@@ -24,9 +25,14 @@ export default function HelpPage() {
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // iOS is free-tier only (Apple 3.1.1): no plan/upgrade text and no billing
+  // support category may appear in the native app. FAQ #2 ("is it free?") uses a
+  // neutral no-upsell answer on iOS.
+  const isIosApp = isIOS();
+
   const faqs = [
     { q: t("faq1q"), a: t("faq1a") },
-    { q: t("faq2q"), a: t("faq2a") },
+    { q: t("faq2q"), a: isIosApp ? t("faq2a_ios") : t("faq2a") },
     { q: t("faq3q"), a: t("faq3a") },
     { q: t("faq4q"), a: t("faq4a") },
     { q: t("faq5q"), a: t("faq5a") },
@@ -38,7 +44,7 @@ export default function HelpPage() {
   const categories = [
     { value: "general", label: t("catGeneral") },
     { value: "technical", label: t("catTechnical") },
-    { value: "billing", label: t("catBilling") },
+    ...(isIosApp ? [] : [{ value: "billing", label: t("catBilling") }]),
     { value: "feature", label: t("catFeature") },
     { value: "other", label: t("catOther") },
   ];

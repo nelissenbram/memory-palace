@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies, headers } from "next/headers";
 import Stripe from "stripe";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
@@ -10,6 +11,14 @@ function getStripe() {
 export async function POST() {
   const stripe = getStripe();
   try {
+    // iOS is free-tier only (Apple Guideline 3.1.1) — never open a Stripe billing
+    // portal (manage/cancel subscription) for a native iOS request.
+    const ua = (await headers()).get("user-agent") || "";
+    const platform = (await cookies()).get("mp_platform")?.value;
+    if (ua.includes("MemoryPalace-iOS") || platform === "ios") {
+      return NextResponse.json({ error: "Not available" }, { status: 403 });
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
