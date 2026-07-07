@@ -50,7 +50,12 @@ async function ensureBrowserDismissReset() {
 
 async function openOAuthInApp(url: string) {
   const { Browser } = await import("@capacitor/browser");
-  await Browser.open({ url, presentationStyle: "popover" });
+  // Default full-screen sheet — NOT "popover". On iPad a popover-presented
+  // SFSafariViewController does not reliably hand first-responder back to the
+  // WKWebView when dismissed, leaving the app tap-dead after login until a
+  // force-quit (Apple 2.1a). The full-screen sheet dismissal restores touch
+  // input cleanly. This is still an in-app browser, so Guideline 4 is satisfied.
+  await Browser.open({ url });
 }
 
 type OAuthOpts = { onDismiss?: () => void };

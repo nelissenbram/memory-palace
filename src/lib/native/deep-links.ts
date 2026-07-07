@@ -30,15 +30,24 @@ export function initDeepLinkListener() {
         parsedUrl.pathname === "/auth/callback" ||
         (parsedUrl.host === "auth" && parsedUrl.pathname === "/callback");
       if (isOAuthCallback) {
-        // Close the in-app browser (SFSafariViewController) if still open
-        import("@capacitor/browser").then(({ Browser }) => {
-          Browser.close().catch(() => {});
-        }).catch(() => {});
         // Supabase appends tokens as hash fragments or the auth code as a query
         // param. Replay them into the WebView so the existing /auth/callback
         // handler completes the session.
         const params = parsedUrl.hash || parsedUrl.search;
-        window.location.href = `/auth/callback${params}`;
+        const go = () => { window.location.href = `/auth/callback${params}`; };
+        // CRITICAL (Apple 2.1a — "all buttons dead after first login, fixed by
+        // force-quit"): fully dismiss the SFSafariViewController BEFORE navigating
+        // the WebView. Navigating while the auth sheet is still dismissing leaves
+        // the underlying WKWebView without first-responder on iPad — the page
+        // renders but every tap is swallowed until the app is force-quit. Await
+        // the close, let the dismissal animation settle so the WebView reclaims
+        // touch input, and only then navigate.
+        import("@capacitor/browser")
+          .then(async ({ Browser }) => {
+            try { await Browser.close(); } catch {}
+            setTimeout(go, 350);
+          })
+          .catch(go);
         return;
       }
 
