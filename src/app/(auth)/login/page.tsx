@@ -8,7 +8,7 @@ import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { createMFAChallenge, verifyMFAChallenge } from "@/lib/auth/mfa-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
-import { isIOS } from "@/lib/native/platform";
+import { isIOS, nativeHardNav } from "@/lib/native/platform";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 
 export default function LoginPage() {
@@ -77,8 +77,10 @@ function LoginContent() {
       }
 
       if (result?.success) {
-        // Auth succeeded — navigate client-side so cookies are flushed first
-        window.location.href = result.redirect || "/atrium";
+        // Auth succeeded — navigate client-side so cookies are flushed first.
+        // nativeHardNav dismisses the keyboard first so the WKWebView keeps
+        // receiving taps on the next screen (Apple 2.1a fix).
+        await nativeHardNav(result.redirect || "/atrium");
         return;
       }
 
@@ -159,11 +161,12 @@ function LoginContent() {
       return;
     }
 
-    // MFA verified — redirect
+    // MFA verified — redirect (dismiss keyboard first so taps survive on the
+    // next screen — Apple 2.1a fix)
     if (mfaRedirect && mfaRedirect.startsWith("/invite/")) {
-      window.location.href = mfaRedirect;
+      await nativeHardNav(mfaRedirect);
     } else {
-      window.location.href = "/atrium";
+      await nativeHardNav("/atrium");
     }
   }
 

@@ -5,7 +5,7 @@
  */
 
 import { App } from "@capacitor/app";
-import { isNative } from "./platform";
+import { isNative, nativeHardNav } from "./platform";
 
 let initialized = false;
 
@@ -34,18 +34,18 @@ export function initDeepLinkListener() {
         // param. Replay them into the WebView so the existing /auth/callback
         // handler completes the session.
         const params = parsedUrl.hash || parsedUrl.search;
-        const go = () => { window.location.href = `/auth/callback${params}`; };
+        const go = () => { void nativeHardNav(`/auth/callback${params}`); };
         // CRITICAL (Apple 2.1a — "all buttons dead after first login, fixed by
         // force-quit"): fully dismiss the SFSafariViewController BEFORE navigating
         // the WebView. Navigating while the auth sheet is still dismissing leaves
         // the underlying WKWebView without first-responder on iPad — the page
         // renders but every tap is swallowed until the app is force-quit. Await
-        // the close, let the dismissal animation settle so the WebView reclaims
-        // touch input, and only then navigate.
+        // the close, then nativeHardNav dismisses any keyboard and lets the
+        // native responder chain settle before navigating so touch input survives.
         import("@capacitor/browser")
           .then(async ({ Browser }) => {
             try { await Browser.close(); } catch {}
-            setTimeout(go, 350);
+            go();
           })
           .catch(go);
         return;
