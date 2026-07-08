@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { sendResetEmail } from "@/lib/email/send-reset";
 import { serverError } from "@/lib/i18n/server-errors";
@@ -95,16 +96,22 @@ export async function signIn(formData: FormData) {
     aalData.currentLevel === "aal1" &&
     aalData.nextLevel === "aal2"
   ) {
-    // User has MFA enrolled — return factor info so the client can prompt
+    // User has MFA enrolled — return factor info so the client can prompt.
     const { data: factors } = await supabase.auth.mfa.listFactors();
-    const totpFactor = factors?.totp?.[0];
-    if (totpFactor) {
+    const factor = factors?.totp?.[0] ?? factors?.phone?.[0];
+    if (factor) {
       return {
         mfaRequired: true,
-        factorId: totpFactor.id,
+        factorId: factor.id,
         redirect: redirectTo,
       };
     }
+    // MFA is required but no usable factor was returned (e.g. a flaky listFactors
+    // call). Fail CLOSED — never fall through to success and hand out a live AAL1
+    // session that skips the second factor. Tear the partial session down and ask
+    // the user to retry.
+    await supabase.auth.signOut({ scope: "local" });
+    return { error: t("mfaUnavailable") };
   }
 
   // No MFA needed — return success so client can redirect
@@ -116,11 +123,33 @@ export async function signIn(formData: FormData) {
 }
 
 export async function signOut() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { success: true };
+  const store = await cookies();
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    try {
+      const supabase = await createClient();
+      // Best-effort server-side revoke, but time-boxed: a hung POST /logout must
+      // never outlast useSignOut's fallback nor block the authoritative cookie
+      // clear below. scope:"local" = per-device semantics (don't kill the user's
+      // other sessions on a routine sign-out).
+      await Promise.race([
+        supabase.auth.signOut({ scope: "local" }),
+        new Promise((r) => setTimeout(r, 1500)),
+      ]);
+    } catch {
+      // fall through — the explicit cookie purge below is what actually logs out
+    }
   }
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  // LOAD-BEARING (Apple S2 fix): expire EVERY Supabase auth cookie regardless of
+  // the revoke outcome. auth-js does the network logout first and, on a retryable
+  // network error, returns before removing the session — leaving sb-* cookies live
+  // so middleware treats the next visit as authenticated ("auto-logged-in"). This
+  // loop guarantees the session is gone. Covers chunked sb-<ref>-auth-token.0/.1
+  // and the PKCE code-verifier; preserves mp_platform / mp_locale.
+  for (const c of store.getAll()) {
+    if (c.name.startsWith("sb-")) {
+      store.set(c.name, "", { maxAge: 0, path: "/" });
+    }
+  }
   return { success: true };
 }
 

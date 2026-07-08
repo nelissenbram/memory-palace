@@ -10,6 +10,20 @@ function isPublicPath(path: string): boolean {
   );
 }
 
+/**
+ * Build a redirect that carries over the auth cookies updateSession() rotated onto
+ * `res`. A bare NextResponse.redirect drops those refreshed tokens, so the next
+ * request presents a stale refresh token → spontaneous logout and /login⇄/atrium
+ * ping-pong. Copy them so the redirect commits the rotation. (Ships together with
+ * the signOut cookie-clear — never alone, or it would strengthen an un-cleared
+ * session.)
+ */
+function redirectWith(path: string, request: NextRequest, res: NextResponse): NextResponse {
+  const r = NextResponse.redirect(new URL(path, request.url));
+  res.cookies.getAll().forEach((c) => r.cookies.set(c));
+  return r;
+}
+
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
@@ -67,12 +81,12 @@ export async function middleware(request: NextRequest) {
   const isBlogPage = path.startsWith("/blog");
   const isSocialPage = path.startsWith("/explore") || path.startsWith("/u/") || path.startsWith("/visit/");
   if (user && (isPublicRoute || path === "/") && !isInvitePage && !isKepPage && !isPublicSharePage && !isLegacyPage && !isResetPasswordPage && !isApiRoute && !isPricingPage && !isLegalPage && !isBlogPage && !isSocialPage) {
-    return NextResponse.redirect(new URL("/atrium", request.url));
+    return redirectWith("/atrium", request, response);
   }
 
   // Unauthenticated user on protected route → redirect to login
   if (!user && !isPublicRoute && path !== "/") {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return redirectWith("/login", request, response);
   }
 
   return response;

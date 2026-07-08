@@ -26,11 +26,18 @@ export default async function AuthLayout({
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   ) {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // S3 fix: time-box getUser. App Router withholds ALL html above this await, so
+    // a slow/hung Supabase call on a flaky WKWebView network blocks the whole
+    // /login document — only the root #mp-loading veil paints, then its 4s backstop
+    // fades it to a blank cream screen. Middleware (4s) and the (app) layout (3.5s)
+    // were hardened for this; this segment was missed. Fail OPEN on timeout: render
+    // the public login form (no private data here; middleware guards real routes).
+    const result = await Promise.race([
+      supabase.auth.getUser().then((r) => r.data.user ?? null).catch(() => null),
+      new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 3500)),
+    ]);
 
-    if (user) {
+    if (result !== "timeout" && result) {
       redirect("/atrium");
     }
   }

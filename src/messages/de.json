@@ -1,5 +1,6 @@
 {
   "common": {
+    "somethingWentWrong": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
     "back": "Zurück",
     "continue": "Weiter",
     "save": "Speichern",

@@ -298,6 +298,13 @@ const errors: Record<string, Record<Locale, string>> = {
     es: "Algo sali\u00f3 mal",
     fr: "Quelque chose s'est mal pass\u00e9",
   },
+  mfaUnavailable: {
+    en: "Could not verify two-factor authentication. Please try again.",
+    nl: "Tweestapsverificatie kon niet worden gecontroleerd. Probeer het opnieuw.",
+    de: "Die Zwei-Faktor-Authentifizierung konnte nicht \u00fcberpr\u00fcft werden. Bitte versuchen Sie es erneut.",
+    es: "No se pudo verificar la autenticaci\u00f3n de dos factores. Int\u00e9ntalo de nuevo.",
+    fr: "Impossible de v\u00e9rifier l'authentification \u00e0 deux facteurs. Veuillez r\u00e9essayer.",
+  },
 
   // ── Plan limits ──
   familyTreeLimitReached: {

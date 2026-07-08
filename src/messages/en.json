@@ -1,5 +1,6 @@
 {
   "common": {
+    "somethingWentWrong": "Something went wrong. Please try again.",
     "back": "Back",
     "continue": "Continue",
     "save": "Save",

@@ -1,5 +1,6 @@
 {
   "common": {
+    "somethingWentWrong": "Er is iets misgegaan. Probeer het opnieuw.",
     "back": "Terug",
     "continue": "Doorgaan",
     "save": "Opslaan",

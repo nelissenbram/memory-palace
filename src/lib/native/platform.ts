@@ -71,13 +71,21 @@ export function navigateInApp(path: string): void {
 export async function nativeHardNav(url: string, settleMs = 400): Promise<void> {
   if (isNative()) {
     try { (document.activeElement as HTMLElement | null)?.blur(); } catch {}
-    try {
-      const { Keyboard } = await import("@capacitor/keyboard");
-      await Keyboard.hide();
-    } catch {}
-    // Let the keyboard dismissal animation finish and the WKWebView reclaim
-    // first responder before we tear the document down.
-    await new Promise<void>((resolve) => setTimeout(resolve, settleMs));
+    // Let the keyboard dismissal finish and the WKWebView reclaim first responder
+    // before we tear the document down — BUT race it against a hard cap so a hung
+    // native bridge can never strand the navigation (that would read as S1 "login
+    // did nothing"). Healthy path: Keyboard.hide() resolves fast, the inner branch
+    // wins at ~settleMs, so the full teardown (Apple 2.1a tap-wedge fix) is intact.
+    await Promise.race([
+      (async () => {
+        try {
+          const { Keyboard } = await import("@capacitor/keyboard");
+          await Keyboard.hide();
+        } catch {}
+        await new Promise<void>((resolve) => setTimeout(resolve, settleMs));
+      })(),
+      new Promise<void>((resolve) => setTimeout(resolve, settleMs + 500)),
+    ]);
   }
   window.location.href = url;
 }

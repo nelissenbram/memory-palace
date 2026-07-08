@@ -9,7 +9,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { track } from "@/lib/analytics";
-import { isIOS } from "@/lib/native/platform";
+import { isIOS, isNative } from "@/lib/native/platform";
 
 export default function RegisterPage() {
   return <Suspense><RegisterContent /></Suspense>;
@@ -27,6 +27,15 @@ function RegisterContent() {
   const [oauthLoading, setOauthLoading] = useState<"google" | "apple" | null>(null);
   const [appleFirst, setAppleFirst] = useState(false);
   useEffect(() => { setAppleFirst(isIOS()); }, []);
+  // Backstop for a dropped browserFinished: when the in-app auth sheet closes the
+  // WebView regains visibility — reset a stuck OAuth spinner so the buttons never
+  // wedge (native only; web redirects away instead).
+  useEffect(() => {
+    if (!oauthLoading || !isNative()) return;
+    const reset = () => { if (document.visibilityState === "visible") setOauthLoading(null); };
+    document.addEventListener("visibilitychange", reset);
+    return () => document.removeEventListener("visibilitychange", reset);
+  }, [oauthLoading]);
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
   const refCode = searchParams.get("ref");
@@ -268,18 +277,22 @@ function RegisterContent() {
           }
           setError("");
           setOauthLoading(provider);
+          // Safety net: if iOS drops browserFinished, never leave the button stuck
+          // disabled (no-op'ing every later tap). Force-reset after 45s.
+          const safety = setTimeout(() => setOauthLoading(null), 45000);
+          const clear = () => { clearTimeout(safety); setOauthLoading(null); };
           const fn = provider === "google" ? signInWithGoogle : signInWithApple;
           try {
             // onDismiss resets the spinner if the in-app auth sheet closes without
             // completing, so a cancelled/failed sign-up never looks frozen.
-            const { error: oauthErr } = await fn({ onDismiss: () => setOauthLoading(null) });
+            const { error: oauthErr } = await fn({ onDismiss: clear });
             if (oauthErr) {
+              clear();
               setError(oauthErr);
-              setOauthLoading(null);
             }
           } catch {
-            setError(tc("somethingWentWrong") || "Sign-up failed. Please try again.");
-            setOauthLoading(null);
+            clear();
+            setError(tc("somethingWentWrong"));
           }
         };
         const googleBtn = (

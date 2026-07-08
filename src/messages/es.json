@@ -1,5 +1,6 @@
 {
   "common": {
+    "somethingWentWrong": "Algo salió mal. Inténtalo de nuevo.",
     "back": "Atrás",
     "continue": "Continuar",
     "save": "Guardar",

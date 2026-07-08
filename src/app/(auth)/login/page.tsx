@@ -8,7 +8,7 @@ import { signInWithGoogle, signInWithApple } from "@/lib/auth/social-login";
 import { createMFAChallenge, verifyMFAChallenge } from "@/lib/auth/mfa-actions";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
-import { isIOS, nativeHardNav } from "@/lib/native/platform";
+import { isIOS, isNative, nativeHardNav } from "@/lib/native/platform";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 
 export default function LoginPage() {
@@ -34,20 +34,38 @@ function LoginContent() {
     if (oauthLoading) return;
     setError("");
     setOauthLoading(provider);
+    // Safety net (S1 "in Apple?"): if iOS dismisses the in-app auth sheet without
+    // emitting browserFinished, onDismiss never fires and the button would stay
+    // disabled forever — no-op'ing every later tap. Force-reset after 45s.
+    const safety = setTimeout(() => setOauthLoading(null), 45000);
+    const clear = () => { clearTimeout(safety); setOauthLoading(null); };
     const fn = provider === "google" ? signInWithGoogle : signInWithApple;
     try {
       // onDismiss resets the spinner if the in-app auth sheet is closed without
       // completing — so a cancelled/failed sign-in never leaves a dead screen.
-      const { error: oauthErr } = await fn({ onDismiss: () => setOauthLoading(null) });
+      const { error: oauthErr } = await fn({ onDismiss: clear });
       if (oauthErr) {
+        clear();
         setError(oauthErr);
-        setOauthLoading(null);
       }
+      // On success we intentionally keep the spinner: the browser sheet is open
+      // (native) or the page is redirecting (web). safety + visibility reset below
+      // guarantee it can never stay stuck.
     } catch {
-      setError(tc("somethingWentWrong") || "Sign-in failed. Please try again.");
-      setOauthLoading(null);
+      clear();
+      setError(tc("somethingWentWrong"));
     }
   }
+
+  // Backstop for a dropped browserFinished: when the in-app auth sheet closes, the
+  // WebView regains visibility. Use that to reset a stuck OAuth spinner so the
+  // Apple/Google buttons never wedge (native only; web redirects away instead).
+  useEffect(() => {
+    if (!oauthLoading || !isNative()) return;
+    const reset = () => { if (document.visibilityState === "visible") setOauthLoading(null); };
+    document.addEventListener("visibilitychange", reset);
+    return () => document.removeEventListener("visibilitychange", reset);
+  }, [oauthLoading]);
 
   // MFA state
   const [mfaStep, setMfaStep] = useState(false);
@@ -86,9 +104,16 @@ function LoginContent() {
 
       if (result?.error) {
         setError(result.error);
+      } else if (!result?.success && !result?.mfaRequired) {
+        // Unrecognized/empty result shape — never leave the tap a silent no-op.
+        setError(tc("somethingWentWrong"));
       }
-    } catch {
-      // Unexpected error — clear loading state
+    } catch (err) {
+      // S1 primary fix: a thrown signIn (network blip, aborted server-action fetch,
+      // or a stale Server Action id after a redeploy) used to hit an empty catch —
+      // button re-enabled, no nav, no message = "login does nothing". Surface it.
+      console.error("[login] signIn failed:", err);
+      setError(tc("somethingWentWrong"));
     }
     setLoading(false);
   }
