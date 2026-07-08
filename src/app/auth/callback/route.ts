@@ -89,7 +89,12 @@ export async function GET(request: Request) {
           });
         }
 
-        return NextResponse.redirect(`${origin}/palace`);
+        // Always land on the Atrium (the app's home), matching email/password
+        // login. First-time users still get onboarding — MemoryPalace gates that
+        // on !onboarded, not the URL — so /atrium is correct for new and returning
+        // users alike. (Previously /palace, which is why social/email-confirm
+        // logins intermittently dropped users into the 3D palace instead.)
+        return NextResponse.redirect(`${origin}/atrium`);
       }
     }
   }
