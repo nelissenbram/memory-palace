@@ -651,7 +651,9 @@ function LandingPageContent({ initialIosApp = false }: { initialIosApp?: boolean
                     name: lAny.faq[`q${n}`],
                     acceptedAnswer: {
                       "@type": "Answer",
-                      text: lAny.faq[`a${n}`],
+                      // Use the iOS FAQ variant on iOS so the structured data
+                      // carries no upgrade/upsell copy either (Apple 3.1.1).
+                      text: (isIosApp && lAny.faq[`a${n}_ios`]) ? lAny.faq[`a${n}_ios`] : lAny.faq[`a${n}`],
                     },
                   })),
               },
