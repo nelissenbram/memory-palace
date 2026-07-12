@@ -88,6 +88,14 @@ function formatBytes(b: number): string {
   return (b / (1024 * 1024)).toFixed(1) + " MB";
 }
 
+// iOS is free-tier only: expose just the free Google Photos import so no paid
+// (Keeper) provider — with its upgrade badge, "Upgrade to Keeper" CTA and
+// /pricing steering — can ever render on iOS (Apple Guideline 3.1.1 / 3.1.3).
+// Single source of truth so the initial load and the retry path cannot drift.
+function filterAccountsForPlatform(raw: ConnectedAccount[]): ConnectedAccount[] {
+  return isIOS() ? raw.filter((a) => a.provider === "google_photos") : raw;
+}
+
 // ═══ Main CloudImportPanel ═══
 export default function CloudImportPanel({ onClose, embedded }: Props) {
   const { t } = useTranslation("import");
@@ -152,12 +160,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
         ]);
         if (accountsRes.ok) {
           const data = await accountsRes.json();
-          const raw = (data.accounts || []) as ConnectedAccount[];
-          // iOS is free-tier only: expose just the free Google Photos import so
-          // no paid (Keeper) provider — with its upgrade badge, "Upgrade to
-          // Keeper" CTA and /pricing steering — can ever render on iOS
-          // (Apple Guideline 3.1.1 / 3.1.3).
-          const accs = isIOS() ? raw.filter((a) => a.provider === "google_photos") : raw;
+          const accs = filterAccountsForPlatform((data.accounts || []) as ConnectedAccount[]);
           setAccounts(accs);
           // Auto-select first connected account
           if (accs.length > 0) {
@@ -364,7 +367,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                 const meta = PROVIDER_META[account.provider];
                 if (!meta) return null;
                 const isActive = activeProvider === account.provider;
-                const isLocked = account.provider !== "google_photos" && userPlan === "free";
+                const isLocked = account.provider !== "google_photos" && userPlan === "free" && !isIOS();
                 return (
                   <button key={account.provider} onClick={() => {
                     if (isLocked) {
@@ -460,7 +463,7 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
                       const res = await fetch("/api/integrations/accounts");
                       if (res.ok) {
                         const data = await res.json();
-                        const accs = (data.accounts || []) as ConnectedAccount[];
+                        const accs = filterAccountsForPlatform((data.accounts || []) as ConnectedAccount[]);
                         setAccounts(accs);
                         if (accs.length > 0) setActiveProvider(accs[0].provider);
                       }
@@ -566,8 +569,8 @@ export default function CloudImportPanel({ onClose, embedded }: Props) {
             </div>
           )}
 
-          {/* Keeper-only gate for non-Google providers */}
-          {activeProvider && activeProvider !== "google_photos" && userPlan === "free" && !importing && !importProgress && (
+          {/* Keeper-only gate for non-Google providers (never on iOS — no /pricing steering) */}
+          {activeProvider && activeProvider !== "google_photos" && userPlan === "free" && !importing && !importProgress && !isIOS() && (
             <div style={{
               textAlign: "center", padding: "2.5rem 1.5rem",
             }}>
