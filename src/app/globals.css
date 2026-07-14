@@ -249,6 +249,17 @@ canvas {
   touch-action: none;
 }
 
+/* Defense-in-depth for the "scene renders too small" bug: before the first
+   autoFit/setSize runs (or in the frame a lazy scene commits), keep the canvas
+   filling its mount box instead of collapsing to a tiny intrinsic size. Once
+   three.js setSize() writes inline px, that inline style wins — this only
+   governs the pre-fit frame. The load-bearing fix is src/lib/3d/fitRenderer.ts. */
+[role="application"] canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 /* Hide scrollbar on mobile action bars but allow scroll */
 .hide-scrollbar {
   -ms-overflow-style: none;

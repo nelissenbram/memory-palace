@@ -3,6 +3,10 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { autoMatchInvites } from "@/lib/auth/invite-actions";
 import { sendWelcomeEmail } from "@/lib/email/send-welcome";
 
+// The OAuth landing must never be cached at any layer (SW/CDN/browser) — a
+// cached copy is what left users on a stale /atrium after Apple sign-in.
+export const dynamic = "force-dynamic";
+
 /**
  * Ensure a profiles row exists for this user.
  * The DB trigger `handle_new_user` on auth.users should create it,
@@ -94,7 +98,9 @@ export async function GET(request: Request) {
         // on !onboarded, not the URL — so /atrium is correct for new and returning
         // users alike. (Previously /palace, which is why social/email-confirm
         // logins intermittently dropped users into the 3D palace instead.)
-        return NextResponse.redirect(`${origin}/atrium`);
+        const res = NextResponse.redirect(`${origin}/atrium`);
+        res.headers.set("Cache-Control", "no-store, must-revalidate");
+        return res;
       }
     }
   }

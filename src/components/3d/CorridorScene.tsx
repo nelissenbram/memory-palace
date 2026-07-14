@@ -12,6 +12,7 @@ import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
+import { measure, autoFit } from "@/lib/3d/fitRenderer";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 
@@ -40,7 +41,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
   const doorMeshes=useRef<any[]>([]);
 
   useEffect(()=>{
-    const el=mountRef.current;if(!el)return;let w=el.clientWidth,h=el.clientHeight;
+    const el=mountRef.current;if(!el)return;const { w, h } = measure(el);
     const dlPreset=getLightingPreset();
     // ── Cached THREE objects (avoid per-frame / per-event allocation) ──
     const _rc=new THREE.Raycaster(),_mouse=new THREE.Vector2();
@@ -65,6 +66,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     const composer=createPostProcessing(ren,scene,camera,"corridor");
+    const disposeFit=autoFit(el,{camera,renderer:ren,composer});
 
     scene.add(new THREE.HemisphereLight(dlPreset.ambientColor,"#C4B8A0",.55*dlPreset.ambientIntensity/0.5));
     const sun=new THREE.DirectionalLight(dlPreset.sunColor,1.5*dlPreset.sunIntensity);sun.position.set(8,16,-3);sun.castShadow=true;sun.shadow.mapSize.set(Q.shadowMapSize,Q.shadowMapSize);
@@ -1517,9 +1519,8 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const _cMap:Record<string,string>={"KeyW":"w","KeyA":"a","KeyS":"s","KeyD":"d","ShiftLeft":"shift","ShiftRight":"shift","ArrowUp":"arrowup","ArrowDown":"arrowdown","ArrowLeft":"arrowleft","ArrowRight":"arrowright"};
     const onKD=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys[k]=true;if(k.startsWith("arrow"))e.preventDefault();};
     const onKU=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys[k]=false;};
-    const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);
-    window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);window.addEventListener("resize",onRs);
+    window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);
 
     // ── TOUCH SUPPORT ──
     let touchTap=true,touchLookId: number|null=null,touchMoveId: number|null=null;
@@ -1586,7 +1587,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});
 
     return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);
-      window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);window.removeEventListener("resize",onRs);
+      window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);disposeFit();
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       clearInterval(touchTick);
       const _cachedSet=buildCachedTextureSet();

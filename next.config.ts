@@ -15,19 +15,36 @@ const withPWA = withPWAInit({
     skipWaiting: true,
     clientsClaim: true,
     runtimeCaching: [
-      // App shell — HTML pages (NetworkFirst so fresh content is preferred)
+      // App shell — HTML navigations: NetworkFirst, but NEVER cache auth-sensitive
+      // routes (so a webpack build that regenerates the SW can't reintroduce the
+      // stale-/atrium-after-login bug).
       {
-        urlPattern: ({ request }: { request: Request }) =>
-          request.mode === "navigate",
+        urlPattern: ({ request, url }: { request: Request; url: URL }) =>
+          request.mode === "navigate" &&
+          !["/atrium", "/palace", "/library", "/me", "/login"].some(
+            (p) => url.pathname === p || url.pathname.startsWith(p + "/")
+          ) &&
+          !url.pathname.startsWith("/auth/"),
         handler: "NetworkFirst" as const,
         options: {
           cacheName: "pages-cache",
-          networkTimeoutSeconds: 5,
+          networkTimeoutSeconds: 10,
           expiration: {
             maxEntries: 50,
             maxAgeSeconds: 60 * 60, // 1 hour — prevent stale HTML serving
           },
         },
+      },
+      // Auth-sensitive HTML navigations — always live network, never cached.
+      {
+        urlPattern: ({ request, url }: { request: Request; url: URL }) =>
+          request.mode === "navigate" &&
+          (["/atrium", "/palace", "/library", "/me", "/login"].some(
+            (p) => url.pathname === p || url.pathname.startsWith(p + "/")
+          ) ||
+            url.pathname.startsWith("/auth/")),
+        handler: "NetworkOnly" as const,
+        options: { cacheName: "auth-pages-cache" },
       },
       // Static assets — CacheFirst for fast loads
       {

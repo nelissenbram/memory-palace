@@ -15,6 +15,7 @@ import { loadBustModel, type BustStyle, type BustGender } from "@/lib/3d/bustBui
 import type { BustPedestalData } from "@/lib/stores/userStore";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
+import { measure, autoFit } from "@/lib/3d/fitRenderer";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { T } from "@/lib/theme";
@@ -201,7 +202,7 @@ function EntranceHallScene({
   useEffect(() => {
     const el = mountRef.current;
     if (!el) return;
-    let w = el.clientWidth, h = el.clientHeight;
+    const { w, h } = measure(el);
 
     const dlPreset = getLightingPreset();
     const scene = new THREE.Scene();
@@ -242,6 +243,7 @@ function EntranceHallScene({
       bloom: { luminanceThreshold: 0.25, luminanceSmoothing: 0.5, intensity: 0.9 },
       vignette: { darkness: 0.7, offset: 0.15 },
     });
+    const disposeFit = autoFit(el, { camera, renderer: ren, composer });
 
     // ── REAL PBR TEXTURES (from Poly Haven) ──
     const marbleTex = loadMarbleTextures([6, 6]);
@@ -2160,20 +2162,11 @@ function EntranceHallScene({
     const onKU = (e: KeyboardEvent) => {
       keys.current[e.key.toLowerCase()] = false;
     };
-    const onResize = () => {
-      w = el.clientWidth;
-      h = el.clientHeight;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      ren.setSize(w, h);
-      composer.setSize(w, h);
-    };
     el.addEventListener("mousedown", onDown);
     el.addEventListener("mousemove", onMove);
     el.addEventListener("click", onClick);
     window.addEventListener("keydown", onKD);
     window.addEventListener("keyup", onKU);
-    window.addEventListener("resize", onResize);
 
     // ── TOUCH SUPPORT (first-person: left side = move, right side = look) ──
     let touchTap = true;
@@ -2316,7 +2309,7 @@ function EntranceHallScene({
       el.removeEventListener("click", onClick);
       window.removeEventListener("keydown", onKD);
       window.removeEventListener("keyup", onKU);
-      window.removeEventListener("resize", onResize);
+      disposeFit();
       el.removeEventListener("touchstart", onTS);
       el.removeEventListener("touchmove", onTM);
       el.removeEventListener("touchend", onTE);

@@ -14,6 +14,7 @@ import { createDustParticles } from "@/lib/3d/atmosphericEffects";
 import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
+import { measure, autoFit } from "@/lib/3d/fitRenderer";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useUserStore } from "@/lib/stores/userStore";
@@ -97,7 +98,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     // multiple WebGL contexts from stacking up (which eventually causes
     // context loss and a pitch-dark scene).
     while(el.firstChild)el.removeChild(el.firstChild);
-    let w=el.clientWidth,h=el.clientHeight;
+    const { w, h } = measure(el);
     const layout=layoutForRoom(actualRoomId||roomId,layoutOverride);
     const dlPresetRaw=getLightingPreset();
     // Interior rooms have artificial lighting — enforce minimum brightness
@@ -126,6 +127,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     const composer=createPostProcessing(ren,scene,camera,"interior",{ssao:false});
+    const disposeFit=autoFit(el,{camera,renderer:ren,composer});
 
     // ── ATMOSPHERIC FOG ──
     const isExhibition=!!layout.isExhibition;
@@ -2165,9 +2167,8 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     }};
     const _cMap:Record<string,string>={"KeyW":"w","KeyA":"a","KeyS":"s","KeyD":"d","ShiftLeft":"shift","ShiftRight":"shift","ArrowUp":"arrowup","ArrowDown":"arrowdown","ArrowLeft":"arrowleft","ArrowRight":"arrowright"};
     const onKD=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=true;if(k.startsWith("arrow"))e.preventDefault();};const onKU=(e: KeyboardEvent)=>{const k=_cMap[e.code]||e.key.toLowerCase();keys.current[k]=false;};
-    const onRs=()=>{w=el.clientWidth;h=el.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();ren.setSize(w,h);composer.setSize(w,h);};
     el.addEventListener("mousedown",onDown);el.addEventListener("mousemove",onMove);el.addEventListener("click",onCk);
-    window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);window.addEventListener("resize",onRs);
+    window.addEventListener("keydown",onKD);window.addEventListener("keyup",onKU);
 
     // ── TOUCH SUPPORT ──
     let touchTap2=true,touchLookId2: number|null=null,touchMoveId2: number|null=null;
@@ -2259,7 +2260,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     },250);
 
     return()=>{alive=false;if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);
-      window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);window.removeEventListener("resize",onRs);
+      window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);disposeFit();
       el.removeEventListener("touchstart",onTS2);el.removeEventListener("touchmove",onTM2);el.removeEventListener("touchend",onTE2);
       clearInterval(touchTick2);clearInterval(mediaPoll);
       videoElRef.current=null;audioElRef.current=null;setShowMedia({video:false,audio:false});

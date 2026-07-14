@@ -1,7 +1,8 @@
-// Service Worker — CacheFirst for static assets, NetworkFirst for pages
-// Dramatically reduces load times for 3D scenes, textures, and fonts
+// Service Worker — CacheFirst for static assets, NetworkFirst for HTML pages,
+// with auth-sensitive routes (/atrium,/palace,/library,/me,/login,/auth) never
+// cached (prevents serving a stale, pre-login shell after OAuth sign-in).
 
-const CACHE_VERSION = 'v2026-06-25a';
+const CACHE_VERSION = 'v2026-07-14a';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const ASSET_CACHE = `assets-${CACHE_VERSION}`;
 const PAGE_CACHE = `pages-${CACHE_VERSION}`;
@@ -113,20 +114,34 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── StaleWhileRevalidate: HTML pages ──
-  // Serve cached page immediately, update in background
-  if (event.request.headers.get('accept')?.includes('text/html')) {
+  // ── NetworkFirst: HTML pages (auth-sensitive; never serve a stale shell) ──
+  // Auth routes are NEVER cached: after OAuth sign-in the landing must be the
+  // live authenticated response, not a previously-cached logged-out shell.
+  if (
+    event.request.mode === 'navigate' ||
+    event.request.headers.get('accept')?.includes('text/html')
+  ) {
+    const NO_CACHE = ['/atrium', '/palace', '/library', '/me', '/login', '/auth'];
+    const url = new URL(event.request.url);
+    const bypass = NO_CACHE.some(
+      (r) => url.pathname === r || url.pathname.startsWith(r + '/')
+    );
     event.respondWith(
-      caches.open(PAGE_CACHE).then((cache) =>
-        cache.match(event.request).then((cached) => {
-          const fetchPromise = fetch(event.request).then((response) => {
-            if (response.ok) cache.put(event.request, response.clone());
-            return response;
-          }).catch(() => cached); // Offline fallback to cache
-
-          return cached || fetchPromise;
+      fetch(event.request)
+        .then((response) => {
+          // Never cache redirects (stops a /atrium→/login body being stored
+          // under the /atrium key) or auth-sensitive app routes.
+          if (!bypass && response.ok && !response.redirected) {
+            const copy = response.clone();
+            caches.open(PAGE_CACHE).then((c) => c.put(event.request, copy));
+          }
+          return response;
         })
-      )
+        .catch(() =>
+          caches.open(PAGE_CACHE).then((c) =>
+            c.match(event.request).then((cached) => cached || caches.match('/offline'))
+          )
+        )
     );
     return;
   }

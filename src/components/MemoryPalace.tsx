@@ -9,6 +9,7 @@ import PalaceLoadingScreen from "@/components/ui/PalaceLoadingScreen";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useUserStore } from "@/lib/stores/userStore";
+import { createClient } from "@/lib/supabase/client";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useMemoryStore } from "@/lib/stores/memoryStore";
 import { useAchievementStore } from "@/lib/stores/achievementStore";
@@ -362,6 +363,19 @@ export default function MemoryPalace(){
       }
     } catch { /* ignore */ }
   },[loadProfile, enterCorridor, enterRoom]);
+
+  // Re-read auth the instant the browser client picks up freshly-set cookies
+  // (e.g. right after OAuth sign-in). Closes any first-mount cookie-commit race
+  // independent of the service worker, so the landing self-heals without a reload.
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION" || event === "TOKEN_REFRESHED") {
+        loadProfile();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [loadProfile]);
 
   // Safety timeout: force profileLoading off after 3s to prevent infinite loading
   useEffect(() => {
