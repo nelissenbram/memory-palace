@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Security - The Memory Palace",
-  description: "How The Memory Palace keeps your memories safe. EU-hosted infrastructure, end-to-end encryption, and enterprise-grade security.",
+  description: "How The Memory Palace keeps your memories safe. EU-hosted infrastructure, AES-256 encryption at rest, TLS in transit, and GDPR compliance.",
   openGraph: {
     title: "Security - The Memory Palace",
-    description: "How The Memory Palace keeps your memories safe. EU-hosted infrastructure, end-to-end encryption, and enterprise-grade security.",
+    description: "How The Memory Palace keeps your memories safe. EU-hosted infrastructure, AES-256 encryption at rest, TLS in transit, and GDPR compliance.",
     url: "https://thememorypalace.ai/security",
     siteName: "The Memory Palace",
     images: [
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Security - The Memory Palace",
-    description: "How The Memory Palace keeps your memories safe. EU-hosted infrastructure, end-to-end encryption, and enterprise-grade security.",
+    description: "How The Memory Palace keeps your memories safe. EU-hosted infrastructure, AES-256 encryption at rest, TLS in transit, and GDPR compliance.",
     images: ["https://thememorypalace.ai/palace-hero.jpg"],
   },
 };

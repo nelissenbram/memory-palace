@@ -1363,7 +1363,7 @@ const posts: BlogPost[] = [
 <p>Antes de evaluar herramientas específicas, aclara tus prioridades:</p>
 
 <ul>
-<li><strong>Privacidad:</strong> ¿Quién es dueño de tus datos? ¿Puede la empresa usar tus fotos o historias para entrenar IA? ¿Hay cifrado de extremo a extremo disponible?</li>
+<li><strong>Privacidad:</strong> ¿Quién es dueño de tus datos? ¿Puede la empresa usar tus fotos o historias para entrenar IA? ¿Se cifran tus datos en reposo y en tránsito?</li>
 <li><strong>Longevidad:</strong> ¿Existirá la plataforma dentro de 10 años? ¿Qué pasa con tus datos si cierra? ¿Puedes exportar todo?</li>
 <li><strong>Colaboración:</strong> ¿Pueden contribuir varios miembros de la familia? ¿Hay niveles de permisos para diferentes roles?</li>
 <li><strong>Soporte multimedia:</strong> ¿Maneja fotos, vídeo, audio y documentos? ¿Puedes añadir contexto y narrativa?</li>

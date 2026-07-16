@@ -1156,7 +1156,7 @@ const posts: BlogPost[] = [
 <p>Bevor Sie einzelne Werkzeuge bewerten, klären Sie Ihre Prioritäten:</p>
 
 <ul>
-<li><strong>Datenschutz:</strong> Wem gehören Ihre Daten? Kann das Unternehmen Ihre Fotos oder Geschichten für KI-Training verwenden? Ist Ende-zu-Ende-Verschlüsselung verfügbar?</li>
+<li><strong>Datenschutz:</strong> Wem gehören Ihre Daten? Kann das Unternehmen Ihre Fotos oder Geschichten für KI-Training verwenden? Werden Ihre Daten bei Speicherung und Übertragung verschlüsselt?</li>
 <li><strong>Langlebigkeit:</strong> Wird die Plattform in 10 Jahren noch existieren? Was passiert mit Ihren Daten, wenn sie abgeschaltet wird? Können Sie alles exportieren?</li>
 <li><strong>Zusammenarbeit:</strong> Können mehrere Familienmitglieder beitragen? Gibt es Berechtigungsstufen für verschiedene Rollen?</li>
 <li><strong>Medienunterstützung:</strong> Kann sie mit Fotos, Video, Audio und Dokumenten umgehen? Können Sie Kontext und Erzählung hinzufügen?</li>

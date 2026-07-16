@@ -1031,19 +1031,6 @@ export function InterviewPrompt({
               </button>
             </div>
 
-            <p style={{
-              fontFamily: T.font.body,
-              fontSize: "0.8125rem",
-              color: T.color.muted,
-              margin: "1rem 0 0",
-              fontStyle: "italic",
-              letterSpacing: "0.005em",
-              lineHeight: 1.5,
-              opacity: 0.8,
-            }}>
-              {t("interview.socialProof")}
-            </p>
-
           </div>
         </div>
       </div>

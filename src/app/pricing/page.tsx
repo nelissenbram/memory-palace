@@ -424,8 +424,7 @@ export default function PricingPage() {
               </svg>
             ),
           },
-          // 30-day money-back guarantee is a web/Stripe concept — iOS refunds are Apple-managed.
-          ...(isApple ? [] : [{
+          {
             label: t("trustGuarantee"),
             icon: (
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -433,7 +432,7 @@ export default function PricingPage() {
                 <path d="M5 8.5l2 2 4-4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             ),
-          }]),
+          },
         ].map((badge) => (
           <div
             key={badge.label}
@@ -771,84 +770,6 @@ export default function PricingPage() {
               </div>
             );
           })}
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section
-        style={{
-          padding: isMobile ? "0 1rem 3rem" : "0 2.5rem 4rem",
-          maxWidth: 1100,
-          margin: "0 auto",
-        }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isSmall ? "1fr" : "repeat(2, 1fr)",
-            gap: isMobile ? "1.25rem" : "1.75rem",
-          }}
-        >
-          {[
-            {
-              quote: t("testimonial1Quote"),
-              author: t("testimonial1Author"),
-              role: t("testimonial1Role"),
-            },
-            {
-              quote: t("testimonial2Quote"),
-              author: t("testimonial2Author"),
-              role: t("testimonial2Role"),
-            },
-          ].map((testimonial) => (
-            <div
-              key={testimonial.author}
-              style={{
-                background: C.white,
-                borderRadius: "1rem",
-                border: `1px solid ${C.sandstone}40`,
-                padding: isMobile ? "1.5rem" : "2rem",
-                display: "flex",
-                flexDirection: "column",
-                gap: "1rem",
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: F.display,
-                  fontSize: "1.0625rem",
-                  fontStyle: "normal",
-                  color: C.charcoal,
-                  lineHeight: 1.6,
-                  margin: 0,
-                }}
-              >
-                &ldquo;{testimonial.quote}&rdquo;
-              </p>
-              <div>
-                <span
-                  style={{
-                    fontFamily: F.body,
-                    fontSize: "0.875rem",
-                    fontWeight: 600,
-                    color: C.charcoal,
-                  }}
-                >
-                  {testimonial.author}
-                </span>
-                <span
-                  style={{
-                    fontFamily: F.body,
-                    fontSize: "0.8125rem",
-                    color: C.muted,
-                    marginLeft: "0.5rem",
-                  }}
-                >
-                  {testimonial.role}
-                </span>
-              </div>
-            </div>
-          ))}
         </div>
       </section>
 

@@ -236,11 +236,6 @@ export default async function RootLayout({
                 "priceCurrency": "EUR",
                 "description": "Free plan with 100 memories, 2 wings, 5 rooms",
               },
-              "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": "4.8",
-                "ratingCount": "12",
-              },
             },
           ],
         })}} />

@@ -1363,7 +1363,7 @@ const posts: BlogPost[] = [
 <p>Avant d'évaluer des outils spécifiques, clarifiez vos priorités :</p>
 
 <ul>
-<li><strong>Confidentialité :</strong> À qui appartiennent vos données ? L'entreprise peut-elle utiliser vos photos ou histoires pour l'entraînement de l'IA ? Le chiffrement de bout en bout est-il disponible ?</li>
+<li><strong>Confidentialité :</strong> À qui appartiennent vos données ? L'entreprise peut-elle utiliser vos photos ou histoires pour l'entraînement de l'IA ? Vos données sont-elles chiffrées au repos et en transit ?</li>
 <li><strong>Pérennité :</strong> La plateforme existera-t-elle dans 10 ans ? Qu'advient-il de vos données si elle ferme ? Pouvez-vous tout exporter ?</li>
 <li><strong>Collaboration :</strong> Plusieurs membres de la famille peuvent-ils contribuer ? Y a-t-il des niveaux de permission pour différents rôles ?</li>
 <li><strong>Support multimédia :</strong> Gère-t-elle les photos, la vidéo, l'audio et les documents ? Peut-on ajouter du contexte et du récit ?</li>
