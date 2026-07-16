@@ -6,7 +6,7 @@ import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { syncSettingsFromServer } from "@/lib/stores/settingsSync";
 import PalaceLoadingScreen from "@/components/ui/PalaceLoadingScreen";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useUserStore } from "@/lib/stores/userStore";
 import { createClient } from "@/lib/supabase/client";
@@ -118,6 +118,10 @@ function DelayedFallback() {
 // ═══ MAIN — 4-level navigation: exterior → entrance → corridor → room ═══
 export default function MemoryPalace(){
   const isMobile = useIsMobile();
+  // Input modality (joystick + touch tutorials) — deliberately NOT viewport-based:
+  // a WKWebView viewport misreport or an iPad's 768px+ width must never leave a
+  // touch user with keyboard instructions and no joystick.
+  const touchControls = useTouchControls();
   const { t: tTrack } = useTranslation("tracksPanel");
   const { t: tAch } = useTranslation("achievementsPanel");
   const { t: tAction } = useTranslation("actionMenu");
@@ -1127,11 +1131,11 @@ export default function MemoryPalace(){
 
       {/* Desktop ActionMenu removed — replaced by PalaceSubNav */}
 
-      {/* Touch controls tutorial — mobile only, one-time */}
-      {isMobile && <TouchControlsOverlay view={view} />}
+      {/* Touch controls tutorial — touch devices only, one-time */}
+      {touchControls && <TouchControlsOverlay view={view} />}
 
       {/* Visible mobile joystick — room, corridor & entrance views */}
-      {isMobile && (view === "room" || view === "corridor" || view === "entrance") && (
+      {touchControls && (view === "room" || view === "corridor" || view === "entrance") && (
         <MobileJoystick
           visible={roomTourOpen || (!selMem && !showUpload && !showSharing && !moreMenuOpen)}
           onMove={() => {}}

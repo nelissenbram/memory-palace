@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTouchControls } from "@/lib/hooks/useIsMobile";
 
 const STORAGE_KEY = "mp_room_tour_seen_v1";
 
@@ -28,7 +28,9 @@ interface Props {
  */
 export default function RoomTutorial({ open, onClose }: Props) {
   const { t } = useTranslation("roomTour");
-  const isMobile = useIsMobile();
+  // Touch-based: the item list explains joystick vs WASD movement, so it must
+  // match the joystick's render condition (never viewport width alone).
+  const isMobile = useTouchControls();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
