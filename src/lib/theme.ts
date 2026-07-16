@@ -63,6 +63,48 @@ export const T = {
     right: "env(safe-area-inset-right, 0px)",
   },
   layout: { topBarH: "3.5rem", bottomBarH: "4rem", gutter: "clamp(1rem, 5vw, 2rem)" },
+  /* ── Motion tokens (landing v2 + shared micro-interactions). ── */
+  motion: {
+    fast: "100ms",
+    base: "160ms",
+    slow: "400ms",
+    ignite: "520ms",
+    reveal: "280ms",
+    ease: "cubic-bezier(0.22, 1, 0.36, 1)",
+  },
+  /* ── Landing v2 tokens (ADD-only; see docs/overhaul/landing-v2/research). ──
+     Palette = 4-step warm tonal ladder. Gold is a dark-background text accent
+     ONLY (8.1:1 on umber); on light backgrounds it is graphic-only. rustDeep
+     carries accent text on light (5.1:1 on linen). Walnut is non-text ink. ── */
+  land: {
+    canvas: "#FCFAF5",   // page base (cream)
+    surface: "#F2EDE4",  // lifted cards/bands (linen)
+    mid: "#EFE6D4",      // parchment intermediate band
+    dark: "#241C15",     // umber — hero, showcase, final CTA only
+    hairline: "#E3D6BC", // 1px card borders on light
+    inkBody: "#403B36",  // body on light
+    inkMutedLight: "#716A5E", // muted on light (≥4.5:1)
+    inkMutedDark: "#B5ADA3",  // muted on dark (≥4.5:1)
+    accentLight: "#9A4F2A",   // rustDeep — eyebrows/links/stats on light
+    accentDark: "#D4AF37",    // gold — accents on dark only
+    ctaGrad: "linear-gradient(135deg, #9A4F2A, #6B3318)",
+    type: {
+      micro: "0.75rem",
+      bodyS: "1rem",
+      body: "1.125rem",
+      lead: "1.3125rem",
+      h4: "1.5rem",
+      h3: "1.875rem",
+      h2: "clamp(2rem, 3.5vw, 3rem)",
+      h1: "clamp(2.75rem, 5.5vw, 4.25rem)",
+    },
+    space: {
+      sectionY: "clamp(5rem, 8vw, 7.5rem)",
+      bandY: "3rem",
+      wide: "72rem",
+      prose: "42rem",
+    },
+  },
 } as const;
 
 /** Pick a compact value on mobile, a roomier one otherwise. */

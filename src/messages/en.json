@@ -5164,5 +5164,161 @@
     "footerPrivacy": "Privacy",
     "footerTerms": "Terms",
     "footerSecurity": "Security"
+  },
+  "landingV2": {
+    "nav": {
+      "tour": "Tour",
+      "how": "How it works",
+      "features": "Features",
+      "faq": "FAQ",
+      "pricing": "Pricing",
+      "signIn": "Sign In",
+      "cta": "Get Started"
+    },
+    "hero": {
+      "eyebrow": "A 3D home for your family's memories",
+      "h1": "Turn a lifetime of photos into a place your family can visit.",
+      "sub": "A beautiful 3D palace for your photos, voice recordings, and life stories — explore it together with your family. Free to start, no credit card needed.",
+      "sub_ios": "A beautiful 3D palace for your photos, voice recordings, and life stories — explore it together with your family. Ready in minutes — no tech skills needed.",
+      "cta": "Create Your Palace",
+      "ctaMicro": "Free forever · No credit card · No tech skills needed",
+      "ctaMicro_ios": "Ready in minutes · No tech skills needed",
+      "secondary": "Watch the 90-second tour",
+      "chipGdpr": "GDPR Compliant",
+      "chipEncrypted": "Encrypted at Rest & in Transit",
+      "chipEu": "Stored in the EU",
+      "securityLink": "Read exactly how we protect your memories"
+    },
+    "proof": {
+      "p1": "€0",
+      "p1Label": "Free plan — no time limit, no card",
+      "p1_ios": "Unlimited",
+      "p1Label_ios": "Wings & rooms",
+      "p2": "5",
+      "p2Label": "Languages",
+      "p3": "AES-256",
+      "p3Label": "Encrypted at rest",
+      "p4": "100%",
+      "p4Label": "Yours — export anytime"
+    },
+    "showcase": {
+      "eyebrow": "See it in action",
+      "h2": "Step inside a real palace.",
+      "sub": "Don't take our word for it. Walk through rooms filled with photos, hear the stories, feel the atmosphere.",
+      "attribution": "Guillaume's palace — a real member's home for three generations of memories",
+      "exploreCta": "Explore public palaces",
+      "noAccount": "No account needed"
+    },
+    "notAlbum": {
+      "eyebrow": "This is not a photo album.",
+      "h2": "This is a palace.",
+      "line": "Step inside. This is what a memory looks like when it has a home."
+    },
+    "bands": {
+      "whatsappEyebrow": "Effortless",
+      "whatsappH2": "If you can send a WhatsApp message, you can build a palace.",
+      "whatsappBody": "Forward a photo or a voice message on WhatsApp — it appears in your palace, sorted and ready. No new app to learn; you already know WhatsApp.",
+      "palaceEyebrow": "Walkable",
+      "palaceH2": "A home you can walk through.",
+      "palaceBody": "Your photos, voices and stories live in rooms — walk past them, together. Each wing holds a chapter of your life.",
+      "palacePull": "Photos show what happened. Your voice tells why it mattered.",
+      "aiEyebrow": "No sorting required",
+      "aiH2": "You bring the photos. AI does the sorting.",
+      "aiBody": "Connect Google Photos, Dropbox or OneDrive — what would take you months happens while you have coffee. Your originals stay untouched.",
+      "aiFootnote": "AI is optional and never trains on your memories.",
+      "togetherEyebrow": "Passed on",
+      "togetherH2": "A palace has heirs.",
+      "togetherBody": "Your daughter adds her wedding photos. Seal a letter for a birthday in 2040. Choose who gets the keys — and decide exactly when your words arrive."
+    },
+    "more": {
+      "title": "And when you're ready for more",
+      "map": "Memory Map — every memory pinned to the place it happened",
+      "tree": "Family Tree — fan charts, plus bring your existing tree with you",
+      "journeys": "Guided Journeys — your life story, one gentle question at a time",
+      "interviews": "AI-guided interviews — the questions your grandchildren would ask",
+      "sharing": "Share one room or a whole chapter of your palace",
+      "uploads": "Upload photos, videos, audio and documents"
+    },
+    "how": {
+      "eyebrow": "Getting started",
+      "h2": "Three steps. Five minutes.",
+      "toggleSelf": "For yourself",
+      "toggleGift": "As a gift",
+      "s1t": "Add your memories",
+      "s1d": "Upload photos and videos, or import from Google Photos, Dropbox or OneDrive. AI sorts everything into rooms that match the chapters of your life.",
+      "s2t": "Tell the story behind them",
+      "s2d": "Record your voice telling the story behind the photo — or let a gentle interviewer ask the questions your grandchildren would ask.",
+      "s3t": "Walk through it together",
+      "s3d": "Invite family and friends to visit your palace. They can explore, add their own memories, or receive yours as time capsules.",
+      "g1t": "Create a palace in their name",
+      "g1d": "Set it up in five minutes — you handle the technology, they get the joy.",
+      "g2t": "They only answer questions",
+      "g2d": "A gentle interviewer records their stories on WhatsApp or in the browser — no new app for them to learn.",
+      "g3t": "The stories stay in the family",
+      "g3d": "Everyone you invite can walk through the palace — and it's ready to pass on, whenever the time is right.",
+      "midCta": "Your palace starts free — 1 GB of memories, unlimited rooms, no credit card. Upgrade only if you outgrow it.",
+      "midCta_ios": "Your palace is ready in minutes. No tech skills needed."
+    },
+    "why": {
+      "eyebrow": "Why a palace?",
+      "h2": "Because your brain thinks in places.",
+      "body": "For 2,500 years, people remembered what mattered by placing it in imagined rooms. We recall places far better than files — that's why a palace, not a folder.",
+      "link": "Read the 2,500-year story"
+    },
+    "compare": {
+      "h2": "Keep Google Photos. It's the drive. This is the home.",
+      "sub": "A folder stores your photos. A palace remembers your life.",
+      "colLeft": "Cloud photo storage",
+      "colRight": "The Memory Palace",
+      "r1l": "Organization",
+      "r1a": "Folders and albums, sorted by date",
+      "r1b": "3D rooms you walk through, organized by life chapter",
+      "r2l": "Storytelling",
+      "r2a": "Photos without context",
+      "r2b": "Every photo can carry your voice telling why it mattered",
+      "r3l": "Sharing",
+      "r3a": "Shared albums — great for last weekend",
+      "r3b": "A shared palace your family builds together, across generations",
+      "r4l": "Legacy",
+      "r4a": "Heirs inherit a raw archive of thousands of unlabeled files",
+      "r4b": "Time capsules, legacy contacts, and a home that's ready to hand down",
+      "r5l": "Backup & camera sync",
+      "r5a": "Excellent — keep using it",
+      "r5b": "Not our job. Bring the photos that matter over when you're ready."
+    },
+    "pricing": {
+      "h2": "Simple, honest pricing",
+      "line": "Free forever — unlimited wings and rooms, 1 GB of memories, full export anytime. Upgrade only if you outgrow it, and the trial never auto-charges.",
+      "cta": "See full pricing"
+    },
+    "promise": {
+      "h2": "The Forever Promise",
+      "body": "Export everything as a ZIP anytime, on every plan. And if we ever shut down, you get 90 days and your complete archive — your memories are never locked in.",
+      "founderTitle": "From a small team that means it",
+      "founderBody": "The Memory Palace is built by a small, independent European team. No big-tech backing, no ads, no selling your data — your memories are our mission, not a product."
+    },
+    "phone": {
+      "title": "Also in your pocket",
+      "sub": "Your palace on your phone and tablet — or in any browser."
+    },
+    "final": {
+      "h2": "Begin with one memory. The rest will follow.",
+      "cta": "Create Your Palace"
+    },
+    "a11y": {
+      "heroVideo": "Aerial view of a Tuscan memory palace at golden hour",
+      "pause": "Pause background video",
+      "play": "Play background video",
+      "tourDialog": "Product tour video",
+      "close": "Close",
+      "phoneStrip": "App screenshots",
+      "prev": "Previous",
+      "next": "Next",
+      "bandPalace": "The entrance hall of a 3D memory palace",
+      "bandTogether": "A visitor touching framed photos in a sunlit gallery",
+      "showcaseFrame": "A framed family photo hanging in a palace wing",
+      "bandWhatsapp": "A WhatsApp photo appearing framed on a palace wall",
+      "bandAi": "Photos being sorted into palace rooms"
+    }
   }
 }
