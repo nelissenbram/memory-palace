@@ -9,12 +9,63 @@ import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
-import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFloorTileTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, registerCachedTexture, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
 import { measure, autoFit } from "@/lib/3d/fitRenderer";
 import { optimizeMaterials } from "@/lib/3d/geometryOptimizer";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+
+// ── Corridor painting texture cache — module-level, URL-keyed (mirrors
+// assetLoader's compressedTextureCache). Decodes off the main thread via
+// createImageBitmap (flipY at decode, so tex.flipY=false) with a classic
+// TextureLoader fallback. Every cached texture is registered with assetLoader's
+// cached-texture exemption so the scene's dispose sweep leaves it alive across
+// corridor transitions.
+const paintingTextureCache = new Map<string, THREE.Texture>();
+const paintingTexturePending = new Map<string, Promise<THREE.Texture>>();
+function loadPaintingTexture(url: string): Promise<THREE.Texture> {
+  const cached = paintingTextureCache.get(url);
+  if (cached) return Promise.resolve(cached);
+  const pending = paintingTexturePending.get(url);
+  if (pending) return pending;
+  const p = (async () => {
+    let tex: THREE.Texture;
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const bitmap = await createImageBitmap(blob, { imageOrientation: "flipY", premultiplyAlpha: "none" });
+      tex = new THREE.Texture(bitmap);
+      tex.flipY = false; // bitmap already flipped at decode
+      tex.needsUpdate = true;
+    } catch {
+      // Fallback (CORS/decoder edge cases): main-thread TextureLoader, default flipY
+      tex = await new THREE.TextureLoader().loadAsync(url);
+    }
+    tex.colorSpace = THREE.SRGBColorSpace;
+    paintingTextureCache.set(url, tex);
+    registerCachedTexture(tex);
+    paintingTexturePending.delete(url);
+    return tex;
+  })();
+  p.catch(() => { paintingTexturePending.delete(url); });
+  paintingTexturePending.set(url, p);
+  return p;
+}
+// 1x1 warm-canvas placeholder — keeps USE_MAP defined on painting materials so
+// swapping in the real texture later is a uniform update, not a shader recompile.
+let _paintingPlaceholderTex: THREE.DataTexture | null = null;
+function getPaintingPlaceholderTex(): THREE.DataTexture {
+  if (!_paintingPlaceholderTex) {
+    _paintingPlaceholderTex = new THREE.DataTexture(new Uint8Array([200, 188, 160, 255]), 1, 1);
+    _paintingPlaceholderTex.colorSpace = THREE.SRGBColorSpace;
+    _paintingPlaceholderTex.needsUpdate = true;
+    registerCachedTexture(_paintingPlaceholderTex); // shared across mounts — never dispose
+  }
+  return _paintingPlaceholderTex;
+}
 
 // ═══ CORRIDOR — grand gallery hallway with ornate doors ═══
 // ═══ CORRIDOR — luxurious wing-specific gallery ═══
@@ -43,8 +94,28 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
   const rooms=roomsProp||[];
   const doorMeshes=useRef<any[]>([]);
 
+  // ── Paintings prop handled IN PLACE (no scene rebuild / React remount) ──
+  // corridorPaintings populates async in MemoryPalace after the corridor mounts,
+  // so it must NOT be part of the mount key or mount-effect deps. The mount effect
+  // publishes an applier that swaps texture maps on the existing painting meshes;
+  // this effect (keyed on a content fingerprint) invokes it on any change.
+  const corridorPaintingsRef=useRef(corridorPaintings);
+  const applyPaintingsRef=useRef<((paintings: Record<string,{url?: string, title?: string}>|undefined)=>void)|null>(null);
+  const paintingsFingerprint=JSON.stringify(corridorPaintings||{});
+  const appliedPaintingsFpRef=useRef<string|null>(null);
+  useEffect(()=>{
+    corridorPaintingsRef.current=corridorPaintings;
+    if(appliedPaintingsFpRef.current===paintingsFingerprint)return;
+    appliedPaintingsFpRef.current=paintingsFingerprint;
+    applyPaintingsRef.current?.(corridorPaintings);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[paintingsFingerprint]);
+
   useEffect(()=>{
     const el=mountRef.current;if(!el)return;const { w, h } = measure(el);
+    // Kick painting texture fetch+decode off FIRST so the network/decode work
+    // overlaps scene construction and uploads land behind the transition overlay.
+    if(corridorPaintingsRef.current)for(const pd of Object.values(corridorPaintingsRef.current)){if(pd?.url)loadPaintingTexture(pd.url).catch(()=>{});}
     const dlPreset=getLightingPreset();
     // ── Cached THREE objects (avoid per-frame / per-event allocation) ──
     const _rc=new THREE.Raycaster(),_mouse=new THREE.Vector2();
@@ -107,7 +178,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     const velvetTex=loadVelvetTextures([2,2]);
     const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallStoneTex,floorTileTex,rugFabricTex,velvetTex];
 
-    const MS={
+    // ── Archetype materials — module-cached so compiled shader programs survive
+    // scene transitions (parameter-keyed: wall/floor/rug/accent colors differ per
+    // wing, glow tints follow the daylight preset). Cleanup releases instead of
+    // disposing; per-door clones stay per-mount and are disposed normally.
+    const msKey=`corridor|${wingId}|${wing.wall}|${wing.floor}|${C.accent}|${C.rugC}|${C.rugB}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    const MS=acquireMaterialSet(msKey,()=>({
       wall:new THREE.MeshStandardMaterial({color:wing.wall,roughness:.85,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.3,.3),envMapIntensity:.5}),
       wallD:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.8,normalMap:wallStoneTex.normalMap,normalScale:new THREE.Vector2(.2,.2)}),
       floor:new THREE.MeshStandardMaterial({color:wing.floor,roughness:.7,metalness:.02,map:floorTileTex.map,normalMap:floorTileTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:floorTileTex.roughnessMap,aoMap:floorTileTex.aoMap,aoMapIntensity:.7,envMapIntensity:.15}),
@@ -149,7 +225,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       pedestal:new THREE.MeshStandardMaterial({color:"#D8D0C4",roughness:.3,metalness:.05,normalMap:marbleTex.normalMap,normalScale:new THREE.Vector2(.2,.2),envMapIntensity:.6}),
       floorGoldStrip:mkPhys(THREE,{color:"#C8A858",roughness:.2,metalness:.8,clearcoat:.3,clearcoatRoughness:.1,envMapIntensity:1.2}),
       portalFog:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.08*dlPreset.sunIntensity,depthWrite:false,blending:THREE.AdditiveBlending}),
-    };
+    }));
 
     // (Tuscan landscape removed — windows use simple sky glow)
 
@@ -547,6 +623,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
     // ═══ INTERACTIVE PAINTING/MEDIA SLOTS — 1 painting per door ═══
     const paintingClickMeshes: {mesh: THREE.Mesh, slotKey: string}[] = [];
+    // Per-slot canvas mesh + empty placeholder built up front; applyPaintingToSlot
+    // toggles between them and swaps cached texture maps in place, so a
+    // paintings-prop change never rebuilds the scene.
+    const paintingSlots=new Map<string,{canvasMesh: THREE.Mesh, emptyGroup: THREE.Group, appliedUrl: string|null}>();
+    let paintingsDisposed=false;
     let paintingSlotIdx = 0;
     const PAINT_Y = 2.05; // lowered below sconce zone (sconces span y=2.8..3.45)
     // Precompute sconce z positions on side=-1 so we can shift paintings off them.
@@ -587,7 +668,6 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       const fx=s*(cW/2-.05);
       // Use room ID as key to match CorridorGalleryPanel's slot keys
       const slotKey=rooms[i]?.id || `corridor-${wingId}-painting-${i}`;
-      const paintingData=corridorPaintings?.[slotKey];
       paintingSlotIdx++;
       const fw=1.3,fh=0.9,frameW=0.07;
       // Gold frame — ornate border
@@ -598,28 +678,23 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       // Inner frame accent
       scene.add(mk(new THREE.BoxGeometry(.025,frameW*.4,fw+frameW),MS.trim,fx-(s*.002),PAINT_Y+fh/2+frameW*.15,pz));
       scene.add(mk(new THREE.BoxGeometry(.025,frameW*.4,fw+frameW),MS.trim,fx-(s*.002),PAINT_Y-fh/2-frameW*.15,pz));
-      // Canvas / painting surface
-      if(paintingData?.url){
-        // If there's an actual image, load it as texture
-        const loader=new THREE.TextureLoader();
-        const pUrl=paintingData.url;
-        loader.load(pUrl,(tex: THREE.Texture)=>{
-          tex.colorSpace=THREE.SRGBColorSpace;
-          const canvasMat=new THREE.MeshStandardMaterial({map:tex,roughness:.65});
-          const canvasMesh=new THREE.Mesh(new THREE.PlaneGeometry(fw-.04,fh-.04),canvasMat);
-          canvasMesh.rotation.y=s*(-Math.PI/2);
-          canvasMesh.position.set(fx-(s*.025),PAINT_Y,pz);
-          scene.add(canvasMesh);
-        });
-      }else{
-        // Empty slot — subtle warm canvas placeholder inviting interaction
-        const emptyMat=new THREE.MeshStandardMaterial({color:"#C8BCA0",roughness:.85,emissive:"#C8BCA0",emissiveIntensity:.03});
-        const emptyCanvas=mk(new THREE.BoxGeometry(.008,fh-.06,fw-.06),emptyMat,fx-(s*.025),PAINT_Y,pz);
-        scene.add(emptyCanvas);
-        // Small "+" hint in center
-        scene.add(mk(new THREE.BoxGeometry(.006,.2,.03),MS.trim,fx-(s*.01),PAINT_Y,pz));
-        scene.add(mk(new THREE.BoxGeometry(.006,.03,.2),MS.trim,fx-(s*.01),PAINT_Y,pz));
-      }
+      // Canvas / painting surface — mesh persists across paintings-prop changes;
+      // hidden until its cached texture is ready (matches old async-load behavior)
+      const canvasMat=new THREE.MeshStandardMaterial({map:getPaintingPlaceholderTex(),roughness:.65});
+      const canvasMesh=new THREE.Mesh(new THREE.PlaneGeometry(fw-.04,fh-.04),canvasMat);
+      canvasMesh.rotation.y=s*(-Math.PI/2);
+      canvasMesh.position.set(fx-(s*.025),PAINT_Y,pz);
+      canvasMesh.visible=false;
+      scene.add(canvasMesh);
+      // Empty slot — subtle warm canvas placeholder inviting interaction
+      const emptyGroup=new THREE.Group();
+      const emptyMat=new THREE.MeshStandardMaterial({color:"#C8BCA0",roughness:.85,emissive:"#C8BCA0",emissiveIntensity:.03});
+      emptyGroup.add(mk(new THREE.BoxGeometry(.008,fh-.06,fw-.06),emptyMat,fx-(s*.025),PAINT_Y,pz));
+      // Small "+" hint in center
+      emptyGroup.add(mk(new THREE.BoxGeometry(.006,.2,.03),MS.trim,fx-(s*.01),PAINT_Y,pz));
+      emptyGroup.add(mk(new THREE.BoxGeometry(.006,.03,.2),MS.trim,fx-(s*.01),PAINT_Y,pz));
+      scene.add(emptyGroup);
+      paintingSlots.set(slotKey,{canvasMesh,emptyGroup,appliedUrl:null});
       // Small gold ornament at top center of frame
       scene.add(mk(new THREE.BoxGeometry(.035,.06,.15),MS.gold,fx-(s*.003),PAINT_Y+fh/2+frameW+.01,pz));
       // Invisible click target for painting interaction
@@ -632,6 +707,33 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       scene.add(paintClick);
       paintingClickMeshes.push({mesh:paintClick,slotKey});
     }
+
+    // In-place painting applier: swaps cached texture maps on the existing slot
+    // meshes — identical output to a rebuild, without remounting the scene.
+    const applyPaintingToSlot=(slotKey: string,url: string|undefined)=>{
+      const slot=paintingSlots.get(slotKey);if(!slot)return;
+      if(!url){
+        slot.appliedUrl=null;
+        slot.canvasMesh.visible=false;
+        (slot.canvasMesh.material as THREE.MeshStandardMaterial).map=getPaintingPlaceholderTex();
+        slot.emptyGroup.visible=true;
+        return;
+      }
+      if(slot.appliedUrl===url)return;
+      slot.appliedUrl=url;
+      slot.emptyGroup.visible=false;
+      loadPaintingTexture(url).then((tex)=>{
+        if(paintingsDisposed||slot.appliedUrl!==url)return; // torn down or superseded
+        const mat=slot.canvasMesh.material as THREE.MeshStandardMaterial;
+        mat.map=tex; // placeholder map kept USE_MAP defined — uniform swap, no recompile
+        slot.canvasMesh.visible=true;
+      }).catch(()=>{});
+    };
+    const applyPaintings=(paintings: Record<string,{url?: string, title?: string}>|undefined)=>{
+      for(const key of paintingSlots.keys())applyPaintingToSlot(key,paintings?.[key]?.url);
+    };
+    applyPaintings(corridorPaintingsRef.current);
+    applyPaintingsRef.current=applyPaintings;
 
     // (Plants at ends are included with the side tables above)
 
@@ -1350,7 +1452,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     camera.position.copy(startPos);
     const lookA={yaw:0,pitch:0},lookT={yaw:0,pitch:0};
     const pos=camera.position.clone(),posT=pos.clone();
-    const keys: Record<string,boolean>={},drag={v:false},prev={x:0,y:0},lastRayPos={x:0,y:0};let hovDoor: string|null=null;
+    const keys: Record<string,boolean>={},drag={v:false},prev={x:0,y:0},lastRayPos={x:0,y:0};let hovDoor: string|null=null,lastCursor="";
 
     // ── DUST PARTICLES ──
     const dust=createDustParticles({count:130,bounds:{x:cW/2-.5,y:cH/2,z:cL/2},center:new THREE.Vector3(0,cH/2,-cL/2+cL/2),opacity:0.2,size:0.03});
@@ -1365,7 +1467,11 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
     let _cinStep=-1;
     const animate=()=>{
       frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();_frameCount++;
-      lookA.yaw+=(lookT.yaw-lookA.yaw)*.08;lookA.pitch+=(lookT.pitch-lookA.pitch)*.08;
+      // Framerate-independent smoothing: 1-exp(-k*dt) with k=-ln(1-f)*60, so the
+      // old per-frame factors (f=.08 look, f=.1 pos) are preserved exactly at 60fps
+      // and fps dips no longer add rubber-band lag (dt is clamped above).
+      const kLook=1-Math.exp(-5.0029*dt),kPos=1-Math.exp(-6.3216*dt);
+      lookA.yaw+=(lookT.yaw-lookA.yaw)*kLook;lookA.pitch+=(lookT.pitch-lookA.pitch)*kLook;
       // ── Onboarding cinematic: multi-step waypoint sequence ──
       // Steps: 0=initial pause 3s, 1=walk forward 3s, 2=turn left 1.5s, 3=walk left 1s,
       //        4=pause 2s, 5=walk back 2s, 6=pause 2s, 7=auto-walk to door
@@ -1454,7 +1560,7 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       if(_dir.length()>0){_dir.normalize().multiplyScalar(spd);_dir.applyAxisAngle(_yAxis,-lookA.yaw);posT.add(_dir);}
       }
       posT.x=Math.max(-cW/2+1,Math.min(cW/2-1,posT.x));posT.z=Math.max(-cL/2+1.5,Math.min(cL/2-1.5,posT.z));
-      pos.lerp(posT,.1);camera.position.copy(pos);
+      pos.lerp(posT,kPos);camera.position.copy(pos);
       _ld.set(Math.sin(lookA.yaw)*Math.cos(lookA.pitch),Math.sin(lookA.pitch),-Math.cos(lookA.yaw)*Math.cos(lookA.pitch));
       _lookTarget.copy(camera.position).add(_ld);camera.lookAt(_lookTarget);
       // ── Camera debug overlay ──
@@ -1507,8 +1613,9 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
       inlayClickMeshes.forEach(im=>{const hits=_rc.intersectObject(im);if(hits.length>0&&hits[0].distance<5)inlHov=true;});
       let paintHov=false;
       paintingClickMeshes.forEach(pm=>{const hits=_rc.intersectObject(pm.mesh);if(hits.length>0)paintHov=true;});
-      hovDoor=found;el.style.cursor=(found||portalHov||inlHov||paintHov)?"pointer":"grab";onDoorHover(found||(portalHov?"__portal__":null));
-      if((inlHov||paintHov)&&!found&&!portalHov)el.style.cursor="pointer";};
+      hovDoor=found;const newCursor=(found||portalHov||inlHov||paintHov)?"pointer":"grab";
+      if(newCursor!==lastCursor){lastCursor=newCursor;el.style.cursor=newCursor;}
+      onDoorHover(found||(portalHov?"__portal__":null));};
     const onCk=()=>{
       if(!drag.v&&hovDoor)onDoorClickRef.current(hovDoor);
       else if(!drag.v){
@@ -1590,16 +1697,19 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
 
     el.addEventListener("touchstart",onTS,{passive:true});el.addEventListener("touchmove",onTM,{passive:false});el.addEventListener("touchend",onTE,{passive:true});
 
-    return()=>{if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);
+    return()=>{paintingsDisposed=true;applyPaintingsRef.current=null;
+      if(frameRef.current!==null)cancelAnimationFrame(frameRef.current);el.removeEventListener("mousedown",onDown);el.removeEventListener("mousemove",onMove);el.removeEventListener("click",onCk);
       window.removeEventListener("keydown",onKD);window.removeEventListener("keyup",onKU);disposeFit();
       el.removeEventListener("touchstart",onTS);el.removeEventListener("touchmove",onTM);el.removeEventListener("touchend",onTE);
       clearInterval(touchTick);
       const _cachedSet=buildCachedTextureSet();
+      const _cachedMats=buildCachedMaterialSet();
       scene.traverse((obj: any) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
           const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
           materials.forEach((m: any) => {
+            if (_cachedMats.has(m)) return; // archetype material — programs stay warm
             if (m.map && !_cachedSet.has(m.map)) m.map.dispose();
             if (m.normalMap && !_cachedSet.has(m.normalMap)) m.normalMap.dispose();
             if (m.roughnessMap && !_cachedSet.has(m.roughnessMap)) m.roughnessMap.dispose();
@@ -1608,11 +1718,12 @@ function CorridorScene({wingId,rooms:roomsProp,onDoorHover,onDoorClick,hoveredDo
           });
         }
       });
+      releaseMaterialSet(msKey);
       dust.dispose();
       allTexSets.forEach(disposePBRSet);
-      envMapProc.dispose();
-      // Dispose PMREM-processed HDRI (raw HDR data stays cached in assetLoader)
-      if(envMapHDRI){envMapHDRI.dispose();envMapHDRI=null;}
+      releaseEnvMap(envMapProc);
+      // Release PMREM-processed HDRI (kept warm in the env-map cache for the next mount)
+      if(envMapHDRI){releaseEnvMap(envMapHDRI);envMapHDRI=null;}
       composer.dispose();
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);
       returnRenderer(ren);

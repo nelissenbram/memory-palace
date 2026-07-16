@@ -402,7 +402,7 @@ export default function LibraryView() {
   const { t: tWings } = useTranslation("wings");
   const { getWings, getWingRooms } = useRoomStore();
   const { userMems, fetchRoomMemories } = useMemoryStore();
-  const { setNavMode, enterCorridor, enterRoom, activeWing: storeActiveWing } = usePalaceStore();
+  const { setNavMode, enterCorridor, enterWingRoom, activeWing: storeActiveWing } = usePalaceStore();
 
   const { addMemory, updateMemory, deleteMemory, moveMemory } = useMemoryStore();
 
@@ -1052,8 +1052,8 @@ export default function LibraryView() {
   const handleEnter3D = () => {
     setNavMode("3d");
     if (selectedRoom) {
-      enterCorridor(selectedWing);
-      setTimeout(() => enterRoom(selectedRoom), 600);
+      // Deep link: one atomic fade straight into the room (no throwaway corridor mount)
+      enterWingRoom(selectedWing, selectedRoom);
     } else {
       enterCorridor(selectedWing);
     }

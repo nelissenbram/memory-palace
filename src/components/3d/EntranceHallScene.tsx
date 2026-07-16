@@ -10,7 +10,8 @@ import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles, createLightBeam } from "@/lib/3d/atmosphericEffects";
-import { loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadDarkWoodTextures, loadPlasterWallTextures, loadFloorTileTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, acquireEnvMap, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
 import { loadBustModel, type BustStyle, type BustGender } from "@/lib/3d/bustBuilder";
 import type { BustPedestalData } from "@/lib/stores/userStore";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
@@ -247,7 +248,7 @@ function EntranceHallScene({
     if (Q.loadEnvHDRI) {
       loadHDRIProgressive(ren, HDRI_INTERIOR, {
         onProcedural: (p) => { if (!alive) return; scene.environment = p; scene.environmentIntensity = 0.35; },
-        onFull: (hdr) => { if (!alive) { hdr.dispose(); return; } envMapHDRI = hdr; scene.environment = hdr; scene.environmentIntensity = 0.35; },
+        onFull: (hdr) => { if (!alive) { releaseEnvMap(hdr); return; } envMapHDRI = hdr; scene.environment = hdr; scene.environmentIntensity = 0.35; },
       }).catch(() => {}); // keep procedural fallback
     }
 
@@ -267,7 +268,11 @@ function EntranceHallScene({
     const allTexSets: PBRTextureSet[] = [marbleTex, floorTileTex, woodDoorTex, wallTex];
 
     // ── MATERIALS (PBR-upgraded with real textures + env map) ──
-    const MS = {
+    // Archetype materials — module-cached so compiled shader programs survive scene
+    // transitions. Parameter-keyed on the daylight-preset values used below (lightBeam);
+    // the rest are constant. Per-door materials stay per-mount and are disposed normally.
+    const msKey = `entrance|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    const MS = acquireMaterialSet(msKey, () => ({
       marble: mkPhys(THREE,{ color: "#F5F0E8", roughness: 0.12, metalness: 0.0, envMapIntensity: 1.0, map: marbleTex.map, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.4, .4), roughnessMap: marbleTex.roughnessMap, aoMap: marbleTex.aoMap, aoMapIntensity: 0.8, clearcoat: 0.3, clearcoatRoughness: 0.15, reflectivity: 0.7 }),
       marbleWarm: mkPhys(THREE,{ color: "#EDE5D8", roughness: 0.18, metalness: 0.0, envMapIntensity: 0.9, map: floorTileTex.map, normalMap: floorTileTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: floorTileTex.roughnessMap, aoMap: floorTileTex.aoMap, aoMapIntensity: 0.7, clearcoat: 0.2, clearcoatRoughness: 0.2 }),
       marbleDark: new THREE.MeshStandardMaterial({ color: "#C8B89A", roughness: 0.25, metalness: 0.0, envMapIntensity: 0.8, normalMap: marbleTex.normalMap, normalScale: new THREE.Vector2(.2, .2) }),
@@ -288,7 +293,7 @@ function EntranceHallScene({
       lightBeam: new THREE.MeshBasicMaterial({ color: dlPreset.sunColor, transparent: true, opacity: 0.06 * dlPreset.sunIntensity, depthWrite: false, blending: THREE.AdditiveBlending }),
       atticDoor: new THREE.MeshStandardMaterial({ color: "#6A5040", roughness: 0.6, metalness: 0.0, map: woodDoorTex.map, normalMap: woodDoorTex.normalMap, normalScale: new THREE.Vector2(.3, .3), roughnessMap: woodDoorTex.roughnessMap }),
       frescoPanel: new THREE.MeshStandardMaterial({ color: "#C4A070", roughness: 0.5, metalness: 0.05, envMapIntensity: 0.5 }),
-    };
+    }));
 
     // ── ROOM DIMENSIONS ──
     const RADIUS = 20;
@@ -1807,11 +1812,36 @@ function EntranceHallScene({
     scene.add(portalSpot.target);}
 
     // ── ENVIRONMENT MAP (critical for PBR reflections) ──
-    const pmrem = new THREE.PMREMGenerator(ren);
-    pmrem.compileEquirectangularShader();
-    const envRT = pmrem.fromScene(scene, 0, 0.1, 100);
-    scene.environment = envRT.texture;
-    pmrem.dispose();
+    // The fromScene PMREM bake is deterministic given the hall construction inputs
+    // (wings fingerprint + daylight preset), so cache it per renderer and skip the
+    // bake on repeat mounts. Only cache once the shared PBR textures have finished
+    // loading — an early bake without textures must stay per-mount (as today) so a
+    // later fully-textured mount isn't served the texture-less snapshot.
+    const bakeFromScene = () => {
+      const pmrem = new THREE.PMREMGenerator(ren);
+      pmrem.compileEquirectangularShader();
+      const rt = pmrem.fromScene(scene, 0, 0.1, 100);
+      pmrem.dispose();
+      return rt;
+    };
+    const pbrTexturesReady = allTexSets.every(s =>
+      [s.map, s.normalMap, s.roughnessMap, s.aoMap].every(tx => {
+        const img = tx.image as { complete?: boolean } | undefined;
+        return !!img && img.complete !== false;
+      })
+    );
+    let envRT: THREE.WebGLRenderTarget | null = null; // per-mount bake (textures not ready yet)
+    let envFromScene: THREE.Texture;
+    if (pbrTexturesReady) {
+      envFromScene = acquireEnvMap(ren, `entrance-fromScene|${wingsFingerprint}|${JSON.stringify(dlPreset)}`, () => {
+        const rt = bakeFromScene();
+        return { texture: rt.texture, dispose: () => { rt.texture.dispose(); rt.dispose(); } };
+      });
+    } else {
+      envRT = bakeFromScene();
+      envFromScene = envRT.texture;
+    }
+    scene.environment = envFromScene;
 
     // ── FIRST-PERSON CAMERA ──
     // Player starts near the exit portal (entrance), facing toward the room center.
@@ -1864,6 +1894,17 @@ function EntranceHallScene({
     let hoveredWing: string | null = null;
     const _isMobile = window.innerWidth < 768 || window.innerHeight < 500;
     let _frameCount = 0;
+    // ── Hover-raycast hygiene: onMove only records the cursor position; the actual
+    // raycast runs at most once per frame inside animate() (same behavior, less work).
+    const _hoverPt = { x: 0, y: 0 };
+    let _hoverDirty = false;
+    const _lastRayPos = { x: -1e3, y: -1e3 };
+    let _lastCursor = "";
+    let _elRect = el.getBoundingClientRect();
+    const _refreshRect = () => { _elRect = el.getBoundingClientRect(); };
+    window.addEventListener("resize", _refreshRect);
+    const _rectRO = typeof ResizeObserver !== "undefined" ? new ResizeObserver(_refreshRect) : null;
+    _rectRO?.observe(el);
 
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate);
@@ -1977,8 +2018,11 @@ function EntranceHallScene({
       }
 
       // ── Smooth look interpolation ──
-      lookA.current.yaw += (lookT.current.yaw - lookA.current.yaw) * 0.08;
-      lookA.current.pitch += (lookT.current.pitch - lookA.current.pitch) * 0.08;
+      // Framerate-independent: 1-exp(-k*dt) with k=-ln(1-f)*60 preserves the old
+      // per-frame factors (f=.08 look, f=.1 pos) exactly at 60fps (dt clamped above).
+      const kLook = 1 - Math.exp(-5.0029 * dt), kPos = 1 - Math.exp(-6.3216 * dt);
+      lookA.current.yaw += (lookT.current.yaw - lookA.current.yaw) * kLook;
+      lookA.current.pitch += (lookT.current.pitch - lookA.current.pitch) * kLook;
 
       // ── Auto-walk toward target door ──
       const awTarget = autoWalkToRef.current;
@@ -2046,7 +2090,7 @@ function EntranceHallScene({
       posT.current.y = 2.0;
 
       // Smooth position interpolation
-      pos.current.lerp(posT.current, 0.1);
+      pos.current.lerp(posT.current, kPos);
       camera.position.copy(pos.current);
 
       // Look direction
@@ -2061,6 +2105,40 @@ function EntranceHallScene({
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
         camDebugRef.current.textContent = `yaw: ${lookA.current.yaw.toFixed(4)}\npitch: ${lookA.current.pitch.toFixed(4)}\npos: ${pos.current.x.toFixed(1)}, ${pos.current.y.toFixed(1)}, ${pos.current.z.toFixed(1)}`;
+      }
+
+      // ── Hover raycast — coalesced to at most one per rendered frame ──
+      if (_hoverDirty) {
+        _hoverDirty = false;
+        _mouse.current.set(
+          ((_hoverPt.x - _elRect.left) / _elRect.width) * 2 - 1,
+          -((_hoverPt.y - _elRect.top) / _elRect.height) * 2 + 1
+        );
+        _rc.current.setFromCamera(_mouse.current, camera);
+        let found: string | null = null;
+        let portalHov = false;
+        let inlayHov = false;
+        let bustHov: number | null = null;
+        doorMeshes.forEach(d => {
+          const hits = _rc.current.intersectObject(d.mesh);
+          if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
+        });
+        const pHits = _rc.current.intersectObject(portalHit);
+        if (pHits.length > 0 && pHits[0].distance < 15) portalHov = true;
+        // Check inlay clicks
+        inlayMeshes.forEach(im => {
+          const hits = _rc.current.intersectObject(im);
+          if (hits.length > 0 && hits[0].distance < 15) inlayHov = true;
+        });
+        // Check bust clicks
+        bustMeshes.forEach(bm => {
+          const hits = _rc.current.intersectObject(bm);
+          if (hits.length > 0 && hits[0].distance < 15) bustHov = bm.userData.pedestalIndex;
+        });
+        hoveredWing = found;
+        hovMem.current = found || (portalHov ? "__exterior__" : (inlayHov ? "__inlay__" : (bustHov !== null ? `__bust_${bustHov}__` : null)));
+        const newCursor = (found || portalHov || inlayHov || bustHov !== null) ? "pointer" : "grab";
+        if (newCursor !== _lastCursor) { _lastCursor = newCursor; el.style.cursor = newCursor; }
       }
 
       // ── Distance-based door glow (strong baseline) ──
@@ -2127,40 +2205,21 @@ function EntranceHallScene({
       const dy2 = e.clientY - prev.current.y;
       if (Math.abs(dx2) > 2 || Math.abs(dy2) > 2) drag.current = true;
       if (e.buttons === 1) {
+        // Drag-look: apply the look math and skip hover raycasting (cursor is grabbed)
         lookT.current.yaw -= dx2 * 0.003;
         lookT.current.pitch = Math.max(-0.6, Math.min(0.6, lookT.current.pitch + dy2 * 0.003));
         prev.current = { x: e.clientX, y: e.clientY };
+        return;
       }
-      // Raycast for hover detection
-      const rect = el.getBoundingClientRect();
-      _mouse.current.set(
-        ((e.clientX - rect.left) / rect.width) * 2 - 1,
-        -((e.clientY - rect.top) / rect.height) * 2 + 1
-      );
-      _rc.current.setFromCamera(_mouse.current, camera);
-      let found: string | null = null;
-      let portalHov = false;
-      let inlayHov = false;
-      let bustHov: number | null = null;
-      doorMeshes.forEach(d => {
-        const hits = _rc.current.intersectObject(d.mesh);
-        if (hits.length > 0 && hits[0].distance < 15) found = d.wingId;
-      });
-      const pHits = _rc.current.intersectObject(portalHit);
-      if (pHits.length > 0 && pHits[0].distance < 15) portalHov = true;
-      // Check inlay clicks
-      inlayMeshes.forEach(im => {
-        const hits = _rc.current.intersectObject(im);
-        if (hits.length > 0 && hits[0].distance < 15) inlayHov = true;
-      });
-      // Check bust clicks
-      bustMeshes.forEach(bm => {
-        const hits = _rc.current.intersectObject(bm);
-        if (hits.length > 0 && hits[0].distance < 15) bustHov = bm.userData.pedestalIndex;
-      });
-      hoveredWing = found;
-      hovMem.current = found || (portalHov ? "__exterior__" : (inlayHov ? "__inlay__" : (bustHov !== null ? `__bust_${bustHov}__` : null)));
-      el.style.cursor = (found || portalHov || inlayHov || bustHov !== null) ? "pointer" : "grab";
+      // 3px movement guard (same as CorridorScene) — skip micro-movements
+      const rdx = e.clientX - _lastRayPos.x, rdy = e.clientY - _lastRayPos.y;
+      if (rdx * rdx + rdy * rdy < 9) return;
+      _lastRayPos.x = e.clientX;
+      _lastRayPos.y = e.clientY;
+      // Record the position — the raycast itself runs once per frame in animate()
+      _hoverPt.x = e.clientX;
+      _hoverPt.y = e.clientY;
+      _hoverDirty = true;
     };
     const onClick = () => {
       if (!drag.current && hovMem.current) {
@@ -2276,43 +2335,41 @@ function EntranceHallScene({
 
     // ── AUDIO with fade-in ──
     let audioFadeInterval: ReturnType<typeof setInterval> | null = null;
+    // Autoplay-retry listener — hoisted so cleanup can remove it (these document-level
+    // listeners previously leaked and could resurrect the looping ambient after unmount)
+    let tryPlay: (() => void) | null = null;
+    const removeTryPlay = () => {
+      if (!tryPlay) return;
+      document.removeEventListener("click", tryPlay);
+      document.removeEventListener("touchstart", tryPlay);
+      tryPlay = null;
+    };
     try {
       const audio = new Audio("/audio/entrance-ambient.mp3");
       audio.loop = true;
       audio.volume = 0;
       const targetVol = 0.3;
-      const playAudio = () => {
-        audio.play().then(() => {
-          // Fade in over ~2 seconds
-          audioFadeInterval = setInterval(() => {
-            if (audio.volume < targetVol - 0.01) {
-              audio.volume = Math.min(targetVol, audio.volume + 0.015);
-            } else {
-              audio.volume = targetVol;
-              if (audioFadeInterval) clearInterval(audioFadeInterval);
-            }
-          }, 50);
-        }).catch(() => {
-          // Autoplay blocked; play on first user interaction
-          const tryPlay = () => {
-            audio.play().then(() => {
-              audioFadeInterval = setInterval(() => {
-                if (audio.volume < targetVol - 0.01) {
-                  audio.volume = Math.min(targetVol, audio.volume + 0.015);
-                } else {
-                  audio.volume = targetVol;
-                  if (audioFadeInterval) clearInterval(audioFadeInterval);
-                }
-              }, 50);
-              document.removeEventListener("click", tryPlay);
-              document.removeEventListener("touchstart", tryPlay);
-            }).catch(() => {});
-          };
-          document.addEventListener("click", tryPlay, { once: true });
-          document.addEventListener("touchstart", tryPlay, { once: true });
-        });
+      // Fade in over ~2 seconds
+      const fadeIn = () => {
+        audioFadeInterval = setInterval(() => {
+          if (audio.volume < targetVol - 0.01) {
+            audio.volume = Math.min(targetVol, audio.volume + 0.015);
+          } else {
+            audio.volume = targetVol;
+            if (audioFadeInterval) clearInterval(audioFadeInterval);
+          }
+        }, 50);
       };
-      playAudio();
+      audio.play().then(fadeIn).catch(() => {
+        // Autoplay blocked; play on first user interaction
+        tryPlay = () => {
+          removeTryPlay();
+          if (!alive) return; // scene unmounted — do not resurrect the loop
+          audio.play().then(fadeIn).catch(() => {});
+        };
+        document.addEventListener("click", tryPlay, { once: true });
+        document.addEventListener("touchstart", tryPlay, { once: true });
+      });
       audioRef.current = audio;
     } catch (_) {}
 
@@ -2329,8 +2386,11 @@ function EntranceHallScene({
       el.removeEventListener("touchmove", onTM);
       el.removeEventListener("touchend", onTE);
       clearInterval(touchTick);
+      window.removeEventListener("resize", _refreshRect);
+      _rectRO?.disconnect();
       if (audioFadeInterval) clearInterval(audioFadeInterval);
-      // Fade out audio
+      removeTryPlay();
+      // Fade out audio, then fully stop and release the media resource
       if (audioRef.current) {
         const a = audioRef.current;
         const fadeOut = setInterval(() => {
@@ -2338,19 +2398,22 @@ function EntranceHallScene({
             a.volume = Math.max(0, a.volume - 0.03);
           } else {
             a.pause();
+            a.src = "";
             clearInterval(fadeOut);
           }
         }, 50);
         audioRef.current = null;
       }
-      envRT.texture.dispose();
-      envRT.dispose();
+      if (envRT) { envRT.texture.dispose(); envRT.dispose(); }
+      else releaseEnvMap(envFromScene); // cached fromScene bake — stays warm for the next mount
       const _cachedSet=buildCachedTextureSet();
+      const _cachedMats=buildCachedMaterialSet();
       scene.traverse((obj: any) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
           const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
           materials.forEach((m: any) => {
+            if (_cachedMats.has(m)) return; // archetype material — programs stay warm
             if (m.map && !_cachedSet.has(m.map)) m.map.dispose();
             if (m.normalMap && !_cachedSet.has(m.normalMap)) m.normalMap.dispose();
             if (m.roughnessMap && !_cachedSet.has(m.roughnessMap)) m.roughnessMap.dispose();
@@ -2359,11 +2422,12 @@ function EntranceHallScene({
           });
         }
       });
+      releaseMaterialSet(msKey);
       dust.dispose();
       oculusBeam.dispose();
       allTexSets.forEach(disposePBRSet);
-      envMapProc.dispose();
-      if(envMapHDRI){envMapHDRI.dispose();envMapHDRI=null;}
+      releaseEnvMap(envMapProc);
+      if(envMapHDRI){releaseEnvMap(envMapHDRI);envMapHDRI=null;}
       composer.dispose();
       if (el.contains(ren.domElement)) el.removeChild(ren.domElement);
       returnRenderer(ren);

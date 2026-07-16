@@ -9,7 +9,7 @@ import { useUserStore } from "@/lib/stores/userStore";
 import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createExteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
-import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, loadHDRIProgressive, HDRI_EXTERIOR, HDRI_TUSCAN_LANDSCAPE, loadPlasterWallTextures, loadWornPlasterTextures, loadClayPlasterTextures, loadTerracottaTileTextures, loadDarkWoodTextures, loadGrassTextures, loadGroundTextures, loadCropTextures, loadWhiteGravelTextures, loadGravelRoadTextures, loadDisplacementMap, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
 import { createGrassSystem, createWheatField } from "@/lib/3d/grassShader";
 import { createTuscanTerrain, getHeightAt } from "@/lib/3d/tuscanTerrain";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
@@ -2823,7 +2823,12 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       // full so onReady fires and the scene is ready to show on first unhide.
       const _hostEl=el.parentElement;
       if(_firstFrameDone&&_hostEl&&_hostEl.dataset&&_hostEl.dataset.paused==="1")return;
+      // dt clamped so a large delta (tab switch / pause resume) can't snap the camera
+      const dt=Math.min(clock.getDelta(),.1);
       const t=clock.getElapsedTime();_frameCount++;
+      // Framerate-independent smoothing helper: 1-exp(-k*dt) with k=-ln(1-f)*60
+      // preserves the old per-frame factors f exactly at 60fps.
+      const _sm=(k:number)=>1-Math.exp(-k*dt);
 
       // Walkthrough highlight — pulse golden emissive on target meshes
       const hlTarget=highlightDoorRef.current;
@@ -2854,7 +2859,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
         if (cinematicResumeTimeRef.current === null) {
           camOT.current.theta = Math.PI * 1.4987;
           camOT.current.phi   = Math.PI * 0.4387;
-          camD.current += (180 - camD.current) * 0.05;
+          camD.current += (180 - camD.current) * _sm(3.0776); // f=.05 @60fps
           if (rawT >= HOLD_DUR && !cinematicPauseFiredRef.current) {
             cinematicPauseFiredRef.current = true;
             if (onCinematicPauseRef.current) onCinematicPauseRef.current();
@@ -2888,7 +2893,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
               0.5*((2*b)+(-a+c)*tt+(2*a-5*b+4*c-d)*tt*tt+(-a+3*b-3*c+d)*tt*tt*tt);
             camOT.current.theta = cr(p0[0],p1[0],p2[0],p3[0],lt);
             camOT.current.phi   = cr(p0[1],p1[1],p2[1],p3[1],lt);
-            camD.current += (cr(p0[2],p1[2],p2[2],p3[2],lt) - camD.current) * 0.08;
+            camD.current += (cr(p0[2],p1[2],p2[2],p3[2],lt) - camD.current) * _sm(5.0029); // f=.08 @60fps
           } else {
             const p = Math.min((ot - FLY_DUR) / ZOOM_DUR, 1.0);
             const accel = p * p * p;
@@ -2898,7 +2903,7 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
             const entrD = 35;
             camOT.current.theta = lastWP[0] + (entrTheta - lastWP[0]) * accel;
             camOT.current.phi   = lastWP[1] + (entrPhi   - lastWP[1]) * accel;
-            camD.current += ((entrD + (lastWP[2] - entrD) * (1 - accel)) - camD.current) * 0.08;
+            camD.current += ((entrD + (lastWP[2] - entrD) * (1 - accel)) - camD.current) * _sm(5.0029); // f=.08 @60fps
             if (camD.current < 40) {
               onboardingModeRef.current = false;
               onRoomClickRef.current("__entrance__");
@@ -2910,13 +2915,13 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       if(autoWalkToRef.current==="__entrance__"){
         camOT.current.theta=Math.PI*1.5;
         camOT.current.phi=Math.PI*0.22;
-        camD.current+=(35-camD.current)*0.04;
+        camD.current+=(35-camD.current)*_sm(2.4493); // f=.04 @60fps
         if(Math.abs(camD.current-35)<2){
           autoWalkToRef.current=null;
           onRoomClickRef.current("__entrance__");
         }
       }
-      const camLerp=onboardingModeRef.current?0.015:autoWalkToRef.current?0.02:0.04;
+      const camLerp=_sm(onboardingModeRef.current?0.9068:autoWalkToRef.current?1.2122:2.4493); // f=.015/.02/.04 @60fps
       camO.current.theta+=(camOT.current.theta-camO.current.theta)*camLerp;
       camO.current.phi+=(camOT.current.phi-camO.current.phi)*camLerp;
       const r=camD.current;
@@ -3138,9 +3143,10 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       grassSystem.dispose();
       wheatFields.forEach(wf => wf.dispose());
       cropDispMap.dispose();
-      envMapProc.dispose();
-      if(envMapHDRI){envMapHDRI.dispose();envMapHDRI=null;}
-      if(bgMapHDRI){bgMapHDRI.dispose();bgMapHDRI=null;}
+      // Release (not dispose) — these are refcounted entries in the shared env-map cache
+      releaseEnvMap(envMapProc);
+      if(envMapHDRI){releaseEnvMap(envMapHDRI);envMapHDRI=null;}
+      if(bgMapHDRI){releaseEnvMap(bgMapHDRI);bgMapHDRI=null;}
       composer.dispose();
       try{ren.forceContextLoss();}catch{}
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);ren.dispose();

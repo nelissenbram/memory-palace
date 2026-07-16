@@ -28,9 +28,90 @@ const pendingClones = new Map<THREE.Texture, THREE.Texture[]>();
 const hdrDataCache = new Map<string, THREE.DataTexture>();
 const compressedTextureCache = new Map<string, THREE.Texture>();
 
+// ── Environment-map cache (PMREM results) ──
+// PMREM textures are GPU resources tied to the renderer that created them, so the
+// cache is keyed per renderer (WeakMap) + a string key (HDR url / procedural params).
+// Entries are refcounted: scenes acquire on mount and release on cleanup instead of
+// disposing, so the processed env map (and the shader programs sampling it) survive
+// scene transitions. Unreferenced entries beyond a small cap are evicted + disposed.
+interface EnvMapEntry {
+  key: string;
+  map: Map<string, EnvMapEntry>;
+  tex: THREE.Texture;
+  refs: number;
+  lru: number;
+  dispose: () => void;
+}
+const envMapCacheByRenderer = new WeakMap<THREE.WebGLRenderer, Map<string, EnvMapEntry>>();
+const envMapEntryByTexture = new Map<THREE.Texture, EnvMapEntry>();
+let _envLruClock = 0;
+const ENV_CACHE_MAX_IDLE = 6;
+
+/** Get (or create via `create`) a cached PMREM env texture for this renderer+key.
+ *  Callers MUST balance every acquire with releaseEnvMap() (not .dispose()). */
+export function acquireEnvMap(
+  renderer: THREE.WebGLRenderer,
+  key: string,
+  create: () => { texture: THREE.Texture; dispose: () => void }
+): THREE.Texture {
+  let map = envMapCacheByRenderer.get(renderer);
+  if (!map) {
+    map = new Map();
+    envMapCacheByRenderer.set(renderer, map);
+  }
+  let entry = map.get(key);
+  if (entry) {
+    entry.refs++;
+    entry.lru = ++_envLruClock;
+    return entry.tex;
+  }
+  const made = create();
+  entry = { key, map, tex: made.texture, refs: 1, lru: ++_envLruClock, dispose: made.dispose };
+  map.set(key, entry);
+  envMapEntryByTexture.set(entry.tex, entry);
+  // Evict oldest unreferenced entries beyond the cap
+  const idle: EnvMapEntry[] = [];
+  for (const e of map.values()) if (e !== entry && e.refs <= 0) idle.push(e);
+  idle.sort((a, b) => a.lru - b.lru);
+  while (idle.length > ENV_CACHE_MAX_IDLE) {
+    const ev = idle.shift()!;
+    map.delete(ev.key);
+    envMapEntryByTexture.delete(ev.tex);
+    try { ev.dispose(); } catch {}
+  }
+  return entry.tex;
+}
+
+/** True if this texture is managed by the env-map cache (must not be disposed by scenes). */
+export function isCachedEnvMap(tex: THREE.Texture): boolean {
+  return envMapEntryByTexture.has(tex);
+}
+
+/** Release an env map obtained from acquireEnvMap/loadHDRI/createProceduralEnv.
+ *  Cached maps are refcount-decremented (kept warm for the next scene);
+ *  non-cached maps are disposed directly — safe drop-in for `tex.dispose()`. */
+export function releaseEnvMap(tex: THREE.Texture | null | undefined): void {
+  if (!tex) return;
+  const entry = envMapEntryByTexture.get(tex);
+  if (!entry) { tex.dispose(); return; }
+  entry.refs = Math.max(0, entry.refs - 1);
+}
+
+// Externally-registered cached textures (e.g. CorridorScene's module-level
+// painting texture cache) — exempt from scene dispose sweeps exactly like the
+// PBR cache textures above, so they survive scene transitions.
+const externallyCachedTextures = new Set<THREE.Texture>();
+
+/** Register a module-cached texture owned by another cache so scene dispose
+ *  sweeps (via isCachedTexture/buildCachedTextureSet) leave it alive. */
+export function registerCachedTexture(tex: THREE.Texture): void {
+  externallyCachedTextures.add(tex);
+}
+
 /** Check if a texture is managed by the PBR asset cache. Cached textures
  *  must NOT be disposed by individual scenes — they are shared across scene transitions. */
 export function isCachedTexture(tex: THREE.Texture): boolean {
+  if (externallyCachedTextures.has(tex)) return true;
   for (const cache of [pbrCache, pbrBaseCache]) {
     for (const set of cache.values()) {
       if (tex === set.map || tex === set.normalMap || tex === set.roughnessMap || tex === set.aoMap) return true;
@@ -42,7 +123,7 @@ export function isCachedTexture(tex: THREE.Texture): boolean {
 /** Build a Set of all cached textures for O(1) lookup during scene cleanup.
  *  Call once at the start of cleanup instead of calling isCachedTexture per texture. */
 export function buildCachedTextureSet(): Set<THREE.Texture> {
-  const s = new Set<THREE.Texture>();
+  const s = new Set<THREE.Texture>(externallyCachedTextures);
   for (const cache of [pbrCache, pbrBaseCache]) {
     for (const set of cache.values()) {
       if (set.map) s.add(set.map);
@@ -126,44 +207,46 @@ export async function loadCompressedTexture(
 // HDRI ENVIRONMENT MAPS
 // ════════════════════════════════════════════
 
+/** Run PMREM on raw HDR data — used as the acquireEnvMap factory. */
+function pmremFromHDR(renderer: THREE.WebGLRenderer, hdr: THREE.DataTexture): { texture: THREE.Texture; dispose: () => void } {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  const texture = pmrem.fromEquirectangular(hdr).texture;
+  pmrem.dispose();
+  return { texture, dispose: () => texture.dispose() };
+}
+
 /** Load an HDR environment map and generate a prefiltered env map for PBR IBL.
- *  Raw HDR data is cached for reuse, but PMREM is regenerated per renderer
- *  since PMREM textures are GPU render targets tied to the renderer that created them. */
+ *  Raw HDR data is cached for reuse, and the PMREM-processed result is cached
+ *  per renderer (keyed by url) so repeat mounts skip the PMREM pass entirely.
+ *  Callers must releaseEnvMap() the result instead of disposing it. */
 export function loadHDRI(
   renderer: THREE.WebGLRenderer,
   path: string,
   onLoad?: (envMap: THREE.Texture) => void
 ): Promise<THREE.Texture> {
-  // If we already have the raw HDR data cached, just re-run PMREM with this renderer
+  // If we already have the raw HDR data cached, reuse (or build once) the PMREM result
   const cachedRaw = hdrDataCache.get(path);
   if (cachedRaw) {
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
-    const envMap = pmrem.fromEquirectangular(cachedRaw).texture;
-    pmrem.dispose();
+    const envMap = acquireEnvMap(renderer, `hdr|${path}`, () => pmremFromHDR(renderer, cachedRaw));
     onLoad?.(envMap);
     return Promise.resolve(envMap);
   }
 
   return new Promise<THREE.Texture>((resolve, reject) => {
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    pmrem.compileEquirectangularShader();
-
     rgbeLoader.load(
       path,
       (hdrTexture) => {
         // Cache the raw HDR texture for future renderers
         hdrDataCache.set(path, hdrTexture);
-        const envMap = pmrem.fromEquirectangular(hdrTexture).texture;
         // Don't dispose hdrTexture — it's cached for reuse
-        pmrem.dispose();
+        const envMap = acquireEnvMap(renderer, `hdr|${path}`, () => pmremFromHDR(renderer, hdrTexture));
         onLoad?.(envMap);
         resolve(envMap);
       },
       undefined,
       (err) => {
         console.warn(`[AssetLoader] Failed to load HDRI: ${path}`, err);
-        pmrem.dispose();
         reject(err);
       }
     );
@@ -188,9 +271,16 @@ export interface ProgressiveHDRICallbacks {
 
 /**
  * Create a simple procedural gradient environment map for instant use
- * while real HDRIs are loading.
+ * while real HDRIs are loading. Cached per renderer (parameterless).
  */
 function createProceduralEnv(renderer: THREE.WebGLRenderer): THREE.Texture {
+  return acquireEnvMap(renderer, "procedural|gradient", () => {
+    const texture = buildProceduralEnv(renderer);
+    return { texture, dispose: () => texture.dispose() };
+  });
+}
+
+function buildProceduralEnv(renderer: THREE.WebGLRenderer): THREE.Texture {
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
 
@@ -263,10 +353,11 @@ export async function loadHDRIProgressive(
   const fullEnv = await loadHDRI(renderer, fullPath);
   callbacks?.onFull?.(fullEnv);
 
-  // Clean up intermediate textures now that full-res HDRI is loaded.
-  // These are PMREM render targets, not shared cache entries, so safe to dispose.
-  proceduralEnv.dispose();
-  if (previewEnv) previewEnv.dispose();
+  // Release intermediate env maps now that the full-res HDRI is loaded.
+  // They are refcounted cache entries — releasing keeps them warm for the
+  // next scene mount instead of re-running PMREM.
+  releaseEnvMap(proceduralEnv);
+  if (previewEnv) releaseEnvMap(previewEnv);
 
   return fullEnv;
 }

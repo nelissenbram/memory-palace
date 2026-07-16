@@ -11,7 +11,8 @@ import { createPostProcessing } from "@/lib/3d/postprocessing";
 import { createInteriorEnvMap } from "@/lib/3d/environmentMaps";
 import { getLightingPreset } from "@/lib/3d/daylightCycle";
 import { createDustParticles } from "@/lib/3d/atmosphericEffects";
-import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { loadHDRI, loadHDRIProgressive, HDRI_INTERIOR, loadMarbleTextures, loadPlasterWallTextures, loadHerringboneTextures, loadFabricTextures, loadVelvetTextures, disposePBRSet, isCachedTexture, buildCachedTextureSet, releaseEnvMap, type PBRTextureSet } from "@/lib/3d/assetLoader";
+import { acquireMaterialSet, releaseMaterialSet, buildCachedMaterialSet } from "@/lib/3d/materialCache";
 import { getQuality, mkPhys, isMobileGPU } from "@/lib/3d/mobilePerf";
 import { borrowRenderer, returnRenderer } from "@/lib/3d/rendererPool";
 import { measure, autoFit } from "@/lib/3d/fitRenderer";
@@ -126,7 +127,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     scene.environment=envMapProc;
     scene.environmentIntensity=0.8;
     let envMapHDRI: THREE.Texture|null=null;
-    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{if(!alive)return;scene.environment=p;scene.environmentIntensity=0.7;},onFull:(hdr)=>{if(!alive){hdr.dispose();return;}envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.8;}}).catch(()=>{});}
+    if(Q.loadEnvHDRI){loadHDRIProgressive(ren,HDRI_INTERIOR,{onProcedural:(p)=>{if(!alive)return;scene.environment=p;scene.environmentIntensity=0.7;},onFull:(hdr)=>{if(!alive){releaseEnvMap(hdr);return;}envMapHDRI=hdr;scene.environment=hdr;scene.environmentIntensity=0.8;}}).catch(()=>{});}
 
     // ── POST-PROCESSING — quality tier handles mobile stripping automatically ──
     const composer=createPostProcessing(ren,scene,camera,"interior",{ssao:false});
@@ -152,7 +153,12 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const velvetTex=loadVelvetTextures([2,2]);
     const allTexSets: PBRTextureSet[]=[marbleTex,woodTex,wallTex,rugTex,velvetTex];
 
-    const MS={
+    // Archetype materials — module-cached so compiled shader programs survive scene
+    // transitions. Parameter-keyed: wall/accent colors differ per wing, lampG follows
+    // the (clamped) daylight preset. Runtime mutations (fire/water opacity) are
+    // absolute per-frame writes, so shared cached instances stay correct.
+    const msKey=`interior|${wing?.wall||"-"}|${wing?.accent||"-"}|${dlPreset.sunColor}|${dlPreset.sunIntensity}`;
+    const MS=acquireMaterialSet(msKey,()=>({
       wall:new THREE.MeshStandardMaterial({color:wing?.wall||"#DDD4C6",roughness:.88,map:wallTex.map,normalMap:wallTex.normalMap,normalScale:new THREE.Vector2(.3,.3),roughnessMap:wallTex.roughnessMap,aoMap:wallTex.aoMap,aoMapIntensity:.6}),
       floor:new THREE.MeshStandardMaterial({color:"#8A7358",roughness:.45,metalness:.1,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.5,.5),roughnessMap:woodTex.roughnessMap,aoMap:woodTex.aoMap,aoMapIntensity:.7}),
       floorL:new THREE.MeshStandardMaterial({color:"#B8A480",roughness:.5,map:woodTex.map,normalMap:woodTex.normalMap,normalScale:new THREE.Vector2(.3,.3)}),
@@ -190,7 +196,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       lampG:new THREE.MeshBasicMaterial({color:dlPreset.sunColor,transparent:true,opacity:.15*dlPreset.sunIntensity}),
       handle:mkPhys(THREE,{color:"#C8A858",roughness:.18,metalness:.85,clearcoat:.4,clearcoatRoughness:.1}),
       glass:mkPhys(THREE,{color:"#E8F0F0",transparent:true,opacity:.15,roughness:.02,metalness:.0,transmission:.85,ior:1.5,thickness:.5}),
-    };
+    }));
     const fMats=[MS.fG,MS.fB,MS.gold];
     memMeshes.current=[];hitAreaMeshes.current=[];
     const animTex: any[]=[];
@@ -1980,10 +1986,23 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
     const _isMobile=window.innerWidth<768||window.innerHeight<500;
     let _frameCount=0;
     let _cinStep=-1;
+    // ── Hover-raycast hygiene: onMove only records the cursor position; the actual
+    // raycast runs at most once per frame inside animate() (same behavior, less work).
+    const _hoverPt={x:0,y:0};
+    let _hoverDirty=false;
+    const _lastRayPos={x:-1e3,y:-1e3};
+    let _elRect=el.getBoundingClientRect();
+    const _refreshRect=()=>{_elRect=el.getBoundingClientRect();};
+    window.addEventListener("resize",_refreshRect);
+    const _rectRO=typeof ResizeObserver!=="undefined"?new ResizeObserver(_refreshRect):null;
+    _rectRO?.observe(el);
     const animate=()=>{
       if(!alive)return;
       frameRef.current=requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.getElapsedTime();_frameCount++;
-      lookA.current.yaw+=(lookT.current.yaw-lookA.current.yaw)*.08;lookA.current.pitch+=(lookT.current.pitch-lookA.current.pitch)*.08;
+      // Framerate-independent smoothing: 1-exp(-k*dt) with k=-ln(1-f)*60 preserves the
+      // old per-frame factors (f=.08 look, f=.1 pos) exactly at 60fps (dt clamped above).
+      const kLook=1-Math.exp(-5.0029*dt),kPos=1-Math.exp(-6.3216*dt);
+      lookA.current.yaw+=(lookT.current.yaw-lookA.current.yaw)*kLook;lookA.current.pitch+=(lookT.current.pitch-lookA.current.pitch)*kLook;
       // ── Onboarding cinematic: multi-step waypoint sequence ──
       // On mobile, each step gets +0.5s extra for readability
       if (onboardingModeRef.current) {
@@ -2048,12 +2067,39 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       if(_dir.current.length()>0){_dir.current.normalize().multiplyScalar(spd);_dir.current.applyAxisAngle(_yAxis.current,-lookA.current.yaw);posT.current.add(_dir.current);}
       posT.current.x=Math.max(-rW/2+1,Math.min(rW/2-1,posT.current.x));posT.current.z=Math.max(-rL/2+1,Math.min(rL/2-1.5,posT.current.z));
       }
-      pos.current.lerp(posT.current,.1);camera.position.copy(pos.current);
+      pos.current.lerp(posT.current,kPos);camera.position.copy(pos.current);
       _ld.current.set(Math.sin(lookA.current.yaw)*Math.cos(lookA.current.pitch),Math.sin(lookA.current.pitch),-Math.cos(lookA.current.yaw)*Math.cos(lookA.current.pitch));
       _lookTarget.current.copy(camera.position).add(_ld.current);camera.lookAt(_lookTarget.current);
       // ── Camera debug overlay ──
       if (camDebugRef.current) {
         camDebugRef.current.textContent = `yaw: ${lookA.current.yaw.toFixed(4)}\npitch: ${lookA.current.pitch.toFixed(4)}\npos: ${pos.current.x.toFixed(1)}, ${pos.current.y.toFixed(1)}, ${pos.current.z.toFixed(1)}`;
+      }
+      // ── Hover raycast — coalesced to at most one per rendered frame ──
+      if(_hoverDirty){
+        _hoverDirty=false;
+        _mouse.current.set(((_hoverPt.x-_elRect.left)/_elRect.width)*2-1,-((_hoverPt.y-_elRect.top)/_elRect.height)*2+1);_rc.current.setFromCamera(_mouse.current,camera);
+        // Unified raycast — sorted by distance. Hit area boxes block distant items
+        // but specific items inside a hit area (within 1 unit behind the face) take priority.
+        if(allClickableRef.current.length!==memMeshes.current.length+hitAreaMeshes.current.length){allClickableRef.current=[...memMeshes.current,...hitAreaMeshes.current];}
+        const hoverHits=_rc.current.intersectObjects(allClickableRef.current).filter(h=>h.distance<4);
+        let found=false;let hitAreaFallback: any=null;let hitAreaDist=Infinity;
+        for(const hit of hoverHits){
+          const ud=hit.object.userData;
+          if(ud.isBackDoor){hovMem.current=ud;found=true;break;}
+          // Specific item (not a hit area) — always wins
+          if((ud.memory||ud.isStation||ud.isUploadPainting)&&!ud.isHitArea){
+            if(ud.isStation||ud.isUploadPainting)hovMem.current=ud;else hovMem.current=ud.memory;found=true;break;
+          }
+          // Hit area — remember as fallback, keep looking for specific items within 1 unit behind
+          if(ud.isHitArea&&!hitAreaFallback){hitAreaFallback=ud;hitAreaDist=hit.distance;continue;}
+          // Past the hit area by >1 unit — stop (prevents reaching far-wall items)
+          if(hitAreaFallback&&hit.distance>hitAreaDist+1)break;
+        }
+        if(!found&&hitAreaFallback){
+          if(hitAreaFallback.isStation||hitAreaFallback.isUploadPainting)hovMem.current=hitAreaFallback;else if(hitAreaFallback.memory)hovMem.current=hitAreaFallback.memory;
+          found=!!hovMem.current;
+        }
+        const newCur=found?"pointer":"grab";if(el.style.cursor!==newCur)el.style.cursor=newCur;if(!found)hovMem.current=null;
       }
       animTex.forEach(a=>{
         if(a.type==="fire"){a.light.intensity=.5+Math.sin(t*5)*.15+Math.sin(t*7.3)*.1;}
@@ -2076,6 +2122,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
             const ct=vEl.currentTime;
             if(ct!==(a as any)._lastVT){
               (a as any)._lastVT=ct;
+              (a as any)._lastImg=null; // canvas now holds a video frame — repaint if we return to the still image
               videoFrameChanged=true;
               let iw=vEl.videoWidth||cw,ih=vEl.videoHeight||ch;
               // Determine rotation: explicit mem.rotation wins; otherwise auto-rotate
@@ -2095,13 +2142,20 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
               cx.restore();
             }
           }else if(sImg){
-            videoFrameChanged=true;
-            const iw=sImg.width,ih=sImg.height,scale=Math.max(cw/iw,ch/ih);
-            const sw=iw*scale,sh=ih*scale;
-            cx.drawImage(sImg,(cw-sw)/2,(ch-sh)/2,sw,sh);
-            for(let sl=0;sl<ch;sl+=3){cx.fillStyle=`rgba(0,0,0,.015)`;cx.fillRect(0,sl,cw,1);}
-            cx.fillStyle=`hsla(${(m.hue+Math.floor(t*10))%360},20%,50%,.03)`;cx.fillRect(0,0,cw,ch);
+            // Static poster: only repaint + re-upload when the image or the 10Hz hue
+            // shimmer step actually changes (was an unconditional per-frame upload)
+            const hueStep=Math.floor(t*10);
+            if(sImg!==(a as any)._lastImg||hueStep!==(a as any)._lastHueStep){
+              (a as any)._lastImg=sImg;(a as any)._lastHueStep=hueStep;
+              videoFrameChanged=true;
+              const iw=sImg.width,ih=sImg.height,scale=Math.max(cw/iw,ch/ih);
+              const sw=iw*scale,sh=ih*scale;
+              cx.drawImage(sImg,(cw-sw)/2,(ch-sh)/2,sw,sh);
+              for(let sl=0;sl<ch;sl+=3){cx.fillStyle=`rgba(0,0,0,.015)`;cx.fillRect(0,sl,cw,1);}
+              cx.fillStyle=`hsla(${(m.hue+hueStep)%360},20%,50%,.03)`;cx.fillRect(0,0,cw,ch);
+            }
           }else{
+            (a as any)._lastImg=null;
             videoFrameChanged=true;
             const scT=Math.floor(ph*.3)%5;const h1=(m.hue+scT*30)%360,h2=(m.hue+scT*30+40)%360;
             const g=cx.createLinearGradient(0,0,cw,ch);
@@ -2134,30 +2188,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
 
     const onDown=(e: MouseEvent)=>{drag.current=false;prev.current={x:e.clientX,y:e.clientY};};
     const onMove=(e: MouseEvent)=>{const dx=e.clientX-prev.current.x,dy=e.clientY-prev.current.y;if(Math.abs(dx)>2||Math.abs(dy)>2)drag.current=true;
-      if(e.buttons===1){lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.85,Math.min(.5,lookT.current.pitch+dy*.003));prev.current={x:e.clientX,y:e.clientY};}
-      const rect=el.getBoundingClientRect();_mouse.current.set(((e.clientX-rect.left)/rect.width)*2-1,-((e.clientY-rect.top)/rect.height)*2+1);_rc.current.setFromCamera(_mouse.current,camera);
-      // Unified raycast — sorted by distance. Hit area boxes block distant items
-      // but specific items inside a hit area (within 1 unit behind the face) take priority.
-      if(allClickableRef.current.length!==memMeshes.current.length+hitAreaMeshes.current.length){allClickableRef.current=[...memMeshes.current,...hitAreaMeshes.current];}
-      const hits=_rc.current.intersectObjects(allClickableRef.current).filter(h=>h.distance<4);
-      let found=false;let hitAreaFallback: any=null;let hitAreaDist=Infinity;
-      for(const hit of hits){
-        const ud=hit.object.userData;
-        if(ud.isBackDoor){hovMem.current=ud;found=true;break;}
-        // Specific item (not a hit area) — always wins
-        if((ud.memory||ud.isStation||ud.isUploadPainting)&&!ud.isHitArea){
-          if(ud.isStation||ud.isUploadPainting)hovMem.current=ud;else hovMem.current=ud.memory;found=true;break;
-        }
-        // Hit area — remember as fallback, keep looking for specific items within 1 unit behind
-        if(ud.isHitArea&&!hitAreaFallback){hitAreaFallback=ud;hitAreaDist=hit.distance;continue;}
-        // Past the hit area by >1 unit — stop (prevents reaching far-wall items)
-        if(hitAreaFallback&&hit.distance>hitAreaDist+1)break;
-      }
-      if(!found&&hitAreaFallback){
-        if(hitAreaFallback.isStation||hitAreaFallback.isUploadPainting)hovMem.current=hitAreaFallback;else if(hitAreaFallback.memory)hovMem.current=hitAreaFallback.memory;
-        found=!!hovMem.current;
-      }
-      const newCur=found?"pointer":"grab";if(el.style.cursor!==newCur)el.style.cursor=newCur;if(!found)hovMem.current=null;};
+      // Drag-look: apply the look math and skip hover raycasting (cursor is grabbed)
+      if(e.buttons===1){lookT.current.yaw-=dx*.003;lookT.current.pitch=Math.max(-.85,Math.min(.5,lookT.current.pitch+dy*.003));prev.current={x:e.clientX,y:e.clientY};return;}
+      // 3px movement guard (same as CorridorScene) — skip micro-movements
+      const rdx=e.clientX-_lastRayPos.x,rdy=e.clientY-_lastRayPos.y;if(rdx*rdx+rdy*rdy<9)return;
+      _lastRayPos.x=e.clientX;_lastRayPos.y=e.clientY;
+      // Record the position — the raycast itself runs once per frame in animate()
+      _hoverPt.x=e.clientX;_hoverPt.y=e.clientY;_hoverDirty=true;};
     const onCk=()=>{if(!drag.current&&hovMem.current){
       // During onboarding, only painting click is allowed
       if(onboardingModeRef.current){
@@ -2271,12 +2308,16 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       try{useRoomMediaBarStore.getState().setOpen(null);}catch{}
       if(vinylAudio){vinylAudio.pause();vinylAudio.src="";}
       animTex.forEach(a=>{if(a.type==="video"){const vEl=a.videoEl?a.videoEl():null;if(vEl){vEl.pause();vEl.src="";if(vEl.parentNode)vEl.parentNode.removeChild(vEl);}}});
+      window.removeEventListener("resize",_refreshRect);
+      _rectRO?.disconnect();
       const _cachedSet=buildCachedTextureSet();
+      const _cachedMats=buildCachedMaterialSet();
       scene.traverse((obj: any) => {
         if (obj.geometry) obj.geometry.dispose();
         if (obj.material) {
           const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
           materials.forEach((m: any) => {
+            if (_cachedMats.has(m)) return; // archetype material — programs stay warm
             if (m.map && !_cachedSet.has(m.map)) m.map.dispose();
             if (m.normalMap && !_cachedSet.has(m.normalMap)) m.normalMap.dispose();
             if (m.roughnessMap && !_cachedSet.has(m.roughnessMap)) m.roughnessMap.dispose();
@@ -2285,13 +2326,13 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
           });
         }
       });
+      releaseMaterialSet(msKey);
       dust.dispose();
       allTexSets.forEach(disposePBRSet);
-      envMapProc.dispose();
-      // Dispose the PMREM-processed HDRI env map (the raw HDR data stays cached
-      // in assetLoader for reuse, but each renderer produces its own cube map
-      // texture that must be freed to avoid GPU memory leaks).
-      if(envMapHDRI){envMapHDRI.dispose();envMapHDRI=null;}
+      releaseEnvMap(envMapProc);
+      // Release the PMREM-processed HDRI env map (kept warm in the per-renderer
+      // env-map cache for the next mount instead of being re-generated).
+      if(envMapHDRI){releaseEnvMap(envMapHDRI);envMapHDRI=null;}
       composer.dispose();
       // Return renderer to pool for reuse (avoids WebGL context creation on next scene)
       if(el.contains(ren.domElement))el.removeChild(ren.domElement);

@@ -29,6 +29,7 @@ interface PalaceState {
   exitToPalace: () => void;
   exitToEntrance: () => void;
   enterRoom: (roomId: string) => void;
+  enterWingRoom: (wingId: string, roomId: string) => void;
   exitToCorridor: () => void;
   switchWing: (id: string) => void;
   setRoomLayout: (roomId: string, layoutId: string) => void;
@@ -123,6 +124,15 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
     if (roomId === "__back__") { get().exitToCorridor(); return; }
     set({ activeRoomId: roomId });
     get().fade(() => set({ view: "room", opacity: 1 }));
+  },
+
+  // Deep-link straight into a room: ONE fade applying wing + room + view
+  // atomically (same end state as enterCorridor→enterRoom, without mounting
+  // and throwing away the intermediate corridor scene). Everything is set
+  // inside the fade callback (like switchWing) so the currently mounted
+  // scene never re-keys before the swap.
+  enterWingRoom: (wingId, roomId) => {
+    get().fade(() => set({ activeWing: wingId, activeRoomId: roomId, view: "room", opacity: 1 }));
   },
 
   exitToCorridor: () => {
