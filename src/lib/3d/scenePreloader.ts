@@ -85,7 +85,9 @@ export function preloadSharedAssets(): void {
   import("@/lib/3d/assetLoader").then(({ loadMarbleTextures, loadPlasterWallTextures, loadDarkWoodTextures }) => {
     import("@/lib/3d/mobilePerf").then(({ isMobileGPU }) => {
       if (isMobileGPU()) return; // skip on mobile
-      // Trigger loading — the PBR cache inside assetLoader keeps them alive
+      // Trigger loading — the PBR cache inside assetLoader keeps them alive.
+      // Base textures are cached repeat-agnostic, so this warms the fetched/
+      // decoded images for every repeat variant scenes later request.
       loadMarbleTextures([4, 4]);
       loadPlasterWallTextures([3, 3]);
       loadDarkWoodTextures([2, 3]);

@@ -18,6 +18,12 @@ let ktx2Loader: KTX2Loader | null = null;
 
 // ── Caches (persist across scene transitions) ──
 const pbrCache = new Map<string, PBRTextureSet>();
+// Base (repeat-agnostic) PBR textures — each file is fetched/decoded exactly once;
+// per-repeat variants in pbrCache are lightweight clones sharing the base's Source
+const pbrBaseCache = new Map<string, PBRTextureSet>();
+// Clones created before their base texture finished loading — marked
+// needsUpdate from the base's onLoad so they upload once the image is ready
+const pendingClones = new Map<THREE.Texture, THREE.Texture[]>();
 // Cache raw HDR data (ArrayBuffer) so we don't re-fetch, but re-run PMREM per renderer
 const hdrDataCache = new Map<string, THREE.DataTexture>();
 const compressedTextureCache = new Map<string, THREE.Texture>();
@@ -25,8 +31,10 @@ const compressedTextureCache = new Map<string, THREE.Texture>();
 /** Check if a texture is managed by the PBR asset cache. Cached textures
  *  must NOT be disposed by individual scenes — they are shared across scene transitions. */
 export function isCachedTexture(tex: THREE.Texture): boolean {
-  for (const set of pbrCache.values()) {
-    if (tex === set.map || tex === set.normalMap || tex === set.roughnessMap || tex === set.aoMap) return true;
+  for (const cache of [pbrCache, pbrBaseCache]) {
+    for (const set of cache.values()) {
+      if (tex === set.map || tex === set.normalMap || tex === set.roughnessMap || tex === set.aoMap) return true;
+    }
   }
   return false;
 }
@@ -35,11 +43,13 @@ export function isCachedTexture(tex: THREE.Texture): boolean {
  *  Call once at the start of cleanup instead of calling isCachedTexture per texture. */
 export function buildCachedTextureSet(): Set<THREE.Texture> {
   const s = new Set<THREE.Texture>();
-  for (const set of pbrCache.values()) {
-    if (set.map) s.add(set.map);
-    if (set.normalMap) s.add(set.normalMap);
-    if (set.roughnessMap) s.add(set.roughnessMap);
-    if (set.aoMap) s.add(set.aoMap);
+  for (const cache of [pbrCache, pbrBaseCache]) {
+    for (const set of cache.values()) {
+      if (set.map) s.add(set.map);
+      if (set.normalMap) s.add(set.normalMap);
+      if (set.roughnessMap) s.add(set.roughnessMap);
+      if (set.aoMap) s.add(set.aoMap);
+    }
   }
   return s;
 }
@@ -280,7 +290,10 @@ export interface PBRTextureSet {
 }
 
 /** Load a PBR texture set (diffuse, normal, roughness, AO).
- *  Results are cached by basePath+prefix+repeat — repeat visits reuse GPU textures. */
+ *  Base textures are cached by basePath+prefix — each file is fetched and
+ *  decoded exactly once regardless of how many repeat variants are requested.
+ *  Per-repeat sets are lightweight clones sharing the base's image/Source
+ *  (same-parameter clones also share one GL texture), cached by full key. */
 function loadPBRSet(
   basePath: string,
   prefix: string,
@@ -294,24 +307,62 @@ function loadPBRSet(
   const cached = pbrCache.get(cacheKey);
   if (cached) return cached;
 
-  const configTex = (tex: THREE.Texture) => {
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapT = THREE.RepeatWrapping;
+  const baseKey = `${basePath}|${prefix}`;
+  let base = pbrBaseCache.get(baseKey);
+  if (!base) {
+    const loadBase = (path: string): THREE.Texture => {
+      const tex: THREE.Texture = textureLoader.load(path, () => {
+        // Image ready — mark clones created before the load finished for upload
+        const waiting = pendingClones.get(tex);
+        if (waiting) {
+          for (const c of waiting) c.needsUpdate = true;
+          pendingClones.delete(tex);
+        }
+      });
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      return tex;
+    };
+
+    const map = loadBase(`${basePath}/${prefix}_diff_1k.jpg`);
+    map.colorSpace = THREE.SRGBColorSpace;
+
+    const normalMap = loadBase(`${basePath}/${prefix}_nor_gl_1k.jpg`);
+    const roughnessMap = loadBase(`${basePath}/${prefix}_rough_1k.jpg`);
+    const aoMap = loadBase(`${basePath}/${prefix}_ao_1k.jpg`);
+    // Basic geometries (Box, Plane, etc.) only have UV channel 0.
+    // Three.js aoMap defaults to channel 1 (uv2), so override to channel 0.
+    aoMap.channel = 0;
+
+    base = { map, normalMap, roughnessMap, aoMap };
+    pbrBaseCache.set(baseKey, base);
+  }
+
+  const cloneTex = (baseTex: THREE.Texture): THREE.Texture => {
+    // clone() shares the underlying image/Source — no refetch, no re-decode.
+    // It also copies wrap/colorSpace/channel from the base.
+    const tex = baseTex.clone();
     tex.repeat.set(repeat[0], repeat[1]);
+    const img = baseTex.image as { complete?: boolean } | null;
+    if (!img || img.complete === false) {
+      // Image still loading — keep version at 0 so the renderer doesn't warn
+      // about missing image data; the base's onLoad marks us for upload.
+      tex.version = 0;
+      const waiting = pendingClones.get(baseTex);
+      if (waiting) waiting.push(tex);
+      else pendingClones.set(baseTex, [tex]);
+    } else {
+      tex.needsUpdate = true;
+    }
     return tex;
   };
 
-  const map = configTex(textureLoader.load(`${basePath}/${prefix}_diff_1k.jpg`));
-  map.colorSpace = THREE.SRGBColorSpace;
-
-  const normalMap = configTex(textureLoader.load(`${basePath}/${prefix}_nor_gl_1k.jpg`));
-  const roughnessMap = configTex(textureLoader.load(`${basePath}/${prefix}_rough_1k.jpg`));
-  const aoMap = configTex(textureLoader.load(`${basePath}/${prefix}_ao_1k.jpg`));
-  // Basic geometries (Box, Plane, etc.) only have UV channel 0.
-  // Three.js aoMap defaults to channel 1 (uv2), so override to channel 0.
-  aoMap.channel = 0;
-
-  const set = { map, normalMap, roughnessMap, aoMap };
+  const set = {
+    map: cloneTex(base.map),
+    normalMap: cloneTex(base.normalMap),
+    roughnessMap: cloneTex(base.roughnessMap),
+    aoMap: cloneTex(base.aoMap),
+  };
   pbrCache.set(cacheKey, set);
   return set;
 }

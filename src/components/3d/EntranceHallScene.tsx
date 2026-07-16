@@ -148,6 +148,7 @@ function EntranceHallScene({
   sharedWings,
   autoWalkTo,
   onboardingMode,
+  onReady,
 }: {
   onDoorClick: (wingId: string) => void;
   wings?: Wing[];
@@ -155,6 +156,7 @@ function EntranceHallScene({
   styleEra?: string;
   autoWalkTo?: string | null;
   onboardingMode?: boolean;
+  onReady?: () => void;
   onInlayClick?: () => void;
   onBustClick?: (pedestalIndex: number) => void;
   bustPedestals?: Record<number, BustPedestalData>;
@@ -168,6 +170,15 @@ function EntranceHallScene({
   const { t } = useTranslation("entranceHall");
   const { t: tw } = useTranslation("wings");
   const WINGS = wingsProp || DEFAULT_WINGS;
+  // ── FINGERPRINT: rebuild the hall only when construction INPUT actually
+  // changes (wing id/label/icon/accent, unlocked state, shared-wing doors,
+  // translated plaque labels, era) — NOT on parent re-renders, where wingsProp
+  // arrives with a fresh array identity from roomStore.getWings(). Same
+  // pattern as InteriorScene's structuralFingerprint.
+  const wingsFingerprint =
+    WINGS.map(w => `${w.id}:${w.nameKey ? tw(w.nameKey) : ""}:${w.name}:${w.icon}:${w.accent}:${w.unlocked === false ? "L" : "U"}`).join("|") +
+    "||" + (sharedWings || []).map(s => `${s.shareId}:${s.wingId}`).join("|") +
+    `||${styleEra}||${t("sharedBadge")}`;
   const mountRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const onDoorClickRef = useRef(onDoorClick);
@@ -178,6 +189,9 @@ function EntranceHallScene({
   useEffect(() => { autoWalkToRef.current = autoWalkTo; }, [autoWalkTo]);
   const onboardingModeRef = useRef(onboardingMode);
   useEffect(() => { onboardingModeRef.current = onboardingMode; }, [onboardingMode]);
+  const onReadyRef = useRef(onReady);
+  useEffect(() => { onReadyRef.current = onReady; }, [onReady]);
+  const readyFiredRef = useRef(false); // onReady fires EXACTLY once per mount (survives effect re-runs)
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const camDebugRef = useRef<HTMLPreElement | null>(null);
   const camDebug = false; // set true to show camera debug overlay
@@ -2099,6 +2113,7 @@ function EntranceHallScene({
       // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
       if (document.hidden) return;
       composer.render();
+      if (!readyFiredRef.current) { readyFiredRef.current = true; try { onReadyRef.current?.(); } catch {} }
     };
     animate();
 
@@ -2354,8 +2369,12 @@ function EntranceHallScene({
       returnRenderer(ren);
       scene.environment=null;scene.background=null;scene.fog=null;
     };
+  // Content fingerprint instead of raw wingsProp — the array gets a fresh
+  // identity on many parent re-renders; rebuilding the whole hall for that
+  // caused multi-hundred-ms stalls + camera teleports. Unlock/rename/shared-door
+  // changes still rebuild (they're part of the fingerprint).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wingsProp]);
+  }, [wingsFingerprint]);
 
   // Handle audio ref muting (always unmuted now — mute button removed)
   useEffect(() => {

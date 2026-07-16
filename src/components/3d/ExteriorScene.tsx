@@ -2816,7 +2816,14 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
     let _frameCount=0;
     let _lastHovId:string|null=null;
     const animate=()=>{
-      frameRef.current=requestAnimationFrame(animate);const t=clock.getElapsedTime();_frameCount++;
+      frameRef.current=requestAnimationFrame(animate);
+      // Skip the entire animation pass (emissive lerps, particles, render) when
+      // host is paused (data-paused="1" on portal host). Saves CPU/GPU while the
+      // user is in Atrium/Library, but the warm-up frame on mount still runs in
+      // full so onReady fires and the scene is ready to show on first unhide.
+      const _hostEl=el.parentElement;
+      if(_firstFrameDone&&_hostEl&&_hostEl.dataset&&_hostEl.dataset.paused==="1")return;
+      const t=clock.getElapsedTime();_frameCount++;
 
       // Walkthrough highlight — pulse golden emissive on target meshes
       const hlTarget=highlightDoorRef.current;
@@ -3055,11 +3062,6 @@ function ExteriorScene({onRoomHover,onRoomClick,hoveredRoom,wings:wingsProp,high
       grassSystem.update();
       wheatFields.forEach(wf => wf.update());
 
-      // Skip GPU render when host is paused (data-paused="1" on portal host).
-      // Saves CPU/GPU while user is in Atrium/Library, but still renders ONE
-      // warm-up frame on mount so the scene is ready to show on first unhide.
-      const hostEl = el.parentElement;
-      if (_firstFrameDone && hostEl && hostEl.dataset && hostEl.dataset.paused === "1") return;
       composer.render();
       if (!_firstFrameDone) { _firstFrameDone = true; try { onReady?.(); } catch {} console.log("[palace] first frame at", Math.round(performance.now() - _mountStart), "ms"); }
     };

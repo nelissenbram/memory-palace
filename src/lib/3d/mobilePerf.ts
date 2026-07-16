@@ -13,6 +13,10 @@ export type GPUTier = "potato" | "mobile" | "desktop";
 
 let _gpuTier: GPUTier | null = null;
 let _rendererString: string | null = null;
+let _tierLogged = false;
+
+/** Software renderers (no GPU acceleration) — potato tier even on desktop. */
+const SOFTWARE_RENDERER_PATTERN = /SwiftShader|llvmpipe|Software\s*Rasterizer/i;
 
 const POTATO_GPU_PATTERNS = [
   /Mali-[34]/i,
@@ -61,7 +65,15 @@ export function getGPUTier(): GPUTier {
     const isPotato = renderer && POTATO_GPU_PATTERNS.some(p => p.test(renderer));
     _gpuTier = isPotato ? "potato" : "mobile";
   } else {
-    _gpuTier = "desktop";
+    // Desktop is not automatically capable: software-rendered contexts
+    // (SwiftShader/llvmpipe) can't handle desktop quality, so classify potato.
+    const renderer = detectRendererString();
+    const isSoftware = renderer && SOFTWARE_RENDERER_PATTERN.test(renderer);
+    _gpuTier = isSoftware ? "potato" : "desktop";
+  }
+  if (!_tierLogged) {
+    _tierLogged = true;
+    console.info(`[mp-perf] tier=${_gpuTier} renderer=${_rendererString || "unknown"}`);
   }
   return _gpuTier;
 }

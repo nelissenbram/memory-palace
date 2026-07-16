@@ -26,7 +26,7 @@ import { hapticMedium } from "@/lib/native/haptics";
 // ═══ ROOM INTERIOR — cosy personal den with media stations ═══
 // Every room has ALL memory furniture: bookshelf, low table, desk, painting
 // wall, screen, vinyl player, vitrine, orbs. Layout varies size & décor.
-function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ}: {roomId: any,actualRoomId?: string,layoutOverride?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number}){
+function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClick,onMemoryUpdate,wingData:wingDataProp,styleEra="roman",onboardingMode,onOnboardingLookDone,onCinematicStep,isMobile:isMobileProp,initialCameraZ,onReady}: {roomId: any,actualRoomId?: string,layoutOverride?: string,memories: any,onMemoryClick: any,onMemoryUpdate?: (id: string, updates: any)=>void,wingData?: Wing,styleEra?: string,onboardingMode?: boolean,onOnboardingLookDone?: ()=>void,onCinematicStep?: (step: number)=>void,isMobile?: boolean,initialCameraZ?: number,onReady?: ()=>void}){
   const { t } = useTranslation("interior3d");
   const { getWingRooms } = useRoomStore();
   const userName = useUserStore((s) => s.userName);
@@ -64,6 +64,9 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
   useEffect(()=>{onCinematicStepRef.current=onCinematicStep;},[onCinematicStep]);
   const onMemoryClickRef=useRef(onMemoryClick);
   useEffect(()=>{onMemoryClickRef.current=onMemoryClick;},[onMemoryClick]);
+  const onReadyRef=useRef(onReady);
+  useEffect(()=>{onReadyRef.current=onReady;},[onReady]);
+  const readyFiredRef=useRef(false); // onReady fires EXACTLY once per mount (survives fingerprint rebuilds)
   const wing=wingDataProp||DEFAULT_WINGS.find(r=>r.id===roomId),mems=memories||[];
 
   // ── FINGERPRINT: split structural vs display to avoid unnecessary full rebuilds ──
@@ -2123,6 +2126,7 @@ function InteriorScene({roomId,actualRoomId,layoutOverride,memories,onMemoryClic
       // Skip GPU render when tab is hidden (saves CPU/GPU on mobile)
       if(document.hidden)return;
       composer.render();
+      if(!readyFiredRef.current){readyFiredRef.current=true;try{onReadyRef.current?.();}catch{}}
     };animate();
 
     // Do NOT auto-open media bars — they are now driven by the MemoryPalace
