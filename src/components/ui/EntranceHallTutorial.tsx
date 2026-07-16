@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTouchControls } from "@/lib/hooks/useIsMobile";
 
 const STORAGE_KEY = "mp_entrance_tour_seen_v1";
 
@@ -32,7 +32,9 @@ type Rect = { top: number; left: number; width: number; height: number };
  */
 export default function EntranceHallTutorial({ open, onClose }: Props) {
   const { t } = useTranslation("entranceHallTour");
-  const isMobile = useIsMobile();
+  // Touch-based: the mobile step highlights the joystick, so this must match
+  // the joystick's render condition (never viewport width alone).
+  const isMobile = useTouchControls();
   const [step, setStep] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [targetBox, setTargetBox] = useState<Rect | null>(null);

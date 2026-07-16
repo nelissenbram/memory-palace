@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo, lazy, Suspense } from "react";
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useIsMobile, useTouchControls } from "@/lib/hooks/useIsMobile";
 import { ANIM } from "@/components/ui/TuscanStyles";
 import PalaceLoadingScreen from "@/components/ui/PalaceLoadingScreen";
 import MobileJoystick from "@/components/ui/MobileJoystick";
@@ -29,6 +29,7 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
   const { t: tPalace } = useTranslation("palace");
   const { t: tCommon } = useTranslation("common");
   const isMobile = useIsMobile();
+  const touchControls = useTouchControls();
   const [view, setView] = useState<View>("exterior");
   const [activeWingSlug, setActiveWingSlug] = useState<string | null>(null);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
@@ -438,8 +439,8 @@ export default function VisitorPalaceWalk({ data }: VisitorPalaceWalkProps) {
         {data.owner.name || t("anonymous")} &middot; {t("visitorMode")}
       </div>
 
-      {/* Mobile joystick */}
-      {isMobile && (
+      {/* Mobile joystick — touch-based gate, never viewport width alone */}
+      {touchControls && (
         <MobileJoystick
           visible={true}
           onMove={() => {}}

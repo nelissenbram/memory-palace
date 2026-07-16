@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { T } from "@/lib/theme";
-import { useIsMobile } from "@/lib/hooks/useIsMobile";
+import { useTouchControls } from "@/lib/hooks/useIsMobile";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useUserStore } from "@/lib/stores/userStore";
@@ -13,7 +13,9 @@ import { useRoomStore } from "@/lib/stores/roomStore";
 const WING_INDEX: Record<string, number> = { roots: 0, nest: 1, craft: 2, travel: 3, passions: 4 };
 
 export default function CinematicWalkthrough() {
-  const isMobile = useIsMobile();
+  // Touch-based, not viewport-based: the narration tells the user HOW TO MOVE
+  // (joystick vs WASD), so it must match the joystick's own render condition.
+  const isMobile = useTouchControls();
   const { t } = useTranslation("walkthrough");
   const { phase, isActive, targetWing, targetRoom, advancePhase, skip } = useWalkthroughStore();
   const view = usePalaceStore((s) => s.view);
