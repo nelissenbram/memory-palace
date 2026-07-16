@@ -5170,7 +5170,7 @@
     },
     "hero": {
       "eyebrow": "Un hogar 3D para tus recuerdos — compartido con amigos y familia",
-      "h1": "Convierte toda una vida de recuerdos en un lugar que tu familia puede visitar.",
+      "h1": "Convierte toda una vida de recuerdos en un lugar que tus seres queridos pueden visitar.",
       "sub": "Un precioso palacio 3D para tus fotos, grabaciones de voz e historias de vida — explóralo junto a tus amigos y familia. Empieza gratis, sin tarjeta de crédito.",
       "sub_ios": "Un precioso palacio 3D para tus fotos, grabaciones de voz e historias de vida — explóralo junto a tus amigos y familia. Listo en minutos — sin conocimientos técnicos.",
       "cta": "Crea tu palacio",
@@ -5182,18 +5182,6 @@
       "chipEu": "Almacenado en la UE",
       "securityLink": "Lee exactamente cómo protegemos tus recuerdos"
     },
-    "proof": {
-      "p1": "0 €",
-      "p1Label": "Plan gratuito — sin límite de tiempo, sin tarjeta",
-      "p1_ios": "Ilimitado",
-      "p1Label_ios": "Alas y habitaciones",
-      "p2": "5",
-      "p2Label": "Idiomas",
-      "p3": "AES-256",
-      "p3Label": "Cifrado en reposo",
-      "p4": "100 %",
-      "p4Label": "Tuyo — exporta cuando quieras"
-    },
     "showcase": {
       "eyebrow": "Míralo en acción",
       "h2": "Entra en un palacio real.",
@@ -5204,31 +5192,6 @@
       "eyebrow": "Esto no es un álbum de fotos.",
       "h2": "Esto es un palacio.",
       "line": "Entra. Así es un recuerdo cuando tiene un hogar."
-    },
-    "bands": {
-      "whatsappEyebrow": "Sin esfuerzo",
-      "whatsappH2": "Si sabes enviar un mensaje de WhatsApp, sabes construir un palacio.",
-      "whatsappBody": "Reenvía una foto o un mensaje de voz por WhatsApp — aparece en tu palacio, ordenado y listo. Ninguna app nueva que aprender; WhatsApp ya lo conoces.",
-      "palaceEyebrow": "Transitable",
-      "palaceH2": "Un hogar que puedes recorrer.",
-      "palaceBody": "Tus fotos, voces e historias viven en habitaciones — pasea entre ellas, en compañía. Cada ala guarda un capítulo de tu vida.",
-      "palacePull": "Las fotos muestran lo que pasó. Tu voz cuenta por qué importó.",
-      "aiEyebrow": "Sin necesidad de ordenar",
-      "aiH2": "Tú traes las fotos. La IA las ordena.",
-      "aiBody": "Conecta Google Fotos, Dropbox o OneDrive — lo que te llevaría meses sucede mientras tomas un café. Tus originales quedan intactos.",
-      "aiFootnote": "La IA es opcional y nunca se entrena con tus recuerdos.",
-      "togetherEyebrow": "Transmitido",
-      "togetherH2": "Un palacio tiene herederos.",
-      "togetherBody": "Tu hija añade las fotos de su boda. Sella una carta para un cumpleaños de 2040. Elige quién recibe las llaves — y decide exactamente cuándo llegan tus palabras."
-    },
-    "more": {
-      "title": "Y cuando quieras más",
-      "map": "Mapa de recuerdos — cada recuerdo fijado al lugar donde ocurrió",
-      "tree": "Árbol genealógico — gráficos de abanico, y trae tu árbol actual contigo",
-      "journeys": "Viajes guiados — la historia de tu vida, una pregunta amable cada vez",
-      "interviews": "Entrevistas guiadas por IA — las preguntas que harían tus nietos",
-      "sharing": "Comparte una habitación o un capítulo entero de tu palacio",
-      "uploads": "Sube fotos, vídeos, audio y documentos"
     },
     "how": {
       "eyebrow": "Primeros pasos",
@@ -5254,7 +5217,12 @@
       "eyebrow": "¿Por qué un palacio?",
       "h2": "Porque tu cerebro piensa en lugares.",
       "body": "Desde hace 2.500 años, las personas recuerdan lo importante colocándolo en habitaciones imaginadas. Recordamos los lugares mucho mejor que los archivos — por eso un palacio, no una carpeta.",
-      "link": "Lee la historia de 2.500 años"
+      "step1t": "Dale un lugar",
+      "step1b": "Cada recuerdo tiene su sitio en una habitación",
+      "step2t": "Pasa por delante",
+      "step2b": "Los lugares son el orden natural de tu cerebro",
+      "step3t": "Se queda",
+      "step3b": "Los lugares se recuerdan mucho más que los archivos"
     },
     "compare": {
       "h2": "Quédate con Google Fotos. Es el disco. Esto es el hogar.",
@@ -5277,24 +5245,14 @@
       "r5a": "Excelente — sigue usándolo",
       "r5b": "No es lo nuestro. Trae las fotos que importan cuando estés listo."
     },
-    "pricing": {
-      "h2": "Precios simples y honestos",
-      "line": "Gratis para siempre — alas y habitaciones ilimitadas, 1 GB de recuerdos, exportación completa cuando quieras. Mejora solo si te quedas pequeño; la prueba nunca se cobra automáticamente.",
-      "cta": "Ver todos los precios"
-    },
     "promise": {
       "h2": "La Promesa Para Siempre",
-      "body": "Exporta todo como ZIP en cualquier momento, en todos los planes. Y si algún día cerráramos, tendrás 90 días y tu archivo completo — tus recuerdos nunca quedan encerrados.",
-      "founderTitle": "De un equipo pequeño que lo dice en serio",
-      "founderBody": "The Memory Palace lo construye un equipo europeo pequeño e independiente. Sin grandes tecnológicas detrás, sin anuncios, sin vender tus datos — tus recuerdos son nuestra misión, no un producto."
-    },
-    "phone": {
-      "title": "También en tu bolsillo",
-      "sub": "Tu palacio en el móvil y la tableta — o en cualquier navegador."
+      "body": "Exporta todo como ZIP en cualquier momento, en todos los planes. Y si algún día cerráramos, tendrás 90 días y tu archivo completo — tus recuerdos nunca quedan encerrados."
     },
     "final": {
       "h2": "Empieza con un recuerdo. El resto vendrá solo.",
-      "cta": "Crea tu palacio"
+      "cta": "Crea tu palacio",
+      "kicker": "Los recuerdos no esperan."
     },
     "a11y": {
       "heroVideo": "Vista aérea de un palacio de la memoria toscano a la luz dorada",
@@ -5317,7 +5275,7 @@
     },
     "usps": {
       "eyebrow": "Qué puedes hacer",
-      "h2": "Trece maneras de mantener viva una vida.",
+      "h2": "Todo lo necesario para mantener viva una vida.",
       "groupCapture": "Capturar",
       "groupEnrich": "Dar vida",
       "groupShare": "Compartir y transmitir",
@@ -5347,6 +5305,52 @@
       "u12b": "Enseña solo el ala de viajes a tus amigos, o todo el palacio a la familia — tú decides quién ve qué.",
       "u13t": "Elige quién recibe las llaves",
       "u13b": "Escribe las cartas que siempre quieres escribir y decide exactamente cuándo llegan. Tu palacio está listo para transmitirse."
+    },
+    "mock": {
+      "ai": "Con IA",
+      "kepName": "Kep",
+      "kepRole": "Tu portero de recuerdos · WhatsApp",
+      "kepSaved": "Guardado en tu palacio — ala de viajes",
+      "kepSorted": "Ordenado y enmarcado",
+      "importTitle": "Importando de Google Fotos",
+      "importCount": "1.248 fotos encontradas",
+      "importSorted": "Ordenadas en 12 habitaciones",
+      "dropHere": "Suelta aquí tus recuerdos",
+      "anyFormat": "Fotos · Vídeos · Audio · Documentos",
+      "sharedBy": "Anna compartió una habitación contigo",
+      "sharedRoom": "Boda — junio 2019",
+      "accept": "Aceptar",
+      "room1": "Infancia",
+      "room2": "Viajes",
+      "room3": "Comidas de domingo",
+      "interviewQ": "«¿A qué olía tu cocina los domingos por la mañana?»",
+      "interviewA": "Capturado — guardado en Comidas de domingo",
+      "mapName": "Mapa de recuerdos",
+      "mapCount": "84 recuerdos · 12 lugares",
+      "treeName": "Árbol genealógico",
+      "treeGen": "Tres generaciones, conectadas",
+      "journeyName": "Historia de vida",
+      "journeyChapter": "Capítulo 3 de 12 — Tu primera casa",
+      "journeyNext": "La siguiente pregunta amable te espera",
+      "capsuleName": "Cápsula del tiempo",
+      "sealedUntil": "Sellada hasta el 14 de junio de 2040",
+      "capsuleFor": "Para el día de la boda de Emma",
+      "cocreateName": "Construir juntos",
+      "adding": "Mia añadió 3 fotos a Verano 1998",
+      "generations": "Tres generaciones, un palacio",
+      "sharingName": "Compartir",
+      "shareFamily": "Familia",
+      "shareFriends": "Amigos",
+      "sharePrivate": "Solo yo",
+      "legacyName": "Legado",
+      "keysTitle": "Quién recibe las llaves",
+      "keyWhen": "Cuando llegue el momento",
+      "uploadsName": "Añadir recuerdos",
+      "cloudName": "Orden inteligente",
+      "receiveName": "Recuerdos compartidos",
+      "interviewName": "Entrevistas",
+      "palaceName": "Tu palacio",
+      "shotAlt": "Captura de pantalla de la app Memory Palace"
     }
   }
 }

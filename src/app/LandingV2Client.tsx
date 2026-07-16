@@ -22,10 +22,24 @@ import { T } from "@/lib/theme";
 import { locales, type Locale } from "@/i18n/config";
 import enMessages from "@/messages/en.json";
 import PalaceLogo from "@/components/landing/PalaceLogo";
+import KepCard from "@/components/landing/usp/KepCard";
+import UploadsCard from "@/components/landing/usp/UploadsCard";
+import CloudImportCard from "@/components/landing/usp/CloudImportCard";
+import ReceiveCard from "@/components/landing/usp/ReceiveCard";
+import PalaceCard from "@/components/landing/usp/PalaceCard";
+import InterviewsCard from "@/components/landing/usp/InterviewsCard";
+import MapCard from "@/components/landing/usp/MapCard";
+import TreeCard from "@/components/landing/usp/TreeCard";
+import JourneysCard from "@/components/landing/usp/JourneysCard";
+import CapsuleCard from "@/components/landing/usp/CapsuleCard";
+import CocreateCard from "@/components/landing/usp/CocreateCard";
+import SharingCard from "@/components/landing/usp/SharingCard";
+import LegacyCard from "@/components/landing/usp/LegacyCard";
 
 type V2 = typeof enMessages.landingV2;
 type FaqSlice = typeof enMessages.landing.faq;
 type FooterSlice = typeof enMessages.landing.footer;
+type Compare8 = typeof enMessages.landing.comparison;
 
 const L = T.land;
 const M = T.motion;
@@ -364,24 +378,27 @@ export default function LandingV2Client({
   v2: v2Prop,
   faq: faqProp,
   footer: footerProp,
+  compare8: compare8Prop,
 }: {
   initialIosApp?: boolean;
   initialLocale?: Locale;
   v2: V2;
   faq: FaqSlice;
   footer: FooterSlice;
+  compare8: Compare8;
 }) {
   const [isIosApp] = useState(initialIosApp);
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
-  const [slices, setSlices] = useState({ v2: v2Prop, faq: faqProp, footer: footerProp });
+  const [slices, setSlices] = useState({ v2: v2Prop, faq: faqProp, footer: footerProp, compare8: compare8Prop });
   const [mounted, setMounted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [navSolid, setNavSolid] = useState(false);
   const [howMode, setHowMode] = useState<"self" | "gift">("self");
   const [tourPlaying, setTourPlaying] = useState(false);
   const tourVideoRef = useRef<HTMLVideoElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
 
-  const { v2, faq, footer } = slices;
+  const { v2, faq, footer, compare8 } = slices;
 
   useEffect(() => setMounted(true), []);
 
@@ -411,10 +428,8 @@ export default function LandingV2Client({
           v2n = {
             ...v2n,
             hero: { ...v2n.hero, sub: v2n.hero.sub_ios, ctaMicro: v2n.hero.ctaMicro_ios },
-            proof: { ...v2n.proof, p1: v2n.proof.p1_ios, p1Label: v2n.proof.p1Label_ios },
             how: { ...v2n.how, midCta: v2n.how.midCta_ios, toggleGift: "", g1t: "", g1d: "", g2t: "", g2d: "", g3t: "", g3d: "" },
             nav: { ...v2n.nav, pricing: "" },
-            pricing: { h2: "", line: "", cta: "" },
           };
           const f = { ...faqN } as Record<string, string>;
           for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
@@ -425,7 +440,7 @@ export default function LandingV2Client({
           footerN = { ...footerN, pricing: "", getStartedFree: footerN.signIn };
         }
         setLocaleState(stored);
-        setSlices({ v2: v2n, faq: faqN, footer: footerN });
+        setSlices({ v2: v2n, faq: faqN, footer: footerN, compare8: mod.default.landing.comparison });
         document.documentElement.lang = stored;
       }
     };
@@ -492,250 +507,38 @@ export default function LandingV2Client({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const whatsappVignette = (
-        /* HTML vignette (localizable, crisp at any DPI): chat bubble → framed photo */
-        <div
-          role="img"
-          aria-label={v2.a11y.bandWhatsapp}
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "1.25rem",
-            padding: "2.5rem 2rem",
-            background: L.surface,
-            border: `1px solid ${L.hairline}`,
-            borderRadius: "1rem",
-            alignItems: "center",
-          }}
-        >
-          <div
-            style={{
-              alignSelf: "flex-start",
-              maxWidth: "16rem",
-              background: "#E7FFDB",
-              borderRadius: "0.875rem 0.875rem 0.875rem 0.25rem",
-              padding: "0.625rem 0.75rem",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
-            }}
-          >
-            <Image
-              src="/landing/demo-hands.jpg"
-              alt=""
-              width={480}
-              height={319}
-              style={{ width: "100%", height: "auto", borderRadius: "0.5rem", display: "block" }}
-            />
-            <span style={{ fontFamily: FONT_BODY, fontSize: "0.8125rem", color: "#3B4A3F", display: "block", marginTop: "0.375rem", textAlign: "right" }}>
-              12:04 ✓✓
-            </span>
-          </div>
-          <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" style={{ opacity: 0.6 }}>
-            <path d="M12 4v14m0 0l-5-5m5 5l5-5" fill="none" stroke={L.accentLight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <div
-            style={{
-              alignSelf: "flex-end",
-              background: "#FFFFFF",
-              border: `6px solid #B98A4B`,
-              borderRadius: "0.25rem",
-              padding: "0.375rem",
-              boxShadow: "0 8px 20px rgba(36,28,21,0.18)",
-              maxWidth: "15rem",
-            }}
-          >
-            <Image
-              src="/landing/demo-hands.jpg"
-              alt=""
-              width={480}
-              height={319}
-              style={{ width: "100%", height: "auto", display: "block" }}
-            />
-          </div>
-        </div>
-  );
-
-  const entranceFigure = (
-        <figure style={{ margin: 0 }}>
-          <Image
-            src="/landing/band-entrance.jpg"
-            alt={v2.a11y.bandPalace}
-            width={1600}
-            height={633}
-            sizes="(max-width: 768px) 100vw, 50vw"
-            style={{
-              width: "100%",
-              height: "auto",
-              borderRadius: "1rem",
-              border: `1px solid ${L.hairline}`,
-              display: "block",
-            }}
-          />
-        </figure>
-  );
-
-  const sortVignette = (
-        <div
-          role="img"
-          aria-label={v2.a11y.bandAi}
-          style={{
-            padding: "2.5rem 2rem",
-            background: L.surface,
-            border: `1px solid ${L.hairline}`,
-            borderRadius: "1rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "1.25rem",
-          }}
-        >
-          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center" }}>
-            {["/landing/demo-hands.jpg", "/landing/demo-graduation.jpg", "/landing/demo-morning.jpg"].map((src, i) => (
-              <Image
-                key={src}
-                src={src}
-                alt=""
-                width={480}
-                height={319}
-                style={{
-                  width: "30%",
-                  height: "auto",
-                  borderRadius: "0.5rem",
-                  display: "block",
-                  transform: `rotate(${(i - 1) * 3}deg)`,
-                  boxShadow: "0 4px 12px rgba(36,28,21,0.15)",
-                }}
-              />
-            ))}
-          </div>
-          <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true" style={{ alignSelf: "center", opacity: 0.6 }}>
-            <path d="M12 4v14m0 0l-5-5m5 5l5-5" fill="none" stroke={L.accentLight} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          <div style={{ display: "flex", gap: "0.625rem", flexWrap: "wrap", justifyContent: "center" }}>
-            {[v2.more.map.split(" — ")[0], v2.more.tree.split(" — ")[0], v2.more.journeys.split(" — ")[0]].map((room) => (
-              <span
-                key={room}
-                style={{
-                  fontFamily: FONT_BODY,
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  color: L.accentLight,
-                  background: L.canvas,
-                  border: `1px solid ${L.hairline}`,
-                  borderRadius: "2rem",
-                  padding: "0.375rem 0.875rem",
-                }}
-              >
-                {room}
-              </span>
-            ))}
-          </div>
-        </div>
-  );
-
-  const togetherFigure = (
-        <figure style={{ margin: 0 }}>
-          <Image
-            src="/landing/band-together.jpg"
-            alt={v2.a11y.bandTogether}
-            width={1600}
-            height={900}
-            sizes="(max-width: 768px) 100vw, 50vw"
-            style={{
-              width: "100%",
-              height: "auto",
-              borderRadius: "1rem",
-              border: `1px solid ${L.hairline}`,
-              display: "block",
-            }}
-          />
-        </figure>
-  );
-
-  const mapVignette = (
-    <div
-      role="img"
-      aria-label={v2.a11y.mapVignette}
-      style={{
-        position: "relative",
-        padding: "2.5rem 2rem",
-        background: `${L.surface} repeating-linear-gradient(0deg, transparent, transparent 39px, ${L.hairline} 39px, ${L.hairline} 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, ${L.hairline} 39px, ${L.hairline} 40px)`,
-        border: `1px solid ${L.hairline}`,
-        borderRadius: "1rem",
-        minHeight: "18rem",
-        overflow: "hidden",
-      }}
-    >
-      {[
-        { src: "/landing/demo-hands.jpg", left: "12%", top: "18%", label: "1962" },
-        { src: "/landing/demo-graduation.jpg", left: "55%", top: "48%", label: "1987" },
-        { src: "/landing/demo-morning.jpg", left: "28%", top: "62%", label: "2019" },
-      ].map((pin) => (
-        <div key={pin.src} style={{ position: "absolute", left: pin.left, top: pin.top, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
-          <Image
-            src={pin.src}
-            alt=""
-            width={480}
-            height={319}
-            style={{ width: "5.5rem", height: "4rem", objectFit: "cover", borderRadius: "0.5rem", border: "3px solid #FFF", boxShadow: "0 6px 16px rgba(36,28,21,0.25)", display: "block" }}
-          />
-          <svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true">
-            <path d="M8 0C3.6 0 0 3.6 0 8c0 5.4 8 12 8 12s8-6.6 8-12c0-4.4-3.6-8-8-8z" fill={L.accentLight} />
-            <circle cx="8" cy="8" r="3" fill="#FFF" />
-          </svg>
-          <span style={{ fontFamily: FONT_BODY, fontSize: "0.75rem", fontWeight: 600, color: L.inkMutedLight, background: "rgba(252,250,245,0.9)", padding: "0.125rem 0.5rem", borderRadius: "1rem" }}>
-            {pin.label}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-
-  const shot = (src: string, alt: string) => (
-    <figure style={{ margin: 0 }}>
-      <Image
-        src={src}
-        alt={alt}
-        width={1200}
-        height={750}
-        sizes="(max-width: 1024px) 100vw, 40vw"
-        style={{ width: "100%", height: "auto", borderRadius: "1rem", border: `1px solid ${L.hairline}`, display: "block", boxShadow: "0 10px 30px rgba(36,28,21,0.10)" }}
-      />
-    </figure>
-  );
-
+  const MOCK = v2.mock as Record<string, string>;
   const USP_GROUPS: Array<{ label: string; items: Array<{ t: string; b: string; media: React.ReactNode }> }> = [
     {
       label: v2.usps.groupCapture,
       items: [
-        { t: v2.usps.u1t, b: v2.usps.u1b, media: whatsappVignette },
-        { t: v2.usps.u2t, b: v2.usps.u2b, media: shot("/screenshots/corridor-gallery-1200w.webp", v2.a11y.shot2) },
-        { t: v2.usps.u3t, b: v2.usps.u3b, media: sortVignette },
-        { t: v2.usps.u4t, b: v2.usps.u4b, media: shot("/screenshots/library-nest-1200w.webp", v2.a11y.shot1) },
+        { t: v2.usps.u1t, b: v2.usps.u1b, media: <KepCard m={MOCK} aiLabel={v2.mock.ai} /> },
+        { t: v2.usps.u2t, b: v2.usps.u2b, media: <UploadsCard m={MOCK} /> },
+        { t: v2.usps.u3t, b: v2.usps.u3b, media: <CloudImportCard m={MOCK} aiLabel={v2.mock.ai} /> },
+        { t: v2.usps.u4t, b: v2.usps.u4b, media: <ReceiveCard m={MOCK} /> },
       ],
     },
     {
       label: v2.usps.groupEnrich,
       items: [
-        { t: v2.usps.u5t, b: v2.usps.u5b, media: entranceFigure },
-        { t: v2.usps.u6t, b: v2.usps.u6b, media: shot("/screenshots/interview-intro-1200w.webp", v2.a11y.bandAi) },
-        { t: v2.usps.u7t, b: v2.usps.u7b, media: mapVignette },
-        { t: v2.usps.u8t, b: v2.usps.u8b, media: shot("/screenshots/family-tree-view-1200w.webp", v2.a11y.shot3) },
-        { t: v2.usps.u9t, b: v2.usps.u9b, media: shot("/screenshots/achievements-1200w.webp", v2.a11y.shot3) },
+        { t: v2.usps.u5t, b: v2.usps.u5b, media: <PalaceCard m={MOCK} /> },
+        { t: v2.usps.u6t, b: v2.usps.u6b, media: <InterviewsCard m={MOCK} aiLabel={v2.mock.ai} /> },
+        { t: v2.usps.u7t, b: v2.usps.u7b, media: <MapCard m={MOCK} /> },
+        { t: v2.usps.u8t, b: v2.usps.u8b, media: <TreeCard m={MOCK} /> },
+        { t: v2.usps.u9t, b: v2.usps.u9b, media: <JourneysCard m={MOCK} /> },
       ],
     },
     {
       label: v2.usps.groupShare,
       items: [
-        { t: v2.usps.u10t, b: v2.usps.u10b, media: (
-          <figure style={{ margin: 0 }}>
-            <Image src="/landing/showcase-frame.jpg" alt={v2.a11y.showcaseFrame} width={1600} height={600} sizes="(max-width: 1024px) 100vw, 40vw" style={{ width: "100%", height: "auto", borderRadius: "1rem", border: `1px solid ${L.hairline}`, display: "block" }} />
-          </figure>
-        ) },
-        { t: v2.usps.u11t, b: v2.usps.u11b, media: togetherFigure },
-        { t: v2.usps.u12t, b: v2.usps.u12b, media: shot("/screenshots/palace-peristylium-1200w.webp", v2.a11y.shot1) },
-        { t: v2.usps.u13t, b: v2.usps.u13b, media: shot("/screenshots/legacy-settings-1200w.webp", v2.a11y.shot3) },
+        { t: v2.usps.u10t, b: v2.usps.u10b, media: <CapsuleCard m={MOCK} /> },
+        { t: v2.usps.u11t, b: v2.usps.u11b, media: <CocreateCard m={MOCK} /> },
+        { t: v2.usps.u12t, b: v2.usps.u12b, media: <SharingCard m={MOCK} /> },
+        { t: v2.usps.u13t, b: v2.usps.u13b, media: <LegacyCard m={MOCK} /> },
       ],
     },
   ];
+
   const USP_FLAT = USP_GROUPS.flatMap((g, gi) => g.items.map((item) => ({ ...item, group: g.label, gi })));
 
   const steps =
@@ -795,7 +598,7 @@ export default function LandingV2Client({
                 "@type": "VideoObject",
                 name: v2.showcase.h2,
                 description: v2.showcase.sub,
-                thumbnailUrl: "https://thememorypalace.ai/video/walkthrough-poster.jpg",
+                thumbnailUrl: "https://thememorypalace.ai/video/walkthrough-poster-v2.jpg",
                 contentUrl: "https://thememorypalace.ai/video/walkthrough.mp4",
                 uploadDate: "2026-05-06",
               },
@@ -825,16 +628,75 @@ export default function LandingV2Client({
         .lv2-steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
         .lv2-table-wrap { overflow-x: auto; }
         .lv2-usp-grid { display: grid; grid-template-columns: 17rem 1fr; gap: clamp(2.5rem, 5vw, 5rem); }
-        .lv2-shots-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; max-width: 62rem; margin: 0 auto; }
+        /* Native horizontal screenshot strip — proximity snap, never traps vertical scroll */
+        .lv2-strip {
+          display: flex; gap: 1.25rem; overflow-x: auto; padding: 0.5rem 0.25rem 1rem;
+          scroll-snap-type: x proximity; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
+        }
+        .lv2-strip:focus-visible { outline: 2px solid ${T.color.terracotta}; outline-offset: 3px; }
+        /* Method-of-loci depiction */
+        .lv2-loci { position: relative; display: flex; flex-wrap: wrap; gap: 2.5rem; justify-content: center; max-width: 58rem; margin: 0 auto; }
+        .lv2-loci-room { position: relative; width: 5.5rem; height: 6rem; }
+        .lv2-loci-track { position: absolute; left: 8%; right: 8%; top: 5.25rem; height: 2px; background: ${L.hairline}; }
+        .lv2-loci-walker {
+          position: absolute; top: -0.3rem; left: 0; width: 0.65rem; height: 0.65rem; border-radius: 50%;
+          background: ${L.accentDark}; box-shadow: 0 0 10px rgba(212,175,55,0.7);
+          animation: lv2LociWalk 9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        }
+        .lv2-loci-photo {
+          position: absolute; left: 50%; top: 42%; transform: translateX(-50%);
+          animation: lv2LociDrop 9s ease-out infinite;
+        }
+        .lv2-loci-footsteps {
+          position: absolute; left: 50%; top: 58%; transform: translateX(-50%);
+          font-size: 1.4rem; letter-spacing: 0.3em; color: ${L.accentLight};
+          animation: lv2LociSteps 9s linear infinite;
+        }
+        .lv2-loci-glowframe {
+          position: absolute; left: 50%; top: 42%; transform: translateX(-50%); border-radius: 0.3rem;
+          animation: lv2LociGlow 9s ease-in-out infinite;
+        }
+        @keyframes lv2LociWalk {
+          0%, 8% { left: 2%; opacity: 0; }
+          14% { opacity: 1; }
+          38% { left: 47%; }
+          62% { left: 47%; }
+          86% { left: 94%; opacity: 1; }
+          92%, 100% { left: 94%; opacity: 0; }
+        }
+        @keyframes lv2LociDrop {
+          0% { opacity: 0; transform: translateX(-50%) translateY(-1.2rem); }
+          8% { opacity: 1; transform: translateX(-50%) translateY(0); }
+          96% { opacity: 1; } 100% { opacity: 0; }
+        }
+        @keyframes lv2LociSteps {
+          0%, 34% { opacity: 0; } 42%, 58% { opacity: 1; } 66%, 100% { opacity: 0; }
+        }
+        @keyframes lv2LociGlow {
+          0%, 74% { box-shadow: 0 0 0 rgba(212,175,55,0); }
+          84%, 92% { box-shadow: 0 0 22px rgba(212,175,55,0.85); }
+          100% { box-shadow: 0 0 8px rgba(212,175,55,0.3); }
+        }
+        /* Final CTA glow breath */
+        .lv2-cta-final { animation: lv2CtaBreath 5s ease-in-out infinite; }
+        @keyframes lv2CtaBreath {
+          0%, 100% { box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.35), 0 0 34px rgba(212,175,55,0.16); }
+          50% { box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.5), 0 0 54px rgba(212,175,55,0.3); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .lv2-loci-walker, .lv2-loci-photo, .lv2-loci-footsteps, .lv2-loci-glowframe, .lv2-cta-final { animation: none !important; }
+          .lv2-loci-photo, .lv2-loci-footsteps, .lv2-loci-glowframe { opacity: 1; }
+        }
         @media (max-width: 1023px) {
           .lv2-usp-grid { grid-template-columns: 1fr; }
           .lv2-usp-rail { display: none; }
         }
         @media (max-width: 768px) {
           .lv2-steps-grid { grid-template-columns: 1fr; }
-          .lv2-shots-grid { grid-template-columns: 1fr; max-width: 26rem; }
           .lv2-nav-links { display: none !important; }
           .lv2-nav-burger { display: inline-flex !important; }
+          .lv2-loci { gap: 2rem; }
+          .lv2-loci-track { display: none; }
         }
         @media (min-width: 769px) {
           .lv2-nav-burger { display: none !important; }
@@ -1121,10 +983,10 @@ export default function LandingV2Client({
         <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
 
         {/* ── 2. Showcase: step inside a real palace ── */}
-        <section id="tour" aria-labelledby="lv2-tour-h" style={{ background: L.surface, padding: `${L.space.sectionY} 0` }}>
+        <section id="tour" aria-labelledby="lv2-tour-h" style={{ background: L.surface, padding: "4rem 0 5rem" }}>
           <div style={wide}>
             <Reveal>
-              <div style={{ textAlign: "center", marginBottom: "3rem" }}>
+              <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
                 <Eyebrow>{v2.showcase.eyebrow}</Eyebrow>
                 <H2 id="lv2-tour-h">{v2.showcase.h2}</H2>
                 <p style={{ ...prose, fontFamily: FONT_BODY, fontSize: L.type.lead, lineHeight: 1.5, color: L.inkBody, margin: "0 auto", textWrap: "pretty" }}>
@@ -1133,7 +995,7 @@ export default function LandingV2Client({
               </div>
             </Reveal>
             <Reveal>
-              <div style={{ maxWidth: "56rem", margin: "0 auto" }}>
+              <div style={{ maxWidth: "62rem", margin: "0 auto" }}>
                 {tourPlaying ? (
                   <video
                     ref={tourVideoRef}
@@ -1154,6 +1016,7 @@ export default function LandingV2Client({
                     style={{
                       position: "relative",
                       width: "100%",
+                      aspectRatio: "16 / 9",
                       padding: 0,
                       border: "none",
                       borderRadius: "1rem",
@@ -1164,12 +1027,11 @@ export default function LandingV2Client({
                     }}
                   >
                     <Image
-                      src="/video/walkthrough-poster.jpg"
+                      src="/video/walkthrough-poster-v2.jpg"
                       alt=""
-                      width={1600}
-                      height={900}
-                      sizes="(max-width: 920px) 100vw, 56rem"
-                      style={{ width: "100%", height: "auto", display: "block", opacity: 0.92 }}
+                      fill
+                      sizes="(max-width: 1020px) 100vw, 62rem"
+                      style={{ objectFit: "cover" }}
                     />
                     <span
                       aria-hidden="true"
@@ -1409,22 +1271,56 @@ export default function LandingV2Client({
           </div>
         </section>
 
-        {/* ── 6. Why a palace ── */}
+        {/* ── 6. Why a palace — the method of loci, shown not told ── */}
         <section aria-labelledby="lv2-why-h" style={{ background: L.mid, padding: `${L.space.sectionY} 0` }}>
           <div style={{ ...wide, textAlign: "center" }}>
             <Reveal>
               <Eyebrow>{v2.why.eyebrow}</Eyebrow>
               <H2 id="lv2-why-h">{v2.why.h2}</H2>
-              <p style={{ ...prose, fontFamily: FONT_BODY, fontSize: L.type.lead, lineHeight: 1.6, color: L.inkBody, margin: "0 auto 1.25rem", textWrap: "pretty" }}>
+              <p style={{ ...prose, fontFamily: FONT_BODY, fontSize: L.type.lead, lineHeight: 1.6, color: L.inkBody, margin: "0 auto 3rem", textWrap: "pretty" }}>
                 {v2.why.body}
               </p>
-              <Link
-                href="/blog"
-                className="lv2-navlink"
-                style={{ color: L.accentLight, fontWeight: 600, textDecoration: "underline", textUnderlineOffset: "0.25em" }}
-              >
-                {v2.why.link} →
-              </Link>
+            </Reveal>
+            <Reveal>
+              <div className="lv2-loci" role="img" aria-label={`${v2.why.step1t}. ${v2.why.step2t}. ${v2.why.step3t}.`}>
+                {/* the walking dot travels the path beneath the three rooms */}
+                <div className="lv2-loci-track" aria-hidden="true">
+                  <span className="lv2-loci-walker" />
+                </div>
+                {[
+                  { t: v2.why.step1t, b: v2.why.step1b, k: "place" },
+                  { t: v2.why.step2t, b: v2.why.step2b, k: "walk" },
+                  { t: v2.why.step3t, b: v2.why.step3b, k: "stay" },
+                ].map((step, i) => (
+                  <div key={step.k} style={{ flex: 1, minWidth: "14rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.875rem" }}>
+                    <div className={`lv2-loci-room lv2-loci-room-${step.k}`} aria-hidden="true">
+                      {/* arched doorway */}
+                      <svg width="88" height="96" viewBox="0 0 88 96">
+                        <path d="M10 92 V38 A34 34 0 0 1 78 38 V92" fill="none" stroke={L.accentLight} strokeWidth="2.5" strokeLinecap="round" />
+                        <path d="M2 92 H86" stroke={L.hairline} strokeWidth="2.5" strokeLinecap="round" />
+                      </svg>
+                      {i === 0 ? (
+                        /* a memory being placed into the room */
+                        <span className="lv2-loci-photo">
+                          <Image src="/landing/demo-hands.jpg" alt="" width={480} height={319} style={{ width: "2.9rem", height: "2.3rem", objectFit: "cover", borderRadius: "0.25rem", border: "2px solid #FFF", boxShadow: "0 4px 10px rgba(36,28,21,0.3)", display: "block" }} />
+                        </span>
+                      ) : null}
+                      {i === 1 ? <span className="lv2-loci-footsteps">· · ·</span> : null}
+                      {i === 2 ? (
+                        <span className="lv2-loci-glowframe">
+                          <Image src="/landing/demo-hands.jpg" alt="" width={480} height={319} style={{ width: "2.9rem", height: "2.3rem", objectFit: "cover", borderRadius: "0.25rem", border: "2px solid #FFF", display: "block" }} />
+                        </span>
+                      ) : null}
+                    </div>
+                    <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h4, color: T.color.charcoal, margin: 0 }}>
+                      {step.t}
+                    </h3>
+                    <p style={{ fontFamily: FONT_BODY, fontSize: L.type.bodyS, lineHeight: 1.5, color: L.inkMutedLight, margin: 0, maxWidth: "16em" }}>
+                      {step.b}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </Reveal>
           </div>
         </section>
@@ -1461,29 +1357,63 @@ export default function LandingV2Client({
             <p style={{ fontFamily: FONT_BODY, fontSize: L.type.lead, color: L.inkMutedDark, margin: "0 auto 3rem", maxWidth: "34em", textWrap: "pretty" }}>
               {v2.notAlbum.line}
             </p>
-            <div className="lv2-shots-grid">
-              {[
-                ["/screenshots/palace-peristylium-1200w.webp", v2.a11y.shot1],
-                ["/screenshots/corridor-gallery-1200w.webp", v2.a11y.shot2],
-                ["/screenshots/atrium-dashboard-1200w.webp", v2.a11y.shot3],
-              ].map(([src, alt]) => (
-                <Image
-                  key={src}
-                  src={src}
-                  alt={alt}
-                  width={1200}
-                  height={750}
-                  sizes="(max-width: 768px) 100vw, 30vw"
-                  style={{
-                    width: "100%",
-                    height: "auto",
-                    borderRadius: "0.875rem",
-                    border: "1px solid rgba(252,250,245,0.25)",
-                    boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
-                    display: "block",
-                  }}
-                />
-              ))}
+            <div style={{ position: "relative" }}>
+              <div
+                ref={stripRef}
+                className="lv2-strip"
+                role="region"
+                aria-roledescription="carousel"
+                aria-label={v2.a11y.phoneStrip}
+                tabIndex={0}
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <Image
+                    key={n}
+                    src={`/screenshots/store/screenshot-${n}-${["exterior", "entrance", "room", "family-tree", "interview", "explore", "library", "achievements"][n - 1]}.webp`}
+                    alt={`${v2.mock.shotAlt} ${n}/8`}
+                    width={1080}
+                    height={1920}
+                    sizes="(max-width: 768px) 70vw, 17rem"
+                    style={{
+                      width: "17rem",
+                      height: "auto",
+                      flexShrink: 0,
+                      scrollSnapAlign: "center",
+                      borderRadius: "1.25rem",
+                      border: "1px solid rgba(252,250,245,0.22)",
+                      boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
+                      display: "block",
+                    }}
+                  />
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", marginTop: "1.5rem" }}>
+                {[[-1, v2.a11y.prev, "M14 4l-6 7 6 7"], [1, v2.a11y.next, "M8 4l6 7-6 7"]].map(([dir, label, d]) => (
+                  <button
+                    key={label as string}
+                    type="button"
+                    aria-label={label as string}
+                    className="lv2-video-toggle"
+                    onClick={() => stripRef.current?.scrollBy({ left: (dir as number) * 320, behavior: prefersReducedMotion() ? "auto" : "smooth" })}
+                    style={{
+                      width: T.touch,
+                      height: T.touch,
+                      borderRadius: "50%",
+                      border: "1px solid rgba(252,250,245,0.4)",
+                      background: "rgba(252,250,245,0.1)",
+                      color: T.color.cream,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="18" height="22" viewBox="0 0 22 22" aria-hidden="true">
+                      <path d={d as string} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -1504,9 +1434,9 @@ export default function LandingV2Client({
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: FONT_BODY, fontSize: L.type.bodyS }}>
                   <thead>
                     <tr>
-                      <th scope="col" style={{ padding: "0.875rem 0.75rem", textAlign: "left", color: L.inkMutedLight, fontWeight: 600, borderBottom: `2px solid ${L.hairline}`, width: "22%" }} />
+                      <th scope="col" style={{ padding: "0.875rem 0.75rem", textAlign: "left", color: L.inkMutedLight, fontWeight: 600, borderBottom: `2px solid ${L.hairline}`, width: "18%" }} />
                       <th scope="col" style={{ padding: "0.875rem 0.75rem", textAlign: "left", color: L.inkMutedLight, fontWeight: 600, borderBottom: `2px solid ${L.hairline}` }}>
-                        {v2.compare.colLeft}
+                        {compare8.columnLeft}
                       </th>
                       <th
                         scope="col"
@@ -1519,16 +1449,20 @@ export default function LandingV2Client({
                           background: L.surface,
                         }}
                       >
-                        {v2.compare.colRight}
+                        {compare8.columnRight}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {[
-                      [v2.compare.r1l, v2.compare.r1a, v2.compare.r1b, false],
-                      [v2.compare.r2l, v2.compare.r2a, v2.compare.r2b, false],
-                      [v2.compare.r3l, v2.compare.r3a, v2.compare.r3b, false],
-                      [v2.compare.r4l, v2.compare.r4a, v2.compare.r4b, false],
+                      [compare8.row1Label, compare8.row1Left, compare8.row1Right, false],
+                      [compare8.row2Label, compare8.row2Left, compare8.row2Right, false],
+                      [compare8.row3Label, compare8.row3Left, compare8.row3Right, false],
+                      [compare8.row4Label, compare8.row4Left, compare8.row4Right, false],
+                      [compare8.row5Label, compare8.row5Left, compare8.row5Right, false],
+                      [compare8.row6Label, compare8.row6Left, compare8.row6Right, false],
+                      [compare8.row7Label, compare8.row7Left, compare8.row7Right, false],
+                      [compare8.row8Label, compare8.row8Left, compare8.row8Right, false],
                       [v2.compare.r5l, v2.compare.r5a, v2.compare.r5b, true],
                     ].map(([label, left, right, concession]) => (
                       <tr key={label as string}>
@@ -1550,53 +1484,7 @@ export default function LandingV2Client({
           </div>
         </section>
 
-        {/* ── 9. Pricing strip (web only — Apple 3.1.1) ── */}
-        {!isIosApp && (
-          <section aria-labelledby="lv2-pricing-h" style={{ background: L.surface, padding: `${L.space.bandY} 0` }}>
-            <div style={{ ...wide, textAlign: "center" }}>
-              <h2 id="lv2-pricing-h" style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h3, color: T.color.charcoal, margin: "0 0 0.75rem" }}>
-                {v2.pricing.h2}
-              </h2>
-              <p style={{ ...prose, fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, margin: "0 auto 1rem", textWrap: "pretty" }}>
-                {v2.pricing.line}
-              </p>
-              <Link
-                href="/pricing"
-                className="lv2-navlink"
-                style={{ color: L.accentLight, fontWeight: 600, textDecoration: "underline", textUnderlineOffset: "0.25em" }}
-              >
-                {v2.pricing.cta} →
-              </Link>
-            </div>
-          </section>
-        )}
-
-        {/* ── 10. Founder note (Forever Promise lives in the footer) ── */}
-        <section aria-labelledby="lv2-founder-h" style={{ background: L.canvas, padding: `${L.space.sectionY} 0` }}>
-          <div style={{ ...wide }}>
-            <Reveal>
-              <div
-                style={{
-                  ...prose,
-                  margin: "0 auto",
-                  background: L.surface,
-                  border: `1px solid ${L.hairline}`,
-                  borderRadius: "1rem",
-                  padding: "2rem clamp(1.5rem, 4vw, 2.5rem)",
-                }}
-              >
-                <h2 id="lv2-founder-h" style={{ fontFamily: FONT_BODY, fontWeight: 600, fontSize: L.type.h4, color: T.color.charcoal, margin: "0 0 0.625rem" }}>
-                  {v2.promise.founderTitle}
-                </h2>
-                <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, margin: 0, textWrap: "pretty" }}>
-                  {v2.promise.founderBody}
-                </p>
-              </div>
-            </Reveal>
-          </div>
-        </section>
-
-        {/* ── 11. FAQ ── */}
+        {/* ── 9. FAQ ── */}
         <section id="faq" aria-labelledby="lv2-faq-h" style={{ background: L.surface, padding: `${L.space.sectionY} 0` }}>
           <div style={{ ...wide }}>
             <Reveal>
@@ -1614,49 +1502,63 @@ export default function LandingV2Client({
           </div>
         </section>
 
-        {/* ── 12. Final CTA — end on a peak ── */}
-        <section aria-labelledby="lv2-final-h" style={{ position: "relative", background: L.dark, padding: "clamp(6rem, 12vw, 9rem) 0", overflow: "hidden" }}>
-          <Image src="/video/hero-poster.jpg" alt="" fill sizes="100vw" style={{ objectFit: "cover", opacity: 0.5 }} />
-          <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(36,28,21,0.55), rgba(36,28,21,0.8))" }} />
+        {/* ── 10. Final CTA — end on a peak ── */}
+        <section aria-labelledby="lv2-final-h" style={{ position: "relative", background: L.dark, padding: "clamp(7rem, 14vw, 11rem) 0", overflow: "hidden" }}>
+          <Image src="/video/hero-poster.jpg" alt="" fill sizes="100vw" style={{ objectFit: "cover", opacity: 0.6 }} />
+          <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 45%, rgba(36,28,21,0.30) 0%, rgba(36,28,21,0.82) 85%)" }} />
           <div style={{ position: "relative", textAlign: "center", padding: "0 1.5rem" }}>
+            <p
+              style={{
+                fontFamily: FONT_BODY,
+                fontSize: L.type.bodyS,
+                fontWeight: 700,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: L.accentDark,
+                margin: "0 0 1.25rem",
+              }}
+            >
+              {v2.final.kicker}
+            </p>
             <h2
               id="lv2-final-h"
               style={{
                 fontFamily: FONT_DISPLAY,
                 fontWeight: 500,
-                fontSize: L.type.h1,
-                lineHeight: 1.1,
+                fontSize: "clamp(3rem, 6.5vw, 5rem)",
+                lineHeight: 1.06,
                 color: T.color.cream,
-                margin: "0 auto 2rem",
-                maxWidth: "18em",
+                margin: "0 auto 2.5rem",
+                maxWidth: "16em",
                 textWrap: "balance",
+                textShadow: "0 2px 30px rgba(36,28,21,0.5)",
               }}
             >
               {v2.final.h2}
             </h2>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
               <Link
                 href="/register"
-                className="lv2-cta"
+                className="lv2-cta lv2-cta-final"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  minHeight: "3.5rem",
-                  padding: "0 3rem",
-                  borderRadius: "0.75rem",
+                  minHeight: "4.25rem",
+                  padding: "0 3.75rem",
+                  borderRadius: "1rem",
                   background: L.ctaGrad,
                   color: "#FFF",
                   fontFamily: FONT_BODY,
-                  fontWeight: 600,
-                  fontSize: L.type.lead,
+                  fontWeight: 700,
+                  fontSize: L.type.h4,
                   textDecoration: "none",
-                  boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+                  boxShadow: "0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.35), 0 0 44px rgba(212,175,55,0.22)",
                 }}
               >
                 {v2.final.cta}
               </Link>
-              <span style={{ fontFamily: FONT_BODY, fontSize: "0.875rem", color: "rgba(252,250,245,0.75)" }}>{heroMicro}</span>
+              <span style={{ fontFamily: FONT_BODY, fontSize: L.type.bodyS, color: "rgba(252,250,245,0.85)" }}>{heroMicro}</span>
             </div>
           </div>
         </section>

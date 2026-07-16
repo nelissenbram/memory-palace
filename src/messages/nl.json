@@ -5172,7 +5172,7 @@
     },
     "hero": {
       "eyebrow": "Een 3D-thuis voor je herinneringen — gedeeld met vrienden & familie",
-      "h1": "Maak van een leven vol herinneringen een plek die je familie kan bezoeken.",
+      "h1": "Maak van een leven vol herinneringen een plek die je dierbaren kunnen bezoeken.",
       "sub": "Een prachtig 3D-paleis voor je foto's, stemopnames en levensverhalen — verken het samen met je vrienden & familie. Gratis te beginnen, geen creditcard nodig.",
       "sub_ios": "Een prachtig 3D-paleis voor je foto's, stemopnames en levensverhalen — verken het samen met je vrienden & familie. Binnen enkele minuten klaar — geen technische kennis nodig.",
       "cta": "Maak je Paleis",
@@ -5184,18 +5184,6 @@
       "chipEu": "Opgeslagen in de EU",
       "securityLink": "Lees precies hoe we je herinneringen beschermen"
     },
-    "proof": {
-      "p1": "€0",
-      "p1Label": "Gratis plan — geen tijdslimiet, geen kaart",
-      "p1_ios": "Onbeperkt",
-      "p1Label_ios": "Vleugels & kamers",
-      "p2": "5",
-      "p2Label": "Talen",
-      "p3": "AES-256",
-      "p3Label": "Versleuteld bij opslag",
-      "p4": "100%",
-      "p4Label": "Van jou — altijd te exporteren"
-    },
     "showcase": {
       "eyebrow": "Zie het in actie",
       "h2": "Stap een echt paleis binnen.",
@@ -5206,31 +5194,6 @@
       "eyebrow": "Dit is geen fotoalbum.",
       "h2": "Dit is een paleis.",
       "line": "Stap binnen. Zo ziet een herinnering eruit als ze een thuis heeft."
-    },
-    "bands": {
-      "whatsappEyebrow": "Moeiteloos",
-      "whatsappH2": "Kun je een WhatsApp-bericht sturen? Dan kun je een paleis bouwen.",
-      "whatsappBody": "Stuur een foto of spraakbericht door via WhatsApp — het verschijnt in je paleis, gesorteerd en wel. Geen nieuwe app om te leren; WhatsApp ken je al.",
-      "palaceEyebrow": "Beloopbaar",
-      "palaceH2": "Een thuis waar je doorheen kunt lopen.",
-      "palaceBody": "Je foto's, stemmen en verhalen wonen in kamers — loop er samen langs. Elke vleugel bewaart een hoofdstuk van je leven.",
-      "palacePull": "Foto's laten zien wat er gebeurde. Jouw stem vertelt waarom het ertoe deed.",
-      "aiEyebrow": "Sorteren hoeft niet",
-      "aiH2": "Jij brengt de foto's. AI doet het sorteren.",
-      "aiBody": "Koppel Google Foto's, Dropbox of OneDrive — wat jou maanden zou kosten, gebeurt terwijl jij koffie drinkt. Je originelen blijven onaangeroerd.",
-      "aiFootnote": "AI is optioneel en traint nooit op je herinneringen.",
-      "togetherEyebrow": "Doorgegeven",
-      "togetherH2": "Een paleis heeft erfgenamen.",
-      "togetherBody": "Je dochter voegt haar trouwfoto's toe. Verzegel een brief voor een verjaardag in 2040. Kies wie de sleutels krijgt — en bepaal precies wanneer je woorden aankomen."
-    },
-    "more": {
-      "title": "En als je klaar bent voor meer",
-      "map": "Herinneringskaart — elke herinnering op de plek waar ze gebeurde",
-      "tree": "Familiestamboom — waaierdiagrammen, en neem je bestaande stamboom mee",
-      "journeys": "Begeleide reizen — je levensverhaal, één zachte vraag per keer",
-      "interviews": "AI-interviews — de vragen die je kleinkinderen zouden stellen",
-      "sharing": "Deel één kamer of een heel hoofdstuk van je paleis",
-      "uploads": "Upload foto's, video's, audio en documenten"
     },
     "how": {
       "eyebrow": "Aan de slag",
@@ -5256,7 +5219,12 @@
       "eyebrow": "Waarom een paleis?",
       "h2": "Omdat je brein in plekken denkt.",
       "body": "Al 2.500 jaar onthouden mensen wat belangrijk is door het in denkbeeldige kamers te plaatsen. Plekken onthouden we veel beter dan bestanden — daarom een paleis, geen map.",
-      "link": "Lees het verhaal van 2.500 jaar"
+      "step1t": "Geef het een plek",
+      "step1b": "Zet een herinnering op een vaste plek in een kamer",
+      "step2t": "Loop er langs",
+      "step2b": "Plekken zijn hoe je brein dingen ordent",
+      "step3t": "Het blijft",
+      "step3b": "Plekken onthoud je veel langer dan bestanden"
     },
     "compare": {
       "h2": "Houd Google Foto's. Dat is de schijf. Dit is het thuis.",
@@ -5279,24 +5247,14 @@
       "r5a": "Uitstekend — blijf het gebruiken",
       "r5b": "Niet ons werk. Haal de foto's die ertoe doen over wanneer jij er klaar voor bent."
     },
-    "pricing": {
-      "h2": "Eenvoudige, eerlijke prijzen",
-      "line": "Voor altijd gratis — onbeperkt vleugels en kamers, 1 GB aan herinneringen, altijd volledig te exporteren. Upgrade alleen als je eruit groeit; de proefperiode wordt nooit automatisch betaald.",
-      "cta": "Bekijk alle prijzen"
-    },
     "promise": {
       "h2": "De Voor-Altijd-Belofte",
-      "body": "Exporteer alles als ZIP, op elk moment, in elk plan. En mochten wij er ooit mee stoppen, dan krijg je 90 dagen en je complete archief — je herinneringen zitten nooit op slot.",
-      "founderTitle": "Van een klein team dat het meent",
-      "founderBody": "The Memory Palace wordt gebouwd door een klein, onafhankelijk Europees team. Geen big tech erachter, geen advertenties, geen verkoop van je gegevens — jouw herinneringen zijn onze missie, geen product."
-    },
-    "phone": {
-      "title": "Ook in je broekzak",
-      "sub": "Je paleis op je telefoon en tablet — of in elke browser."
+      "body": "Exporteer alles als ZIP, op elk moment, in elk plan. En mochten wij er ooit mee stoppen, dan krijg je 90 dagen en je complete archief — je herinneringen zitten nooit op slot."
     },
     "final": {
       "h2": "Begin met één herinnering. De rest volgt vanzelf.",
-      "cta": "Maak je Paleis"
+      "cta": "Maak je Paleis",
+      "kicker": "Herinneringen wachten niet."
     },
     "a11y": {
       "heroVideo": "Luchtopname van een Toscaans herinneringspaleis bij avondlicht",
@@ -5319,7 +5277,7 @@
     },
     "usps": {
       "eyebrow": "Wat je kunt doen",
-      "h2": "Dertien manieren om een leven levendig te houden.",
+      "h2": "Alles wat nodig is om een leven levendig te houden.",
       "groupCapture": "Vastleggen",
       "groupEnrich": "Tot leven brengen",
       "groupShare": "Delen & doorgeven",
@@ -5349,6 +5307,52 @@
       "u12b": "Laat alleen de reisvleugel aan je vrienden zien, of je hele paleis aan de familie — jij bepaalt wie wat ziet.",
       "u13t": "Kies wie de sleutels krijgt",
       "u13b": "Schrijf de brieven die je steeds wilt schrijven, en bepaal precies wanneer ze aankomen. Je paleis is klaar om door te geven."
+    },
+    "mock": {
+      "ai": "Met AI",
+      "kepName": "Kep",
+      "kepRole": "Je herinneringenkruier · WhatsApp",
+      "kepSaved": "Bewaard in je paleis — reisvleugel",
+      "kepSorted": "Gesorteerd & ingelijst",
+      "importTitle": "Importeren uit Google Foto's",
+      "importCount": "1.248 foto's gevonden",
+      "importSorted": "Gesorteerd in 12 kamers",
+      "dropHere": "Sleep je herinneringen hierheen",
+      "anyFormat": "Foto's · Video's · Audio · Documenten",
+      "sharedBy": "Anna deelde een kamer met je",
+      "sharedRoom": "Bruiloft — juni 2019",
+      "accept": "Accepteren",
+      "room1": "Jeugd",
+      "room2": "Reizen",
+      "room3": "Zondagse lunches",
+      "interviewQ": "“Hoe rook de keuken op zondagochtend?”",
+      "interviewA": "Vastgelegd — geplaatst in Zondagse lunches",
+      "mapName": "Herinneringskaart",
+      "mapCount": "84 herinneringen · 12 plekken",
+      "treeName": "Stamboom",
+      "treeGen": "Drie generaties, verbonden",
+      "journeyName": "Levensverhaal",
+      "journeyChapter": "Hoofdstuk 3 van 12 — Je eerste huis",
+      "journeyNext": "De volgende zachte vraag staat klaar",
+      "capsuleName": "Tijdcapsule",
+      "sealedUntil": "Verzegeld tot 14 juni 2040",
+      "capsuleFor": "Voor Emma's trouwdag",
+      "cocreateName": "Samen bouwen",
+      "adding": "Mia voegde 3 foto's toe aan Zomer 1998",
+      "generations": "Drie generaties, één paleis",
+      "sharingName": "Delen",
+      "shareFamily": "Familie",
+      "shareFriends": "Vrienden",
+      "sharePrivate": "Alleen ik",
+      "legacyName": "Nalatenschap",
+      "keysTitle": "Wie krijgt de sleutels",
+      "keyWhen": "Als het moment daar is",
+      "uploadsName": "Herinneringen toevoegen",
+      "cloudName": "Slim sorteren",
+      "receiveName": "Gedeelde herinneringen",
+      "interviewName": "Interviews",
+      "palaceName": "Je paleis",
+      "shotAlt": "Schermafbeelding uit de Memory Palace-app"
     }
   }
 }

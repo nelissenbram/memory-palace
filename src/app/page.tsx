@@ -32,7 +32,6 @@ function sealForIos(v2: V2, faq: Faq, footer: Footer): { v2: V2; faq: Faq; foote
   const sealedV2: V2 = {
     ...v2,
     hero: { ...v2.hero, sub: v2.hero.sub_ios, ctaMicro: v2.hero.ctaMicro_ios },
-    proof: { ...v2.proof, p1: v2.proof.p1_ios, p1Label: v2.proof.p1Label_ios },
     how: {
       ...v2.how,
       midCta: v2.how.midCta_ios,
@@ -41,7 +40,6 @@ function sealForIos(v2: V2, faq: Faq, footer: Footer): { v2: V2; faq: Faq; foote
       g1t: "", g1d: "", g2t: "", g2d: "", g3t: "", g3d: "",
     },
     nav: { ...v2.nav, pricing: "" },
-    pricing: { h2: "", line: "", cta: "" },
   };
   const sealedFaq = { ...faq } as Record<string, string>;
   for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
@@ -81,6 +79,7 @@ export default async function Page() {
       v2={slices.v2}
       faq={slices.faq}
       footer={slices.footer}
+      compare8={messages.landing.comparison}
     />
   );
 }

@@ -5170,7 +5170,7 @@
     },
     "hero": {
       "eyebrow": "Ein 3D-Zuhause für Ihre Erinnerungen — geteilt mit Freunden & Familie",
-      "h1": "Machen Sie aus einem Leben voller Erinnerungen einen Ort, den Ihre Familie besuchen kann.",
+      "h1": "Machen Sie aus einem Leben voller Erinnerungen einen Ort, den Ihre Liebsten besuchen können.",
       "sub": "Ein wunderschöner 3D-Palast für Ihre Fotos, Sprachaufnahmen und Lebensgeschichten — erkunden Sie ihn gemeinsam mit Freunden & Familie. Kostenlos starten, keine Kreditkarte nötig.",
       "sub_ios": "Ein wunderschöner 3D-Palast für Ihre Fotos, Sprachaufnahmen und Lebensgeschichten — erkunden Sie ihn gemeinsam mit Freunden & Familie. In wenigen Minuten bereit — keine Technikkenntnisse nötig.",
       "cta": "Erstellen Sie Ihren Palast",
@@ -5182,18 +5182,6 @@
       "chipEu": "Gespeichert in der EU",
       "securityLink": "Lesen Sie genau, wie wir Ihre Erinnerungen schützen"
     },
-    "proof": {
-      "p1": "0 €",
-      "p1Label": "Kostenloser Plan — ohne Zeitlimit, ohne Karte",
-      "p1_ios": "Unbegrenzt",
-      "p1Label_ios": "Flügel & Räume",
-      "p2": "5",
-      "p2Label": "Sprachen",
-      "p3": "AES-256",
-      "p3Label": "Verschlüsselt gespeichert",
-      "p4": "100 %",
-      "p4Label": "Ihres — jederzeit exportierbar"
-    },
     "showcase": {
       "eyebrow": "In Aktion erleben",
       "h2": "Betreten Sie einen echten Palast.",
@@ -5204,31 +5192,6 @@
       "eyebrow": "Das ist kein Fotoalbum.",
       "h2": "Das ist ein Palast.",
       "line": "Treten Sie ein. So sieht eine Erinnerung aus, wenn sie ein Zuhause hat."
-    },
-    "bands": {
-      "whatsappEyebrow": "Mühelos",
-      "whatsappH2": "Wenn Sie eine WhatsApp-Nachricht senden können, können Sie einen Palast bauen.",
-      "whatsappBody": "Leiten Sie ein Foto oder eine Sprachnachricht per WhatsApp weiter — es erscheint in Ihrem Palast, sortiert und bereit. Keine neue App zu lernen; WhatsApp kennen Sie bereits.",
-      "palaceEyebrow": "Begehbar",
-      "palaceH2": "Ein Zuhause, durch das Sie gehen können.",
-      "palaceBody": "Ihre Fotos, Stimmen und Geschichten wohnen in Räumen — gehen Sie gemeinsam daran vorbei. Jeder Flügel bewahrt ein Kapitel Ihres Lebens.",
-      "palacePull": "Fotos zeigen, was geschah. Ihre Stimme erzählt, warum es wichtig war.",
-      "aiEyebrow": "Sortieren nicht nötig",
-      "aiH2": "Sie bringen die Fotos. Die KI sortiert.",
-      "aiBody": "Verbinden Sie Google Fotos, Dropbox oder OneDrive — was Sie Monate kosten würde, geschieht, während Sie Kaffee trinken. Ihre Originale bleiben unberührt.",
-      "aiFootnote": "KI ist optional und trainiert niemals mit Ihren Erinnerungen.",
-      "togetherEyebrow": "Weitergegeben",
-      "togetherH2": "Ein Palast hat Erben.",
-      "togetherBody": "Ihre Tochter fügt ihre Hochzeitsfotos hinzu. Versiegeln Sie einen Brief für einen Geburtstag im Jahr 2040. Wählen Sie, wer die Schlüssel bekommt — und bestimmen Sie genau, wann Ihre Worte ankommen."
-    },
-    "more": {
-      "title": "Und wenn Sie bereit für mehr sind",
-      "map": "Erinnerungskarte — jede Erinnerung am Ort ihres Geschehens",
-      "tree": "Stammbaum — Fächerdiagramme, und bringen Sie Ihren bestehenden Baum mit",
-      "journeys": "Geführte Reisen — Ihre Lebensgeschichte, eine behutsame Frage nach der anderen",
-      "interviews": "KI-geführte Interviews — die Fragen, die Ihre Enkel stellen würden",
-      "sharing": "Teilen Sie einen Raum oder ein ganzes Kapitel Ihres Palastes",
-      "uploads": "Laden Sie Fotos, Videos, Audio und Dokumente hoch"
     },
     "how": {
       "eyebrow": "Erste Schritte",
@@ -5254,7 +5217,12 @@
       "eyebrow": "Warum ein Palast?",
       "h2": "Weil Ihr Gehirn in Orten denkt.",
       "body": "Seit 2.500 Jahren erinnern sich Menschen an das Wichtige, indem sie es in vorgestellte Räume legen. Orte merken wir uns weit besser als Dateien — deshalb ein Palast, kein Ordner.",
-      "link": "Die 2.500-jährige Geschichte lesen"
+      "step1t": "Geben Sie ihm einen Platz",
+      "step1b": "Eine Erinnerung bekommt ihren festen Ort in einem Raum",
+      "step2t": "Gehen Sie daran vorbei",
+      "step2b": "Orte sind die Ordnung Ihres Gehirns",
+      "step3t": "Es bleibt",
+      "step3b": "Orte behalten wir weit länger als Dateien"
     },
     "compare": {
       "h2": "Behalten Sie Google Fotos. Das ist die Festplatte. Dies ist das Zuhause.",
@@ -5277,24 +5245,14 @@
       "r5a": "Hervorragend — nutzen Sie es weiter",
       "r5b": "Nicht unsere Aufgabe. Holen Sie die wichtigen Fotos herüber, wann Sie bereit sind."
     },
-    "pricing": {
-      "h2": "Einfache, ehrliche Preise",
-      "line": "Für immer kostenlos — unbegrenzt Flügel und Räume, 1 GB Erinnerungen, jederzeit vollständiger Export. Upgraden Sie nur, wenn Sie herauswachsen; die Testphase wird niemals automatisch berechnet.",
-      "cta": "Alle Preise ansehen"
-    },
     "promise": {
       "h2": "Das Für-Immer-Versprechen",
-      "body": "Exportieren Sie jederzeit alles als ZIP, in jedem Plan. Und sollten wir jemals schließen, erhalten Sie 90 Tage und Ihr vollständiges Archiv — Ihre Erinnerungen sind niemals eingesperrt.",
-      "founderTitle": "Von einem kleinen Team, das es ernst meint",
-      "founderBody": "The Memory Palace wird von einem kleinen, unabhängigen europäischen Team gebaut. Kein Big-Tech-Kapital, keine Werbung, kein Verkauf Ihrer Daten — Ihre Erinnerungen sind unsere Mission, kein Produkt."
-    },
-    "phone": {
-      "title": "Auch in Ihrer Tasche",
-      "sub": "Ihr Palast auf Telefon und Tablet — oder in jedem Browser."
+      "body": "Exportieren Sie jederzeit alles als ZIP, in jedem Plan. Und sollten wir jemals schließen, erhalten Sie 90 Tage und Ihr vollständiges Archiv — Ihre Erinnerungen sind niemals eingesperrt."
     },
     "final": {
       "h2": "Beginnen Sie mit einer Erinnerung. Der Rest folgt von selbst.",
-      "cta": "Erstellen Sie Ihren Palast"
+      "cta": "Erstellen Sie Ihren Palast",
+      "kicker": "Erinnerungen warten nicht."
     },
     "a11y": {
       "heroVideo": "Luftaufnahme eines toskanischen Erinnerungspalastes im Abendlicht",
@@ -5317,7 +5275,7 @@
     },
     "usps": {
       "eyebrow": "Was Sie tun können",
-      "h2": "Dreizehn Wege, ein Leben lebendig zu halten.",
+      "h2": "Alles, was es braucht, um ein Leben lebendig zu halten.",
       "groupCapture": "Festhalten",
       "groupEnrich": "Zum Leben erwecken",
       "groupShare": "Teilen & weitergeben",
@@ -5347,6 +5305,52 @@
       "u12b": "Zeigen Sie Freunden nur den Reiseflügel, oder der Familie den ganzen Palast — Sie bestimmen, wer was sieht.",
       "u13t": "Wählen Sie, wer die Schlüssel bekommt",
       "u13b": "Schreiben Sie die Briefe, die Sie immer schreiben wollten, und bestimmen Sie genau, wann sie ankommen. Ihr Palast ist bereit, weitergegeben zu werden."
+    },
+    "mock": {
+      "ai": "KI-gestützt",
+      "kepName": "Kep",
+      "kepRole": "Ihr Erinnerungsbote · WhatsApp",
+      "kepSaved": "In Ihrem Palast bewahrt — Reiseflügel",
+      "kepSorted": "Sortiert & gerahmt",
+      "importTitle": "Import aus Google Fotos",
+      "importCount": "1.248 Fotos gefunden",
+      "importSorted": "In 12 Räume sortiert",
+      "dropHere": "Legen Sie Ihre Erinnerungen hier ab",
+      "anyFormat": "Fotos · Videos · Audio · Dokumente",
+      "sharedBy": "Anna hat einen Raum mit Ihnen geteilt",
+      "sharedRoom": "Hochzeit — Juni 2019",
+      "accept": "Annehmen",
+      "room1": "Kindheit",
+      "room2": "Reisen",
+      "room3": "Sonntagsessen",
+      "interviewQ": "„Wie roch Ihre Küche am Sonntagmorgen?“",
+      "interviewA": "Festgehalten — im Raum Sonntagsessen",
+      "mapName": "Erinnerungskarte",
+      "mapCount": "84 Erinnerungen · 12 Orte",
+      "treeName": "Stammbaum",
+      "treeGen": "Drei Generationen, verbunden",
+      "journeyName": "Lebensgeschichte",
+      "journeyChapter": "Kapitel 3 von 12 — Ihr erstes Zuhause",
+      "journeyNext": "Die nächste behutsame Frage wartet",
+      "capsuleName": "Zeitkapsel",
+      "sealedUntil": "Versiegelt bis 14. Juni 2040",
+      "capsuleFor": "Für Emmas Hochzeitstag",
+      "cocreateName": "Gemeinsam bauen",
+      "adding": "Mia hat 3 Fotos zu Sommer 1998 hinzugefügt",
+      "generations": "Drei Generationen, ein Palast",
+      "sharingName": "Teilen",
+      "shareFamily": "Familie",
+      "shareFriends": "Freunde",
+      "sharePrivate": "Nur ich",
+      "legacyName": "Vermächtnis",
+      "keysTitle": "Wer bekommt die Schlüssel",
+      "keyWhen": "Wenn die Zeit gekommen ist",
+      "uploadsName": "Erinnerungen hinzufügen",
+      "cloudName": "Intelligente Sortierung",
+      "receiveName": "Geteilte Erinnerungen",
+      "interviewName": "Interviews",
+      "palaceName": "Ihr Palast",
+      "shotAlt": "Bildschirmfoto aus der Memory-Palace-App"
     }
   }
 }

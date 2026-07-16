@@ -5170,7 +5170,7 @@
     },
     "hero": {
       "eyebrow": "A 3D home for your memories — shared with friends & family",
-      "h1": "Turn a lifetime of memories into a place your family can visit.",
+      "h1": "Turn a lifetime of memories into a place your loved ones can visit.",
       "sub": "A beautiful 3D palace for your photos, voice recordings, and life stories — explore it together with your friends & family. Free to start, no credit card needed.",
       "sub_ios": "A beautiful 3D palace for your photos, voice recordings, and life stories — explore it together with your friends & family. Ready in minutes — no tech skills needed.",
       "cta": "Create Your Palace",
@@ -5182,18 +5182,6 @@
       "chipEu": "Stored in the EU",
       "securityLink": "Read exactly how we protect your memories"
     },
-    "proof": {
-      "p1": "€0",
-      "p1Label": "Free plan — no time limit, no card",
-      "p1_ios": "Unlimited",
-      "p1Label_ios": "Wings & rooms",
-      "p2": "5",
-      "p2Label": "Languages",
-      "p3": "AES-256",
-      "p3Label": "Encrypted at rest",
-      "p4": "100%",
-      "p4Label": "Yours — export anytime"
-    },
     "showcase": {
       "eyebrow": "See it in action",
       "h2": "Step inside a real palace.",
@@ -5204,31 +5192,6 @@
       "eyebrow": "This is not a photo album.",
       "h2": "This is a palace.",
       "line": "Step inside. This is what a memory looks like when it has a home."
-    },
-    "bands": {
-      "whatsappEyebrow": "Effortless",
-      "whatsappH2": "If you can send a WhatsApp message, you can build a palace.",
-      "whatsappBody": "Forward a photo or a voice message on WhatsApp — it appears in your palace, sorted and ready. No new app to learn; you already know WhatsApp.",
-      "palaceEyebrow": "Walkable",
-      "palaceH2": "A home you can walk through.",
-      "palaceBody": "Your photos, voices and stories live in rooms — walk past them, together. Each wing holds a chapter of your life.",
-      "palacePull": "Photos show what happened. Your voice tells why it mattered.",
-      "aiEyebrow": "No sorting required",
-      "aiH2": "You bring the photos. AI does the sorting.",
-      "aiBody": "Connect Google Photos, Dropbox or OneDrive — what would take you months happens while you have coffee. Your originals stay untouched.",
-      "aiFootnote": "AI is optional and never trains on your memories.",
-      "togetherEyebrow": "Passed on",
-      "togetherH2": "A palace has heirs.",
-      "togetherBody": "Your daughter adds her wedding photos. Seal a letter for a birthday in 2040. Choose who gets the keys — and decide exactly when your words arrive."
-    },
-    "more": {
-      "title": "And when you're ready for more",
-      "map": "Memory Map — every memory pinned to the place it happened",
-      "tree": "Family Tree — fan charts, plus bring your existing tree with you",
-      "journeys": "Guided Journeys — your life story, one gentle question at a time",
-      "interviews": "AI-guided interviews — the questions your grandchildren would ask",
-      "sharing": "Share one room or a whole chapter of your palace",
-      "uploads": "Upload photos, videos, audio and documents"
     },
     "how": {
       "eyebrow": "Getting started",
@@ -5254,7 +5217,12 @@
       "eyebrow": "Why a palace?",
       "h2": "Because your brain thinks in places.",
       "body": "For 2,500 years, people remembered what mattered by placing it in imagined rooms. We recall places far better than files — that's why a palace, not a folder.",
-      "link": "Read the 2,500-year story"
+      "step1t": "Place it",
+      "step1b": "Give a memory a spot in a room",
+      "step2t": "Walk past it",
+      "step2b": "Rooms are how your brain files things",
+      "step3t": "It stays",
+      "step3b": "Places are remembered far longer than files"
     },
     "compare": {
       "h2": "Keep Google Photos. It's the drive. This is the home.",
@@ -5277,24 +5245,14 @@
       "r5a": "Excellent — keep using it",
       "r5b": "Not our job. Bring the photos that matter over when you're ready."
     },
-    "pricing": {
-      "h2": "Simple, honest pricing",
-      "line": "Free forever — unlimited wings and rooms, 1 GB of memories, full export anytime. Upgrade only if you outgrow it, and the trial never auto-charges.",
-      "cta": "See full pricing"
-    },
     "promise": {
       "h2": "The Forever Promise",
-      "body": "Export everything as a ZIP anytime, on every plan. And if we ever shut down, you get 90 days and your complete archive — your memories are never locked in.",
-      "founderTitle": "From a small team that means it",
-      "founderBody": "The Memory Palace is built by a small, independent European team. No big-tech backing, no ads, no selling your data — your memories are our mission, not a product."
-    },
-    "phone": {
-      "title": "Also in your pocket",
-      "sub": "Your palace on your phone and tablet — or in any browser."
+      "body": "Export everything as a ZIP anytime, on every plan. And if we ever shut down, you get 90 days and your complete archive — your memories are never locked in."
     },
     "final": {
       "h2": "Begin with one memory. The rest will follow.",
-      "cta": "Create Your Palace"
+      "cta": "Create Your Palace",
+      "kicker": "Memories don't wait."
     },
     "a11y": {
       "heroVideo": "Aerial view of a Tuscan memory palace at golden hour",
@@ -5317,7 +5275,7 @@
     },
     "usps": {
       "eyebrow": "What you can do",
-      "h2": "Thirteen ways to keep a life vivid.",
+      "h2": "Everything it takes to keep a life vivid.",
       "groupCapture": "Capture",
       "groupEnrich": "Bring to life",
       "groupShare": "Share & pass on",
@@ -5347,6 +5305,52 @@
       "u12b": "Show just the Travel wing to your friends, or your whole palace to the family — you decide who sees what.",
       "u13t": "Choose who gets the keys",
       "u13b": "Write the letters you keep meaning to write, and decide exactly when they arrive. Your palace is ready to hand down."
+    },
+    "mock": {
+      "ai": "AI-powered",
+      "kepName": "Kep",
+      "kepRole": "Your memory porter · WhatsApp",
+      "kepSaved": "Saved to your palace — Travel wing",
+      "kepSorted": "Sorted & framed",
+      "importTitle": "Importing from Google Photos",
+      "importCount": "1,248 photos found",
+      "importSorted": "Sorted into 12 rooms",
+      "dropHere": "Drop your memories here",
+      "anyFormat": "Photos · Videos · Audio · Documents",
+      "sharedBy": "Anna shared a room with you",
+      "sharedRoom": "Wedding — June 2019",
+      "accept": "Accept",
+      "room1": "Childhood",
+      "room2": "Travels",
+      "room3": "Sunday Lunches",
+      "interviewQ": "“What did your kitchen smell like on Sunday mornings?”",
+      "interviewA": "Captured — placed in Sunday Lunches",
+      "mapName": "Memory Map",
+      "mapCount": "84 memories · 12 places",
+      "treeName": "Family Tree",
+      "treeGen": "Three generations, linked",
+      "journeyName": "Life Story",
+      "journeyChapter": "Chapter 3 of 12 — Your first home",
+      "journeyNext": "The next gentle question is ready",
+      "capsuleName": "Time Capsule",
+      "sealedUntil": "Sealed until 14 June 2040",
+      "capsuleFor": "For Emma's wedding day",
+      "cocreateName": "Build Together",
+      "adding": "Mia added 3 photos to Summer 1998",
+      "generations": "Three generations, one palace",
+      "sharingName": "Sharing",
+      "shareFamily": "Family",
+      "shareFriends": "Friends",
+      "sharePrivate": "Just me",
+      "legacyName": "Legacy",
+      "keysTitle": "Who gets the keys",
+      "keyWhen": "When the time comes",
+      "uploadsName": "Add Memories",
+      "cloudName": "Smart Sorting",
+      "receiveName": "Shared Memories",
+      "interviewName": "Interviews",
+      "palaceName": "Your Palace",
+      "shotAlt": "Screenshot from The Memory Palace app"
     }
   }
 }
