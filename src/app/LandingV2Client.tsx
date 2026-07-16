@@ -66,7 +66,13 @@ function Reveal({ children, style }: { children: React.ReactNode; style?: React.
       { rootMargin: "0px 0px 250px 0px" },
     );
     io.observe(el);
-    return () => io.disconnect();
+    // Fail-safe: if IO callbacks starve (heavy main-thread work elsewhere in the
+    // app), never leave content hidden — reveal unconditionally after a beat.
+    const failSafe = window.setTimeout(() => el.classList.add("lv2-in"), 2500);
+    return () => {
+      io.disconnect();
+      window.clearTimeout(failSafe);
+    };
   }, []);
   return (
     <div ref={ref} className="lv2-reveal" style={style}>
@@ -456,21 +462,37 @@ export default function LandingV2Client({
   const heroMicro = isIosApp ? v2.hero.ctaMicro_ios : v2.hero.ctaMicro;
   const midCta = isIosApp ? v2.how.midCta_ios : v2.how.midCta;
 
-  const BANDS: Array<{
-    key: string;
-    eyebrow: string;
-    h2: string;
-    body: string;
-    footnote?: string;
-    pull?: string;
-    media: React.ReactNode;
-  }> = [
-    {
-      key: "whatsapp",
-      eyebrow: v2.bands.whatsappEyebrow,
-      h2: v2.bands.whatsappH2,
-      body: v2.bands.whatsappBody,
-      media: (
+  /* ── USP scrollytelling (STEMMA pattern): sticky group rail + one block per
+     USP. Active step is computed in a rAF-throttled passive scroll handler
+     (IO callbacks can starve when other app code hogs the main thread). ── */
+  const [activeUsp, setActiveUsp] = useState(0);
+  const uspRefs = useRef<Array<HTMLDivElement | null>>([]);
+  useEffect(() => {
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const line = window.innerHeight * 0.4;
+      const els = uspRefs.current;
+      let best = 0;
+      for (let i = 0; i < els.length; i++) {
+        const el = els[i];
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= line) best = i;
+        else break;
+      }
+      setActiveUsp(best);
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    update();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const whatsappVignette = (
         /* HTML vignette (localizable, crisp at any DPI): chat bubble → framed photo */
         <div
           role="img"
@@ -530,15 +552,9 @@ export default function LandingV2Client({
             />
           </div>
         </div>
-      ),
-    },
-    {
-      key: "palace",
-      eyebrow: v2.bands.palaceEyebrow,
-      h2: v2.bands.palaceH2,
-      body: v2.bands.palaceBody,
-      pull: v2.bands.palacePull,
-      media: (
+  );
+
+  const entranceFigure = (
         <figure style={{ margin: 0 }}>
           <Image
             src="/landing/band-entrance.jpg"
@@ -555,16 +571,9 @@ export default function LandingV2Client({
             }}
           />
         </figure>
-      ),
-    },
-    {
-      key: "ai",
-      eyebrow: v2.bands.aiEyebrow,
-      h2: v2.bands.aiH2,
-      body: v2.bands.aiBody,
-      footnote: v2.bands.aiFootnote,
-      media: (
-        /* Vignette: three real photos flowing into named rooms */
+  );
+
+  const sortVignette = (
         <div
           role="img"
           aria-label={v2.a11y.bandAi}
@@ -620,14 +629,9 @@ export default function LandingV2Client({
             ))}
           </div>
         </div>
-      ),
-    },
-    {
-      key: "together",
-      eyebrow: v2.bands.togetherEyebrow,
-      h2: v2.bands.togetherH2,
-      body: v2.bands.togetherBody,
-      media: (
+  );
+
+  const togetherFigure = (
         <figure style={{ margin: 0 }}>
           <Image
             src="/landing/band-together.jpg"
@@ -644,9 +648,95 @@ export default function LandingV2Client({
             }}
           />
         </figure>
-      ),
+  );
+
+  const mapVignette = (
+    <div
+      role="img"
+      aria-label={v2.a11y.mapVignette}
+      style={{
+        position: "relative",
+        padding: "2.5rem 2rem",
+        background: `${L.surface} repeating-linear-gradient(0deg, transparent, transparent 39px, ${L.hairline} 39px, ${L.hairline} 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, ${L.hairline} 39px, ${L.hairline} 40px)`,
+        border: `1px solid ${L.hairline}`,
+        borderRadius: "1rem",
+        minHeight: "18rem",
+        overflow: "hidden",
+      }}
+    >
+      {[
+        { src: "/landing/demo-hands.jpg", left: "12%", top: "18%", label: "1962" },
+        { src: "/landing/demo-graduation.jpg", left: "55%", top: "48%", label: "1987" },
+        { src: "/landing/demo-morning.jpg", left: "28%", top: "62%", label: "2019" },
+      ].map((pin) => (
+        <div key={pin.src} style={{ position: "absolute", left: pin.left, top: pin.top, display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+          <Image
+            src={pin.src}
+            alt=""
+            width={480}
+            height={319}
+            style={{ width: "5.5rem", height: "4rem", objectFit: "cover", borderRadius: "0.5rem", border: "3px solid #FFF", boxShadow: "0 6px 16px rgba(36,28,21,0.25)", display: "block" }}
+          />
+          <svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true">
+            <path d="M8 0C3.6 0 0 3.6 0 8c0 5.4 8 12 8 12s8-6.6 8-12c0-4.4-3.6-8-8-8z" fill={L.accentLight} />
+            <circle cx="8" cy="8" r="3" fill="#FFF" />
+          </svg>
+          <span style={{ fontFamily: FONT_BODY, fontSize: "0.75rem", fontWeight: 600, color: L.inkMutedLight, background: "rgba(252,250,245,0.9)", padding: "0.125rem 0.5rem", borderRadius: "1rem" }}>
+            {pin.label}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+
+  const shot = (src: string, alt: string) => (
+    <figure style={{ margin: 0 }}>
+      <Image
+        src={src}
+        alt={alt}
+        width={1200}
+        height={750}
+        sizes="(max-width: 1024px) 100vw, 40vw"
+        style={{ width: "100%", height: "auto", borderRadius: "1rem", border: `1px solid ${L.hairline}`, display: "block", boxShadow: "0 10px 30px rgba(36,28,21,0.10)" }}
+      />
+    </figure>
+  );
+
+  const USP_GROUPS: Array<{ label: string; items: Array<{ t: string; b: string; media: React.ReactNode }> }> = [
+    {
+      label: v2.usps.groupCapture,
+      items: [
+        { t: v2.usps.u1t, b: v2.usps.u1b, media: whatsappVignette },
+        { t: v2.usps.u2t, b: v2.usps.u2b, media: shot("/screenshots/corridor-gallery-1200w.webp", v2.a11y.shot2) },
+        { t: v2.usps.u3t, b: v2.usps.u3b, media: sortVignette },
+        { t: v2.usps.u4t, b: v2.usps.u4b, media: shot("/screenshots/library-nest-1200w.webp", v2.a11y.shot1) },
+      ],
+    },
+    {
+      label: v2.usps.groupEnrich,
+      items: [
+        { t: v2.usps.u5t, b: v2.usps.u5b, media: entranceFigure },
+        { t: v2.usps.u6t, b: v2.usps.u6b, media: shot("/screenshots/interview-intro-1200w.webp", v2.a11y.bandAi) },
+        { t: v2.usps.u7t, b: v2.usps.u7b, media: mapVignette },
+        { t: v2.usps.u8t, b: v2.usps.u8b, media: shot("/screenshots/family-tree-view-1200w.webp", v2.a11y.shot3) },
+        { t: v2.usps.u9t, b: v2.usps.u9b, media: shot("/screenshots/achievements-1200w.webp", v2.a11y.shot3) },
+      ],
+    },
+    {
+      label: v2.usps.groupShare,
+      items: [
+        { t: v2.usps.u10t, b: v2.usps.u10b, media: (
+          <figure style={{ margin: 0 }}>
+            <Image src="/landing/showcase-frame.jpg" alt={v2.a11y.showcaseFrame} width={1600} height={600} sizes="(max-width: 1024px) 100vw, 40vw" style={{ width: "100%", height: "auto", borderRadius: "1rem", border: `1px solid ${L.hairline}`, display: "block" }} />
+          </figure>
+        ) },
+        { t: v2.usps.u11t, b: v2.usps.u11b, media: togetherFigure },
+        { t: v2.usps.u12t, b: v2.usps.u12b, media: shot("/screenshots/palace-peristylium-1200w.webp", v2.a11y.shot1) },
+        { t: v2.usps.u13t, b: v2.usps.u13b, media: shot("/screenshots/legacy-settings-1200w.webp", v2.a11y.shot3) },
+      ],
     },
   ];
+  const USP_FLAT = USP_GROUPS.flatMap((g, gi) => g.items.map((item) => ({ ...item, group: g.label, gi })));
 
   const steps =
     howMode === "gift" && !isIosApp
@@ -732,15 +822,17 @@ export default function LandingV2Client({
         @media (prefers-reduced-motion: reduce) {
           .lv2-pre { opacity: 1 !important; transform: none !important; transition: none !important; }
         }
-        .lv2-band-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4rem); align-items: center; }
         .lv2-steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-        .lv2-chips { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
-        .lv2-proof-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
         .lv2-table-wrap { overflow-x: auto; }
+        .lv2-usp-grid { display: grid; grid-template-columns: 17rem 1fr; gap: clamp(2.5rem, 5vw, 5rem); }
+        .lv2-shots-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; max-width: 62rem; margin: 0 auto; }
+        @media (max-width: 1023px) {
+          .lv2-usp-grid { grid-template-columns: 1fr; }
+          .lv2-usp-rail { display: none; }
+        }
         @media (max-width: 768px) {
-          .lv2-band-grid { grid-template-columns: 1fr; }
           .lv2-steps-grid { grid-template-columns: 1fr; }
-          .lv2-proof-grid { grid-template-columns: repeat(2, 1fr); }
+          .lv2-shots-grid { grid-template-columns: 1fr; max-width: 26rem; }
           .lv2-nav-links { display: none !important; }
           .lv2-nav-burger { display: inline-flex !important; }
         }
@@ -1028,26 +1120,7 @@ export default function LandingV2Client({
         {/* Sentinel: nav turns solid when this leaves the viewport */}
         <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
 
-        {/* ── 2. Proof strip ── */}
-        <section aria-label="Facts" style={{ background: L.canvas, borderBottom: `1px solid ${L.hairline}` }}>
-          <div style={{ ...wide, padding: "2.5rem clamp(1.25rem, 5vw, 2.5rem)" }}>
-            <div className="lv2-proof-grid" style={{ textAlign: "center" }}>
-              {[
-                [isIosApp ? v2.proof.p1_ios : v2.proof.p1, isIosApp ? v2.proof.p1Label_ios : v2.proof.p1Label],
-                [v2.proof.p2, v2.proof.p2Label],
-                [v2.proof.p3, v2.proof.p3Label],
-                [v2.proof.p4, v2.proof.p4Label],
-              ].map(([stat, label]) => (
-                <div key={label}>
-                  <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h3, color: L.accentLight }}>{stat}</div>
-                  <div style={{ fontFamily: FONT_BODY, fontSize: L.type.bodyS, color: L.inkMutedLight, marginTop: "0.25rem" }}>{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── 3. Showcase: step inside a real palace ── */}
+        {/* ── 2. Showcase: step inside a real palace ── */}
         <section id="tour" aria-labelledby="lv2-tour-h" style={{ background: L.surface, padding: `${L.space.sectionY} 0` }}>
           <div style={wide}>
             <Reveal>
@@ -1130,77 +1203,122 @@ export default function LandingV2Client({
                 <p style={{ fontFamily: FONT_BODY, fontSize: L.type.bodyS, color: L.inkMutedLight, textAlign: "center", margin: "1rem 0 0" }}>
                   {v2.showcase.attribution}
                 </p>
-                <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
-                  <Link
-                    href="/explore"
-                    className="lv2-navlink"
-                    style={{ color: L.accentLight, fontWeight: 600, fontSize: L.type.body, textDecoration: "underline", textUnderlineOffset: "0.25em" }}
-                  >
-                    {v2.showcase.exploreCta} → <span style={{ fontWeight: 400, color: L.inkMutedLight }}>({v2.showcase.noAccount})</span>
-                  </Link>
-                </div>
               </div>
             </Reveal>
           </div>
         </section>
 
-        {/* ── 4. Flagship feature bands ── */}
-        <section id="features" aria-label={v2.nav.features}>
-          {BANDS.map((band, i) => (
-            <div key={band.key} style={{ background: i % 2 === 0 ? L.canvas : L.surface, padding: `${L.space.sectionY} 0` }}>
-              <div style={wide}>
-                <Reveal>
-                  <div className="lv2-band-grid" style={{ direction: i % 2 === 1 ? "rtl" : "ltr" }}>
-                    <div style={{ direction: "ltr" }}>{band.media}</div>
-                    <div style={{ direction: "ltr" }}>
-                      <Eyebrow>{band.eyebrow}</Eyebrow>
-                      <H2>{band.h2}</H2>
-                      <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, maxWidth: "34em", margin: 0, textWrap: "pretty" }}>
-                        {band.body}
-                      </p>
-                      {band.pull ? (
-                        <p style={{ fontFamily: FONT_DISPLAY, fontStyle: "italic", fontWeight: 500, fontSize: L.type.h4, color: L.accentLight, margin: "1.25rem 0 0", maxWidth: "26em" }}>
-                          {band.pull}
-                        </p>
-                      ) : null}
-                      {band.footnote ? (
-                        <p style={{ fontFamily: FONT_BODY, fontSize: "0.875rem", color: L.inkMutedLight, margin: "1rem 0 0" }}>
-                          {band.footnote}
-                        </p>
-                      ) : null}
-                    </div>
-                  </div>
-                </Reveal>
+        {/* ── 3. What you can do — scroll-driven USP overview (STEMMA pattern) ── */}
+        <section id="features" aria-label={v2.nav.features} style={{ background: L.canvas, padding: `${L.space.sectionY} 0` }}>
+          <div style={wide}>
+            <Reveal>
+              <div style={{ textAlign: "center", marginBottom: "3.5rem" }}>
+                <Eyebrow>{v2.usps.eyebrow}</Eyebrow>
+                <H2>{v2.usps.h2}</H2>
               </div>
-            </div>
-          ))}
-          {/* Tier-2 chip strip */}
-          <div style={{ background: L.canvas, padding: `0 0 ${L.space.sectionY}` }}>
-            <div style={wide}>
-              <Reveal>
-                <p style={{ textAlign: "center", fontFamily: FONT_BODY, fontWeight: 600, fontSize: L.type.body, color: L.inkMutedLight, margin: "0 0 1.25rem" }}>
-                  {v2.more.title}
-                </p>
-                <div className="lv2-chips">
-                  {[v2.more.map, v2.more.tree, v2.more.journeys, v2.more.interviews, v2.more.sharing, v2.more.uploads].map((chip) => (
-                    <span
-                      key={chip}
-                      className="lv2-chip"
-                      style={{
-                        fontFamily: FONT_BODY,
-                        fontSize: L.type.bodyS,
-                        color: L.inkBody,
-                        background: L.surface,
-                        border: `1px solid ${L.hairline}`,
-                        borderRadius: "2rem",
-                        padding: "0.625rem 1.125rem",
-                      }}
-                    >
-                      {chip}
-                    </span>
+            </Reveal>
+            <div className="lv2-usp-grid">
+              {/* Sticky group rail */}
+              <nav aria-label={v2.usps.eyebrow} className="lv2-usp-rail">
+                <div style={{ position: "sticky", top: "6rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                  {USP_GROUPS.map((group, gi) => (
+                    <div key={group.label}>
+                      <p
+                        style={{
+                          fontFamily: FONT_BODY,
+                          fontSize: L.type.micro,
+                          fontWeight: 700,
+                          letterSpacing: "0.14em",
+                          textTransform: "uppercase",
+                          color: L.inkMutedLight,
+                          margin: "0 0 0.5rem",
+                        }}
+                      >
+                        {group.label}
+                      </p>
+                      {group.items.map((item) => {
+                        const flatIdx = USP_FLAT.findIndex((f) => f.t === item.t);
+                        const isActive = activeUsp === flatIdx;
+                        const isPast = activeUsp > flatIdx;
+                        return (
+                          <button
+                            key={item.t}
+                            type="button"
+                            className="lv2-navlink"
+                            onClick={() => uspRefs.current[flatIdx]?.scrollIntoView({ block: "center" })}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "0.5rem",
+                              width: "100%",
+                              textAlign: "left",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: "0.375rem 0.5rem",
+                              minHeight: "2.25rem",
+                              fontFamily: FONT_BODY,
+                              fontSize: "0.9375rem",
+                              fontWeight: isActive ? 700 : 500,
+                              color: isActive ? L.accentLight : isPast ? T.color.charcoal : L.inkMutedLight,
+                              transition: `color ${M.base} ${M.ease}`,
+                            }}
+                          >
+                            <span aria-hidden="true" style={{ width: "1rem", flexShrink: 0, color: T.color.success }}>
+                              {isPast ? "✓" : ""}
+                            </span>
+                            {item.t}
+                          </button>
+                        );
+                      })}
+                    </div>
                   ))}
                 </div>
-              </Reveal>
+              </nav>
+              {/* USP blocks */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "clamp(4rem, 8vw, 6.5rem)" }}>
+                {USP_FLAT.map((usp, idx) => (
+                  <div
+                    key={usp.t}
+                    ref={(el) => { uspRefs.current[idx] = el; }}
+                    data-usp-idx={idx}
+                    style={{ scrollMarginTop: "6rem" }}
+                  >
+                    <Reveal>
+                      <p
+                        style={{
+                          fontFamily: FONT_BODY,
+                          fontSize: L.type.micro,
+                          fontWeight: 700,
+                          letterSpacing: "0.14em",
+                          textTransform: "uppercase",
+                          color: L.accentLight,
+                          margin: "0 0 0.625rem",
+                        }}
+                      >
+                        {String(idx + 1).padStart(2, "0")} · {usp.group}
+                      </p>
+                      <h3
+                        style={{
+                          fontFamily: FONT_DISPLAY,
+                          fontWeight: 500,
+                          fontSize: L.type.h3,
+                          lineHeight: 1.15,
+                          color: T.color.charcoal,
+                          margin: "0 0 0.875rem",
+                          textWrap: "balance",
+                        }}
+                      >
+                        {usp.t}
+                      </h3>
+                      <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, maxWidth: "34em", margin: "0 0 1.75rem", textWrap: "pretty" }}>
+                        {usp.b}
+                      </p>
+                      <div style={{ maxWidth: "36rem" }}>{usp.media}</div>
+                    </Reveal>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -1340,9 +1458,33 @@ export default function LandingV2Client({
             >
               {v2.notAlbum.h2}
             </h2>
-            <p style={{ fontFamily: FONT_BODY, fontSize: L.type.lead, color: L.inkMutedDark, margin: "0 auto", maxWidth: "34em", textWrap: "pretty" }}>
+            <p style={{ fontFamily: FONT_BODY, fontSize: L.type.lead, color: L.inkMutedDark, margin: "0 auto 3rem", maxWidth: "34em", textWrap: "pretty" }}>
               {v2.notAlbum.line}
             </p>
+            <div className="lv2-shots-grid">
+              {[
+                ["/screenshots/palace-peristylium-1200w.webp", v2.a11y.shot1],
+                ["/screenshots/corridor-gallery-1200w.webp", v2.a11y.shot2],
+                ["/screenshots/atrium-dashboard-1200w.webp", v2.a11y.shot3],
+              ].map(([src, alt]) => (
+                <Image
+                  key={src}
+                  src={src}
+                  alt={alt}
+                  width={1200}
+                  height={750}
+                  sizes="(max-width: 768px) 100vw, 30vw"
+                  style={{
+                    width: "100%",
+                    height: "auto",
+                    borderRadius: "0.875rem",
+                    border: "1px solid rgba(252,250,245,0.25)",
+                    boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
+                    display: "block",
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </section>
 
@@ -1429,31 +1571,26 @@ export default function LandingV2Client({
           </section>
         )}
 
-        {/* ── 10. Forever Promise + founder ── */}
-        <section aria-labelledby="lv2-promise-h" style={{ background: L.canvas, padding: `${L.space.sectionY} 0` }}>
+        {/* ── 10. Founder note (Forever Promise lives in the footer) ── */}
+        <section aria-labelledby="lv2-founder-h" style={{ background: L.canvas, padding: `${L.space.sectionY} 0` }}>
           <div style={{ ...wide }}>
             <Reveal>
-              <div style={{ ...prose, textAlign: "center", margin: "0 auto" }}>
-                <H2 id="lv2-promise-h">{v2.promise.h2}</H2>
-                <p style={{ fontFamily: FONT_BODY, fontSize: L.type.lead, lineHeight: 1.6, color: L.inkBody, margin: "0 0 2.5rem", textWrap: "pretty" }}>
-                  {v2.promise.body}
+              <div
+                style={{
+                  ...prose,
+                  margin: "0 auto",
+                  background: L.surface,
+                  border: `1px solid ${L.hairline}`,
+                  borderRadius: "1rem",
+                  padding: "2rem clamp(1.5rem, 4vw, 2.5rem)",
+                }}
+              >
+                <h2 id="lv2-founder-h" style={{ fontFamily: FONT_BODY, fontWeight: 600, fontSize: L.type.h4, color: T.color.charcoal, margin: "0 0 0.625rem" }}>
+                  {v2.promise.founderTitle}
+                </h2>
+                <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, margin: 0, textWrap: "pretty" }}>
+                  {v2.promise.founderBody}
                 </p>
-                <div
-                  style={{
-                    background: L.surface,
-                    border: `1px solid ${L.hairline}`,
-                    borderRadius: "1rem",
-                    padding: "2rem clamp(1.5rem, 4vw, 2.5rem)",
-                    textAlign: "left",
-                  }}
-                >
-                  <h3 style={{ fontFamily: FONT_BODY, fontWeight: 600, fontSize: L.type.h4, color: T.color.charcoal, margin: "0 0 0.625rem" }}>
-                    {v2.promise.founderTitle}
-                  </h3>
-                  <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, margin: 0, textWrap: "pretty" }}>
-                    {v2.promise.founderBody}
-                  </p>
-                </div>
               </div>
             </Reveal>
           </div>
@@ -1551,6 +1688,21 @@ export default function LandingV2Client({
                 {footer.learnSecurity} →
               </Link>
             </div>
+          </div>
+          {/* Forever Promise — footer subsection */}
+          <div
+            style={{
+              borderTop: "1px solid rgba(181,173,163,0.25)",
+              padding: "1.75rem 0",
+              maxWidth: "44rem",
+            }}
+          >
+            <h2 style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: L.type.bodyS, color: T.color.cream, margin: "0 0 0.5rem" }}>
+              {v2.promise.h2}
+            </h2>
+            <p style={{ fontFamily: FONT_BODY, fontSize: "0.9375rem", lineHeight: 1.6, margin: 0, textWrap: "pretty" }}>
+              {v2.promise.body}
+            </p>
           </div>
           <div
             style={{
