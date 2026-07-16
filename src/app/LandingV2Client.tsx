@@ -395,8 +395,31 @@ export default function LandingV2Client({
         default: mod = { default: enMessages };
       }
       if (mod?.default?.landingV2) {
+        let v2n = mod.default.landingV2;
+        let faqN = mod.default.landing.faq;
+        let footerN = mod.default.landing.footer;
+        if (isIosApp) {
+          // Client-side twin of page.tsx sealForIos(): native iOS skips the
+          // locale cookie (Apple 5.1.2i), so this path loads raw locale JSON —
+          // it must be sealed here too (Apple 3.1.1).
+          v2n = {
+            ...v2n,
+            hero: { ...v2n.hero, sub: v2n.hero.sub_ios, ctaMicro: v2n.hero.ctaMicro_ios },
+            proof: { ...v2n.proof, p1: v2n.proof.p1_ios, p1Label: v2n.proof.p1Label_ios },
+            how: { ...v2n.how, midCta: v2n.how.midCta_ios, toggleGift: "", g1t: "", g1d: "", g2t: "", g2d: "", g3t: "", g3d: "" },
+            nav: { ...v2n.nav, pricing: "" },
+            pricing: { h2: "", line: "", cta: "" },
+          };
+          const f = { ...faqN } as Record<string, string>;
+          for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]) {
+            const ios = f[`a${n}_ios`];
+            if (ios) f[`a${n}`] = ios;
+          }
+          faqN = f as typeof faqN;
+          footerN = { ...footerN, pricing: "", getStartedFree: footerN.signIn };
+        }
         setLocaleState(stored);
-        setSlices({ v2: mod.default.landingV2, faq: mod.default.landing.faq, footer: mod.default.landing.footer });
+        setSlices({ v2: v2n, faq: faqN, footer: footerN });
         document.documentElement.lang = stored;
       }
     };
