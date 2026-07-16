@@ -5173,7 +5173,7 @@
     "hero": {
       "eyebrow": "Een 3D-thuis voor je herinneringen — gedeeld met vrienden & familie",
       "h1": "Maak van een leven vol herinneringen een plek die je dierbaren kunnen bezoeken.",
-      "sub": "Een prachtig 3D-paleis voor je foto's, stemopnames en levensverhalen — verken het samen met je vrienden & familie. Gratis te beginnen, geen creditcard nodig.",
+      "sub": "Een prachtig 3D-paleis voor je foto's, stemopnames en levensverhalen — verken het samen met je vrienden & familie.",
       "sub_ios": "Een prachtig 3D-paleis voor je foto's, stemopnames en levensverhalen — verken het samen met je vrienden & familie. Binnen enkele minuten klaar — geen technische kennis nodig.",
       "cta": "Maak je Paleis",
       "ctaMicro": "Voor altijd gratis · Geen creditcard · Geen technische kennis nodig",
@@ -5188,7 +5188,7 @@
       "eyebrow": "Zie het in actie",
       "h2": "Stap een echt paleis binnen.",
       "sub": "Geloof ons niet op ons woord. Loop door kamers vol foto's, hoor de verhalen, voel de sfeer.",
-      "attribution": "Het paleis van Guillaume — het echte thuis van een lid, met drie generaties herinneringen"
+      "soundCta": "Bekijk met geluid"
     },
     "notAlbum": {
       "eyebrow": "Dit is geen fotoalbum.",
@@ -5201,17 +5201,17 @@
       "toggleSelf": "Voor jezelf",
       "toggleGift": "Voor iemand anders",
       "s1t": "Voeg je herinneringen toe",
-      "s1d": "Upload foto's en video's, of importeer uit Google Foto's, Dropbox of OneDrive. AI sorteert alles in kamers die passen bij de hoofdstukken van je leven.",
+      "s1d": "Upload, importeer of stuur ze via WhatsApp — AI sorteert ze in kamers.",
       "s2t": "Vertel het verhaal erachter",
-      "s2d": "Neem je stem op terwijl je het verhaal achter de foto vertelt — of laat een zachte interviewer de vragen stellen die je kleinkinderen zouden stellen.",
+      "s2d": "Jouw stem, geleid door de vragen die je kleinkinderen zouden stellen.",
       "s3t": "Loop er samen doorheen",
-      "s3d": "Nodig familie en vrienden uit in je paleis. Ze kunnen rondkijken, eigen herinneringen toevoegen, of die van jou als tijdcapsule ontvangen.",
+      "s3d": "Nodig je dierbaren uit — of verzegel herinneringen voor later.",
       "g1t": "Maak een paleis op hun naam",
-      "g1d": "In vijf minuten opgezet — jij regelt de techniek, zij krijgen het plezier.",
+      "g1d": "In vijf minuten opgezet — jij regelt de techniek.",
       "g2t": "Zij beantwoorden alleen vragen",
-      "g2d": "Een zachte interviewer legt hun verhalen vast via WhatsApp of in de browser — geen nieuwe app om te leren.",
+      "g2d": "Zij beantwoorden alleen vragen — via WhatsApp of in de browser.",
       "g3t": "De verhalen blijven in de familie",
-      "g3d": "Iedereen die je uitnodigt kan door het paleis lopen — en het is klaar om door te geven, wanneer de tijd rijp is.",
+      "g3d": "De verhalen blijven in de familie, klaar om door te geven.",
       "midCta": "Je paleis begint gratis — 1 GB aan herinneringen, onbeperkt kamers, geen creditcard. Upgrade alleen als je eruit groeit.",
       "midCta_ios": "Je paleis is binnen enkele minuten klaar. Geen technische kennis nodig."
     },
@@ -5227,7 +5227,7 @@
       "step3b": "Plekken onthoud je veel langer dan bestanden"
     },
     "compare": {
-      "h2": "Houd Google Foto's. Dat is de schijf. Dit is het thuis.",
+      "h2": "Houd je cloudfoto's. Dat is de schijf. Dit is het thuis.",
       "sub": "Een map bewaart je foto's. Een paleis onthoudt je leven.",
       "colLeft": "Cloudopslag voor foto's",
       "colRight": "The Memory Palace",
@@ -5277,7 +5277,7 @@
     },
     "usps": {
       "eyebrow": "Wat je kunt doen",
-      "h2": "Alles wat nodig is om een leven levendig te houden.",
+      "h2": "Alles wat je herinneringen nodig hebben om te blijven leven.",
       "groupCapture": "Vastleggen",
       "groupEnrich": "Tot leven brengen",
       "groupShare": "Delen & doorgeven",
@@ -5353,6 +5353,16 @@
       "interviewName": "Interviews",
       "palaceName": "Je paleis",
       "shotAlt": "Schermafbeelding uit de Memory Palace-app"
+    },
+    "notes": {
+      "n1": "je paleis, van bovenaf",
+      "n2": "elke deur een hoofdstuk",
+      "n3": "foto's worden kamers",
+      "n4": "drie generaties, één stamboom",
+      "n5": "de vragen die ertoe doen",
+      "n6": "ook stemmen wonen hier",
+      "n7": "een bibliotheek vol herinneringen",
+      "n8": "kleine overwinningen onderweg"
     }
   }
 }

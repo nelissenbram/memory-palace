@@ -5171,7 +5171,7 @@
     "hero": {
       "eyebrow": "Un hogar 3D para tus recuerdos — compartido con amigos y familia",
       "h1": "Convierte toda una vida de recuerdos en un lugar que tus seres queridos pueden visitar.",
-      "sub": "Un precioso palacio 3D para tus fotos, grabaciones de voz e historias de vida — explóralo junto a tus amigos y familia. Empieza gratis, sin tarjeta de crédito.",
+      "sub": "Un precioso palacio 3D para tus fotos, grabaciones de voz e historias de vida — explóralo junto a tus amigos y familia.",
       "sub_ios": "Un precioso palacio 3D para tus fotos, grabaciones de voz e historias de vida — explóralo junto a tus amigos y familia. Listo en minutos — sin conocimientos técnicos.",
       "cta": "Crea tu palacio",
       "ctaMicro": "Gratis para siempre · Sin tarjeta de crédito · Sin conocimientos técnicos",
@@ -5186,7 +5186,7 @@
       "eyebrow": "Míralo en acción",
       "h2": "Entra en un palacio real.",
       "sub": "No te fíes solo de nuestra palabra. Recorre habitaciones llenas de fotos, escucha las historias, siente la atmósfera.",
-      "attribution": "El palacio de Guillaume — el hogar real de un miembro, con recuerdos de tres generaciones"
+      "soundCta": "Ver con sonido"
     },
     "notAlbum": {
       "eyebrow": "Esto no es un álbum de fotos.",
@@ -5199,17 +5199,17 @@
       "toggleSelf": "Para ti",
       "toggleGift": "Para otra persona",
       "s1t": "Añade tus recuerdos",
-      "s1d": "Sube fotos y vídeos, o importa desde Google Fotos, Dropbox o OneDrive. La IA lo ordena todo en habitaciones que reflejan los capítulos de tu vida.",
+      "s1d": "Sube, importa o envíalos por WhatsApp — la IA los ordena en habitaciones.",
       "s2t": "Cuenta la historia que hay detrás",
-      "s2d": "Graba tu voz contando la historia detrás de la foto — o deja que un entrevistador amable te haga las preguntas que harían tus nietos.",
+      "s2d": "Tu voz, guiada por las preguntas que harían tus nietos.",
       "s3t": "Recorredlo juntos",
-      "s3d": "Invita a familiares y amigos a visitar tu palacio. Pueden explorarlo, añadir sus propios recuerdos o recibir los tuyos como cápsulas del tiempo.",
+      "s3d": "Invita a tus seres queridos — o sella recuerdos para más adelante.",
       "g1t": "Crea un palacio a su nombre",
-      "g1d": "Listo en cinco minutos — tú te ocupas de la tecnología, ellos reciben la alegría.",
+      "g1d": "Listo en cinco minutos — tú te ocupas de la tecnología.",
       "g2t": "Ellos solo responden preguntas",
-      "g2d": "Un entrevistador amable graba sus historias por WhatsApp o en el navegador — sin apps nuevas que aprender.",
+      "g2d": "Ellos solo responden preguntas — por WhatsApp o en el navegador.",
       "g3t": "Las historias quedan en la familia",
-      "g3d": "Todos los que invites pueden recorrer el palacio — y está listo para transmitirse cuando llegue el momento.",
+      "g3d": "Las historias quedan en la familia, listas para transmitirse.",
       "midCta": "Tu palacio empieza gratis — 1 GB de recuerdos, habitaciones ilimitadas, sin tarjeta de crédito. Mejora solo si te quedas pequeño.",
       "midCta_ios": "Tu palacio está listo en minutos. Sin conocimientos técnicos."
     },
@@ -5225,7 +5225,7 @@
       "step3b": "Los lugares se recuerdan mucho más que los archivos"
     },
     "compare": {
-      "h2": "Quédate con Google Fotos. Es el disco. Esto es el hogar.",
+      "h2": "Quédate con tus fotos en la nube. Eso es el disco. Esto es el hogar.",
       "sub": "Una carpeta guarda tus fotos. Un palacio recuerda tu vida.",
       "colLeft": "Almacenamiento de fotos en la nube",
       "colRight": "The Memory Palace",
@@ -5275,7 +5275,7 @@
     },
     "usps": {
       "eyebrow": "Qué puedes hacer",
-      "h2": "Todo lo necesario para mantener viva una vida.",
+      "h2": "Todo lo que tus recuerdos necesitan para seguir vivos.",
       "groupCapture": "Capturar",
       "groupEnrich": "Dar vida",
       "groupShare": "Compartir y transmitir",
@@ -5351,6 +5351,16 @@
       "interviewName": "Entrevistas",
       "palaceName": "Tu palacio",
       "shotAlt": "Captura de pantalla de la app Memory Palace"
+    },
+    "notes": {
+      "n1": "tu palacio, desde arriba",
+      "n2": "cada puerta, un capítulo",
+      "n3": "las fotos se vuelven habitaciones",
+      "n4": "tres generaciones, un árbol",
+      "n5": "las preguntas que importan",
+      "n6": "aquí también viven voces",
+      "n7": "una biblioteca de recuerdos",
+      "n8": "pequeños logros en el camino"
     }
   }
 }

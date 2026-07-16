@@ -195,16 +195,25 @@ function HeroMedia({ pauseLabel, playLabel, alt }: { pauseLabel: string; playLab
     if (!wantVideo) return;
     const v = videoRef.current;
     if (!v) return;
-    const onCanPlay = () => {
+    const attempt = () => {
+      if (!v.paused) return;
+      v.muted = true;
       v.play()
         .then(() => setVideoLive(true))
         .catch(() => {
           /* autoplay refused → poster stays; the toggle can still start it */
         });
     };
+    const onCanPlay = () => attempt();
     v.addEventListener("canplay", onCanPlay);
     v.load();
-    return () => v.removeEventListener("canplay", onCanPlay);
+    // Retry a few times: under heavy main-thread load the initial autoplay
+    // kick can be dropped even though playback is allowed.
+    const timers = [800, 2200, 4500].map((ms) => window.setTimeout(attempt, ms));
+    return () => {
+      v.removeEventListener("canplay", onCanPlay);
+      timers.forEach((t) => window.clearTimeout(t));
+    };
   }, [wantVideo]);
 
   const toggle = useCallback(() => {
@@ -395,8 +404,31 @@ export default function LandingV2Client({
   const [navSolid, setNavSolid] = useState(false);
   const [howMode, setHowMode] = useState<"self" | "gift">("self");
   const [tourPlaying, setTourPlaying] = useState(false);
+  const [tourAmbient, setTourAmbient] = useState(false);
   const tourVideoRef = useRef<HTMLVideoElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
+
+  /* The walkthrough plays as a muted ambient snippet — but never on reduced
+     motion or constrained connections (poster + play button instead). */
+  useEffect(() => {
+    if (prefersReducedMotion() || connectionIsConstrained()) return;
+    setTourAmbient(true);
+  }, []);
+
+  /* Kick-start the ambient loop (with retries — the autoplay kick can be
+     dropped under heavy main-thread load even when playback is allowed). */
+  useEffect(() => {
+    if (!tourAmbient || tourPlaying) return;
+    const attempt = () => {
+      const v = tourVideoRef.current;
+      if (!v || !v.paused) return;
+      v.muted = true;
+      v.play().catch(() => {});
+    };
+    attempt();
+    const timers = [800, 2200, 4500].map((ms) => window.setTimeout(attempt, ms));
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [tourAmbient, tourPlaying]);
 
   const { v2, faq, footer, compare8 } = slices;
 
@@ -467,9 +499,13 @@ export default function LandingV2Client({
 
   const startTour = useCallback(() => {
     setTourPlaying(true);
-    // Defer so the <video> with controls is mounted before play() is called.
+    // Restart from the top with sound; the click gesture grants audio.
     requestAnimationFrame(() => {
-      tourVideoRef.current?.play().catch(() => {});
+      const v = tourVideoRef.current;
+      if (!v) return;
+      v.muted = false;
+      v.currentTime = 0;
+      v.play().catch(() => {});
     });
   }, []);
 
@@ -508,33 +544,33 @@ export default function LandingV2Client({
   }, []);
 
   const MOCK = v2.mock as Record<string, string>;
-  const USP_GROUPS: Array<{ label: string; items: Array<{ t: string; b: string; media: React.ReactNode }> }> = [
+  const USP_GROUPS: Array<{ label: string; items: Array<{ name: string; t: string; b: string; media: React.ReactNode }> }> = [
     {
       label: v2.usps.groupCapture,
       items: [
-        { t: v2.usps.u1t, b: v2.usps.u1b, media: <KepCard m={MOCK} aiLabel={v2.mock.ai} /> },
-        { t: v2.usps.u2t, b: v2.usps.u2b, media: <UploadsCard m={MOCK} /> },
-        { t: v2.usps.u3t, b: v2.usps.u3b, media: <CloudImportCard m={MOCK} aiLabel={v2.mock.ai} /> },
-        { t: v2.usps.u4t, b: v2.usps.u4b, media: <ReceiveCard m={MOCK} /> },
+        { name: v2.mock.kepName, t: v2.usps.u1t, b: v2.usps.u1b, media: <KepCard m={MOCK} aiLabel={v2.mock.ai} /> },
+        { name: v2.mock.uploadsName, t: v2.usps.u2t, b: v2.usps.u2b, media: <UploadsCard m={MOCK} /> },
+        { name: v2.mock.cloudName, t: v2.usps.u3t, b: v2.usps.u3b, media: <CloudImportCard m={MOCK} aiLabel={v2.mock.ai} /> },
+        { name: v2.mock.receiveName, t: v2.usps.u4t, b: v2.usps.u4b, media: <ReceiveCard m={MOCK} /> },
       ],
     },
     {
       label: v2.usps.groupEnrich,
       items: [
-        { t: v2.usps.u5t, b: v2.usps.u5b, media: <PalaceCard m={MOCK} /> },
-        { t: v2.usps.u6t, b: v2.usps.u6b, media: <InterviewsCard m={MOCK} aiLabel={v2.mock.ai} /> },
-        { t: v2.usps.u7t, b: v2.usps.u7b, media: <MapCard m={MOCK} /> },
-        { t: v2.usps.u8t, b: v2.usps.u8b, media: <TreeCard m={MOCK} /> },
-        { t: v2.usps.u9t, b: v2.usps.u9b, media: <JourneysCard m={MOCK} /> },
+        { name: v2.mock.palaceName, t: v2.usps.u5t, b: v2.usps.u5b, media: <PalaceCard m={MOCK} /> },
+        { name: v2.mock.interviewName, t: v2.usps.u6t, b: v2.usps.u6b, media: <InterviewsCard m={MOCK} aiLabel={v2.mock.ai} /> },
+        { name: v2.mock.mapName, t: v2.usps.u7t, b: v2.usps.u7b, media: <MapCard m={MOCK} /> },
+        { name: v2.mock.treeName, t: v2.usps.u8t, b: v2.usps.u8b, media: <TreeCard m={MOCK} /> },
+        { name: v2.mock.journeyName, t: v2.usps.u9t, b: v2.usps.u9b, media: <JourneysCard m={MOCK} /> },
       ],
     },
     {
       label: v2.usps.groupShare,
       items: [
-        { t: v2.usps.u10t, b: v2.usps.u10b, media: <CapsuleCard m={MOCK} /> },
-        { t: v2.usps.u11t, b: v2.usps.u11b, media: <CocreateCard m={MOCK} /> },
-        { t: v2.usps.u12t, b: v2.usps.u12b, media: <SharingCard m={MOCK} /> },
-        { t: v2.usps.u13t, b: v2.usps.u13b, media: <LegacyCard m={MOCK} /> },
+        { name: v2.mock.capsuleName, t: v2.usps.u10t, b: v2.usps.u10b, media: <CapsuleCard m={MOCK} /> },
+        { name: v2.mock.cocreateName, t: v2.usps.u11t, b: v2.usps.u11b, media: <CocreateCard m={MOCK} /> },
+        { name: v2.mock.sharingName, t: v2.usps.u12t, b: v2.usps.u12b, media: <SharingCard m={MOCK} /> },
+        { name: v2.mock.legacyName, t: v2.usps.u13t, b: v2.usps.u13b, media: <LegacyCard m={MOCK} /> },
       ],
     },
   ];
@@ -634,48 +670,66 @@ export default function LandingV2Client({
           scroll-snap-type: x proximity; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
         }
         .lv2-strip:focus-visible { outline: 2px solid ${T.color.terracotta}; outline-offset: 3px; }
-        /* Method-of-loci depiction */
-        .lv2-loci { position: relative; display: flex; flex-wrap: wrap; gap: 2.5rem; justify-content: center; max-width: 58rem; margin: 0 auto; }
-        .lv2-loci-room { position: relative; width: 5.5rem; height: 6rem; }
-        .lv2-loci-track { position: absolute; left: 8%; right: 8%; top: 5.25rem; height: 2px; background: ${L.hairline}; }
-        .lv2-loci-walker {
-          position: absolute; top: -0.3rem; left: 0; width: 0.65rem; height: 0.65rem; border-radius: 50%;
-          background: ${L.accentDark}; box-shadow: 0 0 10px rgba(212,175,55,0.7);
-          animation: lv2LociWalk 9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        /* Method-of-loci scene: one facade, three alcoves, a golden visitor.
+           12s cycle: hang the memory (01) → walk past (02) → rooms stay lit (03). */
+        .lv2-loci { max-width: 52rem; margin: 0 auto; }
+        .lv2-loci-scene { position: relative; }
+        .lv2-loci-frame {
+          position: absolute; top: 56%; transform: translate(-50%, -50%);
+          border-radius: 0.3rem;
         }
-        .lv2-loci-photo {
-          position: absolute; left: 50%; top: 42%; transform: translateX(-50%);
-          animation: lv2LociDrop 9s ease-out infinite;
+        .lv2-loci-frame-one { animation: lv2LociHang 12s ${M.ease} infinite; }
+        .lv2-loci-frame-two { animation: lv2LociAppearTwo 12s ${M.ease} infinite; }
+        .lv2-loci-frame-three { animation: lv2LociAppearThree 12s ${M.ease} infinite; }
+        .lv2-loci-glow {
+          position: absolute; top: 62%; transform: translate(-50%, -50%);
+          width: 6.5rem; height: 5rem; border-radius: 50%;
+          background: radial-gradient(ellipse, rgba(212,175,55,0.45) 0%, rgba(212,175,55,0) 70%);
+          opacity: 0; pointer-events: none;
         }
-        .lv2-loci-footsteps {
-          position: absolute; left: 50%; top: 58%; transform: translateX(-50%);
-          font-size: 1.4rem; letter-spacing: 0.3em; color: ${L.accentLight};
-          animation: lv2LociSteps 9s linear infinite;
+        .lv2-loci-glow-one { animation: lv2LociLitOne 12s ease-in-out infinite; }
+        .lv2-loci-glow-two { animation: lv2LociLitTwo 12s ease-in-out infinite; }
+        .lv2-loci-glow-three { animation: lv2LociLitThree 12s ease-in-out infinite; }
+        .lv2-loci-visitor {
+          position: absolute; bottom: 4.5%; left: 0; width: 0.8rem; height: 0.8rem; border-radius: 50%;
+          background: ${L.accentDark}; box-shadow: 0 0 12px rgba(212,175,55,0.8);
+          animation: lv2LociVisit 12s cubic-bezier(0.45, 0, 0.55, 1) infinite;
         }
-        .lv2-loci-glowframe {
-          position: absolute; left: 50%; top: 42%; transform: translateX(-50%); border-radius: 0.3rem;
-          animation: lv2LociGlow 9s ease-in-out infinite;
+        .lv2-loci-captions {
+          display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2rem;
         }
-        @keyframes lv2LociWalk {
-          0%, 8% { left: 2%; opacity: 0; }
-          14% { opacity: 1; }
-          38% { left: 47%; }
-          62% { left: 47%; }
-          86% { left: 94%; opacity: 1; }
-          92%, 100% { left: 94%; opacity: 0; }
+        @keyframes lv2LociHang {
+          0% { opacity: 0; transform: translate(-50%, -90%); }
+          6% { opacity: 1; transform: translate(-50%, -50%); }
+          98% { opacity: 1; } 100% { opacity: 0; }
         }
-        @keyframes lv2LociDrop {
-          0% { opacity: 0; transform: translateX(-50%) translateY(-1.2rem); }
-          8% { opacity: 1; transform: translateX(-50%) translateY(0); }
-          96% { opacity: 1; } 100% { opacity: 0; }
+        @keyframes lv2LociAppearTwo {
+          0%, 38% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+          46% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          98% { opacity: 1; } 100% { opacity: 0; }
         }
-        @keyframes lv2LociSteps {
-          0%, 34% { opacity: 0; } 42%, 58% { opacity: 1; } 66%, 100% { opacity: 0; }
+        @keyframes lv2LociAppearThree {
+          0%, 60% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
+          68% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          98% { opacity: 1; } 100% { opacity: 0; }
         }
-        @keyframes lv2LociGlow {
-          0%, 74% { box-shadow: 0 0 0 rgba(212,175,55,0); }
-          84%, 92% { box-shadow: 0 0 22px rgba(212,175,55,0.85); }
-          100% { box-shadow: 0 0 8px rgba(212,175,55,0.3); }
+        @keyframes lv2LociVisit {
+          0%, 10% { left: 3%; opacity: 0; }
+          16% { opacity: 1; }
+          34% { left: 18.75%; }
+          52% { left: 50%; }
+          72% { left: 81.25%; }
+          86% { left: 96%; opacity: 1; }
+          92%, 100% { left: 96%; opacity: 0; }
+        }
+        @keyframes lv2LociLitOne {
+          0%, 28% { opacity: 0; } 36%, 94% { opacity: 1; } 100% { opacity: 0; }
+        }
+        @keyframes lv2LociLitTwo {
+          0%, 46% { opacity: 0; } 54%, 94% { opacity: 1; } 100% { opacity: 0; }
+        }
+        @keyframes lv2LociLitThree {
+          0%, 66% { opacity: 0; } 74%, 94% { opacity: 1; } 100% { opacity: 0; }
         }
         /* Final CTA glow breath */
         .lv2-cta-final { animation: lv2CtaBreath 5s ease-in-out infinite; }
@@ -684,8 +738,11 @@ export default function LandingV2Client({
           50% { box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.5), 0 0 54px rgba(212,175,55,0.3); }
         }
         @media (prefers-reduced-motion: reduce) {
-          .lv2-loci-walker, .lv2-loci-photo, .lv2-loci-footsteps, .lv2-loci-glowframe, .lv2-cta-final { animation: none !important; }
-          .lv2-loci-photo, .lv2-loci-footsteps, .lv2-loci-glowframe { opacity: 1; }
+          .lv2-loci-frame, .lv2-loci-glow, .lv2-loci-visitor, .lv2-cta-final,
+          .lv2-loci-frame-one, .lv2-loci-frame-two, .lv2-loci-frame-three,
+          .lv2-loci-glow-one, .lv2-loci-glow-two, .lv2-loci-glow-three { animation: none !important; }
+          .lv2-loci-frame, .lv2-loci-glow { opacity: 1; }
+          .lv2-loci-visitor { opacity: 0; }
         }
         @media (max-width: 1023px) {
           .lv2-usp-grid { grid-template-columns: 1fr; }
@@ -695,8 +752,7 @@ export default function LandingV2Client({
           .lv2-steps-grid { grid-template-columns: 1fr; }
           .lv2-nav-links { display: none !important; }
           .lv2-nav-burger { display: inline-flex !important; }
-          .lv2-loci { gap: 2rem; }
-          .lv2-loci-track { display: none; }
+          .lv2-loci-captions { grid-template-columns: 1fr; gap: 1.75rem; }
         }
         @media (min-width: 769px) {
           .lv2-nav-burger { display: none !important; }
@@ -982,7 +1038,106 @@ export default function LandingV2Client({
         {/* Sentinel: nav turns solid when this leaves the viewport */}
         <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
 
-        {/* ── 2. Showcase: step inside a real palace ── */}
+        {/* ── 2. Why a palace — the method of loci as one living scene ── */}
+        <section aria-labelledby="lv2-why-h" style={{ background: L.mid, padding: `${L.space.sectionY} 0` }}>
+          <div style={{ ...wide, textAlign: "center" }}>
+            <Reveal>
+              <Eyebrow>{v2.why.eyebrow}</Eyebrow>
+              <H2 id="lv2-why-h">{v2.why.h2}</H2>
+              <p style={{ ...prose, fontFamily: FONT_BODY, fontSize: L.type.lead, lineHeight: 1.6, color: L.inkBody, margin: "0 auto 3.5rem", textWrap: "pretty" }}>
+                {v2.why.body}
+              </p>
+            </Reveal>
+            <Reveal>
+              <div
+                className="lv2-loci"
+                role="img"
+                aria-label={`${v2.why.step1t} — ${v2.why.step1b}. ${v2.why.step2t} — ${v2.why.step2b}. ${v2.why.step3t} — ${v2.why.step3b}.`}
+              >
+                {/* One palace cross-section: three alcoves under one pediment.
+                    A memory is hung in the first; a golden visitor walks past;
+                    every room they pass stays lit. */}
+                <div className="lv2-loci-scene" aria-hidden="true">
+                  <svg viewBox="0 0 640 210" style={{ width: "100%", height: "auto", display: "block" }} preserveAspectRatio="xMidYMid meet">
+                    {/* facade fill */}
+                    <path d="M28 74 L320 18 L612 74 V196 H28 Z" fill="rgba(252,250,245,0.65)" stroke="none" />
+                    {/* pediment */}
+                    <path d="M20 76 L320 14 L620 76" fill="none" stroke={L.accentLight} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M44 76 H596" stroke={L.accentLight} strokeWidth="2" strokeLinecap="round" opacity="0.55" />
+                    {/* alcove arches */}
+                    {[120, 320, 520].map((cx) => (
+                      <g key={cx}>
+                        <path
+                          d={`M${cx - 46} 196 V128 A46 46 0 0 1 ${cx + 46} 128 V196`}
+                          fill="rgba(36,28,21,0.05)"
+                          stroke={L.accentLight}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    ))}
+                    {/* columns */}
+                    {[62, 220, 420, 578].map((x) => (
+                      <g key={x} stroke={L.accentLight} strokeWidth="2" opacity="0.5">
+                        <line x1={x} y1={86} x2={x} y2={192} />
+                        <line x1={x - 7} y1={86} x2={x + 7} y2={86} />
+                        <line x1={x - 8} y1={193} x2={x + 8} y2={193} />
+                      </g>
+                    ))}
+                    {/* floor */}
+                    <path d="M14 197 H626" stroke={L.accentLight} strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                  {/* glow pools inside each alcove — lit as the visitor passes */}
+                  {["one", "two", "three"].map((k, i) => (
+                    <span key={k} className={`lv2-loci-glow lv2-loci-glow-${k}`} style={{ left: `${[18.75, 50, 81.25][i]}%` }} />
+                  ))}
+                  {/* the framed memories */}
+                  {["/landing/demo-hands.jpg", "/landing/demo-graduation.jpg", "/landing/demo-morning.jpg"].map((src, i) => (
+                    <span key={src} className={`lv2-loci-frame lv2-loci-frame-${["one", "two", "three"][i]}`} style={{ left: `${[18.75, 50, 81.25][i]}%` }}>
+                      <Image
+                        src={src}
+                        alt=""
+                        width={480}
+                        height={319}
+                        style={{
+                          width: "clamp(3.25rem, 8vw, 4.5rem)",
+                          height: "clamp(2.5rem, 6.2vw, 3.5rem)",
+                          objectFit: "cover",
+                          borderRadius: "0.2rem",
+                          border: "0.2rem solid #FFF",
+                          boxShadow: "0 6px 16px rgba(36,28,21,0.32)",
+                          display: "block",
+                        }}
+                      />
+                    </span>
+                  ))}
+                  {/* the visitor */}
+                  <span className="lv2-loci-visitor" />
+                </div>
+                {/* numbered captions aligned to the three alcoves */}
+                <div className="lv2-loci-captions">
+                  {[
+                    { n: "01", t: v2.why.step1t, b: v2.why.step1b },
+                    { n: "02", t: v2.why.step2t, b: v2.why.step2b },
+                    { n: "03", t: v2.why.step3t, b: v2.why.step3b },
+                  ].map((step) => (
+                    <div key={step.n} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                      <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h4, color: L.accentLight }}>{step.n}</span>
+                      <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h4, color: T.color.charcoal, margin: 0 }}>
+                        {step.t}
+                      </h3>
+                      <p style={{ fontFamily: FONT_BODY, fontSize: L.type.bodyS, lineHeight: 1.5, color: L.inkMutedLight, margin: 0, maxWidth: "15em" }}>
+                        {step.b}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* ── 3. Showcase: step inside a real palace ── */}
         <section id="tour" aria-labelledby="lv2-tour-h" style={{ background: L.surface, padding: "4rem 0 5rem" }}>
           <div style={wide}>
             <Reveal>
@@ -996,36 +1151,34 @@ export default function LandingV2Client({
             </Reveal>
             <Reveal>
               <div style={{ maxWidth: "62rem", margin: "0 auto" }}>
-                {tourPlaying ? (
-                  <video
-                    ref={tourVideoRef}
-                    controls
-                    playsInline
-                    poster="/video/walkthrough-poster.jpg"
-                    aria-label={v2.a11y.tourDialog}
-                    style={{ width: "100%", borderRadius: "1rem", display: "block", background: L.dark }}
-                  >
-                    <source src="/video/walkthrough.mp4" type="video/mp4" />
-                  </video>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={startTour}
-                    aria-label={v2.hero.secondary}
-                    className="lv2-cta"
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      aspectRatio: "16 / 9",
-                      padding: 0,
-                      border: "none",
-                      borderRadius: "1rem",
-                      overflow: "hidden",
-                      cursor: "pointer",
-                      display: "block",
-                      background: L.dark,
-                    }}
-                  >
+                {/* Ambient tour: the walkthrough plays muted as a living snippet;
+                    one click restarts it with sound + controls. Reduced-motion /
+                    constrained connections get the poster + a play button. */}
+                <div
+                  style={{
+                    position: "relative",
+                    aspectRatio: "16 / 9",
+                    borderRadius: "1rem",
+                    overflow: "hidden",
+                    background: L.dark,
+                    boxShadow: "0 24px 64px rgba(36,28,21,0.28)",
+                  }}
+                >
+                  {tourAmbient || tourPlaying ? (
+                    <video
+                      ref={tourVideoRef}
+                      autoPlay
+                      muted={!tourPlaying}
+                      loop={!tourPlaying}
+                      controls={tourPlaying}
+                      playsInline
+                      poster="/video/walkthrough-poster-v2.jpg"
+                      aria-label={v2.a11y.tourDialog}
+                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    >
+                      <source src="/video/walkthrough.mp4" type="video/mp4" />
+                    </video>
+                  ) : (
                     <Image
                       src="/video/walkthrough-poster-v2.jpg"
                       alt=""
@@ -1033,38 +1186,48 @@ export default function LandingV2Client({
                       sizes="(max-width: 1020px) 100vw, 62rem"
                       style={{ objectFit: "cover" }}
                     />
-                    <span
-                      aria-hidden="true"
+                  )}
+                  {!tourPlaying ? (
+                    <div
                       style={{
                         position: "absolute",
                         inset: 0,
                         display: "flex",
-                        alignItems: "center",
+                        alignItems: "flex-end",
                         justifyContent: "center",
+                        padding: "1.5rem",
+                        background: "linear-gradient(180deg, transparent 55%, rgba(36,28,21,0.45) 100%)",
                       }}
                     >
-                      <span
+                      <button
+                        type="button"
+                        onClick={startTour}
+                        className="lv2-cta"
                         style={{
-                          width: "5rem",
-                          height: "5rem",
-                          borderRadius: "50%",
-                          background: "rgba(252,250,245,0.92)",
-                          display: "flex",
+                          display: "inline-flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          boxShadow: "0 8px 32px rgba(36,28,21,0.4)",
+                          gap: "0.625rem",
+                          minHeight: T.touch,
+                          padding: "0 1.75rem",
+                          borderRadius: "2rem",
+                          border: "1px solid rgba(252,250,245,0.45)",
+                          background: "rgba(36,28,21,0.62)",
+                          backdropFilter: "blur(8px)",
+                          color: T.color.cream,
+                          fontFamily: FONT_BODY,
+                          fontWeight: 600,
+                          fontSize: L.type.body,
+                          cursor: "pointer",
                         }}
                       >
-                        <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" style={{ marginLeft: "3px" }}>
-                          <path d="M6 3l14 9-14 9V3z" fill={L.accentLight} />
+                        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
-                      </span>
-                    </span>
-                  </button>
-                )}
-                <p style={{ fontFamily: FONT_BODY, fontSize: L.type.bodyS, color: L.inkMutedLight, textAlign: "center", margin: "1rem 0 0" }}>
-                  {v2.showcase.attribution}
-                </p>
+                        {v2.showcase.soundCta}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </Reveal>
           </div>
@@ -1129,7 +1292,7 @@ export default function LandingV2Client({
                             <span aria-hidden="true" style={{ width: "1rem", flexShrink: 0, color: T.color.success }}>
                               {isPast ? "✓" : ""}
                             </span>
-                            {item.t}
+                            {item.name}
                           </button>
                         );
                       })}
@@ -1271,73 +1434,9 @@ export default function LandingV2Client({
           </div>
         </section>
 
-        {/* ── 6. Why a palace — the method of loci, shown not told ── */}
-        <section aria-labelledby="lv2-why-h" style={{ background: L.mid, padding: `${L.space.sectionY} 0` }}>
-          <div style={{ ...wide, textAlign: "center" }}>
-            <Reveal>
-              <Eyebrow>{v2.why.eyebrow}</Eyebrow>
-              <H2 id="lv2-why-h">{v2.why.h2}</H2>
-              <p style={{ ...prose, fontFamily: FONT_BODY, fontSize: L.type.lead, lineHeight: 1.6, color: L.inkBody, margin: "0 auto 3rem", textWrap: "pretty" }}>
-                {v2.why.body}
-              </p>
-            </Reveal>
-            <Reveal>
-              <div className="lv2-loci" role="img" aria-label={`${v2.why.step1t}. ${v2.why.step2t}. ${v2.why.step3t}.`}>
-                {/* the walking dot travels the path beneath the three rooms */}
-                <div className="lv2-loci-track" aria-hidden="true">
-                  <span className="lv2-loci-walker" />
-                </div>
-                {[
-                  { t: v2.why.step1t, b: v2.why.step1b, k: "place" },
-                  { t: v2.why.step2t, b: v2.why.step2b, k: "walk" },
-                  { t: v2.why.step3t, b: v2.why.step3b, k: "stay" },
-                ].map((step, i) => (
-                  <div key={step.k} style={{ flex: 1, minWidth: "14rem", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.875rem" }}>
-                    <div className={`lv2-loci-room lv2-loci-room-${step.k}`} aria-hidden="true">
-                      {/* arched doorway */}
-                      <svg width="88" height="96" viewBox="0 0 88 96">
-                        <path d="M10 92 V38 A34 34 0 0 1 78 38 V92" fill="none" stroke={L.accentLight} strokeWidth="2.5" strokeLinecap="round" />
-                        <path d="M2 92 H86" stroke={L.hairline} strokeWidth="2.5" strokeLinecap="round" />
-                      </svg>
-                      {i === 0 ? (
-                        /* a memory being placed into the room */
-                        <span className="lv2-loci-photo">
-                          <Image src="/landing/demo-hands.jpg" alt="" width={480} height={319} style={{ width: "2.9rem", height: "2.3rem", objectFit: "cover", borderRadius: "0.25rem", border: "2px solid #FFF", boxShadow: "0 4px 10px rgba(36,28,21,0.3)", display: "block" }} />
-                        </span>
-                      ) : null}
-                      {i === 1 ? <span className="lv2-loci-footsteps">· · ·</span> : null}
-                      {i === 2 ? (
-                        <span className="lv2-loci-glowframe">
-                          <Image src="/landing/demo-hands.jpg" alt="" width={480} height={319} style={{ width: "2.9rem", height: "2.3rem", objectFit: "cover", borderRadius: "0.25rem", border: "2px solid #FFF", display: "block" }} />
-                        </span>
-                      ) : null}
-                    </div>
-                    <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h4, color: T.color.charcoal, margin: 0 }}>
-                      {step.t}
-                    </h3>
-                    <p style={{ fontFamily: FONT_BODY, fontSize: L.type.bodyS, lineHeight: 1.5, color: L.inkMutedLight, margin: 0, maxWidth: "16em" }}>
-                      {step.b}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </Reveal>
-          </div>
-        </section>
 
         {/* ── 7. Dark showcase: this is a palace ── */}
-        <section aria-labelledby="lv2-palace-h" style={{ position: "relative", background: L.dark, padding: `${L.space.sectionY} 0`, overflow: "hidden" }}>
-          <Image
-            src="/landing/showcase-frame.jpg"
-            alt={v2.a11y.showcaseFrame}
-            fill
-            sizes="100vw"
-            style={{ objectFit: "cover", opacity: 0.45 }}
-          />
-          <div
-            aria-hidden="true"
-            style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at center, rgba(36,28,21,0.25) 0%, rgba(36,28,21,0.85) 100%)" }}
-          />
+        <section aria-labelledby="lv2-palace-h" style={{ position: "relative", background: `radial-gradient(ellipse at 50% 0%, #3A2E22 0%, ${L.dark} 62%)`, padding: `${L.space.sectionY} 0`, overflow: "hidden" }}>
           <div style={{ ...wide, position: "relative", textAlign: "center", padding: "4rem clamp(1.25rem, 5vw, 2.5rem)" }}>
             <Eyebrow onDark>{v2.notAlbum.eyebrow}</Eyebrow>
             <h2
@@ -1366,26 +1465,60 @@ export default function LandingV2Client({
                 aria-label={v2.a11y.phoneStrip}
                 tabIndex={0}
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                  <Image
-                    key={n}
-                    src={`/screenshots/store/screenshot-${n}-${["exterior", "entrance", "room", "family-tree", "interview", "explore", "library", "achievements"][n - 1]}.webp`}
-                    alt={`${v2.mock.shotAlt} ${n}/8`}
-                    width={1080}
-                    height={1920}
-                    sizes="(max-width: 768px) 70vw, 17rem"
-                    style={{
-                      width: "17rem",
-                      height: "auto",
-                      flexShrink: 0,
-                      scrollSnapAlign: "center",
-                      borderRadius: "1.25rem",
-                      border: "1px solid rgba(252,250,245,0.22)",
-                      boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
-                      display: "block",
-                    }}
-                  />
-                ))}
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
+                  const note = [v2.notes.n1, v2.notes.n2, v2.notes.n3, v2.notes.n4, v2.notes.n5, v2.notes.n6, v2.notes.n7, v2.notes.n8][n - 1];
+                  const noteOnTop = n % 2 === 1;
+                  return (
+                    <div key={n} style={{ position: "relative", flexShrink: 0, scrollSnapAlign: "center", padding: `${noteOnTop ? "3.25rem" : "0.5rem"} 0.25rem ${noteOnTop ? "0.5rem" : "3.25rem"}` }}>
+                      {/* margin note, as if scribbled next to the screen */}
+                      <span
+                        aria-hidden="true"
+                        className="lv2-note"
+                        style={{
+                          position: "absolute",
+                          [noteOnTop ? "top" : "bottom"]: "0",
+                          left: n % 3 === 0 ? "0.25rem" : "1.75rem",
+                          transform: `rotate(${noteOnTop ? -3.5 : 3}deg)`,
+                          display: "inline-flex",
+                          flexDirection: noteOnTop ? "column" : "column-reverse",
+                          alignItems: "flex-start",
+                          gap: "0.1rem",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "var(--font-note, cursive)",
+                            fontWeight: 600,
+                            fontSize: "1.375rem",
+                            lineHeight: 1.1,
+                            color: L.accentDark,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {note}
+                        </span>
+                        <svg width="34" height="26" viewBox="0 0 34 26" style={{ marginLeft: "1.25rem", transform: noteOnTop ? "none" : "scaleY(-1)" }}>
+                          <path d="M4 2 C 10 16, 20 20, 29 22 M23 20 l7 2 -4 -6" fill="none" stroke={L.accentDark} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
+                        </svg>
+                      </span>
+                      <Image
+                        src={`/screenshots/store/screenshot-${n}-${["exterior", "entrance", "room", "family-tree", "interview", "explore", "library", "achievements"][n - 1]}.webp`}
+                        alt={`${v2.mock.shotAlt} ${n}/8`}
+                        width={1080}
+                        height={1920}
+                        sizes="(max-width: 768px) 70vw, 17rem"
+                        style={{
+                          width: "17rem",
+                          height: "auto",
+                          borderRadius: "1.25rem",
+                          border: "1px solid rgba(252,250,245,0.22)",
+                          boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
+                          display: "block",
+                        }}
+                      />
+                    </div>
+                  );
+                })}
               </div>
               <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", marginTop: "1.5rem" }}>
                 {[[-1, v2.a11y.prev, "M14 4l-6 7 6 7"], [1, v2.a11y.next, "M8 4l6 7-6 7"]].map(([dir, label, d]) => (

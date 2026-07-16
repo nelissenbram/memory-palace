@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { Cormorant_Garamond, Manrope } from "next/font/google";
+import { Caveat, Cormorant_Garamond, Manrope } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
@@ -24,6 +24,14 @@ const manrope = Manrope({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-body",
+  display: "swap",
+});
+
+/* Handwritten annotation font — landing "margin notes" only. */
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  variable: "--font-note",
   display: "swap",
 });
 
@@ -101,7 +109,7 @@ export default async function RootLayout({
   const locale = cookieStore.get("mp_locale")?.value || "en";
 
   return (
-    <html lang={locale} className={`${cormorant.variable} ${manrope.variable}`}>
+    <html lang={locale} className={`${cormorant.variable} ${manrope.variable} ${caveat.variable}`}>
       <head>
         {/* Boot diagnostics removed — was sending device info without consent (Apple Guideline 5.1.2i) */}
         {/* Native WKWebView: tear down any service worker + caches left by an OLDER

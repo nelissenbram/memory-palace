@@ -5171,7 +5171,7 @@
     "hero": {
       "eyebrow": "Ein 3D-Zuhause für Ihre Erinnerungen — geteilt mit Freunden & Familie",
       "h1": "Machen Sie aus einem Leben voller Erinnerungen einen Ort, den Ihre Liebsten besuchen können.",
-      "sub": "Ein wunderschöner 3D-Palast für Ihre Fotos, Sprachaufnahmen und Lebensgeschichten — erkunden Sie ihn gemeinsam mit Freunden & Familie. Kostenlos starten, keine Kreditkarte nötig.",
+      "sub": "Ein wunderschöner 3D-Palast für Ihre Fotos, Sprachaufnahmen und Lebensgeschichten — erkunden Sie ihn gemeinsam mit Freunden & Familie.",
       "sub_ios": "Ein wunderschöner 3D-Palast für Ihre Fotos, Sprachaufnahmen und Lebensgeschichten — erkunden Sie ihn gemeinsam mit Freunden & Familie. In wenigen Minuten bereit — keine Technikkenntnisse nötig.",
       "cta": "Erstellen Sie Ihren Palast",
       "ctaMicro": "Für immer kostenlos · Keine Kreditkarte · Keine Technikkenntnisse nötig",
@@ -5186,7 +5186,7 @@
       "eyebrow": "In Aktion erleben",
       "h2": "Betreten Sie einen echten Palast.",
       "sub": "Verlassen Sie sich nicht auf unser Wort. Gehen Sie durch Räume voller Fotos, hören Sie die Geschichten, spüren Sie die Atmosphäre.",
-      "attribution": "Guillaumes Palast — das echte Zuhause eines Mitglieds mit Erinnerungen aus drei Generationen"
+      "soundCta": "Mit Ton ansehen"
     },
     "notAlbum": {
       "eyebrow": "Das ist kein Fotoalbum.",
@@ -5199,17 +5199,17 @@
       "toggleSelf": "Für Sie selbst",
       "toggleGift": "Für jemand anderen",
       "s1t": "Fügen Sie Ihre Erinnerungen hinzu",
-      "s1d": "Laden Sie Fotos und Videos hoch oder importieren Sie aus Google Fotos, Dropbox oder OneDrive. Die KI sortiert alles in Räume, die zu den Kapiteln Ihres Lebens passen.",
+      "s1d": "Hochladen, importieren oder per WhatsApp senden — die KI sortiert alles in Räume.",
       "s2t": "Erzählen Sie die Geschichte dahinter",
-      "s2d": "Nehmen Sie Ihre Stimme auf, während Sie die Geschichte hinter dem Foto erzählen — oder lassen Sie einen behutsamen Interviewer die Fragen stellen, die Ihre Enkel stellen würden.",
+      "s2d": "Ihre Stimme, geleitet von den Fragen, die Ihre Enkel stellen würden.",
       "s3t": "Gehen Sie gemeinsam hindurch",
-      "s3d": "Laden Sie Familie und Freunde in Ihren Palast ein. Sie können ihn erkunden, eigene Erinnerungen hinzufügen oder Ihre als Zeitkapseln erhalten.",
+      "s3d": "Laden Sie Ihre Liebsten ein — oder versiegeln Sie Erinnerungen für später.",
       "g1t": "Erstellen Sie einen Palast in ihrem Namen",
-      "g1d": "In fünf Minuten eingerichtet — Sie übernehmen die Technik, sie bekommen die Freude.",
+      "g1d": "In fünf Minuten eingerichtet — Sie übernehmen die Technik.",
       "g2t": "Sie beantworten nur Fragen",
-      "g2d": "Ein behutsamer Interviewer hält ihre Geschichten per WhatsApp oder im Browser fest — keine neue App zu lernen.",
+      "g2d": "Sie beantworten nur Fragen — per WhatsApp oder im Browser.",
       "g3t": "Die Geschichten bleiben in der Familie",
-      "g3d": "Jeder, den Sie einladen, kann durch den Palast gehen — und er ist bereit, weitergegeben zu werden, wann immer die Zeit reif ist.",
+      "g3d": "Die Geschichten bleiben in der Familie, bereit zum Weitergeben.",
       "midCta": "Ihr Palast beginnt kostenlos — 1 GB Erinnerungen, unbegrenzt Räume, keine Kreditkarte. Upgraden Sie nur, wenn Sie herauswachsen.",
       "midCta_ios": "Ihr Palast ist in wenigen Minuten bereit. Keine Technikkenntnisse nötig."
     },
@@ -5225,7 +5225,7 @@
       "step3b": "Orte behalten wir weit länger als Dateien"
     },
     "compare": {
-      "h2": "Behalten Sie Google Fotos. Das ist die Festplatte. Dies ist das Zuhause.",
+      "h2": "Behalten Sie Ihre Cloud-Fotos. Das ist die Festplatte. Dies ist das Zuhause.",
       "sub": "Ein Ordner speichert Ihre Fotos. Ein Palast erinnert sich an Ihr Leben.",
       "colLeft": "Cloud-Fotospeicher",
       "colRight": "The Memory Palace",
@@ -5275,7 +5275,7 @@
     },
     "usps": {
       "eyebrow": "Was Sie tun können",
-      "h2": "Alles, was es braucht, um ein Leben lebendig zu halten.",
+      "h2": "Alles, was Ihre Erinnerungen brauchen, um lebendig zu bleiben.",
       "groupCapture": "Festhalten",
       "groupEnrich": "Zum Leben erwecken",
       "groupShare": "Teilen & weitergeben",
@@ -5351,6 +5351,16 @@
       "interviewName": "Interviews",
       "palaceName": "Ihr Palast",
       "shotAlt": "Bildschirmfoto aus der Memory-Palace-App"
+    },
+    "notes": {
+      "n1": "Ihr Palast, von oben",
+      "n2": "jede Tür ein Kapitel",
+      "n3": "Fotos werden Räume",
+      "n4": "drei Generationen, ein Stammbaum",
+      "n5": "die Fragen, die zählen",
+      "n6": "auch Stimmen wohnen hier",
+      "n7": "eine Bibliothek voller Erinnerungen",
+      "n8": "kleine Erfolge unterwegs"
     }
   }
 }
