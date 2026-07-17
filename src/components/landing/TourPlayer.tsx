@@ -195,7 +195,7 @@ export default function TourPlayer({
           </video>
 
           {/* reading-lane vignette + directional scrim for the active side */}
-          <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 62% 78% at 50% 50%, rgba(36,28,21,0) 34%, rgba(36,28,21,0.55) 100%), linear-gradient(90deg, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0) 26%, rgba(36,28,21,0) 74%, rgba(36,28,21,0.72) 100%)" }} />
+          <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 68% 82% at 50% 50%, rgba(36,28,21,0) 45%, rgba(36,28,21,0.38) 100%), linear-gradient(90deg, rgba(36,28,21,0.6) 0%, rgba(36,28,21,0) 24%, rgba(36,28,21,0) 76%, rgba(36,28,21,0.6) 100%)" }} />
           {current.side !== "center" ? (
             <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: current.side === "left" ? "linear-gradient(90deg, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.30) 55%, transparent 100%)" : "linear-gradient(270deg, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.30) 55%, transparent 100%)" }} />
           ) : null}

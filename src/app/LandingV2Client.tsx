@@ -477,7 +477,6 @@ export default function LandingV2Client({
 
   const heroSub = isIosApp ? v2.hero.sub_ios : v2.hero.sub;
   const heroMicro = isIosApp ? v2.hero.ctaMicro_ios : v2.hero.ctaMicro;
-  const midCta = isIosApp ? v2.how.midCta_ios : v2.how.midCta;
 
   /* ── USP scrollytelling (STEMMA pattern): sticky group rail + one block per
      USP. Active step is computed in a rAF-throttled passive scroll handler
@@ -514,9 +513,9 @@ export default function LandingV2Client({
     {
       label: v2.usps.groupCapture,
       items: [
-        { name: v2.mock.kepName, t: v2.usps.u1t, b: v2.usps.u1b, media: <KepCard m={MOCK} aiLabel={v2.mock.ai} /> },
         { name: v2.mock.uploadsName, t: v2.usps.u2t, b: v2.usps.u2b, media: <UploadsCard m={MOCK} /> },
         { name: v2.mock.cloudName, t: v2.usps.u3t, b: v2.usps.u3b, media: <CloudImportCard m={MOCK} aiLabel={v2.mock.ai} /> },
+        { name: v2.mock.kepName, t: v2.usps.u1t, b: v2.usps.u1b, media: <KepCard m={MOCK} aiLabel={v2.mock.ai} /> },
         { name: v2.mock.receiveName, t: v2.usps.u4t, b: v2.usps.u4b, media: <ReceiveCard m={MOCK} /> },
       ],
     },
@@ -629,7 +628,9 @@ export default function LandingV2Client({
         }
         .lv2-steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
         .lv2-table-wrap { overflow-x: auto; }
-        .lv2-usp-grid { display: grid; grid-template-columns: 17rem 1fr; gap: clamp(2.5rem, 5vw, 5rem); }
+        .lv2-chap { display: grid; column-gap: clamp(2.5rem, 5vw, 4.5rem); align-items: start; }
+        .lv2-chap-left { grid-template-columns: 16rem 1fr; }
+        .lv2-chap-right { grid-template-columns: 1fr 16rem; }
         /* Native horizontal screenshot strip — proximity snap, never traps vertical scroll */
         .lv2-strip {
           display: flex; gap: 1.25rem; overflow-x: auto; padding: 0.5rem 0.25rem 1rem;
@@ -654,8 +655,8 @@ export default function LandingV2Client({
           .lv2-cta-final { animation: none !important; }
         }
         @media (max-width: 1023px) {
-          .lv2-usp-grid { grid-template-columns: 1fr; }
-          .lv2-usp-rail { display: none; }
+          .lv2-chap-left, .lv2-chap-right { grid-template-columns: 1fr; }
+          .lv2-chap-rail { display: none; }
         }
         @media (max-width: 768px) {
           .lv2-steps-grid { grid-template-columns: 1fr; }
@@ -855,7 +856,7 @@ export default function LandingV2Client({
         >
           <HeroMedia pauseLabel={v2.a11y.pause} playLabel={v2.a11y.play} alt={v2.a11y.heroVideo} />
           <div style={{ position: "relative", zIndex: 2, textAlign: "center", padding: "0 1.5rem", maxWidth: "60rem" }}>
-            <Eyebrow onDark>{v2.hero.eyebrow}</Eyebrow>
+            {v2.hero.eyebrow ? <Eyebrow onDark>{v2.hero.eyebrow}</Eyebrow> : null}
             <h1
               id="lv2-h1"
               style={{
@@ -996,23 +997,19 @@ export default function LandingV2Client({
                 <H2>{v2.usps.h2}</H2>
               </div>
             </Reveal>
-            <div className="lv2-usp-grid">
-              {/* Sticky group rail */}
-              <nav aria-label={v2.usps.eyebrow} className="lv2-usp-rail">
-                <div style={{ position: "sticky", top: "6rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                  {USP_GROUPS.map((group, gi) => (
-                    <div key={group.label}>
-                      <p
-                        style={{
-                          fontFamily: FONT_BODY,
-                          fontSize: L.type.micro,
-                          fontWeight: 700,
-                          letterSpacing: "0.14em",
-                          textTransform: "uppercase",
-                          color: L.inkMutedLight,
-                          margin: "0 0 0.5rem",
-                        }}
-                      >
+            {/* Three chapters, each with its own menu rail that alternates side */}
+            {USP_GROUPS.map((group, gi) => {
+              const railLeft = gi % 2 === 0; // Capture left, Bring-to-life right, Share left
+              return (
+                <div
+                  key={group.label}
+                  className={`lv2-chap ${railLeft ? "lv2-chap-left" : "lv2-chap-right"}`}
+                  style={{ marginTop: gi === 0 ? 0 : "clamp(3.5rem, 7vw, 6rem)" }}
+                >
+                  {/* Chapter menu rail */}
+                  <nav aria-label={group.label} className="lv2-chap-rail" style={{ order: railLeft ? 0 : 1 }}>
+                    <div style={{ position: "sticky", top: "6rem" }}>
+                      <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.75rem" }}>
                         {group.label}
                       </p>
                       {group.items.map((item) => {
@@ -1051,62 +1048,41 @@ export default function LandingV2Client({
                         );
                       })}
                     </div>
-                  ))}
-                </div>
-              </nav>
-              {/* USP blocks */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "clamp(4rem, 8vw, 6.5rem)" }}>
-                {USP_FLAT.map((usp, idx) => (
-                  <div
-                    key={usp.t}
-                    ref={(el) => { uspRefs.current[idx] = el; }}
-                    data-usp-idx={idx}
-                    style={{ scrollMarginTop: "6rem" }}
-                  >
-                    <Reveal>
-                      <p
-                        style={{
-                          fontFamily: FONT_BODY,
-                          fontSize: L.type.micro,
-                          fontWeight: 700,
-                          letterSpacing: "0.14em",
-                          textTransform: "uppercase",
-                          color: L.accentLight,
-                          margin: "0 0 0.625rem",
-                        }}
-                      >
-                        {String(idx + 1).padStart(2, "0")} · {usp.group}
-                      </p>
-                      <h3
-                        style={{
-                          fontFamily: FONT_DISPLAY,
-                          fontWeight: 500,
-                          fontSize: L.type.h3,
-                          lineHeight: 1.15,
-                          color: T.color.charcoal,
-                          margin: "0 0 0.875rem",
-                          textWrap: "balance",
-                        }}
-                      >
-                        {usp.t}
-                      </h3>
-                      <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, maxWidth: "34em", margin: "0 0 1.75rem", textWrap: "pretty" }}>
-                        {usp.b}
-                      </p>
-                      <div style={{ maxWidth: "36rem" }}>{usp.media}</div>
-                    </Reveal>
+                  </nav>
+
+                  {/* Chapter cards */}
+                  <div style={{ order: railLeft ? 1 : 0, display: "flex", flexDirection: "column", gap: "clamp(4rem, 8vw, 6.5rem)" }}>
+                    {group.items.map((item) => {
+                      const flatIdx = USP_FLAT.findIndex((f) => f.t === item.t);
+                      return (
+                        <div key={item.t} ref={(el) => { uspRefs.current[flatIdx] = el; }} data-usp-idx={flatIdx} style={{ scrollMarginTop: "6rem" }}>
+                          <Reveal>
+                            <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.625rem" }}>
+                              {String(flatIdx + 1).padStart(2, "0")} · {group.label}
+                            </p>
+                            <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h3, lineHeight: 1.15, color: T.color.charcoal, margin: "0 0 0.875rem", textWrap: "balance" }}>
+                              {item.t}
+                            </h3>
+                            <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, lineHeight: 1.6, color: L.inkBody, maxWidth: "34em", margin: "0 0 1.75rem", textWrap: "pretty" }}>
+                              {item.b}
+                            </p>
+                            <div style={{ maxWidth: "36rem" }}>{item.media}</div>
+                          </Reveal>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        {/* ── 5. How it works ── */}
-        <section id="how-it-works" aria-labelledby="lv2-how-h" style={{ background: L.surface, padding: `${L.space.sectionY} 0` }}>
+        {/* ── 5. How it works (tight band) ── */}
+        <section id="how-it-works" aria-labelledby="lv2-how-h" style={{ background: L.surface, padding: "clamp(3rem, 5vw, 4rem) 0" }}>
           <div style={wide}>
             <Reveal>
-              <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+              <div style={{ textAlign: "center", marginBottom: "2rem" }}>
                 <Eyebrow>{v2.how.eyebrow}</Eyebrow>
                 <H2 id="lv2-how-h">{v2.how.h2}</H2>
                 {!isIosApp && (
@@ -1178,10 +1154,7 @@ export default function LandingV2Client({
               </div>
             </Reveal>
             <Reveal>
-              <div style={{ textAlign: "center", marginTop: "3rem" }}>
-                <p style={{ fontFamily: FONT_BODY, fontSize: L.type.body, color: L.inkBody, margin: "0 0 1.25rem", textWrap: "pretty" }}>
-                  {midCta}
-                </p>
+              <div style={{ textAlign: "center", marginTop: "2rem" }}>
                 <CtaLink href="/register" label={v2.hero.cta} />
               </div>
             </Reveal>
