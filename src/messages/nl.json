@@ -5228,15 +5228,12 @@
     "why": {
       "eyebrow": "De oudste manier om te onthouden",
       "h2": "Het paleis in je hoofd, eindelijk een plek waar je binnen kunt lopen",
-      "body": "Al 2.500 jaar onthouden mensen door wat telt in de kamers van een denkbeeldig huis te plaatsen. Je doet het je hele leven al. Hier wordt dat huis echt, en elke foto aan de muur draagt de stem en het verhaal erachter mee.",
-      "aria": "Een vrouw in gouden licht die een ingelijste foto aanraakt aan de warme muur van haar geheugenpaleis. Al 2.500 jaar onthouden mensen door wat telt in kamers te plaatsen. Iedereen draagt al zo'n paleis, en dat van jou verdient het om bewaard te worden. Hier wordt een foto niet alleen bewaard, de stem en het verhaal erachter blijven leven.",
-      "b1lead": "Een truc zo oud als het geheugen zelf",
-      "b1sub": "Al 2.500 jaar onthouden we door te plaatsen wat telt in kamers die we voor ons zien. Je weet allang hoe.",
-      "b2lead": "Iedereen heeft er al een",
-      "b2sub": "Rijk of eenvoudig, dichtbij of ver weg, elk leven heeft stilletjes een paleis aan herinneringen verzameld. Het jouwe is het waard om te bewaren.",
-      "b3lead": "Dan breng je het tot leven",
-      "b3sub": "Een map bewaart de foto. Hier voeg je de stem toe, de dag, het verhaal erachter, zodat je het kunt aanraken, niet alleen zien.",
-      "payoff": "Je scrolt geen leven. Je loopt ernaartoe en raakt het aan."
+      "proposition": "Al 2.500 jaar onthouden mensen door te plaatsen wat telt in de kamers van een huis dat ze voor zich kunnen zien, en jij doet het je hele leven al, zonder er een naam voor te kennen. Rijk of eenvoudig, dichtbij of ver weg, elk leven heeft stilletjes zo'n paleis verzameld, en het jouwe is het bewaren waard. Hier wordt dat huis echt, een plek waar je binnen kunt lopen, waar elke foto aan de muur de stem, de dag en het verhaal erachter bewaart, zodat je het kunt aanraken, niet alleen zien.",
+      "iconLoci": "In kamers geplaatst",
+      "iconEveryone": "Iedereen heeft er een",
+      "iconEnrich": "De stem blijft",
+      "payoff": "Je scrolt geen leven. Je loopt ernaartoe en raakt het aan.",
+      "aria": "Een vrouw in warm gouden licht die naar de ingelijste foto's aan de muur van haar geheugenpaleis loopt, op het punt om ze aan te raken."
     },
     "compare": {
       "h2": "Houd je cloudfoto's. Dat is de schijf. Dit is het thuis.",

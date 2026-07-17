@@ -948,7 +948,7 @@ export default function LandingV2Client({
         <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
 
         {/* ── 2. Why a palace — moving image banner + clear ink-on-cream text ── */}
-        <WhyPalaceVisual w={{ ...(v2.why as unknown as Record<string, string>), pause: v2.a11y.pause, play: v2.a11y.play }} />
+        <WhyPalaceVisual w={v2.why as unknown as Record<string, string>} />
 
         {/* ── 3. Showcase: the guided walk — full-bleed tour with timed captions ── */}
         <section
@@ -1214,10 +1214,11 @@ export default function LandingV2Client({
                       >
                         <span
                           style={{
-                            fontFamily: "var(--font-note, cursive)",
-                            fontWeight: 600,
+                            fontFamily: "var(--font-display, Georgia, serif)",
+                            fontStyle: "italic",
+                            fontWeight: 500,
                             fontSize: "1.375rem",
-                            lineHeight: 1.1,
+                            lineHeight: 1.15,
                             color: L.accentDark,
                             whiteSpace: "nowrap",
                           }}

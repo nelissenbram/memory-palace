@@ -5226,15 +5226,12 @@
     "why": {
       "eyebrow": "La plus ancienne façon de se souvenir",
       "h2": "Le palais dans votre esprit, enfin un lieu où vous pouvez entrer",
-      "body": "Depuis 2 500 ans, les gens se souviennent en plaçant ce qui compte dans les pièces d'une maison imaginée. Vous le faites depuis toujours. Ici cette maison devient réelle, et chaque photo au mur porte la voix et l'histoire qui se cachent derrière.",
-      "aria": "Une femme dans une lumière dorée qui tend la main vers une photo encadrée sur le mur chaleureux de son palais de mémoire. Depuis 2 500 ans, les gens se souviennent en plaçant l'essentiel dans des pièces. Chacun porte déjà un tel palais, et le vôtre mérite d'être gardé. Ici une photo n'est pas seulement conservée, la voix et l'histoire derrière elle restent vivantes.",
-      "b1lead": "Un art aussi vieux que la mémoire elle-même",
-      "b1sub": "Depuis 2 500 ans, nous nous souvenons en plaçant ce qui compte dans des pièces que nous imaginons. Vous savez déjà comment.",
-      "b2lead": "Chacun en a déjà un",
-      "b2sub": "Riche ou modeste, proche ou lointaine, chaque vie a rassemblé en silence un palais de souvenirs. Le vôtre mérite d'être gardé.",
-      "b3lead": "Puis vous lui donnez vie",
-      "b3sub": "Un dossier garde la photo. Ici vous ajoutez la voix, le jour, l'histoire derrière elle, pour pouvoir la toucher, pas seulement la voir.",
-      "payoff": "On ne fait pas défiler une vie. On s'approche et on la touche."
+      "proposition": "Depuis 2 500 ans, les gens se souviennent en plaçant ce qui compte dans les pièces d'une maison qu'ils peuvent imaginer, et vous le faites depuis toujours sans en connaître le nom. Modeste ou riche, proche ou lointaine, chaque vie a rassemblé en silence un palais comme celui-ci, et le vôtre mérite d'être gardé. Ici cette maison devient réelle, un lieu où vous pouvez entrer, où chaque photo au mur garde la voix, le jour et l'histoire qui se cachent derrière, pour qu'on puisse la toucher, et pas seulement la voir.",
+      "iconLoci": "Placé dans des pièces",
+      "iconEveryone": "Chacun en a un",
+      "iconEnrich": "La voix demeure",
+      "payoff": "On ne fait pas défiler une vie. On s'en approche et on la touche.",
+      "aria": "Une femme, dans une chaude lumière dorée, s'avance vers les photographies encadrées au mur de son palais de mémoire, sur le point de les toucher."
     },
     "compare": {
       "h2": "Gardez vos photos dans le cloud. Ça, c'est le disque. Ici, c'est le foyer.",

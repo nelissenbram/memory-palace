@@ -5225,16 +5225,13 @@
     },
     "why": {
       "eyebrow": "La forma más antigua de recordar",
-      "h2": "El palacio de tu mente, por fin un lugar en el que puedes entrar",
-      "body": "Durante 2.500 años, las personas han recordado colocando lo que importa en las habitaciones de una casa imaginada. Lo has hecho toda tu vida. Aquí esa casa se vuelve real, y cada foto en la pared lleva la voz y la historia que hay detrás.",
-      "aria": "Una mujer bajo una luz dorada que se estira para tocar una foto enmarcada en la cálida pared de su palacio de la memoria. Durante 2.500 años las personas han recordado colocando lo que importa en habitaciones. Todos llevan ya un palacio así, y el tuyo merece conservarse. Aquí una foto no solo se guarda, la voz y la historia que hay detrás siguen vivas.",
-      "b1lead": "Un arte tan antiguo como la memoria misma",
-      "b1sub": "Durante 2.500 años hemos recordado colocando lo que importa en habitaciones que podemos imaginar. Ya sabes cómo.",
-      "b2lead": "Todo el mundo ya tiene uno",
-      "b2sub": "Rico o humilde, cerca o lejos, cada vida ha reunido en silencio un palacio de recuerdos. El tuyo merece conservarse.",
-      "b3lead": "Y entonces le das vida",
-      "b3sub": "Una carpeta guarda la foto. Aquí le añades la voz, el día, la historia que hay detrás, para poder tocarla, no solo verla.",
-      "payoff": "No se recorre una vida. Te acercas y la tocas."
+      "h2": "El palacio en tu mente, por fin un lugar en el que puedes entrar",
+      "proposition": "Desde hace 2.500 años, las personas recuerdan colocando lo que importa en las habitaciones de una casa que pueden imaginar, y tú llevas haciéndolo toda la vida sin saber su nombre. Humilde o grande, cercana o lejana, cada vida ha reunido en silencio un palacio como este, y el tuyo merece conservarse. Aquí esa casa se hace real, un lugar en el que puedes entrar, donde cada foto de la pared guarda la voz, el día y la historia que hay detrás, para que se pueda tocar, no solo ver.",
+      "iconLoci": "Puesto en habitaciones",
+      "iconEveryone": "Todos tienen uno",
+      "iconEnrich": "La voz permanece",
+      "payoff": "No se recorre una vida deslizando. Te acercas y la tocas.",
+      "aria": "Una mujer bajo una cálida luz dorada se acerca a las fotografías enmarcadas en la pared de su palacio de la memoria, a punto de tocarlas."
     },
     "compare": {
       "h2": "Quédate con tus fotos en la nube. Eso es el disco. Esto es el hogar.",

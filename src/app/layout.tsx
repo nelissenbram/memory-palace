@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
-import { Caveat, Cormorant_Garamond, Manrope } from "next/font/google";
+import { Fraunces, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import PWAInstallBanner from "@/components/PWAInstallBanner";
@@ -12,26 +12,25 @@ import { DaylightProvider } from "@/components/providers/DaylightProvider";
 import WebVitals from "@/components/WebVitals";
 import PostHogProvider from "@/components/PostHogProvider";
 
-const cormorant = Cormorant_Garamond({
+// Display serif — warm humanist old-style face with a taller x-height and
+// sturdier strokes than Cormorant, so headlines stay solid at sub-hero sizes
+// and for 60+ eyes. Optical sizing is tuned in CSS (font-optical-sizing: auto),
+// not here — next/font/google does not accept the opsz axis in the import.
+const fraunces = Fraunces({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-display",
   display: "swap",
 });
 
-const manrope = Manrope({
+// Body / UI sans — the most legibility-proven humanist sans on Google Fonts:
+// tall x-height, open apertures, distinct I/l/1. Also carries eyebrows
+// (uppercase + tracking) and the margin-note role Caveat used to fill.
+const sourceSans = Source_Sans_3({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-body",
-  display: "swap",
-});
-
-/* Handwritten annotation font — landing "margin notes" only. */
-const caveat = Caveat({
-  subsets: ["latin"],
-  weight: ["500", "600"],
-  variable: "--font-note",
   display: "swap",
 });
 
@@ -109,7 +108,7 @@ export default async function RootLayout({
   const locale = cookieStore.get("mp_locale")?.value || "en";
 
   return (
-    <html lang={locale} className={`${cormorant.variable} ${manrope.variable} ${caveat.variable}`}>
+    <html lang={locale} className={`${fraunces.variable} ${sourceSans.variable}`}>
       <head>
         {/* Boot diagnostics removed — was sending device info without consent (Apple Guideline 5.1.2i) */}
         {/* Native WKWebView: tear down any service worker + caches left by an OLDER

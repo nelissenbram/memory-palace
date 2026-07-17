@@ -25,8 +25,8 @@ export const T = {
     inkSoft: "#403B36",
   },
   font: {
-    display: "'Cormorant Garamond', Georgia, serif",
-    body: "'Manrope', -apple-system, BlinkMacSystemFont, sans-serif",
+    display: "'Fraunces', Georgia, serif",
+    body: "'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif",
   },
   era: {
     roman: {

@@ -5224,17 +5224,14 @@
       "midCta_ios": "Ihr Palast ist in wenigen Minuten bereit. Keine Technikkenntnisse nötig."
     },
     "why": {
-      "eyebrow": "Die älteste Art zu erinnern",
+      "eyebrow": "Die älteste Art, sich zu erinnern",
       "h2": "Der Palast in Ihrem Kopf, endlich ein Ort, den Sie betreten können",
-      "body": "Seit 2.500 Jahren erinnern sich Menschen, indem sie das Wichtige in die Zimmer eines vorgestellten Hauses stellen. Sie tun es Ihr ganzes Leben lang. Hier wird dieses Haus wirklich, und jedes Foto an der Wand trägt die Stimme und die Geschichte dahinter in sich.",
-      "aria": "Eine Frau im goldenen Licht, die ein gerahmtes Foto an der warmen Wand ihres Gedächtnispalastes berührt. Seit 2.500 Jahren erinnern sich Menschen, indem sie das Wichtige in Räume stellen. Jeder trägt bereits einen solchen Palast, und Ihrer verdient es, bewahrt zu werden. Hier wird ein Foto nicht nur aufbewahrt, die Stimme und die Geschichte dahinter bleiben lebendig.",
-      "b1lead": "Ein Kunstgriff so alt wie das Erinnern selbst",
-      "b1sub": "Seit 2.500 Jahren erinnern wir uns, indem wir das Wichtige in Räume legen, die wir uns vorstellen. Sie wissen längst, wie.",
-      "b2lead": "Jeder hat schon einen",
-      "b2sub": "Ob reich oder einfach, nah oder fern, jedes Leben hat still einen Palast an Erinnerungen gesammelt. Ihrer ist es wert, bewahrt zu werden.",
-      "b3lead": "Dann erwecken Sie ihn zum Leben",
-      "b3sub": "Ein Ordner bewahrt das Bild. Hier fügen Sie die Stimme hinzu, den Tag, die Geschichte dahinter, damit man es berühren kann, nicht nur ansehen.",
-      "payoff": "Man scrollt kein Leben. Man tritt heran und berührt es."
+      "proposition": "Seit 2.500 Jahren erinnern sich Menschen, indem sie das Wichtige in die Räume eines Hauses legen, das sie sich vorstellen können, und Sie tun es Ihr ganzes Leben lang, ohne einen Namen dafür zu kennen. Ob reich oder bescheiden, nah oder fern, jedes Leben hat still einen solchen Palast gesammelt, und Ihrer ist es wert, bewahrt zu werden. Hier wird dieses Haus wirklich, ein Ort, den Sie betreten können, wo jedes Foto an der Wand die Stimme, den Tag und die Geschichte dahinter bewahrt, sodass es berührt werden kann, nicht nur gesehen.",
+      "iconLoci": "In Räume gelegt",
+      "iconEveryone": "Jeder hat einen",
+      "iconEnrich": "Die Stimme bleibt",
+      "payoff": "Man scrollt kein Leben. Man geht hin und berührt es.",
+      "aria": "Eine Frau in warmem goldenem Licht geht auf die gerahmten Fotos an der Wand ihres Gedächtnispalastes zu und ist im Begriff, sie zu berühren."
     },
     "compare": {
       "h2": "Behalten Sie Ihre Cloud-Fotos. Das ist die Festplatte. Dies ist das Zuhause.",

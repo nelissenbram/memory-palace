@@ -25,7 +25,9 @@ const GOLD = "#D4AF37";
 const MUTED_DARK = "#B5ADA3";
 const FONT_DISPLAY = "var(--font-display, Georgia, serif)";
 const FONT_BODY = "var(--font-body, sans-serif)";
-const FONT_NOTE = "var(--font-note, cursive)";
+// Warm "margin note" accent — Fraunces italic now that Caveat is retired.
+const FONT_NOTE = "var(--font-display, Georgia, serif)";
+const NOTE_ITALIC = "italic" as const;
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 /* Scene boundaries as fractions of the trimmed tour (walkthrough-tour.mp4,
@@ -216,7 +218,7 @@ export default function TourPlayer({
             }}
           >
             {current.eyebrow ? (
-              <span style={{ display: "block", fontFamily: FONT_NOTE, fontWeight: 600, fontSize: "1.15rem", letterSpacing: "0.06em", color: GOLD, marginBottom: "0.375rem" }}>
+              <span style={{ display: "block", fontFamily: FONT_NOTE, fontStyle: NOTE_ITALIC, fontWeight: 500, fontSize: "1.15rem", letterSpacing: "0.02em", color: GOLD, marginBottom: "0.375rem" }}>
                 {current.eyebrow}
               </span>
             ) : null}
@@ -292,7 +294,7 @@ export default function TourPlayer({
               <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true" style={{ marginLeft: "0.25rem" }}><path d="M6 3l14 9-14 9V3z" fill={CREAM} /></svg>
             </span>
             <span style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: "1.125rem", color: CREAM }}>▶ {doorwayLabel}</span>
-            <span style={{ fontFamily: FONT_NOTE, fontWeight: 600, fontSize: "1.25rem", color: GOLD }}>{tourNote}</span>
+            <span style={{ fontFamily: FONT_NOTE, fontStyle: NOTE_ITALIC, fontWeight: 500, fontSize: "1.25rem", color: GOLD }}>{tourNote}</span>
           </button>
         </div>
       ) : null}
@@ -302,7 +304,7 @@ export default function TourPlayer({
         <div style={{ position: "relative", zIndex: 2, maxWidth: "44rem", margin: "0 auto", padding: "clamp(3rem, 8vw, 5rem) 1.5rem", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           {scenes.map((s) => (
             <div key={s.key} style={{ textAlign: "center" }}>
-              {s.eyebrow ? <span style={{ display: "block", fontFamily: FONT_NOTE, fontWeight: 600, fontSize: "1.05rem", color: GOLD, marginBottom: "0.25rem" }}>{s.eyebrow}</span> : null}
+              {s.eyebrow ? <span style={{ display: "block", fontFamily: FONT_NOTE, fontStyle: NOTE_ITALIC, fontWeight: 500, fontSize: "1.05rem", color: GOLD, marginBottom: "0.25rem" }}>{s.eyebrow}</span> : null}
               <span style={{ display: "block", fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: "clamp(1.375rem, 3vw, 2rem)", lineHeight: 1.2, color: CREAM }}>{s.line}</span>
             </div>
           ))}
