@@ -681,7 +681,14 @@ export default function MemoryPalace(){
   // Mobile/native GPUs keep the mount/unmount lifecycle (a 2nd persistent WebGL
   // context risks the past iPad WKWebView memory ceiling).
   const [persistHall, setPersistHall] = useState(false);
-  useEffect(() => { setPersistHall(!isMobileGPU()); }, []);
+  useEffect(() => {
+    // Kill-switch: `localStorage.mp_no_hall_persist = "1"` + reload reverts to the
+    // proven mount/unmount hall path without a redeploy, if the persistent hall
+    // ever misbehaves on a given desktop.
+    let disabled = false;
+    try { disabled = localStorage.getItem("mp_no_hall_persist") === "1"; } catch {}
+    setPersistHall(!isMobileGPU() && !disabled);
+  }, []);
   const [hallHost, setHallHost] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     if (typeof document === "undefined" || !persistHall) return;
