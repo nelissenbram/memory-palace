@@ -5224,11 +5224,19 @@
       "midCta_ios": "Ihr Palast ist in wenigen Minuten bereit. Keine Technikkenntnisse nötig."
     },
     "why": {
-      "eyebrow": "Warum ein Palast – und kein Ordner",
-      "h2": "Ein Leben scrollt man nicht. Man tritt heran und berührt es.",
-      "body": "Ein Ordner vergräbt Ihre Fotos. Ein Feed hat sie bis zum Morgen vergessen. Hier hat jede Erinnerung ein Zimmer, eine Wand, einen Ort, den Sie wieder betreten können — und Sie werden zu dem Menschen, zu dem alle heimkehren.",
-      "caption": "der Ort, an den alle heimkehren",
-      "aria": "Eine Frau im goldenen Licht, die ein gerahmtes Foto an der warmen Wand ihres Gedächtnispalastes berührt — ein Leben, an das man herantreten und das man berühren kann, kein Ordner zum Scrollen."
+      "eyebrow": "Die älteste Art, sich zu erinnern",
+      "h2": "Der Palast in Ihrem Kopf, endlich ein Ort, den Sie betreten können.",
+      "body": "Seit 2.500 Jahren erinnern sich Menschen, indem sie das Wichtige in die Zimmer eines vorgestellten Hauses stellen. Sie tun es Ihr ganzes Leben lang. Hier wird dieses Haus wirklich, und jedes Foto an der Wand trägt die Stimme und die Geschichte dahinter in sich.",
+      "aria": "Eine Frau im goldenen Licht, die ein gerahmtes Foto an der warmen Wand ihres Gedächtnispalastes berührt. Seit 2.500 Jahren erinnern sich Menschen, indem sie das Wichtige in Räume stellen. Jeder trägt bereits einen solchen Palast, und Ihrer verdient es, bewahrt zu werden. Hier wird ein Foto nicht nur aufbewahrt, die Stimme und die Geschichte dahinter bleiben lebendig.",
+      "b1lead": "Eine Kunst, so alt wie das Erinnern selbst.",
+      "b1sub": "Seit 2.500 Jahren erinnern wir uns, indem wir Dinge in Räume stellen, die wir uns vorstellen. Sie wissen längst, wie.",
+      "b1label": "2.500 Jahre alt",
+      "b2lead": "Jeder hat bereits einen.",
+      "b2sub": "Reich oder bescheiden, nah oder fern, jedes Leben hat still einen Palast voller Erinnerungen gesammelt. Ihres verdient es, bewahrt zu werden.",
+      "b2caption": "Ihr Leben, wert bewahrt zu werden",
+      "b3lead": "Dann erwecken Sie es zum Leben.",
+      "b3sub": "Ein Ordner bewahrt das Bild. Hier fügen Sie die Stimme hinzu, den Tag, die kleine Geschichte dahinter, damit man es berühren kann, nicht nur ansehen.",
+      "payoff": "Ein Leben scrollt man nicht. Man tritt heran und berührt es."
     },
     "compare": {
       "h2": "Behalten Sie Ihre Cloud-Fotos. Das ist die Festplatte. Dies ist das Zuhause.",

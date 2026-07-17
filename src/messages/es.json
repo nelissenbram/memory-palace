@@ -5224,11 +5224,19 @@
       "midCta_ios": "Tu palacio está listo en minutos. Sin conocimientos técnicos."
     },
     "why": {
-      "eyebrow": "Por qué un palacio, y no una carpeta",
-      "h2": "Una vida no se desliza. Te acercas y la tocas.",
-      "body": "Una carpeta entierra tus fotos. Un feed las olvida al amanecer. Aquí cada recuerdo tiene una habitación, una pared, un lugar al que puedes volver a entrar — y te conviertes en quien todos regresan a ver.",
-      "caption": "el lugar al que todos vuelven",
-      "aria": "Una mujer bajo una luz dorada que se estira para tocar una foto enmarcada en la cálida pared de su palacio de la memoria — una vida a la que puedes acercarte y tocar, no una carpeta que deslizas."
+      "eyebrow": "La forma más antigua de recordar",
+      "h2": "El palacio de tu mente, por fin un lugar en el que puedes entrar.",
+      "body": "Durante 2.500 años, las personas han recordado colocando lo que importa en las habitaciones de una casa imaginada. Lo has hecho toda tu vida. Aquí esa casa se vuelve real, y cada foto en la pared lleva la voz y la historia que hay detrás.",
+      "aria": "Una mujer bajo una luz dorada que se estira para tocar una foto enmarcada en la cálida pared de su palacio de la memoria. Durante 2.500 años las personas han recordado colocando lo que importa en habitaciones. Todos llevan ya un palacio así, y el tuyo merece conservarse. Aquí una foto no solo se guarda, la voz y la historia que hay detrás siguen vivas.",
+      "b1lead": "Un arte tan antiguo como la memoria misma.",
+      "b1sub": "Durante 2.500 años hemos recordado colocando cosas en habitaciones que podemos imaginar. Ya sabes cómo.",
+      "b1label": "2.500 años de antigüedad",
+      "b2lead": "Todos ya tienen uno.",
+      "b2sub": "Rica o humilde, cercana o lejana, cada vida ha reunido en silencio un palacio de recuerdos. La tuya merece conservarse.",
+      "b2caption": "tu vida, digna de guardar",
+      "b3lead": "Y luego lo haces cobrar vida.",
+      "b3sub": "Una carpeta guarda la foto. Aquí añades la voz, el día, la pequeña historia detrás, para poder tocarla, no solo verla.",
+      "payoff": "Una vida no se desliza. Te acercas y la tocas."
     },
     "compare": {
       "h2": "Quédate con tus fotos en la nube. Eso es el disco. Esto es el hogar.",

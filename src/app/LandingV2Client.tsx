@@ -946,14 +946,8 @@ export default function LandingV2Client({
         {/* Sentinel: nav turns solid when this leaves the viewport */}
         <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
 
-        {/* ── 2. Why a palace — one full-bleed render carries the argument ── */}
-        <section aria-label={v2.why.h2} style={{ background: L.mid, padding: `${L.space.sectionY} 0` }}>
-          <div style={{ ...wide }}>
-            <Reveal>
-              <WhyPalaceVisual w={v2.why as unknown as Record<string, string>} />
-            </Reveal>
-          </div>
-        </section>
+        {/* ── 2. Why a palace — pinned 3-beat scroll (loci / dignity / enrich) ── */}
+        <WhyPalaceVisual w={v2.why as unknown as Record<string, string>} />
 
         {/* ── 3. Showcase: the guided walk — full-bleed tour with timed captions ── */}
         <section

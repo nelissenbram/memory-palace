@@ -5224,11 +5224,19 @@
       "midCta_ios": "Votre palais est prêt en quelques minutes. Sans compétences techniques."
     },
     "why": {
-      "eyebrow": "Pourquoi un palais, et non un dossier",
-      "h2": "Une vie ne se fait pas défiler. On s'en approche et on la touche.",
-      "body": "Un dossier enterre vos photos. Un fil les oublie au matin. Ici chaque souvenir a une pièce, un mur, un lieu où l'on peut revenir — et vous devenez celui vers qui chacun revient.",
-      "caption": "le lieu où chacun revient",
-      "aria": "Une femme dans une lumière dorée qui tend la main vers une photo encadrée sur le mur chaleureux de son palais de mémoire — une vie dont on peut s'approcher et que l'on peut toucher, non un dossier que l'on fait défiler."
+      "eyebrow": "La plus ancienne façon de se souvenir",
+      "h2": "Le palais de votre esprit, enfin un lieu où l'on peut entrer.",
+      "body": "Depuis 2 500 ans, les gens se souviennent en plaçant ce qui compte dans les pièces d'une maison imaginée. Vous le faites depuis toujours. Ici cette maison devient réelle, et chaque photo au mur porte la voix et l'histoire qui se cachent derrière.",
+      "aria": "Une femme dans une lumière dorée qui tend la main vers une photo encadrée sur le mur chaleureux de son palais de mémoire. Depuis 2 500 ans, les gens se souviennent en plaçant l'essentiel dans des pièces. Chacun porte déjà un tel palais, et le vôtre mérite d'être gardé. Ici une photo n'est pas seulement conservée, la voix et l'histoire derrière elle restent vivantes.",
+      "b1lead": "Un art aussi ancien que la mémoire elle-même.",
+      "b1sub": "Depuis 2 500 ans, nous nous souvenons en plaçant les choses dans des pièces que nous imaginons. Vous savez déjà comment.",
+      "b1label": "2 500 ans d'histoire",
+      "b2lead": "Chacun en a déjà un.",
+      "b2sub": "Riche ou modeste, proche ou lointaine, chaque vie a rassemblé en silence un palais de souvenirs. La vôtre mérite d'être gardée.",
+      "b2caption": "votre vie, à garder",
+      "b3lead": "Puis vous lui donnez vie.",
+      "b3sub": "Un dossier garde la photo. Ici vous ajoutez la voix, le jour, la petite histoire derrière, pour qu'on puisse la toucher, non seulement la voir.",
+      "payoff": "Une vie ne se fait pas défiler. On s'en approche et on la touche."
     },
     "compare": {
       "h2": "Gardez vos photos dans le cloud. Ça, c'est le disque. Ici, c'est le foyer.",
