@@ -946,8 +946,8 @@ export default function LandingV2Client({
         {/* Sentinel: nav turns solid when this leaves the viewport */}
         <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
 
-        {/* ── 2. Why a palace — pinned 3-beat scroll (loci / dignity / enrich) ── */}
-        <WhyPalaceVisual w={v2.why as unknown as Record<string, string>} />
+        {/* ── 2. Why a palace — moving image banner + clear ink-on-cream text ── */}
+        <WhyPalaceVisual w={{ ...(v2.why as unknown as Record<string, string>), pause: v2.a11y.pause, play: v2.a11y.play }} />
 
         {/* ── 3. Showcase: the guided walk — full-bleed tour with timed captions ── */}
         <section
