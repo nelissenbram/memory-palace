@@ -106,6 +106,7 @@ import TuscanCard from "@/components/ui/TuscanCard";
 import TuscanStyles from "@/components/ui/TuscanStyles";
 import { getWingsSharedWithMe, getSharedWingData, getSharedRoomMemories } from "@/lib/auth/sharing-actions";
 import type { SharedWingDoor } from "@/components/3d/EntranceHallScene";
+import { isMobileGPU } from "@/lib/3d/mobilePerf";
 
 // ── Delayed spinner fallback — avoids flash for fast lazy loads ──
 function DelayedFallback() {
@@ -673,6 +674,33 @@ export default function MemoryPalace(){
     palaceHost.dataset.paused = show ? "0" : "1";
   }, [palaceHost, navMode, view, showNotificationsPage, showSettings]);
 
+  // ── Persistent Entrance Hall (desktop only) ──
+  // The hall is the most-traversed hub; on capable GPUs we keep it mounted-but-
+  // paused in its own body-level portal (mirror of the persistent ExteriorScene)
+  // so entrance↔corridor/room/exterior transitions never rebuild its scene graph.
+  // Mobile/native GPUs keep the mount/unmount lifecycle (a 2nd persistent WebGL
+  // context risks the past iPad WKWebView memory ceiling).
+  const [persistHall, setPersistHall] = useState(false);
+  useEffect(() => { setPersistHall(!isMobileGPU()); }, []);
+  const [hallHost, setHallHost] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (typeof document === "undefined" || !persistHall) return;
+    const el = document.createElement("div");
+    el.setAttribute("data-hall-persistent", "");
+    el.style.cssText = "position:fixed;inset:0;z-index:5;visibility:hidden;pointer-events:none;";
+    el.dataset.paused = "1";
+    document.body.appendChild(el);
+    setHallHost(el);
+    return () => { try { document.body.removeChild(el); } catch {} };
+  }, [persistHall]);
+  useLayoutEffect(() => {
+    if (!hallHost) return;
+    const show = navMode === "3d" && view === "entrance" && !showNotificationsPage && !showSettings;
+    hallHost.style.visibility = show ? "visible" : "hidden";
+    hallHost.style.pointerEvents = show ? "auto" : "none";
+    hallHost.dataset.paused = show ? "0" : "1";
+  }, [hallHost, navMode, view, showNotificationsPage, showSettings]);
+
   // ── Orientation key — bump on rotate to force NavigationBar remount ──
   const [orientKey, setOrientKey] = useState(0);
   useEffect(() => {
@@ -995,9 +1023,19 @@ export default function MemoryPalace(){
       )
     : null;
 
+  // ── Entrance Hall node — mounted persistently (desktop) or inline (mobile) ──
+  const hallSceneNode = (
+    <Suspense fallback={null}><EntranceHallScene key={dlKey} onReady={handleSceneReady} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>
+  );
+  // Desktop: keep it alive in its own portal; mobile falls back to inline mount.
+  const warmHallScene = (persistHall && hallHost)
+    ? createPortal(hallSceneNode, hallHost)
+    : null;
+
   if (showSettings && !walkthroughActive) {
     return (<>
       {warmPalaceScene}
+      {warmHallScene}
       <NavigationBar currentMode={navMode} {...earlyNavBarProps} activeTab="me" />
       <SettingsInline />
     </>);
@@ -1006,6 +1044,7 @@ export default function MemoryPalace(){
   if (showNotificationsPage && !walkthroughActive) {
     return (<>
       {warmPalaceScene}
+      {warmHallScene}
       <NavigationBar currentMode={navMode} {...earlyNavBarProps} activeTab="notifications" />
       <NotificationsPage />
     </>);
@@ -1067,6 +1106,7 @@ export default function MemoryPalace(){
   if (navMode === "atrium" && !walkthroughActive) {
     return (<>
       {warmPalaceScene}
+      {warmHallScene}
       <NavigationBar key={"nav-atrium-"+orientKey} currentMode="atrium" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><HomeView /></Suspense>
@@ -1079,6 +1119,7 @@ export default function MemoryPalace(){
   if (navMode === "library" && !walkthroughActive) {
     return (<>
       {warmPalaceScene}
+      {warmHallScene}
       <NavigationBar key={"nav-library-"+orientKey} currentMode="library" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><LibraryView /></Suspense>
@@ -1094,7 +1135,8 @@ export default function MemoryPalace(){
       <div role="application" aria-label={tPalace("sceneAriaLabel")} className="no-overscroll" style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease",touchAction:"none"}}>
         {/* ExteriorScene mounted persistently via body-level portal (see warmPalaceScene) */}
         {warmPalaceScene}
-        {view==="entrance"&&<Suspense fallback={null}><EntranceHallScene key={dlKey} onReady={handleSceneReady} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>}
+        {warmHallScene}
+        {!persistHall && view==="entrance" && hallSceneNode}
         {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} onReady={handleSceneReady} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+(styleEra||"roman")} wingId={activeWing} onReady={handleSceneReady} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
         {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} onReady={handleSceneReady} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} onMemoryUpdate={handleUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/></Suspense>}
       </div>

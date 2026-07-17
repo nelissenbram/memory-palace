@@ -220,6 +220,23 @@ function EntranceHallScene({
     if (!el) return;
     const { w, h } = measure(el);
 
+    // ── PERSISTENT-PORTAL MODE (desktop only) ──
+    // MemoryPalace renders the hall into a body-level host carrying a data-paused
+    // flag (mirror of the persistent ExteriorScene) ONLY on non-mobile GPUs. When
+    // present, the hall stays mounted across entrance↔corridor/room/exterior
+    // transitions and merely pauses its frame loop while hidden, so re-entering
+    // never rebuilds the scene graph. It then owns a DEDICATED renderer (like the
+    // exterior) so the shared pool renderer stays free for corridor/interior.
+    const _pausedHost = el.closest<HTMLElement>("[data-paused]");
+    const _persistent = !!_pausedHost;
+    const _isHidden = () => _persistent && _pausedHost!.dataset.paused === "1";
+    let _wasHidden = false;
+    // Ambient-audio pause/resume — assigned once the audio element exists below;
+    // driven from the hidden-edge in animate() (persistence means unmount no
+    // longer stops the loop on every transition).
+    let ambientPause: () => void = () => {};
+    let ambientResume: () => void = () => {};
+
     const dlPreset = getLightingPreset();
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(dlPreset.fogColor);
@@ -228,7 +245,23 @@ function EntranceHallScene({
     const Q = getQuality();
     let alive = true;
     const camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
-    const ren = borrowRenderer(w, h);
+    // Persistent hall owns its renderer (mirrors ExteriorScene); transient
+    // corridor/interior keep borrowing the shared pool untouched.
+    let _ownRenderer = false;
+    let ren: THREE.WebGLRenderer;
+    if (_persistent) {
+      try {
+        ren = new THREE.WebGLRenderer({ antialias: Q.antialias, powerPreference: "high-performance" });
+      } catch {
+        ren = new THREE.WebGLRenderer({ antialias: false, powerPreference: "default" });
+      }
+      ren.setSize(w, h);
+      ren.setPixelRatio(Math.min(window.devicePixelRatio, Q.maxPixelRatio));
+      ren.outputColorSpace = THREE.SRGBColorSpace;
+      _ownRenderer = true;
+    } else {
+      ren = borrowRenderer(w, h);
+    }
     ren.shadowMap.enabled = Q.shadowsEnabled;
     if (Q.shadowsEnabled) {
       ren.shadowMap.type = Q.shadowMapSize >= 1024 ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap;
@@ -1907,6 +1940,24 @@ function EntranceHallScene({
 
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate);
+      // Persistent-portal pause: after the warm-up frame, skip the entire pass
+      // while hidden. The first frame still runs (readyFired false) so onReady
+      // fires and the hall is ready to show instantly on first entrance.
+      if (readyFiredRef.current && _isHidden()) {
+        if (!_wasHidden) { _wasHidden = true; ambientPause(); }
+        return;
+      }
+      if (_wasHidden) {
+        // Re-shown: reset to the entrance spawn (the transition overlay masks the
+        // cut, exactly as a fresh mount would), resume ambient audio, and re-fire
+        // onReady so MemoryPalace dismisses its loading overlay on real readiness.
+        _wasHidden = false;
+        pos.current.set(0, 2.0, 7.3); posT.current.set(0, 2.0, 7.3);
+        lookT.current = { yaw: 0.0270, pitch: 0.0360 };
+        lookA.current = { yaw: 0.0270, pitch: 0.0360 };
+        ambientResume();
+        try { onReadyRef.current?.(); } catch {}
+      }
       const dt = Math.min(clock.getDelta(), 0.05);
       const t = clock.getElapsedTime();
       _frameCount++;
@@ -2370,6 +2421,10 @@ function EntranceHallScene({
         document.addEventListener("touchstart", tryPlay, { once: true });
       });
       audioRef.current = audio;
+      // Persistent mode: pause the loop while hidden, resume on re-show (unmount
+      // no longer fires on every transition, so cleanup alone can't stop it).
+      ambientPause = () => { try { if (audioFadeInterval) clearInterval(audioFadeInterval); audio.pause(); } catch {} };
+      ambientResume = () => { try { if (alive && audio.paused) audio.play().then(fadeIn).catch(() => {}); } catch {} };
     } catch (_) {}
 
     return () => {
@@ -2429,7 +2484,10 @@ function EntranceHallScene({
       if(envMapHDRI){releaseEnvMap(envMapHDRI);envMapHDRI=null;}
       composer.dispose();
       if (el.contains(ren.domElement)) el.removeChild(ren.domElement);
-      returnRenderer(ren);
+      // Persistent hall owns its renderer — dispose it; transient scenes return
+      // theirs to the shared pool for reuse.
+      if (_ownRenderer) { try { ren.forceContextLoss(); } catch {} ren.dispose(); }
+      else returnRenderer(ren);
       scene.environment=null;scene.background=null;scene.fog=null;
     };
   // Content fingerprint instead of raw wingsProp — the array gets a fresh
