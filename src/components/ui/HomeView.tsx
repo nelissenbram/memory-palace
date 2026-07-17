@@ -473,7 +473,7 @@ export default function HomeView() {
   // this model-approval pass; i18n + steward-brain buckets land next.
   const _hr = new Date().getHours();
   const _greetKey = _hr < 12 ? "goodMorning" : _hr < 18 ? "goodAfternoon" : "goodEvening";
-  const relayGreeting = userName ? t(_greetKey) : t("welcomeToYourPalace");
+  const relayGreeting = t(_greetKey);
   const relayDatum = totalMemories > 0
     ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")} · ${totalMemories} ${t("memories")}`
     : t("firstMemoryPrompt");
@@ -632,6 +632,8 @@ export default function HomeView() {
             suggestion={relaySuggestion}
             chips={relayChips}
             personaSlot={personaSlot}
+            onChooseJourney={() => setShowTracksPanel(true)}
+            onAddName={() => router.push("/settings/profile")}
             anchors={relayAnchors}
             lanes={relayLanes}
             you={relayYou}

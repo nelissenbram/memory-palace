@@ -42,6 +42,8 @@ interface AtriumRelayProps {
   suggestion: RelaySuggestion;
   chips: RelayChip[];
   personaSlot?: React.ReactNode;
+  onChooseJourney?: () => void;
+  onAddName?: () => void;
   anchors: RelayTile[];
   lanes: RelayLane[];
   you: RelayPill[];
@@ -59,6 +61,16 @@ const ACCENT: Record<RelayAccent, { glyph: string; medallion: string; glow: stri
   anchor: { glyph: "#9A4F2A", medallion: "rgba(212,175,55,0.16)", glow: "rgba(212,175,55,0.5)", band: "transparent", rule: "rgba(212,175,55,0.45)", tileTop: "#D4AF37", tileBg: "linear-gradient(150deg, #F7EFDF 0%, #FCF7EA 55%, #FCFAF5 100%)", border: "rgba(212,175,55,0.34)", titleColor: "#403B36", descColor: "#716A5E", datumColor: "#9A4F2A" },
   anchorLibrary: { glyph: "#9A4F2A", medallion: "rgba(212,175,55,0.16)", glow: "rgba(212,175,55,0.5)", band: "transparent", rule: "rgba(212,175,55,0.45)", tileTop: "#D4AF37", tileBg: "linear-gradient(150deg, #F5EFE2 0%, #FBF6EC 55%, #FCFAF5 100%)", border: "rgba(212,175,55,0.34)", titleColor: "#403B36", descColor: "#716A5E", datumColor: "#9A4F2A" },
 };
+
+// Light header-bar tint per zone (the "lichte bar aan top van de card", USP style).
+const HEADER_BG: Record<RelayAccent, string> = {
+  terracotta: "rgba(154,79,42,0.06)",
+  gold: "rgba(201,154,46,0.07)",
+  sage: "rgba(106,124,92,0.07)",
+  anchor: "rgba(212,175,55,0.12)",
+  anchorLibrary: "rgba(212,175,55,0.12)",
+};
+const HAIRLINE = "#E3D6BC";
 
 function Glyph({ k, size }: { k: string; size: string }) {
   const Ico = RelayIcons[k] ?? RelayIcons.palace;
@@ -117,46 +129,42 @@ function Tile({ tile, accent, index }: { tile: RelayTile; accent: RelayAccent; i
       onClick={tile.onClick}
       className="relay-tile"
       style={{
-        gridColumn: tile.anchor ? "auto" : "auto",
         position: "relative",
         display: "flex",
         flexDirection: "column",
-        alignItems: "flex-start",
-        gap: "0.6rem",
+        alignItems: "stretch",
         textAlign: "left",
-        minHeight: tile.anchor ? "9rem" : "7.25rem",
-        padding: "1.125rem",
-        paddingTop: "1.25rem",
+        minHeight: tile.anchor ? "8.5rem" : "6.75rem",
         borderRadius: "1rem",
-        borderTop: `0.1875rem solid ${a.tileTop}`,
-        border: `0.0625rem solid ${a.border}`,
-        borderTopWidth: "0.1875rem",
-        borderTopColor: a.tileTop,
-        background: a.tileBg,
+        overflow: "hidden",
+        border: `0.0625rem solid ${HAIRLINE}`,
+        background: T.color.cream,
         boxShadow: tile.anchor ? "0 0.5rem 1.5rem rgba(64,59,54,0.13)" : "0 0.25rem 1rem rgba(64,59,54,0.07)",
         cursor: "pointer",
         opacity: tile.soon ? 0.72 : 1,
       }}
     >
       {tile.soon ? (
-        <span style={{ position: "absolute", top: "0.7rem", right: "0.7rem", fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: a.descColor, background: "rgba(255,255,255,0.35)", borderRadius: "1rem", padding: "0.15rem 0.5rem" }}>Soon</span>
+        <span style={{ position: "absolute", top: "0.55rem", right: "0.6rem", zIndex: 2, fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9A4F2A", background: "rgba(255,255,255,0.7)", borderRadius: "1rem", padding: "0.15rem 0.5rem" }}>Soon</span>
       ) : null}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", width: "100%" }}>
+      {/* light header bar (USP card style) */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", padding: tile.anchor ? "0.8rem 1rem" : "0.65rem 0.85rem", background: HEADER_BG[accent], borderBottom: `0.0625rem solid ${HAIRLINE}` }}>
         <Medallion k={tile.key} accent={accent} index={index} big={tile.anchor} />
+        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: tile.anchor ? "1.375rem" : "1.125rem", lineHeight: 1.15, color: "#9A4F2A", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tile.title}</span>
         {tile.anchor && tile.thumbs && tile.thumbs.length > 0 ? (
           <span style={{ marginLeft: "auto" }}><ThumbFan thumbs={tile.thumbs} /></span>
         ) : null}
       </div>
-      <span style={{ display: "flex", flexDirection: "column", gap: "0.15rem", minWidth: 0 }}>
-        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: tile.anchor ? "1.5rem" : "1.1875rem", lineHeight: 1.15, color: a.titleColor }}>{tile.title}</span>
-        <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: "0.9375rem", lineHeight: 1.35, color: a.descColor }}>{tile.desc}</span>
-        {tile.datum ? <span className="relay-more" style={{ display: "block", fontFamily: T.font.body, fontWeight: 700, fontSize: "0.875rem", color: a.datumColor, marginTop: "0.25rem" }}>{tile.datum}</span> : null}
-      </span>
+      {/* body */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", padding: tile.anchor ? "0.75rem 1rem 0.9rem" : "0.65rem 0.85rem 0.8rem", flex: 1 }}>
+        <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: "0.9375rem", lineHeight: 1.35, color: T.color.muted }}>{tile.desc}</span>
+        {tile.datum ? <span style={{ display: "block", fontFamily: T.font.body, fontWeight: 700, fontSize: "0.875rem", color: a.datumColor, marginTop: "0.2rem" }}>{tile.datum}</span> : null}
+      </div>
     </button>
   );
 }
 
-export default function AtriumRelay({ greeting, userName, datumLine, score, suggestion, chips, personaSlot, anchors, lanes, you, isMobile }: AtriumRelayProps) {
+export default function AtriumRelay({ greeting, userName, datumLine, score, suggestion, chips, personaSlot, onChooseJourney, onAddName, anchors, lanes, you, isMobile }: AtriumRelayProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const id = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(id); }, []);
   const SugIco = RelayIcons[suggestion.key] ?? RelayIcons.palace;
@@ -167,24 +175,14 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.7fr 1fr", gap: "1.25rem", alignItems: "start", marginBottom: "1.5rem" }}>
         <div>
           <h1 style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: isMobile ? "1.75rem" : "2.25rem", lineHeight: 1.12, margin: 0, color: T.color.charcoal }}>
-            {greeting}{userName ? <>, <span style={{ color: "#9A4F2A" }}>{userName}</span></> : null}
+            {greeting}
+            {userName ? (
+              <>, <span style={{ color: "#9A4F2A", position: "relative", whiteSpace: "nowrap" }}>{userName}<span aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: "-0.12rem", height: "0.1875rem", borderRadius: "1rem", background: "linear-gradient(90deg, #E8C87A, #D4AF37)", opacity: 0.85 }} /></span></>
+            ) : onAddName ? (
+              <> <button type="button" onClick={(e) => { e.stopPropagation(); onAddName(); }} style={{ fontFamily: "inherit", fontSize: "0.6em", fontWeight: 600, color: "#9A4F2A", background: "none", border: "none", borderBottom: "0.125rem solid #D4AF37", padding: "0 0.1rem", cursor: "pointer", verticalAlign: "middle" }}>+ add your name</button></>
+            ) : null}
           </h1>
-          <p style={{ fontFamily: T.font.body, fontSize: "1rem", fontWeight: 500, color: "#716A5E", margin: "0.5rem 0 1rem", fontVariantNumeric: "tabular-nums" }}>{datumLine}</p>
-
-          <button type="button" onClick={suggestion.onClick} className="relay-suggest" style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: "1rem", width: "100%", textAlign: "left", padding: "1.125rem 1.25rem", borderRadius: "1rem", border: "none", cursor: "pointer", color: T.color.linen, background: "linear-gradient(135deg, #B85C38, #9A4F2A)", boxShadow: "0 0.625rem 1.5rem rgba(154,79,42,0.32)" }}>
-            <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "3rem", height: "3rem", borderRadius: "0.75rem", background: "rgba(255,255,255,0.16)", color: T.color.linen, flexShrink: 0 }}><span style={{ width: "1.6rem", height: "1.6rem", display: "inline-flex" }}><SugIco /></span></span>
-            <span style={{ display: "flex", flexDirection: "column", gap: "0.1rem", minWidth: 0, position: "relative", zIndex: 1 }}>
-              <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#F1D28A" }}>Suggested for you</span>
-              <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.25rem", lineHeight: 1.15 }}>{suggestion.title}</span>
-              <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "rgba(250,247,240,0.86)" }}>{suggestion.reason}</span>
-              {suggestion.progress ? (
-                <span aria-hidden="true" style={{ display: "block", marginTop: "0.45rem", height: "0.3rem", borderRadius: "1rem", background: "rgba(255,255,255,0.22)", overflow: "hidden", maxWidth: "16rem" }}>
-                  <span style={{ display: "block", height: "100%", width: `${Math.round((100 * suggestion.progress.done) / Math.max(1, suggestion.progress.total))}%`, background: "#F1D28A", borderRadius: "1rem" }} />
-                </span>
-              ) : null}
-            </span>
-            <span aria-hidden="true" className="relay-suggest-sheen" />
-          </button>
+          <p style={{ fontFamily: T.font.body, fontSize: "1rem", fontWeight: 500, color: "#716A5E", margin: "0.5rem 0 0", fontVariantNumeric: "tabular-nums" }}>{datumLine}</p>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
@@ -209,15 +207,40 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
         </div>
       </div>
 
-      {/* ── PERSONALIZATION BAND ── */}
-      {personaSlot ? <div style={{ marginBottom: "1.5rem" }}>{personaSlot}</div> : null}
-
-      {/* ── ANCHORS (Enter Your Palace / Library, side by side) ── */}
+      {/* ── ANCHORS (Enter Your Palace / Library, side by side, on top) ── */}
       {anchors.length > 0 ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: isMobile ? "0.625rem" : "0.875rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: isMobile ? "0.625rem" : "0.875rem", marginBottom: "1rem" }}>
           {anchors.map((t, i) => <Tile key={t.key} tile={{ ...t, anchor: true }} accent={t.key === "library" ? "anchorLibrary" : "anchor"} index={i} />)}
         </div>
       ) : null}
+
+      {/* ── SUGGESTED BAR (below the anchors) with your style + other journeys ── */}
+      <div style={{ marginBottom: "1.75rem" }}>
+        <button type="button" onClick={suggestion.onClick} className="relay-suggest" style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: "1rem", width: "100%", textAlign: "left", padding: "1.125rem 1.25rem", borderRadius: (personaSlot || onChooseJourney) ? "1rem 1rem 0 0" : "1rem", border: "none", cursor: "pointer", color: T.color.linen, background: "linear-gradient(135deg, #B85C38, #9A4F2A)", boxShadow: "0 0.5rem 1.25rem rgba(154,79,42,0.28)" }}>
+          <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "3rem", height: "3rem", borderRadius: "0.75rem", background: "rgba(255,255,255,0.16)", color: T.color.linen, flexShrink: 0 }}><span style={{ width: "1.6rem", height: "1.6rem", display: "inline-flex" }}><SugIco /></span></span>
+          <span style={{ display: "flex", flexDirection: "column", gap: "0.1rem", minWidth: 0, position: "relative", zIndex: 1, flex: 1 }}>
+            <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#F1D28A" }}>Suggested for you</span>
+            <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.25rem", lineHeight: 1.15 }}>{suggestion.title}</span>
+            <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "rgba(250,247,240,0.86)" }}>{suggestion.reason}</span>
+            {suggestion.progress ? (
+              <span aria-hidden="true" style={{ display: "block", marginTop: "0.45rem", height: "0.3rem", borderRadius: "1rem", background: "rgba(255,255,255,0.22)", overflow: "hidden", maxWidth: "16rem" }}>
+                <span style={{ display: "block", height: "100%", width: `${Math.round((100 * suggestion.progress.done) / Math.max(1, suggestion.progress.total))}%`, background: "#F1D28A", borderRadius: "1rem" }} />
+              </span>
+            ) : null}
+          </span>
+          <span aria-hidden="true" className="relay-suggest-sheen" />
+        </button>
+        {(personaSlot || onChooseJourney) ? (
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem", padding: "0.7rem 1rem", borderRadius: "0 0 1rem 1rem", border: `0.0625rem solid ${HAIRLINE}`, borderTop: "none", background: T.color.cream }}>
+            {personaSlot ? <div style={{ flex: 1, minWidth: "12rem" }}>{personaSlot}</div> : <span style={{ flex: 1 }} />}
+            {onChooseJourney ? (
+              <button type="button" onClick={onChooseJourney} className="relay-chip" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", minHeight: "2.5rem", padding: "0 1rem", borderRadius: "0.75rem", border: `0.0625rem solid ${T.color.warmStone}`, background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, color: "#9A4F2A", flexShrink: 0 }}>
+                <span aria-hidden="true" style={{ width: "1.1rem", height: "1.1rem", display: "inline-flex" }}><RelayIcons.journeys /></span>Other journeys
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
 
       {/* ── VERB-ZONED LANES (landing triptych) ── */}
       {lanes.map((lane) => {
@@ -256,13 +279,6 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
         .relay-tile { transition: transform 0.2s ease, box-shadow 0.2s ease; animation: relay-rise 0.5s ease both; }
         .relay-tile:hover { transform: translateY(-0.1875rem); box-shadow: 0 0.75rem 1.75rem rgba(36,28,21,0.16); }
         .relay-tile:active { transform: translateY(0); }
-        /* hover-reveal: on desktop the live datum is hidden until hover; on
-           touch devices it always shows (no unreliable :hover on mobile). */
-        .relay-more { transition: max-height 0.25s ease, opacity 0.2s ease; }
-        @media (hover: hover) and (pointer: fine) {
-          .relay-more { max-height: 0; opacity: 0; overflow: hidden; margin-top: 0 !important; }
-          .relay-tile:hover .relay-more { max-height: 3rem; opacity: 1; margin-top: 0.3rem !important; }
-        }
         .relay-chip, .relay-pill { transition: background 0.2s ease, border-color 0.2s ease; }
         .relay-chip:hover, .relay-pill:hover { background: ${T.color.warmStone}55; border-color: ${T.color.terracotta}; }
         .relay-suggest { transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }
