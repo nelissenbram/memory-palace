@@ -46,7 +46,10 @@ export default function PricingPage() {
   // TODO: when Apple IAP products are Approved, allow iOS here and drive
   // purchases exclusively through initIAP()/purchase() below.
   useEffect(() => {
-    if (isAndroid() || isIOS()) {
+    // Android has no in-app purchase path → route to the app. iOS shows the IAP
+    // paywall when IAP is enabled; while disabled it stays free-tier (route away).
+    // Purchases on iOS go exclusively through initIAP()/purchase() below — never Stripe.
+    if (isAndroid() || (isIOS() && !IAP_ENABLED)) {
       router.replace("/atrium");
     }
   }, [router]);
