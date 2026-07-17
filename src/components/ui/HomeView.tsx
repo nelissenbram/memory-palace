@@ -524,9 +524,10 @@ export default function HomeView() {
       id: "capture", overline: "Capture", accent: "terracotta" as const,
       tiles: [
         { key: "photos", title: "Add Photos", desc: "Bring in your pictures", onClick: goUpload },
+        { key: "cloud", title: "Import from Cloud", desc: "Google Photos, iCloud & more", onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
         { key: "restore", title: "Restore a Photo", desc: "Repair an old photo", onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
         { key: "write", title: "Write a Memory", desc: "Put it into words", onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); } },
-        { key: "record", title: "Record Your Story", desc: "Tell it aloud", onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? `${interviewSessions.length} recorded` : undefined },
+        { key: "record", title: "Interviews", desc: "Tell your story aloud", onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? `${interviewSessions.length} recorded` : undefined },
         { key: "whatsapp", title: "Capture by WhatsApp", desc: "Save by message", onClick: () => setShowKepCapture(true) },
         { key: "capsule", title: "Time Capsule", desc: "A memory for later", onClick: () => { localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
       ],
@@ -541,12 +542,14 @@ export default function HomeView() {
         { key: "gallery", title: "Create a Gallery", desc: "Curate a set", onClick: () => handleNavigateLibrary() },
         { key: "organize", title: "Tidy Your Rooms", desc: "Organise memories", onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
         { key: "explore", title: "Explore", desc: "Public palaces to visit", onClick: () => router.push("/explore") },
+        { key: "lifestory", title: "Life Story", desc: "Your life, woven into one story", onClick: () => {}, soon: true },
       ],
     },
     {
       id: "share", overline: "Share & pass on", accent: "sage" as const,
       tiles: [
         { key: "familyGroup", title: "Start a Family Group", desc: "Invite your family in", onClick: () => router.push("/settings/family") },
+        { key: "cocreate", title: "Build Together", desc: "Grow the palace as a family", onClick: () => router.push("/settings/family") },
         { key: "invite", title: "Invite Relatives", desc: "Bring others to your palace", onClick: () => router.push("/settings/family") },
         { key: "publish", title: "Share Publicly", desc: "Publish to Explore", onClick: () => router.push("/explore") },
         { key: "shared", title: "Shared with you", desc: "Wings your family shared", onClick: () => setShowSharedWithMe(true), datum: sharedWithMe.length > 0 ? `${sharedWithMe.length} shared` : undefined, hidden: !(sharedLoading || sharedWithMe.length > 0) },

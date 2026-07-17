@@ -25,6 +25,7 @@ export type RelayTile = {
   datum?: React.ReactNode;
   thumbs?: string[];
   hidden?: boolean;
+  soon?: boolean;
 };
 export type RelayAccent = "terracotta" | "gold" | "sage" | "anchor";
 export type RelayLane = { id: string; overline: string; accent: RelayAccent; tiles: RelayTile[] };
@@ -61,11 +62,11 @@ function Glyph({ k, size }: { k: string; size: string }) {
 
 function Medallion({ k, accent, index, big }: { k: string; accent: RelayAccent; index: number; big?: boolean }) {
   const a = ACCENT[accent];
-  const delay = `${((index % 6) * 0.7).toFixed(2)}s`;
+  // The medallion is calm now (a soft static tint); the motion lives inside the
+  // glyph's animated sub-part. --ri-delay de-syncs those across the board.
   return (
     <span
       aria-hidden="true"
-      className="relay-med"
       style={{
         position: "relative",
         display: "inline-flex",
@@ -78,13 +79,13 @@ function Medallion({ k, accent, index, big }: { k: string; accent: RelayAccent; 
         background: a.medallion,
         color: a.glyph,
         flexShrink: 0,
+        ["--ri-delay" as unknown as string]: `${((index % 6) * 0.6).toFixed(2)}s`,
       }}
     >
-      <span aria-hidden="true" className="relay-med-glow" style={{ position: "absolute", inset: 0, background: `radial-gradient(closest-side, ${a.glow}, transparent 72%)`, animationDelay: delay }} />
-      <span aria-hidden="true" className="relay-med-glyph" style={{ position: "relative", display: "inline-flex", animationDelay: delay }}>
+      <span aria-hidden="true" style={{ position: "absolute", inset: 0, background: `radial-gradient(closest-side, ${a.glow}, transparent 82%)`, opacity: 0.14 }} />
+      <span style={{ position: "relative", display: "inline-flex" }}>
         <Glyph k={k} size={big ? "1.85rem" : "1.55rem"} />
       </span>
-      <span aria-hidden="true" className="relay-med-sheen" style={{ animationDelay: `${(index % 5) * 1.1}s` }} />
     </span>
   );
 }
@@ -128,8 +129,12 @@ function Tile({ tile, accent, index }: { tile: RelayTile; accent: RelayAccent; i
         background: a.tileBg,
         boxShadow: tile.anchor ? "0 0.5rem 1.75rem rgba(36,28,21,0.12)" : "0 0.25rem 1rem rgba(36,28,21,0.07)",
         cursor: "pointer",
+        opacity: tile.soon ? 0.72 : 1,
       }}
     >
+      {tile.soon ? (
+        <span style={{ position: "absolute", top: "0.7rem", right: "0.7rem", fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: T.color.walnut, background: T.color.warmStone, borderRadius: "1rem", padding: "0.15rem 0.5rem" }}>Soon</span>
+      ) : null}
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", width: "100%" }}>
         <Medallion k={tile.key} accent={accent} index={index} big={tile.anchor} />
         {tile.anchor && tile.thumbs && tile.thumbs.length > 0 ? (
@@ -245,26 +250,33 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
         .relay-suggest { transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }
         .relay-suggest:hover { transform: translateY(-0.1875rem); box-shadow: 0 1rem 2.25rem rgba(154,79,42,0.45); filter: brightness(1.04); }
         .relay-suggest-sheen { position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; background: linear-gradient(105deg, transparent, rgba(255,240,200,0.4), transparent); transform: skewX(-18deg); animation: relay-sheen 6s ease-in-out infinite; }
-        /* dynamic medallions: glow pulse + glyph breathe + a periodic sheen sweep */
-        .relay-med-glow { opacity: 0.3; }
-        .relay-med-sheen { position: absolute; top: -30%; bottom: -30%; left: -60%; width: 45%; background: linear-gradient(105deg, transparent, rgba(255,248,224,0.85), transparent); transform: skewX(-20deg); }
+        /* animated icon SUB-PARTS — the life is inside each glyph, not the medallion */
+        .ri-pulse, .ri-pulse-op, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob, .ri-blink { transform-box: fill-box; transform-origin: center; }
+        .ri-wave { transform-origin: bottom; }
         @media (prefers-reduced-motion: no-preference) {
-          .relay-med-glow { animation: relay-glow 3.4s ease-in-out infinite; }
-          .relay-med-glyph { animation: relay-breathe 3.4s ease-in-out infinite; transform-origin: center; }
-          .relay-med-sheen { animation: relay-medsheen 5s ease-in-out infinite; }
+          .ri-pulse { animation: ri-pulse 2.8s ease-in-out infinite; animation-delay: var(--ri-delay, 0s); }
+          .ri-pulse-op { animation: ri-pulseop 2.8s ease-in-out infinite; animation-delay: var(--ri-delay, 0s); }
+          .ri-blink { animation: ri-blink 2.4s ease-in-out infinite; animation-delay: var(--ri-delay, 0s); }
+          .ri-spin { animation: ri-spin 8s linear infinite; }
+          .ri-spin-slow { animation: ri-spin 16s linear infinite; }
+          .ri-wave { animation: ri-wave 1.3s ease-in-out infinite; }
+          .ri-wave.d2 { animation-delay: 0.18s; }
+          .ri-wave.d3 { animation-delay: 0.36s; }
+          .ri-bob { animation: ri-bob 3s ease-in-out infinite; animation-delay: var(--ri-delay, 0s); }
         }
-        .relay-tile:hover .relay-med-glow { opacity: 0.85; }
-        .relay-tile:hover .relay-med-glyph { transform: scale(1.12); }
         .relay-tile:focus-visible, .relay-chip:focus-visible, .relay-pill:focus-visible, .relay-suggest:focus-visible { outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem; }
         @keyframes relay-rise { from { opacity: 0; transform: translateY(0.6rem); } to { opacity: 1; transform: none; } }
         @keyframes relay-sheen { 0%,14% { left: -45%; } 60%,100% { left: 135%; } }
-        @keyframes relay-medsheen { 0%,55% { left: -60%; } 78%,100% { left: 150%; } }
-        @keyframes relay-breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.09); } }
-        @keyframes relay-glow { 0%,100% { opacity: 0.22; } 50% { opacity: 0.7; } }
+        @keyframes ri-pulse { 0%,100% { opacity: 0.5; transform: scale(0.82); } 50% { opacity: 1; transform: scale(1.18); } }
+        @keyframes ri-pulseop { 0%,100% { opacity: 0.35; } 50% { opacity: 1; } }
+        @keyframes ri-blink { 0%,100% { opacity: 0.25; } 50% { opacity: 1; } }
+        @keyframes ri-spin { to { transform: rotate(360deg); } }
+        @keyframes ri-wave { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
+        @keyframes ri-bob { 0%,100% { transform: translateY(0.6px); } 50% { transform: translateY(-1.4px); } }
         @media (prefers-reduced-motion: reduce) {
-          .relay-tile, .relay-chip, .relay-pill, .relay-suggest, .relay-med-glow, .relay-med-glyph, .relay-med-sheen { animation: none !important; transition: none !important; }
+          .relay-tile, .relay-chip, .relay-pill, .relay-suggest, .ri-pulse, .ri-pulse-op, .ri-blink, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob { animation: none !important; transition: none !important; }
           .relay-tile:hover, .relay-suggest:hover { transform: none !important; }
-          .relay-suggest-sheen, .relay-med-sheen { display: none; }
+          .relay-suggest-sheen { display: none; }
         }
       `}</style>
     </div>
