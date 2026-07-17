@@ -148,6 +148,7 @@ export default function InterviewsCard({
             marginTop: "0.875rem",
             display: "flex",
             alignItems: "center",
+            flexWrap: "wrap",
             gap: "0.625rem",
             background: U.surface,
             border: `1px solid ${U.hairline}`,
@@ -173,7 +174,7 @@ export default function InterviewsCard({
               <path d="M12 17v3.5" />
             </svg>
           </span>
-          <span style={{ flex: 1, height: "1.4rem", display: "flex", alignItems: "center", gap: "0.28rem" }}>
+          <span style={{ flex: 1, minWidth: 0, height: "1.4rem", display: "flex", alignItems: "center", gap: "0.28rem" }}>
             {BARS.map((i) => (
               <span
                 key={i}
@@ -190,7 +191,7 @@ export default function InterviewsCard({
           </span>
           <span
             className="lv2u-int-anim lv2u-int-status"
-            style={{ fontFamily: U.fontBody, fontWeight: 600, fontSize: "0.75rem", color: U.muted, whiteSpace: "nowrap" }}
+            style={{ flex: "0 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: U.fontBody, fontWeight: 600, fontSize: "0.75rem", color: U.muted }}
           >
             {m.transcribing}
           </span>

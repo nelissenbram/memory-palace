@@ -138,9 +138,13 @@ export default function UspCardShell({
                   fontSize: "0.75rem",
                   color: U.muted,
                   lineHeight: 1.2,
-                  whiteSpace: "nowrap",
+                  // Wrap to at most two lines on narrow phones / long DE-FR
+                  // strings instead of clipping the sentence's meaning mid-word.
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
                   overflow: "hidden",
-                  textOverflow: "ellipsis",
+                  overflowWrap: "anywhere",
                 }}
               >
                 {role}

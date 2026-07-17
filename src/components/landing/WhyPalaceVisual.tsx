@@ -39,10 +39,12 @@ function prefersReducedMotion() {
 export default function WhyPalaceVisual({ w }: { w: Record<string, string> }) {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
+  const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    setReduced(prefersReducedMotion());
     const reveal = () => setInView(true);
     if (prefersReducedMotion() || el.getBoundingClientRect().top < window.innerHeight) reveal();
     else {
@@ -53,11 +55,14 @@ export default function WhyPalaceVisual({ w }: { w: Record<string, string> }) {
     }
   }, []);
 
-  const rise = (delay: string): React.CSSProperties => ({
-    opacity: inView ? 1 : 0,
-    transform: inView ? "none" : "translateY(0.75rem)",
-    transition: `opacity 0.6s ease ${delay}, transform 0.6s ease ${delay}`,
-  });
+  const rise = (delay: string): React.CSSProperties =>
+    reduced
+      ? { opacity: inView ? 1 : 0 }
+      : {
+          opacity: inView ? 1 : 0,
+          transform: inView ? "none" : "translateY(0.75rem)",
+          transition: `opacity 0.6s ease ${delay}, transform 0.6s ease ${delay}`,
+        };
 
   const icons = [
     { key: "loci", label: w.iconLoci, glyph: <LociIcon /> },
@@ -99,11 +104,11 @@ export default function WhyPalaceVisual({ w }: { w: Record<string, string> }) {
 
           {/* Three dynamic icons — a matched set that retraces the argument */}
           <div style={{ ...rise("0.3s"), marginTop: "clamp(2rem, 4vw, 2.75rem)", paddingTop: "clamp(1.75rem, 3.5vw, 2.25rem)", borderTop: `1px solid ${C.hairline}` }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "clamp(1rem, 3vw, 2rem)", maxWidth: "40rem" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "clamp(1rem, 3vw, 2rem)", maxWidth: "40rem" }}>
               {icons.map((ic) => (
-                <div key={ic.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                <div key={ic.key} style={{ minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
                   {ic.glyph}
-                  <span style={{ fontFamily: C.fontBody, fontWeight: 500, fontSize: "0.9375rem", letterSpacing: "0.02em", color: C.muted, marginTop: "0.625rem", lineHeight: 1.3 }}>
+                  <span style={{ fontFamily: C.fontBody, fontWeight: 500, fontSize: "1rem", letterSpacing: "0.02em", color: C.muted, marginTop: "0.625rem", lineHeight: 1.3, overflowWrap: "break-word", hyphens: "auto" }}>
                     {ic.label}
                   </span>
                 </div>

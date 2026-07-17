@@ -57,7 +57,12 @@ function prefersReducedMotion(): boolean {
 function connectionIsConstrained(): boolean {
   if (typeof navigator === "undefined") return false;
   const conn = (navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-  if (!conn) return false;
+  // iOS Safari + WKWebView expose no Network Information API, so `conn` is
+  // always absent there. Rather than assume unconstrained (which eagerly pulls
+  // the full hero MP4 over cellular on every iPhone), treat small/touch
+  // viewports as constrained when the API is unavailable — poster-only unless a
+  // desktop-class screen is present. Desktop autoplay is unaffected.
+  if (!conn) return typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches;
   return Boolean(conn.saveData) || /(^|\b)(slow-2g|2g|3g)\b/.test(conn.effectiveType ?? "");
 }
 
@@ -208,7 +213,9 @@ function HeroMedia({ pauseLabel, playLabel, alt }: { pauseLabel: string; playLab
     };
     const onCanPlay = () => attempt();
     v.addEventListener("canplay", onCanPlay);
-    v.load();
+    // No eager v.load(): preload="metadata" + the play() attempt below drive the
+    // fetch lazily, so we don't force-pull the whole MP4 at hydration and
+    // contend with the priority LCP poster.
     // Retry a few times: under heavy main-thread load the initial autoplay
     // kick can be dropped even though playback is allowed.
     const timers = [800, 2200, 4500].map((ms) => window.setTimeout(attempt, ms));
@@ -246,7 +253,7 @@ function HeroMedia({ pauseLabel, playLabel, alt }: { pauseLabel: string; playLab
           muted
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
           poster="/video/hero-poster.jpg"
           aria-hidden="true"
           style={{
@@ -508,6 +515,24 @@ export default function LandingV2Client({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Pause the USP vignettes' (and logo medallions') infinite CSS loops while
+  // they are off-screen: ~26+ perpetual composited animations otherwise run the
+  // whole time the tab is open, draining battery and hurting INP. Toggling a
+  // `usp-live` class flips animation-play-state (see globals.css). Reduced-motion
+  // users already get `animation: none`, so this is purely a perf gate.
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const els = uspRefs.current.filter(Boolean) as HTMLDivElement[];
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) e.target.classList.toggle("usp-live", e.isIntersecting);
+      },
+      { rootMargin: "200px 0px 200px 0px" }
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
   const MOCK = v2.mock as Record<string, string>;
   const USP_GROUPS: Array<{ label: string; items: Array<{ name: string; t: string; b: string; media: React.ReactNode }> }> = [
     {
@@ -567,7 +592,7 @@ export default function LandingV2Client({
   const prose: React.CSSProperties = { maxWidth: L.space.prose, margin: "0 auto" };
 
   return (
-    <div style={{ background: L.canvas, color: T.color.charcoal, fontFamily: FONT_BODY }}>
+    <div style={{ background: L.canvas, color: T.color.charcoal, fontFamily: FONT_BODY, overflowX: "clip" }}>
       {/* JSON-LD — keeps the FAQ (with iOS variants) + video + org data indexable. */}
       <script
         type="application/ld+json"
@@ -660,10 +685,16 @@ export default function LandingV2Client({
         }
         @media (max-width: 768px) {
           .lv2-steps-grid { grid-template-columns: 1fr; }
+        }
+        /* Collapse the full nav to a burger across the whole small-landscape
+           band: the intrinsic width of logo + 6 links + language select + CTA
+           runs to ~900px in the longer locales (DE/FR), so revealing the row
+           before 900px overflowed the viewport in the 769-899px window. */
+        @media (max-width: 899px) {
           .lv2-nav-links { display: none !important; }
           .lv2-nav-burger { display: inline-flex !important; }
         }
-        @media (min-width: 769px) {
+        @media (min-width: 900px) {
           .lv2-nav-burger { display: none !important; }
         }
       `}</style>
@@ -677,14 +708,29 @@ export default function LandingV2Client({
           right: 0,
           zIndex: 50,
           background: navSolid ? "rgba(252,250,245,0.92)" : "transparent",
+          // -webkit- prefix required for the frosted glass to render on iOS
+          // Safari / WKWebView (unprefixed backdrop-filter is ignored there).
+          WebkitBackdropFilter: navSolid ? "blur(12px)" : "none",
           backdropFilter: navSolid ? "blur(12px)" : "none",
           borderBottom: navSolid ? `1px solid ${L.hairline}` : "1px solid transparent",
           transition: `background ${M.base} ${M.ease}, border-color ${M.base} ${M.ease}`,
+          // Keep the fixed chrome clear of the notch / Dynamic Island (portrait)
+          // and the landscape side insets under viewport-fit=cover.
+          paddingTop: "env(safe-area-inset-top, 0px)",
         }}
       >
         <nav
           aria-label="Main"
-          style={{ ...wide, display: "flex", alignItems: "center", justifyContent: "space-between", height: "4rem" }}
+          style={{
+            maxWidth: L.space.wide,
+            margin: "0 auto",
+            paddingLeft: "max(clamp(1.25rem, 5vw, 2.5rem), env(safe-area-inset-left, 0px))",
+            paddingRight: "max(clamp(1.25rem, 5vw, 2.5rem), env(safe-area-inset-right, 0px))",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            height: "4rem",
+          }}
         >
           <Link href="/" aria-label="The Memory Palace" style={{ textDecoration: "none", display: "flex" }}>
             <PalaceLogo variant="full" color={navSolid ? "dark" : "light"} size="sm" />
@@ -710,7 +756,10 @@ export default function LandingV2Client({
                 background: "transparent",
                 color: "inherit",
                 fontFamily: FONT_BODY,
-                fontSize: "0.875rem",
+                // 16px (1rem) is the WebKit no-zoom threshold; below it, focusing
+                // this live control jerk-zooms the viewport on iPad/desktop-width
+                // WebViews and never zooms back.
+                fontSize: L.type.bodyS,
                 padding: "0 0.375rem",
               }}
             >
@@ -746,6 +795,7 @@ export default function LandingV2Client({
             className="lv2-nav-burger"
             aria-label={menuOpen ? v2.a11y.close : "Menu"}
             aria-expanded={menuOpen}
+            aria-controls="lv2-mobile-menu"
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
               display: "none",
@@ -770,10 +820,14 @@ export default function LandingV2Client({
         </nav>
         {menuOpen ? (
           <div
+            id="lv2-mobile-menu"
             style={{
               background: L.canvas,
               borderBottom: `1px solid ${L.hairline}`,
-              padding: "0.75rem clamp(1.25rem, 5vw, 2.5rem) 1.25rem",
+              paddingTop: "0.75rem",
+              paddingBottom: "1.25rem",
+              paddingLeft: "max(clamp(1.25rem, 5vw, 2.5rem), env(safe-area-inset-left, 0px))",
+              paddingRight: "max(clamp(1.25rem, 5vw, 2.5rem), env(safe-area-inset-right, 0px))",
               display: "flex",
               flexDirection: "column",
               gap: "0.25rem",
@@ -801,8 +855,8 @@ export default function LandingV2Client({
                   type="button"
                   onClick={() => switchLocale(loc)}
                   style={{
-                    minWidth: "2.75rem",
-                    minHeight: "2.25rem",
+                    minWidth: T.touch,
+                    minHeight: T.touch,
                     borderRadius: "0.5rem",
                     border: `1px solid ${loc === locale ? L.accentLight : L.hairline}`,
                     background: loc === locale ? "rgba(154,79,42,0.08)" : "transparent",
@@ -895,7 +949,8 @@ export default function LandingV2Client({
                     alignItems: "center",
                     justifyContent: "center",
                     minHeight: "3.25rem",
-                    padding: "0 2.5rem",
+                    maxWidth: "100%",
+                    padding: "0 clamp(1.25rem, 6vw, 2.5rem)",
                     borderRadius: "0.75rem",
                     background: L.ctaGrad,
                     color: "#FFF",
@@ -1104,11 +1159,16 @@ export default function LandingV2Client({
                         key={mode}
                         type="button"
                         role="tab"
+                        id={`lv2-how-tab-${mode}`}
                         aria-selected={howMode === mode}
+                        aria-controls="lv2-how-panel"
                         onClick={() => setHowMode(mode)}
                         className="lv2-chip"
                         style={{
-                          minHeight: "2.5rem",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          minHeight: T.touch,
                           padding: "0 1.25rem",
                           borderRadius: "2rem",
                           border: "none",
@@ -1129,7 +1189,10 @@ export default function LandingV2Client({
               </div>
             </Reveal>
             <Reveal>
-              <div className="lv2-steps-grid">
+              <div
+                className="lv2-steps-grid"
+                {...(!isIosApp ? { id: "lv2-how-panel", role: "tabpanel", "aria-labelledby": `lv2-how-tab-${howMode}` } : {})}
+              >
                 {steps.map((step, i) => (
                   <div key={step.t} style={{ textAlign: "center", padding: "0 0.5rem" }}>
                     <div
@@ -1476,7 +1539,7 @@ export default function LandingV2Client({
               alignItems: "center",
               justifyContent: "space-between",
               fontFamily: FONT_BODY,
-              fontSize: "0.875rem",
+              fontSize: L.type.bodyS,
             }}
           >
             <span>© {mounted ? new Date().getFullYear() : 2026} {footer.copyright}</span>

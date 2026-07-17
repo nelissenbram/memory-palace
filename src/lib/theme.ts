@@ -92,7 +92,9 @@ export const T = {
       micro: "0.75rem",
       bodyS: "1rem",
       body: "1.125rem",
-      lead: "1.3125rem",
+      // Fluid so the longer DE/FR hero subheads ease down on narrow phones
+      // instead of staying at the full 21px and looking cramped.
+      lead: "clamp(1.125rem, 1rem + 0.9vw, 1.3125rem)",
       h4: "1.5rem",
       h3: "1.875rem",
       h2: "clamp(2rem, 3.5vw, 3rem)",

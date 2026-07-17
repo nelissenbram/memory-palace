@@ -155,7 +155,7 @@ export default function TourPlayer({
 
   return (
     <div
-      style={{ position: "relative", width: "100%", minHeight: "clamp(30rem, 56vw, 44rem)", borderRadius: mode === "playing" ? "1.25rem" : 0, overflow: "hidden" }}
+      style={{ position: "relative", width: "100%", minHeight: "min(clamp(24rem, 56vw, 44rem), 88svh)", borderRadius: mode === "playing" ? "1.25rem" : 0, overflow: "hidden" }}
       onPointerMove={mode === "playing" ? bumpControls : undefined}
     >
       <style>{`
@@ -198,9 +198,9 @@ export default function TourPlayer({
 
           {/* reading-lane vignette + directional scrim for the active side */}
           <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: "radial-gradient(ellipse 68% 82% at 50% 50%, rgba(36,28,21,0) 45%, rgba(36,28,21,0.38) 100%), linear-gradient(90deg, rgba(36,28,21,0.6) 0%, rgba(36,28,21,0) 24%, rgba(36,28,21,0) 76%, rgba(36,28,21,0.6) 100%)" }} />
-          {current.side !== "center" ? (
-            <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: current.side === "left" ? "linear-gradient(90deg, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.30) 55%, transparent 100%)" : "linear-gradient(270deg, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.30) 55%, transparent 100%)" }} />
-          ) : null}
+          <span aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none", background: current.side === "left" ? "linear-gradient(90deg, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.30) 55%, transparent 100%)" : current.side === "right" ? "linear-gradient(270deg, rgba(36,28,21,0.72) 0%, rgba(36,28,21,0.30) 55%, transparent 100%)" : "radial-gradient(ellipse 62% 42% at 50% 60%, rgba(36,28,21,0.55) 0%, rgba(36,28,21,0.2) 55%, transparent 78%)" }} />
+          {/* center scene gets a soft radial scrim so the CREAM caption clears
+              contrast even over a bright/pale video frame (no side lane there) */}
 
           {/* active caption (desktop side lane) */}
           <div
@@ -213,7 +213,7 @@ export default function TourPlayer({
               left: current.side === "right" ? "auto" : current.side === "center" ? "50%" : "clamp(1.5rem, 6vw, 5rem)",
               right: current.side === "right" ? "clamp(1.5rem, 6vw, 5rem)" : "auto",
               transform: current.side === "center" ? "translateX(-50%)" : "none",
-              maxWidth: "20rem",
+              maxWidth: "min(20rem, calc(100% - clamp(3rem, 12vw, 10rem)))",
               textAlign: current.side === "right" ? "right" : current.side === "center" ? "center" : "left",
             }}
           >
@@ -230,7 +230,7 @@ export default function TourPlayer({
                 <Link href={ctaHref} className="lv2-cta" style={{ display: "inline-flex", alignItems: "center", minHeight: "3rem", padding: "0 2rem", borderRadius: "0.75rem", background: "linear-gradient(135deg, #9A4F2A, #6B3318)", color: "#FFF", fontFamily: FONT_BODY, fontWeight: 600, textDecoration: "none" }}>
                   {ctaLabel} →
                 </Link>
-                <button type="button" onClick={() => { const v = videoRef.current; if (v) { v.currentTime = 0; v.play().catch(() => {}); } setEnded(false); }} style={{ background: "none", border: "none", cursor: "pointer", color: MUTED_DARK, fontFamily: FONT_BODY, fontSize: "0.9375rem" }}>
+                <button type="button" onClick={() => { const v = videoRef.current; if (v) { v.currentTime = 0; v.play().catch(() => {}); } setEnded(false); }} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.375rem", minHeight: "2.75rem", padding: "0 0.5rem", background: "none", border: "none", cursor: "pointer", color: CREAM, opacity: 0.85, fontFamily: FONT_BODY, fontSize: "1rem", textShadow: "0 1px 12px rgba(36,28,21,0.85)" }}>
                   ↺ {watchAgain}
                 </button>
               </span>
@@ -247,7 +247,7 @@ export default function TourPlayer({
             style={{
               position: "absolute",
               zIndex: 5,
-              bottom: "1.25rem",
+              bottom: "max(1.25rem, env(safe-area-inset-bottom, 0px))",
               left: "50%",
               transform: "translateX(-50%)",
               display: "flex",
@@ -256,6 +256,7 @@ export default function TourPlayer({
               padding: "0.5rem 1rem",
               borderRadius: "999px",
               background: "rgba(36,28,21,0.55)",
+              WebkitBackdropFilter: "blur(8px)",
               backdropFilter: "blur(8px)",
               border: "1px solid rgba(212,175,55,0.4)",
               opacity: controlsVisible ? 1 : 0,
@@ -290,7 +291,7 @@ export default function TourPlayer({
             aria-label={doorwayLabel}
             style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1.125rem", background: "none", border: "none", cursor: "pointer", padding: "0.5rem 1rem" }}
           >
-            <span className="lv2-tour-ring" style={{ width: "clamp(6.5rem, 12vw, 8.5rem)", height: "clamp(6.5rem, 12vw, 8.5rem)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(36,28,21,0.35)", backdropFilter: "blur(6px)", border: "1px solid rgba(212,175,55,0.75)", boxShadow: "0 0 0 0.5rem rgba(212,175,55,0.12), 0 16px 48px rgba(0,0,0,0.55)" }}>
+            <span className="lv2-tour-ring" style={{ width: "clamp(6.5rem, 12vw, 8.5rem)", height: "clamp(6.5rem, 12vw, 8.5rem)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(36,28,21,0.35)", WebkitBackdropFilter: "blur(6px)", backdropFilter: "blur(6px)", border: "1px solid rgba(212,175,55,0.75)", boxShadow: "0 0 0 0.5rem rgba(212,175,55,0.12), 0 16px 48px rgba(0,0,0,0.55)" }}>
               <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true" style={{ marginLeft: "0.25rem" }}><path d="M6 3l14 9-14 9V3z" fill={CREAM} /></svg>
             </span>
             <span style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: "1.125rem", color: CREAM }}>▶ {doorwayLabel}</span>

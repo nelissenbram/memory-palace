@@ -70,6 +70,12 @@ const CSS = `
 @container (max-width: 18rem) {
   .lv2u-palace-dot { display: none; }
 }
+/* On narrow phones pull the outer door pills inward so the right-most one
+   (centered at 82%) cannot clip against the frame edge. */
+@container (max-width: 22rem) {
+  .lv2u-palace-chips > div:nth-child(1) { left: 24% !important; }
+  .lv2u-palace-chips > div:nth-child(3) { left: 76% !important; }
+}
 @media (prefers-reduced-motion: reduce) {
   .lv2u-palace-root,
   .lv2u-palace-img,
@@ -293,6 +299,9 @@ export default function PalaceCard({
                     border: `0.0625rem solid ${U.hairline}`,
                     boxShadow: "0 0.25rem 0.75rem rgba(36, 28, 21, 0.25)",
                     minWidth: chip.minWidth,
+                    // Never let a long localized door label (fr "Déjeuners du
+                    // dimanche") push the pill past the 16:9 frame on phones.
+                    maxWidth: "min(11rem, 44cqw)",
                   }}
                 >
                   <span
@@ -313,6 +322,9 @@ export default function PalaceCard({
                       color: U.ink,
                       letterSpacing: "0.01em",
                       whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      minWidth: 0,
                     }}
                   >
                     {chip.label}
