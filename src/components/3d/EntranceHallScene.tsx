@@ -57,6 +57,7 @@ function toRoman(n: number): string {
   return map[n] || `${n}`;
 }
 
+
 /** Add 3D bust to scene — loads GLB torso + cameo head for user, full bust for others */
 function addBustToScene(
   scene: THREE.Scene, bx: number, bz: number, bustAngle: number,
@@ -638,6 +639,56 @@ function EntranceHallScene({
     // ── 7 GRAND DOORS ──
     const doorMeshes: { mesh: THREE.Mesh; mat: THREE.MeshStandardMaterial; wingId: string; angle: number }[] = [];
 
+    // ── P2-6: hoisted per-door resources — geometry and constant-material
+    // CONTENT is identical for every door (only the mesh transforms differ),
+    // so build each once instead of 7x per construction. Materials that the
+    // hover/glow code mutates per door (doorMat, nicheMat) stay per-door in
+    // the loop below. Output is identical: optimizeMaterials() already merged
+    // identical-fingerprint materials into shared instances at render time.
+    const frameThick = 0.3;
+    const frameDepth = 0.25;
+    const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
+    const archW = DOOR_W / 2 + 0.3;
+    const archH = 1.2;
+    const archPoints = new THREE.EllipseCurve(0, 0, archW, archH, 0, Math.PI, false, 0)
+      .getPoints(30).map(p => new THREE.Vector3(p.x, p.y, 0));
+    const nicheArchW = DOOR_W / 2 - 0.15;
+    const nicheArchH = 1.0;
+    const nicheArchPts = new THREE.EllipseCurve(0, 0, nicheArchW, nicheArchH, 0, Math.PI, false, 0)
+      .getPoints(24).map(p => new THREE.Vector3(p.x, p.y, 0));
+    const DS = {
+      // shared geometries
+      recessGeo: new THREE.PlaneGeometry(DOOR_W + 0.8, DOOR_H + 0.6),
+      lpGeo: new THREE.BoxGeometry(frameThick, DOOR_H + 0.3, frameDepth),
+      lintelGeo: new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.2, 0.35, frameDepth),
+      threshGeo: new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.2, 0.10, frameDepth),
+      archGeo: new THREE.TubeGeometry(new THREE.CatmullRomCurve3(archPoints), 30, 0.08, 8, false),
+      keystoneGeo: new THREE.BoxGeometry(0.25, 0.35, 0.15),
+      panelGeo: new THREE.BoxGeometry(panelW, DOOR_H, 0.25),
+      seamGeo: new THREE.BoxGeometry(0.04, DOOR_H - 0.3, 0.005),
+      insetGeo: new THREE.BoxGeometry(panelW * 0.65, 1.8, 0.04),
+      borderGeo: new THREE.BoxGeometry(panelW * 0.68, 1.8 + 0.06, 0.02),
+      handleRingGeo: new THREE.TorusGeometry(0.14, 0.03, 10, 16),
+      handlePlateGeo: new THREE.CircleGeometry(0.06, 10),
+      nichePanelGeo: new THREE.BoxGeometry(DOOR_W, DOOR_H, 0.15),
+      nicheArchGeo: new THREE.TubeGeometry(new THREE.CatmullRomCurve3(nicheArchPts), 24, 0.035, 6, false),
+      etchGeo: new THREE.BoxGeometry(0.06, DOOR_H * 0.75, 0.02),
+      lockMedallionGeo: new THREE.CircleGeometry(0.22, 24),
+      keyholeCircleGeo: new THREE.CircleGeometry(0.06, 12),
+      keyholeSlotGeo: new THREE.PlaneGeometry(0.035, 0.1),
+      labelGeo: new THREE.PlaneGeometry(2.8, 0.54),
+      labelGeoShared: new THREE.PlaneGeometry(2.8, 0.72),
+      // constant materials (never mutated after creation)
+      recessUnlockedMat: new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 }),
+      recessLockedMat: new THREE.MeshStandardMaterial({ color: "#D8D0C4", roughness: 0.35, metalness: 0.0, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.15, .15) }),
+      insetMat: new THREE.MeshStandardMaterial({ color: "#5A3A1E", roughness: 0.55, metalness: 0.0 }),
+      handlePlateMat: new THREE.MeshStandardMaterial({ color: "#8A7040", roughness: 0.3, metalness: 0.7 }),
+      nicheArchOutlineMat: new THREE.MeshStandardMaterial({ color: "#B8A070", roughness: 0.3, metalness: 0.5, emissive: "#B8A070", emissiveIntensity: 0.08 }),
+      etchMat: new THREE.MeshStandardMaterial({ color: "#B8A070", roughness: 0.35, metalness: 0.4, emissive: "#B8A070", emissiveIntensity: 0.06 }),
+      lockMedallionMat: new THREE.MeshStandardMaterial({ color: "#C8B080", roughness: 0.25, metalness: 0.7, emissive: "#C8B080", emissiveIntensity: 0.05 }),
+      keyholeDarkMat: new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0 }),
+    };
+
     // Map shared wings to locked door slots
     const sharedWingsArr = sharedWings || [];
     const lockedSlots = doorDefs.map((d, idx) => ({ ...d, idx })).filter(d => d.locked);
@@ -666,22 +717,15 @@ function EntranceHallScene({
       const latN = new THREE.Vector3(Math.cos(angle + Math.PI / 2), 0, Math.sin(angle + Math.PI / 2));
 
       // Door recess / alcove — flat plane only (no side walls that protrude)
-      const recessGeo = new THREE.PlaneGeometry(DOOR_W + 0.8, DOOR_H + 0.6);
-      const recessMat = isUnlocked
-        ? new THREE.MeshStandardMaterial({ color: "#1A1008", roughness: 0.9, metalness: 0.0 })
-        : new THREE.MeshStandardMaterial({ color: "#D8D0C4", roughness: 0.35, metalness: 0.0, normalMap: wallTex.normalMap, normalScale: new THREE.Vector2(.15, .15) });
-      const recessMesh = mk(recessGeo, recessMat,
+      const recessMesh = mk(DS.recessGeo, isUnlocked ? DS.recessUnlockedMat : DS.recessLockedMat,
         dx - inN.x * 0.15, (DOOR_H + 0.6) / 2, dz - inN.z * 0.15);
       recessMesh.lookAt(0, (DOOR_H + 0.6) / 2, 0);
       scene.add(recessMesh);
 
       // ── ELEGANT MARBLE FRAME (not gold — classy stone) ──
-      const frameThick = 0.3;
-      const frameDepth = 0.25;
       const frameMat = MS.marbleDark;
       // Left frame pillar
-      const lpGeo = new THREE.BoxGeometry(frameThick, DOOR_H + 0.3, frameDepth);
-      const lp = new THREE.Mesh(lpGeo, frameMat);
+      const lp = new THREE.Mesh(DS.lpGeo, frameMat);
       lp.position.set(
         dx + latN.x * (DOOR_W / 2 + frameThick / 2) + inN.x * 0.05,
         (DOOR_H + 0.3) / 2,
@@ -690,7 +734,7 @@ function EntranceHallScene({
       lp.lookAt(new THREE.Vector3(0, (DOOR_H + 0.3) / 2, 0));
       scene.add(lp);
       // Right frame pillar
-      const rp = new THREE.Mesh(lpGeo, frameMat);
+      const rp = new THREE.Mesh(DS.lpGeo, frameMat);
       rp.position.set(
         dx - latN.x * (DOOR_W / 2 + frameThick / 2) + inN.x * 0.05,
         (DOOR_H + 0.3) / 2,
@@ -699,39 +743,32 @@ function EntranceHallScene({
       rp.lookAt(new THREE.Vector3(0, (DOOR_H + 0.3) / 2, 0));
       scene.add(rp);
       // Top lintel
-      const lintelGeo = new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.2, 0.35, frameDepth);
-      const lintel = new THREE.Mesh(lintelGeo, frameMat);
+      const lintel = new THREE.Mesh(DS.lintelGeo, frameMat);
       lintel.position.set(dx + inN.x * 0.05, DOOR_H + 0.3, dz + inN.z * 0.05);
       lintel.lookAt(new THREE.Vector3(0, DOOR_H + 0.3, 0));
       scene.add(lintel);
       // Bottom threshold (raised above floor to avoid z-fighting)
-      const threshGeo = new THREE.BoxGeometry(DOOR_W + frameThick * 2 + 0.2, 0.10, frameDepth);
-      const thresh = new THREE.Mesh(threshGeo, MS.marbleDark);
+      const thresh = new THREE.Mesh(DS.threshGeo, MS.marbleDark);
       thresh.position.set(dx + inN.x * 0.05, 0.08, dz + inN.z * 0.05);
       thresh.lookAt(new THREE.Vector3(0, 0.06, 0));
       scene.add(thresh);
 
       // ── SUBTLE ARCH above door (thin, elegant) ──
-      const archW = DOOR_W / 2 + 0.3;
-      const archH = 1.2;
-      const archCurve = new THREE.EllipseCurve(0, 0, archW, archH, 0, Math.PI, false, 0);
-      const archPoints = archCurve.getPoints(30).map(p => new THREE.Vector3(p.x, p.y, 0));
-      const archGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(archPoints), 30, 0.08, 8, false);
-      const archMesh = new THREE.Mesh(archGeo, MS.goldDark);
+      const archMesh = new THREE.Mesh(DS.archGeo, MS.goldDark);
       archMesh.position.set(dx + inN.x * 0.05, DOOR_H + 0.45, dz + inN.z * 0.05);
       archMesh.lookAt(new THREE.Vector3(0, DOOR_H + 0.45, 0));
       archMesh.rotateY(Math.PI);
       scene.add(archMesh);
       // Small keystone
-      const keystone = mk(new THREE.BoxGeometry(0.25, 0.35, 0.15), MS.goldDark,
+      const keystone = mk(DS.keystoneGeo, MS.goldDark,
         dx + inN.x * 0.3, DOOR_H + 0.45 + archH, dz + inN.z * 0.3);
       keystone.lookAt(new THREE.Vector3(0, DOOR_H + 0.45 + archH, 0));
       scene.add(keystone);
 
       if (isUnlocked) {
       // ── DOUBLE DOOR PANELS (unlocked wing) ──
-      const panelW = (DOOR_W - DOOR_PANEL_GAP) / 2;
       // Shared doors get an ethereal translucent look with wing accent color
+      // (doorMat stays PER-DOOR — the hover/glow loop mutates its emissive)
       const doorMat = isSharedDoor
         ? new THREE.MeshStandardMaterial({
             color: sharedAccent, roughness: 0.2, metalness: 0.3,
@@ -743,7 +780,7 @@ function EntranceHallScene({
             emissive: "#5A3A20", emissiveIntensity: 0.2,
           });
 
-      const leftPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
+      const leftPanel = new THREE.Mesh(DS.panelGeo, doorMat);
       leftPanel.position.set(
         dx + latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2) + inN.x * 0.2,
         DOOR_H / 2,
@@ -754,7 +791,7 @@ function EntranceHallScene({
       leftPanel.userData = { wingId };
       scene.add(leftPanel);
 
-      const rightPanel = new THREE.Mesh(new THREE.BoxGeometry(panelW, DOOR_H, 0.25), doorMat);
+      const rightPanel = new THREE.Mesh(DS.panelGeo, doorMat);
       rightPanel.position.set(
         dx - latN.x * (panelW / 2 + DOOR_PANEL_GAP / 2) + inN.x * 0.2,
         DOOR_H / 2,
@@ -769,8 +806,7 @@ function EntranceHallScene({
       doorMeshes.push({ mesh: rightPanel, mat: doorMat, wingId, angle });
 
       // Thin seam line between panels
-      const seamGeo = new THREE.BoxGeometry(0.04, DOOR_H - 0.3, 0.005);
-      const seam = new THREE.Mesh(seamGeo, MS.goldDark);
+      const seam = new THREE.Mesh(DS.seamGeo, MS.goldDark);
       seam.position.set(dx + inN.x * 0.35, DOOR_H / 2, dz + inN.z * 0.35);
       seam.lookAt(new THREE.Vector3(0, DOOR_H / 2, 0));
       scene.add(seam);
@@ -780,12 +816,8 @@ function EntranceHallScene({
         const panelCenterLat = latN.clone().multiplyScalar(side * (panelW / 2 + DOOR_PANEL_GAP / 2));
         // Upper and lower inset
         for (const py of [2.0, 4.8]) {
-          const detailH = 1.8;
           // Recessed darker wood panel
-          const insetGeo = new THREE.BoxGeometry(panelW * 0.65, detailH, 0.04);
-          const inset = new THREE.Mesh(insetGeo, new THREE.MeshStandardMaterial({
-            color: "#5A3A1E", roughness: 0.55, metalness: 0.0,
-          }));
+          const inset = new THREE.Mesh(DS.insetGeo, DS.insetMat);
           inset.position.set(
             dx + panelCenterLat.x + inN.x * 0.36,
             py,
@@ -794,8 +826,7 @@ function EntranceHallScene({
           inset.lookAt(new THREE.Vector3(0, py, 0));
           scene.add(inset);
           // Thin gold border around inset
-          const borderGeo = new THREE.BoxGeometry(panelW * 0.68, detailH + 0.06, 0.02);
-          const border = new THREE.Mesh(borderGeo, MS.goldDark);
+          const border = new THREE.Mesh(DS.borderGeo, MS.goldDark);
           border.position.set(
             dx + panelCenterLat.x + inN.x * 0.35,
             py,
@@ -809,10 +840,7 @@ function EntranceHallScene({
       // ── SIMPLE RING HANDLES (one per panel, centered) ──
       for (const side of [-1, 1]) {
         const handleLat = latN.clone().multiplyScalar(side * 0.35);
-        const handleRing = new THREE.Mesh(
-          new THREE.TorusGeometry(0.14, 0.03, 10, 16),
-          MS.goldDark
-        );
+        const handleRing = new THREE.Mesh(DS.handleRingGeo, MS.goldDark);
         handleRing.position.set(
           dx + handleLat.x + inN.x * 0.42,
           DOOR_H * 0.48,
@@ -821,10 +849,7 @@ function EntranceHallScene({
         handleRing.lookAt(new THREE.Vector3(0, DOOR_H * 0.48, 0));
         scene.add(handleRing);
         // Small mount plate
-        const handlePlate = new THREE.Mesh(
-          new THREE.CircleGeometry(0.06, 10),
-          new THREE.MeshStandardMaterial({ color: "#8A7040", roughness: 0.3, metalness: 0.7 })
-        );
+        const handlePlate = new THREE.Mesh(DS.handlePlateGeo, DS.handlePlateMat);
         handlePlate.position.set(
           dx + handleLat.x + inN.x * 0.41,
           DOOR_H * 0.48 + 0.14,
@@ -836,13 +861,14 @@ function EntranceHallScene({
       } else {
       // ── SEALED WALL NICHE (locked wing) ──
       // Flat stone panel filling the alcove — slightly recessed from wall surface
+      // (nicheMat stays PER-DOOR — the hover/glow loop mutates its emissive)
       const nicheMat = new THREE.MeshStandardMaterial({
         color: "#E0D8CC", roughness: 0.3, metalness: 0.0,
         envMapIntensity: 0.6,
         normalMap: wallTex.normalMap,
         normalScale: new THREE.Vector2(.2, .2),
       });
-      const nichePanel = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W, DOOR_H, 0.15), nicheMat);
+      const nichePanel = new THREE.Mesh(DS.nichePanelGeo, nicheMat);
       nichePanel.position.set(
         dx + inN.x * 0.1,
         DOOR_H / 2,
@@ -857,31 +883,15 @@ function EntranceHallScene({
       doorMeshes.push({ mesh: nichePanel, mat: nicheMat, wingId, angle });
 
       // Subtle recessed arch outline on the sealed surface (thin gold line)
-      const nicheArchW = DOOR_W / 2 - 0.15;
-      const nicheArchH = 1.0;
-      const nicheArchCurve = new THREE.EllipseCurve(0, 0, nicheArchW, nicheArchH, 0, Math.PI, false, 0);
-      const nicheArchPts = nicheArchCurve.getPoints(24).map(p => new THREE.Vector3(p.x, p.y, 0));
-      const nicheArchGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(nicheArchPts), 24, 0.035, 6, false);
-      const nicheArchOutlineMat = new THREE.MeshStandardMaterial({
-        color: "#B8A070", roughness: 0.3, metalness: 0.5,
-        emissive: "#B8A070", emissiveIntensity: 0.08,
-      });
-      const nicheArchOutline = new THREE.Mesh(nicheArchGeo, nicheArchOutlineMat);
+      const nicheArchOutline = new THREE.Mesh(DS.nicheArchGeo, DS.nicheArchOutlineMat);
       nicheArchOutline.position.set(dx + inN.x * 0.19, DOOR_H * 0.75, dz + inN.z * 0.19);
       nicheArchOutline.lookAt(new THREE.Vector3(0, DOOR_H * 0.75, 0));
       nicheArchOutline.rotateY(Math.PI);
       scene.add(nicheArchOutline);
 
       // Vertical side lines connecting arch to floor (faint etched lines)
-      const etchMat = new THREE.MeshStandardMaterial({
-        color: "#B8A070", roughness: 0.35, metalness: 0.4,
-        emissive: "#B8A070", emissiveIntensity: 0.06,
-      });
       for (const side of [-1, 1]) {
-        const etchLine = new THREE.Mesh(
-          new THREE.BoxGeometry(0.06, DOOR_H * 0.75, 0.02),
-          etchMat
-        );
+        const etchLine = new THREE.Mesh(DS.etchGeo, DS.etchMat);
         etchLine.position.set(
           dx + latN.x * side * (nicheArchW - 0.02) + inN.x * 0.19,
           DOOR_H * 0.75 / 2,
@@ -892,12 +902,7 @@ function EntranceHallScene({
       }
 
       // Small lock medallion in center of niche
-      const lockMedallionGeo = new THREE.CircleGeometry(0.22, 24);
-      const lockMedallionMat = new THREE.MeshStandardMaterial({
-        color: "#C8B080", roughness: 0.25, metalness: 0.7,
-        emissive: "#C8B080", emissiveIntensity: 0.05,
-      });
-      const lockMedallion = new THREE.Mesh(lockMedallionGeo, lockMedallionMat);
+      const lockMedallion = new THREE.Mesh(DS.lockMedallionGeo, DS.lockMedallionMat);
       lockMedallion.position.set(
         dx + inN.x * 0.20,
         DOOR_H * 0.45,
@@ -907,10 +912,7 @@ function EntranceHallScene({
       scene.add(lockMedallion);
 
       // Lock keyhole shape (small dark circle + triangle below)
-      const keyholeCircle = new THREE.Mesh(
-        new THREE.CircleGeometry(0.06, 12),
-        new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0 })
-      );
+      const keyholeCircle = new THREE.Mesh(DS.keyholeCircleGeo, DS.keyholeDarkMat);
       keyholeCircle.position.set(
         dx + inN.x * 0.21,
         DOOR_H * 0.45 + 0.03,
@@ -919,10 +921,7 @@ function EntranceHallScene({
       keyholeCircle.lookAt(new THREE.Vector3(0, DOOR_H * 0.45 + 0.03, 0));
       scene.add(keyholeCircle);
       // Keyhole slot (small narrow rect below circle)
-      const keyholeSlot = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.035, 0.1),
-        new THREE.MeshStandardMaterial({ color: "#2A2010", roughness: 0.8, metalness: 0.0 })
-      );
+      const keyholeSlot = new THREE.Mesh(DS.keyholeSlotGeo, DS.keyholeDarkMat);
       keyholeSlot.position.set(
         dx + inN.x * 0.21,
         DOOR_H * 0.45 - 0.06,
