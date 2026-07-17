@@ -77,15 +77,13 @@ export default function WhyPalaceVisual({ w }: { w: Record<string, string> }) {
       aria-label={w.h2}
       className="lv2why-track"
       style={{
+        position: "relative",
         background: C.canvas,
-        minHeight: pinned ? "250vh" : "auto",
-        padding: pinned ? 0 : "clamp(3rem, 6vw, 5rem) clamp(1rem, 4vw, 2rem)",
+        minHeight: pinned ? "260vh" : "auto",
       }}
     >
       <style>{`
-        .lv2why-track .lv2why-figwrap { padding: clamp(3rem, 6vw, 5rem) clamp(1rem, 4vw, 2rem); }
-        .lv2why-pin .lv2why-figwrap { position: sticky; top: 50%; transform: translateY(-50%); }
-        .lv2why-fig { position: relative; margin: 0 auto; max-width: 64rem; overflow: hidden;
+        .lv2why-fig { position: relative; margin: 0 auto; width: 100%; max-width: 64rem; overflow: hidden;
           border-radius: 1.25rem; border: 1px solid ${C.hairline};
           box-shadow: 0 1.5rem 3rem rgba(36,28,21,0.18); aspect-ratio: 16 / 9; }
         .lv2why-fig::after { content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -97,7 +95,14 @@ export default function WhyPalaceVisual({ w }: { w: Record<string, string> }) {
         }
       `}</style>
 
-      <div className={`lv2why-figwrap${pinned ? " lv2why-pin" : ""}`} style={pinned ? { position: "sticky", top: "50%", transform: "translateY(-50%)" } : undefined}>
+      <div
+        className="lv2why-stage"
+        style={
+          pinned
+            ? { position: "sticky", top: 0, height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 clamp(1rem, 4vw, 2rem)" }
+            : { padding: "clamp(3rem, 6vw, 5rem) clamp(1rem, 4vw, 2rem)" }
+        }
+      >
         <figure role="img" aria-label={w.aria || w.h2} className="lv2why-fig">
           <Image
             src="/landing/band-together.jpg"
