@@ -42,12 +42,12 @@ export async function isIOSRequest(): Promise<boolean> {
 }
 
 export async function getUserPlan(userId?: string): Promise<UserSubscription> {
-  // iOS is free-tier only — never surface or honor an externally-purchased plan.
-  // Every entitlement check flows through getUserPlan(), so coercing here forces
-  // storage, interviews, auto-tag, family-tree, collaboration and cloud imports
-  // all to free on iOS in one place.
-  if (await isIOSRequest()) return { ...FREE_SUBSCRIPTION };
-
+  // iOS now honors the real entitlement (multiplatform model): a plan bought via
+  // Apple IAP (subscription_source='apple') OR on the web (Stripe) unlocks the
+  // same features everywhere — Apple permits honoring cross-platform subscriptions
+  // because the iOS app ALSO offers In-App Purchase. Anti-steering (Guideline
+  // 3.1.1) is enforced at the UI layer: iOS shows the IAP paywall only, never
+  // web/Stripe pricing or external purchase links. No coercion here anymore.
   const supabase = await createClient();
 
   let uid = userId;
