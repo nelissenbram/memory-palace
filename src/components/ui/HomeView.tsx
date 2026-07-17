@@ -486,15 +486,22 @@ export default function HomeView() {
     .slice(0, 3);
   // Steward brain — one smart, non-duplicative suggestion (never re-offers the
   // Palace/Library anchors that already sit right below).
+  // Memory tracks brought forward: an in-progress (persona-informed) journey
+  // becomes the steward suggestion, with a real progress bar.
+  const activeTrack = trackData.find((tk) => tk.progress > 0 && tk.progress < tk.total)
+    || (personaType ? trackData.find((tk) => (PERSONA_TRACKS[personaType] || []).includes(tk.id) && tk.progress < tk.total) : undefined)
+    || trackData.find((tk) => tk.progress < tk.total);
   const relaySuggestion = sharedWithMe.length > 0
     ? { key: "shared", title: "Your family shared with you", reason: "See what they added", onClick: () => setShowSharedWithMe(true) }
     : onThisDayMemories.length > 0
       ? { key: "timeline", title: "On this day", reason: onThisDayMemories[0].mem.title || "A memory from a year gone by", onClick: () => handleMemoryClick(onThisDayMemories[0].mem) }
       : totalMemories === 0
         ? { key: "photos", title: "Bring in your first photos", reason: "The fastest way to fill your palace", onClick: goUpload }
-        : lastVisitedRoom
-          ? { key: "continue", title: t("continueWhereLeft"), reason: lastVisitedRoom.name, onClick: handleContinueLastRoom }
-          : { key: "record", title: "Record your story", reason: "A few minutes, a lifetime kept", onClick: () => setShowInterviewLibrary(true) };
+        : activeTrack
+          ? { key: "journeys", title: `Continue your ${activeTrack.name}`, reason: `${activeTrack.progress} of ${activeTrack.total} steps`, onClick: () => { setSelectedTrackId(activeTrack.id); setShowTracksPanel(true); }, progress: { done: activeTrack.progress, total: activeTrack.total } }
+          : lastVisitedRoom
+            ? { key: "continue", title: t("continueWhereLeft"), reason: lastVisitedRoom.name, onClick: handleContinueLastRoom }
+            : { key: "record", title: "Record your story", reason: "A few minutes, a lifetime kept", onClick: () => setShowInterviewLibrary(true) };
   // Chips retired: they duplicated board tiles (Add a memory / WhatsApp).
   const relayChips: { key: string; label: string; onClick: () => void }[] = [];
   // Personalization returns: compact "tuned for you" summary, or the full
