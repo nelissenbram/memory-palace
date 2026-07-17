@@ -106,6 +106,7 @@ import TuscanCard from "@/components/ui/TuscanCard";
 import TuscanStyles from "@/components/ui/TuscanStyles";
 import { getWingsSharedWithMe, getSharedWingData, getSharedRoomMemories } from "@/lib/auth/sharing-actions";
 import type { SharedWingDoor } from "@/components/3d/EntranceHallScene";
+import { isMobileGPU } from "@/lib/3d/mobilePerf";
 
 // ── Delayed spinner fallback — avoids flash for fast lazy loads ──
 function DelayedFallback() {
@@ -169,6 +170,7 @@ export default function MemoryPalace(){
   const enterEntrance = usePalaceStore((s) => s.enterEntrance);
   const enterCorridor = usePalaceStore((s) => s.enterCorridor);
   const enterRoom = usePalaceStore((s) => s.enterRoom);
+  const enterWingRoom = usePalaceStore((s) => s.enterWingRoom);
   const setRoomLayout = usePalaceStore((s) => s.setRoomLayout);
   const exitToPalace = usePalaceStore((s) => s.exitToPalace);
   const exitToCorridor = usePalaceStore((s) => s.exitToCorridor);
@@ -295,6 +297,12 @@ export default function MemoryPalace(){
   const [sceneLoading, setSceneLoading] = useState(true);
   const sceneLoadFromLibraryRef = useRef(false); // true when loading overlay is for Library→3D transition
   const sceneReadyRef = useRef(false); // tracks if ExteriorScene.onReady() already fired
+  // ── Readiness-driven overlay dismissal (interior scenes fire onReady after
+  //    their first rendered frame; the fixed timers below remain as fallbacks) ──
+  const [sceneReadyFade, setSceneReadyFade] = useState(false); // true → overlay fade-out restarts with zero delay
+  const sceneLoadingRef = useRef(true); // sync mirror of sceneLoading for onReady callbacks
+  const sceneLoadStartRef = useRef(0); // performance.now() when the current overlay appeared
+  const sceneReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // searchBarVisible / searchHideTimer removed (SearchBar deleted from room view)
   const showInterviewLibrary = useInterviewStore((s) => s.showLibrary);
   const showInterviewHistory = useInterviewStore((s) => s.showHistory);
@@ -361,12 +369,13 @@ export default function MemoryPalace(){
         sessionStorage.removeItem("kep_navigate");
         const { wingId, roomId } = JSON.parse(raw);
         if (wingId) {
-          enterCorridor(wingId);
-          if (roomId) setTimeout(() => enterRoom(roomId), 600);
+          // Deep link: one atomic fade straight into the room (no throwaway corridor mount)
+          if (roomId) enterWingRoom(wingId, roomId);
+          else enterCorridor(wingId);
         }
       }
     } catch { /* ignore */ }
-  },[loadProfile, enterCorridor, enterRoom]);
+  },[loadProfile, enterCorridor, enterWingRoom]);
 
   // Re-read auth the instant the browser client picks up freshly-set cookies
   // (e.g. right after OAuth sign-in). Closes any first-mount cookie-commit race
@@ -426,6 +435,43 @@ export default function MemoryPalace(){
   const firstPalaceVisitRef = useRef(true);
   const prevNavModeForLoadingRef = useRef(navMode);
   const prevViewForLoadingRef = useRef(view);
+  // Show/hide the loading overlay, keeping the sync ref mirror + fade
+  // bookkeeping consistent (start time, accelerated-fade reset, ready timers).
+  const showSceneOverlay = useCallback(() => {
+    if (sceneReadyTimerRef.current) { clearTimeout(sceneReadyTimerRef.current); sceneReadyTimerRef.current = null; }
+    sceneLoadingRef.current = true;
+    sceneLoadStartRef.current = performance.now();
+    setSceneReadyFade(false);
+    setSceneLoading(true);
+  }, []);
+  const hideSceneOverlay = useCallback(() => {
+    sceneLoadingRef.current = false;
+    setSceneLoading(false);
+    setSceneReadyFade(false);
+  }, []);
+  // Fired by EntranceHall/Corridor/Interior scenes after their FIRST rendered
+  // frame (and synthetically for the warm ExteriorScene, which only fires
+  // onReady once per app session). Dismisses the loading overlay via its
+  // normal CSS fade-out — never a hard cut: the overlay animation is restarted
+  // with zero delay (0.4s opaque hold + 0.4s fade), which also guarantees the
+  // ~300ms minimum overlay visibility for very fast mounts. The fixed timers
+  // in the effect below remain as safety fallbacks if a scene never fires.
+  const handleSceneReady = useCallback(() => {
+    if (!sceneLoadingRef.current) return; // no loading overlay showing
+    if (sceneReadyTimerRef.current) clearTimeout(sceneReadyTimerRef.current);
+    const fadeDelayMs = sceneLoadFromLibraryRef.current ? 1200 : 800;
+    const elapsed = performance.now() - sceneLoadStartRef.current;
+    const clear = () => { sceneLoadFromLibraryRef.current = false; sceneLoadingRef.current = false; setSceneLoading(false); setSceneReadyFade(false); };
+    if (elapsed < fadeDelayMs + 350) {
+      // Overlay still fully opaque — restart its fade-out with zero delay.
+      setSceneReadyFade(true);
+      sceneReadyTimerRef.current = setTimeout(clear, 850); // unmount just after the 0.8s fade completes
+    } else {
+      // Natural fade already underway — let it finish, then unmount.
+      sceneReadyTimerRef.current = setTimeout(clear, Math.max(50, fadeDelayMs + 850 - elapsed));
+    }
+  }, []);
+  useEffect(() => () => { if (sceneReadyTimerRef.current) clearTimeout(sceneReadyTimerRef.current); }, []);
   useEffect(() => {
     const cameFromLibrary = prevNavModeForLoadingRef.current === "library" && navMode === "3d";
     const prevView = prevViewForLoadingRef.current;
@@ -433,17 +479,19 @@ export default function MemoryPalace(){
     prevViewForLoadingRef.current = view;
 
     // Library → 3D corridor/room: show loading while scene JS loads & mounts.
-    // Checked first because enterCorridor/enterRoom use fade() which delays
-    // the view change by 500ms — so view may still be "exterior" and would
-    // otherwise fall into the first-palace-visit branch below.
+    // Checked first because enterCorridor/enterRoom use fade() which applies
+    // the view change a couple of frames later (double rAF) — so view may
+    // still be "exterior" and would otherwise fall into the first-palace-visit
+    // branch below.
     if (cameFromLibrary) {
       firstPalaceVisitRef.current = false; // skip the first-visit splash later
       sceneLoadFromLibraryRef.current = true;
-      setSceneLoading(true);
-      // Use a non-cleanup timeout so it survives the view change that
-      // fires 500ms later (palaceStore fade). The ref guard in the
-      // fallthrough prevents premature clearing.
-      setTimeout(() => { sceneLoadFromLibraryRef.current = false; setSceneLoading(false); }, 1800);
+      showSceneOverlay();
+      // Use a non-cleanup timeout so it survives the view change that follows
+      // right after (palaceStore fade). The ref guard in the fallthrough
+      // prevents premature clearing. Fallback only — the mounted scene's
+      // onReady dismisses the overlay earlier via handleSceneReady.
+      setTimeout(() => { sceneLoadFromLibraryRef.current = false; hideSceneOverlay(); }, 1800);
       return;
     }
 
@@ -454,12 +502,12 @@ export default function MemoryPalace(){
       firstPalaceVisitRef.current = false;
       if (sceneReadyRef.current) {
         // Scene already warm — skip the loading overlay entirely.
-        setSceneLoading(false);
+        hideSceneOverlay();
         return;
       }
-      setSceneLoading(true);
+      showSceneOverlay();
       // onReady from ExteriorScene will hide it precisely; 2.5s safety.
-      const t = setTimeout(() => setSceneLoading(false), 2500);
+      const t = setTimeout(hideSceneOverlay, 2500);
       return () => clearTimeout(t);
     }
 
@@ -478,18 +526,24 @@ export default function MemoryPalace(){
         (prevView === "exterior" && view === "corridor") ||
         (prevView === "room" && view === "entrance");
       if (needsLoading) {
-        setSceneLoading(true);
-        const t = setTimeout(() => setSceneLoading(false), 2000);
-        return () => clearTimeout(t);
+        showSceneOverlay();
+        // The warm persistent ExteriorScene never re-fires onReady — when
+        // returning to it, signal readiness ourselves once the overlay painted.
+        const rt = (view === "exterior" && sceneReadyRef.current)
+          ? setTimeout(handleSceneReady, 50)
+          : null;
+        // Safety fallback only — the mounted scene's onReady dismisses earlier.
+        const t = setTimeout(hideSceneOverlay, 2000);
+        return () => { if (rt) clearTimeout(rt); clearTimeout(t); };
       }
     }
 
     // Any other view transition: no splash — but don't interrupt an active
     // Library→3D loading overlay (view changes mid-transition due to fade).
     if (!sceneLoadFromLibraryRef.current) {
-      setSceneLoading(false);
+      hideSceneOverlay();
     }
-  }, [view, navMode]);
+  }, [view, navMode, showSceneOverlay, hideSceneOverlay, handleSceneReady]);
 
   // ── Scene preloading — when a scene is active, preload the NEXT scene's
   //    JS module so React.lazy() resolves instantly on transition. ──
@@ -619,6 +673,40 @@ export default function MemoryPalace(){
     palaceHost.style.pointerEvents = show ? "auto" : "none";
     palaceHost.dataset.paused = show ? "0" : "1";
   }, [palaceHost, navMode, view, showNotificationsPage, showSettings]);
+
+  // ── Persistent Entrance Hall (desktop only) ──
+  // The hall is the most-traversed hub; on capable GPUs we keep it mounted-but-
+  // paused in its own body-level portal (mirror of the persistent ExteriorScene)
+  // so entrance↔corridor/room/exterior transitions never rebuild its scene graph.
+  // Mobile/native GPUs keep the mount/unmount lifecycle (a 2nd persistent WebGL
+  // context risks the past iPad WKWebView memory ceiling).
+  const [persistHall, setPersistHall] = useState(false);
+  useEffect(() => {
+    // Kill-switch: `localStorage.mp_no_hall_persist = "1"` + reload reverts to the
+    // proven mount/unmount hall path without a redeploy, if the persistent hall
+    // ever misbehaves on a given desktop.
+    let disabled = false;
+    try { disabled = localStorage.getItem("mp_no_hall_persist") === "1"; } catch {}
+    setPersistHall(!isMobileGPU() && !disabled);
+  }, []);
+  const [hallHost, setHallHost] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (typeof document === "undefined" || !persistHall) return;
+    const el = document.createElement("div");
+    el.setAttribute("data-hall-persistent", "");
+    el.style.cssText = "position:fixed;inset:0;z-index:5;visibility:hidden;pointer-events:none;";
+    el.dataset.paused = "1";
+    document.body.appendChild(el);
+    setHallHost(el);
+    return () => { try { document.body.removeChild(el); } catch {} };
+  }, [persistHall]);
+  useLayoutEffect(() => {
+    if (!hallHost) return;
+    const show = navMode === "3d" && view === "entrance" && !showNotificationsPage && !showSettings;
+    hallHost.style.visibility = show ? "visible" : "hidden";
+    hallHost.style.pointerEvents = show ? "auto" : "none";
+    hallHost.dataset.paused = show ? "0" : "1";
+  }, [hallHost, navMode, view, showNotificationsPage, showSettings]);
 
   // ── Orientation key — bump on rotate to force NavigationBar remount ──
   const [orientKey, setOrientKey] = useState(0);
@@ -919,7 +1007,7 @@ export default function MemoryPalace(){
     ? createPortal(
         <Suspense fallback={null}><ExteriorScene
           key={dlKey}
-          onReady={() => { sceneReadyRef.current = true; setSceneLoading(false); }}
+          onReady={() => { sceneReadyRef.current = true; hideSceneOverlay(); }}
           onRoomHover={setHovWing}
           onRoomClick={(wingId: string) => {
             if (walkthroughActive && wingId !== "__entrance__") return;
@@ -942,9 +1030,19 @@ export default function MemoryPalace(){
       )
     : null;
 
+  // ── Entrance Hall node — mounted persistently (desktop) or inline (mobile) ──
+  const hallSceneNode = (
+    <Suspense fallback={null}><EntranceHallScene key={dlKey} onReady={handleSceneReady} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>
+  );
+  // Desktop: keep it alive in its own portal; mobile falls back to inline mount.
+  const warmHallScene = (persistHall && hallHost)
+    ? createPortal(hallSceneNode, hallHost)
+    : null;
+
   if (showSettings && !walkthroughActive) {
     return (<>
       {warmPalaceScene}
+      {warmHallScene}
       <NavigationBar currentMode={navMode} {...earlyNavBarProps} activeTab="me" />
       <SettingsInline />
     </>);
@@ -953,6 +1051,7 @@ export default function MemoryPalace(){
   if (showNotificationsPage && !walkthroughActive) {
     return (<>
       {warmPalaceScene}
+      {warmHallScene}
       <NavigationBar currentMode={navMode} {...earlyNavBarProps} activeTab="notifications" />
       <NotificationsPage />
     </>);
@@ -982,7 +1081,7 @@ export default function MemoryPalace(){
     {/* Import hub is now rendered in LibraryView — triggered via uiPanelStore.showImportHub */}
     {showAchievements&&<AchievementsPanel onClose={()=>setShowAchievements(false)} highlightId={achHighlightId}/>}
     {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"ro"}1`),600);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
+    {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterWingRoom(wing,activeRoomId||`${prefix[wing]||"ro"}1`);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterWingRoom(wing,roomId);setTimeout(()=>setShowSharing(true),600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
     {showKepCapture&&<KepCapturePanel onClose={()=>setShowKepCapture(false)}/>}
     {showInterviewLibrary&&<InterviewLibraryPanel onClose={()=>setShowInterviewLibrary(false)} highlightWingId={activeWing}/>}
     {showInterviewHistory&&<InterviewHistoryPanel onClose={()=>setShowInterviewHistory(false)}/>}
@@ -993,7 +1092,7 @@ export default function MemoryPalace(){
       addMemoryToRoom(roomId, mem);
     }}/></Suspense>}
     {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
-    {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setNavMode("3d");enterCorridor(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
+    {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setNavMode("3d");enterWingRoom(wingId,roomId);}}/>}
   </>);
 
   // ── Helper: shared NavigationBar props ──
@@ -1014,6 +1113,7 @@ export default function MemoryPalace(){
   if (navMode === "atrium" && !walkthroughActive) {
     return (<>
       {warmPalaceScene}
+      {warmHallScene}
       <NavigationBar key={"nav-atrium-"+orientKey} currentMode="atrium" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><HomeView /></Suspense>
@@ -1026,6 +1126,7 @@ export default function MemoryPalace(){
   if (navMode === "library" && !walkthroughActive) {
     return (<>
       {warmPalaceScene}
+      {warmHallScene}
       <NavigationBar key={"nav-library-"+orientKey} currentMode="library" {...navBarProps} />
       <UniversalActions groups={actionGroups} open={showTools} onClose={() => setShowTools(false)} isMobile={isMobile} />
       <Suspense fallback={lazyFallback}><LibraryView /></Suspense>
@@ -1041,9 +1142,10 @@ export default function MemoryPalace(){
       <div role="application" aria-label={tPalace("sceneAriaLabel")} className="no-overscroll" style={{position:"absolute",inset:0,opacity,transition:"opacity 0.4s ease",touchAction:"none"}}>
         {/* ExteriorScene mounted persistently via body-level portal (see warmPalaceScene) */}
         {warmPalaceScene}
-        {view==="entrance"&&<Suspense fallback={null}><EntranceHallScene key={dlKey} onDoorClick={(wingId: string)=>{if(walkthroughActive&&walkthroughPhase<=2&&wingId!=="__exterior__"&&wingId!==walkthroughTargetWing)return;if(wingId==="__exterior__")exitToPalace();else if(wingId==="attic")setShowStoragePlayer(true);else if(wingId.startsWith("locked"))setShowUpgradePrompt(true);else if(wingId.startsWith("shared:")){const [,slug,shareId]=wingId.split(":");const shareInfo=sharedWings.find(sw=>sw.shareId===shareId);if(shareInfo){getSharedWingData(shareId).then(result=>{if(result.wing&&result.rooms){setSharedWingData(result);enterCorridor(wingId);}});}}else{if(nudgeHL.wing)nudgeDismiss();enterCorridor(wingId);}}} wings={allWings} sharedWings={sharedWings} highlightDoor={(walkthroughActive&&walkthroughPhase===2?walkthroughTargetWing:null)||nudgeHL.wing||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowUpgradePrompt(true)} onBustClick={() => { /* bust builder hidden */ }} bustPedestals={bustPedestals} bustTextureUrl={bustTextureUrl} bustModelUrl={bustModelUrl} bustProportions={bustProportions} bustName={bustName || userName || null} bustGender={bustGender || null} autoWalkTo={autoWalking && nudgeHL.wing ? nudgeHL.wing : undefined}/></Suspense>}
-        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+JSON.stringify(corridorPaintings)+"|"+(styleEra||"roman")} wingId={activeWing} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
-        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} onMemoryUpdate={handleUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/></Suspense>}
+        {warmHallScene}
+        {!persistHall && view==="entrance" && hallSceneNode}
+        {view==="corridor"&&activeWing&&activeWing.startsWith("shared:")&&sharedWingData?<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(sharedWingData.rooms.map((r: any)=>r.id+r.name+(r.icon||"")))+"|"+(sharedWingData.wing.accentColor||"#7AA0C8")+"|"+(styleEra||"roman")} wingId={activeWing} onReady={handleSceneReady} rooms={sharedWingData.rooms.map((r: any)=>({id:r.id,name:r.name,icon:r.icon||"\uD83D\uDCC1",shared:false,sharedWith:[],coverHue:30}))} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={{id:sharedWingData.wing.slug,name:sharedWingData.wing.customName||sharedWingData.wing.slug,nameKey:sharedWingData.wing.slug,icon:"\uD83C\uDFDB\uFE0F",accent:sharedWingData.wing.accentColor||"#7AA0C8",wall:"#DDD4C6",floor:"#9E8264",desc:"Shared wing",descKey:"sharedWing",layout:"L-shaped gallery"}} corridorPaintings={{}} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)}/></Suspense>:view==="corridor"&&activeWing&&wingData&&<Suspense fallback={null}><CorridorScene key={dlKey+"|"+activeWing+"|"+JSON.stringify(getWingRooms(activeWing).map(r=>r.id+r.name+r.icon))+"|"+wingData.accent+"|"+(styleEra||"roman")} wingId={activeWing} onReady={handleSceneReady} rooms={getWingRooms(activeWing)} onDoorHover={setHovDoor} onDoorClick={(roomId: string)=>{if(walkthroughActive&&walkthroughPhase===3&&roomId!==walkthroughTargetRoom)return;if(nudgeHL.room)nudgeDismiss();enterRoom(roomId);}} hoveredDoor={hovDoor} wingData={wingData} corridorPaintings={corridorPaintings} highlightDoor={(walkthroughActive&&walkthroughPhase===3?walkthroughTargetRoom:null)||nudgeHL.room||null} styleEra={styleEra||"roman"} onInlayClick={()=>setShowRoomManager(true)} onPaintingClick={()=>setShowCorridorGallery(true)} autoWalkTo={autoWalking && nudgeHL.room ? nudgeHL.room : undefined}/></Suspense>}
+        {view==="room"&&activeWing&&activeRoomId&&<Suspense fallback={null}><InteriorScene key={dlKey+"|"+activeWing+"|"+activeRoomId+"|"+(roomLayouts[activeRoomId]||"")+"|"+(styleEra||"roman")} roomId={activeWing} actualRoomId={activeRoomId} onReady={handleSceneReady} layoutOverride={roomLayouts[activeRoomId]} memories={roomMems} onMemoryClick={handleMemClick} onMemoryUpdate={handleUpdateMemory} wingData={wingData||undefined} styleEra={styleEra||"roman"}/></Suspense>}
       </div>
 
       {view==="exterior"&&<LandscapeNudge />}
@@ -1052,8 +1154,10 @@ export default function MemoryPalace(){
       {view==="corridor"&&<CorridorTutorial open={corridorTourOpen} onClose={()=>setCorridorTourOpen(false)} />}
       {view==="room"&&<RoomTutorial open={roomTourOpen} onClose={()=>setRoomTourOpen(false)} />}
 
-      {/* Scene loading overlay — fades out after 3D canvas initializes */}
-      {(sceneLoading||portalAnim)&&<PalaceLoadingScreen overlay fadeDelay={sceneLoading ? (sceneLoadFromLibraryRef.current ? 1.2 : 0.8) : 0.2} />}
+      {/* Scene loading overlay — fades out when the mounted scene fires onReady
+          (sceneReadyFade restarts the fade with zero delay); the fixed fadeDelay
+          values are the fallback pacing when no readiness signal arrives */}
+      {(sceneLoading||portalAnim)&&<PalaceLoadingScreen overlay fadeDelay={sceneLoading ? (sceneReadyFade ? 0 : (sceneLoadFromLibraryRef.current ? 1.2 : 0.8)) : 0.2} />}
 
       {/* TopBar hidden — replaced by PalaceSubNav */}
 
@@ -1121,10 +1225,10 @@ export default function MemoryPalace(){
       {/* Room info strip removed — room name shown in PalaceSubNav breadcrumbs, layout/sharing accessible via tools */}
 
       {/* OnThisDay — floating card in exterior view */}
-      {!walkthroughActive&&view==="exterior"&&<OnThisDay onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
+      {!walkthroughActive&&view==="exterior"&&<OnThisDay onNavigateToRoom={(wingId,roomId)=>{enterWingRoom(wingId,roomId);}}/>}
 
       {/* Time Capsule Reveal — floating card when capsules have newly opened */}
-      {!walkthroughActive&&(view==="exterior"||view==="entrance")&&<TimeCapsuleReveal onNavigateToRoom={(wingId,roomId)=>{enterWing(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
+      {!walkthroughActive&&(view==="exterior"||view==="entrance")&&<TimeCapsuleReveal onNavigateToRoom={(wingId,roomId)=>{enterWingRoom(wingId,roomId);}}/>}
 
       {/* Floating points animation — always present */}
       <FloatingPoints />
@@ -1394,7 +1498,7 @@ export default function MemoryPalace(){
 
       {/* Invite & shared panels */}
       {showInvites&&<InviteNotificationsPanel onClose={()=>setShowInvites(false)}/>}
-      {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setNavMode("3d");enterCorridor(wingId);setTimeout(()=>enterRoom(roomId),600);}}/>}
+      {showSharedWithMe&&<SharedWithMePanel onClose={()=>setShowSharedWithMe(false)} onNavigateToRoom={(roomId)=>{setShowSharedWithMe(false);const wingId=roomId.startsWith("ro")?"roots":roomId.startsWith("tv")?"travel":roomId.startsWith("ne")?"nest":roomId.startsWith("cf")?"craft":roomId.startsWith("pa")?"passions":"roots";setNavMode("3d");enterWingRoom(wingId,roomId);}}/>}
       {showSharingSettings&&<SharingSettingsPanel open={showSharingSettings} onClose={()=>setShowSharingSettings(false)}/>}
 
       {/* Interview panels */}
@@ -1411,7 +1515,7 @@ export default function MemoryPalace(){
 
       {/* Track panels */}
       {showTracksPanel&&!selectedTrackId&&<TracksPanel onClose={()=>setShowTracksPanel(false)}/>}
-      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterCorridor(wing);setTimeout(()=>enterRoom(activeRoomId||`${prefix[wing]||"ro"}1`),600);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterCorridor(wing);setTimeout(()=>{enterRoom(roomId);setTimeout(()=>setShowSharing(true),600);},600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
+      {selectedTrackId&&<TrackDetailPanel trackId={selectedTrackId} onClose={()=>setSelectedTrackId(null)} onNavigate={(target)=>{setShowTracksPanel(false);setSelectedTrackId(null);switch(target){case "library-import":setNavMode("library");setShowImportHub(true);break;case "library":setNavMode("library");break;case "upload":setNavMode("library");setShowImportHub(true);break;case "room":{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};setNavMode("3d");enterWingRoom(wing,activeRoomId||`${prefix[wing]||"ro"}1`);break;}case "corridor":{const wing=activeWing||"roots";setNavMode("3d");setTimeout(()=>enterCorridor(wing),600);break;}case "share":{if(activeRoomId){setShowSharing(true);}else{const wing=activeWing||"roots";const prefix:{[k:string]:string}={roots:"ro",nest:"ne",craft:"cf",travel:"tv",passions:"pa"};const roomId=`${prefix[wing]||"ro"}1`;setNavMode("3d");enterWingRoom(wing,roomId);setTimeout(()=>setShowSharing(true),600);}break;}case "wings":{setNavMode("3d");const wing=activeWing||"roots";setTimeout(()=>enterWing(wing),600);break;}case "entrance":setNavMode("3d");setTimeout(()=>enterEntrance(),300);break;case "interview":setShowInterviewPanel(true);break;case "legacy":setShowLegacyPanel(true);break;case "keps":setShowKepCapture(true);break;case "explore":window.location.href="/explore";break;case "settings":window.location.href="/settings";break;default:break;}}}/>}
       {showLegacyPanel&&<LegacyPanel onClose={()=>setShowLegacyPanel(false)}/>}
 
       {/* Track step completion toast */}

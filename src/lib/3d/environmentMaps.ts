@@ -1,9 +1,14 @@
 import * as THREE from "three";
+import { acquireEnvMap } from "./assetLoader";
 
 /**
  * Procedural environment map generation for IBL (Image-Based Lighting).
  * Creates warm, atmospheric environment maps without needing external HDRI files.
  * Uses PMREMGenerator to create proper prefiltered environment maps.
+ *
+ * Results are deterministic for a given parameter set, so they are cached per
+ * renderer via assetLoader's env-map cache — repeat scene mounts skip the PMREM
+ * pass. Callers must releaseEnvMap() the result instead of disposing it.
  */
 
 /** Create a warm interior environment map (for halls, corridors, rooms) */
@@ -16,6 +21,19 @@ export function createInteriorEnvMap(
   } = {}
 ): THREE.Texture {
   const { warmth = 0.7, brightness = 0.4, tint } = options;
+  const key = `procScene|interior|${warmth}|${brightness}|${tint ? tint.getHexString() : "-"}`;
+  return acquireEnvMap(renderer, key, () => {
+    const texture = buildInteriorEnvMap(renderer, warmth, brightness, tint);
+    return { texture, dispose: () => texture.dispose() };
+  });
+}
+
+function buildInteriorEnvMap(
+  renderer: THREE.WebGLRenderer,
+  warmth: number,
+  brightness: number,
+  tint?: THREE.Color
+): THREE.Texture {
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileCubemapShader();
 
@@ -97,6 +115,18 @@ export function createExteriorEnvMap(
   } = {}
 ): THREE.Texture {
   const { sunIntensity = 0.8, skyBrightness = 0.6 } = options;
+  const key = `procScene|exterior|${sunIntensity}|${skyBrightness}`;
+  return acquireEnvMap(renderer, key, () => {
+    const texture = buildExteriorEnvMap(renderer, sunIntensity, skyBrightness);
+    return { texture, dispose: () => texture.dispose() };
+  });
+}
+
+function buildExteriorEnvMap(
+  renderer: THREE.WebGLRenderer,
+  sunIntensity: number,
+  skyBrightness: number
+): THREE.Texture {
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileCubemapShader();
 

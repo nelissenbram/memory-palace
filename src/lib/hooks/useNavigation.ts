@@ -1,7 +1,7 @@
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import { useRoomStore } from "@/lib/stores/roomStore";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 export interface Crumb {
   label: string;
@@ -19,8 +19,14 @@ export function useNavigation() {
   const exitToEntrance = usePalaceStore((s) => s.exitToEntrance);
   const { setShowGallery, setGalleryInitialMemId, setGalleryInitialTab, setGalleryAutoAssignUnit } = useUIPanelStore();
   const { getWingRooms, getWings } = useRoomStore();
+  // Underlying slices getWings() derives from — used as memo keys below
+  const customWings = useRoomStore((s) => s.customWings);
+  const extraWings = useRoomStore((s) => s.extraWings);
 
-  const allWings = getWings();
+  // Stable identity: getWings() maps to a FRESH array on every call, which used
+  // to give allWings a new identity each render and cascade into full 3D scene
+  // rebuilds (EntranceHallScene keys its construction effect on the wings prop).
+  const allWings = useMemo(() => getWings(), [getWings, customWings, extraWings]);
   const wingData = activeWing ? allWings.find((w) => w.id === activeWing) ?? null : null;
   const hovWingData = hovWing ? allWings.find((w) => w.id === hovWing) ?? null : null;
   const activeRoomData =

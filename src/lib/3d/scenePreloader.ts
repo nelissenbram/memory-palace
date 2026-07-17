@@ -6,6 +6,12 @@
  * React.lazy() dynamic import resolves instantly from the webpack module cache.
  *
  * Also preloads shared assets (HDRI, PBR textures) that are reused across scenes.
+ *
+ * NOTE on GPU program warming (renderer.compileAsync): not feasible here — scene
+ * graphs are constructed inside each scene component's mount effect, so no
+ * THREE.Scene/camera exists to compile before the transition. Program retention is
+ * handled instead by src/lib/3d/materialCache.ts (archetype materials survive scene
+ * teardown, so the pooled renderer keeps their compiled programs across transitions).
  */
 
 type SceneId = "exterior" | "entrance" | "corridor" | "room";
@@ -85,7 +91,9 @@ export function preloadSharedAssets(): void {
   import("@/lib/3d/assetLoader").then(({ loadMarbleTextures, loadPlasterWallTextures, loadDarkWoodTextures }) => {
     import("@/lib/3d/mobilePerf").then(({ isMobileGPU }) => {
       if (isMobileGPU()) return; // skip on mobile
-      // Trigger loading — the PBR cache inside assetLoader keeps them alive
+      // Trigger loading — the PBR cache inside assetLoader keeps them alive.
+      // Base textures are cached repeat-agnostic, so this warms the fetched/
+      // decoded images for every repeat variant scenes later request.
       loadMarbleTextures([4, 4]);
       loadPlasterWallTextures([3, 3]);
       loadDarkWoodTextures([2, 3]);

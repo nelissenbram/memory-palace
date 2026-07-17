@@ -13,6 +13,7 @@ interface PalaceState {
   opacity: number;
   portalAnim: boolean;
   _timer: ReturnType<typeof setTimeout> | null;
+  _raf: number | null;
   roomLayouts: Record<string, string>; // roomId → layout override id
   /** Deep-link target for Library view — consumed once then cleared */
   libraryTarget: { wingId: string; roomId: string; memoryId?: string } | null;
@@ -28,6 +29,7 @@ interface PalaceState {
   exitToPalace: () => void;
   exitToEntrance: () => void;
   enterRoom: (roomId: string) => void;
+  enterWingRoom: (wingId: string, roomId: string) => void;
   exitToCorridor: () => void;
   switchWing: (id: string) => void;
   setRoomLayout: (roomId: string, layoutId: string) => void;
@@ -58,6 +60,7 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
   opacity: 1,
   portalAnim: false,
   _timer: null,
+  _raf: null,
   roomLayouts: loadRoomLayouts(),
   libraryTarget: null,
 
@@ -70,13 +73,28 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
   setHovDoor: (v) => set({ hovDoor: v }),
 
   fade: (cb) => {
-    const { _timer } = get();
+    const { _timer, _raf } = get();
+    // Supersede any in-flight fade cleanly (rapid double-navigation)
     if (_timer) clearTimeout(_timer);
+    if (_raf !== null && typeof cancelAnimationFrame !== "undefined") cancelAnimationFrame(_raf);
+    // portalAnim mounts the opaque PalaceLoadingScreen overlay + portal flash
+    // immediately; apply the view change as soon as that overlay has painted
+    // (double rAF) instead of after a fixed 500ms — the swap is fully masked
+    // and the next scene starts mounting ~470ms sooner. portalAnim itself
+    // still runs its full 500ms visual duration (flash/fade look unchanged);
+    // the 500ms timer also acts as a safety net for the swap since rAF is
+    // throttled/paused in hidden tabs.
+    let done = false;
+    const run = () => { if (done) return; done = true; set({ _raf: null }); cb(); };
     const t = setTimeout(() => {
-      cb();
-      set({ portalAnim: false });
+      run();
+      set({ portalAnim: false, _timer: null });
     }, 500);
-    set({ portalAnim: true, opacity: 0, _timer: t });
+    const r1 = requestAnimationFrame(() => {
+      const r2 = requestAnimationFrame(run);
+      set({ _raf: r2 });
+    });
+    set({ portalAnim: true, opacity: 0, _timer: t, _raf: r1 });
   },
 
   enterWing: (id) => {
@@ -106,6 +124,15 @@ export const usePalaceStore = create<PalaceState>((set, get) => ({
     if (roomId === "__back__") { get().exitToCorridor(); return; }
     set({ activeRoomId: roomId });
     get().fade(() => set({ view: "room", opacity: 1 }));
+  },
+
+  // Deep-link straight into a room: ONE fade applying wing + room + view
+  // atomically (same end state as enterCorridor→enterRoom, without mounting
+  // and throwing away the intermediate corridor scene). Everything is set
+  // inside the fade callback (like switchWing) so the currently mounted
+  // scene never re-keys before the swap.
+  enterWingRoom: (wingId, roomId) => {
+    get().fade(() => set({ activeWing: wingId, activeRoomId: roomId, view: "room", opacity: 1 }));
   },
 
   exitToCorridor: () => {
