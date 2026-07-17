@@ -506,18 +506,48 @@ export default function HomeView() {
   const relayChips: { key: string; label: string; onClick: () => void }[] = [];
   // Personalization returns: compact "tuned for you" summary, or the full
   // selector when no persona is set yet.
-  const personaSlot = (personaType && !personaExpanded) ? (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", padding: "0.75rem 1rem", borderRadius: "0.75rem", background: T.color.warmStone, border: `0.0625rem solid ${T.color.cream}` }}>
-      <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut, fontWeight: 500 }}>
-        {tPersona("yourStyle").replace("{type}", tPersona(`${personaType}Label`))}
-      </span>
-      <button type="button" onClick={() => setPersonaExpanded(true)} style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.terracotta, background: "none", border: `0.0625rem solid ${T.color.terracotta}30`, borderRadius: "0.5rem", padding: "0.375rem 0.75rem", cursor: "pointer", flexShrink: 0 }}>
-        {tPersona("change")}
-      </button>
-    </div>
-  ) : (
+  // Style quiz: label (subtle chip) when taken; the full selector otherwise.
+  const personaLabel = (personaType && !personaExpanded) ? tPersona(`${personaType}Label`) : null;
+  const personaQuiz = (
     <PersonaSelector onPersonaSelected={(p) => { localStorage.setItem("mp_persona_type", p); setPersonaType(p); setPersonaExpanded(false); }} currentPersona={personaType} isMobile={isMobile} />
   );
+
+  // "Your memories" strip — brings back Recent Memories + On This Day + a
+  // compact portrait, the emotional content that the plain relay had dropped.
+  const memImg = (m: Mem): string | null => ((m.dataUrl && !m.dataUrl.startsWith("data:audio") && !m.videoBlob) ? (m.thumbnailUrl || m.dataUrl) : (m.thumbnailUrl || null));
+  const otdIds = new Set(onThisDayMemories.map((x) => x.mem.id));
+  const stripItems = [
+    ...onThisDayMemories.map((x) => ({ mem: x.mem, otd: true })),
+    ...recentMemories.filter((x) => !otdIds.has(x.mem.id)).map((x) => ({ mem: x.mem, otd: false })),
+  ].slice(0, 10);
+  const mtc = { photo: 0, video: 0, story: 0 };
+  for (const { mem } of allMemories) {
+    if (mem.type === "photo" || mem.type === "album") mtc.photo++;
+    else if (mem.type === "video") mtc.video++;
+    else mtc.story++;
+  }
+  const memoriesStrip = stripItems.length > 0 ? (
+    <section aria-label="Your memories" style={{ borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", background: T.color.cream, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.06)", padding: "1rem 1.1rem" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "1rem", marginBottom: "0.75rem" }}>
+        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.1875rem", color: "#9A4F2A" }}>Your memories</span>
+        <button type="button" onClick={() => { localStorage.setItem("mp_library_sort", "recent"); handleNavigateLibrary(); }} style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.muted, background: "none", border: "none", cursor: "pointer" }}>See all →</button>
+      </div>
+      <div style={{ display: "flex", gap: "0.6rem", overflowX: "auto", paddingBottom: "0.35rem" }}>
+        {stripItems.map((it, i) => {
+          const src = memImg(it.mem);
+          return (
+            <button key={it.mem.id + "_" + i} type="button" onClick={() => handleMemoryClick(it.mem)} style={{ position: "relative", flex: "0 0 auto", width: "6rem", height: "6rem", borderRadius: "0.6rem", overflow: "hidden", border: "0.0625rem solid #E3D6BC", cursor: "pointer", padding: 0, background: "#F2E4D5" }}>
+              {src ? <span aria-hidden="true" style={{ display: "block", width: "100%", height: "100%", backgroundImage: `url(${src})`, backgroundSize: "cover", backgroundPosition: "center", filter: "saturate(0.92)" }} /> : <span style={{ display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.walnut, padding: "0.35rem", textAlign: "center", lineHeight: 1.25 }}>{it.mem.title}</span>}
+              {it.otd ? <span style={{ position: "absolute", left: "0.3rem", top: "0.3rem", fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700, letterSpacing: "0.03em", textTransform: "uppercase", color: "#5A3A0E", background: "rgba(212,175,55,0.92)", borderRadius: "1rem", padding: "0.08rem 0.35rem" }}>on this day</span> : null}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.6rem", fontVariantNumeric: "tabular-nums" }}>
+        {mtc.photo} photos · {mtc.video} videos · {mtc.story} stories · {totalWings} wings
+      </div>
+    </section>
+  ) : null;
   // Palace + Library stay ON TOP as anchors.
   const relayAnchors = [
     { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, note: totalMemories > 0 ? "Your people are in here" : "Empty rooms, ready for you" },
@@ -631,10 +661,12 @@ export default function HomeView() {
             score={relayScore}
             suggestion={relaySuggestion}
             chips={relayChips}
-            personaSlot={personaSlot}
+            personaLabel={personaLabel}
+            personaQuiz={personaQuiz}
+            onChangeStyle={() => setPersonaExpanded(true)}
             onChooseJourney={() => setShowTracksPanel(true)}
             onAddName={() => router.push("/settings/profile")}
-            stewardNote={totalMemories === 0 ? "your first room is waiting" : "lovely to see you back"}
+            memoriesStrip={memoriesStrip}
             anchors={relayAnchors}
             lanes={relayLanes}
             you={relayYou}
