@@ -83,7 +83,40 @@ export default function UspCardShell({
           ))}
         </span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", marginLeft: "0.25rem", minWidth: 0 }}>
-          <span style={{ display: "inline-flex", color: U.accent, flexShrink: 0 }}>{icon}</span>
+          {/* Sub-brand logo — a prominent warm medallion echoing the "Why" icons:
+            a muted-warm tile, the rust glyph enlarged, and one animated gold
+            accent (the pulsing glow behind it). Breathe + glow are gated behind
+            prefers-reduced-motion in globals.css. */}
+        <span
+          className="lv2-usp-logo"
+          style={{
+            position: "relative",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "2.375rem",
+            height: "2.375rem",
+            borderRadius: "0.65rem",
+            background: "rgba(154, 79, 42, 0.08)",
+            border: "1px solid rgba(154, 79, 42, 0.22)",
+            color: U.accent,
+            flexShrink: 0,
+          }}
+        >
+          <span
+            aria-hidden="true"
+            className="lv2-usp-logo-glow"
+            style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: "inherit",
+              background: "radial-gradient(closest-side, rgba(212, 175, 55, 0.5), transparent 72%)",
+            }}
+          />
+          <span className="lv2-usp-logo-glyph" style={{ position: "relative", display: "inline-flex" }}>
+            {icon}
+          </span>
+        </span>
           <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
             <span
               style={{

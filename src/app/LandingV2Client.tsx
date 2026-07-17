@@ -1007,7 +1007,7 @@ export default function LandingV2Client({
                   style={{ marginTop: gi === 0 ? 0 : "clamp(3.5rem, 7vw, 6rem)" }}
                 >
                   {/* Chapter menu rail */}
-                  <nav aria-label={group.label} className="lv2-chap-rail" style={{ order: railLeft ? 0 : 1 }}>
+                  <nav aria-label={group.label} className="lv2-chap-rail" style={{ order: railLeft ? 0 : 1, alignSelf: "stretch" }}>
                     <div style={{ position: "sticky", top: "6rem" }}>
                       <p style={{ fontFamily: FONT_BODY, fontSize: L.type.micro, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: L.accentLight, margin: "0 0 0.75rem" }}>
                         {group.label}
