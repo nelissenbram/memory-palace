@@ -27,6 +27,7 @@ export type RelayTile = {
   hidden?: boolean;
   soon?: boolean;
   note?: string;
+  art?: React.ReactNode;
 };
 export type RelayAccent = "terracotta" | "gold" | "sage" | "anchor" | "anchorLibrary";
 export type RelayLane = { id: string; overline: string; accent: RelayAccent; tiles: RelayTile[] };
@@ -128,42 +129,45 @@ function ThumbFan({ thumbs }: { thumbs: string[] }) {
 function Tile({ tile, accent, index }: { tile: RelayTile; accent: RelayAccent; index: number }) {
   if (tile.hidden) return null;
   const a = ACCENT[accent];
+  const common: React.CSSProperties = {
+    position: "relative", display: "flex", flexDirection: "column", alignItems: "stretch", textAlign: "left",
+    borderRadius: "1rem", overflow: "hidden", border: `0.0625rem solid ${HAIRLINE}`, background: T.color.cream,
+    cursor: "pointer", opacity: tile.soon ? 0.72 : 1,
+  };
+
+  // ANCHOR (Enter Palace / Library): original illustration as the header, with
+  // the polaroid thumbnail fan dropped below in the body.
+  if (tile.anchor) {
+    return (
+      <button type="button" onClick={tile.onClick} className="relay-tile" style={{ ...common, minHeight: "12rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.13)" }}>
+        <div style={{ position: "relative", height: "8rem", overflow: "hidden", background: a.tileBg, borderBottom: `0.0625rem solid ${HAIRLINE}` }}>
+          {tile.art ? <div className="relay-art" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: "0.75rem 1.25rem" }}>{tile.art}</div> : null}
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", padding: "0.85rem 1rem 1rem" }}>
+          <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.375rem", lineHeight: 1.15, color: "#9A4F2A" }}>{tile.title}</span>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted }}>{tile.desc}</span>
+          {tile.thumbs && tile.thumbs.length > 0 ? <span style={{ marginTop: "0.5rem" }}><ThumbFan thumbs={tile.thumbs} /></span> : null}
+          {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: "0.875rem", color: a.datumColor, marginTop: "0.35rem" }}>{tile.datum}</span> : null}
+        </div>
+      </button>
+    );
+  }
+
+  // LANE TILE: no header bar (that treatment moved to the zone); a soft
+  // zone-tinted wash reveals on hover for a full-card visual expression.
   return (
-    <button
-      type="button"
-      onClick={tile.onClick}
-      className="relay-tile"
-      style={{
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "stretch",
-        textAlign: "left",
-        minHeight: tile.anchor ? "8.5rem" : "6.75rem",
-        borderRadius: "1rem",
-        overflow: "hidden",
-        border: `0.0625rem solid ${HAIRLINE}`,
-        background: T.color.cream,
-        boxShadow: tile.anchor ? "0 0.5rem 1.5rem rgba(64,59,54,0.13)" : "0 0.25rem 1rem rgba(64,59,54,0.07)",
-        cursor: "pointer",
-        opacity: tile.soon ? 0.72 : 1,
-      }}
-    >
+    <button type="button" onClick={tile.onClick} className="relay-tile" style={{ ...common, minHeight: "6.5rem", padding: "1rem", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)" }}>
       {tile.soon ? (
         <span style={{ position: "absolute", top: "0.55rem", right: "0.6rem", zIndex: 2, fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#9A4F2A", background: "rgba(255,255,255,0.7)", borderRadius: "1rem", padding: "0.15rem 0.5rem" }}>Soon</span>
       ) : null}
-      {/* light header bar (USP card style) */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", padding: tile.anchor ? "0.8rem 1rem" : "0.65rem 0.85rem", background: HEADER_BG[accent], borderBottom: `0.0625rem solid ${HAIRLINE}` }}>
-        <Medallion k={tile.key} accent={accent} index={index} big={tile.anchor} animated={tile.anchor} />
-        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: tile.anchor ? "1.375rem" : "1.0625rem", lineHeight: 1.2, color: "#9A4F2A", minWidth: 0, overflowWrap: "break-word" }}>{tile.title}</span>
-        {tile.anchor && tile.thumbs && tile.thumbs.length > 0 ? (
-          <span style={{ marginLeft: "auto" }}><ThumbFan thumbs={tile.thumbs} /></span>
-        ) : null}
-      </div>
-      {/* body */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", padding: tile.anchor ? "0.75rem 1rem 0.9rem" : "0.65rem 0.85rem 0.8rem", flex: 1 }}>
+      <span aria-hidden="true" className="relay-tile-wash" style={{ position: "absolute", inset: 0, background: `radial-gradient(130% 90% at 15% 0%, ${a.medallion}, transparent 62%)`, opacity: 0, pointerEvents: "none" }} />
+      <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
+          <Medallion k={tile.key} accent={accent} index={index} animated={false} />
+          <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.0625rem", lineHeight: 1.2, color: "#9A4F2A", minWidth: 0, overflowWrap: "break-word" }}>{tile.title}</span>
+        </div>
         <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: "0.9375rem", lineHeight: 1.35, color: T.color.muted }}>{tile.desc}</span>
-        {tile.datum ? <span style={{ display: "block", fontFamily: T.font.body, fontWeight: 700, fontSize: "0.875rem", color: a.datumColor, marginTop: "0.2rem" }}>{tile.datum}</span> : null}
+        {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: "0.875rem", color: a.datumColor }}>{tile.datum}</span> : null}
       </div>
     </button>
   );
@@ -263,9 +267,10 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
         if (visible.length === 0) return null;
         const a = ACCENT[lane.accent];
         return (
-          <section key={lane.id} aria-label={lane.overline} style={{ background: a.band, borderRadius: "1.25rem", padding: "1.1rem 1.1rem 1.35rem", margin: "0 0 1.1rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "0 0 0.9rem" }}>
-              <span className="relay-zone-dot" style={{ width: "0.55rem", height: "0.55rem", borderRadius: "50%", background: a.tileTop, display: "inline-block" }} aria-hidden="true" />
+          <section key={lane.id} aria-label={lane.overline} style={{ background: a.band, borderRadius: "1.25rem", padding: "0.85rem 1.1rem 1.35rem", margin: "0 0 1.1rem" }}>
+            {/* the header treatment lives at ZONE level now (off the tiles) */}
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "0 0 1rem", padding: "0.6rem 0.9rem", borderRadius: "0.75rem", background: HEADER_BG[lane.accent], border: `0.0625rem solid ${HAIRLINE}` }}>
+              <span className="relay-zone-dot" style={{ width: "0.6rem", height: "0.6rem", borderRadius: "50%", background: a.tileTop, display: "inline-block" }} aria-hidden="true" />
               <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: a.glyph }}>{lane.overline}</span>
               <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: `linear-gradient(90deg, ${a.rule}, transparent)` }} />
             </div>
@@ -294,6 +299,14 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
         .relay-tile { transition: transform 0.2s ease, box-shadow 0.2s ease; animation: relay-rise 0.5s ease both; }
         .relay-tile:hover { transform: translateY(-0.1875rem); box-shadow: 0 0.75rem 1.75rem rgba(36,28,21,0.16); }
         .relay-tile:active { transform: translateY(0); }
+        /* hover reveal: a soft zone-tinted wash blooms over the whole lane tile */
+        .relay-tile-wash { transition: opacity 0.28s ease; }
+        .relay-tile:hover .relay-tile-wash { opacity: 1; }
+        /* anchor illustration gently floats and brightens on hover */
+        .relay-art { transition: filter 0.3s ease; }
+        .relay-tile:hover .relay-art { filter: brightness(1.06) saturate(1.05); }
+        @media (prefers-reduced-motion: no-preference) { .relay-art { animation: relay-float 6.5s ease-in-out infinite; } }
+        @keyframes relay-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
         .relay-chip, .relay-pill { transition: background 0.2s ease, border-color 0.2s ease; }
         .relay-chip:hover, .relay-pill:hover { background: ${T.color.warmStone}55; border-color: ${T.color.terracotta}; }
         .relay-suggest { transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease; }

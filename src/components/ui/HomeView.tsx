@@ -20,6 +20,7 @@ import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 
 import AtriumHero from "@/components/ui/AtriumHero";
 import AtriumRelay from "@/components/ui/AtriumRelay";
+import { PalaceIllustration, LibraryIllustration } from "@/components/ui/AnchorArt";
 import {
   TrackProgress,
   AchievementShowcase,
@@ -550,8 +551,8 @@ export default function HomeView() {
   ) : null;
   // Palace + Library stay ON TOP as anchors.
   const relayAnchors = [
-    { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, note: totalMemories > 0 ? "Your people are in here" : "Empty rooms, ready for you" },
-    { key: "library", title: "Enter Your Library", desc: "Your whole collection", onClick: handleNavigateLibrary, datum: totalMemories > 0 ? `${totalMemories} ${t("memories")}` : undefined, thumbs: libThumbs },
+    { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, art: <PalaceIllustration hover={false} /> },
+    { key: "library", title: "Enter Your Library", desc: "Your whole collection", onClick: handleNavigateLibrary, datum: totalMemories > 0 ? `${totalMemories} ${t("memories")}` : undefined, thumbs: libThumbs, art: <LibraryIllustration hover={false} /> },
   ];
   // score & badge total, for those who like keeping count.
   const relayScore = { points: totalPoints, badgesEarned: achievementProgress.earned, badgesTotal: achievementProgress.total, onClick: () => setShowAchievementPanel(true) };
