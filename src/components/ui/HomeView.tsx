@@ -572,7 +572,7 @@ export default function HomeView() {
         height: "100dvh",
         display: "flex",
         flexDirection: "column",
-        background: `linear-gradient(175deg, ${T.color.linen} 0%, ${T.color.warmStone} 55%, ${T.color.cream} 100%)`,
+        background: "#F4EADA",
         fontFamily: T.font.body,
         overflow: "hidden",
       }}

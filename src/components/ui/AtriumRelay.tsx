@@ -27,7 +27,7 @@ export type RelayTile = {
   hidden?: boolean;
   soon?: boolean;
 };
-export type RelayAccent = "terracotta" | "gold" | "sage" | "anchor";
+export type RelayAccent = "terracotta" | "gold" | "sage" | "anchor" | "anchorLibrary";
 export type RelayLane = { id: string; overline: string; accent: RelayAccent; tiles: RelayTile[] };
 export type RelaySuggestion = { key: string; title: string; reason: string; onClick: () => void };
 export type RelayChip = { key: string; label: string; onClick: () => void };
@@ -48,11 +48,16 @@ interface AtriumRelayProps {
   isMobile: boolean;
 }
 
-const ACCENT: Record<RelayAccent, { glyph: string; medallion: string; glow: string; band: string; rule: string; tileTop: string; tileBg: string; border: string }> = {
-  terracotta: { glyph: "#A24B28", medallion: "rgba(184,92,56,0.16)", glow: "rgba(184,92,56,0.6)", band: "rgba(184,92,56,0.05)", rule: "rgba(184,92,56,0.4)", tileTop: "#B85C38", tileBg: "linear-gradient(160deg, #FDF3EE 0%, #FCFAF5 70%)", border: "rgba(184,92,56,0.20)" },
-  gold: { glyph: "#9A6A1E", medallion: "rgba(212,175,55,0.22)", glow: "rgba(212,175,55,0.7)", band: "rgba(212,175,55,0.06)", rule: "rgba(212,175,55,0.45)", tileTop: "#D4AF37", tileBg: "linear-gradient(160deg, #FCF6E6 0%, #FCFAF5 70%)", border: "rgba(176,135,23,0.22)" },
-  sage: { glyph: "#556348", medallion: "rgba(106,124,92,0.22)", glow: "rgba(106,124,92,0.55)", band: "rgba(106,124,92,0.06)", rule: "rgba(106,124,92,0.4)", tileTop: "#6A7C5C", tileBg: "linear-gradient(160deg, #F3F7EC 0%, #FCFAF5 70%)", border: "rgba(92,107,76,0.22)" },
-  anchor: { glyph: "#B85C38", medallion: "rgba(212,175,55,0.20)", glow: "rgba(212,175,55,0.75)", band: "transparent", rule: "rgba(212,175,55,0.5)", tileTop: "#D4AF37", tileBg: "linear-gradient(150deg, #F5EEE2 0%, #FCF6E9 55%, #FCFAF5 100%)", border: "rgba(184,92,56,0.30)" },
+// "INK & EMBER" palette (colour workflow winner, 45.3/50, AA-verified on the
+// darker gradient stop). Three edge-to-edge earth washes that never fade to
+// cream; the two anchors invert to dark gilt-edged keystone cards. Per-zone
+// text colours are mandatory (a single global ink would fail on dark anchors).
+const ACCENT: Record<RelayAccent, { glyph: string; medallion: string; glow: string; band: string; rule: string; tileTop: string; tileBg: string; border: string; titleColor: string; descColor: string; datumColor: string }> = {
+  terracotta: { glyph: "#7C3016", medallion: "rgba(168,71,31,0.18)", glow: "rgba(168,71,31,0.5)", band: "rgba(168,71,31,0.06)", rule: "rgba(168,71,31,0.4)", tileTop: "#A8471F", tileBg: "linear-gradient(155deg, #FBE4D6 0%, #F3C9B2 100%)", border: "rgba(168,71,31,0.22)", titleColor: "#2A1A12", descColor: "#5A3A2A", datumColor: "#7C3016" },
+  gold: { glyph: "#6E4A0F", medallion: "rgba(158,111,20,0.20)", glow: "rgba(158,111,20,0.5)", band: "rgba(158,111,20,0.06)", rule: "rgba(158,111,20,0.4)", tileTop: "#B47A1A", tileBg: "linear-gradient(155deg, #FBEAC6 0%, #F0D48C 100%)", border: "rgba(158,111,20,0.24)", titleColor: "#2A2010", descColor: "#5E4718", datumColor: "#6E4A0F" },
+  sage: { glyph: "#38481F", medallion: "rgba(78,97,56,0.20)", glow: "rgba(78,97,56,0.45)", band: "rgba(78,97,56,0.06)", rule: "rgba(78,97,56,0.4)", tileTop: "#55682E", tileBg: "linear-gradient(155deg, #E9EFD5 0%, #D2DEAE 100%)", border: "rgba(78,97,56,0.24)", titleColor: "#232C15", descColor: "#45532E", datumColor: "#38481F" },
+  anchor: { glyph: "#E8C766", medallion: "rgba(232,199,102,0.18)", glow: "rgba(232,199,102,0.4)", band: "transparent", rule: "rgba(232,199,102,0.5)", tileTop: "#E8C766", tileBg: "linear-gradient(150deg, #2E2118 0%, #1C130C 100%)", border: "rgba(232,199,102,0.30)", titleColor: "#F7EFE0", descColor: "#E4D6BE", datumColor: "#E8C766" },
+  anchorLibrary: { glyph: "#E8C766", medallion: "rgba(232,199,102,0.18)", glow: "rgba(232,199,102,0.4)", band: "transparent", rule: "rgba(232,199,102,0.5)", tileTop: "#E8C766", tileBg: "linear-gradient(150deg, #2A2027 0%, #191218 100%)", border: "rgba(232,199,102,0.30)", titleColor: "#F5EFE2", descColor: "#D8CBB6", datumColor: "#E8C766" },
 };
 
 function Glyph({ k, size }: { k: string; size: string }) {
@@ -79,6 +84,7 @@ function Medallion({ k, accent, index, big }: { k: string; accent: RelayAccent; 
         background: a.medallion,
         color: a.glyph,
         flexShrink: 0,
+        boxShadow: (accent === "anchor" || accent === "anchorLibrary") ? "inset 0 0 0 0.0625rem rgba(232,199,102,0.42)" : "none",
         ["--ri-delay" as unknown as string]: `${((index % 6) * 0.6).toFixed(2)}s`,
       }}
     >
@@ -127,13 +133,13 @@ function Tile({ tile, accent, index }: { tile: RelayTile; accent: RelayAccent; i
         borderTopWidth: "0.1875rem",
         borderTopColor: a.tileTop,
         background: a.tileBg,
-        boxShadow: tile.anchor ? "0 0.5rem 1.75rem rgba(36,28,21,0.12)" : "0 0.25rem 1rem rgba(36,28,21,0.07)",
+        boxShadow: tile.anchor ? "0 0.625rem 2rem rgba(28,19,12,0.34)" : "0 0.25rem 1rem rgba(36,28,21,0.08)",
         cursor: "pointer",
         opacity: tile.soon ? 0.72 : 1,
       }}
     >
       {tile.soon ? (
-        <span style={{ position: "absolute", top: "0.7rem", right: "0.7rem", fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: T.color.walnut, background: T.color.warmStone, borderRadius: "1rem", padding: "0.15rem 0.5rem" }}>Soon</span>
+        <span style={{ position: "absolute", top: "0.7rem", right: "0.7rem", fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: a.descColor, background: "rgba(255,255,255,0.35)", borderRadius: "1rem", padding: "0.15rem 0.5rem" }}>Soon</span>
       ) : null}
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", width: "100%" }}>
         <Medallion k={tile.key} accent={accent} index={index} big={tile.anchor} />
@@ -142,9 +148,9 @@ function Tile({ tile, accent, index }: { tile: RelayTile; accent: RelayAccent; i
         ) : null}
       </div>
       <span style={{ display: "flex", flexDirection: "column", gap: "0.15rem", minWidth: 0 }}>
-        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: tile.anchor ? "1.5rem" : "1.1875rem", lineHeight: 1.15, color: T.color.charcoal }}>{tile.title}</span>
-        <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: "0.9375rem", lineHeight: 1.35, color: T.color.muted }}>{tile.desc}</span>
-        {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: "0.875rem", color: a.glyph, marginTop: "0.25rem" }}>{tile.datum}</span> : null}
+        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: tile.anchor ? "1.5rem" : "1.1875rem", lineHeight: 1.15, color: a.titleColor }}>{tile.title}</span>
+        <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: "0.9375rem", lineHeight: 1.35, color: a.descColor }}>{tile.desc}</span>
+        {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: "0.875rem", color: a.datumColor, marginTop: "0.25rem" }}>{tile.datum}</span> : null}
       </span>
     </button>
   );
@@ -161,14 +167,14 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.7fr 1fr", gap: "1.25rem", alignItems: "start", marginBottom: "1.5rem" }}>
         <div>
           <h1 style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: isMobile ? "1.75rem" : "2.25rem", lineHeight: 1.12, margin: 0, color: T.color.charcoal }}>
-            {greeting}{userName ? <>, <span style={{ color: T.color.terracotta }}>{userName}</span></> : null}
+            {greeting}{userName ? <>, <span style={{ color: "#A8471F" }}>{userName}</span></> : null}
           </h1>
-          <p style={{ fontFamily: T.font.body, fontSize: "1rem", fontWeight: 500, color: T.color.muted, margin: "0.5rem 0 1rem", fontVariantNumeric: "tabular-nums" }}>{datumLine}</p>
+          <p style={{ fontFamily: T.font.body, fontSize: "1rem", fontWeight: 500, color: "#6B6459", margin: "0.5rem 0 1rem", fontVariantNumeric: "tabular-nums" }}>{datumLine}</p>
 
-          <button type="button" onClick={suggestion.onClick} className="relay-suggest" style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: "1rem", width: "100%", textAlign: "left", padding: "1.125rem 1.25rem", borderRadius: "1rem", border: "none", cursor: "pointer", color: T.color.linen, background: `linear-gradient(135deg, ${T.color.terracotta}, #A24B28)`, boxShadow: "0 0.75rem 1.75rem rgba(154,79,42,0.35)" }}>
+          <button type="button" onClick={suggestion.onClick} className="relay-suggest" style={{ position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: "1rem", width: "100%", textAlign: "left", padding: "1.125rem 1.25rem", borderRadius: "1rem", border: "none", cursor: "pointer", color: T.color.linen, background: "linear-gradient(135deg, #A24B28, #7C3016)", boxShadow: "0 0.75rem 1.75rem rgba(124,48,22,0.4)" }}>
             <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "3rem", height: "3rem", borderRadius: "0.75rem", background: "rgba(255,255,255,0.16)", color: T.color.linen, flexShrink: 0 }}><span style={{ width: "1.6rem", height: "1.6rem", display: "inline-flex" }}><SugIco /></span></span>
             <span style={{ display: "flex", flexDirection: "column", gap: "0.1rem", minWidth: 0, position: "relative", zIndex: 1 }}>
-              <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: T.color.goldLight ?? "#E8C87A" }}>Suggested for you</span>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#F2C75A" }}>Suggested for you</span>
               <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.25rem", lineHeight: 1.15 }}>{suggestion.title}</span>
               <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "rgba(250,247,240,0.86)" }}>{suggestion.reason}</span>
             </span>
@@ -179,11 +185,11 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
         <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
           {score ? (
             <button type="button" onClick={score.onClick} className="relay-chip" style={{ display: "flex", alignItems: "center", gap: "0.6rem", minHeight: "3rem", padding: "0 1rem", borderRadius: "0.75rem", border: `0.0625rem solid ${T.color.warmStone}`, background: "linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.03))", cursor: "pointer" }}>
-              <span aria-hidden="true" style={{ width: "1.375rem", height: "1.375rem", display: "inline-flex", color: "#B08717" }}><RelayIcons.points /></span>
+              <span aria-hidden="true" style={{ width: "1.375rem", height: "1.375rem", display: "inline-flex", color: "#8A6410" }}><RelayIcons.points /></span>
               <span style={{ fontFamily: T.font.display, fontWeight: 700, fontSize: "1.0625rem", color: T.color.charcoal, fontVariantNumeric: "tabular-nums" }}>{score.points.toLocaleString()}</span>
               <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginRight: "0.25rem" }}>pts</span>
               <span aria-hidden="true" style={{ width: "0.0625rem", height: "1.25rem", background: T.color.warmStone }} />
-              <span aria-hidden="true" style={{ width: "1.375rem", height: "1.375rem", display: "inline-flex", color: T.color.terracotta }}><RelayIcons.badge /></span>
+              <span aria-hidden="true" style={{ width: "1.375rem", height: "1.375rem", display: "inline-flex", color: "#A8471F" }}><RelayIcons.badge /></span>
               <span style={{ fontFamily: T.font.display, fontWeight: 700, fontSize: "1.0625rem", color: T.color.charcoal, fontVariantNumeric: "tabular-nums" }}>{score.badgesEarned}/{score.badgesTotal}</span>
             </button>
           ) : null}
@@ -204,7 +210,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
       {/* ── ANCHORS (Enter Your Palace / Library, side by side) ── */}
       {anchors.length > 0 ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: isMobile ? "0.625rem" : "0.875rem", marginBottom: "1.5rem" }}>
-          {anchors.map((t, i) => <Tile key={t.key} tile={{ ...t, anchor: true }} accent="anchor" index={i} />)}
+          {anchors.map((t, i) => <Tile key={t.key} tile={{ ...t, anchor: true }} accent={t.key === "library" ? "anchorLibrary" : "anchor"} index={i} />)}
         </div>
       ) : null}
 
@@ -233,7 +239,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
           {you.map((p) => {
             const Ico = RelayIcons[p.key] ?? RelayIcons.settings;
             return (
-              <button key={p.key} type="button" onClick={p.onClick} className="relay-pill" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", minHeight: "2.75rem", padding: "0 1rem", borderRadius: "2rem", border: `0.0625rem solid ${T.color.warmStone}`, background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, color: T.color.walnut }}>
+              <button key={p.key} type="button" onClick={p.onClick} className="relay-pill" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", minHeight: "2.75rem", padding: "0 1rem", borderRadius: "2rem", border: `0.0625rem solid ${T.color.warmStone}`, background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, color: "#5E4636" }}>
                 <span aria-hidden="true" style={{ width: "1.125rem", height: "1.125rem", display: "inline-flex" }}><Ico /></span>{p.label}
               </button>
             );
