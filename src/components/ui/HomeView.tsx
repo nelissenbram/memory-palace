@@ -488,39 +488,46 @@ export default function HomeView() {
     { key: "photos", label: t("lifeStory.addMemory"), onClick: goUpload },
     { key: "whatsapp", label: "WhatsApp", onClick: () => setShowKepCapture(true) },
   ];
+  // Palace + Library stay ON TOP as anchors.
+  const relayAnchors = [
+    { key: "palace", title: t("enterPalace"), desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace },
+    { key: "library", title: t("yourLibrary"), desc: "Your whole collection", onClick: handleNavigateLibrary },
+  ];
+  // score & badge total, for those who like keeping count.
+  const relayScore = { points: totalPoints, badgesEarned: achievementProgress.earned, badgesTotal: achievementProgress.total, onClick: () => setShowAchievementPanel(true) };
+  // Grouped by the LANDING triptych, each verb-zone its own key colour.
   const relayLanes = [
     {
-      id: "inside", overline: "Step inside", tone: "cream" as const,
-      tiles: [
-        { key: "palace", title: t("enterPalace"), desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, span: true },
-        { key: "library", title: t("yourLibrary"), desc: "Your whole collection", onClick: handleNavigateLibrary, span: true },
-        { key: "map", title: "Memory Map", desc: "Memories placed in the world", onClick: () => setShowMemoryMap(true) },
-        { key: "timeline", title: "Timeline", desc: "Your life in time", onClick: () => setShowTimeline(true) },
-        { key: "insights", title: "Highlights", desc: "Patterns in your memories", onClick: () => setShowStatistics(true) },
-        { key: "family", title: "Family Tree", desc: "Who's who, across generations", onClick: () => setShowFamilyTree(true) },
-        { key: "explore", title: "Explore", desc: "Public palaces to visit", onClick: () => router.push("/explore") },
-        { key: "shared", title: "Shared with you", desc: "Wings your family shared", onClick: () => setShowSharedWithMe(true), hidden: !(sharedLoading || sharedWithMe.length > 0) },
-      ],
-    },
-    {
-      id: "add", overline: "Add a memory", tone: "parchment" as const,
+      id: "capture", overline: "Capture", accent: "terracotta" as const,
       tiles: [
         { key: "photos", title: "Add Photos", desc: "Bring in your pictures", onClick: goUpload },
         { key: "restore", title: "Restore a Photo", desc: "Repair an old photo", onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
         { key: "write", title: "Write a Memory", desc: "Put it into words", onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); } },
         { key: "record", title: "Record Your Story", desc: "Tell it aloud", onClick: () => setShowInterviewLibrary(true) },
         { key: "whatsapp", title: "Capture by WhatsApp", desc: "Save by message", onClick: () => setShowKepCapture(true) },
-        { key: "gallery", title: "Create a Gallery", desc: "Curate a set", onClick: () => handleNavigateLibrary() },
         { key: "capsule", title: "Time Capsule", desc: "A memory for later", onClick: () => { localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
-        { key: "organize", title: "Tidy Your Rooms", desc: "Organise memories", onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
       ],
     },
     {
-      id: "share", overline: "Share & connect", tone: "sage" as const,
+      id: "bringtolife", overline: "Bring to life", accent: "gold" as const,
+      tiles: [
+        { key: "map", title: "Memory Map", desc: "Memories placed in the world", onClick: () => setShowMemoryMap(true) },
+        { key: "timeline", title: "Timeline", desc: "Your life in time", onClick: () => setShowTimeline(true) },
+        { key: "insights", title: "Highlights", desc: "Patterns in your memories", onClick: () => setShowStatistics(true) },
+        { key: "family", title: "Family Tree", desc: "Who's who, across generations", onClick: () => setShowFamilyTree(true) },
+        { key: "gallery", title: "Create a Gallery", desc: "Curate a set", onClick: () => handleNavigateLibrary() },
+        { key: "organize", title: "Tidy Your Rooms", desc: "Organise memories", onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
+        { key: "explore", title: "Explore", desc: "Public palaces to visit", onClick: () => router.push("/explore") },
+      ],
+    },
+    {
+      id: "share", overline: "Share & pass on", accent: "sage" as const,
       tiles: [
         { key: "familyGroup", title: "Start a Family Group", desc: "Invite your family in", onClick: () => router.push("/settings/family") },
-        { key: "publish", title: "Share Publicly", desc: "Publish to Explore", onClick: () => router.push("/explore") },
         { key: "invite", title: "Invite Relatives", desc: "Bring others to your palace", onClick: () => router.push("/settings/family") },
+        { key: "publish", title: "Share Publicly", desc: "Publish to Explore", onClick: () => router.push("/explore") },
+        { key: "shared", title: "Shared with you", desc: "Wings your family shared", onClick: () => setShowSharedWithMe(true), hidden: !(sharedLoading || sharedWithMe.length > 0) },
+        { key: "legacy", title: "Plan Your Legacy", desc: "Decide who inherits", onClick: () => router.push("/settings/legacy") },
       ],
     },
   ];
@@ -528,7 +535,6 @@ export default function HomeView() {
     { key: "journeys", label: "Your Journeys", onClick: () => setShowTracksPanel(true) },
     { key: "milestones", label: "Milestones", onClick: () => setShowAchievementPanel(true) },
     { key: "profile", label: "Your Profile", onClick: () => router.push("/settings/profile") },
-    { key: "legacy", label: "Plan Your Legacy", onClick: () => router.push("/settings/legacy") },
     { key: "settings", label: "Settings", onClick: () => router.push("/settings") },
     { key: "help", label: "Help & Guides", onClick: () => router.push("/help") },
   ];
@@ -566,9 +572,11 @@ export default function HomeView() {
           style={{
             maxWidth: "72rem",
             margin: "0 auto",
+            // top padding clears the floating NavigationBar pill (top ~4.4rem),
+            // matching the clearance the old hero used to provide.
             padding: isMobile
-              ? "1.5rem 1rem calc(4.5rem + env(safe-area-inset-bottom, 0px))"
-              : "2.5rem 2.5rem 6rem",
+              ? "3rem 1rem calc(4.5rem + env(safe-area-inset-bottom, 0px))"
+              : "5.5rem 2.5rem 6rem",
           }}
         >
           {/* ── P2-1: SKELETON LOADING STATE ── */}
@@ -587,8 +595,10 @@ export default function HomeView() {
             greeting={relayGreeting}
             userName={userName}
             datumLine={relayDatum}
+            score={relayScore}
             suggestion={relaySuggestion}
             chips={relayChips}
+            anchors={relayAnchors}
             lanes={relayLanes}
             you={relayYou}
             isMobile={isMobile}
