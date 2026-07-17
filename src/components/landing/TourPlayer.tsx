@@ -5,7 +5,7 @@
  *
  * Idle: a dark umber band with the poster behind a vignette and one breathing
  * gold doorway. No autoplay, ever (preload="none"). On click the walkthrough
- * plays FULL-BLEED, muted, at 0.8x, with five one-at-a-time serif captions
+ * plays FULL-BLEED, muted, at 0.55x (~45s), with five one-at-a-time captions
  * (LEFT / RIGHT / LEFT / RIGHT / CENTER) anchored to currentTime fractions of
  * the film — captions are the narration (the file is silent). Custom pill
  * controls, keyboard, a thin gold progress hairline, an end-card CTA.
@@ -91,7 +91,7 @@ export default function TourPlayer({
     const v = videoRef.current;
     if (!v) return;
     v.muted = true;
-    v.playbackRate = 0.8;
+    v.playbackRate = 0.55;
     v.currentTime = 0;
     v.play().catch(() => {});
   }, [mode]);
@@ -307,7 +307,7 @@ export default function TourPlayer({
             </div>
           ))}
           <div style={{ textAlign: "center", marginTop: "0.5rem" }}>
-            <button type="button" onClick={() => { setMode("playing"); requestAnimationFrame(() => { const v = videoRef.current; if (v) { v.muted = true; v.playbackRate = 0.8; v.play().catch(() => {}); } }); }} style={{ background: "none", border: "1px solid rgba(212,175,55,0.5)", borderRadius: "999px", color: CREAM, fontFamily: FONT_BODY, fontWeight: 600, fontSize: "1rem", padding: "0.625rem 1.5rem", cursor: "pointer" }}>
+            <button type="button" onClick={() => { setMode("playing"); requestAnimationFrame(() => { const v = videoRef.current; if (v) { v.muted = true; v.playbackRate = 0.55; v.play().catch(() => {}); } }); }} style={{ background: "none", border: "1px solid rgba(212,175,55,0.5)", borderRadius: "999px", color: CREAM, fontFamily: FONT_BODY, fontWeight: 600, fontSize: "1rem", padding: "0.625rem 1.5rem", cursor: "pointer" }}>
               ▶ {labels.playTour}
             </button>
           </div>
