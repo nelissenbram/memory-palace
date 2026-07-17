@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo, lazy, Suspense } from "react";
-import { navigateInApp, isNative } from "@/lib/native/platform";
+import { navigateInApp, isNative, isIOS } from "@/lib/native/platform";
+import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { createPortal } from "react-dom";
 import { T } from "@/lib/theme";
 import PalaceLogo from "@/components/landing/PalaceLogo";
@@ -1462,12 +1463,12 @@ export default function MemoryPalace(){
           <div role="dialog" aria-modal="true" tabIndex={-1} onKeyDown={e=>{if(e.key==="Escape")setShowUpgradePrompt(false);}} onClick={e=>e.stopPropagation()}>
             <div style={{fontSize:"2.5rem",marginBottom:"0.75rem"}}><svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" stroke={T.color.terracotta} strokeWidth="1.5"/><path d="M7 11V7a5 5 0 1 1 10 0v4" stroke={T.color.terracotta} strokeWidth="1.5" strokeLinecap="round"/><circle cx="12" cy="16.5" r="1.5" fill={T.color.terracotta}/></svg></div>
             <h3 style={{fontFamily:T.font.display,fontSize:"1.375rem",fontWeight:500,color:T.color.charcoal,marginBottom:"0.5rem"}}>{tPalace("storageFull") || "Storage Full"}</h3>
-            <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,lineHeight:1.5,marginBottom:"1.25rem"}}>{isNative() ? (tPalace("storageFullDescNative") || "Your storage is full. Please remove some memories to free up space.") : (tPalace("storageFullDesc") || "Your storage is full. Upgrade your plan for more space.")}</p>
+            <p style={{fontFamily:T.font.body,fontSize:"0.875rem",color:T.color.muted,lineHeight:1.5,marginBottom:"1.25rem"}}>{(isNative() && !(isIOS() && IAP_ENABLED)) ? (tPalace("storageFullDescNative") || "Your storage is full. Please remove some memories to free up space.") : (tPalace("storageFullDesc") || "Your storage is full. Upgrade your plan for more space.")}</p>
             <div style={{display:"flex",flexDirection:"column",gap:"0.5rem"}}>
-              {/* No in-app purchase path in native apps this round, and /pricing
-                  redirects native users to /atrium — so hide the "View Plans" CTA
-                  to avoid a tap that bounces to the home screen (Apple 2.1a). */}
-              {!isNative() && <button onClick={()=>{setShowUpgradePrompt(false);navigateInApp("/pricing");}}
+              {/* Web always shows the upgrade CTA. iOS shows it only when IAP is
+                  live (IAP_ENABLED), leading to the IAP paywall at /pricing.
+                  Android has no IAP, so it stays hidden there. */}
+              {(!isNative() || (isIOS() && IAP_ENABLED)) && <button onClick={()=>{setShowUpgradePrompt(false);navigateInApp("/pricing");}}
                 style={{fontFamily:T.font.body,fontSize:"0.9375rem",fontWeight:600,padding:"0.75rem 2rem",borderRadius:"0.625rem",border:"none",
                   background:`linear-gradient(135deg,${T.color.terracotta},${T.color.walnut})`,color:"#FFF",cursor:"pointer",width:"100%"}}>
                 {tPalace("viewPlans")}

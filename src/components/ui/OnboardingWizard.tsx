@@ -4,6 +4,7 @@ import { T } from "@/lib/theme";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { useIsPortrait } from "@/lib/hooks/useIsPortrait";
 import { navigateInApp, isIOS } from "@/lib/native/platform";
+import { IAP_ENABLED } from "@/lib/native/iap-flags";
 import { useUserStore } from "@/lib/stores/userStore";
 import { useWalkthroughStore } from "@/lib/stores/walkthroughStore";
 import { useTranslation, detectBrowserLocale } from "@/lib/hooks/useTranslation";
@@ -1556,7 +1557,7 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
 
         <Suspense fallback={sceneLoadingFallback}>
           <ImportHub
-            onClose={() => { if (!memoryUploadedRef.current) setPhase(isIOS() ? "done" : "paywall"); }}
+            onClose={() => { if (!memoryUploadedRef.current) setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall"); }}
             onImportFiles={async (files) => {
               if (files.length === 0) return;
               const f = files[0];
@@ -1602,8 +1603,8 @@ export default function OnboardingWizard({ onFinish }: OnboardingWizardProps) {
           <OnboardingCelebration
             title={t("celebrationTitle2")}
             subtitle={t("celebrationSubtitle2")}
-            buttonLabel={isIOS() ? t("celebrationContinue") : t("celebrationAtrium")}
-            onContinue={() => setPhase(isIOS() ? "done" : "paywall")}
+            buttonLabel={(isIOS() && !IAP_ENABLED) ? t("celebrationContinue") : t("celebrationAtrium")}
+            onContinue={() => setPhase((isIOS() && !IAP_ENABLED) ? "done" : "paywall")}
             transparent
           />
         </Suspense>

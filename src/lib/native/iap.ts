@@ -19,14 +19,11 @@ export const IAP_PRODUCTS = {
 export type IAPProductId = (typeof IAP_PRODUCTS)[keyof typeof IAP_PRODUCTS];
 
 /**
- * Master switch for iOS In-App Purchases. While false, all iOS purchase UI stays
- * hidden and the app is cleanly free on iOS (Apple Guideline 3.1.1 / 2.1) — no
- * Upgrade button can render, so it can never error on tap. Flip to true ONLY once
- * the IAP products are Approved in App Store Connect and attached to the submitted
- * version; the Upgrade button then auto-appears with live prices via
- * initIAP() + waitForProducts().
+ * Master switch for iOS In-App Purchases. Defined in the dependency-free
+ * ./iap-flags module (so the Edge middleware can import it without pulling in
+ * Capacitor) and re-exported here for existing client imports.
  */
-export const IAP_ENABLED = false;
+export { IAP_ENABLED } from "./iap-flags";
 
 export interface IAPProduct {
   id: string;

@@ -3,6 +3,7 @@
 import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { isIOS, isAndroid } from "@/lib/native/platform";
+import { IAP_ENABLED } from "@/lib/native/iap-flags";
 
 interface Props {
   storageMb: number;
@@ -13,10 +14,10 @@ interface Props {
 export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) {
   const { t } = useTranslation("palace");
   const pct = limitMb > 0 ? (storageMb / limitMb) * 100 : 0;
-  // No in-app purchase path in native apps this round, and /pricing redirects
-  // native users to /atrium — so an "Upgrade" tap would bounce to the home
-  // screen. Show the storage notice without a dead CTA (Apple Guideline 2.1a).
-  const nativeApp = isIOS() || isAndroid();
+  // Android has no in-app purchase path — hide the Upgrade CTA there. iOS shows
+  // it only when IAP is live (IAP_ENABLED), leading to the IAP paywall (/pricing).
+  // On web it always shows.
+  const hideUpgrade = isAndroid() || (isIOS() && !IAP_ENABLED);
 
   if (pct < 50) return null;
 
@@ -67,7 +68,7 @@ export default function StorageBanner({ storageMb, limitMb, onUpgrade }: Props) 
           pct: String(Math.round(pct)),
         })}
       </span>
-      {!nativeApp && (
+      {!hideUpgrade && (
         <button
           onClick={onUpgrade}
           style={{
