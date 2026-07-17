@@ -66,7 +66,7 @@ export default function CocreateCard({
           <circle cx="14.4" cy="13.8" r="4.7" />
         </svg>
       }
-      name={m.cocreateName}
+      name={m.cocreateName} role={m.cocreateRole}
       aiLabel={aiLabel}
       label={m.cocreateName}
     >

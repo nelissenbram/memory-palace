@@ -152,7 +152,7 @@ export default function PalaceCard({
           <path d="M2.5 19h17" />
         </svg>
       }
-      name={m.palaceName}
+      name={m.palaceName} role={m.palaceRole}
       aiLabel={aiLabel}
       label={`${m.palaceName}: ${m.room1} · ${m.room2} · ${m.room3}`}
     >
@@ -225,12 +225,12 @@ export default function PalaceCard({
             boxShadow: "inset 0 0 0 0.0625rem rgba(212, 175, 55, 0.22)",
           }}
         >
-          {/* [1] the hall */}
+          {/* [1] a corridor of framed memories */}
           <Image
-            src="/landing/band-entrance.jpg"
+            src="/landing/band-corridor.jpg"
             alt=""
             width={1600}
-            height={633}
+            height={534}
             className="lv2u-palace-img"
             style={{
               position: "absolute",
@@ -238,7 +238,7 @@ export default function PalaceCard({
               width: "100%",
               height: "100%",
               objectFit: "cover",
-              objectPosition: "50% 42%",
+              objectPosition: "50% 50%",
             }}
           />
 

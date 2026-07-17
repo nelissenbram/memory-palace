@@ -190,7 +190,7 @@ export default function LegacyCard({
   aiLabel?: string;
 }) {
   return (
-    <UspCardShell icon={HEADER_ICON} name={m.legacyName} aiLabel={aiLabel} label={m.legacyName}>
+    <UspCardShell icon={HEADER_ICON} name={m.legacyName} role={m.legacyRole} aiLabel={aiLabel} label={m.legacyName}>
       <style>{`
         @keyframes lv2u-leg-keymove {
           0%, 20% {

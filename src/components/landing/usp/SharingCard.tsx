@@ -130,7 +130,7 @@ export default function SharingCard({
   );
 
   return (
-    <UspCardShell icon={SHARING_ICON} name={m.sharingName} aiLabel={aiLabel} label={m.sharingName}>
+    <UspCardShell icon={SHARING_ICON} name={m.sharingName} role={m.sharingRole} aiLabel={aiLabel} label={m.sharingName}>
       <div
         aria-hidden="true"
         style={{

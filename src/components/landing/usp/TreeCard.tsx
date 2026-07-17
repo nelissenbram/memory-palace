@@ -110,7 +110,7 @@ export default function TreeCard({
           <path d="M4.1 9.7a1.9 1.9 0 1 0 3.8 0a1.9 1.9 0 1 0-3.8 0M14.1 9.7a1.9 1.9 0 1 0 3.8 0a1.9 1.9 0 1 0-3.8 0" />
         </svg>
       }
-      name={m.treeName}
+      name={m.treeName} role={m.treeRole}
       aiLabel={aiLabel}
       label={`${m.treeName} — ${m.treeGen}`}
     >

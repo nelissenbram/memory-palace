@@ -88,7 +88,7 @@ export default function UploadsCard({
           />
         </svg>
       }
-      name={m.uploadsName}
+      name={m.uploadsName} role={m.uploadsRole}
       aiLabel={aiLabel}
       label={m.uploadsName}
     >
@@ -353,45 +353,63 @@ export default function UploadsCard({
           </div>
         </div>
 
-        {/* Row 2 — format colophon */}
-        <div
-          aria-hidden="true"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "0.625rem",
-          }}
-        >
-          <span
-            style={{
-              width: "1.5rem",
-              height: "1px",
-              background: U.hairline,
-              flexShrink: 0,
-            }}
-          />
+        {/* Row 2 — "drop in, or sync automatically" */}
+        <div aria-hidden="true" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.625rem" }}>
           <span
             style={{
               fontFamily: U.fontBody,
               fontSize: "0.8125rem",
-              fontWeight: 600,
+              fontWeight: 700,
               color: U.muted,
-              letterSpacing: "0.05em",
-              whiteSpace: "normal",
+              letterSpacing: "0.02em",
               textAlign: "center",
             }}
           >
-            {m.anyFormat}
+            {m.dropOrSync}
           </span>
-          <span
-            style={{
-              width: "1.5rem",
-              height: "1px",
-              background: U.hairline,
-              flexShrink: 0,
-            }}
-          />
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
+            {/* format chip */}
+            <span
+              style={{
+                fontFamily: U.fontBody,
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                color: U.muted,
+                background: U.surface,
+                border: `1px solid ${U.hairline}`,
+                borderRadius: "2rem",
+                padding: "0.3rem 0.7rem",
+              }}
+            >
+              {m.anyFormat}
+            </span>
+            {/* auto cloud-sync chip */}
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                fontFamily: U.fontBody,
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                color: U.accent,
+                background: "rgba(154, 79, 42, 0.08)",
+                border: `1px solid rgba(154, 79, 42, 0.25)`,
+                borderRadius: "2rem",
+                padding: "0.3rem 0.7rem",
+              }}
+            >
+              <svg viewBox="0 0 22 16" style={{ width: "1rem", height: "0.75rem", flexShrink: 0 }} fill="none" stroke={U.accent} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 13.5A4.5 4.5 0 0 1 6 4.5a5.5 5.5 0 0 1 10.4 1.6A3.8 3.8 0 0 1 16 13.5z" />
+                <path d="M11 11.5V6.5M8.8 8.4 11 6.2l2.2 2.2" />
+              </svg>
+              {m.cloudConnected}
+              <span
+                className="lv2u-up-glow"
+                style={{ width: "0.4rem", height: "0.4rem", borderRadius: "50%", background: U.success, flexShrink: 0 }}
+              />
+            </span>
+          </div>
         </div>
       </div>
     </UspCardShell>

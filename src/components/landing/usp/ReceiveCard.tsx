@@ -44,7 +44,7 @@ export default function ReceiveCard({
           <path d="M4.8 10.5c0 3.6 1.7 5.5 5.2 5.5M8 13.9l2.2 2.1L8 18.1" />
         </svg>
       }
-      name={m.receiveName}
+      name={m.receiveName} role={m.receiveRole}
       aiLabel={aiLabel}
       label={m.receiveName}
     >

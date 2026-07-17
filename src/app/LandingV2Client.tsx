@@ -23,6 +23,7 @@ import { locales, type Locale } from "@/i18n/config";
 import enMessages from "@/messages/en.json";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import WhyPalaceVisual from "@/components/landing/WhyPalaceVisual";
+import TourPlayer from "@/components/landing/TourPlayer";
 import KepCard from "@/components/landing/usp/KepCard";
 import UploadsCard from "@/components/landing/usp/UploadsCard";
 import CloudImportCard from "@/components/landing/usp/CloudImportCard";
@@ -404,8 +405,6 @@ export default function LandingV2Client({
   const [menuOpen, setMenuOpen] = useState(false);
   const [navSolid, setNavSolid] = useState(false);
   const [howMode, setHowMode] = useState<"self" | "gift">("self");
-  const [tourPlaying, setTourPlaying] = useState(false);
-  const tourVideoRef = useRef<HTMLVideoElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
 
@@ -474,18 +473,6 @@ export default function LandingV2Client({
     const io = new IntersectionObserver(([e]) => setNavSolid(!e.isIntersecting), { threshold: 0 });
     io.observe(el);
     return () => io.disconnect();
-  }, []);
-
-  const startTour = useCallback(() => {
-    setTourPlaying(true);
-    // Restart from the top with sound; the click gesture grants audio.
-    requestAnimationFrame(() => {
-      const v = tourVideoRef.current;
-      if (!v) return;
-      v.muted = false;
-      v.currentTime = 0;
-      v.play().catch(() => {});
-    });
   }, []);
 
   const heroSub = isIosApp ? v2.hero.sub_ios : v2.hero.sub;
@@ -959,46 +946,21 @@ export default function LandingV2Client({
         {/* Sentinel: nav turns solid when this leaves the viewport */}
         <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
 
-        {/* ── 2. Why a palace — "a box goes dark, a palace stays lit" ── */}
-        <section aria-labelledby="lv2-why-h" style={{ background: L.mid, padding: `${L.space.sectionY} 0` }}>
-          <div style={{ ...wide, textAlign: "center" }}>
-            <Reveal>
-              <Eyebrow>{v2.why.eyebrow}</Eyebrow>
-              <H2 id="lv2-why-h">{v2.why.h2}</H2>
-              <p style={{ ...prose, fontFamily: FONT_BODY, fontSize: L.type.lead, lineHeight: 1.6, color: L.inkBody, margin: "0 auto 3.5rem", textWrap: "pretty" }}>
-                {v2.why.body}
-              </p>
-            </Reveal>
+        {/* ── 2. Why a palace — one full-bleed render carries the argument ── */}
+        <section aria-label={v2.why.h2} style={{ background: L.mid, padding: `${L.space.sectionY} 0` }}>
+          <div style={{ ...wide }}>
             <Reveal>
               <WhyPalaceVisual w={v2.why as unknown as Record<string, string>} />
             </Reveal>
           </div>
         </section>
 
-        {/* ── 3. Showcase: the tour, merged with the dark — no autoplay, one
-               inviting doorway to click. ── */}
+        {/* ── 3. Showcase: the guided walk — full-bleed tour with timed captions ── */}
         <section
           id="tour"
           aria-labelledby="lv2-tour-h"
-          style={{ position: "relative", background: L.dark, padding: "clamp(5rem, 9vw, 7.5rem) 0", overflow: "hidden" }}
+          style={{ position: "relative", background: L.dark, padding: "clamp(4rem, 8vw, 6rem) 0 clamp(2rem, 4vw, 3rem)", overflow: "hidden" }}
         >
-          {/* The palace interior bleeds out of the darkness — no card edges. */}
-          <Image
-            src="/video/walkthrough-poster-v2.jpg"
-            alt=""
-            fill
-            sizes="100vw"
-            style={{ objectFit: "cover", opacity: tourPlaying ? 0.12 : 0.55 }}
-          />
-          <div
-            aria-hidden="true"
-            style={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "radial-gradient(ellipse 70% 60% at 50% 46%, rgba(36,28,21,0.05) 0%, rgba(36,28,21,0.62) 62%, rgba(36,28,21,0.97) 100%)",
-            }}
-          />
           <div style={{ ...wide, position: "relative" }}>
             <Reveal>
               <div style={{ textAlign: "center", marginBottom: "2.25rem" }}>
@@ -1010,66 +972,23 @@ export default function LandingV2Client({
               </div>
             </Reveal>
             <Reveal>
-              {tourPlaying ? (
-                <div style={{ maxWidth: "62rem", margin: "0 auto" }}>
-                  <video
-                    ref={tourVideoRef}
-                    controls
-                    playsInline
-                    poster="/video/walkthrough-poster-v2.jpg"
-                    aria-label={v2.a11y.tourDialog}
-                    style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", borderRadius: "1rem", display: "block", background: "#000", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}
-                  >
-                    <source src="/video/walkthrough.mp4" type="video/mp4" />
-                  </video>
-                </div>
-              ) : (
-                <div style={{ display: "flex", justifyContent: "center", padding: "1.5rem 0 0.5rem" }}>
-                  {/* One inviting doorway: gold ring, breathing, the tour behind it. */}
-                  <button
-                    type="button"
-                    onClick={startTour}
-                    className="lv2-cta lv2-tour-door"
-                    aria-label={v2.hero.secondary}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: "1.125rem",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: "0.5rem 1rem",
-                    }}
-                  >
-                    <span
-                      className="lv2-tour-ring"
-                      style={{
-                        width: "clamp(6.5rem, 12vw, 8.5rem)",
-                        height: "clamp(6.5rem, 12vw, 8.5rem)",
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        background: "rgba(36,28,21,0.35)",
-                        backdropFilter: "blur(6px)",
-                        border: "1px solid rgba(212,175,55,0.75)",
-                        boxShadow: "0 0 0 0.5rem rgba(212,175,55,0.12), 0 16px 48px rgba(0,0,0,0.55)",
-                      }}
-                    >
-                      <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true" style={{ marginLeft: "0.25rem" }}>
-                        <path d="M6 3l14 9-14 9V3z" fill={T.color.cream} />
-                      </svg>
-                    </span>
-                    <span style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: L.type.body, color: T.color.cream, letterSpacing: "0.02em" }}>
-                      ▶ {v2.hero.secondary}
-                    </span>
-                    <span style={{ fontFamily: "var(--font-note, cursive)", fontWeight: 600, fontSize: "1.25rem", color: L.accentDark }}>
-                      {v2.showcase.soundCta}
-                    </span>
-                  </button>
-                </div>
-              )}
+              <TourPlayer
+                videoSrc="/video/walkthrough-tour.mp4"
+                posterSrc="/video/walkthrough-poster-v2.jpg"
+                ctaLabel={v2.showcase.capCloseCta}
+                ctaHref="/register"
+                doorwayLabel={v2.hero.secondary}
+                tourNote={v2.showcase.tourNote}
+                watchAgain={v2.hero.secondary}
+                labels={{ pause: v2.a11y.pause, play: v2.a11y.play, close: v2.a11y.close, dialog: v2.a11y.tourDialog, playTour: v2.hero.secondary }}
+                scenes={[
+                  { key: "ext", side: "left", start: 0.0, end: 0.192, eyebrow: v2.showcase.capExteriorEyebrow, line: v2.showcase.capExterior },
+                  { key: "doors", side: "right", start: 0.192, end: 0.415, eyebrow: v2.showcase.capDoorsEyebrow, line: v2.showcase.capDoors },
+                  { key: "corr", side: "left", start: 0.415, end: 0.671, eyebrow: v2.showcase.capCorridorEyebrow, line: v2.showcase.capCorridor },
+                  { key: "room", side: "right", start: 0.671, end: 0.879, eyebrow: v2.showcase.capRoomEyebrow, line: v2.showcase.capRoom },
+                  { key: "close", side: "center", start: 0.879, end: 1.0, line: v2.showcase.capClose },
+                ]}
+              />
             </Reveal>
           </div>
         </section>

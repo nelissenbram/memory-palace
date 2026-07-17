@@ -131,7 +131,7 @@ export default function MapCard({
           <path d="M16.5 4.7h.01" />
         </svg>
       }
-      name={m.mapName}
+      name={m.mapName} role={m.mapRole}
       aiLabel={aiLabel}
       label={m.mapName}
     >

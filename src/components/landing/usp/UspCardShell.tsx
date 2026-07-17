@@ -31,12 +31,15 @@ export const U = {
 export default function UspCardShell({
   icon,
   name,
+  role,
   aiLabel,
   label,
   children,
 }: {
   icon: React.ReactNode;
   name: string;
+  /** Plain descriptor under the name (the Kep pattern); optional. */
+  role?: string;
   /** Localized "AI-powered" badge text; omit for non-AI features. */
   aiLabel?: string;
   /** Accessible description of what the vignette depicts. */
@@ -79,18 +82,37 @@ export default function UspCardShell({
             />
           ))}
         </span>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", marginLeft: "0.25rem" }}>
-          <span style={{ display: "inline-flex", color: U.accent }}>{icon}</span>
-          <span
-            style={{
-              fontFamily: U.fontBody,
-              fontWeight: 700,
-              fontSize: "0.9375rem",
-              color: U.ink,
-              letterSpacing: "0.01em",
-            }}
-          >
-            {name}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", marginLeft: "0.25rem", minWidth: 0 }}>
+          <span style={{ display: "inline-flex", color: U.accent, flexShrink: 0 }}>{icon}</span>
+          <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <span
+              style={{
+                fontFamily: U.fontBody,
+                fontWeight: 700,
+                fontSize: "0.9375rem",
+                color: U.ink,
+                letterSpacing: "0.01em",
+                lineHeight: 1.15,
+              }}
+            >
+              {name}
+            </span>
+            {role ? (
+              <span
+                style={{
+                  fontFamily: U.fontBody,
+                  fontWeight: 500,
+                  fontSize: "0.75rem",
+                  color: U.muted,
+                  lineHeight: 1.2,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {role}
+              </span>
+            ) : null}
           </span>
         </span>
         {aiLabel ? (

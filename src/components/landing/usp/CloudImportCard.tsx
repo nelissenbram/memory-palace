@@ -100,7 +100,7 @@ export default function CloudImportCard({
           <path d="M6.6 20.4h8.8" />
         </svg>
       }
-      name={m.cloudName}
+      name={m.cloudName} role={m.cloudRole}
       aiLabel={aiLabel}
       label={`${m.importTitle} — ${m.importCount}. ${m.importSorted}: ${m.room1}, ${m.room2}, ${m.room3}.`}
     >

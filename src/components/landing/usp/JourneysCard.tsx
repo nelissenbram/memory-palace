@@ -66,7 +66,7 @@ export default function JourneysCard({
           <path d="M9.6 9.4 a1.4 1.4 0 1 0 2.8 0 a1.4 1.4 0 1 0 -2.8 0" />
         </svg>
       }
-      name={m.journeyName}
+      name={m.journeyName} role={m.journeyRole}
       aiLabel={aiLabel}
       label={m.journeyName}
     >

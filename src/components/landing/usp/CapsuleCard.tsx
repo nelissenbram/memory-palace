@@ -41,7 +41,7 @@ export default function CapsuleCard({
           <circle cx="11" cy="12.3" r="2.8" />
         </svg>
       }
-      name={m.capsuleName}
+      name={m.capsuleName} role={m.capsuleRole}
       aiLabel={aiLabel}
       label={`${m.capsuleName} — ${m.sealedUntil}. ${m.capsuleFor}`}
     >
