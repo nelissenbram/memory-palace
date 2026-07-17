@@ -43,6 +43,9 @@ export const RelayIcons: Record<string, React.FC> = {
   settings: () => (<S><circle cx="12" cy="12" r="3" /><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" /></S>),
   help: () => (<S><circle cx="12" cy="12" r="8.5" /><path d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.5c0 1.6-2 2-2 3.5" /><path d="M12 17.5h0.01" /></S>),
   continue: () => (<S><path d="M5 4l12 8-12 8z" /></S>),
+  // score: a faceted gem. badges: a ribboned rosette. (distinct from milestones)
+  points: () => (<S><path d="M6 3h12l3 5-9 13L3 8z" /><path d="M3 8h18M9 3l-3 5 6 13 6-13-3-5" /></S>),
+  badge: () => (<S><circle cx="12" cy="8.5" r="5" /><path d="M12 6.2l0.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z" /><path d="M8.7 12.7 L7 20l5-2.5 5 2.5-1.7-7.3" /></S>),
 };
 
 export default RelayIcons;
