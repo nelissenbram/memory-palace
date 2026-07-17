@@ -37,7 +37,7 @@ export default function LandscapeNudge() {
   const PERIOD = "4.8s";
 
   const labelStyle: React.CSSProperties = {
-    fontFamily: "'Cormorant Garamond', Georgia, serif",
+    fontFamily: "var(--font-display, Georgia, serif)",
     fontSize: "0.75rem",
     fontStyle: "italic",
     fontWeight: 500,
