@@ -19,6 +19,7 @@ import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 
 import AtriumHero from "@/components/ui/AtriumHero";
+import AtriumRelay from "@/components/ui/AtriumRelay";
 import {
   TrackProgress,
   AchievementShowcase,
@@ -463,6 +464,75 @@ export default function HomeView() {
   });
 
   /* ─── RENDER ─── */
+  // Legacy 12-widget stack is kept (disabled) beneath the new relay for now;
+  // typed boolean so TS keeps normal control-flow narrowing inside it.
+  const SHOW_LEGACY_WIDGETS: boolean = false;
+
+  // ── Atrium Relay config ("The Maggiordomo" concierge board) ──
+  // Phase 1: full board wired to the existing handlers. Copy is English for
+  // this model-approval pass; i18n + steward-brain buckets land next.
+  const _hr = new Date().getHours();
+  const _greetKey = _hr < 12 ? "goodMorning" : _hr < 18 ? "goodAfternoon" : "goodEvening";
+  const relayGreeting = userName ? t(_greetKey) : t("welcomeToYourPalace");
+  const relayDatum = totalMemories > 0
+    ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")} · ${totalMemories} ${t("memories")}`
+    : t("firstMemoryPrompt");
+  const goUpload = () => { localStorage.setItem("mp_spotlight_target", "import-upload"); handleNavigateLibrary(); };
+  const relaySuggestion = lastVisitedRoom
+    ? { key: "continue", title: t("continueWhereLeft"), reason: lastVisitedRoom.name, onClick: handleContinueLastRoom }
+    : totalMemories === 0
+      ? { key: "photos", title: "Bring in your first photos", reason: "The fastest way to fill your palace", onClick: goUpload }
+      : { key: "palace", title: t("enterPalace"), reason: t("palaceSubtitle"), onClick: handleNavigatePalace };
+  const relayChips = [
+    ...(lastVisitedRoom ? [{ key: "continue", label: t("continueWhereLeft"), onClick: handleContinueLastRoom }] : []),
+    { key: "photos", label: t("lifeStory.addMemory"), onClick: goUpload },
+    { key: "whatsapp", label: "WhatsApp", onClick: () => setShowKepCapture(true) },
+  ];
+  const relayLanes = [
+    {
+      id: "inside", overline: "Step inside", tone: "cream" as const,
+      tiles: [
+        { key: "palace", title: t("enterPalace"), desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, span: true },
+        { key: "library", title: t("yourLibrary"), desc: "Your whole collection", onClick: handleNavigateLibrary, span: true },
+        { key: "map", title: "Memory Map", desc: "Memories placed in the world", onClick: () => setShowMemoryMap(true) },
+        { key: "timeline", title: "Timeline", desc: "Your life in time", onClick: () => setShowTimeline(true) },
+        { key: "insights", title: "Highlights", desc: "Patterns in your memories", onClick: () => setShowStatistics(true) },
+        { key: "family", title: "Family Tree", desc: "Who's who, across generations", onClick: () => setShowFamilyTree(true) },
+        { key: "explore", title: "Explore", desc: "Public palaces to visit", onClick: () => router.push("/explore") },
+        { key: "shared", title: "Shared with you", desc: "Wings your family shared", onClick: () => setShowSharedWithMe(true), hidden: !(sharedLoading || sharedWithMe.length > 0) },
+      ],
+    },
+    {
+      id: "add", overline: "Add a memory", tone: "parchment" as const,
+      tiles: [
+        { key: "photos", title: "Add Photos", desc: "Bring in your pictures", onClick: goUpload },
+        { key: "restore", title: "Restore a Photo", desc: "Repair an old photo", onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
+        { key: "write", title: "Write a Memory", desc: "Put it into words", onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); } },
+        { key: "record", title: "Record Your Story", desc: "Tell it aloud", onClick: () => setShowInterviewLibrary(true) },
+        { key: "whatsapp", title: "Capture by WhatsApp", desc: "Save by message", onClick: () => setShowKepCapture(true) },
+        { key: "gallery", title: "Create a Gallery", desc: "Curate a set", onClick: () => handleNavigateLibrary() },
+        { key: "capsule", title: "Time Capsule", desc: "A memory for later", onClick: () => { localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
+        { key: "organize", title: "Tidy Your Rooms", desc: "Organise memories", onClick: () => { startTransition("3d", () => { setNavMode("3d"); setTimeout(() => enterEntrance(), 300); }); } },
+      ],
+    },
+    {
+      id: "share", overline: "Share & connect", tone: "sage" as const,
+      tiles: [
+        { key: "familyGroup", title: "Start a Family Group", desc: "Invite your family in", onClick: () => router.push("/settings/family") },
+        { key: "publish", title: "Share Publicly", desc: "Publish to Explore", onClick: () => router.push("/explore") },
+        { key: "invite", title: "Invite Relatives", desc: "Bring others to your palace", onClick: () => router.push("/settings/family") },
+      ],
+    },
+  ];
+  const relayYou = [
+    { key: "journeys", label: "Your Journeys", onClick: () => setShowTracksPanel(true) },
+    { key: "milestones", label: "Milestones", onClick: () => setShowAchievementPanel(true) },
+    { key: "profile", label: "Your Profile", onClick: () => router.push("/settings/profile") },
+    { key: "legacy", label: "Plan Your Legacy", onClick: () => router.push("/settings/legacy") },
+    { key: "settings", label: "Settings", onClick: () => router.push("/settings") },
+    { key: "help", label: "Help & Guides", onClick: () => router.push("/help") },
+  ];
+
   return (
     <div
       style={{
@@ -513,6 +583,17 @@ export default function HomeView() {
 
           {dataReady && (
           <>
+          <AtriumRelay
+            greeting={relayGreeting}
+            userName={userName}
+            datumLine={relayDatum}
+            suggestion={relaySuggestion}
+            chips={relayChips}
+            lanes={relayLanes}
+            you={relayYou}
+            isMobile={isMobile}
+          />
+          {SHOW_LEGACY_WIDGETS && (<>
           {/* ── 1. ATRIUM HERO ── */}
           <div style={sectionStyle(0)}>
             <AtriumHero
@@ -1283,6 +1364,7 @@ export default function HomeView() {
               )}
             </TuscanCard>
           </div>
+          </>)}
           </>
           )}
         </div>
