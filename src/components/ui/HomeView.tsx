@@ -525,8 +525,9 @@ export default function HomeView() {
               isMobile={isMobile}
             />
 
-            {/* P2-4: Memory streak badge — inside hero area */}
-            {memoryStreak >= 2 && (
+            {/* Streak flame badge removed (round-10 Calm Sanctuary): gamified
+                streak pressure is the wrong note for grieving 60+ Keepers. */}
+            {false && (
               <div
                 style={{
                   display: "inline-flex",
