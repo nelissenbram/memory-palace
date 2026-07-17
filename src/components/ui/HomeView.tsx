@@ -520,7 +520,7 @@ export default function HomeView() {
   );
   // Palace + Library stay ON TOP as anchors.
   const relayAnchors = [
-    { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined },
+    { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, note: totalMemories > 0 ? "Your people are in here" : "Empty rooms, ready for you" },
     { key: "library", title: "Enter Your Library", desc: "Your whole collection", onClick: handleNavigateLibrary, datum: totalMemories > 0 ? `${totalMemories} ${t("memories")}` : undefined, thumbs: libThumbs },
   ];
   // score & badge total, for those who like keeping count.
@@ -634,6 +634,7 @@ export default function HomeView() {
             personaSlot={personaSlot}
             onChooseJourney={() => setShowTracksPanel(true)}
             onAddName={() => router.push("/settings/profile")}
+            stewardNote={totalMemories === 0 ? "your first room is waiting" : "lovely to see you back"}
             anchors={relayAnchors}
             lanes={relayLanes}
             you={relayYou}

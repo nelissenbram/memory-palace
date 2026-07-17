@@ -26,7 +26,12 @@ export type RelayTile = {
   thumbs?: string[];
   hidden?: boolean;
   soon?: boolean;
+  note?: string;
 };
+
+// Shared style for the playful gold hand-notes (landing idiom, adapted for the
+// cream Atrium: legible deeper gold, never pure #D4AF37 which fails on cream).
+const HAND_NOTE: React.CSSProperties = { fontFamily: "var(--font-display, Georgia, serif)", fontStyle: "italic", fontWeight: 500, letterSpacing: "0.02em", color: "#8A6410" };
 export type RelayAccent = "terracotta" | "gold" | "sage" | "anchor" | "anchorLibrary";
 export type RelayLane = { id: string; overline: string; accent: RelayAccent; tiles: RelayTile[] };
 export type RelaySuggestion = { key: string; title: string; reason: string; onClick: () => void; progress?: { done: number; total: number } };
@@ -44,6 +49,7 @@ interface AtriumRelayProps {
   personaSlot?: React.ReactNode;
   onChooseJourney?: () => void;
   onAddName?: () => void;
+  stewardNote?: string;
   anchors: RelayTile[];
   lanes: RelayLane[];
   you: RelayPill[];
@@ -159,12 +165,13 @@ function Tile({ tile, accent, index }: { tile: RelayTile; accent: RelayAccent; i
       <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", padding: tile.anchor ? "0.75rem 1rem 0.9rem" : "0.65rem 0.85rem 0.8rem", flex: 1 }}>
         <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: "0.9375rem", lineHeight: 1.35, color: T.color.muted }}>{tile.desc}</span>
         {tile.datum ? <span style={{ display: "block", fontFamily: T.font.body, fontWeight: 700, fontSize: "0.875rem", color: a.datumColor, marginTop: "0.2rem" }}>{tile.datum}</span> : null}
+        {tile.note ? <span style={{ ...HAND_NOTE, display: "inline-block", fontSize: "1rem", marginTop: "0.35rem", transform: "rotate(-2deg)" }}>{tile.note}</span> : null}
       </div>
     </button>
   );
 }
 
-export default function AtriumRelay({ greeting, userName, datumLine, score, suggestion, chips, personaSlot, onChooseJourney, onAddName, anchors, lanes, you, isMobile }: AtriumRelayProps) {
+export default function AtriumRelay({ greeting, userName, datumLine, score, suggestion, chips, personaSlot, onChooseJourney, onAddName, stewardNote, anchors, lanes, you, isMobile }: AtriumRelayProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const id = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(id); }, []);
   const SugIco = RelayIcons[suggestion.key] ?? RelayIcons.palace;
@@ -179,10 +186,11 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
             {userName ? (
               <>, <span style={{ color: "#9A4F2A", position: "relative", whiteSpace: "nowrap" }}>{userName}<span aria-hidden="true" style={{ position: "absolute", left: 0, right: 0, bottom: "-0.12rem", height: "0.1875rem", borderRadius: "1rem", background: "linear-gradient(90deg, #E8C87A, #D4AF37)", opacity: 0.85 }} /></span></>
             ) : onAddName ? (
-              <> <button type="button" onClick={(e) => { e.stopPropagation(); onAddName(); }} style={{ fontFamily: "inherit", fontSize: "0.6em", fontWeight: 600, color: "#9A4F2A", background: "none", border: "none", borderBottom: "0.125rem solid #D4AF37", padding: "0 0.1rem", cursor: "pointer", verticalAlign: "middle" }}>+ add your name</button></>
+              <> <button type="button" onClick={(e) => { e.stopPropagation(); onAddName(); }} style={{ fontFamily: "inherit", fontSize: "0.6em", fontWeight: 600, color: "#9A4F2A", background: "none", border: "none", borderBottom: "0.125rem solid #D4AF37", padding: "0 0.1rem", cursor: "pointer", verticalAlign: "middle" }}>+ add your name</button> <span style={{ ...HAND_NOTE, fontSize: "0.55em" }}>so the house knows you</span></>
             ) : null}
           </h1>
           <p style={{ fontFamily: T.font.body, fontSize: "1rem", fontWeight: 500, color: "#716A5E", margin: "0.5rem 0 0", fontVariantNumeric: "tabular-nums" }}>{datumLine}</p>
+          {stewardNote ? <p style={{ ...HAND_NOTE, fontSize: "1.05rem", margin: "0.35rem 0 0" }}>{stewardNote}</p> : null}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
