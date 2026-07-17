@@ -183,7 +183,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
       {/* ── STEWARD STRIP ── */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.7fr 1fr", gap: "1.25rem", alignItems: "start", marginBottom: "1.5rem" }}>
         <div>
-          <h1 style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: isMobile ? "1.75rem" : "2.25rem", lineHeight: 1.12, margin: 0, color: T.color.charcoal }}>
+          <h1 style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: isMobile ? "1.75rem" : "2.25rem", lineHeight: 1.12, margin: 0, color: "#403B36" }}>
             {greeting}
             {userName ? (
               <>,{" "}<span className="relay-name" style={{ fontStyle: "italic", fontWeight: 700, whiteSpace: "nowrap", background: "linear-gradient(100deg, #8A3F1E 0%, #B85C38 30%, #E8C255 50%, #B85C38 70%, #8A3F1E 100%)", backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "#9A4F2A" }}>{userName}</span></>
@@ -198,17 +198,17 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
           {score ? (
             <button type="button" onClick={score.onClick} className="relay-chip" style={{ display: "flex", alignItems: "center", gap: "0.6rem", minHeight: "3rem", padding: "0 1rem", borderRadius: "0.75rem", border: `0.0625rem solid ${T.color.warmStone}`, background: "linear-gradient(135deg, rgba(212,175,55,0.12), rgba(212,175,55,0.03))", cursor: "pointer" }}>
               <span aria-hidden="true" style={{ width: "1.375rem", height: "1.375rem", display: "inline-flex", color: "#B08717" }}><RelayIcons.points /></span>
-              <span style={{ fontFamily: T.font.display, fontWeight: 700, fontSize: "1.0625rem", color: T.color.charcoal, fontVariantNumeric: "tabular-nums" }}>{score.points.toLocaleString()}</span>
+              <span style={{ fontFamily: T.font.display, fontWeight: 700, fontSize: "1.0625rem", color: "#403B36", fontVariantNumeric: "tabular-nums" }}>{score.points.toLocaleString()}</span>
               <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginRight: "0.25rem" }}>pts</span>
               <span aria-hidden="true" style={{ width: "0.0625rem", height: "1.25rem", background: T.color.warmStone }} />
               <span aria-hidden="true" style={{ width: "1.375rem", height: "1.375rem", display: "inline-flex", color: "#9A4F2A" }}><RelayIcons.badge /></span>
-              <span style={{ fontFamily: T.font.display, fontWeight: 700, fontSize: "1.0625rem", color: T.color.charcoal, fontVariantNumeric: "tabular-nums" }}>{score.badgesEarned}/{score.badgesTotal}</span>
+              <span style={{ fontFamily: T.font.display, fontWeight: 700, fontSize: "1.0625rem", color: "#403B36", fontVariantNumeric: "tabular-nums" }}>{score.badgesEarned}/{score.badgesTotal}</span>
             </button>
           ) : null}
           {chips.map((c) => {
             const Ico = RelayIcons[c.key] ?? RelayIcons.continue;
             return (
-              <button key={c.key} type="button" onClick={c.onClick} className="relay-chip" style={{ display: "inline-flex", alignItems: "center", gap: "0.625rem", minHeight: "3rem", padding: "0 1.125rem", borderRadius: "0.75rem", border: `0.0625rem solid ${T.color.warmStone}`, background: T.color.cream, cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, color: T.color.charcoal }}>
+              <button key={c.key} type="button" onClick={c.onClick} className="relay-chip" style={{ display: "inline-flex", alignItems: "center", gap: "0.625rem", minHeight: "3rem", padding: "0 1.125rem", borderRadius: "0.75rem", border: `0.0625rem solid ${T.color.warmStone}`, background: T.color.cream, cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, color: "#403B36" }}>
                 <span aria-hidden="true" style={{ width: "1.25rem", height: "1.25rem", display: "inline-flex", color: T.color.terracotta }}><Ico /></span>{c.label}
               </button>
             );
@@ -234,7 +234,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
             </span>
             <span style={{ display: "flex", flexDirection: "column", gap: "0.05rem", minWidth: 0 }}>
               <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9A4F2A" }}>Suggested for you</span>
-              <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.1875rem", lineHeight: 1.15, color: T.color.charcoal }}>{suggestion.title}</span>
+              <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.1875rem", lineHeight: 1.15, color: "#403B36" }}>{suggestion.title}</span>
               <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted }}>{suggestion.reason}</span>
               {suggestion.progress ? (
                 <span aria-hidden="true" style={{ display: "block", marginTop: "0.4rem", height: "0.3rem", borderRadius: "1rem", background: "rgba(154,79,42,0.14)", overflow: "hidden", maxWidth: "16rem" }}>

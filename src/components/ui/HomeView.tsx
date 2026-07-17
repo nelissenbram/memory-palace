@@ -610,7 +610,7 @@ export default function HomeView() {
         height: "100dvh",
         display: "flex",
         flexDirection: "column",
-        background: "#F4EADA",
+        background: "#FCFAF5",
         fontFamily: T.font.body,
         overflow: "hidden",
       }}
