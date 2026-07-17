@@ -5217,14 +5217,13 @@
     },
     "why": {
       "eyebrow": "Waarom een paleis?",
-      "h2": "Omdat je brein in plekken denkt.",
-      "body": "Al 2.500 jaar onthouden mensen wat belangrijk is door het in denkbeeldige kamers te plaatsen. Plekken onthouden we veel beter dan bestanden — daarom een paleis, geen map.",
-      "step1t": "Geef het een plek",
-      "step1b": "Zet een herinnering op een vaste plek in een kamer",
-      "step2t": "Loop er langs",
-      "step2b": "Plekken zijn hoe je brein dingen ordent",
-      "step3t": "Het blijft",
-      "step3b": "Plekken onthoud je veel langer dan bestanden"
+      "h2": "Een doos wordt donker. Een paleis blijft verlicht.",
+      "body": "Foto's in mappen en dozen worden bewaard — maar nooit bezocht. In jouw paleis krijgt elke herinnering een eigen kamer, en elke kamer die je vult laat weer een raam oplichten. Loop 's avonds binnen: alles gloeit nog.",
+      "windowLabel1": "Zondagochtenden, 1964",
+      "windowLabel2": "De dag dat ze afstudeerde, 1989",
+      "windowLabel3": "De kleinkinderen, afgelopen zomer",
+      "closingLine": "Een heel leven, altijd verlicht.",
+      "sceneAria": "Een paleis in de schemering, waarvan de ramen één voor één oplichten tot het hele huis gloeit."
     },
     "compare": {
       "h2": "Houd je cloudfoto's. Dat is de schijf. Dit is het thuis.",
@@ -5311,7 +5310,7 @@
     "mock": {
       "ai": "Met AI",
       "kepName": "Kep",
-      "kepRole": "Je herinneringenkruier · WhatsApp",
+      "kepRole": "Je WhatsApp-kruier",
       "kepSaved": "Bewaard in je paleis — reisvleugel",
       "kepSorted": "Gesorteerd & ingelijst",
       "importTitle": "Importeren uit Google Foto's",
@@ -5347,7 +5346,7 @@
       "legacyName": "Nalatenschap",
       "keysTitle": "Wie krijgt de sleutels",
       "keyWhen": "Als het moment daar is",
-      "uploadsName": "Herinneringen toevoegen",
+      "uploadsName": "Herinneringen verzamelen",
       "cloudName": "Slim sorteren",
       "receiveName": "Gedeelde herinneringen",
       "interviewName": "Interviews",
@@ -5360,7 +5359,6 @@
       "n3": "foto's worden kamers",
       "n4": "drie generaties, één stamboom",
       "n5": "de vragen die ertoe doen",
-      "n6": "ook stemmen wonen hier",
       "n7": "een bibliotheek vol herinneringen",
       "n8": "kleine overwinningen onderweg"
     }

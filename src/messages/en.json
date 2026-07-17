@@ -5215,14 +5215,13 @@
     },
     "why": {
       "eyebrow": "Why a palace?",
-      "h2": "Because your brain thinks in places.",
-      "body": "For 2,500 years, people remembered what mattered by placing it in imagined rooms. We recall places far better than files — that's why a palace, not a folder.",
-      "step1t": "Place it",
-      "step1b": "Give a memory a spot in a room",
-      "step2t": "Walk past it",
-      "step2b": "Rooms are how your brain files things",
-      "step3t": "It stays",
-      "step3b": "Places are remembered far longer than files"
+      "h2": "A box goes dark. A palace stays lit.",
+      "body": "Photos in folders and boxes are stored — but never visited. In your palace, every memory gets its own room, and every room you fill lights another window. Walk in any evening: it's all still glowing.",
+      "windowLabel1": "Sunday mornings, 1964",
+      "windowLabel2": "The day she graduated, 1989",
+      "windowLabel3": "The grandchildren, last summer",
+      "closingLine": "A lifetime, always lit.",
+      "sceneAria": "A palace at dusk, its windows lighting up one by one until the whole house glows."
     },
     "compare": {
       "h2": "Keep your cloud photos. That's the drive. This is the home.",
@@ -5309,7 +5308,7 @@
     "mock": {
       "ai": "AI-powered",
       "kepName": "Kep",
-      "kepRole": "Your memory porter · WhatsApp",
+      "kepRole": "Your WhatsApp Porter",
       "kepSaved": "Saved to your palace — Travel wing",
       "kepSorted": "Sorted & framed",
       "importTitle": "Importing from Google Photos",
@@ -5345,7 +5344,7 @@
       "legacyName": "Legacy",
       "keysTitle": "Who gets the keys",
       "keyWhen": "When the time comes",
-      "uploadsName": "Add Memories",
+      "uploadsName": "Gather Memories",
       "cloudName": "Smart Sorting",
       "receiveName": "Shared Memories",
       "interviewName": "Interviews",
@@ -5358,7 +5357,6 @@
       "n3": "photos become rooms",
       "n4": "three generations, one tree",
       "n5": "the questions that matter",
-      "n6": "voices live here too",
       "n7": "a library of memories",
       "n8": "little wins, along the way"
     }

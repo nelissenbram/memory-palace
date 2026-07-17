@@ -14,23 +14,29 @@
 import Image from "next/image";
 import UspCardShell, { U } from "./UspCardShell";
 
-const KEP_ICON = (
-  <svg
-    width="22"
-    height="22"
-    viewBox="0 0 22 22"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={1.6}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M19 13a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3z" />
-    <path d="M9 12.5V9.5a2.5 2.5 0 0 1 5 0v3" />
-    <path d="M8 12.5h7" />
-  </svg>
-);
+/* A bellhop / porter cap — Kep is the palace's WhatsApp porter. */
+function PorterCap({ size, color }: { size: number; color: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 22 22"
+      fill="none"
+      stroke={color}
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4.5 12.5A6.5 6 0 0 1 17.5 12.5" />
+      <rect x="4" y="12.5" width="14" height="3.4" rx="1" />
+      <path d="M11 6.6V8.6" />
+      <circle cx="11" cy="5.4" r="1" />
+    </svg>
+  );
+}
+
+const KEP_ICON = <PorterCap size={22} color="currentColor" />;
 
 export default function KepCard({
   m,
@@ -39,8 +45,6 @@ export default function KepCard({
   m: Record<string, string>;
   aiLabel?: string;
 }) {
-  const initial = (m.kepName || "").charAt(0);
-
   const bubbleShadow = "0 1px 2px rgba(36, 28, 21, 0.06)";
 
   return (
@@ -95,16 +99,7 @@ export default function KepCard({
               flexShrink: 0,
             }}
           >
-            <span
-              style={{
-                fontFamily: U.fontDisplay,
-                fontSize: "1.125rem",
-                color: U.gold,
-                lineHeight: 1,
-              }}
-            >
-              {initial}
-            </span>
+            <PorterCap size={18} color={U.gold} />
             <span
               style={{
                 position: "absolute",
@@ -253,16 +248,7 @@ export default function KepCard({
               flexShrink: 0,
             }}
           >
-            <span
-              style={{
-                fontFamily: U.fontDisplay,
-                fontSize: "0.875rem",
-                color: U.gold,
-                lineHeight: 1,
-              }}
-            >
-              {initial}
-            </span>
+            <PorterCap size={15} color={U.gold} />
           </span>
 
           {/* Bubble slot: reply in normal flow holds height; typing stacks on top. */}

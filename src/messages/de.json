@@ -5215,14 +5215,13 @@
     },
     "why": {
       "eyebrow": "Warum ein Palast?",
-      "h2": "Weil Ihr Gehirn in Orten denkt.",
-      "body": "Seit 2.500 Jahren erinnern sich Menschen an das Wichtige, indem sie es in vorgestellte Räume legen. Orte merken wir uns weit besser als Dateien — deshalb ein Palast, kein Ordner.",
-      "step1t": "Geben Sie ihm einen Platz",
-      "step1b": "Eine Erinnerung bekommt ihren festen Ort in einem Raum",
-      "step2t": "Gehen Sie daran vorbei",
-      "step2b": "Orte sind die Ordnung Ihres Gehirns",
-      "step3t": "Es bleibt",
-      "step3b": "Orte behalten wir weit länger als Dateien"
+      "h2": "Eine Kiste wird dunkel. Ein Palast bleibt erleuchtet.",
+      "body": "Fotos in Ordnern und Kisten werden aufbewahrt — aber nie besucht. In Ihrem Palast bekommt jede Erinnerung einen eigenen Raum, und jeder Raum, den Sie füllen, lässt ein weiteres Fenster leuchten. Treten Sie an einem Abend ein: Alles glüht noch.",
+      "windowLabel1": "Sonntagmorgen, 1964",
+      "windowLabel2": "Der Tag ihres Abschlusses, 1989",
+      "windowLabel3": "Die Enkelkinder, letzten Sommer",
+      "closingLine": "Ein ganzes Leben, immer erleuchtet.",
+      "sceneAria": "Ein Palast in der Dämmerung, dessen Fenster nacheinander aufleuchten, bis das ganze Haus glüht."
     },
     "compare": {
       "h2": "Behalten Sie Ihre Cloud-Fotos. Das ist die Festplatte. Dies ist das Zuhause.",
@@ -5309,7 +5308,7 @@
     "mock": {
       "ai": "KI-gestützt",
       "kepName": "Kep",
-      "kepRole": "Ihr Erinnerungsbote · WhatsApp",
+      "kepRole": "Ihr WhatsApp-Portier",
       "kepSaved": "In Ihrem Palast bewahrt — Reiseflügel",
       "kepSorted": "Sortiert & gerahmt",
       "importTitle": "Import aus Google Fotos",
@@ -5345,7 +5344,7 @@
       "legacyName": "Vermächtnis",
       "keysTitle": "Wer bekommt die Schlüssel",
       "keyWhen": "Wenn die Zeit gekommen ist",
-      "uploadsName": "Erinnerungen hinzufügen",
+      "uploadsName": "Erinnerungen sammeln",
       "cloudName": "Intelligente Sortierung",
       "receiveName": "Geteilte Erinnerungen",
       "interviewName": "Interviews",
@@ -5358,7 +5357,6 @@
       "n3": "Fotos werden Räume",
       "n4": "drei Generationen, ein Stammbaum",
       "n5": "die Fragen, die zählen",
-      "n6": "auch Stimmen wohnen hier",
       "n7": "eine Bibliothek voller Erinnerungen",
       "n8": "kleine Erfolge unterwegs"
     }

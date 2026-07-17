@@ -5215,14 +5215,13 @@
     },
     "why": {
       "eyebrow": "Pourquoi un palais ?",
-      "h2": "Parce que votre cerveau pense en lieux.",
-      "body": "Depuis 2 500 ans, on retient ce qui compte en le plaçant dans des pièces imaginaires. Nous retenons les lieux bien mieux que les fichiers — d'où un palais, pas un dossier.",
-      "step1t": "Donnez-lui une place",
-      "step1b": "Chaque souvenir a sa place dans une pièce",
-      "step2t": "Passez devant",
-      "step2b": "Les lieux sont le classement naturel du cerveau",
-      "step3t": "Il reste",
-      "step3b": "On retient les lieux bien plus longtemps que les fichiers"
+      "h2": "Une boîte s'éteint. Un palais reste allumé.",
+      "body": "Les photos dans des dossiers et des boîtes sont rangées — mais jamais visitées. Dans votre palais, chaque souvenir a sa propre pièce, et chaque pièce que vous remplissez allume une fenêtre de plus. Entrez un soir : tout brille encore.",
+      "windowLabel1": "Les dimanches matin, 1964",
+      "windowLabel2": "Le jour de sa remise de diplôme, 1989",
+      "windowLabel3": "Les petits-enfants, l'été dernier",
+      "closingLine": "Toute une vie, toujours allumée.",
+      "sceneAria": "Un palais au crépuscule, dont les fenêtres s'allument une à une jusqu'à ce que toute la maison brille."
     },
     "compare": {
       "h2": "Gardez vos photos dans le cloud. Ça, c'est le disque. Ici, c'est le foyer.",
@@ -5309,7 +5308,7 @@
     "mock": {
       "ai": "Avec IA",
       "kepName": "Kep",
-      "kepRole": "Votre porteur de souvenirs · WhatsApp",
+      "kepRole": "Votre porteur WhatsApp",
       "kepSaved": "Rangé dans votre palais — aile des voyages",
       "kepSorted": "Trié et encadré",
       "importTitle": "Import depuis Google Photos",
@@ -5345,7 +5344,7 @@
       "legacyName": "Héritage",
       "keysTitle": "Qui reçoit les clés",
       "keyWhen": "Le moment venu",
-      "uploadsName": "Ajouter des souvenirs",
+      "uploadsName": "Rassembler les souvenirs",
       "cloudName": "Tri intelligent",
       "receiveName": "Souvenirs partagés",
       "interviewName": "Entretiens",
@@ -5358,7 +5357,6 @@
       "n3": "les photos deviennent des pièces",
       "n4": "trois générations, un arbre",
       "n5": "les questions qui comptent",
-      "n6": "des voix habitent ici aussi",
       "n7": "une bibliothèque de souvenirs",
       "n8": "de petites victoires en chemin"
     }

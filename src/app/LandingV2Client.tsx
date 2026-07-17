@@ -22,6 +22,7 @@ import { T } from "@/lib/theme";
 import { locales, type Locale } from "@/i18n/config";
 import enMessages from "@/messages/en.json";
 import PalaceLogo from "@/components/landing/PalaceLogo";
+import WhyPalaceVisual from "@/components/landing/WhyPalaceVisual";
 import KepCard from "@/components/landing/usp/KepCard";
 import UploadsCard from "@/components/landing/usp/UploadsCard";
 import CloudImportCard from "@/components/landing/usp/CloudImportCard";
@@ -404,31 +405,9 @@ export default function LandingV2Client({
   const [navSolid, setNavSolid] = useState(false);
   const [howMode, setHowMode] = useState<"self" | "gift">("self");
   const [tourPlaying, setTourPlaying] = useState(false);
-  const [tourAmbient, setTourAmbient] = useState(false);
   const tourVideoRef = useRef<HTMLVideoElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
 
-  /* The walkthrough plays as a muted ambient snippet — but never on reduced
-     motion or constrained connections (poster + play button instead). */
-  useEffect(() => {
-    if (prefersReducedMotion() || connectionIsConstrained()) return;
-    setTourAmbient(true);
-  }, []);
-
-  /* Kick-start the ambient loop (with retries — the autoplay kick can be
-     dropped under heavy main-thread load even when playback is allowed). */
-  useEffect(() => {
-    if (!tourAmbient || tourPlaying) return;
-    const attempt = () => {
-      const v = tourVideoRef.current;
-      if (!v || !v.paused) return;
-      v.muted = true;
-      v.play().catch(() => {});
-    };
-    attempt();
-    const timers = [800, 2200, 4500].map((ms) => window.setTimeout(attempt, ms));
-    return () => timers.forEach((t) => window.clearTimeout(t));
-  }, [tourAmbient, tourPlaying]);
 
   const { v2, faq, footer, compare8 } = slices;
 
@@ -669,68 +648,15 @@ export default function LandingV2Client({
           display: flex; gap: 1.25rem; overflow-x: auto; padding: 0.5rem 0.25rem 1rem;
           scroll-snap-type: x proximity; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch;
         }
-        .lv2-strip:focus-visible { outline: 2px solid ${T.color.terracotta}; outline-offset: 3px; }
-        /* Method-of-loci scene: one facade, three alcoves, a golden visitor.
-           12s cycle: hang the memory (01) → walk past (02) → rooms stay lit (03). */
-        .lv2-loci { max-width: 52rem; margin: 0 auto; }
-        .lv2-loci-scene { position: relative; }
-        .lv2-loci-frame {
-          position: absolute; top: 56%; transform: translate(-50%, -50%);
-          border-radius: 0.3rem;
+        .lv2-strip:focus-visible { outline: 2px solid rgba(252,250,245,0.45); outline-offset: 4px; border-radius: 0.5rem; }
+        /* Inviting tour doorway */
+        .lv2-tour-ring { transition: transform ${M.base} ${M.ease}, box-shadow ${M.base} ${M.ease}; animation: lv2TourBreath 4.5s ease-in-out infinite; }
+        .lv2-tour-door:hover .lv2-tour-ring { transform: scale(1.06); box-shadow: 0 0 0 0.75rem rgba(212,175,55,0.2), 0 16px 48px rgba(0,0,0,0.55); }
+        @keyframes lv2TourBreath {
+          0%, 100% { box-shadow: 0 0 0 0.5rem rgba(212,175,55,0.10), 0 16px 48px rgba(0,0,0,0.55); }
+          50% { box-shadow: 0 0 0 0.9rem rgba(212,175,55,0.22), 0 16px 48px rgba(0,0,0,0.55); }
         }
-        .lv2-loci-frame-one { animation: lv2LociHang 12s ${M.ease} infinite; }
-        .lv2-loci-frame-two { animation: lv2LociAppearTwo 12s ${M.ease} infinite; }
-        .lv2-loci-frame-three { animation: lv2LociAppearThree 12s ${M.ease} infinite; }
-        .lv2-loci-glow {
-          position: absolute; top: 62%; transform: translate(-50%, -50%);
-          width: 6.5rem; height: 5rem; border-radius: 50%;
-          background: radial-gradient(ellipse, rgba(212,175,55,0.45) 0%, rgba(212,175,55,0) 70%);
-          opacity: 0; pointer-events: none;
-        }
-        .lv2-loci-glow-one { animation: lv2LociLitOne 12s ease-in-out infinite; }
-        .lv2-loci-glow-two { animation: lv2LociLitTwo 12s ease-in-out infinite; }
-        .lv2-loci-glow-three { animation: lv2LociLitThree 12s ease-in-out infinite; }
-        .lv2-loci-visitor {
-          position: absolute; bottom: 4.5%; left: 0; width: 0.8rem; height: 0.8rem; border-radius: 50%;
-          background: ${L.accentDark}; box-shadow: 0 0 12px rgba(212,175,55,0.8);
-          animation: lv2LociVisit 12s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-        }
-        .lv2-loci-captions {
-          display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2rem;
-        }
-        @keyframes lv2LociHang {
-          0% { opacity: 0; transform: translate(-50%, -90%); }
-          6% { opacity: 1; transform: translate(-50%, -50%); }
-          98% { opacity: 1; } 100% { opacity: 0; }
-        }
-        @keyframes lv2LociAppearTwo {
-          0%, 38% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
-          46% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-          98% { opacity: 1; } 100% { opacity: 0; }
-        }
-        @keyframes lv2LociAppearThree {
-          0%, 60% { opacity: 0; transform: translate(-50%, -50%) scale(0.85); }
-          68% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-          98% { opacity: 1; } 100% { opacity: 0; }
-        }
-        @keyframes lv2LociVisit {
-          0%, 10% { left: 3%; opacity: 0; }
-          16% { opacity: 1; }
-          34% { left: 18.75%; }
-          52% { left: 50%; }
-          72% { left: 81.25%; }
-          86% { left: 96%; opacity: 1; }
-          92%, 100% { left: 96%; opacity: 0; }
-        }
-        @keyframes lv2LociLitOne {
-          0%, 28% { opacity: 0; } 36%, 94% { opacity: 1; } 100% { opacity: 0; }
-        }
-        @keyframes lv2LociLitTwo {
-          0%, 46% { opacity: 0; } 54%, 94% { opacity: 1; } 100% { opacity: 0; }
-        }
-        @keyframes lv2LociLitThree {
-          0%, 66% { opacity: 0; } 74%, 94% { opacity: 1; } 100% { opacity: 0; }
-        }
+        @media (prefers-reduced-motion: reduce) { .lv2-tour-ring { animation: none !important; } }
         /* Final CTA glow breath */
         .lv2-cta-final { animation: lv2CtaBreath 5s ease-in-out infinite; }
         @keyframes lv2CtaBreath {
@@ -738,11 +664,7 @@ export default function LandingV2Client({
           50% { box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.5), 0 0 54px rgba(212,175,55,0.3); }
         }
         @media (prefers-reduced-motion: reduce) {
-          .lv2-loci-frame, .lv2-loci-glow, .lv2-loci-visitor, .lv2-cta-final,
-          .lv2-loci-frame-one, .lv2-loci-frame-two, .lv2-loci-frame-three,
-          .lv2-loci-glow-one, .lv2-loci-glow-two, .lv2-loci-glow-three { animation: none !important; }
-          .lv2-loci-frame, .lv2-loci-glow { opacity: 1; }
-          .lv2-loci-visitor { opacity: 0; }
+          .lv2-cta-final { animation: none !important; }
         }
         @media (max-width: 1023px) {
           .lv2-usp-grid { grid-template-columns: 1fr; }
@@ -752,7 +674,6 @@ export default function LandingV2Client({
           .lv2-steps-grid { grid-template-columns: 1fr; }
           .lv2-nav-links { display: none !important; }
           .lv2-nav-burger { display: inline-flex !important; }
-          .lv2-loci-captions { grid-template-columns: 1fr; gap: 1.75rem; }
         }
         @media (min-width: 769px) {
           .lv2-nav-burger { display: none !important; }
@@ -1038,7 +959,7 @@ export default function LandingV2Client({
         {/* Sentinel: nav turns solid when this leaves the viewport */}
         <div ref={sentinelRef} aria-hidden="true" style={{ height: 1 }} />
 
-        {/* ── 2. Why a palace — the method of loci as one living scene ── */}
+        {/* ── 2. Why a palace — "a box goes dark, a palace stays lit" ── */}
         <section aria-labelledby="lv2-why-h" style={{ background: L.mid, padding: `${L.space.sectionY} 0` }}>
           <div style={{ ...wide, textAlign: "center" }}>
             <Reveal>
@@ -1049,186 +970,106 @@ export default function LandingV2Client({
               </p>
             </Reveal>
             <Reveal>
-              <div
-                className="lv2-loci"
-                role="img"
-                aria-label={`${v2.why.step1t} — ${v2.why.step1b}. ${v2.why.step2t} — ${v2.why.step2b}. ${v2.why.step3t} — ${v2.why.step3b}.`}
-              >
-                {/* One palace cross-section: three alcoves under one pediment.
-                    A memory is hung in the first; a golden visitor walks past;
-                    every room they pass stays lit. */}
-                <div className="lv2-loci-scene" aria-hidden="true">
-                  <svg viewBox="0 0 640 210" style={{ width: "100%", height: "auto", display: "block" }} preserveAspectRatio="xMidYMid meet">
-                    {/* facade fill */}
-                    <path d="M28 74 L320 18 L612 74 V196 H28 Z" fill="rgba(252,250,245,0.65)" stroke="none" />
-                    {/* pediment */}
-                    <path d="M20 76 L320 14 L620 76" fill="none" stroke={L.accentLight} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M44 76 H596" stroke={L.accentLight} strokeWidth="2" strokeLinecap="round" opacity="0.55" />
-                    {/* alcove arches */}
-                    {[120, 320, 520].map((cx) => (
-                      <g key={cx}>
-                        <path
-                          d={`M${cx - 46} 196 V128 A46 46 0 0 1 ${cx + 46} 128 V196`}
-                          fill="rgba(36,28,21,0.05)"
-                          stroke={L.accentLight}
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        />
-                      </g>
-                    ))}
-                    {/* columns */}
-                    {[62, 220, 420, 578].map((x) => (
-                      <g key={x} stroke={L.accentLight} strokeWidth="2" opacity="0.5">
-                        <line x1={x} y1={86} x2={x} y2={192} />
-                        <line x1={x - 7} y1={86} x2={x + 7} y2={86} />
-                        <line x1={x - 8} y1={193} x2={x + 8} y2={193} />
-                      </g>
-                    ))}
-                    {/* floor */}
-                    <path d="M14 197 H626" stroke={L.accentLight} strokeWidth="3" strokeLinecap="round" />
-                  </svg>
-                  {/* glow pools inside each alcove — lit as the visitor passes */}
-                  {["one", "two", "three"].map((k, i) => (
-                    <span key={k} className={`lv2-loci-glow lv2-loci-glow-${k}`} style={{ left: `${[18.75, 50, 81.25][i]}%` }} />
-                  ))}
-                  {/* the framed memories */}
-                  {["/landing/demo-hands.jpg", "/landing/demo-graduation.jpg", "/landing/demo-morning.jpg"].map((src, i) => (
-                    <span key={src} className={`lv2-loci-frame lv2-loci-frame-${["one", "two", "three"][i]}`} style={{ left: `${[18.75, 50, 81.25][i]}%` }}>
-                      <Image
-                        src={src}
-                        alt=""
-                        width={480}
-                        height={319}
-                        style={{
-                          width: "clamp(3.25rem, 8vw, 4.5rem)",
-                          height: "clamp(2.5rem, 6.2vw, 3.5rem)",
-                          objectFit: "cover",
-                          borderRadius: "0.2rem",
-                          border: "0.2rem solid #FFF",
-                          boxShadow: "0 6px 16px rgba(36,28,21,0.32)",
-                          display: "block",
-                        }}
-                      />
-                    </span>
-                  ))}
-                  {/* the visitor */}
-                  <span className="lv2-loci-visitor" />
-                </div>
-                {/* numbered captions aligned to the three alcoves */}
-                <div className="lv2-loci-captions">
-                  {[
-                    { n: "01", t: v2.why.step1t, b: v2.why.step1b },
-                    { n: "02", t: v2.why.step2t, b: v2.why.step2b },
-                    { n: "03", t: v2.why.step3t, b: v2.why.step3b },
-                  ].map((step) => (
-                    <div key={step.n} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
-                      <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h4, color: L.accentLight }}>{step.n}</span>
-                      <h3 style={{ fontFamily: FONT_DISPLAY, fontWeight: 500, fontSize: L.type.h4, color: T.color.charcoal, margin: 0 }}>
-                        {step.t}
-                      </h3>
-                      <p style={{ fontFamily: FONT_BODY, fontSize: L.type.bodyS, lineHeight: 1.5, color: L.inkMutedLight, margin: 0, maxWidth: "15em" }}>
-                        {step.b}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <WhyPalaceVisual w={v2.why as unknown as Record<string, string>} />
             </Reveal>
           </div>
         </section>
 
-        {/* ── 3. Showcase: step inside a real palace ── */}
-        <section id="tour" aria-labelledby="lv2-tour-h" style={{ background: L.surface, padding: "4rem 0 5rem" }}>
-          <div style={wide}>
+        {/* ── 3. Showcase: the tour, merged with the dark — no autoplay, one
+               inviting doorway to click. ── */}
+        <section
+          id="tour"
+          aria-labelledby="lv2-tour-h"
+          style={{ position: "relative", background: L.dark, padding: "clamp(5rem, 9vw, 7.5rem) 0", overflow: "hidden" }}
+        >
+          {/* The palace interior bleeds out of the darkness — no card edges. */}
+          <Image
+            src="/video/walkthrough-poster-v2.jpg"
+            alt=""
+            fill
+            sizes="100vw"
+            style={{ objectFit: "cover", opacity: tourPlaying ? 0.12 : 0.55 }}
+          />
+          <div
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "radial-gradient(ellipse 70% 60% at 50% 46%, rgba(36,28,21,0.05) 0%, rgba(36,28,21,0.62) 62%, rgba(36,28,21,0.97) 100%)",
+            }}
+          />
+          <div style={{ ...wide, position: "relative" }}>
             <Reveal>
-              <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-                <Eyebrow>{v2.showcase.eyebrow}</Eyebrow>
-                <H2 id="lv2-tour-h">{v2.showcase.h2}</H2>
-                <p style={{ ...prose, fontFamily: FONT_BODY, fontSize: L.type.lead, lineHeight: 1.5, color: L.inkBody, margin: "0 auto", textWrap: "pretty" }}>
+              <div style={{ textAlign: "center", marginBottom: "2.25rem" }}>
+                <Eyebrow onDark>{v2.showcase.eyebrow}</Eyebrow>
+                <H2 id="lv2-tour-h" onDark>{v2.showcase.h2}</H2>
+                <p style={{ ...prose, fontFamily: FONT_BODY, fontSize: L.type.lead, lineHeight: 1.5, color: L.inkMutedDark, margin: "0 auto", textWrap: "pretty" }}>
                   {v2.showcase.sub}
                 </p>
               </div>
             </Reveal>
             <Reveal>
-              <div style={{ maxWidth: "62rem", margin: "0 auto" }}>
-                {/* Ambient tour: the walkthrough plays muted as a living snippet;
-                    one click restarts it with sound + controls. Reduced-motion /
-                    constrained connections get the poster + a play button. */}
-                <div
-                  style={{
-                    position: "relative",
-                    aspectRatio: "16 / 9",
-                    borderRadius: "1rem",
-                    overflow: "hidden",
-                    background: L.dark,
-                    boxShadow: "0 24px 64px rgba(36,28,21,0.28)",
-                  }}
-                >
-                  {tourAmbient || tourPlaying ? (
-                    <video
-                      ref={tourVideoRef}
-                      autoPlay
-                      muted={!tourPlaying}
-                      loop={!tourPlaying}
-                      controls={tourPlaying}
-                      playsInline
-                      poster="/video/walkthrough-poster-v2.jpg"
-                      aria-label={v2.a11y.tourDialog}
-                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    >
-                      <source src="/video/walkthrough.mp4" type="video/mp4" />
-                    </video>
-                  ) : (
-                    <Image
-                      src="/video/walkthrough-poster-v2.jpg"
-                      alt=""
-                      fill
-                      sizes="(max-width: 1020px) 100vw, 62rem"
-                      style={{ objectFit: "cover" }}
-                    />
-                  )}
-                  {!tourPlaying ? (
-                    <div
+              {tourPlaying ? (
+                <div style={{ maxWidth: "62rem", margin: "0 auto" }}>
+                  <video
+                    ref={tourVideoRef}
+                    controls
+                    playsInline
+                    poster="/video/walkthrough-poster-v2.jpg"
+                    aria-label={v2.a11y.tourDialog}
+                    style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", borderRadius: "1rem", display: "block", background: "#000", boxShadow: "0 24px 80px rgba(0,0,0,0.6)" }}
+                  >
+                    <source src="/video/walkthrough.mp4" type="video/mp4" />
+                  </video>
+                </div>
+              ) : (
+                <div style={{ display: "flex", justifyContent: "center", padding: "1.5rem 0 0.5rem" }}>
+                  {/* One inviting doorway: gold ring, breathing, the tour behind it. */}
+                  <button
+                    type="button"
+                    onClick={startTour}
+                    className="lv2-cta lv2-tour-door"
+                    aria-label={v2.hero.secondary}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "1.125rem",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "0.5rem 1rem",
+                    }}
+                  >
+                    <span
+                      className="lv2-tour-ring"
                       style={{
-                        position: "absolute",
-                        inset: 0,
+                        width: "clamp(6.5rem, 12vw, 8.5rem)",
+                        height: "clamp(6.5rem, 12vw, 8.5rem)",
+                        borderRadius: "50%",
                         display: "flex",
-                        alignItems: "flex-end",
+                        alignItems: "center",
                         justifyContent: "center",
-                        padding: "1.5rem",
-                        background: "linear-gradient(180deg, transparent 55%, rgba(36,28,21,0.45) 100%)",
+                        background: "rgba(36,28,21,0.35)",
+                        backdropFilter: "blur(6px)",
+                        border: "1px solid rgba(212,175,55,0.75)",
+                        boxShadow: "0 0 0 0.5rem rgba(212,175,55,0.12), 0 16px 48px rgba(0,0,0,0.55)",
                       }}
                     >
-                      <button
-                        type="button"
-                        onClick={startTour}
-                        className="lv2-cta"
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "0.625rem",
-                          minHeight: T.touch,
-                          padding: "0 1.75rem",
-                          borderRadius: "2rem",
-                          border: "1px solid rgba(252,250,245,0.45)",
-                          background: "rgba(36,28,21,0.62)",
-                          backdropFilter: "blur(8px)",
-                          color: T.color.cream,
-                          fontFamily: FONT_BODY,
-                          fontWeight: 600,
-                          fontSize: L.type.body,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M11 5L6 9H2v6h4l5 4V5zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        {v2.showcase.soundCta}
-                      </button>
-                    </div>
-                  ) : null}
+                      <svg width="34" height="34" viewBox="0 0 24 24" aria-hidden="true" style={{ marginLeft: "0.25rem" }}>
+                        <path d="M6 3l14 9-14 9V3z" fill={T.color.cream} />
+                      </svg>
+                    </span>
+                    <span style={{ fontFamily: FONT_BODY, fontWeight: 700, fontSize: L.type.body, color: T.color.cream, letterSpacing: "0.02em" }}>
+                      ▶ {v2.hero.secondary}
+                    </span>
+                    <span style={{ fontFamily: "var(--font-note, cursive)", fontWeight: 600, fontSize: "1.25rem", color: L.accentDark }}>
+                      {v2.showcase.soundCta}
+                    </span>
+                  </button>
                 </div>
-              </div>
+              )}
             </Reveal>
           </div>
         </section>
@@ -1465,11 +1306,11 @@ export default function LandingV2Client({
                 aria-label={v2.a11y.phoneStrip}
                 tabIndex={0}
               >
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => {
-                  const note = [v2.notes.n1, v2.notes.n2, v2.notes.n3, v2.notes.n4, v2.notes.n5, v2.notes.n6, v2.notes.n7, v2.notes.n8][n - 1];
+                {[1, 2, 3, 4, 5, 6, 7].map((n) => {
+                  const note = [v2.notes.n1, v2.notes.n2, v2.notes.n3, v2.notes.n4, v2.notes.n5, v2.notes.n7, v2.notes.n8][n - 1];
                   const noteOnTop = n % 2 === 1;
                   return (
-                    <div key={n} style={{ position: "relative", flexShrink: 0, scrollSnapAlign: "center", padding: `${noteOnTop ? "3.25rem" : "0.5rem"} 0.25rem ${noteOnTop ? "0.5rem" : "3.25rem"}` }}>
+                    <div key={n} style={{ position: "relative", flexShrink: 0, scrollSnapAlign: "center", marginTop: noteOnTop ? 0 : "1.5rem", transform: `rotate(${n % 2 === 1 ? -1.1 : 1.2}deg)`, padding: `${noteOnTop ? "3.25rem" : "0.5rem"} 0.25rem ${noteOnTop ? "0.5rem" : "3.25rem"}` }}>
                       {/* margin note, as if scribbled next to the screen */}
                       <span
                         aria-hidden="true"
@@ -1502,17 +1343,16 @@ export default function LandingV2Client({
                         </svg>
                       </span>
                       <Image
-                        src={`/screenshots/store/screenshot-${n}-${["exterior", "entrance", "room", "family-tree", "interview", "explore", "library", "achievements"][n - 1]}.webp`}
-                        alt={`${v2.mock.shotAlt} ${n}/8`}
-                        width={1080}
-                        height={1920}
-                        sizes="(max-width: 768px) 70vw, 17rem"
+                        src={`/landing/shots/shot-${n}.webp`}
+                        alt={`${v2.mock.shotAlt} ${n}/7`}
+                        width={820}
+                        height={1446}
+                        sizes="(max-width: 768px) 70vw, 16rem"
                         style={{
-                          width: "17rem",
+                          width: "16rem",
                           height: "auto",
-                          borderRadius: "1.25rem",
-                          border: "1px solid rgba(252,250,245,0.22)",
-                          boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
+                          borderRadius: "0.875rem",
+                          boxShadow: "0 22px 56px rgba(0,0,0,0.55)",
                           display: "block",
                         }}
                       />

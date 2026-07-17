@@ -5215,14 +5215,13 @@
     },
     "why": {
       "eyebrow": "¿Por qué un palacio?",
-      "h2": "Porque tu cerebro piensa en lugares.",
-      "body": "Desde hace 2.500 años, las personas recuerdan lo importante colocándolo en habitaciones imaginadas. Recordamos los lugares mucho mejor que los archivos — por eso un palacio, no una carpeta.",
-      "step1t": "Dale un lugar",
-      "step1b": "Cada recuerdo tiene su sitio en una habitación",
-      "step2t": "Pasa por delante",
-      "step2b": "Los lugares son el orden natural de tu cerebro",
-      "step3t": "Se queda",
-      "step3b": "Los lugares se recuerdan mucho más que los archivos"
+      "h2": "Una caja se apaga. Un palacio sigue encendido.",
+      "body": "Las fotos en carpetas y cajas se guardan — pero nunca se visitan. En tu palacio, cada recuerdo tiene su propia habitación, y cada habitación que llenas enciende otra ventana. Entra cualquier noche: todo sigue brillando.",
+      "windowLabel1": "Mañanas de domingo, 1964",
+      "windowLabel2": "El día que se graduó, 1989",
+      "windowLabel3": "Los nietos, el verano pasado",
+      "closingLine": "Toda una vida, siempre encendida.",
+      "sceneAria": "Un palacio al anochecer, con sus ventanas encendiéndose una a una hasta que toda la casa brilla."
     },
     "compare": {
       "h2": "Quédate con tus fotos en la nube. Eso es el disco. Esto es el hogar.",
@@ -5309,7 +5308,7 @@
     "mock": {
       "ai": "Con IA",
       "kepName": "Kep",
-      "kepRole": "Tu portero de recuerdos · WhatsApp",
+      "kepRole": "Tu portero de WhatsApp",
       "kepSaved": "Guardado en tu palacio — ala de viajes",
       "kepSorted": "Ordenado y enmarcado",
       "importTitle": "Importando de Google Fotos",
@@ -5345,7 +5344,7 @@
       "legacyName": "Legado",
       "keysTitle": "Quién recibe las llaves",
       "keyWhen": "Cuando llegue el momento",
-      "uploadsName": "Añadir recuerdos",
+      "uploadsName": "Reunir recuerdos",
       "cloudName": "Orden inteligente",
       "receiveName": "Recuerdos compartidos",
       "interviewName": "Entrevistas",
@@ -5358,7 +5357,6 @@
       "n3": "las fotos se vuelven habitaciones",
       "n4": "tres generaciones, un árbol",
       "n5": "las preguntas que importan",
-      "n6": "aquí también viven voces",
       "n7": "una biblioteca de recuerdos",
       "n8": "pequeños logros en el camino"
     }
