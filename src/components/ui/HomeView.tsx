@@ -12,6 +12,8 @@ import { useAchievementStore, ACHIEVEMENTS } from "@/lib/stores/achievementStore
 import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
+import { useNotificationStore } from "@/lib/stores/notificationStore";
+import { computeWarmthLevel, computeWarmWeeks, getTimeOfDay, TIME_WASH } from "@/lib/warmth";
 import { getDemoMems } from "@/lib/constants/defaults";
 import { TRACKS } from "@/lib/constants/tracks";
 import type { Mem } from "@/lib/constants/defaults";
@@ -390,6 +392,46 @@ export default function HomeView() {
     return computeStreak(dates);
   }, [allMemories]);
 
+  /* ── Palace warmth (ONE shared model: hero windows, Keeper's Ledger, time wash) ── */
+  const creationDates = useMemo(
+    () => allMemories.map(({ mem }) => mem.createdAt).filter((d): d is string => !!d),
+    [allMemories]
+  );
+  const warmthLevel = useMemo(() => computeWarmthLevel(creationDates), [creationDates]);
+  const warmWeeks = useMemo(() => computeWarmWeeks(creationDates), [creationDates]);
+  const [timeOfDay, setTimeOfDay] = useState(() => getTimeOfDay());
+  useEffect(() => {
+    // Re-evaluate the ambient bucket every 10 minutes so a long-open tab
+    // drifts naturally from golden hour into night.
+    const id = setInterval(() => setTimeOfDay(getTimeOfDay()), 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  /* ── Family Embers: loved-one presence from existing notifications ── */
+  const notifications = useNotificationStore((s) => s.notifications);
+  const setNotificationsOpen = useNotificationStore((s) => s.setOpen);
+  const loadNotifications = useNotificationStore((s) => s.load);
+  useEffect(() => { loadNotifications().catch(() => {}); }, [loadNotifications]);
+  const emberPeople = useMemo(() => {
+    const byName = new Map<string, { name: string; unseen: number; latest?: string; latestAt: number }>();
+    for (const n of notifications) {
+      const name = n.from_user_name?.trim();
+      if (!name) continue;
+      const at = new Date(n.created_at).getTime() || 0;
+      const cur = byName.get(name.toLowerCase());
+      if (cur) {
+        if (!n.read) cur.unseen++;
+        if (at > cur.latestAt) { cur.latestAt = at; cur.latest = n.message; }
+      } else {
+        byName.set(name.toLowerCase(), { name, unseen: n.read ? 0 : 1, latest: n.message, latestAt: at });
+      }
+    }
+    return Array.from(byName.values())
+      .sort((a, b) => (b.unseen - a.unseen) || (b.latestAt - a.latestAt))
+      .slice(0, 8)
+      .map((p) => ({ key: p.name.toLowerCase(), name: p.name, unseen: p.unseen, latest: p.latest }));
+  }, [notifications]);
+
   // Shared wings — wings shared WITH the user by others
   const [sharedWithMe, setSharedWithMe] = useState<{ id: string; name: string; wingName: string; memoryCount: number; icon: string; wingId?: string }[]>([]);
   const [sharedLoading, setSharedLoading] = useState(true);
@@ -549,9 +591,21 @@ export default function HomeView() {
       </div>
     </section>
   ) : null;
+  // Keeper's Ledger — forgiving weekly "kept warm" line; always invitational,
+  // never "streak lost" (grief-adjacent product, see ACTIVATING_MENU_RESEARCH).
+  const relayLedger = totalMemories === 0
+    ? null
+    : warmWeeks > 1
+      ? { text: t("relay.keptWarm", { count: String(warmWeeks) }), warm: true }
+      : warmWeeks === 1
+        ? { text: t("relay.keptWarmOne"), warm: true }
+        : { text: t("relay.quietHearth"), warm: false };
+  const relayEmbers = emberPeople.length > 0
+    ? { title: t("relay.familyEmbers"), people: emberPeople, onOpen: () => setNotificationsOpen(true) }
+    : null;
   // Palace + Library stay ON TOP as anchors.
   const relayAnchors = [
-    { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, art: <PalaceIllustration hover={false} /> },
+    { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, art: <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} /> },
     { key: "library", title: "Enter Your Library", desc: "Your whole collection", onClick: handleNavigateLibrary, datum: totalMemories > 0 ? `${totalMemories} ${t("memories")}` : undefined, thumbs: libThumbs, art: <LibraryIllustration hover={false} /> },
   ];
   // score & badge total, for those who like keeping count.
@@ -659,6 +713,9 @@ export default function HomeView() {
             greeting={relayGreeting}
             userName={userName}
             datumLine={relayDatum}
+            ledger={relayLedger}
+            embers={relayEmbers}
+            topWash={TIME_WASH[timeOfDay]}
             score={relayScore}
             suggestion={relaySuggestion}
             chips={relayChips}

@@ -35,11 +35,20 @@ export type RelaySuggestion = { key: string; title: string; reason: string; onCl
 export type RelayChip = { key: string; label: string; onClick: () => void };
 export type RelayPill = { key: string; label: string; onClick: () => void };
 export type RelayScore = { points: number; badgesEarned: number; badgesTotal: number; onClick: () => void };
+/** Keeper's Ledger — the forgiving weekly "kept warm" line (never a scolding streak). */
+export type RelayLedger = { text: string; warm: boolean };
+/** Family Embers — one loved one's recent presence on the palace. */
+export type EmberPerson = { key: string; name: string; unseen: number; latest?: string };
+export type RelayEmbers = { title: string; people: EmberPerson[]; onOpen: () => void };
 
 interface AtriumRelayProps {
   greeting: string;
   userName: string | null;
   datumLine: string;
+  ledger?: RelayLedger | null;
+  embers?: RelayEmbers | null;
+  /** Subtle time-of-day wash laid over the board top (TIME_WASH from lib/warmth). */
+  topWash?: string;
   score?: RelayScore | null;
   suggestion: RelaySuggestion;
   chips: RelayChip[];
@@ -173,13 +182,66 @@ function Tile({ tile, accent, index }: { tile: RelayTile; accent: RelayAccent; i
   );
 }
 
-export default function AtriumRelay({ greeting, userName, datumLine, score, suggestion, chips, personaLabel, personaQuiz, onChangeStyle, onChooseJourney, onAddName, memoriesStrip, anchors, lanes, you, isMobile }: AtriumRelayProps) {
+/* ── Family Embers: gilt-rimmed cameo medallions of loved-one presence.
+   Reciprocity, never ranking — a warm glow marks unseen gestures; one tap
+   opens the activity so the circle can be closed. ── */
+const EMBER_TINTS = [
+  { bg: "rgba(154,79,42,0.10)", ink: "#9A4F2A" },
+  { bg: "rgba(201,154,46,0.12)", ink: "#8A6410" },
+  { bg: "rgba(106,124,92,0.12)", ink: "#56683C" },
+];
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "·";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function EmbersRow({ embers }: { embers: RelayEmbers }) {
+  return (
+    <section aria-label={embers.title} style={{ marginBottom: "1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.6rem" }}>
+        <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#8A6410" }}>{embers.title}</span>
+        <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: "linear-gradient(90deg, rgba(201,154,46,0.35), transparent)" }} />
+      </div>
+      <div style={{ display: "flex", gap: "0.85rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
+        {embers.people.map((p, i) => {
+          const tint = EMBER_TINTS[i % EMBER_TINTS.length];
+          const hasUnseen = p.unseen > 0;
+          return (
+            <button
+              key={p.key}
+              type="button"
+              onClick={embers.onOpen}
+              title={p.latest || p.name}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem", flex: "0 0 auto", width: "4.25rem", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+            >
+              <span className={hasUnseen ? "relay-ember-glow" : undefined} style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "3.25rem", height: "3.25rem", borderRadius: "50%", background: tint.bg, border: hasUnseen ? "0.125rem solid rgba(212,175,55,0.85)" : `0.0625rem solid ${HAIRLINE}`, boxShadow: hasUnseen ? "0 0 0.75rem rgba(212,175,55,0.45)" : "none" }}>
+                <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.0625rem", color: tint.ink }}>{initialsOf(p.name)}</span>
+                {hasUnseen ? (
+                  <span style={{ position: "absolute", top: "-0.2rem", right: "-0.2rem", minWidth: "1.125rem", height: "1.125rem", padding: "0 0.25rem", borderRadius: "1rem", background: "#B85C38", color: "#FCFAF5", fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>{p.unseen}</span>
+                ) : null}
+              </span>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, color: hasUnseen ? "#403B36" : "#716A5E", maxWidth: "4.25rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name.split(/\s+/)[0]}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+export default function AtriumRelay({ greeting, userName, datumLine, ledger, embers, topWash, score, suggestion, chips, personaLabel, personaQuiz, onChangeStyle, onChooseJourney, onAddName, memoriesStrip, anchors, lanes, you, isMobile }: AtriumRelayProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { const id = requestAnimationFrame(() => setMounted(true)); return () => cancelAnimationFrame(id); }, []);
   const SugIco = RelayIcons[suggestion.key] ?? RelayIcons.palace;
 
   return (
-    <div style={{ width: "100%", opacity: mounted ? 1 : 0, transition: "opacity 0.5s ease" }}>
+    <div style={{ position: "relative", width: "100%", opacity: mounted ? 1 : 0, transition: "opacity 0.5s ease" }}>
+      {/* Time-of-day wash: morning sage / golden-hour ember / night ink — the
+          atrium breathes with the day without a single word of UI. */}
+      {topWash ? <div aria-hidden="true" style={{ position: "absolute", inset: "-2rem -1rem auto", height: "22rem", background: topWash, pointerEvents: "none", borderRadius: "1.5rem" }} /> : null}
       {/* ── STEWARD STRIP ── */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.7fr 1fr", gap: "1.25rem", alignItems: "start", marginBottom: "1.5rem" }}>
         <div>
@@ -192,6 +254,12 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
             ) : null}
           </h1>
           <p style={{ fontFamily: T.font.body, fontSize: "1rem", fontWeight: 500, color: "#716A5E", margin: "0.5rem 0 0", fontVariantNumeric: "tabular-nums" }}>{datumLine}</p>
+          {ledger ? (
+            <p style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500, fontSize: "0.9375rem", color: ledger.warm ? "#8A6410" : "#716A5E", margin: "0.45rem 0 0", fontVariantNumeric: "tabular-nums" }}>
+              <span aria-hidden="true" className={ledger.warm ? "relay-ember-flicker" : undefined} style={{ width: "0.5rem", height: "0.5rem", borderRadius: "50%", background: ledger.warm ? "radial-gradient(circle at 40% 35%, #E8C255, #B85C38)" : "#C9BFAE", flexShrink: 0 }} />
+              {ledger.text}
+            </p>
+          ) : null}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
@@ -215,6 +283,9 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
           })}
         </div>
       </div>
+
+      {/* ── FAMILY EMBERS (loved-one presence — reciprocity, never ranking) ── */}
+      {embers && embers.people.length > 0 ? <EmbersRow embers={embers} /> : null}
 
       {/* ── ANCHORS (Enter Your Palace / Library, side by side, on top) ── */}
       {anchors.length > 0 ? (
@@ -326,11 +397,15 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
           .relay-anim .ri-wave.d3 { animation-delay: 0.36s; }
           .relay-anim .ri-bob { animation: ri-bob 3s ease-in-out infinite; animation-delay: var(--ri-delay, 0s); }
           .relay-sug-blink { animation: relay-sug-blink 2.6s ease-in-out infinite; }
+          .relay-ember-glow { animation: relay-ember-glow 3.2s ease-in-out infinite; }
+          .relay-ember-flicker { animation: relay-ember-flicker 2.4s ease-in-out infinite; }
           .relay-name { animation: relay-name-shimmer 5s linear infinite; }
           .relay-zone-dot { animation: relay-zone-pulse 2.8s ease-in-out infinite; transform-origin: center; }
         }
         @keyframes relay-zone-pulse { 0%,100% { transform: scale(0.85); opacity: 0.65; } 50% { transform: scale(1.25); opacity: 1; } }
         @keyframes relay-sug-blink { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+        @keyframes relay-ember-glow { 0%,100% { box-shadow: 0 0 0.75rem rgba(212,175,55,0.45); } 50% { box-shadow: 0 0 1.15rem rgba(212,175,55,0.7); } }
+        @keyframes relay-ember-flicker { 0%,100% { opacity: 0.75; transform: scale(0.92); } 50% { opacity: 1; transform: scale(1.08); } }
         @keyframes relay-name-shimmer { to { background-position: 220% center; } }
         .relay-tile:focus-visible, .relay-chip:focus-visible, .relay-pill:focus-visible, .relay-suggest:focus-visible { outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem; }
         @keyframes relay-rise { from { opacity: 0; transform: translateY(0.6rem); } to { opacity: 1; transform: none; } }
@@ -342,7 +417,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, score, sugg
         @keyframes ri-wave { 0%,100% { transform: scaleY(0.5); } 50% { transform: scaleY(1); } }
         @keyframes ri-bob { 0%,100% { transform: translateY(0.6px); } 50% { transform: translateY(-1.4px); } }
         @media (prefers-reduced-motion: reduce) {
-          .relay-tile, .relay-chip, .relay-pill, .relay-suggest, .ri-pulse, .ri-pulse-op, .ri-blink, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob { animation: none !important; transition: none !important; }
+          .relay-tile, .relay-chip, .relay-pill, .relay-suggest, .ri-pulse, .ri-pulse-op, .ri-blink, .ri-spin, .ri-spin-slow, .ri-wave, .ri-bob, .relay-ember-glow, .relay-ember-flicker { animation: none !important; transition: none !important; }
           .relay-tile:hover, .relay-suggest:hover { transform: none !important; }
           .relay-suggest-sheen { display: none; }
         }

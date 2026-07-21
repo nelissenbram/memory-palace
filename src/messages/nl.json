@@ -4518,7 +4518,11 @@
     "fab.addMemory": "Herinnering toevoegen",
     "confetti.unlocked": "Prestatie ontgrendeld!",
     "shared.sharedBy": "Gedeeld door {name}",
-    "firstMemoryPrompt": "Je paleis is klaar voor zijn eerste herinnering."
+    "firstMemoryPrompt": "Je paleis is klaar voor zijn eerste herinnering.",
+    "relay.keptWarm": "Warm gehouden · {count} weken",
+    "relay.quietHearth": "Een stille periode — één herinnering doet de haard weer branden",
+    "relay.familyEmbers": "Je familie",
+    "relay.keptWarmOne": "Warm gehouden · deze week"
   },
   "enhance": {
     "sectionTitle": "Verrijk je herinneringen",

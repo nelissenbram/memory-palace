@@ -4516,7 +4516,11 @@
     "fab.addMemory": "Añadir recuerdo",
     "confetti.unlocked": "¡Logro desbloqueado!",
     "shared.sharedBy": "Compartido por {name}",
-    "firstMemoryPrompt": "Tu palacio está listo para su primer recuerdo."
+    "firstMemoryPrompt": "Tu palacio está listo para su primer recuerdo.",
+    "relay.keptWarm": "Mantenido cálido · {count} semanas",
+    "relay.quietHearth": "Una temporada tranquila — un recuerdo reaviva el hogar",
+    "relay.familyEmbers": "Tu familia",
+    "relay.keptWarmOne": "Mantenido cálido · esta semana"
   },
   "enhance": {
     "sectionTitle": "Enriquece tus recuerdos",

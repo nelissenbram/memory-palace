@@ -4,9 +4,26 @@
 import React from "react";
 import { T } from "@/lib/theme";
 
-export function PalaceIllustration({ hover }: { hover: boolean }) {
-  const windowGlow = hover ? 0.7 : 0.3;
-  const ambientGlow = hover ? 0.5 : 0.2;
+export function PalaceIllustration({ hover, warmth, timeOfDay }: {
+  hover: boolean;
+  /** Palace-warmth level (src/lib/warmth.ts): 0 quiet · 1 embers · 2 candlelit. Omit for legacy resting glow. */
+  warmth?: 0 | 1 | 2;
+  /** Ambient sky tint; omit for neutral. */
+  timeOfDay?: "morning" | "day" | "golden" | "night";
+}) {
+  // Warmth sets the RESTING glow of the windows (the villa dims over quiet
+  // weeks, one memory relights it); hover still brightens on top.
+  const resting = warmth === undefined ? 0.3 : [0.14, 0.38, 0.62][warmth];
+  const windowGlow = hover ? Math.max(0.7, resting + 0.15) : resting;
+  const ambientGlow = hover ? 0.5 : warmth === undefined ? 0.2 : [0.1, 0.2, 0.32][warmth];
+  const starBoost = timeOfDay === "night" ? 2.4 : 1;
+  const skyTint = timeOfDay === "morning"
+    ? { from: "#7A8C64", fromOp: 0.05, to: "#C99A2E", toOp: 0.02 }
+    : timeOfDay === "golden"
+      ? { from: "#B85C38", fromOp: 0.07, to: "#C99A2E", toOp: 0.03 }
+      : timeOfDay === "night"
+        ? { from: "#403B36", fromOp: 0.1, to: "#56683C", toOp: 0.03 }
+        : null;
 
   return (
     <svg
@@ -40,7 +57,17 @@ export function PalaceIllustration({ hover }: { hover: boolean }) {
           <stop offset="50%" stopColor={T.color.gold} stopOpacity="0.06" />
           <stop offset="100%" stopColor={T.color.gold} stopOpacity="0.02" />
         </linearGradient>
+        {skyTint ? (
+          <linearGradient id="palaceSkyTint" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={skyTint.from} stopOpacity={skyTint.fromOp} />
+            <stop offset="70%" stopColor={skyTint.to} stopOpacity={skyTint.toOp} />
+            <stop offset="100%" stopColor={skyTint.to} stopOpacity="0" />
+          </linearGradient>
+        ) : null}
       </defs>
+
+      {/* Time-of-day sky wash (behind everything) */}
+      {skyTint ? <rect x="0" y="0" width="300" height="180" fill="url(#palaceSkyTint)" /> : null}
 
       {/* Stars / sky dots */}
       {[
@@ -49,8 +76,8 @@ export function PalaceIllustration({ hover }: { hover: boolean }) {
         { cx: 235, cy: 14 }, { cx: 260, cy: 8 }, { cx: 280, cy: 16 },
         { cx: 45, cy: 20 }, { cx: 145, cy: 3 }, { cx: 190, cy: 18 },
       ].map((s, i) => (
-        <circle key={`star-${i}`} cx={s.cx} cy={s.cy} r="0.6" fill={T.color.gold} opacity={0.1 + (i % 3) * 0.025}>
-          <animate attributeName="opacity" values={`${0.1 + (i % 3) * 0.025};${0.15};${0.1 + (i % 3) * 0.025}`} dur={`${3 + i * 0.5}s`} repeatCount="indefinite" />
+        <circle key={`star-${i}`} cx={s.cx} cy={s.cy} r="0.6" fill={T.color.gold} opacity={(0.1 + (i % 3) * 0.025) * starBoost}>
+          <animate attributeName="opacity" values={`${(0.1 + (i % 3) * 0.025) * starBoost};${0.15 * starBoost};${(0.1 + (i % 3) * 0.025) * starBoost}`} dur={`${3 + i * 0.5}s`} repeatCount="indefinite" />
         </circle>
       ))}
 

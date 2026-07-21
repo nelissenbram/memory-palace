@@ -4516,7 +4516,11 @@
     "fab.addMemory": "Add memory",
     "confetti.unlocked": "Achievement unlocked!",
     "shared.sharedBy": "Shared by {name}",
-    "firstMemoryPrompt": "Your palace is ready for its first memory."
+    "firstMemoryPrompt": "Your palace is ready for its first memory.",
+    "relay.keptWarm": "Kept warm · {count} weeks",
+    "relay.quietHearth": "A quiet spell — one memory relights the hearth",
+    "relay.familyEmbers": "Your family",
+    "relay.keptWarmOne": "Kept warm · this week"
   },
   "enhance": {
     "sectionTitle": "Enrich Your Memories",
