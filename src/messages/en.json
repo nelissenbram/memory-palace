@@ -4523,7 +4523,13 @@
     "relay.keptWarmOne": "Kept warm · this week",
     "relay.enterPalace": "Enter your palace",
     "relay.libraryPlate": "Your Library",
-    "relay.stewardSuggests": "The steward suggests"
+    "relay.stewardSuggests": "The steward suggests",
+    "relay.suggestedForYou": "Suggested for you",
+    "relay.addYourName": "add your name",
+    "relay.soon": "Soon",
+    "relay.otherJourneys": "Other journeys",
+    "relay.yourMemories": "Your memories",
+    "relay.seeAll": "See all"
   },
   "enhance": {
     "sectionTitle": "Enrich Your Memories",

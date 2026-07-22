@@ -576,8 +576,8 @@ export default function HomeView() {
   const memoriesStrip = stripItems.length > 0 ? (
     <section aria-label="Your memories" style={{ borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", background: T.color.cream, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.06)", padding: "1rem 1.1rem" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "1rem", marginBottom: "0.75rem" }}>
-        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.1875rem", color: "#9A4F2A" }}>Your memories</span>
-        <button type="button" onClick={() => { localStorage.setItem("mp_library_sort", "recent"); handleNavigateLibrary(); }} style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.muted, background: "none", border: "none", cursor: "pointer" }}>See all →</button>
+        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.1875rem", color: "#403B36" }}>{t("relay.yourMemories")}</span>
+        <button type="button" onClick={() => { localStorage.setItem("mp_library_sort", "recent"); handleNavigateLibrary(); }} style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.muted, background: "none", border: "none", cursor: "pointer" }}>{t("relay.seeAll")} →</button>
       </div>
       <div style={{ display: "flex", gap: "0.6rem", overflowX: "auto", paddingBottom: "0.35rem" }}>
         {stripItems.map((it, i) => {
@@ -615,6 +615,18 @@ export default function HomeView() {
   // score & badge total, for those who like keeping count.
   const relayScore = { points: totalPoints, badgesEarned: achievementProgress.earned, badgesTotal: achievementProgress.total, onClick: () => setShowAchievementPanel(true) };
   // Grouped by the LANDING triptych, each verb-zone its own key colour.
+  // Hero-per-lane (elevation change 5): the steward leads each verb with ONE
+  // full tile — the suggested tile if it lives there, else a sensible lead.
+  const heroFor = (laneId: string, tileKeys: string[]): string => {
+    if (tileKeys.includes(relaySuggestion.key)) return relaySuggestion.key;
+    if (laneId === "capture") return totalMemories > 0 ? "record" : "photos";
+    if (laneId === "bringtolife") return "timeline";
+    return sharedWithMe.length > 0 ? "shared" : "familyGroup";
+  };
+  const markHero = <Tl extends { key: string; hidden?: boolean; soon?: boolean }>(laneId: string, tiles: Tl[]): (Tl & { hero?: boolean })[] => {
+    const hk = heroFor(laneId, tiles.filter((tl) => !tl.hidden && !tl.soon).map((tl) => tl.key));
+    return tiles.map((tl) => (tl.key === hk && !tl.soon && !tl.hidden ? { ...tl, hero: true } : tl));
+  };
   const relayLanes = [
     {
       id: "capture", overline: "Capture", accent: "terracotta" as const,
@@ -652,7 +664,7 @@ export default function HomeView() {
         { key: "legacy", title: "Plan Your Legacy", desc: "Decide who inherits", onClick: () => router.push("/settings/legacy") },
       ],
     },
-  ];
+  ].map((lane) => ({ ...lane, tiles: markHero(lane.id, lane.tiles) }));
   const relayYou = [
     { key: "journeys", label: "Your Journeys", onClick: () => setShowTracksPanel(true) },
     { key: "milestones", label: "Milestones", onClick: () => setShowAchievementPanel(true) },
@@ -748,6 +760,8 @@ export default function HomeView() {
             ledger={relayLedger}
             embers={relayEmbers}
             topWash={TIME_WASH[timeOfDay]}
+            warmth={warmthLevel}
+            labels={{ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), otherJourneys: t("relay.otherJourneys") }}
             score={relayScore}
             suggestion={relaySuggestion}
             chips={relayChips}

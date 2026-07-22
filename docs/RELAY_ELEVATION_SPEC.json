@@ -1,0 +1,254 @@
+{
+  "designNarrative": "The elevated relay becomes the steward's desk at dusk: a candlelit ledger the Maggiordomo keeps for you, not a wall of polite cream cards. The two anchors finally become what their own code comment promises — dark, gilt-edged keystone cards, the only ink-dark and only true-gold objects on the board, whose illustrated windows genuinely glow candlelit or fall quiet because warmth.ts now speaks through every surface. The steward's single suggested act — some days a sealed daily question, at dusk a find from the archives — moves to its canonical slot between embers and anchors, wears its dormant sheen, and becomes the one warm invitation of the day. Below, three quietly recessed earth trays (terracotta / ochre / sage) carry zone colour at rest instead of on hover, each led by one hero tile so the eye lands instead of skimming 21 identical cards. Terracotta display type retreats to the greeting alone; titles go ink; gold means \"the palace itself\"; and motion collapses from seven competing loops to one shared 4-second breath that only warmth-bearing elements may join — the unseen ember, the ledger flame, the suggested tile's living glyph. Underneath, one type ramp, one overline primitive, one warm shadow scale, and canonical palette tokens make the board tunable as a single instrument. Nothing moves, glows, or gilds unless the warmth model or an unclosed family loop earned it — the reward for returning weekly is that the board is visibly, quietly alive because of what you and your family did.",
+  "changes": [
+    {
+      "rank": 1,
+      "zone": "anchors",
+      "title": "Ship the dark gilt keystone anchors",
+      "spec": "In Tile's anchor branch (AtriumRelay.tsx lines 149–162): replace `background: T.color.cream` + HAIRLINE border with card background `linear-gradient(165deg, #403B36 0%, #2E2A26 100%)`, border `0.0625rem solid rgba(212,175,55,0.5)`. Title → #FCFAF5 (Fraunces 600, 1.375rem, lineHeight 1.15); desc → rgba(252,250,245,0.72) with explicit lineHeight 1.4; datum → #E8C255 (Source Sans 700). Art header (8rem, line 152) background becomes `radial-gradient(120% 100% at 50% 100%, rgba(212,175,55,0.18), transparent 70%), linear-gradient(180deg, #4A443E, #403B36)` with borderBottom `0.125rem solid rgba(212,175,55,0.55)` as the gilt rule. Merge `anchorLibrary` into `anchor` (delete the token; line 293 always passes accent=\"anchor\"). ThumbFan keeps its cream 0.125rem borders — polaroids pop against ink. Keep skeletons cream (no dark flash before hydration). Gold focus outline (line 410) stays.",
+      "why": "The ACCENT comment promises 'dark gilt-edged keystone cards' but ships two indistinguishable pale creams; anchors currently don't outrank lane tiles at all. One dark tier above three light trays creates the entire board hierarchy in a single move and gives PalaceIllustration's lit-window warmth states a ground they can actually read against.",
+      "effort": "M",
+      "wow": 10
+    },
+    {
+      "rank": 2,
+      "zone": "suggestion bar",
+      "title": "The Steward's Card: wire the dormant treatment, move to canonical slot, one invitation only",
+      "spec": "Three moves on the suggestion container (line 301). (a) Attach the orphaned CSS: className=\"relay-suggest\", position:'relative', overflow:'hidden', plus inner `<span aria-hidden className=\"relay-suggest-sheen\"/>` — but change relay-sheen to play ONCE on mount (animation: relay-sheen 1.8s ease-in-out 1.2s 1 both), not infinite; soften the hover shadow (line 384) to `0 0.75rem 1.75rem rgba(154,79,42,0.28)`. (b) Add a 0.25rem borderLeft `linear-gradient(180deg, #D4AF37, #B85C38)` (via an inset pseudo-span, since border-image clips radius) and raise boxShadow to elevation level 2 (change 18). (c) Move the whole block (lines 297–330, personaQuiz branch included) ABOVE the anchors grid (lines 291–295) — matching the declared order steward strip → embers → suggestion → anchors, first thumb-reach viewport on mobile. Remove the personaLabel/onChooseJourney buttons (lines 317–328) from the card — they become You-row pills (change 13) — so the card contains exactly one invitation.",
+      "why": "The board's activation core is currently its quietest card, its designed focal treatment is dead CSS, and it sits below two large anchors. One warm, sheened, first-reachable invitation is the Maggiordomo's entire job.",
+      "effort": "S",
+      "wow": 9
+    },
+    {
+      "rank": 3,
+      "zone": "board-wide",
+      "title": "Warmth drives the board: one state, many surfaces",
+      "spec": "Add `warmth?: WarmthLevel` to AtriumRelayProps (HomeView computes warmthLevel at line 401 and already passes warmth={warmthLevel} at the line-724 call site — accept it at both call sites). On the root div (line 241) set `['--warmth']: warmth/2` and `['--warmth-glow']: warmth===2 ? 0.26 : warmth===1 ? 0.14 : 0.08`. Level 2 (candlelit): anchor art-header radial gold overlay at var(--warmth-glow) + datum #E8C255. Level 1 (embers): resting values. Level 0 (quiet): anchors `filter: saturate(0.82)` — desaturated a step toward stone, never grey-dead — and the Steward's Card's gold-terracotta left rule becomes the board's single warm accent ('one memory rekindles it'). All warm-state animations multiply their opacity ranges by var(--warmth), so a quiet palace is still — stillness becomes information. Reduced-motion: static glow at each level's resting alpha.",
+      "why": "warmth.ts computes candlelit/embers/quiet but the board renders byte-identically in all three states, wasting its best reason to be re-opened weekly. Research principle 1 — one warmth model, many surfaces — is the whole premise of the Maggiordomo.",
+      "effort": "M",
+      "wow": 9
+    },
+    {
+      "rank": 4,
+      "zone": "verb lanes",
+      "title": "Zone colour at rest on lane tiles",
+      "spec": "In Tile's lane branch (line 168, via `common` line 143): use `background: a.tileBg` and `border: 0.0625rem solid ${a.border}` instead of cream + HAIRLINE. The per-zone tileBg gradients and border hexes (#E7D9C4/#E9DCBE/#DFE3D2) already exist in ACCENT (lines 72–74) and are currently consumed only by anchors. Keep the hover relay-tile-wash (line 172) as intensification, not introduction.",
+      "why": "On mobile — the primary platform — hover doesn't exist, so the three-zone system is invisible at rest: 21 tiles read as one undifferentiated cream wall. This is a wiring fix of already-designed tokens, not new design.",
+      "effort": "S",
+      "wow": 8
+    },
+    {
+      "rank": 5,
+      "zone": "verb lanes",
+      "title": "Two-tier tiles: one hero per lane, compact long-tail",
+      "spec": "Add `hero?: boolean` to RelayTile. HomeView marks one per lane with steward logic, preferring the tile matching relaySuggestion.key if it lives in that lane, else: capture='photos' (or 'record' once photos exist), bringtolife='timeline' (or 'map' if geo memories exist), share='familyGroup' (or 'shared' if sharedWithMe.length>0). Hero: gridColumn '1 / -1' on mobile (span 2 desktop), minHeight 8rem, big Medallion (3.25rem), desc + datum shown. Secondary tiles: single-row layout (Medallion 2.25rem + title only, no desc), minHeight 3.5rem, padding 0.75rem 1rem. Same grid (line 348), hero rendered first.",
+      "why": "21 visually identical tiles mean nothing is prioritised — the direct cause of 'tasteful but not activating'. One hero entry point per verb cuts the mobile board from ~10 rows to ~5 while keeping the lane structure fully recognisable.",
+      "effort": "M",
+      "wow": 9
+    },
+    {
+      "rank": 6,
+      "zone": "motion system",
+      "title": "Motion budget: two live elements above the fold, both state-bearing",
+      "spec": "(a) Delete relay-zone-pulse and the .relay-zone-dot animation entirely (lines 403, 405) — static dots in a.tileTop group fine. (b) Name shimmer: `relay-name-shimmer 12s ease-in-out infinite` with keyframes `0%{background-position:0} 15%,100%{background-position:220% center}` — a greeting sweep with a long dwell, not a hum. (c) relay-sug-blink (line 406): replace the 50%-opacity throb with dwell-and-breathe `0%,70%,100%{opacity:1} 85%{opacity:0.85}` at 6s. Surviving loops above the fold: unseen-ember glow + ledger flicker (both warmth-gated per change 3) + the suggested tile's glyph (change 12). Everything else static or one-shot.",
+      "why": "Seven simultaneous infinite loops at unrelated periods turn motion into ambient noise; when everything pulses, the one thing that deserves attention can't win. A budget is the difference between candlelight and a wall of blinking LEDs.",
+      "effort": "S",
+      "wow": 8
+    },
+    {
+      "rank": 7,
+      "zone": "board-wide",
+      "title": "One display voice: ink titles, terracotta only for the greeting",
+      "spec": "Replace hardcoded `color: '#9A4F2A'` on lane-tile titles (line 176) with `a.titleColor` (#403B36 — currently dead code) and on the anchor branch (line 156) with the new cream from change 1. Descs use a.descColor (#716A5E). Terracotta Fraunces remains only on the h1 greeting name gradient and the Steward's Card overline. Zone hue speaks through medallion glyph + datum, which already use a.glyph/a.datumColor correctly.",
+      "why": "Twenty-plus terracotta headings across all three zones make terracotta mean nothing and drown the gold/sage zoning; ink titles recede into content and let medallion, datum and tray colour carry the zone. One display voice used sparingly is what premium looks like.",
+      "effort": "S",
+      "wow": 7
+    },
+    {
+      "rank": 8,
+      "zone": "verb lanes",
+      "title": "Lanes become recessed trays with flattened headers",
+      "spec": "Section container (line 341): replace the 0.045–0.05-alpha bands with pre-mixed opaque hexes — terracotta #F6EBE3, ochre #FAF3E0, sage #EFF2E8 — plus `boxShadow: 'inset 0 0.0625rem 0.1875rem rgba(64,59,54,0.06)'` and a 0.1875rem solid borderLeft in a.tileTop so territories read even for colour-weak users. Flatten the boxed header (line 343) to the EmbersRow pattern (line 204): Overline primitive (change 22) + gradient hairline rule `linear-gradient(90deg, ${a.rule}, transparent)`, no background, no border, no radius, static dot. Delete the HEADER_BG map (lines 80–86).",
+      "why": "Invisible alpha washes plus a bordered header box that reads as a disabled tile put strong edges at the wrong level — triple-nested chrome. One clear container per lane, tiles as the only cards inside it.",
+      "effort": "M",
+      "wow": 8
+    },
+    {
+      "rank": 9,
+      "zone": "suggestion bar",
+      "title": "Daily Question: sealed-letter branch in the steward brain",
+      "spec": "In HomeView's relaySuggestion chain (line 541 area), insert a branch after 'shared' and before 'timeline': if no memory was added today and a prompt is available, suggest {key:'letter', title: todaysQuestion, reason: t('relay.sixtySeconds') ('A minute, kept forever')}. Ship a 90-prompt bank keyed by dayOfYear % bank.length, themed by wing per research rec 4; onClick opens the write/record sheet voice-first. Add a 'letter' icon to RelayIcons.tsx: envelope with a small terracotta wax-seal circle carrying class ri-pulse-op so it breathes ONLY when this tile is the active suggestion (via change 12's gate). Exactly one question per day, never a second after answering — answered state falls through to the next branch. All prompt copy through t(), 5 locales.",
+      "why": "Rec 4: exactly ONE expiring prompt/day is the Wordle appointment mechanic and kills the blank-page problem — the strongest daily-return pull that fits inside the existing suggestion slot without touching layout.",
+      "effort": "M",
+      "wow": 9
+    },
+    {
+      "rank": 10,
+      "zone": "suggestion bar",
+      "title": "Evening Return: dusk-aware steward surfacing",
+      "spec": "In HomeView, when getTimeOfDay() returns 'golden'|'night' AND the user opened MP earlier today (localStorage 'mp_last_open_date' + hour check), override relaySuggestion with {key:'lantern', title: t('relay.eveningFind'), reason: `<memory title> · <wing>, <year>`} — selected from allMemories by preference: anniversary date-match > audio memory > room not visited in 90 days. onClick = handleMemoryClick(mem). Add a 'lantern' RelayIcon (hand lantern, single flame path). The card's icon-well background picks up the golden TIME_WASH first-stop tint. Respects the grief-mute list from change 15.",
+      "why": "Rec 7: the second open collects a gift instead of obeying a nag — two natural daily visits from one surfacing engine, expressed entirely inside the existing suggestion bar. Shares its selection backend with change 15.",
+      "effort": "M",
+      "wow": 8
+    },
+    {
+      "rank": 11,
+      "zone": "embers row",
+      "title": "Embers: gesture microcopy + compositor-friendly desynced glow",
+      "spec": "In EmbersRow (line 201): under the first name, when p.unseen>0 and p.latest exists, render p.latest truncated at 0.6875rem muted ink (e.g. 'lit a candle') — the gesture, not a count. Drop the numeric badge (line 223) when unseen===1 (a count of 1 is noise; keep 2+). Replace the box-shadow keyframe relay-ember-glow (line 407) with an inner span holding pre-rendered `radial-gradient(closest-side, rgba(212,175,55,0.55), transparent 70%)` sized ~140%, animating ONLY opacity 0.55→0.9 on the shared 4s breath, animationDelay `${i*0.7}s` per person so cameos breathe independently. Static gold border stays.",
+      "why": "'Mara lit a candle' beats any streak emotionally (rec 5, highest activation-per-effort); the numeric badge reads as an unread counter, and box-shadow animation forces continuous repaint on exactly the low-end phones this mobile-first board targets.",
+      "effort": "S",
+      "wow": 8
+    },
+    {
+      "rank": 12,
+      "zone": "verb lanes",
+      "title": "One breathing glyph: the suggested tile comes alive",
+      "spec": "Pass `suggestionKey={suggestion.key}` from AtriumRelay into lanes; in Tile, set `Medallion animated={tile.key === suggestionKey}`. The existing relay-anim gating (lines 390–398) and the 30+ crafted ri-* sub-part animations in RelayIcons.tsx finally fire — on exactly one tile, as a wayfinding cue tied to the steward's suggestion. All other glyphs stay animated={false}. Reduced-motion already covered by the existing gate.",
+      "why": "The board's signature 'visibly-alive medallions' are 100% dead code (Medallion is only ever called with animated={false}); one living glyph makes the icon craft pay off without breaking the motion budget.",
+      "effort": "S",
+      "wow": 7
+    },
+    {
+      "rank": 13,
+      "zone": "steward strip",
+      "title": "Promote the Keeper's Ledger, demote the score chip",
+      "spec": "Ledger (line 258): raise to fontSize 1.0625rem Fraunces italic with letterSpacing 0.02em, seated directly under the greeting (above datumLine); keep the ember glyph; drop fontVariantNumeric. Score chip (lines 266–275): remove from the steward strip; fold into the You row as a quiet pill (change 24's pill style, Source Sans 700 tabular numerals, no gold gradient) beside its Milestones sibling. The persona + 'Other journeys' buttons from change 2 also land in the You row as pills. When chips.length===0 the steward grid collapses to a single column.",
+      "why": "Research rec 8 names the ledger the retention spine and principle 5 says numbers live one tap deeper; today raw gamification numerals in gold occupy the second-most-scanned position while the warmth narrative is the smallest text on the board — the hierarchy is inverted.",
+      "effort": "S",
+      "wow": 7
+    },
+    {
+      "rank": 14,
+      "zone": "motion system",
+      "title": "One shared breath: unify warm-loop tempo, retire the anchor float",
+      "spec": "Base all surviving warm loops on one 4s ease-in-out cycle: ember glow 4s with per-person offsets (change 11), ledger flicker 4s, suggestion dwell 8s (2× base), warmth-glow breath 8s — related elements offset by fixed fractions (animationDelay −1s/−2s) so the board breathes as one organism. Delete relay-float entirely (lines 379–380 — px-based and the two anchors bob in mechanical sync); instead, at warmth level 2 only, the anchor art-header's radial gold glow breathes opacity 0.18→0.26 on the shared tempo × var(--warmth); levels 1/0 still. Purge remaining px in ri-bob keyframes (0.6px/−1.4px → 0.04rem/−0.09rem). Reduced-motion: everything static at resting alpha.",
+      "why": "Four near-but-not-synced periods (2.4/2.6/2.8/3.2s) create a shifting interference pattern of blinks, the px values violate the rem rule, and two illustrations bobbing in perfect sync read mechanical. Warmth-gated glow is state-bearing motion — the only kind the budget allows.",
+      "effort": "S",
+      "wow": 6
+    },
+    {
+      "rank": 15,
+      "zone": "memories strip",
+      "title": "Memories strip: board language + gilt 'this day' frame + grief-mute",
+      "spec": "In HomeView's memoriesStrip (line 576): replace the terracotta Fraunces header with the shared Overline primitive + gradient rule (same as embers/lanes); counts line adopts the meta type token. When it.otd is true and unopened today (localStorage seen-ids set keyed by date), that thumb gets a 0.125rem solid #D4AF37 border + the opacity-breathing gold inner glow from change 11 (shared keyframe) and grows to 7rem vs 6rem; exact day+month anniversary matches get a double gilt frame (0.125rem gold + 0.0625rem inset cream) instead of a badge — frame = anniversary per rec 6. On open, mark seen: the glow is earned once per day, then rests. Add a mute affordance in the memory view ('Show less of this person/period') writing to a grief-mute list consulted by onThisDayMemories, change 10, and this change.",
+      "why": "Rec 6: an unpredictable emotional gift on every open (Google Photos' 1.6B-viewer mechanic) — and grief-safe muting is mandatory before any resurfacing is amplified. The strip is also the last zone speaking the old dialect.",
+      "effort": "M",
+      "wow": 8
+    },
+    {
+      "rank": 16,
+      "zone": "steward strip",
+      "title": "Ledger tap opens the 12-week warmth strip",
+      "spec": "Make the ledger <p> (line 257) a button; onTap opens a bottom sheet (mobile) / popover (desktop): 12 tiles in a row, one per week — warm weeks as small radial ember dots (the line-259 gradient), quiet weeks as soft stone #C9BFAE circles. No numerals, no red. Caption in Fraunces italic: warm ? t('relay.weeksWarm') : t('relay.quietKept') ('A quiet week — the palace kept your memories safe'). Data: extend warmth.ts with computeWeekHistory(creationDates, 12): boolean[] — trivial reuse of computeWarmWeeks' weekStart Set.",
+      "why": "Rec 8's full mobile spec: the weekly chain drives return frequency but numbers belong one tap deeper; the strip makes the chain visible without ever showing a big numeral or a break.",
+      "effort": "M",
+      "wow": 7
+    },
+    {
+      "rank": 17,
+      "zone": "colour system",
+      "title": "Palette discipline: gold means the palace, sage goes canonical",
+      "spec": "With anchors dark (change 1), lock #D4AF37 + gold glow to: anchors, unseen embers, this-day frames, focus rings. Shift the Bring-to-life lane browner so it stops competing with gilt: medallion rgba(169,116,27,0.14), glyph stays #8A6410, tray #FAF3E0, tileTop #C99A2E. Rebase sage: replace every rgba(106,124,92,…) in ACCENT.sage and EMBER_TINTS with canonical values — glyph-strength rgb(86,104,60) (#56683C), wash rgb(122,140,100) (#7A8C64, matching warmth.ts TIME_WASH) — and bump sage medallion/tray one alpha step (+0.02) since green reads weaker on warm cream. Hoist EMBER_TINTS next to ACCENT as named tokens.",
+      "why": "Gold currently does double duty (zone accent AND anchor accent, a few alpha points apart), diluting the premium signal — one hue, one meaning is the board's own stated rule. And sage is built from an undocumented third green (#6A7C5C) matching neither declared palette token.",
+      "effort": "S",
+      "wow": 7
+    },
+    {
+      "rank": 18,
+      "zone": "board-wide",
+      "title": "Three-step elevation grammar from one warm ink",
+      "spec": "Define SHADOW = { 0: 'none', 1: '0 0.25rem 1rem rgba(64,59,54,0.07)', 2: '0 0.5rem 1.5rem rgba(64,59,54,0.14)' } as constants. Level 0 = lane trays (inset edge from change 8, no drop); level 1 = lane tiles + memories strip; level 2 = anchors + Steward's Card. Hover = one step up in the SAME ink: replace the colder rgba(36,28,21,0.16) at line 371 (and ThumbFan line 130) with rgba(64,59,54,0.16). Add `inset 0 0.0625rem 0 rgba(255,255,255,0.5)` top highlight on light tiles for the lit-from-above cue.",
+      "why": "Two unrelated shadow inks and flat edge-less bands read as drift; a single 3-step scale makes recessed trays, resting tiles, and keystones legible as three physical layers — hierarchy from light alone (research principle 5).",
+      "effort": "S",
+      "wow": 6
+    },
+    {
+      "rank": 19,
+      "zone": "steward strip",
+      "title": "Time-of-day wash becomes atmosphere, not a floating panel",
+      "spec": "On the topWash div (line 244): remove borderRadius '1.5rem', extend inset to '-3rem -1.5rem auto' (full-bleed past the content padding), height 26rem, add `maskImage: linear-gradient(180deg, black 55%, transparent)` so it dissolves before the anchors. Additionally, tint two objects directly so time reads as light falling on things: the anchor art header (HomeView already passes timeOfDay to PalaceIllustration) and the lane header rules pick up the current TIME_WASH first-stop colour at 0.5× alpha.",
+      "why": "A fixed 22rem rounded rectangle reads as a phantom card floating behind the steward strip — especially the night wash. Atmosphere must have no edges; light should fall on the page and its objects.",
+      "effort": "S",
+      "wow": 5
+    },
+    {
+      "rank": 20,
+      "zone": "type system",
+      "title": "One relay type ramp + weight/line-height semantics",
+      "spec": "Add `const RT = { overline:'0.6875rem', meta:'0.8125rem', body:'0.9375rem', titleS:'1.0625rem', titleM:'1.1875rem', titleL:'1.375rem', h1m:'1.75rem', h1:'2.25rem', lhDisplay:1.15, lhBody:1.4 }` at the top of AtriumRelay.tsx; replace all ~12 inline fontSize literals and set lineHeight explicitly everywhere — including the currently-unset anchor desc (line 157) and suggestion reason (line 309). Fix the em-based 'add your name' (line 253, the board's only rem-rule violation): fontSize isMobile ? RT.titleS : RT.titleL, keep fontFamily 'inherit'. Enforce weights: Source Sans 400 body / 600 interactive labels / 700 overlines-datums-numerals; Fraunces 600 for all display (700 only the shimmer name); Fraunces italic reserved for the ledger's steward's-hand line. Zero visual change on day one; every later tuning becomes one-line.",
+      "why": "Twelve magic sizes (several outside the theme scale), five sans weights on near-identical roles, and undefined line-heights are the quiet reason the board feels assembled rather than designed.",
+      "effort": "S",
+      "wow": 5
+    },
+    {
+      "rank": 21,
+      "zone": "type system",
+      "title": "One Overline primitive for the board's small-caps voice",
+      "spec": "Create `function Overline({ children, color })`: fontFamily T.font.body, fontSize RT.overline (0.6875rem), fontWeight 700, letterSpacing 0.12em, textTransform uppercase, no nowrap (DE/FR strings must wrap, not truncate). Use it in all current variants: embers header (line 205), 'Suggested for you' (line 307), lane overlines (line 345), memories-strip header, and the Soon tag (lifted from the illegible 0.625rem). Only colour varies by zone.",
+      "why": "The same typographic role currently exists in three sizes and three trackings; a single voice is the cheapest cohesion win on the list and makes the board feel engineered rather than accreted.",
+      "effort": "S",
+      "wow": 5
+    },
+    {
+      "rank": 22,
+      "zone": "verb lanes",
+      "title": "'Soon' tiles read from shape, not transparency",
+      "spec": "In Tile: remove `opacity: tile.soon ? 0.72 : 1` (line 144). Soon resting form: background transparent (tray shows through), solid a.border, no boxShadow, medallion background rgba(64,59,54,0.05) with glyph #A9A090, cursor 'default', Soon tag via the Overline primitive. Title stays ink at full opacity.",
+      "why": "Global 0.72 opacity is the one place state is encoded as fade rather than shape/light/colour — violating the project's own readability rule — and it fights the new zone-tinted resting tiles.",
+      "effort": "S",
+      "wow": 4
+    },
+    {
+      "rank": 23,
+      "zone": "board-wide",
+      "title": "i18n sweep of the hardcoded strings",
+      "spec": "Route through props/t() following the greeting/datumLine pattern: 'Soon' (line 170), 'Suggested for you' (line 307), 'add your name' (line 253), 'pts' (line 270 — drop the label, the icon carries it, before the chip moves per change 13), 'Other journeys' (line 325), 'Change your style' title attr (line 319), plus all new copy from changes 9/10/11/15/16. Add keys to all 5 locales; verify DE/FR overlines wrap at 0.6875rem/0.12em tracking.",
+      "why": "Hard project rule; several strings sit inside fixed-tracking uppercase spans that will break on German lengths.",
+      "effort": "S",
+      "wow": 3
+    },
+    {
+      "rank": 24,
+      "zone": "you row",
+      "title": "You row absorbs the demoted utilities as one pill family",
+      "spec": "The You row (lines 356–367) gains: the score pill (change 13, Source Sans 700 tabular numerals, no gold), the persona pill and 'Other journeys' pill (change 2), all in the existing relay-pill style (0.875rem/600, 2.75rem min-height, warmStone border). Order: existing pills → milestones/score → persona → journeys. Row stays quiet: transparent backgrounds, muted ink, no icons brighter than #716A5E except on hover.",
+      "why": "Every demotion in this plan needs a dignified landing zone; a consistent pill family keeps utilities discoverable one glance deeper without competing with the board's warm surfaces above.",
+      "effort": "S",
+      "wow": 4
+    },
+    {
+      "rank": 25,
+      "zone": "board-wide",
+      "title": "Dead-code purge so the file stops lying",
+      "spec": "Delete: the anchorLibrary ACCENT token + HEADER_BG map (superseded by changes 1/8), the Medallion gilt inset for anchor accents (line 114 — anchors never render Medallion), fontVariantNumeric on Fraunces spans (lines 256/258/269/273 — numerals moved to Source Sans), relay-zone-pulse keyframes, relay-float keyframes, and any ri-* class left unreferenced after change 12. Verify .relay-suggest/.relay-suggest-sheen are now attached (change 2) rather than deleted.",
+      "why": "The critique found at least five treatments that exist only in CSS; every orphaned rule is a false promise to the next iteration. A clean file is the foundation cohesion is maintained on.",
+      "effort": "S",
+      "wow": 3
+    }
+  ],
+  "quickWins": [
+    "Wire className=\"relay-suggest\" + the sheen span onto the suggestion bar — the elevation CSS already exists (change 2a)",
+    "Move the suggestion block above the anchors — pure JSX reorder (change 2c)",
+    "Apply a.tileBg / a.border to lane tiles — designed tokens, one-line wiring (change 4)",
+    "Swap hardcoded #9A4F2A titles for a.titleColor ink (change 7)",
+    "Delete relay-zone-pulse and give the name shimmer its 12s dwell (change 6, partial)",
+    "Pass suggestion.key down so exactly one medallion breathes via the existing relay-anim gate (change 12)",
+    "Embers: drop the numeric badge at unseen===1 and show the gesture line from p.latest (change 11, partial)",
+    "Rebase sage rgba values on canonical #56683C / #7A8C64 and fix the em-based 'add your name' to rem (changes 17/20, partial)",
+    "Route the six hardcoded English strings through t() (change 23)"
+  ],
+  "doNot": [
+    "Do NOT replace the board with a full-scene villa hub or a 55%-height living hero — that direction was already tried and REJECTED; every change here elevates the existing zone order (steward strip → embers → suggestion → anchors → lanes → you-row) in place",
+    "Rejected: keeping the Library anchor light while the Palace goes dark (draft 2's variant) — a light/dark pair in a 1fr-1fr grid reads lopsided and contradicts the code's own promise of two gilt keystones; both go dark, warmth glow exclusive to the Palace card",
+    "Rejected: per-zone coloured tile titles (terracotta/gold/sage headings) — three heading colours fragments the single display voice; zone hue lives in tray, medallion and datum instead",
+    "Rejected: animating all 21 medallions with their ri-* sub-parts — the icon craft is tempting but recreates the blinking-LED wall; exactly one glyph (the suggested tile) may live",
+    "Rejected: the Hearth Rosette / progress arcs in the steward strip this pass — needs the arc-goal backend and risks reading as fitness rings (explicit research anti-pattern) if rushed; the Keeper's Ledger line is the retention spine for now",
+    "Rejected: dark-inverting the Steward's Card or lane heroes to match the anchors — dark is the anchors' exclusive register; a second dark tier dissolves the keystone hierarchy",
+    "Rejected: Daily Question / Evening Return / Chronicle as NEW tiles or bands — they ship only as branches of the existing suggestion slot (one card, one invitation); new tiles would regrow the wall the two-tier system just tamed. The Chronicle and Seasonal Illuminations are deferred entirely to a later pass",
+    "Rejected: countdown timers, streak numerals, or badge-count emphasis anywhere above the fold — anti-patterns for a grief-adjacent product; the score moves DOWN to the You row, never up",
+    "Rejected: letting ConfettiOverlay fire over the relay — a gold bloom or lantern moment belongs to the brand; confetti does not",
+    "Rejected: dark skeleton blocks matching the new dark anchors — keep skeletons cream; a flash of ink before hydration reads as a glitch, not drama",
+    "Rejected: any purchasable streak repair or emblem — App Store 3.1.1 history makes monetised mechanics on this board a hard no"
+  ]
+}

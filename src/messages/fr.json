@@ -4523,7 +4523,13 @@
     "relay.keptWarmOne": "Gardé au chaud · cette semaine",
     "relay.enterPalace": "Entrez dans votre palais",
     "relay.libraryPlate": "Votre bibliothèque",
-    "relay.stewardSuggests": "Le majordome suggère"
+    "relay.stewardSuggests": "Le majordome suggère",
+    "relay.suggestedForYou": "Suggéré pour vous",
+    "relay.addYourName": "ajoutez votre nom",
+    "relay.soon": "Bientôt",
+    "relay.otherJourneys": "Autres parcours",
+    "relay.yourMemories": "Vos souvenirs",
+    "relay.seeAll": "Tout voir"
   },
   "enhance": {
     "sectionTitle": "Enrichissez vos souvenirs",

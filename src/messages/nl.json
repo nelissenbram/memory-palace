@@ -4525,7 +4525,13 @@
     "relay.keptWarmOne": "Warm gehouden · deze week",
     "relay.enterPalace": "Betreed je paleis",
     "relay.libraryPlate": "Je bibliotheek",
-    "relay.stewardSuggests": "De steward stelt voor"
+    "relay.stewardSuggests": "De steward stelt voor",
+    "relay.suggestedForYou": "Voorgesteld voor jou",
+    "relay.addYourName": "voeg je naam toe",
+    "relay.soon": "Binnenkort",
+    "relay.otherJourneys": "Andere reizen",
+    "relay.yourMemories": "Je herinneringen",
+    "relay.seeAll": "Bekijk alles"
   },
   "enhance": {
     "sectionTitle": "Verrijk je herinneringen",

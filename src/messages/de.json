@@ -4523,7 +4523,13 @@
     "relay.keptWarmOne": "Warm gehalten · diese Woche",
     "relay.enterPalace": "Betritt deinen Palast",
     "relay.libraryPlate": "Deine Bibliothek",
-    "relay.stewardSuggests": "Der Verwalter schlägt vor"
+    "relay.stewardSuggests": "Der Verwalter schlägt vor",
+    "relay.suggestedForYou": "Für dich vorgeschlagen",
+    "relay.addYourName": "Namen hinzufügen",
+    "relay.soon": "Bald",
+    "relay.otherJourneys": "Weitere Reisen",
+    "relay.yourMemories": "Deine Erinnerungen",
+    "relay.seeAll": "Alle ansehen"
   },
   "enhance": {
     "sectionTitle": "Bereichere deine Erinnerungen",
