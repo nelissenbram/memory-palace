@@ -513,7 +513,7 @@ export default function HomeView() {
   const SHOW_LEGACY_WIDGETS: boolean = false;
   // "Het paleis doet de deur open" — the drastic villa hub (AtriumVilla)
   // replaces the relay board; flip to false for instant rollback during review.
-  const USE_VILLA_HUB: boolean = true;
+  const USE_VILLA_HUB: boolean = false;
 
   // ── Atrium Relay config ("The Maggiordomo" concierge board) ──
   // Phase 1: full board wired to the existing handlers. Copy is English for
