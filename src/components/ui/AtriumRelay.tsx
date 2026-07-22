@@ -19,6 +19,7 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { T } from "@/lib/theme";
 import RelayIcons from "./RelayIcons";
+import RelayVignettes from "./RelayVignettes";
 import type { WarmthLevel } from "@/lib/warmth";
 
 export type RelayTile = {
@@ -232,17 +233,27 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
     );
   }
 
-  // HERO (change 5): one full-width lead per lane — big medallion, desc + datum.
+  const Vignette = RelayVignettes[tile.key];
+  const vigPalette = { ink: a.glyph, soft: a.medallion, gold: "#C99A2E" };
+
+  // HERO (change 5): one full-width lead per lane — big medallion, desc +
+  // datum, and the USP-style scene vignette resting on the right (visible at
+  // rest, so mobile gets the visual invitation too).
   if (tile.hero) {
     return (
       <button type="button" onClick={tile.onClick} className="relay-tile" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "stretch", textAlign: "left", gridColumn: isMobile ? "1 / -1" : "span 2", borderRadius: "1rem", overflow: "hidden", border: `0.0625rem solid ${a.border}`, background: a.tileBg, cursor: "pointer", minHeight: "8rem", padding: "1.1rem 1.15rem", boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}` }}>
         <span aria-hidden="true" className="relay-tile-wash" style={{ position: "absolute", inset: 0, background: `radial-gradient(130% 90% at 15% 0%, ${a.medallion}, transparent 62%)`, opacity: 0, pointerEvents: "none" }} />
+        {Vignette ? (
+          <span aria-hidden="true" className="relay-hero-vig" style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "58%", opacity: 0.85, pointerEvents: "none", maskImage: "linear-gradient(90deg, transparent, black 42%)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 42%)" }}>
+            <Vignette c={vigPalette} />
+          </span>
+        ) : null}
         <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <Medallion k={tile.key} accent={accent} index={index} big animated={animated} />
             <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleM, lineHeight: RT.lhDisplay, color: a.titleColor, minWidth: 0, overflowWrap: "break-word" }}>{tile.title}</span>
           </div>
-          <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor }}>{tile.desc}</span>
+          <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, maxWidth: "62%" }}>{tile.desc}</span>
           {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         </div>
         <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
@@ -261,11 +272,18 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
         <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word" }}>{tile.title}</span>
         {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
       </span>
-      {/* back-card: slides up over the front on hover/focus (desktop) */}
+      {/* back-card: the tile turns over to a USP-style scene vignette —
+          the illustrated reverse slides up with the description and a gilt
+          open-arrow (hover/focus, desktop) */}
       <span aria-hidden="true" className="relay-backcard" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.15rem", padding: "0.6rem 2.4rem 0.6rem 1rem", background: `linear-gradient(160deg, ${TRAY[accent]} 0%, #FCFAF5 115%)`, borderTop: `0.1875rem solid ${a.tileTop}` }}>
-        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.meta, lineHeight: RT.lhDisplay, color: a.glyph }}>{tile.title}</span>
-        <span style={{ fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3, color: a.titleColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.desc}</span>
-        {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
+        {Vignette ? (
+          <span style={{ position: "absolute", inset: 0, opacity: 0.9, maskImage: "linear-gradient(90deg, transparent 18%, black 55%)", WebkitMaskImage: "linear-gradient(90deg, transparent 18%, black 55%)" }}>
+            <Vignette c={vigPalette} />
+          </span>
+        ) : null}
+        <span style={{ position: "relative", fontFamily: T.font.display, fontWeight: 600, fontSize: RT.meta, lineHeight: RT.lhDisplay, color: a.glyph }}>{tile.title}</span>
+        <span style={{ position: "relative", fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3, color: a.titleColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", maxWidth: "62%", textShadow: "0 0 0.5rem rgba(252,250,245,0.9)" }}>{tile.desc}</span>
+        {tile.datum ? <span style={{ position: "relative", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         <span className="relay-backcard-arrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: "#C99A2E" }}>→</span>
       </span>
     </button>
