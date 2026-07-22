@@ -4520,7 +4520,10 @@
     "relay.keptWarm": "Gardé au chaud · {count} semaines",
     "relay.quietHearth": "Une période calme — un souvenir ravive le foyer",
     "relay.familyEmbers": "Votre famille",
-    "relay.keptWarmOne": "Gardé au chaud · cette semaine"
+    "relay.keptWarmOne": "Gardé au chaud · cette semaine",
+    "relay.enterPalace": "Entrez dans votre palais",
+    "relay.libraryPlate": "Votre bibliothèque",
+    "relay.stewardSuggests": "Le majordome suggère"
   },
   "enhance": {
     "sectionTitle": "Enrichissez vos souvenirs",

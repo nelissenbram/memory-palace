@@ -4520,7 +4520,10 @@
     "relay.keptWarm": "Warm gehalten · {count} Wochen",
     "relay.quietHearth": "Eine stille Zeit — eine Erinnerung entfacht den Kamin neu",
     "relay.familyEmbers": "Deine Familie",
-    "relay.keptWarmOne": "Warm gehalten · diese Woche"
+    "relay.keptWarmOne": "Warm gehalten · diese Woche",
+    "relay.enterPalace": "Betritt deinen Palast",
+    "relay.libraryPlate": "Deine Bibliothek",
+    "relay.stewardSuggests": "Der Verwalter schlägt vor"
   },
   "enhance": {
     "sectionTitle": "Bereichere deine Erinnerungen",

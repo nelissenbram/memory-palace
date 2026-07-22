@@ -198,7 +198,7 @@ function initialsOf(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function EmbersRow({ embers }: { embers: RelayEmbers }) {
+export function EmbersRow({ embers }: { embers: RelayEmbers }) {
   return (
     <section aria-label={embers.title} style={{ marginBottom: "1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.6rem" }}>

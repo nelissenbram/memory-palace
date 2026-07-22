@@ -22,6 +22,7 @@ import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 
 import AtriumHero from "@/components/ui/AtriumHero";
 import AtriumRelay from "@/components/ui/AtriumRelay";
+import AtriumVilla from "@/components/ui/AtriumVilla";
 import { PalaceIllustration, LibraryIllustration } from "@/components/ui/AnchorArt";
 import {
   TrackProgress,
@@ -510,6 +511,9 @@ export default function HomeView() {
   // Legacy 12-widget stack is kept (disabled) beneath the new relay for now;
   // typed boolean so TS keeps normal control-flow narrowing inside it.
   const SHOW_LEGACY_WIDGETS: boolean = false;
+  // "Het paleis doet de deur open" — the drastic villa hub (AtriumVilla)
+  // replaces the relay board; flip to false for instant rollback during review.
+  const USE_VILLA_HUB: boolean = true;
 
   // ── Atrium Relay config ("The Maggiordomo" concierge board) ──
   // Phase 1: full board wired to the existing handlers. Copy is English for
@@ -709,6 +713,34 @@ export default function HomeView() {
 
           {dataReady && (
           <>
+          {USE_VILLA_HUB ? (
+          <AtriumVilla
+            greeting={relayGreeting}
+            userName={userName}
+            datumLine={relayDatum}
+            ledger={relayLedger}
+            embers={relayEmbers}
+            timeOfDay={timeOfDay}
+            warmth={warmthLevel}
+            warmWeeks={warmWeeks}
+            suggestion={relaySuggestion}
+            onEnterPalace={handleNavigatePalace}
+            onEnterLibrary={handleNavigateLibrary}
+            enterPalaceLabel={t("relay.enterPalace")}
+            libraryLabel={t("relay.libraryPlate")}
+            suggestedOverline={t("relay.stewardSuggests")}
+            palaceDatum={totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined}
+            libraryDatum={totalMemories > 0 ? `${totalMemories}` : undefined}
+            lanes={relayLanes}
+            you={relayYou}
+            score={relayScore}
+            memoriesStrip={memoriesStrip}
+            personaLabel={personaLabel}
+            personaQuiz={personaQuiz}
+            onAddName={() => router.push("/settings/profile")}
+            isMobile={isMobile}
+          />
+          ) : (
           <AtriumRelay
             greeting={relayGreeting}
             userName={userName}
@@ -730,6 +762,7 @@ export default function HomeView() {
             you={relayYou}
             isMobile={isMobile}
           />
+          )}
           {SHOW_LEGACY_WIDGETS && (<>
           {/* ── 1. ATRIUM HERO ── */}
           <div style={sectionStyle(0)}>

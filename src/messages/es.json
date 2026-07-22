@@ -4520,7 +4520,10 @@
     "relay.keptWarm": "Mantenido cálido · {count} semanas",
     "relay.quietHearth": "Una temporada tranquila — un recuerdo reaviva el hogar",
     "relay.familyEmbers": "Tu familia",
-    "relay.keptWarmOne": "Mantenido cálido · esta semana"
+    "relay.keptWarmOne": "Mantenido cálido · esta semana",
+    "relay.enterPalace": "Entra en tu palacio",
+    "relay.libraryPlate": "Tu biblioteca",
+    "relay.stewardSuggests": "El mayordomo sugiere"
   },
   "enhance": {
     "sectionTitle": "Enriquece tus recuerdos",

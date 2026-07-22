@@ -4520,7 +4520,10 @@
     "relay.keptWarm": "Kept warm · {count} weeks",
     "relay.quietHearth": "A quiet spell — one memory relights the hearth",
     "relay.familyEmbers": "Your family",
-    "relay.keptWarmOne": "Kept warm · this week"
+    "relay.keptWarmOne": "Kept warm · this week",
+    "relay.enterPalace": "Enter your palace",
+    "relay.libraryPlate": "Your Library",
+    "relay.stewardSuggests": "The steward suggests"
   },
   "enhance": {
     "sectionTitle": "Enrich Your Memories",

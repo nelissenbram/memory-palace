@@ -4522,7 +4522,10 @@
     "relay.keptWarm": "Warm gehouden · {count} weken",
     "relay.quietHearth": "Een stille periode — één herinnering doet de haard weer branden",
     "relay.familyEmbers": "Je familie",
-    "relay.keptWarmOne": "Warm gehouden · deze week"
+    "relay.keptWarmOne": "Warm gehouden · deze week",
+    "relay.enterPalace": "Betreed je paleis",
+    "relay.libraryPlate": "Je bibliotheek",
+    "relay.stewardSuggests": "De steward stelt voor"
   },
   "enhance": {
     "sectionTitle": "Verrijk je herinneringen",
