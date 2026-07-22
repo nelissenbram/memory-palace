@@ -54,6 +54,24 @@ export function computeWarmWeeks(creationDates: string[], now: Date = new Date()
   return n;
 }
 
+/**
+ * Last n weeks as warm/quiet booleans, oldest → newest (this week last).
+ * Feeds the ledger's 12-week strip — dots, never numerals.
+ */
+export function computeWeekHistory(creationDates: string[], n = 12, now: Date = new Date()): boolean[] {
+  const weeks = new Set(
+    creationDates
+      .map((s) => new Date(s))
+      .filter((d) => Number.isFinite(d.getTime()))
+      .map((d) => weekStart(d))
+  );
+  const WEEK = 7 * 86400000;
+  const current = weekStart(now);
+  const out: boolean[] = [];
+  for (let i = n - 1; i >= 0; i--) out.push(weeks.has(current - i * WEEK));
+  return out;
+}
+
 /** Coarse time-of-day bucket for ambient tinting of the atrium. */
 export function getTimeOfDay(now: Date = new Date()): TimeOfDay {
   const h = now.getHours();

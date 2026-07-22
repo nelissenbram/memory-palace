@@ -50,6 +50,10 @@ export const RelayIcons: Record<string, React.FC> = {
   lifestory: () => (<S><path d="M5 4h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" /><path d="M14 4v5h5" /><path d="M7.5 13h7M7.5 16.5h4.5" className="ri-bob" /></S>),
   continue: () => (<S><path d="M5 4l12 8-12 8z" fill="currentColor" stroke="none" /></S>),
   points: () => (<S><path d="M6 3h12l3 5-9 13L3 8z" /><path d="M9 3l-3 5 6 13 6-13-3-5" />{dot(12, 9, 1.4, "ri-pulse")}</S>),
+  // Daily Question: sealed letter — the wax seal breathes only when suggested.
+  letter: () => (<S><rect x="3" y="5.5" width="18" height="13" rx="1.5" /><path d="M3.5 6.5 L12 13 L20.5 6.5" /><circle cx="12" cy="13.5" r="2.2" fill="currentColor" stroke="none" className="ri-pulse-op" /></S>),
+  // Evening Return: hand lantern — a single flame.
+  lantern: () => (<S><path d="M9 7h6M10 7V5.5a2 2 0 0 1 4 0V7" /><path d="M8.5 7l1 11h5l1-11" /><path d="M7 18h10v2.5H7z" /><path d="M12 11c-.9.9-1.4 1.6-1.4 2.5a1.4 1.4 0 0 0 2.8 0c0-.9-.5-1.6-1.4-2.5z" fill="currentColor" stroke="none" className="ri-pulse-op" /></S>),
   badge: () => (<S><circle cx="12" cy="8.5" r="5" /><path d="M8.7 12.7 L7 20l5-2.5 5 2.5-1.7-7.3" /><path d="M12 6.2l0.9 1.9 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z" fill="currentColor" stroke="none" className="ri-pulse" /></S>),
 };
 

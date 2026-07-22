@@ -13,7 +13,8 @@ import { useInterviewStore } from "@/lib/stores/interviewStore";
 import { useUIPanelStore } from "@/lib/stores/uiPanelStore";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useNotificationStore } from "@/lib/stores/notificationStore";
-import { computeWarmthLevel, computeWarmWeeks, getTimeOfDay, TIME_WASH } from "@/lib/warmth";
+import { computeWarmthLevel, computeWarmWeeks, computeWeekHistory, getTimeOfDay, TIME_WASH } from "@/lib/warmth";
+import { Overline } from "@/components/ui/AtriumRelay";
 import { getDemoMems } from "@/lib/constants/defaults";
 import { TRACKS } from "@/lib/constants/tracks";
 import type { Mem } from "@/lib/constants/defaults";
@@ -293,6 +294,30 @@ export default function HomeView() {
 
   /* ─── DATA GATHERING ─── */
 
+  // Grief-mute (change 15): memory ids the user asked to see less of. Consulted
+  // by every resurfacing path (on-this-day, evening return, memories strip);
+  // the "show less" affordance lands in MemoryDetail next.
+  const [griefMuted] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem("mp_grief_mute") || "[]") as string[]); } catch { return new Set(); }
+  });
+
+  // "This day" glow is earned once per day, then rests (change 15).
+  const [otdSeen, setOtdSeen] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = JSON.parse(localStorage.getItem("mp_otd_seen") || "{}") as Record<string, string[]>;
+      return new Set(stored[new Date().toDateString()] || []);
+    } catch { return new Set(); }
+  });
+  const markOtdSeen = useCallback((id: string) => {
+    setOtdSeen((prev) => {
+      const next = new Set(prev); next.add(id);
+      try { localStorage.setItem("mp_otd_seen", JSON.stringify({ [new Date().toDateString()]: Array.from(next) })); } catch { /* full */ }
+      return next;
+    });
+  }, []);
+
   // All memories across all wings with wing/room context
   const allMemories = useMemo<EnrichedMemory[]>(() => {
     const result: EnrichedMemory[] = [];
@@ -350,11 +375,11 @@ export default function HomeView() {
     const day = now.getDate();
     const year = now.getFullYear();
     return allMemories.filter(({ mem }) => {
-      if (!mem.createdAt) return false;
+      if (!mem.createdAt || griefMuted.has(mem.id)) return false;
       const d = new Date(mem.createdAt);
       return d.getMonth() === month && d.getDate() === day && d.getFullYear() !== year;
     });
-  }, [allMemories]);
+  }, [allMemories, griefMuted]);
 
   // Track data for TrackProgress widget — mapped to expected {id, name, icon, progress, total, description, color}
   const trackData = useMemo(() => {
@@ -413,6 +438,22 @@ export default function HomeView() {
   const setNotificationsOpen = useNotificationStore((s) => s.setOpen);
   const loadNotifications = useNotificationStore((s) => s.load);
   useEffect(() => { loadNotifications().catch(() => {}); }, [loadNotifications]);
+  /* ── Steward brain inputs: daily question, evening return ── */
+  // Evening Return (change 10): remember whether MP was already opened earlier
+  // today, so the dusk visit becomes "collect what the steward found".
+  const [openedEarlierToday, setOpenedEarlierToday] = useState(false);
+  useEffect(() => {
+    try {
+      const today = new Date().toDateString();
+      const raw = localStorage.getItem("mp_last_open");
+      if (raw) {
+        const prev = JSON.parse(raw) as { date: string; hour: number };
+        if (prev.date === today && prev.hour < 17) setOpenedEarlierToday(true);
+      }
+      localStorage.setItem("mp_last_open", JSON.stringify({ date: today, hour: new Date().getHours() }));
+    } catch { /* storage unavailable */ }
+  }, []);
+
   const emberPeople = useMemo(() => {
     const byName = new Map<string, { name: string; unseen: number; latest?: string; latestAt: number }>();
     for (const n of notifications) {
@@ -538,8 +579,32 @@ export default function HomeView() {
   const activeTrack = trackData.find((tk) => tk.progress > 0 && tk.progress < tk.total)
     || (personaType ? trackData.find((tk) => (PERSONA_TRACKS[personaType] || []).includes(tk.id) && tk.progress < tk.total) : undefined)
     || trackData.find((tk) => tk.progress < tk.total);
-  const relaySuggestion = sharedWithMe.length > 0
+  // Evening Return (change 10): at dusk, if MP was already opened this morning,
+  // the steward comes back from the archives with a find. Grief-mute respected.
+  const eveningFind = (timeOfDay === "golden" || timeOfDay === "night") && openedEarlierToday
+    ? (() => {
+        const pool = allMemories.filter(({ mem }) => mem.createdAt && !griefMuted.has(mem.id));
+        if (pool.length === 0) return null;
+        const now = new Date();
+        const anniversary = pool.find(({ mem }) => { const d = new Date(mem.createdAt!); return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() !== now.getFullYear(); });
+        const audio = pool.find(({ mem }) => mem.dataUrl?.startsWith("data:audio"));
+        const oldest = [...pool].sort((a, b) => new Date(a.mem.createdAt!).getTime() - new Date(b.mem.createdAt!).getTime())[0];
+        return anniversary || audio || oldest;
+      })()
+    : null;
+  // Daily Question (change 9): exactly one sealed prompt per day; answered
+  // (memory added today) falls through to the next branch.
+  const _now = new Date();
+  const dayOfYear = Math.floor((_now.getTime() - new Date(_now.getFullYear(), 0, 0).getTime()) / 86400000);
+  const answeredToday = allMemories.some(({ mem }) => mem.createdAt && new Date(mem.createdAt).toDateString() === _now.toDateString());
+  const dailyQuestion = totalMemories > 0 && !answeredToday ? t(`relay.q${(dayOfYear % 30) + 1}`) : null;
+
+  const relaySuggestion = eveningFind
+    ? { key: "lantern", title: t("relay.eveningFind"), reason: `${eveningFind.mem.title || t("relay.aMemory")} · ${translateWingName(eveningFind.wing, tWings)}${eveningFind.mem.createdAt ? `, ${new Date(eveningFind.mem.createdAt).getFullYear()}` : ""}`, onClick: () => handleMemoryClick(eveningFind.mem) }
+    : sharedWithMe.length > 0
     ? { key: "shared", title: "Your family shared with you", reason: "See what they added", onClick: () => setShowSharedWithMe(true) }
+    : dailyQuestion
+    ? { key: "letter", title: dailyQuestion, reason: t("relay.sixtySeconds"), onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); } }
     : onThisDayMemories.length > 0
       ? { key: "timeline", title: "On this day", reason: onThisDayMemories[0].mem.title || "A memory from a year gone by", onClick: () => handleMemoryClick(onThisDayMemories[0].mem) }
       : totalMemories === 0
@@ -575,17 +640,22 @@ export default function HomeView() {
   }
   const memoriesStrip = stripItems.length > 0 ? (
     <section aria-label="Your memories" style={{ borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", background: T.color.cream, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.06)", padding: "1rem 1.1rem" }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "1rem", marginBottom: "0.75rem" }}>
-        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.1875rem", color: "#403B36" }}>{t("relay.yourMemories")}</span>
-        <button type="button" onClick={() => { localStorage.setItem("mp_library_sort", "recent"); handleNavigateLibrary(); }} style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.muted, background: "none", border: "none", cursor: "pointer" }}>{t("relay.seeAll")} →</button>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
+        <Overline color="#8A6410">{t("relay.yourMemories")}</Overline>
+        <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: "linear-gradient(90deg, rgba(169,116,27,0.35), transparent)" }} />
+        <button type="button" onClick={() => { localStorage.setItem("mp_library_sort", "recent"); handleNavigateLibrary(); }} style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.muted, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>{t("relay.seeAll")} →</button>
       </div>
       <div style={{ display: "flex", gap: "0.6rem", overflowX: "auto", paddingBottom: "0.35rem" }}>
         {stripItems.map((it, i) => {
           const src = memImg(it.mem);
+          // Anniversary = frame, never a badge (change 15): a double gilt frame
+          // that breathes gold until opened today, then rests.
+          const unseen = it.otd && !otdSeen.has(it.mem.id);
+          const size = unseen ? "7rem" : "6rem";
           return (
-            <button key={it.mem.id + "_" + i} type="button" onClick={() => handleMemoryClick(it.mem)} style={{ position: "relative", flex: "0 0 auto", width: "6rem", height: "6rem", borderRadius: "0.6rem", overflow: "hidden", border: "0.0625rem solid #E3D6BC", cursor: "pointer", padding: 0, background: "#F2E4D5" }}>
+            <button key={it.mem.id + "_" + i} type="button" onClick={() => { if (it.otd) markOtdSeen(it.mem.id); handleMemoryClick(it.mem); }} style={{ position: "relative", flex: "0 0 auto", width: size, height: size, borderRadius: "0.6rem", overflow: "hidden", border: it.otd ? "0.125rem solid #D4AF37" : "0.0625rem solid #E3D6BC", boxShadow: it.otd ? "inset 0 0 0 0.0625rem #FCFAF5" : "none", cursor: "pointer", padding: 0, background: "#F2E4D5", transition: "width 0.25s ease, height 0.25s ease" }}>
               {src ? <span aria-hidden="true" style={{ display: "block", width: "100%", height: "100%", backgroundImage: `url(${src})`, backgroundSize: "cover", backgroundPosition: "center", filter: "saturate(0.92)" }} /> : <span style={{ display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.walnut, padding: "0.35rem", textAlign: "center", lineHeight: 1.25 }}>{it.mem.title}</span>}
-              {it.otd ? <span style={{ position: "absolute", left: "0.3rem", top: "0.3rem", fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700, letterSpacing: "0.03em", textTransform: "uppercase", color: "#5A3A0E", background: "rgba(212,175,55,0.92)", borderRadius: "1rem", padding: "0.08rem 0.35rem" }}>on this day</span> : null}
+              {unseen ? <span aria-hidden="true" className="relay-ember-breathe" style={{ position: "absolute", inset: 0, background: "radial-gradient(closest-side, rgba(212,175,55,0.4), transparent 75%)", pointerEvents: "none" }} /> : null}
             </button>
           );
         })}
@@ -631,10 +701,10 @@ export default function HomeView() {
     {
       id: "capture", overline: "Capture", accent: "terracotta" as const,
       tiles: [
-        { key: "photos", title: "Add Photos", desc: "Bring in your pictures", onClick: goUpload },
+        { key: "photos", title: "Add Photos", desc: "Bring in your pictures", onClick: goUpload, datum: mtc.photo > 0 ? `${mtc.photo} ${t("relay.photosCount")}` : undefined },
         { key: "cloud", title: "Import from Cloud", desc: "Google Photos, iCloud & more", onClick: () => { localStorage.setItem("mp_spotlight_target", "import-cloud"); handleNavigateLibrary(); } },
         { key: "restore", title: "Restore a Photo", desc: "Repair an old photo", onClick: () => { localStorage.setItem("mp_spotlight_target", "ai-enhance"); handleNavigateLibrary(); } },
-        { key: "write", title: "Write a Memory", desc: "Put it into words", onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); } },
+        { key: "write", title: "Write a Memory", desc: "Put it into words", onClick: () => { localStorage.setItem("mp_spotlight_target", "write-stories"); handleNavigateLibrary(); }, datum: mtc.story > 0 ? `${mtc.story} ${t("relay.storiesCount")}` : undefined },
         { key: "record", title: "Interviews", desc: "Tell your story aloud", onClick: () => setShowInterviewLibrary(true), datum: interviewSessions.length > 0 ? `${interviewSessions.length} recorded` : undefined },
         { key: "whatsapp", title: "Capture by WhatsApp", desc: "Save by message", onClick: () => setShowKepCapture(true) },
         { key: "capsule", title: "Time Capsule", desc: "A memory for later", onClick: () => { localStorage.setItem("mp_upload_time_capsule", "true"); handleNavigateLibrary(); } },
@@ -761,7 +831,8 @@ export default function HomeView() {
             embers={relayEmbers}
             topWash={TIME_WASH[timeOfDay]}
             warmth={warmthLevel}
-            labels={{ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), otherJourneys: t("relay.otherJourneys") }}
+            weekHistory={computeWeekHistory(creationDates)}
+            labels={{ suggested: t("relay.suggestedForYou"), addYourName: t("relay.addYourName"), soon: t("relay.soon"), otherJourneys: t("relay.otherJourneys"), weeksWarm: t("relay.weeksWarm"), quietKept: t("relay.quietKept") }}
             score={relayScore}
             suggestion={relaySuggestion}
             chips={relayChips}
