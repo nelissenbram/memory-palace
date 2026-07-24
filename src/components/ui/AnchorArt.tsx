@@ -105,14 +105,18 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           {/* Mullion cross */}
           <line x1={x} y1={100} x2={x} y2={112} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
           <line x1={x - 4} y1={106} x2={x + 4} y2={106} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
+          {/* inhabited window: candle-flicker shimmer + an occasional
+              light-out-and-relight on its own long cycle */}
           <ellipse cx={x} cy={106} rx="3" ry="5" fill="url(#windowWarmth)" opacity={windowGlow}>
-            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 1.3};${windowGlow}`} dur={`${3 + x * 0.02}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 1.35};${windowGlow * 0.9};${windowGlow * 1.2};${windowGlow * 0.1};${windowGlow * 0.1};${windowGlow}`} keyTimes="0;0.2;0.38;0.55;0.68;0.86;1" dur={`${9 + (x % 7)}s`} begin={`${-(x % 5)}s`} repeatCount="indefinite" />
           </ellipse>
         </React.Fragment>
       ))}
       {/* Left wing door */}
       <rect x="44" y="125" width="14" height="30" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="7 7 0 0" />
-      <ellipse cx="51" cy="135" rx="5" ry="10" fill="url(#windowWarmth)" opacity={windowGlow * 0.6} />
+      <ellipse cx="51" cy="135" rx="5" ry="10" fill="url(#windowWarmth)" opacity={windowGlow * 0.6}>
+        <animate attributeName="opacity" values={`${windowGlow * 0.6};${windowGlow * 0.85};${windowGlow * 0.5};${windowGlow * 0.6}`} dur="4.6s" repeatCount="indefinite" />
+      </ellipse>
 
       {/* ── Vines / ivy on left wing ── */}
       <path d="M 22,95 Q 18,105 20,115 Q 17,120 19,130 Q 16,135 18,142 Q 20,148 22,155" fill="none" stroke={T.color.gold} strokeWidth="0.5" opacity="0.15" />
@@ -142,12 +146,14 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           <line x1={x} y1={100} x2={x} y2={112} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
           <line x1={x - 4} y1={106} x2={x + 4} y2={106} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
           <ellipse cx={x} cy={106} rx="3" ry="5" fill="url(#windowWarmth)" opacity={windowGlow}>
-            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 1.3};${windowGlow}`} dur={`${3.5 + x * 0.01}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 0.12};${windowGlow * 0.12};${windowGlow * 1.3};${windowGlow};${windowGlow * 1.15};${windowGlow}`} keyTimes="0;0.12;0.3;0.45;0.62;0.8;1" dur={`${11 + (x % 6)}s`} begin={`${-(x % 7)}s`} repeatCount="indefinite" />
           </ellipse>
         </React.Fragment>
       ))}
       <rect x="242" y="125" width="14" height="30" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="7 7 0 0" />
-      <ellipse cx="249" cy="135" rx="5" ry="10" fill="url(#windowWarmth)" opacity={windowGlow * 0.6} />
+      <ellipse cx="249" cy="135" rx="5" ry="10" fill="url(#windowWarmth)" opacity={windowGlow * 0.6}>
+        <animate attributeName="opacity" values={`${windowGlow * 0.6};${windowGlow * 0.45};${windowGlow * 0.8};${windowGlow * 0.6}`} dur="5.3s" repeatCount="indefinite" />
+      </ellipse>
 
       {/* ── Central temple ── */}
       <rect x="82" y="60" width="136" height="95" fill="none" stroke={T.color.gold} strokeWidth="0.9" opacity="0.45" rx="1" />
@@ -203,9 +209,10 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
       {/* Central arch doorway */}
       <rect x="135" y="105" width="30" height="50" fill="none" stroke={T.color.gold} strokeWidth="0.9" opacity="0.5" rx="15 15 0 0" />
       <rect x="138" y="108" width="24" height="47" fill="none" stroke={T.color.gold} strokeWidth="0.4" opacity="0.25" rx="12 12 0 0" />
-      {/* Door warm glow */}
+      {/* Door warm glow — hearth-flicker, quicker and livelier than windows */}
       <ellipse cx="150" cy="125" rx="10" ry="18" fill="url(#windowWarmth)" opacity={windowGlow * 0.8}>
-        <animate attributeName="opacity" values={`${windowGlow * 0.8};${windowGlow * 1.1};${windowGlow * 0.8}`} dur="3.5s" repeatCount="indefinite" />
+        <animate attributeName="opacity" values={`${windowGlow * 0.8};${windowGlow * 1.15};${windowGlow * 0.7};${windowGlow * 1.05};${windowGlow * 0.85};${windowGlow * 0.8}`} keyTimes="0;0.2;0.45;0.65;0.85;1" dur="3.2s" repeatCount="indefinite" />
+        <animate attributeName="rx" values="10;10.8;9.6;10" dur="4.1s" repeatCount="indefinite" />
       </ellipse>
 
       {/* Human silhouette near entrance for scale */}
@@ -222,7 +229,7 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           <line x1={x} y1={72} x2={x} y2={83} stroke={T.color.gold} strokeWidth="0.25" opacity="0.2" />
           <line x1={x - 4} y1={77.5} x2={x + 4} y2={77.5} stroke={T.color.gold} strokeWidth="0.25" opacity="0.2" />
           <ellipse cx={x} cy={77} rx="3" ry="4" fill="url(#windowWarmth)" opacity={windowGlow * 0.9}>
-            <animate attributeName="opacity" values={`${windowGlow * 0.9};${windowGlow * 1.2};${windowGlow * 0.9}`} dur={`${2.8 + x * 0.01}s`} repeatCount="indefinite" />
+            <animate attributeName="opacity" values={`${windowGlow * 0.9};${windowGlow * 1.25};${windowGlow * 0.7};${windowGlow * 1.1};${windowGlow * 0.08};${windowGlow * 0.9}`} keyTimes="0;0.25;0.42;0.6;0.78;1" dur={`${8 + (x % 8)}s`} begin={`${-(x % 6)}s`} repeatCount="indefinite" />
           </ellipse>
         </React.Fragment>
       ))}
@@ -588,15 +595,43 @@ export function LibraryIllustration({ hover }: { hover: boolean }) {
       <ellipse cx="245" cy="63" rx="8" ry="10" fill="#FFEEBB" opacity={candleGlow * 0.12}>
         <animate attributeName="opacity" values={`${candleGlow * 0.12};${candleGlow * 0.2};${candleGlow * 0.12}`} dur="2s" repeatCount="indefinite" />
       </ellipse>
-      {/* Flame */}
-      <ellipse cx="245" cy="64" rx="4" ry="7" fill="url(#flameGrad)" opacity={hover ? 0.85 : 0.6}>
-        <animate attributeName="ry" values="7;8;6.5;7" dur="1.5s" repeatCount="indefinite" />
-        <animate attributeName="cx" values="245;245.5;244.5;245" dur="2s" repeatCount="indefinite" />
+      {/* Flame — a real candle sway: the whole flame leans and rights itself,
+          stretches on the draft, and its inner tongue dances offset from it */}
+      <g>
+        <animateTransform attributeName="transform" type="rotate" values="-5 245 71; 4 245 71; -2 245 71; 5 245 71; -5 245 71" dur="2.6s" repeatCount="indefinite" />
+        <ellipse cx="245" cy="64" rx="4" ry="7" fill="url(#flameGrad)" opacity={hover ? 0.85 : 0.65}>
+          <animate attributeName="ry" values="7;8.6;6.2;7.8;7" dur="1.5s" repeatCount="indefinite" />
+          <animate attributeName="cy" values="64;62.8;64.6;63.4;64" dur="1.9s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values={`${hover ? 0.85 : 0.65};${hover ? 0.95 : 0.8};${hover ? 0.78 : 0.55};${hover ? 0.85 : 0.65}`} dur="1.1s" repeatCount="indefinite" />
+        </ellipse>
+        <ellipse cx="245" cy="65" rx="1.5" ry="3.5" fill="#FFF8E0" opacity="0.8">
+          <animate attributeName="ry" values="3.5;4.4;2.9;3.9;3.5" dur="1.15s" repeatCount="indefinite" />
+          <animate attributeName="cx" values="245;245.6;244.4;245.2;245" dur="1.4s" repeatCount="indefinite" />
+        </ellipse>
+      </g>
+      {/* the occasional spark rising off the wick */}
+      <circle cx="245" cy="60" r="0.6" fill="#FFD666" opacity="0">
+        <animate attributeName="opacity" values="0;0;0.8;0;0" keyTimes="0;0.62;0.68;0.8;1" dur="7s" repeatCount="indefinite" />
+        <animate attributeName="cy" values="60;60;52;46;46" keyTimes="0;0.62;0.72;0.8;1" dur="7s" repeatCount="indefinite" />
+        <animate attributeName="cx" values="245;245;246.5;244.8;244.8" keyTimes="0;0.62;0.72;0.8;1" dur="7s" repeatCount="indefinite" />
+      </circle>
+
+      {/* ── A second, smaller candle on the desk (tealight by the scroll) ── */}
+      <rect x="219.5" y="128" width="5" height="10" fill={T.color.cream} opacity="0.5" rx="1" />
+      <ellipse cx="222" cy="138.5" rx="4" ry="1.4" fill={T.color.walnut} opacity="0.3" />
+      <line x1="222" y1="128" x2="222" y2="125.5" stroke={T.color.charcoal} strokeWidth="0.4" opacity="0.4" />
+      <ellipse cx="222" cy="124" rx="5" ry="6" fill="#FFEEBB" opacity={candleGlow * 0.15}>
+        <animate attributeName="opacity" values={`${candleGlow * 0.15};${candleGlow * 0.26};${candleGlow * 0.15}`} dur="2.3s" repeatCount="indefinite" />
       </ellipse>
-      {/* Inner flame */}
-      <ellipse cx="245" cy="65" rx="1.5" ry="3.5" fill="#FFF8E0" opacity="0.8">
-        <animate attributeName="ry" values="3.5;4;3;3.5" dur="1.2s" repeatCount="indefinite" />
-      </ellipse>
+      <g>
+        <animateTransform attributeName="transform" type="rotate" values="4 222 128; -5 222 128; 2 222 128; 4 222 128" dur="2.1s" repeatCount="indefinite" />
+        <ellipse cx="222" cy="123.5" rx="2.2" ry="4" fill="url(#flameGrad)" opacity={hover ? 0.8 : 0.55}>
+          <animate attributeName="ry" values="4;4.9;3.4;4" dur="1.3s" repeatCount="indefinite" />
+        </ellipse>
+        <ellipse cx="222" cy="124.5" rx="0.9" ry="2" fill="#FFF8E0" opacity="0.75">
+          <animate attributeName="ry" values="2;2.5;1.6;2" dur="1s" repeatCount="indefinite" />
+        </ellipse>
+      </g>
 
       {/* ── Scroll accent near candle — with text lines ── */}
       <ellipse cx="228" cy="155" rx="12" ry="3" fill="none" stroke={T.color.gold} strokeWidth="0.5" opacity="0.25" />

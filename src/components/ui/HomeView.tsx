@@ -568,10 +568,16 @@ export default function HomeView() {
   const goUpload = () => { localStorage.setItem("mp_spotlight_target", "import-upload"); handleNavigateLibrary(); };
   const yrs = allMemories.map((m) => (m.mem.createdAt ? new Date(m.mem.createdAt).getFullYear() : 0)).filter(Boolean);
   const yearRange = yrs.length ? `${Math.min(...yrs)}–${Math.max(...yrs)}` : undefined;
-  const libThumbs = recentMemories
-    .map((r) => ((r.mem.dataUrl && !r.mem.dataUrl.startsWith("data:audio") && !r.mem.videoBlob) ? (r.mem.thumbnailUrl || r.mem.dataUrl) : (r.mem.thumbnailUrl || null)))
-    .filter((x): x is string => !!x)
-    .slice(0, 3);
+  // Only sources a browser can actually paint — repairs the dead thumbs in
+  // the fan and the blank squares in the strip (audio dataUrls, missing
+  // video posters, stale references all fall through to null).
+  const validImg = (s: string | null | undefined): string | null =>
+    s && (s.startsWith("data:image") || s.startsWith("http") || s.startsWith("blob:") || s.startsWith("/")) ? s : null;
+  const libThumbs = Array.from(new Set(
+    recentMemories
+      .map((r) => validImg(r.mem.thumbnailUrl) || ((r.mem.dataUrl && !r.mem.videoBlob) ? validImg(r.mem.dataUrl) : null))
+      .filter((x): x is string => !!x)
+  )).slice(0, 3);
   // Steward brain — one smart, non-duplicative suggestion (never re-offers the
   // Palace/Library anchors that already sit right below).
   // Memory tracks brought forward: an in-progress (persona-informed) journey
@@ -626,11 +632,13 @@ export default function HomeView() {
 
   // "Your memories" strip — brings back Recent Memories + On This Day + a
   // compact portrait, the emotional content that the plain relay had dropped.
-  const memImg = (m: Mem): string | null => ((m.dataUrl && !m.dataUrl.startsWith("data:audio") && !m.videoBlob) ? (m.thumbnailUrl || m.dataUrl) : (m.thumbnailUrl || null));
+  const memImg = (m: Mem): string | null => validImg(m.thumbnailUrl) || ((m.dataUrl && !m.videoBlob) ? validImg(m.dataUrl) : null);
   const otdIds = new Set(onThisDayMemories.map((x) => x.mem.id));
+  // No blank squares: on-this-day items always show (imageless ones get the
+  // story-card treatment), the recent long-tail only when it has an image.
   const stripItems = [
     ...onThisDayMemories.map((x) => ({ mem: x.mem, otd: true })),
-    ...recentMemories.filter((x) => !otdIds.has(x.mem.id)).map((x) => ({ mem: x.mem, otd: false })),
+    ...recentMemories.filter((x) => !otdIds.has(x.mem.id) && !!memImg(x.mem)).map((x) => ({ mem: x.mem, otd: false })),
   ].slice(0, 10);
   const mtc = { photo: 0, video: 0, story: 0 };
   for (const { mem } of allMemories) {
@@ -654,7 +662,16 @@ export default function HomeView() {
           const size = unseen ? "7rem" : "6rem";
           return (
             <button key={it.mem.id + "_" + i} type="button" onClick={() => { if (it.otd) markOtdSeen(it.mem.id); handleMemoryClick(it.mem); }} style={{ position: "relative", flex: "0 0 auto", width: size, height: size, borderRadius: "0.6rem", overflow: "hidden", border: it.otd ? "0.125rem solid #D4AF37" : "0.0625rem solid #E3D6BC", boxShadow: it.otd ? "inset 0 0 0 0.0625rem #FCFAF5" : "none", cursor: "pointer", padding: 0, background: "#F2E4D5", transition: "width 0.25s ease, height 0.25s ease" }}>
-              {src ? <span aria-hidden="true" style={{ display: "block", width: "100%", height: "100%", backgroundImage: `url(${src})`, backgroundSize: "cover", backgroundPosition: "center", filter: "saturate(0.92)" }} /> : <span style={{ display: "flex", width: "100%", height: "100%", alignItems: "center", justifyContent: "center", fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.walnut, padding: "0.35rem", textAlign: "center", lineHeight: 1.25 }}>{it.mem.title}</span>}
+              {src ? (
+                <span aria-hidden="true" style={{ display: "block", width: "100%", height: "100%", backgroundImage: `url(${src})`, backgroundSize: "cover", backgroundPosition: "center", filter: "saturate(0.92)" }} />
+              ) : (
+                // Story card: parchment leaf with an opening quote — a written
+                // memory presented as a keepsake, never a blank square.
+                <span style={{ display: "flex", flexDirection: "column", width: "100%", height: "100%", justifyContent: "flex-start", background: "linear-gradient(165deg, #FCF6E5 0%, #F6ECD2 100%)", padding: "0.4rem 0.45rem", textAlign: "left" }}>
+                  <span aria-hidden="true" style={{ fontFamily: T.font.display, fontSize: "1.5rem", lineHeight: 0.9, color: "#C99A2E", fontStyle: "italic" }}>&ldquo;</span>
+                  <span style={{ fontFamily: T.font.display, fontStyle: "italic", fontSize: "0.6875rem", color: "#5A4A38", lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{it.mem.title}</span>
+                </span>
+              )}
               {unseen ? <span aria-hidden="true" className="relay-ember-breathe" style={{ position: "absolute", inset: 0, background: "radial-gradient(closest-side, rgba(212,175,55,0.4), transparent 75%)", pointerEvents: "none" }} /> : null}
             </button>
           );
@@ -677,9 +694,15 @@ export default function HomeView() {
   const relayEmbers = emberPeople.length > 0
     ? { title: t("relay.familyEmbers"), people: emberPeople, onOpen: () => setNotificationsOpen(true) }
     : null;
-  // Palace + Library stay ON TOP as anchors.
+  // Palace + Library stay ON TOP as anchors. The Palace card's counterpart to
+  // the Library's photo fan: wing seals — the lived-in wings with their counts.
+  const wingChips = [...wingsData]
+    .filter((w) => w.memoryCount > 0)
+    .sort((a, b) => b.memoryCount - a.memoryCount)
+    .slice(0, 3)
+    .map((w) => ({ icon: w.icon, label: String(w.memoryCount) }));
   const relayAnchors = [
-    { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, art: <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} /> },
+    { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, art: <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} />, chips: wingChips },
     { key: "library", title: "Enter Your Library", desc: "Your whole collection", onClick: handleNavigateLibrary, datum: totalMemories > 0 ? `${totalMemories} ${t("memories")}` : undefined, thumbs: libThumbs, art: <LibraryIllustration hover={false} /> },
   ];
   // score & badge total, for those who like keeping count.

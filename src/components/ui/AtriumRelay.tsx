@@ -36,6 +36,8 @@ export type RelayTile = {
   art?: React.ReactNode;
   /** One hero per lane: full-width tile with big medallion; the rest render compact. */
   hero?: boolean;
+  /** Anchor extra: overlapping mini-medallions (wing seals for the Palace card). */
+  chips?: { icon: string; label: string }[];
 };
 export type RelayAccent = "terracotta" | "gold" | "sage" | "anchor";
 export type RelayLane = { id: string; overline: string; accent: RelayAccent; tiles: RelayTile[] };
@@ -167,6 +169,21 @@ function Medallion({ k, accent, index, big, animated }: { k: string; accent: Rel
   );
 }
 
+/* Wing seals — the Palace anchor's counterpart to the Library's photo fan:
+   overlapping gilt-rimmed medallions, one per lived-in wing, with its count. */
+function WingFan({ chips }: { chips: { icon: string; label: string }[] }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center" }} aria-hidden="true">
+      {chips.slice(0, 3).map((ch, i) => (
+        <span key={i} style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2.25rem", height: "2.25rem", borderRadius: "50%", background: "#FCFAF5", border: "0.125rem solid rgba(212,175,55,0.7)", boxShadow: "0 0.125rem 0.375rem rgba(0,0,0,0.35)", marginLeft: i === 0 ? 0 : "-0.6rem", transform: `rotate(${(i - 1) * 5}deg)`, fontSize: "1rem", lineHeight: 1 }}>
+          {ch.icon}
+          <span style={{ position: "absolute", right: "-0.25rem", bottom: "-0.25rem", minWidth: "1rem", height: "1rem", padding: "0 0.2rem", borderRadius: "1rem", background: "#D4AF37", color: "#2E2A26", fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>{ch.label}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function ThumbFan({ thumbs }: { thumbs: string[] }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center" }} aria-hidden="true">
@@ -207,7 +224,7 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", padding: "0.85rem 1rem 1rem" }}>
           <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleL, lineHeight: RT.lhDisplay, color: a.titleColor }}>{tile.title}</span>
           <span style={{ fontFamily: T.font.body, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor }}>{tile.desc}</span>
-          {tile.thumbs && tile.thumbs.length > 0 ? <span style={{ marginTop: "0.5rem" }}><ThumbFan thumbs={tile.thumbs} /></span> : null}
+          {tile.thumbs && tile.thumbs.length > 0 ? <span style={{ marginTop: "0.5rem" }}><ThumbFan thumbs={tile.thumbs} /></span> : tile.chips && tile.chips.length > 0 ? <span style={{ marginTop: "0.5rem" }}><WingFan chips={tile.chips} /></span> : null}
           {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, marginTop: "0.35rem", fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         </div>
         <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: "#E8C255" }}>→</span>
@@ -267,23 +284,29 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
   // function INVITES instead of merely sitting there.
   return (
     <button type="button" onClick={tile.onClick} className="relay-tile relay-tile-sec" style={{ position: "relative", display: "flex", alignItems: "center", gap: "0.65rem", textAlign: "left", borderRadius: "1rem", overflow: "hidden", border: `0.0625rem solid ${a.border}`, background: a.tileBg, cursor: "pointer", minHeight: "3.5rem", padding: "0.75rem 1rem", boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}` }}>
+      {/* front-side whisper of the scene: the vignette rests on the right at
+          low volume — the invitation is visible before any hover */}
+      {Vignette ? (
+        <span aria-hidden="true" className="relay-sec-vig" style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: "52%", opacity: 0.5, pointerEvents: "none", maskImage: "linear-gradient(90deg, transparent, black 55%)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 55%)" }}>
+          <Vignette c={vigPalette} />
+        </span>
+      ) : null}
       <Medallion k={tile.key} accent={accent} index={index} animated={animated} />
-      <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "68%" }}>
         <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word" }}>{tile.title}</span>
         {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
       </span>
-      {/* back-card: the tile turns over to a USP-style scene vignette —
-          the illustrated reverse slides up with the description and a gilt
-          open-arrow (hover/focus, desktop) */}
-      <span aria-hidden="true" className="relay-backcard" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.15rem", padding: "0.6rem 2.4rem 0.6rem 1rem", background: `linear-gradient(160deg, ${TRAY[accent]} 0%, #FCFAF5 115%)`, borderTop: `0.1875rem solid ${a.tileTop}` }}>
+      {/* back-card: the tile turns over to the full USP-style scene — no
+          title repeat (the front already said it); description + datum +
+          gilt open-arrow, clamped so nothing ever overflows */}
+      <span aria-hidden="true" className="relay-backcard" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.2rem", padding: "0.5rem 2.4rem 0.5rem 1rem", background: `linear-gradient(160deg, ${TRAY[accent]} 0%, #FCFAF5 115%)`, borderTop: `0.1875rem solid ${a.tileTop}`, overflow: "hidden" }}>
         {Vignette ? (
-          <span style={{ position: "absolute", inset: 0, opacity: 0.9, maskImage: "linear-gradient(90deg, transparent 18%, black 55%)", WebkitMaskImage: "linear-gradient(90deg, transparent 18%, black 55%)" }}>
+          <span style={{ position: "absolute", inset: 0, opacity: 0.95, maskImage: "linear-gradient(90deg, transparent 8%, black 48%)", WebkitMaskImage: "linear-gradient(90deg, transparent 8%, black 48%)" }}>
             <Vignette c={vigPalette} />
           </span>
         ) : null}
-        <span style={{ position: "relative", fontFamily: T.font.display, fontWeight: 600, fontSize: RT.meta, lineHeight: RT.lhDisplay, color: a.glyph }}>{tile.title}</span>
-        <span style={{ position: "relative", fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3, color: a.titleColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", maxWidth: "62%", textShadow: "0 0 0.5rem rgba(252,250,245,0.9)" }}>{tile.desc}</span>
-        {tile.datum ? <span style={{ position: "relative", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
+        <span style={{ position: "relative", fontFamily: T.font.body, fontSize: RT.meta, lineHeight: 1.3, color: a.titleColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", maxWidth: "58%", textShadow: "0 0 0.5rem rgba(252,250,245,0.95), 0 0 1rem rgba(252,250,245,0.8)" }}>{tile.desc}</span>
+        {tile.datum ? <span style={{ position: "relative", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.overline, color: a.datumColor, fontVariantNumeric: "tabular-nums", maxWidth: "58%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tile.datum}</span> : null}
         <span className="relay-backcard-arrow" style={{ position: "absolute", right: "0.85rem", top: "50%", transform: "translateY(-50%)", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: "#C99A2E" }}>→</span>
       </span>
     </button>
@@ -522,6 +545,8 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
         @media (hover: hover) {
           .relay-backcard { transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease; }
           .relay-tile-sec:hover .relay-backcard, .relay-tile-sec:focus-visible .relay-backcard { opacity: 1; transform: translateY(0); }
+          .relay-sec-vig { transition: opacity 0.2s ease; }
+          .relay-tile-sec:hover .relay-sec-vig { opacity: 0; }
           .relay-backcard-arrow { transition: transform 0.25s ease 0.1s; transform: translateY(-50%) translateX(-0.3rem); }
           .relay-tile-sec:hover .relay-backcard-arrow { transform: translateY(-50%) translateX(0); }
           .relay-invite-arrow { transition: opacity 0.25s ease, transform 0.25s ease; }
