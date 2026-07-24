@@ -318,6 +318,13 @@ export default function HomeView() {
     });
   }, []);
 
+  // Sources that pass the validity guard can still 404/expire — track actual
+  // load failures so broken thumbs drop out instead of showing blank squares.
+  const [brokenImgIds, setBrokenImgIds] = useState<Set<string>>(() => new Set());
+  const markImgBroken = useCallback((id: string) => {
+    setBrokenImgIds((prev) => { const next = new Set(prev); next.add(id); return next; });
+  }, []);
+
   // All memories across all wings with wing/room context
   const allMemories = useMemo<EnrichedMemory[]>(() => {
     const result: EnrichedMemory[] = [];
@@ -637,9 +644,9 @@ export default function HomeView() {
   // No blank squares: on-this-day items always show (imageless ones get the
   // story-card treatment), the recent long-tail only when it has an image.
   const stripItems = [
-    ...onThisDayMemories.map((x) => ({ mem: x.mem, otd: true })),
+    ...onThisDayMemories.filter((x) => memImg(x.mem) || x.mem.title).map((x) => ({ mem: x.mem, otd: true })),
     ...recentMemories.filter((x) => !otdIds.has(x.mem.id) && !!memImg(x.mem)).map((x) => ({ mem: x.mem, otd: false })),
-  ].slice(0, 10);
+  ].filter((it) => it.otd || !brokenImgIds.has(it.mem.id)).slice(0, 10);
   const mtc = { photo: 0, video: 0, story: 0 };
   for (const { mem } of allMemories) {
     if (mem.type === "photo" || mem.type === "album") mtc.photo++;
@@ -655,7 +662,7 @@ export default function HomeView() {
       </div>
       <div style={{ display: "flex", gap: "0.6rem", overflowX: "auto", paddingBottom: "0.35rem" }}>
         {stripItems.map((it, i) => {
-          const src = memImg(it.mem);
+          const src = brokenImgIds.has(it.mem.id) ? null : memImg(it.mem);
           // Anniversary = frame, never a badge (change 15): a double gilt frame
           // that breathes gold until opened today, then rests.
           const unseen = it.otd && !otdSeen.has(it.mem.id);
@@ -663,7 +670,10 @@ export default function HomeView() {
           return (
             <button key={it.mem.id + "_" + i} type="button" onClick={() => { if (it.otd) markOtdSeen(it.mem.id); handleMemoryClick(it.mem); }} style={{ position: "relative", flex: "0 0 auto", width: size, height: size, borderRadius: "0.6rem", overflow: "hidden", border: it.otd ? "0.125rem solid #D4AF37" : "0.0625rem solid #E3D6BC", boxShadow: it.otd ? "inset 0 0 0 0.0625rem #FCFAF5" : "none", cursor: "pointer", padding: 0, background: "#F2E4D5", transition: "width 0.25s ease, height 0.25s ease" }}>
               {src ? (
-                <span aria-hidden="true" style={{ display: "block", width: "100%", height: "100%", backgroundImage: `url(${src})`, backgroundSize: "cover", backgroundPosition: "center", filter: "saturate(0.92)" }} />
+                // real <img> so load failures surface via onError and the
+                // broken thumb drops out of the strip on the next render
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={src} alt="" onError={() => markImgBroken(it.mem.id)} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", filter: "saturate(0.92)" }} />
               ) : (
                 // Story card: parchment leaf with an opening quote — a written
                 // memory presented as a keepsake, never a blank square.
@@ -696,11 +706,9 @@ export default function HomeView() {
     : null;
   // Palace + Library stay ON TOP as anchors. The Palace card's counterpart to
   // the Library's photo fan: wing seals — the lived-in wings with their counts.
-  const wingChips = [...wingsData]
-    .filter((w) => w.memoryCount > 0)
-    .sort((a, b) => b.memoryCount - a.memoryCount)
-    .slice(0, 3)
-    .map((w) => ({ icon: w.icon, label: String(w.memoryCount) }));
+  // The complete set: every wing gets its seal (canonical order); untouched
+  // wings rest as quiet empty frames — the fan doubles as a coverage map.
+  const wingChips = wingsData.slice(0, 6).map((w) => ({ id: w.id, label: String(w.memoryCount), empty: w.memoryCount === 0 }));
   const relayAnchors = [
     { key: "palace", title: "Enter Your Palace", desc: "Walk through your rooms in 3D", onClick: handleNavigatePalace, datum: totalMemories > 0 ? `${totalWings} ${t("wings")} · ${totalRooms} ${t("rooms")}` : undefined, art: <PalaceIllustration hover={false} warmth={warmthLevel} timeOfDay={timeOfDay} />, chips: wingChips },
     { key: "library", title: "Enter Your Library", desc: "Your whole collection", onClick: handleNavigateLibrary, datum: totalMemories > 0 ? `${totalMemories} ${t("memories")}` : undefined, thumbs: libThumbs, art: <LibraryIllustration hover={false} /> },

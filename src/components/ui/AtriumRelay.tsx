@@ -36,8 +36,8 @@ export type RelayTile = {
   art?: React.ReactNode;
   /** One hero per lane: full-width tile with big medallion; the rest render compact. */
   hero?: boolean;
-  /** Anchor extra: overlapping mini-medallions (wing seals for the Palace card). */
-  chips?: { icon: string; label: string }[];
+  /** Anchor extra: wing seals for the Palace card — one per wing, engraved SVG. */
+  chips?: { id: string; label: string; empty?: boolean }[];
 };
 export type RelayAccent = "terracotta" | "gold" | "sage" | "anchor";
 export type RelayLane = { id: string; overline: string; accent: RelayAccent; tiles: RelayTile[] };
@@ -169,17 +169,34 @@ function Medallion({ k, accent, index, big, animated }: { k: string; accent: Rel
   );
 }
 
-/* Wing seals — the Palace anchor's counterpart to the Library's photo fan:
-   overlapping gilt-rimmed medallions, one per lived-in wing, with its count. */
-function WingFan({ chips }: { chips: { icon: string; label: string }[] }) {
+/* Engraved wing seals — 24×24 stroke crests in the relay icon language,
+   one per wing of the palace. */
+const WING_SEALS: Record<string, React.FC> = {
+  roots: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", width: "100%", height: "100%" }}><path d="M12 20V9" /><path d="M12 9c0-3.5 2.5-5.5 5.5-5.5C17.5 7 15.5 9 12 9z" /><path d="M12 13c0-2.8-2-4.4-4.4-4.4C7.6 11.4 9.2 13 12 13z" /><path d="M12 20c-2 0-3.5 1-4.5 2M12 20c2 0 3.5 1 4.5 2M12 20v2.5" opacity="0.7" /></svg>),
+  nest: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", width: "100%", height: "100%" }}><ellipse cx="12" cy="15" rx="8" ry="5.5" /><path d="M5 13.5c3-1.6 11-1.6 14 0M6.5 17.5c3-1.2 8-1.2 11 0" opacity="0.6" /><ellipse cx="12" cy="10.5" rx="3" ry="3.8" fill="currentColor" fillOpacity="0.15" /></svg>),
+  craft: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", width: "100%", height: "100%" }}><path d="M6 18L14 8" /><path d="M12.5 6.5l3-3 2.5.5.5 2.5-3 3z" /><path d="M18 18l-5-5" opacity="0.7" /><circle cx="5.5" cy="18.5" r="1.6" /></svg>),
+  travel: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", width: "100%", height: "100%" }}><circle cx="12" cy="12" r="8.5" /><path d="M15.5 8.5l-2 5-5 2 2-5z" fill="currentColor" fillOpacity="0.15" /><path d="M12 3.5v1.5M12 19v1.5M3.5 12H5M19 12h1.5" opacity="0.6" /></svg>),
+  passions: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", width: "100%", height: "100%" }}><path d="M12 4l1.8 4.6L18.5 10l-4.7 1.4L12 16l-1.8-4.6L5.5 10l4.7-1.4z" fill="currentColor" fillOpacity="0.12" /><path d="M18.5 16l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" opacity="0.7" /></svg>),
+  attic: () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" style={{ display: "block", width: "100%", height: "100%" }}><path d="M4.5 9.5h15V19a1 1 0 0 1-1 1h-13a1 1 0 0 1-1-1z" /><path d="M4.5 9.5L7 5h10l2.5 4.5" /><path d="M9.5 13h5" opacity="0.7" /></svg>),
+};
+
+/* Wing seals fan — the Palace anchor's counterpart to the Library's photo
+   fan: the complete set of wings as gilt-rimmed engraved medallions; lived-in
+   wings carry a count, untouched wings rest as quiet empty frames. */
+function WingFan({ chips }: { chips: { id: string; label: string; empty?: boolean }[] }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center" }} aria-hidden="true">
-      {chips.slice(0, 3).map((ch, i) => (
-        <span key={i} style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2.25rem", height: "2.25rem", borderRadius: "50%", background: "#FCFAF5", border: "0.125rem solid rgba(212,175,55,0.7)", boxShadow: "0 0.125rem 0.375rem rgba(0,0,0,0.35)", marginLeft: i === 0 ? 0 : "-0.6rem", transform: `rotate(${(i - 1) * 5}deg)`, fontSize: "1rem", lineHeight: 1 }}>
-          {ch.icon}
-          <span style={{ position: "absolute", right: "-0.25rem", bottom: "-0.25rem", minWidth: "1rem", height: "1rem", padding: "0 0.2rem", borderRadius: "1rem", background: "#D4AF37", color: "#2E2A26", fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>{ch.label}</span>
-        </span>
-      ))}
+      {chips.slice(0, 6).map((ch, i) => {
+        const Seal = WING_SEALS[ch.id] ?? WING_SEALS.attic;
+        return (
+          <span key={ch.id} style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "2.1rem", height: "2.1rem", borderRadius: "50%", background: ch.empty ? "rgba(252,250,245,0.16)" : "#FCFAF5", border: ch.empty ? "0.0625rem solid rgba(212,175,55,0.3)" : "0.125rem solid rgba(212,175,55,0.75)", boxShadow: ch.empty ? "none" : "0 0.125rem 0.375rem rgba(0,0,0,0.35)", marginLeft: i === 0 ? 0 : "-0.45rem", transform: `rotate(${(i % 3 - 1) * 5}deg)`, zIndex: ch.empty ? 0 : 1 }}>
+            <span style={{ width: "1.3rem", height: "1.3rem", display: "inline-flex", color: ch.empty ? "rgba(212,175,55,0.45)" : "#9A4F2A" }}><Seal /></span>
+            {!ch.empty ? (
+              <span style={{ position: "absolute", right: "-0.2rem", bottom: "-0.2rem", minWidth: "1rem", height: "1rem", padding: "0 0.2rem", borderRadius: "1rem", background: "#D4AF37", color: "#2E2A26", fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>{ch.label}</span>
+            ) : null}
+          </span>
+        );
+      })}
     </span>
   );
 }

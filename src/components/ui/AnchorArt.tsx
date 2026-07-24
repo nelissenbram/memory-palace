@@ -12,9 +12,11 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
   timeOfDay?: "morning" | "day" | "golden" | "night";
 }) {
   // Warmth sets the RESTING glow of the windows (the villa dims over quiet
-  // weeks, one memory relights it); hover still brightens on top.
-  const resting = warmth === undefined ? 0.3 : [0.14, 0.38, 0.62][warmth];
-  const windowGlow = hover ? Math.max(0.7, resting + 0.15) : resting;
+  // weeks, one memory relights it); hover still brightens on top. Floors are
+  // high enough that the window life stays clearly visible on the dark
+  // anchor header even at quiet — dimmer, never dead.
+  const resting = warmth === undefined ? 0.45 : [0.3, 0.55, 0.8][warmth];
+  const windowGlow = hover ? Math.min(1, resting + 0.2) : resting;
   const ambientGlow = hover ? 0.5 : warmth === undefined ? 0.2 : [0.1, 0.2, 0.32][warmth];
   const starBoost = timeOfDay === "night" ? 2.4 : 1;
   const skyTint = timeOfDay === "morning"
@@ -107,8 +109,8 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           <line x1={x - 4} y1={106} x2={x + 4} y2={106} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
           {/* inhabited window: candle-flicker shimmer + an occasional
               light-out-and-relight on its own long cycle */}
-          <ellipse cx={x} cy={106} rx="3" ry="5" fill="url(#windowWarmth)" opacity={windowGlow}>
-            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 1.35};${windowGlow * 0.9};${windowGlow * 1.2};${windowGlow * 0.1};${windowGlow * 0.1};${windowGlow}`} keyTimes="0;0.2;0.38;0.55;0.68;0.86;1" dur={`${9 + (x % 7)}s`} begin={`${-(x % 5)}s`} repeatCount="indefinite" />
+          <ellipse cx={x} cy={106} rx="4.5" ry="6.5" fill="url(#windowWarmth)" opacity={windowGlow}>
+            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 1.35};${windowGlow * 0.9};${windowGlow * 1.2};${windowGlow * 0.1};${windowGlow * 0.1};${windowGlow}`} keyTimes="0;0.2;0.38;0.55;0.68;0.86;1" dur={`${5 + (x % 4)}s`} begin={`${-(x % 5)}s`} repeatCount="indefinite" />
           </ellipse>
         </React.Fragment>
       ))}
@@ -145,8 +147,8 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           {/* Mullion cross */}
           <line x1={x} y1={100} x2={x} y2={112} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
           <line x1={x - 4} y1={106} x2={x + 4} y2={106} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
-          <ellipse cx={x} cy={106} rx="3" ry="5" fill="url(#windowWarmth)" opacity={windowGlow}>
-            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 0.12};${windowGlow * 0.12};${windowGlow * 1.3};${windowGlow};${windowGlow * 1.15};${windowGlow}`} keyTimes="0;0.12;0.3;0.45;0.62;0.8;1" dur={`${11 + (x % 6)}s`} begin={`${-(x % 7)}s`} repeatCount="indefinite" />
+          <ellipse cx={x} cy={106} rx="4.5" ry="6.5" fill="url(#windowWarmth)" opacity={windowGlow}>
+            <animate attributeName="opacity" values={`${windowGlow};${windowGlow * 0.12};${windowGlow * 0.12};${windowGlow * 1.3};${windowGlow};${windowGlow * 1.15};${windowGlow}`} keyTimes="0;0.12;0.3;0.45;0.62;0.8;1" dur={`${6 + (x % 4)}s`} begin={`${-(x % 7)}s`} repeatCount="indefinite" />
           </ellipse>
         </React.Fragment>
       ))}
@@ -228,8 +230,8 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           {/* Mullion cross */}
           <line x1={x} y1={72} x2={x} y2={83} stroke={T.color.gold} strokeWidth="0.25" opacity="0.2" />
           <line x1={x - 4} y1={77.5} x2={x + 4} y2={77.5} stroke={T.color.gold} strokeWidth="0.25" opacity="0.2" />
-          <ellipse cx={x} cy={77} rx="3" ry="4" fill="url(#windowWarmth)" opacity={windowGlow * 0.9}>
-            <animate attributeName="opacity" values={`${windowGlow * 0.9};${windowGlow * 1.25};${windowGlow * 0.7};${windowGlow * 1.1};${windowGlow * 0.08};${windowGlow * 0.9}`} keyTimes="0;0.25;0.42;0.6;0.78;1" dur={`${8 + (x % 8)}s`} begin={`${-(x % 6)}s`} repeatCount="indefinite" />
+          <ellipse cx={x} cy={77} rx="4" ry="5.5" fill="url(#windowWarmth)" opacity={windowGlow * 0.9}>
+            <animate attributeName="opacity" values={`${windowGlow * 0.9};${windowGlow * 1.25};${windowGlow * 0.7};${windowGlow * 1.1};${windowGlow * 0.08};${windowGlow * 0.9}`} keyTimes="0;0.25;0.42;0.6;0.78;1" dur={`${5 + (x % 5)}s`} begin={`${-(x % 6)}s`} repeatCount="indefinite" />
           </ellipse>
         </React.Fragment>
       ))}
