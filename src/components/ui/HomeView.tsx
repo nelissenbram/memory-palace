@@ -575,15 +575,22 @@ export default function HomeView() {
   const goUpload = () => { localStorage.setItem("mp_spotlight_target", "import-upload"); handleNavigateLibrary(); };
   const yrs = allMemories.map((m) => (m.mem.createdAt ? new Date(m.mem.createdAt).getFullYear() : 0)).filter(Boolean);
   const yearRange = yrs.length ? `${Math.min(...yrs)}–${Math.max(...yrs)}` : undefined;
-  // Only sources a browser can actually paint — repairs the dead thumbs in
-  // the fan and the blank squares in the strip (audio dataUrls, missing
-  // video posters, stale references all fall through to null).
+  // Same source logic as MediaThumb (the component the Library itself uses):
+  // photos/paintings/albums paint their dataUrl DIRECTLY; video/audio only a
+  // stored thumbnailUrl. Preferring thumbnailUrl for photos was the source of
+  // the dead fan thumbs (stale/expired poster references).
   const validImg = (s: string | null | undefined): string | null =>
     s && (s.startsWith("data:image") || s.startsWith("http") || s.startsWith("blob:") || s.startsWith("/")) ? s : null;
+  const memSrc = (m: Mem): string | null => {
+    const isImage = m.type === "photo" || m.type === "painting" || m.type === "album";
+    if (isImage) return validImg(m.dataUrl) || validImg(m.thumbnailUrl);
+    const isVideo = m.type === "video" || !!m.videoBlob;
+    const isAudio = m.type === "audio" || m.type === "voice" || m.type === "interview" || !!m.voiceBlob;
+    if (isVideo || isAudio) return validImg(m.thumbnailUrl);
+    return validImg(m.dataUrl) || validImg(m.thumbnailUrl);
+  };
   const libThumbs = Array.from(new Set(
-    recentMemories
-      .map((r) => validImg(r.mem.thumbnailUrl) || ((r.mem.dataUrl && !r.mem.videoBlob) ? validImg(r.mem.dataUrl) : null))
-      .filter((x): x is string => !!x)
+    recentMemories.map((r) => memSrc(r.mem)).filter((x): x is string => !!x)
   )).slice(0, 3);
   // Steward brain — one smart, non-duplicative suggestion (never re-offers the
   // Palace/Library anchors that already sit right below).
@@ -639,7 +646,7 @@ export default function HomeView() {
 
   // "Your memories" strip — brings back Recent Memories + On This Day + a
   // compact portrait, the emotional content that the plain relay had dropped.
-  const memImg = (m: Mem): string | null => validImg(m.thumbnailUrl) || ((m.dataUrl && !m.videoBlob) ? validImg(m.dataUrl) : null);
+  const memImg = memSrc;
   const otdIds = new Set(onThisDayMemories.map((x) => x.mem.id));
   // No blank squares: on-this-day items always show (imageless ones get the
   // story-card treatment), the recent long-tail only when it has an image.
