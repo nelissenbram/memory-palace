@@ -179,7 +179,7 @@ function MeIcon({ color = "currentColor", size = 16 }: { color?: string; size?: 
 /* ------------------------------------------------------------------ */
 
 function ModeIcon({ mode, active, size = 16, color: colorOverride }: { mode: ModeKey | "me" | "help" | "explore"; active: boolean; size?: number; color?: string }) {
-  const activeColor = T.color.gold;
+  const activeColor = "currentColor";
   const inactiveColor = "currentColor";
   const color = colorOverride ?? (active ? activeColor : inactiveColor);
 
@@ -226,7 +226,13 @@ const MODE_LABEL: Record<ModeKey, string> = {
 
 const EASE = "cubic-bezier(0.4, 0, 0.2, 1)";
 const EASE_OUT = "cubic-bezier(0.0, 0, 0.2, 1)";
-const EASE_SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+
+/* Atrium elevation grammar (AtriumRelay SHADOW): 3 steps of one warm ink. */
+const NAV_SHADOW_1 = "0 0.25rem 1rem rgba(64,59,54,0.07)";
+const NAV_SHADOW_2 = "0 0.5rem 1.5rem rgba(64,59,54,0.14)";
+const NAV_TOP_HIGHLIGHT = "inset 0 0.0625rem 0 rgba(255,255,255,0.5)";
+const NAV_HAIRLINE = "#E3D6BC";
+const NAV_MUTED = "#716A5E";
 
 /* ------------------------------------------------------------------ */
 /*  Keyframe styles (injected once)                                    */
@@ -235,37 +241,29 @@ const EASE_SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 const KEYFRAMES = `
 /* Focus-visible outlines for all NavigationBar buttons */
 [data-nav-bar] button:focus-visible {
-  outline: 0.125rem solid ${T.color.gold} !important;
-  outline-offset: 0.125rem !important;
+  outline: 0.1875rem solid ${T.color.gold} !important;
+  outline-offset: 0.1875rem !important;
 }
 @keyframes navSlideDown {
   0%   { opacity: 0; transform: translateX(-50%) translateY(-1.5rem) scale(0.96); }
-  60%  { opacity: 1; transform: translateX(-50%) translateY(0.1rem) scale(1.005); }
   100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
 }
 @keyframes navSlideUp {
   0%   { opacity: 0; transform: translateY(2rem); }
-  60%  { opacity: 1; transform: translateY(-0.1rem); }
   100% { opacity: 1; transform: translateY(0); }
 }
 @keyframes navPulse {
   0%   { transform: scale(1); }
-  40%  { transform: scale(1.08); }
+  40%  { transform: scale(1.03); }
   100% { transform: scale(1); }
 }
 @keyframes navMobileIconPop {
   0%   { transform: scale(1); }
-  50%  { transform: scale(1.2); }
-  100% { transform: scale(1.1); }
+  50%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
 }
-@keyframes navGlowPulse {
-  0%   { box-shadow: 0 0.25rem 1.5rem rgba(209,175,55,0.08); }
-  50%  { box-shadow: 0 0.25rem 2rem rgba(209,175,55,0.14); }
-  100% { box-shadow: 0 0.25rem 1.5rem rgba(209,175,55,0.08); }
-}
-@keyframes navAvatarShine {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
+@media (prefers-reduced-motion: reduce) {
+  [data-nav-bar], [data-nav-bar] * { animation: none !important; transition: none !important; }
 }
 `;
 
@@ -274,7 +272,8 @@ const KEYFRAMES = `
 /* ------------------------------------------------------------------ */
 
 function activeIndicatorBg(_mode: ModeKey | "me"): string {
-  return `linear-gradient(135deg, ${T.color.gold} 0%, ${T.color.terracotta} 100%)`;
+  // Ember terracotta — gold is reserved for "the palace itself" (Atrium rule).
+  return "#B85C38";
 }
 
 function activeTextColor(_mode: ModeKey | "me"): string {
@@ -282,7 +281,7 @@ function activeTextColor(_mode: ModeKey | "me"): string {
 }
 
 function activeIndicatorShadow(_mode: ModeKey | "me"): string {
-  return "0 0.125rem 0.75rem rgba(209,175,55,0.3), 0 0.0625rem 0.25rem rgba(198,107,61,0.2)";
+  return NAV_SHADOW_1;
 }
 
 /* ------------------------------------------------------------------ */
@@ -399,10 +398,9 @@ function NavigationBar({
         left: `${bRect.left - cRect.left}px`,
         width: `${bRect.width}px`,
         height: "0.1875rem",
-        background: `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.gold})`,
+        background: "#B85C38",
         borderRadius: "0 0 0.1875rem 0.1875rem",
-        transition: `left 0.35s ${EASE_SPRING}, width 0.35s ${EASE}`,
-        boxShadow: `0 0.125rem 0.5rem rgba(198,107,61,0.35)`,
+        transition: `left 0.35s ${EASE}, width 0.35s ${EASE}`,
       });
     } else {
       // Desktop: pill is rendered directly on the active button (no separate indicator)
@@ -482,15 +480,17 @@ function NavigationBar({
             position: "fixed",
             bottom: 0,
             left: 0,
-            right: "env(safe-area-inset-right, 0px)",
+            right: 0,
             zIndex: 50,
             background: `${T.color.linen}E0`,
             backdropFilter: isMobile ? "blur(0.75rem)" : "blur(1.5rem) saturate(180%)",
             WebkitBackdropFilter: isMobile ? "blur(0.75rem)" : "blur(1.5rem) saturate(180%)",
-            borderTop: `0.0625rem solid rgba(238,234,227,0.6)`,
+            borderTop: `0.0625rem solid ${NAV_HAIRLINE}`,
             display: "flex",
             alignItems: "stretch",
             justifyContent: "space-around",
+            paddingLeft: "env(safe-area-inset-left, 0px)",
+            paddingRight: "env(safe-area-inset-right, 0px)",
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
             transform: hidden ? "translateY(100%)" : "translateY(0)",
             opacity: hidden ? 0 : 1,
@@ -509,8 +509,8 @@ function NavigationBar({
                   width: "0.0625rem",
                   alignSelf: "center",
                   height: "1.25rem",
-                  background: `linear-gradient(180deg, transparent, ${T.color.sandstone}44, transparent)`,
-                  margin: "0 0.125rem",
+                  background: NAV_HAIRLINE,
+                  margin: 0,
                   flexShrink: 0,
                 }} />
               );
@@ -527,7 +527,7 @@ function NavigationBar({
               : isHelp ? nudgeActive
               : hasSpecialActive ? false  /* suppress mode highlight when a special tab is active */
               : mode === currentMode;
-            const color = isActive ? T.color.terracotta : T.color.muted;
+            const color = isActive ? "#9A4F2A" : NAV_MUTED;
 
             return (
               <button
@@ -565,6 +565,7 @@ function NavigationBar({
                 aria-current={isActive ? "page" : undefined}
                 style={{
                   flex: 1,
+                  minWidth: "2.75rem",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
@@ -578,12 +579,11 @@ function NavigationBar({
                   color,
                   fontFamily: T.font.body,
                   fontSize: "0.6875rem",
-                  fontWeight: isActive ? 600 : 500,
-                  letterSpacing: "0.03em",
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
                   textTransform: "uppercase" as const,
                   transition: `color 0.3s ${EASE}, opacity 0.3s ${EASE}`,
-                  opacity: isActive ? 1 : 0.7,
-                  WebkitTapHighlightColor: "transparent",
+                                    WebkitTapHighlightColor: "transparent",
                   WebkitAppearance: "none" as const,
                   position: "relative",
                 }}
@@ -594,11 +594,11 @@ function NavigationBar({
                     alignItems: "center",
                     justifyContent: "center",
                     lineHeight: 1,
-                    transition: `transform 0.3s ${EASE_SPRING}`,
-                    transform: isActive ? "scale(1.1)" : "scale(1)",
+                    transition: `transform 0.3s ${EASE}`,
+                    transform: "scale(1)",
                     animation:
                       pulsingMode === mode
-                        ? `navMobileIconPop 0.4s ${EASE_SPRING}`
+                        ? `navMobileIconPop 0.4s ${EASE}`
                         : "none",
                   }}
                   aria-hidden
@@ -612,11 +612,9 @@ function NavigationBar({
                 <span
                   style={{
                     opacity: isActive ? 1 : 0,
-                    transform: isActive ? "scaleY(1) translateY(0)" : "scaleY(0) translateY(-0.125rem)",
-                    transformOrigin: "top center",
-                    height: isActive ? "1rem" : "0",
+                    height: "1rem",
                     overflow: "hidden",
-                    transition: `opacity 0.3s ${EASE}, transform 0.3s ${EASE}`,
+                    transition: `opacity 0.3s ${EASE}`,
                   }}
                 >
                   {t(labelKey)}
@@ -624,7 +622,7 @@ function NavigationBar({
                 {/* Subtle unread indicator — gold dot with gentle pulse */}
                 {isNotifications && notifCount > 0 && (
                   <>
-                    <style>{`@keyframes mpNavBellPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.55);} 50% { box-shadow:0 0 0 0.375rem rgba(212,175,55,0);} }`}</style>
+                    <style>{`@keyframes mpNavBellPulse { 0%,100% { box-shadow:0 0 0 0 rgba(184,92,56,0.45);} 50% { box-shadow:0 0 0 0.375rem rgba(184,92,56,0);} }`}</style>
                     <span style={{
                       position: "absolute",
                       top: "0.25rem",
@@ -633,9 +631,9 @@ function NavigationBar({
                       width: "0.5rem",
                       height: "0.5rem",
                       borderRadius: "50%",
-                      background: `radial-gradient(circle, #F5D76E 0%, ${T.color.gold} 70%)`,
+                      background: "#B85C38",
                       border: `0.0625rem solid ${T.color.linen}`,
-                      animation: "mpNavBellPulse 2.2s ease-in-out infinite",
+                      animation: "mpNavBellPulse 4s ease-in-out infinite",
                     }} />
                   </>
                 )}
@@ -657,14 +655,14 @@ function NavigationBar({
               style={{
                 position: "fixed",
                 bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))",
-                right: "0.5rem",
+                right: "calc(0.5rem + env(safe-area-inset-right, 0px))",
                 width: "12rem",
                 background: `${T.color.linen}f8`,
                 backdropFilter: "blur(1rem)",
                 WebkitBackdropFilter: "blur(1rem)",
                 borderRadius: "0.75rem",
-                border: `1px solid ${T.color.cream}`,
-                boxShadow: "0 -4px 24px rgba(44,44,42,.18)",
+                border: `0.0625rem solid ${NAV_HAIRLINE}`,
+                boxShadow: NAV_SHADOW_2,
                 overflow: "hidden",
                 zIndex: 60,
                 animation: "navSlideUp .2s ease both",
@@ -698,14 +696,14 @@ function NavigationBar({
                   width: "100%", padding: "0.875rem 1rem",
                   display: "flex", alignItems: "center", gap: "0.625rem",
                   background: "none", border: "none",
-                  borderBottom: `1px solid ${T.color.cream}`,
+                  borderBottom: `0.0625rem solid ${NAV_HAIRLINE}`,
                   cursor: "pointer", fontFamily: T.font.body,
-                  fontSize: "0.875rem", fontWeight: 500,
-                  color: T.color.charcoal, textAlign: "left",
+                  fontSize: "0.9375rem", fontWeight: 500,
+                  color: "#403B36", textAlign: "left",
                   minHeight: "2.75rem",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={NAV_MUTED} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
                 {t("startTutorial")}
               </button>
               <button
@@ -719,12 +717,12 @@ function NavigationBar({
                   display: "flex", alignItems: "center", gap: "0.625rem",
                   background: "none", border: "none",
                   cursor: "pointer", fontFamily: T.font.body,
-                  fontSize: "0.875rem", fontWeight: 500,
-                  color: T.color.charcoal, textAlign: "left",
+                  fontSize: "0.9375rem", fontWeight: 500,
+                  color: "#403B36", textAlign: "left",
                   minHeight: "2.75rem",
                 }}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><circle cx="12" cy="10" r="0.5" fill={T.color.walnut} stroke="none" /><path d="M10 7.5a2 2 0 1 1 2.5 1.94V12" /></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={NAV_MUTED} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><circle cx="12" cy="10" r="0.5" fill={NAV_MUTED} stroke="none" /><path d="M10 7.5a2 2 0 1 1 2.5 1.94V12" /></svg>
                 {t("helpCenter")}
               </button>
             </div>
@@ -740,14 +738,14 @@ function NavigationBar({
               bottom: "calc(4.5rem + env(safe-area-inset-bottom, 0px))",
               left: "50%",
               transform: "translateX(-50%)",
-              background: T.color.charcoal,
+              background: "linear-gradient(165deg, #403B36, #2E2A26)",
               color: T.color.white,
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
               fontWeight: 500,
               padding: "0.75rem 1.25rem",
               borderRadius: "0.75rem",
-              boxShadow: "0 0.5rem 2rem rgba(44,44,42,0.25)",
+              boxShadow: NAV_SHADOW_2,
               zIndex: 60,
               cursor: "pointer",
               animation: "navSlideUp 0.3s ease both",
@@ -785,10 +783,10 @@ function NavigationBar({
           background: `${T.color.linen}C7`,
           backdropFilter: "blur(1.5rem) saturate(180%)",
           WebkitBackdropFilter: "blur(1.5rem) saturate(180%)",
-          border: `0.0625rem solid rgba(238,234,227,0.5)`,
+          border: `0.0625rem solid ${NAV_HAIRLINE}`,
           boxShadow: scrollShrunk
-            ? "0 0.25rem 2rem rgba(44,44,42,0.1), 0 0.0625rem 0.25rem rgba(44,44,42,0.04)"
-            : "0 0.25rem 1.5rem rgba(44,44,42,0.07), 0 0.0625rem 0.125rem rgba(44,44,42,0.03)",
+            ? `${NAV_SHADOW_2}, ${NAV_TOP_HIGHLIGHT}`
+            : `${NAV_SHADOW_1}, ${NAV_TOP_HIGHLIGHT}`,
           borderRadius: "2.25rem",
           padding: "0.375rem",
           height: "3.5rem",
@@ -837,10 +835,10 @@ function NavigationBar({
                   background: isActive
                     ? activeIndicatorBg(mode)
                     : isHovered
-                      ? "rgba(44,44,42,0.06)"
+                      ? "rgba(64,59,54,0.06)"
                       : "transparent",
                   boxShadow: isActive ? activeIndicatorShadow(mode) : "none",
-                  color: isActive ? activeTextColor(mode) : T.color.walnut,
+                  color: isActive ? activeTextColor(mode) : NAV_MUTED,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
                   fontWeight: isActive ? 600 : 500,
@@ -848,11 +846,10 @@ function NavigationBar({
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                   flexShrink: 0,
-                  transition: `color 0.3s ${EASE}, background 0.35s ${EASE}, box-shadow 0.35s ${EASE}, font-weight 0.3s ${EASE}`,
+                  transition: `color 0.3s ${EASE}, background 0.35s ${EASE}, box-shadow 0.35s ${EASE}`,
                   animation:
-                    pulsingMode === mode ? `navPulse 0.35s ${EASE_SPRING}` : "none",
-                  opacity: !isActive && !isHovered ? 0.75 : 1,
-                }}
+                    pulsingMode === mode ? `navPulse 0.35s ${EASE}` : "none",
+                                  }}
               >
                 <span
                   aria-hidden
@@ -864,8 +861,8 @@ function NavigationBar({
                     height: "1rem",
                     lineHeight: 1,
                     flexShrink: 0,
-                    transition: `transform 0.3s ${EASE_SPRING}`,
-                    transform: isActive ? "scale(1.1)" : "scale(1)",
+                    transition: `transform 0.3s ${EASE}`,
+                    transform: "scale(1)",
                   }}
                 >
                   <ModeIcon mode={mode} active={isActive} size={16} color={isActive ? activeTextColor(mode) : undefined} />
@@ -902,10 +899,10 @@ function NavigationBar({
                   background: isExploreActive
                     ? activeIndicatorBg("me")
                     : isExploreHovered
-                      ? "rgba(44,44,42,0.06)"
+                      ? "rgba(64,59,54,0.06)"
                       : "transparent",
                   boxShadow: isExploreActive ? activeIndicatorShadow("me") : "none",
-                  color: isExploreActive ? activeTextColor("me") : T.color.walnut,
+                  color: isExploreActive ? activeTextColor("me") : NAV_MUTED,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
                   fontWeight: isExploreActive ? 600 : 500,
@@ -914,8 +911,7 @@ function NavigationBar({
                   whiteSpace: "nowrap",
                   flexShrink: 0,
                   transition: `color 0.3s ${EASE}, background 0.35s ${EASE}, box-shadow 0.35s ${EASE}`,
-                  opacity: isExploreActive || isExploreHovered ? 1 : 0.75,
-                }}
+                                  }}
               >
                 <span
                   aria-hidden
@@ -927,8 +923,8 @@ function NavigationBar({
                     height: "1rem",
                     lineHeight: 1,
                     flexShrink: 0,
-                    transition: `transform 0.3s ${EASE_SPRING}`,
-                    transform: isExploreActive ? "scale(1.1)" : "scale(1)",
+                    transition: `transform 0.3s ${EASE}`,
+                    transform: "scale(1)",
                   }}
                 >
                   <ExploreIcon size={16} color={isExploreActive ? activeTextColor("me") : undefined} />
@@ -967,10 +963,10 @@ function NavigationBar({
                   background: isMeActive
                     ? activeIndicatorBg("me")
                     : isMeHovered
-                      ? "rgba(44,44,42,0.06)"
+                      ? "rgba(64,59,54,0.06)"
                       : "transparent",
                   boxShadow: isMeActive ? activeIndicatorShadow("me") : "none",
-                  color: isMeActive ? activeTextColor("me") : T.color.walnut,
+                  color: isMeActive ? activeTextColor("me") : NAV_MUTED,
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
                   fontWeight: isMeActive ? 600 : 500,
@@ -978,9 +974,8 @@ function NavigationBar({
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                   flexShrink: 0,
-                  transition: `color 0.3s ${EASE}, background 0.35s ${EASE}, box-shadow 0.35s ${EASE}, font-weight 0.3s ${EASE}`,
-                  opacity: !isMeActive && !isMeHovered ? 0.75 : 1,
-                }}
+                  transition: `color 0.3s ${EASE}, background 0.35s ${EASE}, box-shadow 0.35s ${EASE}`,
+                                  }}
               >
                 <span
                   aria-hidden
@@ -992,8 +987,8 @@ function NavigationBar({
                     height: "1rem",
                     lineHeight: 1,
                     flexShrink: 0,
-                    transition: `transform 0.3s ${EASE_SPRING}`,
-                    transform: isMeActive ? "scale(1.1)" : "scale(1)",
+                    transition: `transform 0.3s ${EASE}`,
+                    transform: "scale(1)",
                   }}
                 >
                   <ModeIcon mode="me" active={isMeActive} size={16} color={isMeActive ? activeTextColor("me") : undefined} />
@@ -1011,7 +1006,7 @@ function NavigationBar({
             style={{
               width: "0.0625rem",
               height: "1.25rem",
-              background: `linear-gradient(180deg, transparent, ${T.color.sandstone}44, transparent)`,
+              background: NAV_HAIRLINE,
               margin: "0 0.5rem",
               flexShrink: 0,
             }}
@@ -1038,22 +1033,19 @@ function NavigationBar({
                 width: "2.25rem",
                 height: "2.25rem",
                 borderRadius: "50%",
-                border: `0.0625rem solid ${helpMenuOpen ? T.color.sandstone : T.color.cream}`,
+                border: `0.0625rem solid ${helpMenuOpen ? T.color.sandstone : NAV_HAIRLINE}`,
                 background: helpMenuOpen ? `${T.color.sandstone}30` : "transparent",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
                 transition: `all 0.25s ${EASE}`,
-                fontFamily: T.font.display,
-                fontSize: "0.8125rem",
-                fontWeight: 600,
-                color: helpMenuOpen ? T.color.terracotta : T.color.muted,
+                color: helpMenuOpen ? T.color.terracotta : NAV_MUTED,
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = T.color.terracotta; e.currentTarget.style.color = T.color.terracotta; }}
-              onMouseLeave={e => { if (!helpMenuOpen) { e.currentTarget.style.borderColor = T.color.cream; e.currentTarget.style.color = T.color.muted; } }}
+              onMouseLeave={e => { if (!helpMenuOpen) { e.currentTarget.style.borderColor = NAV_HAIRLINE; e.currentTarget.style.color = NAV_MUTED; } }}
             >
-              ?
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 0 1 4.5 1.5c0 1.6-2 2-2 3.5" /><circle cx="12" cy="17.4" r="0.5" fill="currentColor" stroke="none" /></svg>
             </button>
 
             {helpMenuOpen && (
@@ -1069,8 +1061,8 @@ function NavigationBar({
                   backdropFilter: "blur(1rem)",
                   WebkitBackdropFilter: "blur(1rem)",
                   borderRadius: "0.75rem",
-                  border: `1px solid ${T.color.cream}`,
-                  boxShadow: "0 8px 32px rgba(44,44,42,.15)",
+                  border: `0.0625rem solid ${NAV_HAIRLINE}`,
+                  boxShadow: NAV_SHADOW_2,
                   overflow: "hidden",
                   zIndex: 200,
                   animation: "fadeUp .15s ease",
@@ -1102,19 +1094,19 @@ function NavigationBar({
                     gap: "0.625rem",
                     background: "none",
                     border: "none",
-                    borderBottom: `1px solid ${T.color.cream}`,
+                    borderBottom: `0.0625rem solid ${NAV_HAIRLINE}`,
                     cursor: "pointer",
                     fontFamily: T.font.body,
-                    fontSize: "0.8125rem",
+                    fontSize: "0.9375rem",
                     fontWeight: 500,
-                    color: T.color.charcoal,
+                    color: "#403B36",
                     textAlign: "left",
                     transition: "background 0.15s",
                   }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${T.color.sandstone}15`; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={NAV_MUTED} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg>
                   {t("startTutorial")}
                 </button>
                 <button
@@ -1133,16 +1125,16 @@ function NavigationBar({
                     border: "none",
                     cursor: "pointer",
                     fontFamily: T.font.body,
-                    fontSize: "0.8125rem",
+                    fontSize: "0.9375rem",
                     fontWeight: 500,
-                    color: T.color.charcoal,
+                    color: "#403B36",
                     textAlign: "left",
                     transition: "background 0.15s",
                   }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${T.color.sandstone}15`; }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.color.walnut} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><circle cx="12" cy="10" r="0.5" fill={T.color.walnut} stroke="none" /><path d="M10 7.5a2 2 0 1 1 2.5 1.94V12" /></svg>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={NAV_MUTED} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><circle cx="12" cy="10" r="0.5" fill={NAV_MUTED} stroke="none" /><path d="M10 7.5a2 2 0 1 1 2.5 1.94V12" /></svg>
                   {t("helpCenter")}
                 </button>
               </div>

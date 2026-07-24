@@ -1,0 +1,90 @@
+{
+  "verdict": "The bar's bones are right — positions, layout routing (useIsCompact), touch targets, aria semantics, i18n, and its two key type sizes (0.8125rem desktop pills = RT.meta, 0.6875rem mobile labels = RT.overline) already sit on the Atrium ramp — but the skin is one design generation behind. Four systematic drifts do nearly all the damage: (1) gold is spent on generic navigation state (activeIndicatorBg's gold→terracotta gradient, gold active icons, gold unread dots), breaking the \"gold = the palace itself\" rule; (2) all depth is cool charcoal rgba(44,44,42,…) at six ad-hoc values instead of the 3-step warm-ink SHADOW grammar rgba(64,59,54,…); (3) motion is springy (EASE_SPRING overshoot, scale pops, a 2.2s off-tempo pulse) with zero prefers-reduced-motion handling — the plan's only hard-rule violation; (4) inks and hairlines use legacy tokens (muted/walnut double-dimmed with opacity, cream-on-cream borders, alpha-band dividers vs the relay's opaque #E3D6BC). The alignment story is token substitution and motion calming, not redesign: nine mechanical, low-risk edits (~8h) to C:\\Users\\nelis\\memory-palace-staging\\src\\components\\ui\\NavigationBar.tsx plus small touches in NotificationBell.tsx, and the bar reads as the same candlelit ledger the relay board now is. Nothing moves, nothing is removed.",
+  "changes": [
+    {
+      "rank": 1,
+      "zone": "active state (desktop pills + mobile indicator + mobile active ink)",
+      "title": "Retire the gilt-gradient active state; active = Ember terracotta, gold only for the palace",
+      "spec": "In NavigationBar.tsx: (a) activeIndicatorBg() (lines 276-278) → return solid \"#B85C38\" (drop the gold→terracotta gradient; two accent registers never share a surface in the relay). activeTextColor() stays white — #FCFAF5 on #B85C38 holds for 0.8125rem/600 labels. (b) Mobile sliding indicator in updateIndicator() (lines 402-405): background → solid \"#B85C38\"; delete the boxShadow (hairline-height bars carry no elevation). (c) Mobile active ink (line 530): `isActive ? T.color.terracotta : …` → `isActive ? \"#9A4F2A\" : …` (the darker glyph terracotta; #C66B3D is too light for 0.6875rem caps on linen). (d) ModeIcon (line 182): `const activeColor = T.color.gold` → \"currentColor\" so the mobile active icon inherits the tab's single ink instead of rendering gold beside a terracotta label. Optional single sanctioned gold cue: pass color=\"#D4AF37\" to the active \"3d\" (Palace) tab icon only — the one tab that IS the palace. No layout or behavior changes.",
+      "why": "Highest-visibility violation of the system's core rule (gold reserved for the palace/keystone register), on chrome visible on every screen. One function-return and three token swaps buy the biggest perceived-alignment jump in the plan.",
+      "effort": "1h"
+    },
+    {
+      "rank": 2,
+      "zone": "elevation (bar shell, active pill glow, menus, toast, hover tint)",
+      "title": "Map all shadows onto the 3-step warm-ink SHADOW grammar; delete dead keyframes",
+      "spec": "Duplicate the relay constants at the top of NavigationBar.tsx (SHADOW 1 = \"0 0.25rem 1rem rgba(64,59,54,0.07)\", SHADOW 2 = \"0 0.5rem 1.5rem rgba(64,59,54,0.14)\", TOP_HIGHLIGHT = \"inset 0 0.0625rem 0 rgba(255,255,255,0.5)\" — AtriumRelay.tsx lines 92-98). Then: desktop bar (lines 789-791) rest → SHADOW[1] + TOP_HIGHLIGHT, scrollShrunk → SHADOW[2] (scroll = one shadow step, the relay rule). activeIndicatorShadow() (lines 284-286) → return \"none\" or SHADOW[1] (kills the stale rgba(209,175,55)/rgba(198,107,61) glow). Help menus (lines 667, 1073) and toast (line 750) → SHADOW[2] in rem, symmetric blur (drop the -4px negative-Y and all px units). Desktop hover tint rgba(44,44,42,0.06) (lines 840, 905, 970) → rgba(64,59,54,0.06). Toast surface (line 743): T.color.charcoal #1F1B1A → \"linear-gradient(165deg, #403B36, #2E2A26)\" (keystone ink, AtriumRelay ACCENT.anchor.tileBg); text stays #FCFAF5. Delete unused navGlowPulse (lines 261-265) and navAvatarShine (lines 266-269) keyframes — nothing references them.",
+      "why": "Cool charcoal rgba(44,44,42,…) at six ad-hoc values is the most pervasive off-system signal; warm ink is what makes the surface family feel candlelit rather than clinical. Pure find-and-replace.",
+      "effort": "1h"
+    },
+    {
+      "rank": 3,
+      "zone": "motion accessibility + focus ring",
+      "title": "Add the prefers-reduced-motion kill switch and match the relay focus ring",
+      "spec": "In the KEYFRAMES string (lines 235-270): (a) grow the focus rule to the relay spec — `outline: 0.1875rem solid ${T.color.gold}; outline-offset: 0.1875rem` (currently 0.125/0.125 vs AtriumRelay.tsx line 596). (b) Append, mirroring AtriumRelay lines 605-608: `@media (prefers-reduced-motion: reduce) { [data-nav-bar], [data-nav-bar] * { animation: none !important; transition: none !important; } }`. No refactor of inline styles into classes is needed — stylesheet `!important` declarations override inline `animation:`/`transition:` styles, and both the tabs and the mpNavBellPulse dot live inside [data-nav-bar]. (c) In NotificationBell.tsx: give the pulsing dot (lines 508-521) a class (e.g. mp-bell-dot), move its `animation` into the adjacent inline <style> wrapped in `@media (prefers-reduced-motion: no-preference)` — the bell also renders outside [data-nav-bar] contexts.",
+      "why": "Reduced-motion fallbacks are a hard rule of this pass and the bar has none; the focus-ring fix makes keyboard focus read identically across board and bar. Fifteen lines total.",
+      "effort": "0.75h"
+    },
+    {
+      "rank": 4,
+      "zone": "motion (easing, overshoot, scale, weight)",
+      "title": "De-spring the bar: relay-calm easing, no scale pops, static type weight",
+      "spec": "In NavigationBar.tsx: (a) replace every EASE_SPRING usage (lines 404, 597, 601, 853, 867, 930, 995) with EASE and delete the constant (line 229). (b) navSlideDown/navSlideUp (lines 241-250): remove the 60% overshoot frames so entrances settle in one motion. (c) navPulse cap at scale(1.03) (line 253); navMobileIconPop cap at 1.05 and end at scale(1), not 1.1 (lines 256-260). (d) Remove the persistent `transform: isActive ? \"scale(1.1)\" : \"scale(1)\"` on all four active-icon spans (lines 598, 868, 931, 996) — active state is already carried by the terracotta surface/indicator from change 1. (e) Desktop pills: remove `font-weight 0.3s` from the transition strings (lines 851, 981) and set constant fontWeight 600 on all pill labels (lines 846, 911, 976) — weight encodes role, not state, and the 500↔600 flip reflows neighbouring pills mid-transition. Keep the scroll-shrink scale(0.95) — it is a layout affordance, not a bounce.",
+      "why": "The relay budget is zero bounce, zero resting scale — hover is translateY + one shadow step. Overshoot easing and scaled-up active icons are the clearest 'different product' tell after the gold, and removing them also kills real jitter (width reflow, icon pop).",
+      "effort": "1.5h"
+    },
+    {
+      "rank": 5,
+      "zone": "inactive ink + hairlines",
+      "title": "One muted ink (#716A5E, full opacity) and the opaque HAIRLINE token (#E3D6BC) everywhere",
+      "spec": "Ink: mobile inactive tabs (line 530) T.color.muted → \"#716A5E\" and delete `opacity: isActive ? 1 : 0.7` (line 585); desktop inactive pills (lines 843, 908, 973) T.color.walnut → \"#716A5E\" and remove the three `opacity: … 0.75` lines (854, 917, 982) — muted-plus-opacity lands near #AAA298 on the glass, under 4.5:1 for 0.6875rem caps; the relay expresses hierarchy through the token (descColor #716A5E), never double-dimming. Help '?' button color (line 1051) T.color.muted → \"#716A5E\"; help-menu SVG strokes (lines 708, 727, 1117, 1145) T.color.walnut → \"#716A5E\". Hairlines: mobile borderTop rgba(238,234,227,0.6) (line 490) and desktop border rgba(238,234,227,0.5) (line 788) → `0.0625rem solid #E3D6BC`; both divider gradients `${T.color.sandstone}44` (lines 512, 1014) → solid #E3D6BC (keep 0.0625rem × 1.25rem geometry); all `1px solid ${T.color.cream}` borders in help menus and the '?' ring (lines 666, 701, 1041, 1072, 1105) → `0.0625rem solid #E3D6BC`. The frosted `${T.color.linen}E0`/`C7` glass backgrounds stay — only edges change.",
+      "why": "Cream-on-cream borders read as no border, and alpha bands are exactly what the relay's elevation pass removed ('pre-mixed opaque hexes, no alpha bands'). One 20-line token sweep fixes contrast, crispness, and dialect together.",
+      "effort": "1h"
+    },
+    {
+      "rank": 6,
+      "zone": "unread signal + bell trigger (NavigationBar + NotificationBell)",
+      "title": "Move the unread dot to the ember register and the shared 4s breath",
+      "spec": "NavigationBar.tsx lines 624-641: dot background `radial-gradient(#F5D76E → T.color.gold)` → solid \"#B85C38\" (keep the linen border, converted to 0.0625rem); mpNavBellPulse ripple rgba(212,175,55,0.55) → rgba(184,92,56,0.45); retime 2.2s → 4s. NotificationBell.tsx lines 481, 517-519: same swaps for mpBellPulse and the dot gradient (the count badge at line 493 is already terracotta — leave it). Hoist one shared keyframe (e.g. mpEmberPulse) into NavigationBar's KEYFRAMES and reference it from both spots; gate per change 3. Also in NotificationBell.tsx: trigger boxShadow \"0 2px 10px rgba(44,44,42,.08)\" (line 442) → \"none\" (its peer, the help '?', is shadowless); dropdown/sheet shadows (lines 557, 589) → \"0 0.5rem 1.5rem rgba(64,59,54,0.14)\" in rem; the 1.5px badge borders → 0.09375rem.",
+      "why": "In the system, unseen activity is an ember (EmbersRow badge #B85C38), never gold, and everything that breathes does so on the shared 4s tempo. Aligning both bells at once prevents a side-by-side mismatch inside the same bar.",
+      "effort": "0.75h"
+    },
+    {
+      "rank": 7,
+      "zone": "mobile tab labels",
+      "title": "Commit mobile labels to the full Overline voice and stop the height reflow",
+      "spec": "NavigationBar.tsx mobile label (lines 580-583 style, 612-623 span): set constant fontWeight 700 (drop the 600/500 toggle) and letterSpacing \"0.12em\" (currently 0.03em) — the exact Overline spec (AtriumRelay.tsx line 131). Then reserve the label row: fixed `height: \"1rem\"` for ALL tabs and animate only opacity (active 1, inactive 0) — delete the height/scaleY toggling (lines 615-617) so the icon of the tapped tab no longer jumps vertically under the thumb. Width is safe (only the active label is visible, unchanged behavior); total bar height stays constant, which also stabilizes the 3.5rem overlay anchors at lines 659 and 547 of NotificationBell.",
+      "why": "The bar speaks a slightly different dialect of the system's one small-caps voice (right size, wrong weight/tracking), and the height-animating label is the last 'reflow as feedback' move in the app — outside the motion budget and a genuine tap-ergonomics defect.",
+      "effort": "0.75h"
+    },
+    {
+      "rank": 8,
+      "zone": "help menu & '?' typography",
+      "title": "Snap help-menu type to one ramp step; replace the serif '?' with the icon; hoist RT",
+      "spec": "NavigationBar.tsx: help-menu items currently render at two sizes for the same menu — 0.875rem mobile (lines 703, 722; not a ramp step) and 0.8125rem desktop (lines 1108, 1137). Unify both at \"0.9375rem\" (RT.body — tappable menu rows, matching relay chips); item color T.color.charcoal → \"#403B36\" (ink) while there. The '?' button (lines 1048-1056): replace the Fraunces `fontFamily: T.font.display` text glyph with the circle-question SVG already in ModeIcon's \"help\" case (lines 198-202) at size 16 — removes the bar's one typographic stray. Structural fix: hoist RT (and Overline) from AtriumRelay.tsx into src/lib/theme.ts or a new src/lib/typeRamp.ts, re-export from AtriumRelay for compatibility, and use RT.meta/RT.body/RT.overline in NavigationBar so the 0.875rem class of drift cannot recur.",
+      "why": "0.875rem is not a ramp step, the identical menu renders at two sizes, and the display-face '?' breaks the icon language. The RT hoist is an hour of mechanical work that locks the bar to the board's single tuning point.",
+      "effort": "1h"
+    },
+    {
+      "rank": 9,
+      "zone": "mobile safe areas & overlay anchoring",
+      "title": "Symmetric safe-area insets; keep overlays clear of the real bar edge",
+      "spec": "NavigationBar.tsx mobile <nav> (lines 482-494): currently `left: 0, right: env(safe-area-inset-right)` — asymmetric, so the first tab sits under the notch in landscape and a dead strip appears on the right. Change to `left: 0, right: 0` and move insets inside as `paddingLeft/paddingRight: \"env(safe-area-inset-left/right, 0px)\"` (paddingBottom already correct) — the linen surface stays continuous under the home indicator. Help menu (line 660): right → `calc(0.5rem + env(safe-area-inset-right, 0px))`. Give every tab `minWidth: \"2.75rem\"` in the button style block (line 566) so outer targets never fall below the touch minimum at 320px, and set `margin: 0` on the spacer (line 513) to return that sliver to hit area. After change 7 fixes bar height to a constant, verify the 3.5rem/4.5rem overlay anchors (lines 659, 740) still clear the bar; bump to 3.75rem if needed.",
+      "why": "A premium bar that hides its first tab under the notch undercuts every craft fix above it; zero visual redesign, pure correctness.",
+      "effort": "1h"
+    }
+  ],
+  "skip": [
+    "Layout & positions — floating centered top pill (desktop), fixed bottom bar (mobile), the compact-viewport routing (useIsCompact), minimal 3D mode, scroll-shrink concept, and hidden/translate behavior are all sound; nothing moves.",
+    "Frosted linen glass surfaces — `${T.color.linen}E0`/`C7` + backdrop blur is a sanctioned surface treatment; keep as-is (only the edges get the HAIRLINE token per change 5).",
+    "Type sizes already on the RT ramp — desktop pill labels 0.8125rem = RT.meta and mobile tab labels 0.6875rem = RT.overline; no size changes, only weight/tracking (change 7) and token sourcing (change 8).",
+    "Touch targets & tap feedback — 2.75rem minHeight on mobile tabs and hapticLight() on mode change match the system's calm physical register.",
+    "Accessibility semantics — aria-current on active tabs, role=menu/menuitem, aria-haspopup/aria-expanded on the help button, aria-label on the nav: all correct, untouched.",
+    "i18n — every visible string goes through useTranslation('navigation'); nothing hardcoded; this plan introduces no new strings.",
+    "rem discipline — the file is ~95% rem already; the few px strays are all captured inside changes 2, 5 and 6.",
+    "Sliding-indicator mechanics — getBoundingClientRect measurement, resize/orientationchange re-measure, and left/width transition are solid engineering; only its color/shadow/easing tokens change (changes 1, 2, 4).",
+    "Icon language — the bespoke stroke icons (Atrium courtyard, Library book, Palace temple, compass, silhouette) are on-brand and consistent with RelayIcons' engraved style; no redraw.",
+    "NotificationBell dropdown content (rows, grouping, terracotta unread rule, footer) — close enough to register and out of scope; only its trigger shadow, container shadows, and pulse are touched (changes 3, 6).",
+    "MobileBottomBar.tsx — a separate in-palace 3D action bar, not part of the nav chrome being aligned; leave for a later pass rather than widen this one."
+  ]
+}

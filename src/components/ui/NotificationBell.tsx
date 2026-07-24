@@ -429,7 +429,7 @@ export default function NotificationBell() {
           width: isMobile ? "2.75rem" : "2.25rem",
           height: isMobile ? "2.75rem" : "2.25rem",
           borderRadius: isMobile ? "1.375rem" : "1.125rem",
-          border: `1px solid ${open ? T.color.sandstone : T.color.cream}`,
+          border: `0.0625rem solid ${open ? T.color.sandstone : "#E3D6BC"}`,
           background: open ? `${T.color.sandstone}30` : `${T.color.white}ee`,
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
@@ -439,7 +439,7 @@ export default function NotificationBell() {
           cursor: "pointer",
           position: "relative",
           transition: "transform .2s, background .2s",
-          boxShadow: "0 2px 10px rgba(44,44,42,.08)",
+          boxShadow: "none",
           pointerEvents: "auto",
         }}
         onMouseEnter={(e) => {
@@ -478,7 +478,9 @@ export default function NotificationBell() {
         {count > 0 && (
           <>
             <style>{`
-              @keyframes mpBellPulse { 0%,100% { box-shadow:0 0 0 0 rgba(212,175,55,0.55);} 50% { box-shadow:0 0 0 0.375rem rgba(212,175,55,0);} }
+              @keyframes mpBellPulse { 0%,100% { box-shadow:0 0 0 0 rgba(184,92,56,0.45);} 50% { box-shadow:0 0 0 0.375rem rgba(184,92,56,0);} }
+              .mp-bell-dot { animation: none; }
+              @media (prefers-reduced-motion: no-preference) { .mp-bell-dot { animation: mpBellPulse 4s ease-in-out infinite; } }
             `}</style>
             {count > 3 ? (
               <span
@@ -491,7 +493,7 @@ export default function NotificationBell() {
                   height: "1rem",
                   borderRadius: "0.5rem",
                   background: T.color.terracotta,
-                  border: `1.5px solid ${T.color.linen}`,
+                  border: `0.09375rem solid ${T.color.linen}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -507,6 +509,7 @@ export default function NotificationBell() {
             ) : (
               <span
                 aria-label={t("unreadNotifications", { count: String(count) })}
+                className="mp-bell-dot"
                 style={{
                   position: "absolute",
                   top: "0.25rem",
@@ -514,9 +517,8 @@ export default function NotificationBell() {
                   width: "0.5rem",
                   height: "0.5rem",
                   borderRadius: "50%",
-                  background: `radial-gradient(circle, #F5D76E 0%, ${T.color.gold} 70%)`,
-                  border: `1.5px solid ${T.color.linen}`,
-                  animation: "mpBellPulse 2.2s ease-in-out infinite",
+                  background: "#B85C38",
+                  border: `0.09375rem solid ${T.color.linen}`,
                 }}
               />
             )}
@@ -554,7 +556,7 @@ export default function NotificationBell() {
               borderRadius: "1rem 1rem 0 0",
               border: `1px solid ${T.color.cream}`,
               borderBottom: "none",
-              boxShadow: "0 -8px 48px rgba(44,44,42,.18)",
+              boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
               overflow: "hidden",
               zIndex: 99,
               animation: "fadeUp .25s ease",
@@ -586,7 +588,7 @@ export default function NotificationBell() {
             WebkitBackdropFilter: "blur(16px)",
             borderRadius: "1rem",
             border: `1px solid ${T.color.cream}`,
-            boxShadow: "0 12px 48px rgba(44,44,42,.18)",
+            boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
             overflow: "hidden",
             animation: "fadeUp .2s ease",
           }}
