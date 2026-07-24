@@ -55,7 +55,7 @@ export type RelayEmbers = { title: string; people: EmberPerson[]; onOpen: () => 
 interface AtriumRelayProps {
   greeting: string;
   userName: string | null;
-  datumLine: string;
+  datumLine?: string;
   ledger?: RelayLedger | null;
   embers?: RelayEmbers | null;
   /** Subtle time-of-day wash laid over the board top (TIME_WASH from lib/warmth). */
@@ -228,7 +228,7 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem", padding: "0.85rem 1rem 1rem" }}>
           <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleL, lineHeight: RT.lhDisplay, color: a.titleColor }}>{tile.title}</span>
-          <span style={{ fontFamily: T.font.body, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor }}>{tile.desc}</span>
+          <span style={{ fontFamily: T.font.body, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.desc}</span>
           {tile.thumbs && tile.thumbs.length > 0 ? <span style={{ marginTop: "0.5rem" }}><ThumbFan thumbs={tile.thumbs} /></span> : tile.chips && tile.chips.length > 0 ? <span style={{ marginTop: "0.5rem" }}><WingFan chips={tile.chips} /></span> : null}
           {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, marginTop: "0.35rem", fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         </div>
@@ -273,9 +273,9 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
         <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <Medallion k={tile.key} accent={accent} index={index} big animated={animated} />
-            <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleM, lineHeight: RT.lhDisplay, color: a.titleColor, minWidth: 0, overflowWrap: "break-word" }}>{tile.title}</span>
+            <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleM, lineHeight: RT.lhDisplay, color: a.titleColor, minWidth: 0, overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.title}</span>
           </div>
-          <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, maxWidth: "62%" }}>{tile.desc}</span>
+          <span style={{ fontFamily: T.font.body, fontWeight: 400, fontSize: RT.body, lineHeight: RT.lhBody, color: a.descColor, maxWidth: "62%", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.desc}</span>
           {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
         </div>
         <span aria-hidden="true" className="relay-invite-arrow" style={{ position: "absolute", right: "0.9rem", bottom: "0.85rem", fontFamily: T.font.body, fontWeight: 700, fontSize: RT.titleS, color: a.tileTop }}>→</span>
@@ -298,7 +298,7 @@ function Tile({ tile, accent, index, isMobile, suggestionKey, warmth, soonLabel 
       ) : null}
       <Medallion k={tile.key} accent={accent} index={index} animated={animated} />
       <span style={{ position: "relative", display: "flex", flexDirection: "column", minWidth: 0, maxWidth: "68%" }}>
-        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word" }}>{tile.title}</span>
+        <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleS, lineHeight: RT.lhDisplay, color: a.titleColor, overflowWrap: "break-word", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{tile.title}</span>
         {tile.datum ? <span style={{ fontFamily: T.font.body, fontWeight: 700, fontSize: RT.meta, color: a.datumColor, fontVariantNumeric: "tabular-nums" }}>{tile.datum}</span> : null}
       </span>
       {/* back-card: the tile turns over to the full USP-style scene — no
@@ -399,7 +399,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
           <h1 style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: isMobile ? RT.h1m : RT.h1, lineHeight: 1.12, margin: 0, color: "#403B36" }}>
             {greeting}
             {userName ? (
-              <>,{" "}<span className="relay-name" style={{ fontStyle: "italic", fontWeight: 700, whiteSpace: "nowrap", background: "linear-gradient(100deg, #8A3F1E 0%, #B85C38 30%, #E8C255 50%, #B85C38 70%, #8A3F1E 100%)", backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "#9A4F2A" }}>{userName}</span></>
+              <>,{" "}<span className="relay-name" style={{ fontStyle: "italic", fontWeight: 700, whiteSpace: "nowrap", background: "linear-gradient(100deg, #3E5230 0%, #56683C 32%, #E8C255 50%, #56683C 68%, #3E5230 100%)", backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "#56683C" }}>{userName}</span></>
             ) : onAddName ? (
               <>{" "}<button type="button" onClick={(e) => { e.stopPropagation(); onAddName(); }} style={{ fontFamily: "inherit", fontStyle: "italic", fontSize: isMobile ? RT.titleS : RT.titleL, fontWeight: 600, color: "#9A4F2A", background: "none", border: "none", borderBottom: "0.125rem solid rgba(212,175,55,0.6)", padding: "0 0.15rem", cursor: "pointer", verticalAlign: "baseline" }}>{labels?.addYourName ?? "add your name"}</button></>
             ) : null}
@@ -431,7 +431,7 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
               ) : null}
             </div>
           ) : null}
-          <p style={{ fontFamily: T.font.body, fontSize: RT.body, fontWeight: 500, color: "#716A5E", margin: "0.4rem 0 0", fontVariantNumeric: "tabular-nums" }}>{datumLine}</p>
+          {datumLine ? <p style={{ fontFamily: T.font.body, fontSize: RT.body, fontWeight: 500, color: "#716A5E", margin: "0.4rem 0 0", fontVariantNumeric: "tabular-nums" }}>{datumLine}</p> : null}
         </div>
 
         {chips.length > 0 ? (
@@ -464,8 +464,8 @@ export default function AtriumRelay({ greeting, userName, datumLine, ledger, emb
           </span>
           <span style={{ display: "flex", flexDirection: "column", gap: "0.05rem", minWidth: 0 }}>
             <Overline color="#9A4F2A">{suggestedLabel}</Overline>
-            <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleM, lineHeight: RT.lhDisplay, color: "#403B36" }}>{suggestion.title}</span>
-            <span style={{ fontFamily: T.font.body, fontSize: RT.body, lineHeight: RT.lhBody, color: "#716A5E" }}>{suggestion.reason}</span>
+            <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: RT.titleM, lineHeight: RT.lhDisplay, color: "#403B36", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{suggestion.title}</span>
+            <span style={{ fontFamily: T.font.body, fontSize: RT.body, lineHeight: RT.lhBody, color: "#716A5E", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{suggestion.reason}</span>
             {suggestion.progress ? (
               <span aria-hidden="true" style={{ display: "block", marginTop: "0.4rem", height: "0.3rem", borderRadius: "1rem", background: "rgba(154,79,42,0.14)", overflow: "hidden", maxWidth: "16rem" }}>
                 <span style={{ display: "block", height: "100%", width: `${Math.round((100 * suggestion.progress.done) / Math.max(1, suggestion.progress.total))}%`, background: "#B85C38", borderRadius: "1rem" }} />

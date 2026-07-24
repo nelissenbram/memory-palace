@@ -864,8 +864,7 @@ export default function HomeView() {
           <AtriumRelay
             greeting={relayGreeting}
             userName={userName}
-            datumLine={relayDatum}
-            ledger={relayLedger}
+            ledger={null}
             embers={relayEmbers}
             topWash={TIME_WASH[timeOfDay]}
             warmth={warmthLevel}
