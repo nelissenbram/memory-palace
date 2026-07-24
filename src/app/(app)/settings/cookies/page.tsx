@@ -26,8 +26,8 @@ function CookieIcon({ size = 24 }: { size?: number }) {
 function EssentialIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <path d="M16 3L5 8v7c0 7.5 4.7 13.5 11 16 6.3-2.5 11-8.5 11-16V8L16 3z" fill={C.sage} opacity="0.12" stroke={C.sage} strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M11 16l3.5 3.5L21.5 12" stroke={C.sage} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path d="M16 3L5 8v7c0 7.5 4.7 13.5 11 16 6.3-2.5 11-8.5 11-16V8L16 3z" fill="#56683C" opacity="0.12" stroke="#56683C" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M11 16l3.5 3.5L21.5 12" stroke="#56683C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </svg>
   );
 }
@@ -35,11 +35,11 @@ function EssentialIcon({ size = 24 }: { size?: number }) {
 function PreferencesIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="11" fill={C.terracotta} opacity="0.1" stroke={C.terracotta} strokeWidth="1.5" />
-      <path d="M10 12h12M10 16h12M10 20h12" stroke={C.terracotta} strokeWidth="1.3" strokeLinecap="round" />
-      <circle cx="14" cy="12" r="1.5" fill={C.terracotta} />
-      <circle cx="20" cy="16" r="1.5" fill={C.terracotta} />
-      <circle cx="16" cy="20" r="1.5" fill={C.terracotta} />
+      <circle cx="16" cy="16" r="11" fill="#9A4F2A" opacity="0.1" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M10 12h12M10 16h12M10 20h12" stroke="#9A4F2A" strokeWidth="1.3" strokeLinecap="round" />
+      <circle cx="14" cy="12" r="1.5" fill="#9A4F2A" />
+      <circle cx="20" cy="16" r="1.5" fill="#9A4F2A" />
+      <circle cx="16" cy="20" r="1.5" fill="#9A4F2A" />
     </svg>
   );
 }
@@ -75,6 +75,7 @@ function Toggle({
       aria-checked={checked}
       role="switch"
       disabled={disabled}
+      className="mp-cookie-toggle"
       style={{
         flexShrink: 0,
         width: "3rem",
@@ -82,9 +83,9 @@ function Toggle({
         borderRadius: "0.8125rem",
         border: "none",
         cursor: disabled ? "not-allowed" : "pointer",
-        background: checked ? C.sage : C.sandstone,
+        background: checked ? "#56683C" /* Atrium sage */ : C.sandstone,
         position: "relative",
-        transition: "background 0.2s",
+        transition: "background 0.2s ease",
         opacity: disabled ? 0.6 : 1,
       }}
     >
@@ -96,8 +97,8 @@ function Toggle({
         position: "absolute",
         top: "0.1875rem",
         left: checked ? "1.5625rem" : "0.1875rem",
-        transition: "left 0.2s",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+        transition: "left 0.2s ease",
+        boxShadow: "0 0.0625rem 0.1875rem rgba(64,59,54,0.15)", // Atrium warm ink
       }} />
     </button>
   );
@@ -171,18 +172,25 @@ export default function CookieSettingsPage() {
 
   return (
     <div>
+      {/* Atrium tokens: reduced-motion gate + gold focus ring for the switch */}
+      <style>{`
+        @media (prefers-reduced-motion: reduce) {
+          .mp-cookie-toggle, .mp-cookie-toggle > div { transition: none !important; }
+        }
+        .mp-cookie-toggle:focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem; }
+      `}</style>
       {/* Header — desktop only */}
       {!isMobile && (
         <div style={{ marginBottom: "2rem" }}>
           <h2 style={{
-            fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
-            color: C.charcoal, margin: "0 0 0.5rem",
+            fontFamily: F.display, fontSize: "1.75rem", fontWeight: 600,
+            color: "#403B36" /* Atrium ink */, margin: "0 0 0.5rem", lineHeight: 1.15,
           }}>
             {t("pageTitle")}
           </h2>
           <p style={{
-            fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
-            margin: 0, lineHeight: 1.5, maxWidth: "37.5rem",
+            fontFamily: F.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium muted */,
+            margin: 0, lineHeight: 1.4, maxWidth: "37.5rem",
           }}>
             {t("pageDescription")}
           </p>
@@ -193,9 +201,9 @@ export default function CookieSettingsPage() {
       <div style={{
         background: C.white,
         borderRadius: "1rem",
-        border: `1px solid ${C.cream}`,
+        border: "0.0625rem solid #E3D6BC", // Atrium hairline
         padding: "1.5rem 1.75rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium S1 + top highlight
         marginBottom: "1rem",
       }}>
         <div style={{
@@ -204,15 +212,15 @@ export default function CookieSettingsPage() {
         }}>
           <CookieIcon size={24} />
           <h3 style={{
-            fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
-            color: C.charcoal, margin: 0,
+            fontFamily: F.display, fontSize: "1.1875rem", fontWeight: 600,
+            color: "#403B36" /* Atrium ink */, margin: 0,
           }}>
             {t("whatAreCookiesTitle")}
           </h3>
         </div>
         <p style={{
           fontFamily: F.body, fontSize: "0.8125rem",
-          color: C.walnut, lineHeight: 1.6, margin: 0,
+          color: "#716A5E" /* Atrium muted */, lineHeight: 1.4, margin: 0,
         }}>
           {t("whatAreCookiesBody")}
         </p>
@@ -225,9 +233,9 @@ export default function CookieSettingsPage() {
           <div key={i} style={{
             background: C.white,
             borderRadius: "1rem",
-            border: `1px solid ${C.cream}`,
+            border: "0.0625rem solid #E3D6BC", // Atrium hairline
             padding: "1.5rem 1.75rem",
-            boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+            boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium S1 + top highlight
             marginBottom: "1rem",
           }}>
             <div style={{
@@ -236,8 +244,8 @@ export default function CookieSettingsPage() {
             }}>
               <cat.IconComponent size={24} />
               <h3 style={{
-                fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
-                color: C.charcoal, margin: 0, flex: 1,
+                fontFamily: F.display, fontSize: "1.1875rem", fontWeight: 600,
+                color: "#403B36" /* Atrium ink */, margin: 0, flex: 1,
               }}>
                 {t(cat.titleKey)}
               </h3>
@@ -252,18 +260,18 @@ export default function CookieSettingsPage() {
             </div>
             <p style={{
               fontFamily: F.body, fontSize: "0.8125rem",
-              color: C.walnut, lineHeight: 1.6, margin: 0,
+              color: "#716A5E" /* Atrium muted */, lineHeight: 1.4, margin: 0,
               padding: "0.875rem 1rem",
-              borderRadius: "0.625rem",
+              borderRadius: "0.75rem",
               background: C.linen,
-              border: `1px solid ${C.cream}`,
+              border: "0.0625rem solid #E3D6BC", // Atrium hairline
             }}>
               {t(cat.descriptionKey)}
             </p>
             {cat.alwaysOn && (
               <p style={{
-                fontFamily: F.body, fontSize: "0.75rem",
-                color: C.muted, lineHeight: 1.5,
+                fontFamily: F.body, fontSize: "0.8125rem",
+                color: "#716A5E" /* Atrium muted */, lineHeight: 1.4,
                 margin: "0.75rem 0 0", fontStyle: "italic",
               }}>
                 {t("alwaysOnNote")}

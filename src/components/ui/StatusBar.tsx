@@ -22,7 +22,7 @@ export default function StatusBar({ earned, total, percentage, onAchievements, o
       backdropFilter: "blur(12px)",
       WebkitBackdropFilter: "blur(12px)",
       border: `1px solid ${T.color.cream}`,
-      boxShadow: "0 4px 16px rgba(44,44,42,.08)",
+      boxShadow: "0 4px 16px rgba(64,59,54,.08)",
       animation: "fadeIn .4s ease .8s both",
       overflow: "hidden",
     }}>

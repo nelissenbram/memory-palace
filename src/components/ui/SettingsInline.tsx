@@ -70,7 +70,7 @@ const PAGE_MAP: Record<SettingsTab, React.LazyExoticComponent<any>> = {
 };
 
 const fallback = (
-  <div style={{ padding: "2rem", textAlign: "center", color: T.color.muted, fontFamily: T.font.body, fontSize: "0.875rem" }}>
+  <div style={{ padding: "2rem", textAlign: "center", color: "#716A5E" /* Atrium token: muted, full opacity */, fontFamily: T.font.body, fontSize: "0.8125rem" /* Atrium meta */ }}>
     Loading...
   </div>
 );
@@ -102,13 +102,15 @@ function SettingsInline() {
       paddingBottom: compact ? "calc(4.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
       zIndex: 1,
     }}>
+      {/* Atrium tokens: gold focus ring + prefers-reduced-motion gate for tab transitions */}
+      <style>{`[data-mp-settings-tabs] button:focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}@media (prefers-reduced-motion:reduce){[data-mp-settings-tabs] button{transition:none}}`}</style>
       {/* Mobile + iPad portrait: horizontal scrollable tab bar */}
       {compact ? (
         <div style={{ display: "flex", flexDirection: "column", maxWidth: 1100, margin: "0 auto" }}>
           <nav data-mp-settings-tabs aria-label={tc("settingsNavigation")} style={{
             position: "sticky", top: 0, zIndex: 10,
             overflowX: "auto", whiteSpace: "nowrap",
-            borderBottom: `1px solid ${T.color.cream}`,
+            borderBottom: `0.0625rem solid #E3D6BC`,
             background: T.color.white,
             padding: "0.25rem 0.5rem",
             paddingTop: "calc(0.25rem + env(safe-area-inset-top, 0px))",
@@ -128,14 +130,14 @@ function SettingsInline() {
                     display: "inline-flex", alignItems: "center", gap: "0.375rem",
                     minHeight: "2.75rem",
                     padding: "0.625rem 1rem",
-                    borderRadius: "0.625rem",
+                    borderRadius: "0.75rem" /* Atrium small-control radius */,
                     border: "none",
                     textDecoration: "none",
-                    background: isActive ? `${T.color.terracotta}10` : "transparent",
-                    color: isActive ? T.color.terracotta : T.color.charcoal,
-                    fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 500,
+                    background: isActive ? "rgba(154,79,42,0.11)" /* Atrium terracotta medallion tint */ : "transparent",
+                    color: isActive ? "#9A4F2A" /* Atrium terracotta glyph */ : "#403B36" /* Atrium ink */,
+                    fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, fontWeight: isActive ? 600 : 500,
                     cursor: "pointer",
-                    transition: "all .15s",
+                    transition: "all 0.2s ease" /* Atrium motion budget */,
                   }}
                 >
                   <SettingsIcon name={item.iconKey} size={16} />
@@ -149,13 +151,13 @@ function SettingsInline() {
                 display: "inline-flex", alignItems: "center", gap: "0.375rem",
                 minHeight: "2.75rem",
                 padding: "0.625rem 1rem",
-                borderRadius: "0.625rem",
+                borderRadius: "0.75rem" /* Atrium small-control radius */,
                 border: "none",
                 background: "transparent",
-                color: T.color.muted,
-                fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 500,
+                color: "#716A5E" /* Atrium token: muted, full opacity */,
+                fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, fontWeight: 500,
                 cursor: "pointer",
-                transition: "all .15s",
+                transition: "all 0.2s ease" /* Atrium motion budget */,
               }}
             >
               <SettingsIcon name="signOut" size={16} />
@@ -172,8 +174,8 @@ function SettingsInline() {
           <nav data-mp-settings-tabs aria-label={tc("settingsNavigation")} style={{ width: "13.75rem", flexShrink: 0, display: "flex", flexDirection: "column" }}>
             <div style={{
               background: T.color.white, borderRadius: "1rem",
-              border: `1px solid ${T.color.cream}`, padding: "0.5rem",
-              boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+              border: `0.0625rem solid #E3D6BC`, padding: "0.5rem",
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)" /* Atrium S1 warm-ink shadow */,
               display: "flex", flexDirection: "column", flex: 1,
             }}>
               {filteredItems.map((item) => {
@@ -185,13 +187,13 @@ function SettingsInline() {
                     aria-current={isActive ? "page" : undefined}
                     style={{
                       display: "flex", alignItems: "center", gap: "0.625rem",
-                      padding: "0.75rem 0.875rem", borderRadius: "0.625rem",
+                      padding: "0.75rem 0.875rem", borderRadius: "0.75rem" /* Atrium small-control radius */,
                       border: "none", width: "100%", textAlign: "left",
-                      background: isActive ? `${T.color.terracotta}10` : "transparent",
-                      color: isActive ? T.color.terracotta : T.color.charcoal,
-                      fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: isActive ? 600 : 500,
+                      background: isActive ? "rgba(154,79,42,0.11)" /* Atrium terracotta medallion tint */ : "transparent",
+                      color: isActive ? "#9A4F2A" /* Atrium terracotta glyph */ : "#403B36" /* Atrium ink */,
+                      fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, fontWeight: isActive ? 600 : 500,
                       cursor: "pointer",
-                      transition: "all .15s",
+                      transition: "all 0.2s ease" /* Atrium motion budget */,
                     }}
                   >
                     <SettingsIcon name={item.iconKey} size={16} />
@@ -204,13 +206,13 @@ function SettingsInline() {
                 onClick={handleSignOut}
                 style={{
                   display: "flex", alignItems: "center", gap: "0.625rem",
-                  padding: "0.75rem 0.875rem", borderRadius: "0.625rem",
+                  padding: "0.75rem 0.875rem", borderRadius: "0.75rem" /* Atrium small-control radius */,
                   border: "none", width: "100%", textAlign: "left",
                   background: "transparent",
-                  color: T.color.muted,
-                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 500,
+                  color: "#716A5E" /* Atrium token: muted, full opacity */,
+                  fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, fontWeight: 500,
                   cursor: "pointer",
-                  transition: "all .15s",
+                  transition: "all 0.2s ease" /* Atrium motion budget */,
                   marginTop: "0.25rem",
                 }}
               >

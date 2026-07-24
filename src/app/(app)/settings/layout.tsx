@@ -282,7 +282,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               borderRadius: "1rem",
               border: `1px solid ${T.color.cream}`,
               padding: "0.5rem",
-              boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+              boxShadow: "0 2px 8px rgba(64,59,54,.04)",
               display: "flex",
               flexDirection: "column",
             }}>

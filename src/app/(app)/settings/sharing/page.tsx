@@ -138,15 +138,16 @@ export default function SharingPage() {
     <>
       {/* Toast */}
       {toast && (
-        <div style={{
+        <div className="sharing-toast" style={{
           position: "fixed", top: "1rem", right: "1rem", zIndex: 9999,
           padding: "0.875rem 1.25rem", borderRadius: "0.75rem",
-          background: toast.type === "success" ? T.color.sage : "#C05050",
-          color: T.color.white, fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`,
-          fontWeight: 500, boxShadow: "0 4px 16px rgba(0,0,0,.15)",
+          background: toast.type === "success" ? "#56683C" /* Atrium token: sage */ : "#C05050",
+          color: T.color.white, fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`,
+          fontWeight: 500, boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
           animation: "fadeIn .2s ease",
         }}>
           {toast.message}
+          <style>{`@media (prefers-reduced-motion: reduce){ .sharing-toast{ animation: none; } }`}</style>
         </div>
       )}
 
@@ -154,21 +155,21 @@ export default function SharingPage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
+        border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
         padding: `${1.75 * scale}rem ${2 * scale}rem`,
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1
         marginBottom: "1.5rem",
       }}>
         <div style={{ marginBottom: "1.25rem" }}>
           <h3 style={{
-            fontFamily: T.font.display, fontSize: `${1.25 * scale}rem`, fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 0.375rem",
+            fontFamily: T.font.display, fontSize: `${1.1875 * scale}rem`, fontWeight: 600, lineHeight: 1.15,
+            color: "#403B36", margin: "0 0 0.375rem",
           }}>
             {t("publishManage")}
           </h3>
           <p style={{
-            fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: T.color.muted,
-            margin: 0, lineHeight: 1.5,
+            fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E",
+            margin: 0, lineHeight: 1.4,
           }}>
             {t("publishManageHint")}
           </p>
@@ -176,24 +177,24 @@ export default function SharingPage() {
 
         {loading ? (
           <div style={{ textAlign: "center", padding: "2.5rem 1rem" }}>
-            <div style={{
+            <div className="sharing-spin" style={{
               width: "2.5rem", height: "2.5rem", margin: "0 auto 1rem",
-              border: `3px solid ${T.color.sandstone}40`,
-              borderTopColor: T.color.gold,
+              border: "0.1875rem solid #E3D6BC", // Atrium token: hairline
+              borderTopColor: "#B85C38", // Atrium token: ember
               borderRadius: "50%",
               animation: "spin 0.8s linear infinite",
             }} />
-            <p style={{ fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, color: T.color.muted, margin: 0 }}>
+            <p style={{ fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E", margin: 0 }}>
               {ts("loadingWings")}
             </p>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce){ .sharing-spin{ animation: none; } }`}</style>
           </div>
         ) : wings.length === 0 ? (
           <div style={{
             padding: "1.5rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen, border: `1px solid ${T.color.cream}`,
+            background: T.color.linen, border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
             textAlign: "center",
-            fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, color: T.color.muted,
+            fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, color: "#716A5E",
           }}>
             {ts("noWingsYet")}
           </div>
@@ -204,10 +205,10 @@ export default function SharingPage() {
               <button
                 onClick={selectAll}
                 style={{
-                  fontFamily: T.font.body, fontSize: `${0.75 * scale}rem`, fontWeight: 500,
-                  padding: "0.375rem 0.75rem", borderRadius: "1rem",
-                  border: `1px solid ${T.color.sandstone}`, background: "transparent",
-                  color: T.color.walnut, cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, fontWeight: 500,
+                  padding: "0.375rem 0.75rem", borderRadius: "2rem", // Atrium token: pill
+                  border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: "transparent",
+                  color: "#716A5E", cursor: "pointer",
                 }}
               >
                 {t("selectAll")}
@@ -215,10 +216,10 @@ export default function SharingPage() {
               <button
                 onClick={deselectAll}
                 style={{
-                  fontFamily: T.font.body, fontSize: `${0.75 * scale}rem`, fontWeight: 500,
-                  padding: "0.375rem 0.75rem", borderRadius: "1rem",
-                  border: `1px solid ${T.color.sandstone}`, background: "transparent",
-                  color: T.color.walnut, cursor: "pointer",
+                  fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, fontWeight: 500,
+                  padding: "0.375rem 0.75rem", borderRadius: "2rem", // Atrium token: pill
+                  border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: "transparent",
+                  color: "#716A5E", cursor: "pointer",
                 }}
               >
                 {t("deselectAll")}
@@ -231,36 +232,36 @@ export default function SharingPage() {
                 <div
                   key={wing.id}
                   style={{
-                    border: `1px solid ${selectedWings.has(wing.id) ? T.color.gold : T.color.cream}`,
+                    border: `0.0625rem solid ${selectedWings.has(wing.id) ? "#B85C38" /* Atrium token: ember */ : "#E3D6BC" /* hairline */}`,
                     borderRadius: "0.75rem",
                     overflow: "hidden",
-                    background: selectedWings.has(wing.id) ? `${T.color.gold}06` : T.color.linen,
-                    transition: "border-color 0.15s ease, background 0.15s ease",
+                    background: selectedWings.has(wing.id) ? "#FBF2EC" /* Atrium: premixed terracotta wash */ : T.color.linen,
+                    transition: "border-color 0.2s ease, background 0.2s ease",
                   }}
                 >
                   {/* Wing row */}
                   <label style={{
                     display: "flex", alignItems: "center", gap: "0.625rem",
                     padding: "0.875rem 1rem", cursor: "pointer",
-                    borderBottom: wing.rooms.length > 0 ? `1px solid ${T.color.cream}` : "none",
+                    borderBottom: wing.rooms.length > 0 ? "0.0625rem solid #E3D6BC" /* Atrium token: hairline */ : "none",
                   }}>
                     <input
                       type="checkbox"
                       checked={selectedWings.has(wing.id)}
                       onChange={() => toggleWing(wing.id)}
-                      style={{ accentColor: T.color.gold, width: "1rem", height: "1rem", flexShrink: 0 }}
+                      style={{ accentColor: "#B85C38" /* Atrium token: ember */, width: "1rem", height: "1rem", flexShrink: 0 }}
                     />
                     <span style={{
                       fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, fontWeight: 500,
-                      color: T.color.charcoal, flex: 1,
+                      color: "#403B36", flex: 1,
                     }}>
                       {wing.name}
                     </span>
                     <span style={{
-                      fontFamily: T.font.body, fontSize: `${0.6875 * scale}rem`,
-                      color: wing.published ? T.color.goldDark : T.color.muted,
-                      padding: "0.125rem 0.5rem", borderRadius: "1rem",
-                      background: wing.published ? `${T.color.gold}15` : `${T.color.sandstone}30`,
+                      fontFamily: T.font.body, fontSize: `${0.6875 * scale}rem`, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", // Atrium: the one small-caps voice
+                      color: wing.published ? "#9A4F2A" /* Atrium token: terracotta glyph */ : "#716A5E",
+                      padding: "0.125rem 0.5rem", borderRadius: "2rem", // Atrium token: pill
+                      background: wing.published ? "rgba(154,79,42,0.11)" : "rgba(113,106,94,0.12)",
                     }}>
                       {wing.published ? t("wingPublished") : t("wingUnpublished")}
                     </span>
@@ -282,12 +283,12 @@ export default function SharingPage() {
                             type="checkbox"
                             checked={selectedRooms.has(room.id)}
                             onChange={() => toggleRoom(room.id, wing.id)}
-                            style={{ accentColor: T.color.gold, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
+                            style={{ accentColor: "#B85C38" /* Atrium token: ember */, width: "0.875rem", height: "0.875rem", flexShrink: 0 }}
                           />
                           <span style={{ fontSize: `${1 * scale}rem` }}>{room.icon}</span>
                           <span style={{
                             fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`,
-                            color: T.color.charcoal,
+                            color: "#403B36",
                           }}>
                             {room.name}
                           </span>
@@ -305,15 +306,15 @@ export default function SharingPage() {
                 onClick={handleSave}
                 disabled={isPending || !hasChanges}
                 style={{
-                  fontFamily: T.font.body, fontSize: `${0.875 * scale}rem`, fontWeight: 600,
-                  padding: "0.75rem 1.75rem", borderRadius: "0.625rem", border: "none",
+                  fontFamily: T.font.body, fontSize: `${0.9375 * scale}rem`, fontWeight: 600,
+                  padding: "0.75rem 1.75rem", borderRadius: "0.75rem", border: "none",
                   background: hasChanges
-                    ? `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`
+                    ? "linear-gradient(135deg, #B85C38, #9A4F2A)" /* Atrium: ember → terracotta */
                     : T.color.sandstone,
                   color: T.color.cream,
                   cursor: isPending ? "wait" : hasChanges ? "pointer" : "not-allowed",
                   opacity: isPending ? 0.6 : 1,
-                  transition: "all 0.15s ease",
+                  transition: "all 0.2s ease",
                 }}
               >
                 {isPending ? ts("saving") : t("publishSelected")}
@@ -389,26 +390,26 @@ function PasscodeSection({ scale }: { scale: number }) {
     <div style={{
       background: T.color.white,
       borderRadius: "1rem",
-      border: `1px solid ${T.color.cream}`,
+      border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
       padding: `${1.75 * scale}rem ${2 * scale}rem`,
-      boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1
       marginBottom: "1.5rem",
     }}>
       <h3 style={{
-        fontFamily: T.font.display, fontSize: `${1.25 * scale}rem`, fontWeight: 500,
-        color: T.color.charcoal, margin: "0 0 0.375rem",
+        fontFamily: T.font.display, fontSize: `${1.1875 * scale}rem`, fontWeight: 600, lineHeight: 1.15,
+        color: "#403B36", margin: "0 0 0.375rem",
       }}>
         {t("passcodeAction")}
       </h3>
       <p style={{
-        fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: T.color.muted,
-        margin: "0 0 1.25rem", lineHeight: 1.5,
+        fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E",
+        margin: "0 0 1.25rem", lineHeight: 1.4,
       }}>
         {t("passcodeDesc") || "Create temporary visiting codes so others can access your palace without publishing."}
       </p>
 
       {loading ? (
-        <div style={{ padding: "1rem", textAlign: "center", color: T.color.muted, fontFamily: T.font.body }}>...</div>
+        <div style={{ padding: "1rem", textAlign: "center", color: "#716A5E", fontFamily: T.font.body }}>...</div>
       ) : (
         <>
           {/* Create new code */}
@@ -417,7 +418,7 @@ function PasscodeSection({ scale }: { scale: number }) {
             marginBottom: codes.length > 0 ? "1.25rem" : 0,
           }}>
             <div style={{ flex: 1, minWidth: "8rem" }}>
-              <label style={{ fontFamily: T.font.body, fontSize: `${0.75 * scale}rem`, color: T.color.muted, display: "block", marginBottom: "0.25rem" }}>
+              <label style={{ fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E", display: "block", marginBottom: "0.25rem" }}>
                 Wing
               </label>
               <select
@@ -425,9 +426,9 @@ function PasscodeSection({ scale }: { scale: number }) {
                 onChange={(e) => setSelectedWingId(e.target.value)}
                 style={{
                   width: "100%", fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`,
-                  padding: "0.5rem 0.625rem", borderRadius: "0.5rem",
-                  border: `1px solid ${T.color.sandstone}`, background: T.color.linen,
-                  color: T.color.charcoal, outline: "none",
+                  padding: "0.5rem 0.625rem", borderRadius: "0.75rem", // Atrium: small-control radius
+                  border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: T.color.linen,
+                  color: "#403B36", outline: "none",
                 }}
               >
                 {wings.map((w) => (
@@ -436,7 +437,7 @@ function PasscodeSection({ scale }: { scale: number }) {
               </select>
             </div>
             <div style={{ minWidth: "5rem" }}>
-              <label style={{ fontFamily: T.font.body, fontSize: `${0.75 * scale}rem`, color: T.color.muted, display: "block", marginBottom: "0.25rem" }}>
+              <label style={{ fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E", display: "block", marginBottom: "0.25rem" }}>
                 {t("passcodeExpiry") || "Duration"}
               </label>
               <select
@@ -444,9 +445,9 @@ function PasscodeSection({ scale }: { scale: number }) {
                 onChange={(e) => setHours(Number(e.target.value))}
                 style={{
                   width: "100%", fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`,
-                  padding: "0.5rem 0.625rem", borderRadius: "0.5rem",
-                  border: `1px solid ${T.color.sandstone}`, background: T.color.linen,
-                  color: T.color.charcoal, outline: "none",
+                  padding: "0.5rem 0.625rem", borderRadius: "0.75rem", // Atrium: small-control radius
+                  border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */, background: T.color.linen,
+                  color: "#403B36", outline: "none",
                 }}
               >
                 <option value={1}>1h</option>
@@ -461,8 +462,8 @@ function PasscodeSection({ scale }: { scale: number }) {
               disabled={creating || !selectedWingId}
               style={{
                 fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, fontWeight: 600,
-                padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none",
-                background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                padding: "0.5rem 1rem", borderRadius: "0.75rem", border: "none", // Atrium: small-control radius
+                background: "linear-gradient(135deg, #B85C38, #9A4F2A)", // Atrium: ember → terracotta
                 color: T.color.cream, cursor: creating ? "wait" : "pointer",
                 opacity: creating ? 0.6 : 1, whiteSpace: "nowrap",
               }}
@@ -481,30 +482,30 @@ function PasscodeSection({ scale }: { scale: number }) {
                     key={code.id}
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "0.75rem 1rem", borderRadius: "0.625rem",
-                      background: T.color.linen, border: `1px solid ${T.color.cream}`,
+                      padding: "0.75rem 1rem", borderRadius: "0.75rem", // Atrium: small-control radius
+                      background: T.color.linen, border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
                       gap: "0.75rem", flexWrap: "wrap",
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, minWidth: 0 }}>
                       <code style={{
                         fontFamily: "monospace", fontSize: `${1 * scale}rem`, fontWeight: 700,
-                        color: T.color.goldDark, letterSpacing: "0.1em",
-                        background: `${T.color.gold}12`, padding: "0.25rem 0.625rem",
+                        color: "#9A4F2A" /* Atrium token: terracotta glyph */, letterSpacing: "0.1em",
+                        background: "rgba(154,79,42,0.11)", padding: "0.25rem 0.625rem",
                         borderRadius: "0.375rem",
                       }}>
                         {code.passcode.toUpperCase()}
                       </code>
-                      <span style={{ fontFamily: T.font.body, fontSize: `${0.75 * scale}rem`, color: T.color.muted }}>
+                      <span style={{ fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`, color: "#716A5E" }}>
                         {wing?.name || "—"} · {formatExpiry(code.expiresAt)}
                       </span>
                     </div>
                     <button
                       onClick={() => handleRevoke(code.id)}
                       style={{
-                        fontFamily: T.font.body, fontSize: `${0.75 * scale}rem`,
-                        padding: "0.25rem 0.625rem", borderRadius: "0.375rem",
-                        border: `1px solid #C0505030`, background: "transparent",
+                        fontFamily: T.font.body, fontSize: `${0.8125 * scale}rem`,
+                        padding: "0.25rem 0.625rem", borderRadius: "0.75rem", // Atrium: small-control radius
+                        border: `0.0625rem solid #C0505030`, background: "transparent",
                         color: "#C05050", cursor: "pointer",
                       }}
                     >

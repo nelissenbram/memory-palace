@@ -360,7 +360,7 @@ export default function SubscriptionPage() {
         borderRadius: "1rem",
         border: `1px solid ${C.cream}`,
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 2px 8px rgba(64,59,54,.04)",
         marginBottom: "1.5rem",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
@@ -620,7 +620,7 @@ export default function SubscriptionPage() {
         borderRadius: "1rem",
         border: `1px solid ${C.cream}`,
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 2px 8px rgba(64,59,54,.04)",
         marginBottom: "1.5rem",
       }}>
         <h3 style={{
@@ -726,7 +726,7 @@ export default function SubscriptionPage() {
         borderRadius: "1rem",
         border: `1px solid ${C.cream}`,
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        boxShadow: "0 2px 8px rgba(64,59,54,.04)",
       }}>
         <h3 style={{
           fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
@@ -1142,7 +1142,7 @@ export default function SubscriptionPage() {
           borderRadius: "1rem",
           border: `1px solid ${C.cream}`,
           padding: "1.75rem 2rem",
-          boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+          boxShadow: "0 2px 8px rgba(64,59,54,.04)",
           marginTop: "1.5rem",
         }}>
           <h3 style={{

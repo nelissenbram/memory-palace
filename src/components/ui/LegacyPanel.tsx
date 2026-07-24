@@ -149,9 +149,9 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} style={{
         position: "relative", zIndex: 1,
         width: "95%", maxWidth: "33.75rem", maxHeight: "88vh",
-        background: T.color.linen, borderRadius: "1.25rem",
-        boxShadow: "0 24px 80px rgba(44,44,42,.3)",
-        border: `1px solid ${T.color.cream}`,
+        background: T.color.linen, borderRadius: "1rem",
+        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token S2
+        border: "0.0625rem solid #E3D6BC", // Atrium hairline
         display: "flex", flexDirection: "column",
         animation: "fadeUp .35s ease",
         overflow: "hidden",
@@ -159,51 +159,52 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
         {/* Header */}
         <div style={{
           padding: "1.5rem 1.5rem 1.25rem",
-          borderBottom: `1px solid ${T.color.cream}`,
+          borderBottom: "0.0625rem solid #E3D6BC", // Atrium hairline
           background: `linear-gradient(180deg, ${T.color.warmStone} 0%, ${T.color.linen} 100%)`,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <div style={{
-                width: "3rem", height: "3rem", borderRadius: "0.875rem",
-                background: `${T.color.charcoal}10`,
+                width: "3rem", height: "3rem", borderRadius: "0.85rem",
+                background: "rgba(154,79,42,0.11)", // Atrium terracotta medallion
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {/* Roman temple icon */}
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 9L12 4L21 9" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-                  <line x1="3" y1="9" x2="21" y2="9" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-                  <line x1="6" y1="9.5" x2="6" y2="19" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-                  <line x1="12" y1="9.5" x2="12" y2="19" stroke={T.color.walnut} strokeWidth={1.2} strokeLinecap="round" />
-                  <line x1="18" y1="9.5" x2="18" y2="19" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-                  <line x1="2" y1="20" x2="22" y2="20" stroke={T.color.charcoal} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  {/* Atrium terracotta glyph */}
+                  <path d="M3 9L12 4L21 9" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="3" y1="9" x2="21" y2="9" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="6" y1="9.5" x2="6" y2="19" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="12" y1="9.5" x2="12" y2="19" stroke="#B85C38" strokeWidth={1.2} strokeLinecap="round" />
+                  <line x1="18" y1="9.5" x2="18" y2="19" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <line x1="2" y1="20" x2="22" y2="20" stroke="#9A4F2A" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
               <div>
                 <h2 style={{
                   fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
-                  color: T.color.charcoal, margin: 0,
+                  color: "#403B36", margin: 0, // Atrium ink
                 }}>{t("title")}</h2>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: 0, marginTop: "0.125rem",
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: 0, marginTop: "0.125rem", // Atrium meta/muted
                 }}>{t("subtitle")}</p>
               </div>
             </div>
             <button onClick={onClose} style={{
-              width: "2rem", height: "2rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
-              background: T.color.white, cursor: "pointer", fontSize: "1rem", color: T.color.muted,
+              width: "2rem", height: "2rem", borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", // Atrium hairline
+              background: T.color.white, cursor: "pointer", fontSize: "1rem", color: "#716A5E",
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
             }}>{"\u2715"}</button>
           </div>
 
           {/* Gentle explanation */}
           <div style={{
-            marginTop: "0.875rem", padding: "0.75rem 0.875rem", borderRadius: "0.625rem",
-            background: `${T.color.white}cc`, border: `1px solid ${T.color.sandstone}20`,
+            marginTop: "0.875rem", padding: "0.75rem 0.875rem", borderRadius: "0.7rem",
+            background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", // Atrium cream + hairline
           }}>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
-              lineHeight: 1.6, margin: 0,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted, full opacity
+              lineHeight: 1.4, margin: 0,
             }}>
               {t("description")}
             </p>
@@ -218,7 +219,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
           {/* Loading */}
           {loading && (
             <div style={{
-              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
               textAlign: "center", padding: "2.5rem",
             }}>{t("loading")}</div>
           )}
@@ -226,31 +227,32 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
           {/* Contact list */}
           {!loading && contacts.map((contact) => (
             <div key={contact.id} style={{
-              padding: "0.875rem 1rem", borderRadius: "0.75rem",
-              border: `1px solid ${T.color.cream}`, background: T.color.white,
+              padding: "0.875rem 1rem", borderRadius: "1rem",
+              border: "0.0625rem solid #E3D6BC", background: T.color.white, // Atrium hairline
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token S1
               animation: "fadeUp .3s ease",
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div>
                   <div style={{
-                    fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-                    color: T.color.charcoal,
+                    fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                    color: "#403B36", // Atrium ink, titleS
                   }}>{contact.contact_name}</div>
                   <div style={{
-                    fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, marginTop: "0.125rem",
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.125rem",
                   }}>{contact.contact_email}</div>
                   <div style={{ display: "flex", gap: "0.375rem", marginTop: "0.375rem", flexWrap: "wrap" }}>
                     <span style={{
-                      fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.125rem 0.5rem",
-                      borderRadius: "0.375rem", background: `${T.color.sandstone}15`,
-                      color: T.color.walnut,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", padding: "0.125rem 0.5rem",
+                      borderRadius: "2rem", background: `${T.color.sandstone}15`, // Atrium pill radius
+                      color: "#716A5E",
                     }}>
                       {RELATIONSHIPS.find((r) => r.id === contact.relationship)?.label || contact.relationship}
                     </span>
                     <span style={{
-                      fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.125rem 0.5rem",
-                      borderRadius: "0.375rem", background: `${T.color.sandstone}15`,
-                      color: T.color.walnut,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", padding: "0.125rem 0.5rem",
+                      borderRadius: "2rem", background: `${T.color.sandstone}15`, // Atrium pill radius
+                      color: "#716A5E",
                     }}>
                       {contact.access_level === "full" ? t("fullAccess") :
                        t("wingsAccess", { count: String((contact.accessible_wings || []).length) })}
@@ -259,14 +261,14 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                 </div>
                 <div style={{ display: "flex", gap: "0.375rem" }}>
                   <button onClick={() => startEdit(contact)} style={{
-                    padding: "0.375rem 0.625rem", borderRadius: "0.375rem", border: `1px solid ${T.color.cream}`,
+                    padding: "0.375rem 0.625rem", borderRadius: "0.7rem", border: "0.0625rem solid #E3D6BC",
                     background: T.color.linen, cursor: "pointer", fontFamily: T.font.body,
-                    fontSize: "0.6875rem", color: T.color.walnut, minHeight: "2.75rem",
+                    fontSize: "0.6875rem", color: "#716A5E", minHeight: "2.75rem",
                   }}>{t("edit")}</button>
                   <button onClick={() => handleRemove(contact.id)} style={{
-                    padding: "0.375rem 0.625rem", borderRadius: "0.375rem", border: `1px solid #C1665520`,
-                    background: "#C1665508", cursor: "pointer", fontFamily: T.font.body,
-                    fontSize: "0.6875rem", color: "#C16655", minHeight: "2.75rem",
+                    padding: "0.375rem 0.625rem", borderRadius: "0.7rem", border: "0.0625rem solid rgba(184,92,56,0.25)", // Atrium ember
+                    background: "rgba(184,92,56,0.05)", cursor: "pointer", fontFamily: T.font.body,
+                    fontSize: "0.6875rem", color: "#B85C38", minHeight: "2.75rem",
                   }}>{t("removeBtn")}</button>
                 </div>
               </div>
@@ -282,22 +284,23 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               <div style={{ marginBottom: "0.75rem", display: "flex", justifyContent: "center" }}>
                 {/* Heart/laurel wreath icon for empty state */}
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M8 19C8 16 6 14 6 11S7 6 10 4" stroke={T.color.walnut} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M16 19C16 16 18 14 18 11S17 6 14 4" stroke={T.color.walnut} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M12 7L12.6 9.2L14.8 9.6L12.8 10.8L13.2 13L12 11.4L10.8 13L11.2 10.8L9.2 9.6L11.4 9.2Z" fill={T.color.gold} stroke={T.color.gold} strokeWidth={0.8} strokeLinejoin="round" opacity={0.7} />
-                  <path d="M6.5 8.5C5.3 8.8 4.7 10 5.3 11" stroke={T.color.sandstone} strokeWidth={1.2} strokeLinecap="round" />
-                  <path d="M6 11.5C4.8 11.8 4.2 13 5 14" stroke={T.color.sandstone} strokeWidth={1.2} strokeLinecap="round" />
-                  <path d="M17.5 8.5C18.7 8.8 19.3 10 18.7 11" stroke={T.color.sandstone} strokeWidth={1.2} strokeLinecap="round" />
-                  <path d="M18 11.5C19.2 11.8 19.8 13 19 14" stroke={T.color.sandstone} strokeWidth={1.2} strokeLinecap="round" />
+                  {/* Atrium sage laurel + terracotta star (gold reserved for the palace itself) */}
+                  <path d="M8 19C8 16 6 14 6 11S7 6 10 4" stroke="#56683C" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M16 19C16 16 18 14 18 11S17 6 14 4" stroke="#56683C" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 7L12.6 9.2L14.8 9.6L12.8 10.8L13.2 13L12 11.4L10.8 13L11.2 10.8L9.2 9.6L11.4 9.2Z" fill="#9A4F2A" stroke="#9A4F2A" strokeWidth={0.8} strokeLinejoin="round" opacity={0.7} />
+                  <path d="M6.5 8.5C5.3 8.8 4.7 10 5.3 11" stroke="#7A8C64" strokeWidth={1.2} strokeLinecap="round" />
+                  <path d="M6 11.5C4.8 11.8 4.2 13 5 14" stroke="#7A8C64" strokeWidth={1.2} strokeLinecap="round" />
+                  <path d="M17.5 8.5C18.7 8.8 19.3 10 18.7 11" stroke="#7A8C64" strokeWidth={1.2} strokeLinecap="round" />
+                  <path d="M18 11.5C19.2 11.8 19.8 13 19 14" stroke="#7A8C64" strokeWidth={1.2} strokeLinecap="round" />
                 </svg>
               </div>
               <div style={{
-                fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
-                color: T.color.charcoal, marginBottom: "0.5rem",
+                fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+                color: "#403B36", marginBottom: "0.5rem", // Atrium ink, titleM
               }}>{t("noContacts")}</div>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-                lineHeight: 1.6, maxWidth: "22.5rem", margin: "0 auto",
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+                lineHeight: 1.4, maxWidth: "22.5rem", margin: "0 auto",
               }}>
                 {t("noContactsDesc")}
               </p>
@@ -307,20 +310,20 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
           {/* Add/Edit form */}
           {showAddForm && (
             <div style={{
-              padding: "1.125rem 1rem", borderRadius: "0.875rem",
-              border: `1px solid ${T.color.sandstone}30`,
-              background: `${T.color.warmStone}60`,
+              padding: "1.125rem 1rem", borderRadius: "1rem",
+              border: "0.0625rem solid #E3D6BC", // Atrium hairline
+              background: "#EDE7DC", // Atrium pre-mixed opaque tray (was warmStone alpha band)
               animation: "fadeUp .3s ease",
             }}>
               <div style={{
-                fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-                color: T.color.charcoal, marginBottom: "0.875rem",
+                fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                color: "#403B36", marginBottom: "0.875rem", // Atrium ink, titleS
               }}>
                 {editingId ? t("editContact") : t("addContact")}
               </div>
 
               {/* Name */}
-              <label style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, fontWeight: 500 }}>
+              <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                 {t("fullName")}
               </label>
               <input
@@ -328,16 +331,16 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                 onChange={(e) => setFormName(e.target.value)}
                 placeholder={t("fullNamePlaceholder")}
                 style={{
-                  width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.5rem",
-                  border: `1px solid ${T.color.sandstone}40`, background: T.color.white,
-                  fontFamily: T.font.body, fontSize: "16px", color: T.color.charcoal,
+                  width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.7rem",
+                  border: "0.0625rem solid #E3D6BC", background: T.color.white, // Atrium hairline
+                  fontFamily: T.font.body, fontSize: "1rem", color: "#403B36",
                   marginTop: "0.25rem", marginBottom: "0.75rem", outline: "none",
                   boxSizing: "border-box",
                 }}
               />
 
               {/* Email */}
-              <label style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, fontWeight: 500 }}>
+              <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                 {t("emailAddress")}
               </label>
               <input
@@ -346,16 +349,16 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                 placeholder={t("emailPlaceholder")}
                 type="email"
                 style={{
-                  width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.5rem",
-                  border: `1px solid ${T.color.sandstone}40`, background: T.color.white,
-                  fontFamily: T.font.body, fontSize: "16px", color: T.color.charcoal,
+                  width: "100%", padding: "0.625rem 0.75rem", borderRadius: "0.7rem",
+                  border: "0.0625rem solid #E3D6BC", background: T.color.white, // Atrium hairline
+                  fontFamily: T.font.body, fontSize: "1rem", color: "#403B36",
                   marginTop: "0.25rem", marginBottom: "0.75rem", outline: "none",
                   boxSizing: "border-box",
                 }}
               />
 
               {/* Relationship */}
-              <label style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, fontWeight: 500 }}>
+              <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                 {t("relationship")}
               </label>
               <div style={{
@@ -364,18 +367,18 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               }}>
                 {RELATIONSHIPS.map((rel) => (
                   <button key={rel.id} onClick={() => setFormRelationship(rel.id)} style={{
-                    padding: "0.375rem 0.75rem", borderRadius: "0.5rem", minHeight: "2.75rem",
-                    border: formRelationship === rel.id ? `2px solid ${T.color.walnut}` : `1px solid ${T.color.cream}`,
-                    background: formRelationship === rel.id ? `${T.color.walnut}10` : T.color.white,
-                    cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem",
-                    color: formRelationship === rel.id ? T.color.charcoal : T.color.muted,
+                    padding: "0.375rem 0.75rem", borderRadius: "0.7rem", minHeight: "2.75rem",
+                    border: formRelationship === rel.id ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", // Atrium ember active / hairline
+                    background: formRelationship === rel.id ? "rgba(154,79,42,0.10)" : T.color.white,
+                    cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem",
+                    color: formRelationship === rel.id ? "#403B36" : "#716A5E",
                     fontWeight: formRelationship === rel.id ? 600 : 500,
                   }}>{rel.label}</button>
                 ))}
               </div>
 
               {/* Access level */}
-              <label style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, fontWeight: 500 }}>
+              <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                 {t("whatAccess")}
               </label>
               <div style={{
@@ -384,17 +387,17 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               }}>
                 {ACCESS_LEVELS.map((level) => (
                   <button key={level.id} onClick={() => setFormAccessLevel(level.id)} style={{
-                    padding: "0.625rem 0.875rem", borderRadius: "0.625rem", textAlign: "left", minHeight: "2.75rem",
-                    border: formAccessLevel === level.id ? `2px solid ${T.color.walnut}` : `1px solid ${T.color.cream}`,
-                    background: formAccessLevel === level.id ? `${T.color.walnut}08` : T.color.white,
+                    padding: "0.625rem 0.875rem", borderRadius: "0.7rem", textAlign: "left", minHeight: "2.75rem",
+                    border: formAccessLevel === level.id ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", // Atrium ember active / hairline
+                    background: formAccessLevel === level.id ? "rgba(154,79,42,0.08)" : T.color.white,
                     cursor: "pointer",
                   }}>
                     <div style={{
                       fontFamily: T.font.body, fontSize: "0.8125rem",
-                      color: T.color.charcoal, fontWeight: 500,
+                      color: "#403B36", fontWeight: 500,
                     }}>{level.label}</div>
                     <div style={{
-                      fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
                     }}>{level.desc}</div>
                   </button>
                 ))}
@@ -403,7 +406,7 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               {/* Wing picker */}
               {formAccessLevel === "selected_wings" && (
                 <div style={{ marginBottom: "0.875rem" }}>
-                  <label style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, fontWeight: 500 }}>
+                  <label style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontWeight: 500 }}>
                     {t("selectWings")}
                   </label>
                   <div style={{
@@ -411,15 +414,15 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
                   }}>
                     {WINGS.filter((w) => w.id !== "attic").map((wing) => (
                       <button key={wing.id} onClick={() => toggleWing(wing.id)} style={{
-                        padding: "0.5rem 0.75rem", borderRadius: "0.5rem", display: "flex", minHeight: "2.75rem",
+                        padding: "0.5rem 0.75rem", borderRadius: "0.7rem", display: "flex", minHeight: "2.75rem",
                         alignItems: "center", gap: "0.375rem", cursor: "pointer",
-                        border: formWings.includes(wing.id) ? `2px solid ${wing.accent}` : `1px solid ${T.color.cream}`,
+                        border: formWings.includes(wing.id) ? `0.125rem solid ${wing.accent}` : "0.0625rem solid #E3D6BC", // Atrium hairline
                         background: formWings.includes(wing.id) ? `${wing.accent}12` : T.color.white,
                       }}>
                         <span style={{ fontSize: "1rem" }}>{wing.icon}</span>
                         <span style={{
-                          fontFamily: T.font.body, fontSize: "0.75rem",
-                          color: formWings.includes(wing.id) ? T.color.charcoal : T.color.muted,
+                          fontFamily: T.font.body, fontSize: "0.8125rem",
+                          color: formWings.includes(wing.id) ? "#403B36" : "#716A5E",
                         }}>{tWings(wing.nameKey)}</span>
                       </button>
                     ))}
@@ -430,19 +433,19 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
               {/* Actions */}
               <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
                 <button onClick={resetForm} style={{
-                  padding: "0.5rem 1rem", borderRadius: "0.5rem",
-                  border: `1px solid ${T.color.sandstone}`, background: "transparent",
-                  cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
+                  padding: "0.5rem 1rem", borderRadius: "0.7rem",
+                  border: "0.0625rem solid #E3D6BC", background: "transparent", // Atrium hairline
+                  cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
                 }}>{t("cancel")}</button>
                 <button
                   onClick={() => editingId ? handleUpdate(editingId) : handleAdd()}
                   disabled={saving || !formName.trim() || !formEmail.trim()}
                   style={{
-                    padding: "0.5rem 1.25rem", borderRadius: "0.5rem", border: "none",
+                    padding: "0.5rem 1.25rem", borderRadius: "0.7rem", border: "none",
                     background: formName.trim() && formEmail.trim()
-                      ? `linear-gradient(135deg,${T.color.charcoal},${T.color.walnut})`
-                      : `${T.color.sandstone}50`,
-                    color: formName.trim() && formEmail.trim() ? "#FFF" : T.color.muted,
+                      ? "linear-gradient(135deg,#9A4F2A,#B85C38)" // Atrium terracotta/ember
+                      : "#E5DDD0",
+                    color: formName.trim() && formEmail.trim() ? "#FCFAF5" : "#716A5E",
                     cursor: formName.trim() && formEmail.trim() ? "pointer" : "default",
                     fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                   }}
@@ -456,13 +459,13 @@ export default function LegacyPanel({ onClose }: LegacyPanelProps) {
           {/* Add button */}
           {!showAddForm && !loading && (
             <button onClick={() => setShowAddForm(true)} style={{
-              padding: "0.875rem", borderRadius: "0.75rem", border: `2px dashed ${T.color.sandstone}40`,
+              padding: "0.875rem", borderRadius: "1rem", border: "0.125rem dashed #E3D6BC", // Atrium hairline ink
               background: "transparent", cursor: "pointer", textAlign: "center",
-              fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.walnut,
-              transition: "all .2s",
+              fontFamily: T.font.body, fontSize: "0.9375rem", color: "#9A4F2A", // Atrium body + terracotta
+              transition: "all .2s ease",
             }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.color.walnut; e.currentTarget.style.background = `${T.color.walnut}06`; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${T.color.sandstone}40`; e.currentTarget.style.background = "transparent"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#9A4F2A"; e.currentTarget.style.background = "rgba(154,79,42,0.06)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#E3D6BC"; e.currentTarget.style.background = "transparent"; }}
             >
               {t("addLegacyContact")}
             </button>

@@ -90,7 +90,7 @@ export default function DiscoveryMenu(props: DiscoveryMenuProps) {
         width: "100%",
         maxHeight: "calc(100dvh - 3.75rem - env(safe-area-inset-bottom, 0px))",
         overflowY: "auto",
-        boxShadow: "0 1.5rem 5rem rgba(44,44,42,.35)",
+        boxShadow: "0 1.5rem 5rem rgba(64,59,54,.35)",
         animation: "discoveryUp .5s ease both",
         border: `0.09375rem solid ${T.color.cream}`,
       }}>
@@ -134,7 +134,7 @@ export default function DiscoveryMenu(props: DiscoveryMenuProps) {
               gap: "0.5rem",
               transition: "border-color .2s, box-shadow .2s",
             }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.color.sandstone; e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(44,44,42,.08)"; }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = T.color.sandstone; e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,.08)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.color.cream; e.currentTarget.style.boxShadow = "none"; }}
             >
               <span style={{ fontSize: "1.75rem" }}>{f.icon}</span>

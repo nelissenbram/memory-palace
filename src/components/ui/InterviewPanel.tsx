@@ -387,19 +387,22 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
   const aiColor = T.color.sage;
 
   return (
-    <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") handleExit(); handleKeyDown(e); }} style={{
+    <div ref={containerRef} className="iv-root" role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") handleExit(); handleKeyDown(e); }} style={{
       position: "fixed", inset: 0, zIndex: 60,
       background: DARK_PALETTE.bg,
       opacity: fadeIn ? 1 : 0,
-      transition: "opacity 0.6s ease",
+      transition: "opacity 0.3s ease",
       display: "flex", flexDirection: "column",
       overflow: "hidden",
     }}>
       <style>{`
-        @keyframes gentlePulse { 0%,100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.08); opacity: 1; } }
+        @keyframes gentlePulse { 0%,100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(1.03); opacity: 1; } }
         @keyframes waveBar { 0%,100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
-        @keyframes fadeInSlow { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes shimmer { 0% { background-position: -200px 0; } 100% { background-position: 200px 0; } }
+        @keyframes fadeInSlow { from { opacity: 0; transform: translateY(0.5rem); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shimmer { 0% { background-position: -12.5rem 0; } 100% { background-position: 12.5rem 0; } }
+        /* Atrium token: gold focus ring */
+        .iv-root :is(button, textarea):focus-visible { outline: 0.1875rem solid #D4AF37 !important; outline-offset: 0.1875rem !important; }
+        @media (prefers-reduced-motion: reduce) { .iv-root, .iv-root * { animation: none !important; transition: none !important; } }
       `}</style>
 
       {/* Top bar */}
@@ -413,7 +416,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
       }}>
         <div>
           {currentTemplate && phase !== "intro" && (
-            <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: DARK_PALETTE.label, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+            <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: DARK_PALETTE.label, letterSpacing: "0.12em", textTransform: "uppercase" }}>
               {tTpl(currentTemplate.titleKey)}
             </div>
           )}
@@ -425,8 +428,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         </div>
         <button onClick={handleExit} aria-label={tc("close")} style={{
           width: isMobile ? "2.75rem" : "2.25rem", height: isMobile ? "2.75rem" : "2.25rem", borderRadius: isMobile ? "1.375rem" : "1.125rem",
-          border: `1px solid ${DARK_PALETTE.border}`, background: DARK_PALETTE.surface,
-          color: DARK_PALETTE.label, fontSize: isMobile ? "1rem" : "0.875rem",
+          border: `0.0625rem solid ${DARK_PALETTE.border}`, background: DARK_PALETTE.surface,
+          color: DARK_PALETTE.label, fontSize: isMobile ? "1rem" : "0.9375rem",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           {"\u2715"}
@@ -441,7 +444,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               height: "100%", borderRadius: "0.125rem",
               background: `linear-gradient(90deg, ${accentColor}, ${T.color.walnut})`,
               width: `${(progress.current / progress.total) * 100}%`,
-              transition: "width 0.6s ease",
+              transition: "width 0.3s ease",
             }} />
           </div>
         </div>
@@ -465,19 +468,19 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               <InterviewIcon templateId={currentTemplate.id} wingId={currentTemplate.wingId} size={48} />
             </div>
             <h1 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 500,
-              color: DARK_PALETTE.question, lineHeight: 1.3, marginBottom: "1rem",
+              fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 600,
+              color: DARK_PALETTE.question, lineHeight: 1.15, marginBottom: "1rem",
             }}>
               {tTpl(currentTemplate.titleKey)}
             </h1>
             <p style={{
-              fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "1.125rem", color: DARK_PALETTE.body,
+              fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "1.0625rem", color: DARK_PALETTE.body,
               lineHeight: 1.7, marginBottom: "2rem", maxWidth: "30rem",
             }}>
               {tTpl(currentTemplate.descKey)}
             </p>
             <p style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1rem" : "1.125rem", color: DARK_PALETTE.softAccent,
+              fontFamily: T.font.display, fontSize: isMobile ? "1rem" : "1.0625rem", color: DARK_PALETTE.softAccent,
               fontStyle: "italic", lineHeight: 1.6, marginBottom: "2.5rem",
             }}>
               {t("encouragement1")}<br />
@@ -485,10 +488,10 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
               <button onClick={handleStart} disabled={quota !== null && !quota.allowed} style={{
-                padding: isMobile ? "1.125rem 3rem" : "1rem 2.5rem", borderRadius: "1.75rem",
+                padding: isMobile ? "1.125rem 3rem" : "1rem 2.5rem", borderRadius: "2rem",
                 border: "none", background: quota && !quota.allowed ? DARK.border : `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
-                color: "#FFF", fontFamily: T.font.body, fontSize: isMobile ? "1.125rem" : "1rem", fontWeight: 600,
-                cursor: quota && !quota.allowed ? "not-allowed" : "pointer", boxShadow: quota && !quota.allowed ? "none" : `0 8px 32px ${accentColor}40`,
+                color: "#FFF", fontFamily: T.font.body, fontSize: isMobile ? "1.0625rem" : "1rem", fontWeight: 600,
+                cursor: quota && !quota.allowed ? "not-allowed" : "pointer", boxShadow: quota && !quota.allowed ? "none" : `0 0.5rem 1.5rem ${accentColor}40`,
                 transition: "transform 0.2s", minHeight: "3.5rem", opacity: quota && !quota.allowed ? 0.5 : 1,
               }}>
                 {quota && !quota.allowed ? (t("interviewQuotaReached") || "Interview quota reached") : t("beginInterview")}
@@ -503,8 +506,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             <div style={{ marginTop: "2rem", display: "flex", gap: "0.5rem", justifyContent: "center" }}>
               {(["voice", "text"] as const).filter((mode) => mode === "text" || speech.isSupported).map((mode) => (
                 <button key={mode} onClick={() => setInputMode(mode)} style={{
-                  padding: "0.625rem 1.25rem", borderRadius: "1.25rem",
-                  border: inputMode === mode ? `1px solid ${accentColor}60` : "1px solid #4A453D",
+                  padding: "0.625rem 1.25rem", borderRadius: "2rem",
+                  border: inputMode === mode ? `0.0625rem solid ${accentColor}60` : "0.0625rem solid #4A453D",
                   background: inputMode === mode ? `${accentColor}18` : "transparent",
                   color: inputMode === mode ? accentColor : "#7A7368",
                   fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer",
@@ -517,7 +520,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
             {/* Writing style selector */}
             <div style={{ marginTop: "1.25rem" }}>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: DARK_PALETTE.sublabel, marginBottom: "0.5rem" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: DARK_PALETTE.sublabel, marginBottom: "0.5rem" }}>
                 {t("writingStyleTitle")}
               </p>
               <div style={{ display: "flex", gap: "0.375rem", justifyContent: "center" }}>
@@ -527,11 +530,11 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   { id: "factual" as const, icon: <ClipboardIcon />, label: t("styleFactual"), desc: t("styleFactualDesc") },
                 ]).map((s) => (
                   <button key={s.id} onClick={() => setWritingStyle(s.id)} title={s.desc} style={{
-                    padding: "0.5rem 1rem", borderRadius: "1rem",
-                    border: writingStyle === s.id ? `1px solid ${aiColor}60` : "1px solid #4A453D",
+                    padding: "0.5rem 1rem", borderRadius: "2rem",
+                    border: writingStyle === s.id ? `0.0625rem solid ${aiColor}60` : "0.0625rem solid #4A453D",
                     background: writingStyle === s.id ? `${aiColor}18` : "transparent",
                     color: writingStyle === s.id ? aiColor : "#7A7368",
-                    fontFamily: T.font.body, fontSize: "0.75rem", cursor: "pointer",
+                    fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer",
                     transition: "all 0.2s",
                   }}>
                     {s.icon}{s.label}
@@ -542,12 +545,12 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
             {/* Interview quota for free users */}
             {quota && !quota.unlimited && (
-              <div style={{ marginTop: "1.5rem", padding: "0.75rem 1rem", borderRadius: "0.75rem", background: quota.allowed ? `${DARK.accent}12` : `${T.color.terracotta}20`, border: `1px solid ${quota.allowed ? DARK.border : T.color.terracotta}40` }}>
+              <div style={{ marginTop: "1.5rem", padding: "0.75rem 1rem", borderRadius: "1rem", background: quota.allowed ? `${DARK.accent}12` : `${T.color.terracotta}20`, border: `0.0625rem solid ${quota.allowed ? DARK.border : `${T.color.terracotta}40`}` }}>
                 <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: quota.allowed ? DARK_PALETTE.body : T.color.terracotta, margin: 0 }}>
                   {`${quota.limit - quota.used} / ${quota.limit} ${t("interviewsRemaining") || "interviews remaining"}`}
                 </p>
                 {!quota.allowed && quota.nextRespawnDate && (
-                  <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: DARK_PALETTE.sublabel, margin: "0.375rem 0 0" }}>
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: DARK_PALETTE.sublabel, margin: "0.375rem 0 0" }}>
                     {t("nextInterviewDate") || "Next interview available"} {new Date(quota.nextRespawnDate).toLocaleDateString(locale as string)}
                   </p>
                 )}
@@ -555,7 +558,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                     may not steer to an external purchase (Apple 3.1.1 / 3.1.3). */}
                 {!quota.allowed && !isIOS() && (
                   <button onClick={() => navigateInApp("/pricing")} style={{
-                    marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "1rem",
+                    marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "2rem",
                     border: "none", background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
                     color: "#FFF", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                   }}>
@@ -571,8 +574,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {phase === "question" && question && (
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.6s ease both", width: "100%" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.875rem", fontWeight: 500,
-              color: DARK_PALETTE.question, lineHeight: 1.4, marginBottom: "2.5rem",
+              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.75rem", fontWeight: 600,
+              color: DARK_PALETTE.question, lineHeight: 1.15, marginBottom: "2.5rem",
               maxWidth: "32.5rem", margin: "0 auto 2.5rem",
             }}>
               {tTpl(question.textKey) === question.textKey ? question.text : tTpl(question.textKey)}
@@ -580,8 +583,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
             {apiError && (
               <div role="alert" style={{
-                fontFamily: T.font.body, fontSize: "0.875rem", color: "#D4A07A",
-                background: "#D4A07A14", padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
+                fontFamily: T.font.body, fontSize: "0.9375rem", color: "#D4A07A",
+                background: "#D4A07A14", padding: "0.75rem 1.25rem", borderRadius: "1rem",
                 marginBottom: "1.5rem", maxWidth: "25rem", margin: "0 auto 1.5rem",
               }}>
                 {apiError}
@@ -594,14 +597,14 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   width: isMobile ? "5.5rem" : "5rem", height: isMobile ? "5.5rem" : "5rem", borderRadius: "50%",
                   border: "none", background: `linear-gradient(135deg, ${accentColor}, #D4926A)`,
                   color: "#FFF", fontSize: "1.75rem", cursor: "pointer",
-                  boxShadow: `0 8px 32px ${accentColor}50`,
+                  boxShadow: `0 0.5rem 1.5rem ${accentColor}50`,
                   transition: "transform 0.2s, box-shadow 0.2s",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   minWidth: "5rem", minHeight: "5rem",
                 }}>
                   <MicIcon size={28} />
                 </button>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: DARK_PALETTE.label }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: DARK_PALETTE.label }}>
                   {t("tapToRecord")}
                 </p>
               </div>
@@ -615,7 +618,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   rows={5}
                   style={{
                     width: "100%", padding: "1rem 1.25rem", borderRadius: "1rem",
-                    border: "1px solid #4A453D", background: "#2E2921",
+                    border: "0.0625rem solid #4A453D", background: "#2E2921",
                     fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.9375rem",
                     color: DARK_PALETTE.body, lineHeight: 1.7, resize: "vertical",
                     outline: "none", boxSizing: "border-box",
@@ -623,7 +626,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                   }}
                 />
                 <button onClick={handleSubmitText} disabled={!textInput.trim()} style={{
-                  marginTop: "1rem", padding: "0.875rem 2rem", borderRadius: "1.5rem",
+                  marginTop: "1rem", padding: "0.875rem 2rem", borderRadius: "2rem",
                   border: "none",
                   background: textInput.trim() ? `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})` : "#3A352D",
                   color: textInput.trim() ? "#FFF" : "#6A6358",
@@ -638,7 +641,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
             {/* Skip button */}
             <button onClick={() => { skipQuestion(); setPhase("question"); setTranscript(""); setApiError(""); recorder.reset(); }} style={{
-              marginTop: "2rem", padding: "0.5rem 1.25rem", borderRadius: "1rem",
+              marginTop: "2rem", padding: "0.5rem 1.25rem", borderRadius: "2rem",
               border: "none", background: "transparent",
               color: DARK_PALETTE.dimText, fontFamily: T.font.body, fontSize: "0.8125rem",
               cursor: "pointer", transition: "color 0.2s",
@@ -652,9 +655,9 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {phase === "recording" && (
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.4s ease both", width: "100%" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.625rem", fontWeight: 500,
-              color: DARK_PALETTE.question, lineHeight: 1.4, marginBottom: "2rem",
-              maxWidth: "30rem", margin: "0 auto 2rem", opacity: 0.7,
+              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.75rem", fontWeight: 600,
+              color: DARK_PALETTE.body, lineHeight: 1.15, marginBottom: "2rem",
+              maxWidth: "30rem", margin: "0 auto 2rem",
             }}>
               {question ? (tTpl(question.textKey) === question.textKey ? question.text : tTpl(question.textKey)) : ""}
             </h2>
@@ -693,14 +696,14 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {/* Live transcript preview */}
             {(speech.transcript || speech.interimTranscript) && (
               <div style={{
-                padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
-                background: "#3A352D80", border: "1px solid #4A453D40",
+                padding: "0.75rem 1.25rem", borderRadius: "1rem",
+                background: "#3A352D", border: "0.0625rem solid #4A453D",
                 marginBottom: "1.5rem", maxWidth: "27.5rem", margin: "0 auto 1.5rem",
                 maxHeight: "7.5rem", overflowY: "auto",
               }}>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: DARK_PALETTE.body, lineHeight: 1.6, margin: 0 }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: DARK_PALETTE.body, lineHeight: 1.6, margin: 0 }}>
                   {speech.transcript}{" "}
-                  <span style={{ color: "#7A736880" }}>{speech.interimTranscript}</span>
+                  <span style={{ color: "#7A7368" }}>{speech.interimTranscript}</span>
                 </p>
               </div>
             )}
@@ -708,11 +711,11 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {/* Stop button */}
             <button onClick={handleStopRecording} aria-label={t("stopRecording")} style={{
               width: isMobile ? "5.5rem" : "5rem", height: isMobile ? "5.5rem" : "5rem", borderRadius: "50%",
-              border: "3px solid #FFF3",
+              border: "0.1875rem solid rgba(255,255,255,0.2)",
               background: `linear-gradient(135deg, #C75040, #A03030)`,
               color: "#FFF", fontSize: "1.5rem", cursor: "pointer",
-              boxShadow: "0 8px 32px rgba(199, 80, 64, 0.4)",
-              animation: "gentlePulse 2s ease infinite",
+              boxShadow: "0 0.5rem 1.5rem rgba(199, 80, 64, 0.4)",
+              animation: "gentlePulse 4s ease-in-out infinite",
               display: "flex", alignItems: "center", justifyContent: "center",
               minWidth: "5rem", minHeight: "5rem",
             }}>
@@ -742,7 +745,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             }}>
               <div style={{
                 width: "2rem", height: "2rem", borderRadius: "1rem",
-                border: "3px solid transparent",
+                border: "0.1875rem solid transparent",
                 borderTopColor: aiColor,
                 animation: "spin 0.8s linear infinite",
               }} />
@@ -763,13 +766,13 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {transcript && (
               <div style={{
                 padding: "1rem 1.25rem", borderRadius: "1rem",
-                background: "#3A352D", border: "1px solid #4A453D",
+                background: "#3A352D", border: "0.0625rem solid #4A453D",
                 marginBottom: "1.5rem",
               }}>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: DARK_PALETTE.sublabel, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.5rem" }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: DARK_PALETTE.sublabel, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "0.5rem" }}>
                   {t("youSaid")}
                 </p>
-                <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.9375rem" : "0.875rem", color: DARK_PALETTE.body, lineHeight: 1.7, margin: 0 }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: DARK_PALETTE.body, lineHeight: 1.7, margin: 0 }}>
                   {transcript}
                 </p>
               </div>
@@ -779,11 +782,11 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {aiAck && (
               <div style={{
                 padding: "1.25rem 1.5rem", borderRadius: "1rem",
-                background: `${aiColor}10`, border: `1px solid ${aiColor}30`,
+                background: `${aiColor}10`, border: `0.0625rem solid ${aiColor}30`,
                 marginBottom: "1rem",
               }}>
                 <p style={{
-                  fontFamily: T.font.display, fontSize: isMobile ? "1.0625rem" : "1.125rem",
+                  fontFamily: T.font.display, fontSize: "1.0625rem",
                   fontStyle: "italic", color: "#A8BFA0",
                   lineHeight: 1.6, margin: 0,
                 }}>
@@ -796,15 +799,15 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {aiFollowUp && (
               <div style={{
                 padding: "1rem 1.25rem", borderRadius: "1rem",
-                background: `${aiColor}08`, border: `1px solid ${aiColor}20`,
+                background: `${aiColor}08`, border: `0.0625rem solid ${aiColor}20`,
                 marginBottom: "2rem",
               }}>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: aiColor, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "0.5rem" }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: aiColor, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "0.5rem" }}>
                   {t("thoughtToExplore")}
                 </p>
                 <p style={{
-                  fontFamily: T.font.display, fontSize: isMobile ? "1.125rem" : "1.25rem",
-                  color: DARK_PALETTE.question, lineHeight: 1.5, margin: 0, fontWeight: 500,
+                  fontFamily: T.font.display, fontSize: "1.1875rem",
+                  color: DARK_PALETTE.question, lineHeight: 1.15, margin: 0, fontWeight: 600,
                 }}>
                   {aiFollowUp}
                 </p>
@@ -814,7 +817,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             {/* Action buttons */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
               <button onClick={handleContinue} style={{
-                padding: "0.875rem 2.25rem", borderRadius: "1.5rem", border: "none",
+                padding: "0.875rem 2.25rem", borderRadius: "2rem", border: "none",
                 background: `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
                 color: "#FFF", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                 cursor: "pointer", transition: "all 0.2s", minHeight: "3rem",
@@ -826,7 +829,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 setAiAck(""); setAiFollowUp("");
                 setPhase("question");
               }} style={{
-                padding: "0.5rem 1.25rem", borderRadius: "1rem", border: "none",
+                padding: "0.5rem 1.25rem", borderRadius: "2rem", border: "none",
                 background: "transparent", color: DARK_PALETTE.dimText,
                 fontFamily: T.font.body, fontSize: "0.8125rem", cursor: "pointer",
                 transition: "color 0.2s",
@@ -841,7 +844,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
         {phase === "summary" && (
           <div style={{ animation: "fadeInSlow 0.6s ease both", width: "100%", maxWidth: "33.75rem", margin: "0 auto" }}>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.5rem" : "1.75rem", fontWeight: 500,
+              fontFamily: T.font.display, fontSize: isMobile ? "1.375rem" : "1.75rem", fontWeight: 600,
               color: DARK_PALETTE.question, textAlign: "center", marginBottom: "0.5rem",
             }}>
               {t("yourStory")}
@@ -857,10 +860,10 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
               <div style={{ textAlign: "center", padding: "2.5rem" }}>
                 <div style={{
                   width: "2rem", height: "2rem", borderRadius: "1rem", margin: "0 auto 1rem",
-                  border: `3px solid transparent`, borderTopColor: accentColor,
+                  border: `0.1875rem solid transparent`, borderTopColor: accentColor,
                   animation: "spin 0.8s linear infinite",
                 }} />
-                <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: DARK_PALETTE.body }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: DARK_PALETTE.body }}>
                   {t("weavingStories")}
                 </p>
               </div>
@@ -872,7 +875,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                     onChange={(e) => setNarrative(e.target.value)}
                     style={{
                       width: "100%", minHeight: "18.75rem", padding: "1.25rem 1.5rem", borderRadius: "1rem",
-                      border: `1px solid ${accentColor}40`, background: "#2E2921",
+                      border: `0.0625rem solid ${accentColor}40`, background: "#2E2921",
                       fontFamily: T.font.body, fontSize: isMobile ? "1rem" : "0.9375rem",
                       color: DARK_PALETTE.body, lineHeight: 1.8, resize: "vertical",
                       outline: "none", boxSizing: "border-box",
@@ -881,7 +884,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
                 ) : (
                   <div style={{
                     padding: "1.5rem 1.75rem", borderRadius: "1rem",
-                    background: "#2E292180", border: "1px solid #4A453D",
+                    background: "#2E2921", border: "0.0625rem solid #4A453D",
                     maxHeight: "25rem", overflowY: "auto",
                   }}>
                     {narrative.split("\n\n").map((para, i) => (
@@ -899,15 +902,15 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
                 <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", marginTop: "1.5rem" }}>
                   <button onClick={() => setEditingNarrative(!editingNarrative)} style={{
-                    padding: "0.625rem 1.25rem", borderRadius: "1.25rem",
-                    border: "1px solid #4A453D", background: "transparent",
+                    padding: "0.625rem 1.25rem", borderRadius: "2rem",
+                    border: "0.0625rem solid #4A453D", background: "transparent",
                     color: DARK_PALETTE.label, fontFamily: T.font.body, fontSize: "0.8125rem",
                     cursor: "pointer",
                   }}>
                     {editingNarrative ? t("doneEditing") : t("editStory")}
                   </button>
                   <button onClick={handleComplete} style={{
-                    padding: "0.875rem 2rem", borderRadius: "1.5rem", border: "none",
+                    padding: "0.875rem 2rem", borderRadius: "2rem", border: "none",
                     background: `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
                     color: "#FFF", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
                     cursor: "pointer", minHeight: "3rem",
@@ -925,7 +928,7 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
           <div style={{ textAlign: "center", animation: "fadeInSlow 0.8s ease both" }}>
             <div style={{ marginBottom: "1.25rem" }}><SparklesIcon size={56} /></div>
             <h2 style={{
-              fontFamily: T.font.display, fontSize: isMobile ? "1.625rem" : "2rem", fontWeight: 500,
+              fontFamily: T.font.display, fontSize: isMobile ? "1.75rem" : "2.25rem", fontWeight: 600,
               color: DARK_PALETTE.question, marginBottom: "0.75rem",
             }}>
               {t("beautifully")}
@@ -946,19 +949,19 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", alignItems: "center" }}>
               {onCreateMemory && (
                 <button onClick={handleCreateMemory} style={{
-                  padding: "1rem 2.25rem", borderRadius: "1.75rem", border: "none",
+                  padding: "1rem 2.25rem", borderRadius: "2rem", border: "none",
                   background: `linear-gradient(135deg, ${accentColor}, ${T.color.walnut})`,
                   color: "#FFF", fontFamily: T.font.body, fontSize: "1rem", fontWeight: 600,
-                  cursor: "pointer", boxShadow: `0 8px 32px ${accentColor}40`,
+                  cursor: "pointer", boxShadow: `0 0.5rem 1.5rem ${accentColor}40`,
                   minHeight: "3.5rem",
                 }}>
                   {t("addToPalace")}
                 </button>
               )}
               <button onClick={onClose} style={{
-                padding: "0.75rem 1.75rem", borderRadius: "1.25rem",
-                border: "1px solid #4A453D", background: "transparent",
-                color: DARK_PALETTE.label, fontFamily: T.font.body, fontSize: "0.875rem",
+                padding: "0.75rem 1.75rem", borderRadius: "2rem",
+                border: "0.0625rem solid #4A453D", background: "transparent",
+                color: DARK_PALETTE.label, fontFamily: T.font.body, fontSize: "0.9375rem",
                 cursor: "pointer",
               }}>
                 {t("done")}
@@ -974,8 +977,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
           <div style={{
             position: "fixed", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)",
             padding: "0.75rem 1.5rem", borderRadius: "1rem",
-            background: "#5A303080", border: "1px solid #8A505050",
-            fontFamily: T.font.body, fontSize: "0.875rem", color: "#E0A0A0",
+            background: "#3D2725", border: "0.0625rem solid #553332", /* pre-mixed opaque — Atrium: no alpha-band borders */
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#E0A0A0",
             maxWidth: "25rem", textAlign: "center",
             animation: "fadeInSlow 0.3s ease",
           }}>
@@ -989,8 +992,8 @@ export default function InterviewPanel({ onClose, onCreateMemory }: InterviewPan
 
 const smallBtn: React.CSSProperties = {
   padding: "0.5rem 1.25rem",
-  borderRadius: "1rem",
-  border: "1px solid #4A453D",
+  borderRadius: "2rem",
+  border: "0.0625rem solid #4A453D",
   background: "transparent",
   color: DARK_PALETTE.label,
   fontFamily: T.font.body,

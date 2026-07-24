@@ -48,7 +48,7 @@ export default function ActionMenu({ primary, secondary, accent }: ActionMenuPro
           borderRadius: "1rem",
           padding: "0.625rem",
           border: `1px solid ${T.color.cream}`,
-          boxShadow: "0 0.5rem 2rem rgba(44,44,42,.12)",
+          boxShadow: "0 0.5rem 2rem rgba(64,59,54,.12)",
         }}>
           {visibleSecondary.map((item, i) => (
             <button
@@ -105,7 +105,7 @@ export default function ActionMenu({ primary, secondary, accent }: ActionMenuPro
               color: T.color.walnut,
               fontSize: "1.125rem", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 0.25rem 1rem rgba(44,44,42,.1)",
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,.1)",
               transition: "transform .2s, background .2s",
               transform: open ? "rotate(45deg)" : "none",
             }}

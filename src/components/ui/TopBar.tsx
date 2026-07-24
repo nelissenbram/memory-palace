@@ -195,7 +195,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               maxHeight: "calc(100vh - 4rem)", overflowY: "auto",
               background: `${T.color.linen}f5`, backdropFilter: "blur(1rem)",
               borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
-              boxShadow: "0 0.5rem 2.5rem rgba(44,44,42,.15)", padding: "0.75rem",
+              boxShadow: "0 0.5rem 2.5rem rgba(64,59,54,.15)", padding: "0.75rem",
               animation: "fadeUp .2s ease",
             }}>
               {userName && (
@@ -468,7 +468,7 @@ export default function TopBar({crumbs, sharedWings, onNavigateSharedWing, onSha
               display: "flex", alignItems: "center", justifyContent: "center",
               fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 700,
               color: T.color.white, letterSpacing: "0.03125rem",
-              boxShadow: userMenuOpen ? `0 0 0 3px ${T.color.terracotta}30` : "0 0.0625rem 0.25rem rgba(44,44,42,.15)",
+              boxShadow: userMenuOpen ? `0 0 0 3px ${T.color.terracotta}30` : "0 0.0625rem 0.25rem rgba(64,59,54,.15)",
             }}
           >
             {initials || "\u{1F464}"}
@@ -589,7 +589,7 @@ function DesktopUserMenu({ userName, locale, setLocale, scaleLevel, setScaleLeve
         background: `${T.color.linen}f8`,
         backdropFilter: "blur(1.25rem)", WebkitBackdropFilter: "blur(1.25rem)",
         borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
-        boxShadow: "0 0.75rem 3rem rgba(44,44,42,.18), 0 0.125rem 0.5rem rgba(44,44,42,.08)",
+        boxShadow: "0 0.75rem 3rem rgba(64,59,54,.18), 0 0.125rem 0.5rem rgba(64,59,54,.08)",
         padding: 0, zIndex: 100,
       }}
     >
@@ -936,7 +936,7 @@ function WingsDropdown({ wings, activeWing, switchWing, sharedWings, onNavigateS
           background: `${T.color.linen}f8`,
           backdropFilter: "blur(1.25rem)", WebkitBackdropFilter: "blur(1.25rem)",
           borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
-          boxShadow: "0 0.5rem 2rem rgba(44,44,42,.14)",
+          boxShadow: "0 0.5rem 2rem rgba(64,59,54,.14)",
           padding: "0.375rem", zIndex: 100,
           display: "flex", flexDirection: "column", gap: "0.125rem",
         }}>

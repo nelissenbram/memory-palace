@@ -95,7 +95,7 @@ export default function UniversalActions({ groups, open, onClose, isMobile }: Un
             WebkitBackdropFilter: "blur(24px)",
             borderRadius: "1.25rem 1.25rem 0 0",
             border: `1px solid ${T.color.cream}`,
-            boxShadow: "0 -0.5rem 2.5rem rgba(44,44,42,.2)",
+            boxShadow: "0 -0.5rem 2.5rem rgba(64,59,54,.2)",
             padding: "1rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px))",
             animation: `atriumSlideUp 0.3s ${EASE} both`,
           }}
@@ -189,7 +189,7 @@ export default function UniversalActions({ groups, open, onClose, isMobile }: Un
         WebkitBackdropFilter: "blur(24px)",
         borderRadius: "1rem",
         border: `1px solid ${T.color.cream}`,
-        boxShadow: "0 0.5rem 2.5rem rgba(44,44,42,.15), 0 0.125rem 0.5rem rgba(44,44,42,.06)",
+        boxShadow: "0 0.5rem 2.5rem rgba(64,59,54,.15), 0 0.125rem 0.5rem rgba(64,59,54,.06)",
         padding: "0.75rem",
         animation: `atriumFadeSlideUp 0.25s ${EASE} both`,
       }}

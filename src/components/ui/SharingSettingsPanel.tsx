@@ -110,9 +110,9 @@ function Toggle({
       style={{
         width: "2.25rem",
         height: "1.25rem",
-        borderRadius: "0.625rem",
+        borderRadius: "2rem", // Atrium token: pill
         border: "none",
-        background: checked ? T.color.terracotta : T.color.sandstone,
+        background: checked ? "#B85C38" /* Atrium token: ember active */ : "#E3D6BC" /* Atrium token: hairline */,
         cursor: disabled ? "default" : "pointer",
         position: "relative",
         transition: "background .2s",
@@ -130,7 +130,7 @@ function Toggle({
           top: "0.1875rem",
           left: checked ? "1.1875rem" : "0.1875rem",
           transition: "left .2s",
-          boxShadow: "0 1px 3px rgba(0,0,0,.2)",
+          boxShadow: "0 0.0625rem 0.1875rem rgba(64,59,54,0.2)", // Atrium token: warm ink shadow
         }}
       />
     </button>
@@ -160,17 +160,17 @@ function ConfirmDialog({
         marginTop: "0.5rem",
         padding: "0.75rem",
         background: `${T.color.error}08`,
-        border: `1px solid ${T.color.error}25`,
-        borderRadius: "0.5rem",
+        border: `0.0625rem solid ${T.color.error}25`,
+        borderRadius: "0.75rem", // Atrium token: small control
       }}
     >
       <p
         style={{
           fontFamily: T.font.body,
-          fontSize: "0.75rem",
-          color: T.color.charcoal,
+          fontSize: "0.8125rem",
+          color: "#403B36" /* Atrium token: ink */,
           margin: "0 0 0.5rem",
-          lineHeight: 1.5,
+          lineHeight: 1.4,
         }}
       >
         {message}
@@ -180,9 +180,9 @@ function ConfirmDialog({
           onClick={onConfirm}
           style={{
             padding: "0.375rem 0.75rem",
-            borderRadius: "0.375rem",
+            borderRadius: "0.7rem", // Atrium token: small control
             border: "none",
-            background: T.color.terracotta,
+            background: "#B85C38", // Atrium token: ember active
             color: "#FFF",
             fontFamily: T.font.body,
             fontSize: "0.6875rem",
@@ -196,10 +196,10 @@ function ConfirmDialog({
           onClick={onCancel}
           style={{
             padding: "0.375rem 0.75rem",
-            borderRadius: "0.375rem",
-            border: `1px solid ${T.color.cream}`,
+            borderRadius: "0.7rem", // Atrium token: small control
+            border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
             background: T.color.white,
-            color: T.color.muted,
+            color: "#716A5E" /* Atrium token: muted */,
             fontFamily: T.font.body,
             fontSize: "0.6875rem",
             cursor: "pointer",
@@ -219,24 +219,24 @@ function ConfirmDialog({
 function StatusBadge({ status, label }: { status: string; label: string }) {
   const color =
     status === "accepted"
-      ? T.color.sage
+      ? "#56683C" /* Atrium token: sage */
       : status === "declined"
         ? T.color.error
-        : T.color.muted;
+        : "#716A5E" /* Atrium token: muted */;
   const bg =
     status === "accepted"
-      ? `${T.color.sage}15`
+      ? "rgba(86,104,60,0.16)" // Atrium token: sage tint
       : status === "declined"
         ? `${T.color.error}12`
-        : `${T.color.muted}12`;
+        : "rgba(113,106,94,0.12)"; // Atrium token: muted tint
   return (
     <span
       style={{
         padding: "0.125rem 0.5rem",
-        borderRadius: "0.625rem",
+        borderRadius: "2rem", // Atrium token: pill
         background: bg,
         fontFamily: T.font.body,
-        fontSize: "0.625rem",
+        fontSize: "0.6875rem",
         fontWeight: 600,
         color,
         textTransform: "capitalize",
@@ -257,14 +257,14 @@ function TypeBadge({ type, label }: { type: "wing" | "room"; label: string }) {
     <span
       style={{
         padding: "0.125rem 0.4375rem",
-        borderRadius: "0.25rem",
-        background: isWing ? `${T.color.walnut}12` : `${T.color.terracotta}12`,
+        borderRadius: "2rem", // Atrium token: pill
+        background: isWing ? "rgba(86,104,60,0.12)" : "rgba(154,79,42,0.12)", // Atrium tokens: sage / terracotta tints
         fontFamily: T.font.body,
-        fontSize: "0.5625rem",
-        fontWeight: 600,
-        color: isWing ? T.color.walnut : T.color.terracotta,
+        fontSize: "0.6875rem",
+        fontWeight: 700,
+        color: isWing ? "#56683C" : "#9A4F2A", // Atrium tokens: sage / terracotta glyph
         textTransform: "uppercase",
-        letterSpacing: "0.03rem",
+        letterSpacing: "0.12em", // Atrium token: the one small-caps voice
       }}
     >
       {label}
@@ -281,11 +281,11 @@ function PermissionBadge({ label, enabled }: { label: string; enabled: boolean }
     <span
       style={{
         padding: "0.125rem 0.375rem",
-        borderRadius: "0.25rem",
-        background: enabled ? `${T.color.sage}12` : `${T.color.muted}08`,
+        borderRadius: "2rem", // Atrium token: pill
+        background: enabled ? "rgba(86,104,60,0.12)" : "rgba(113,106,94,0.08)", // Atrium tokens: sage / muted tints
         fontFamily: T.font.body,
-        fontSize: "0.5625rem",
-        color: enabled ? T.color.sage : T.color.sandstone,
+        fontSize: "0.6875rem",
+        color: enabled ? "#56683C" : "#716A5E", // Atrium tokens: sage / muted (full opacity)
         fontWeight: enabled ? 600 : 500,
       }}
     >
@@ -446,6 +446,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
 
   return (
     <div
+      className="sharing-settings-overlay"
       onClick={onClose}
       style={{
         position: "fixed",
@@ -459,6 +460,10 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
       <style>{`
         @keyframes slideInRight{from{opacity:0;transform:translateX(2.5rem)}to{opacity:1;transform:translateX(0)}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @media (prefers-reduced-motion: reduce){
+          .sharing-settings-overlay,.sharing-settings-overlay *{animation:none!important;transition:none!important}
+        }
+        .sharing-settings-overlay button:focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}
       `}</style>
 
       <div
@@ -479,10 +484,10 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
           width: isMobile ? "100%" : "24rem",
           background: `${T.color.linen}f8`,
           backdropFilter: "blur(20px)",
-          borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`,
+          borderLeft: isMobile ? "none" : "0.0625rem solid #E3D6BC", // Atrium token: hairline
           display: "flex",
           flexDirection: "column",
-          animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)",
+          animation: "slideInRight .3s ease",
         }}
       >
         {/* ---- Header ---- */}
@@ -505,7 +510,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                 fontFamily: T.font.display,
                 fontSize: "1.375rem",
                 fontWeight: 600,
-                color: T.color.charcoal,
+                color: "#403B36" /* Atrium token: ink */,
                 margin: 0,
               }}
             >
@@ -518,10 +523,10 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                 width: "2rem",
                 height: "2rem",
                 borderRadius: "1rem",
-                border: `1px solid ${T.color.cream}`,
+                border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
                 background: T.color.warmStone,
-                color: T.color.muted,
-                fontSize: "0.875rem",
+                color: "#716A5E" /* Atrium token: muted */,
+                fontSize: "0.8125rem",
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
@@ -540,7 +545,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
               display: "flex",
               gap: "0.25rem",
               background: T.color.warmStone,
-              borderRadius: "0.5rem",
+              borderRadius: "0.85rem", // Atrium token: small control
               padding: "0.1875rem",
               marginBottom: "1rem",
             }}
@@ -556,16 +561,16 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                   style={{
                     flex: 1,
                     padding: "0.5rem 0.75rem",
-                    borderRadius: "0.375rem",
+                    borderRadius: "0.7rem", // Atrium token: small control
                     border: "none",
                     background: active ? T.color.white : "transparent",
-                    boxShadow: active ? "0 1px 3px rgba(44,44,42,.08)" : "none",
+                    boxShadow: active ? "0 0.25rem 1rem rgba(64,59,54,0.07)" : "none", // Atrium token: S1 warm ink
                     fontFamily: T.font.body,
                     fontSize: "0.8125rem",
                     fontWeight: active ? 600 : 500,
-                    color: active ? T.color.charcoal : T.color.muted,
+                    color: active ? "#403B36" /* Atrium token: ink */ : "#716A5E" /* Atrium token: muted */,
                     cursor: "pointer",
-                    transition: "all .15s",
+                    transition: "all .2s ease", // Atrium motion budget
                   }}
                 >
                   {tab === "sent" ? t("sharedByMe") : t("sharedWithMe")}
@@ -574,7 +579,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                       style={{
                         marginLeft: "0.375rem",
                         fontSize: "0.6875rem",
-                        color: active ? T.color.terracotta : T.color.sandstone,
+                        color: active ? "#9A4F2A" /* Atrium token: terracotta glyph */ : "#716A5E" /* Atrium token: muted */,
                       }}
                     >
                       {count}
@@ -594,11 +599,11 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
               margin: "0 1.5rem",
               padding: "0.625rem 0.875rem",
               background: `${T.color.error}10`,
-              border: `1px solid ${T.color.error}30`,
-              borderRadius: "0.625rem",
+              border: `0.0625rem solid ${T.color.error}30`,
+              borderRadius: "0.75rem", // Atrium token: small control
               marginBottom: "0.75rem",
               fontFamily: T.font.body,
-              fontSize: "0.75rem",
+              fontSize: "0.8125rem",
               color: T.color.error,
               display: "flex",
               justifyContent: "space-between",
@@ -614,7 +619,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                 border: "none",
                 color: T.color.error,
                 cursor: "pointer",
-                fontSize: "0.875rem",
+                fontSize: "0.8125rem",
               }}
             >
               &#x2715;
@@ -635,7 +640,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
               style={{
                 textAlign: "center",
                 padding: "3rem 1rem",
-                color: T.color.muted,
+                color: "#716A5E" /* Atrium token: muted */,
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
               }}
@@ -659,9 +664,9 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                     style={{
                       padding: "0.875rem 1rem",
                       background: T.color.white,
-                      borderRadius: "0.75rem",
-                      border: `1px solid ${T.color.cream}`,
-                      boxShadow: "0 1px 4px rgba(44,44,42,.04)",
+                      borderRadius: "1rem", // Atrium token: card radius
+                      border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+                      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 warm ink
                     }}
                   >
                     {/* Header row */}
@@ -680,7 +685,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                           fontFamily: T.font.body,
                           fontSize: "0.8125rem",
                           fontWeight: 600,
-                          color: T.color.charcoal,
+                          color: "#403B36" /* Atrium token: ink */,
                           flex: 1,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -696,8 +701,8 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                     <div
                       style={{
                         fontFamily: T.font.body,
-                        fontSize: "0.75rem",
-                        color: T.color.muted,
+                        fontSize: "0.8125rem",
+                        color: "#716A5E" /* Atrium token: muted */,
                         marginBottom: "0.625rem",
                       }}
                     >
@@ -732,7 +737,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                             style={{
                               fontFamily: T.font.body,
                               fontSize: "0.6875rem",
-                              color: T.color.walnut,
+                              color: "#403B36" /* Atrium token: ink */,
                             }}
                           >
                             {label}
@@ -764,8 +769,8 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         style={{
                           width: "100%",
                           padding: "0.375rem",
-                          borderRadius: "0.375rem",
-                          border: `1px solid ${T.color.error}25`,
+                          borderRadius: "0.7rem", // Atrium token: small control
+                          border: `0.0625rem solid ${T.color.error}25`,
                           background: `${T.color.error}06`,
                           fontFamily: T.font.body,
                           fontSize: "0.6875rem",
@@ -787,9 +792,9 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                     style={{
                       padding: "0.875rem 1rem",
                       background: T.color.white,
-                      borderRadius: "0.75rem",
-                      border: `1px solid ${T.color.cream}`,
-                      boxShadow: "0 1px 4px rgba(44,44,42,.04)",
+                      borderRadius: "1rem", // Atrium token: card radius
+                      border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+                      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 warm ink
                     }}
                   >
                     {/* Header row */}
@@ -808,7 +813,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                           fontFamily: T.font.body,
                           fontSize: "0.8125rem",
                           fontWeight: 600,
-                          color: T.color.charcoal,
+                          color: "#403B36" /* Atrium token: ink */,
                           flex: 1,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -825,7 +830,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                       style={{
                         fontFamily: T.font.body,
                         fontSize: "0.6875rem",
-                        color: T.color.sandstone,
+                        color: "#716A5E" /* Atrium token: muted */,
                         marginBottom: "0.375rem",
                       }}
                     >
@@ -836,8 +841,8 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                     <div
                       style={{
                         fontFamily: T.font.body,
-                        fontSize: "0.75rem",
-                        color: T.color.muted,
+                        fontSize: "0.8125rem",
+                        color: "#716A5E" /* Atrium token: muted */,
                         marginBottom: "0.625rem",
                       }}
                     >
@@ -872,7 +877,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                             style={{
                               fontFamily: T.font.body,
                               fontSize: "0.6875rem",
-                              color: T.color.walnut,
+                              color: "#403B36" /* Atrium token: ink */,
                             }}
                           >
                             {label}
@@ -904,8 +909,8 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         style={{
                           width: "100%",
                           padding: "0.375rem",
-                          borderRadius: "0.375rem",
-                          border: `1px solid ${T.color.error}25`,
+                          borderRadius: "0.7rem", // Atrium token: small control
+                          border: `0.0625rem solid ${T.color.error}25`,
                           background: `${T.color.error}06`,
                           fontFamily: T.font.body,
                           fontSize: "0.6875rem",
@@ -938,9 +943,9 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                     style={{
                       padding: "0.875rem 1rem",
                       background: T.color.white,
-                      borderRadius: "0.75rem",
-                      border: `1px solid ${T.color.cream}`,
-                      boxShadow: "0 1px 4px rgba(44,44,42,.04)",
+                      borderRadius: "1rem", // Atrium token: card radius
+                      border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+                      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 warm ink
                     }}
                   >
                     {/* Header row */}
@@ -959,7 +964,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                           fontFamily: T.font.body,
                           fontSize: "0.8125rem",
                           fontWeight: 600,
-                          color: T.color.charcoal,
+                          color: "#403B36" /* Atrium token: ink */,
                           flex: 1,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -974,8 +979,8 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                     <div
                       style={{
                         fontFamily: T.font.body,
-                        fontSize: "0.75rem",
-                        color: T.color.muted,
+                        fontSize: "0.8125rem",
+                        color: "#716A5E" /* Atrium token: muted */,
                         marginBottom: "0.5rem",
                       }}
                     >
@@ -1012,12 +1017,12 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         style={{
                           width: "100%",
                           padding: "0.375rem",
-                          borderRadius: "0.375rem",
-                          border: `1px solid ${T.color.sandstone}50`,
+                          borderRadius: "0.7rem", // Atrium token: small control
+                          border: "0.0625rem solid #E3D6BC", // Atrium token: hairline (was alpha-band)
                           background: "transparent",
                           fontFamily: T.font.body,
                           fontSize: "0.6875rem",
-                          color: T.color.walnut,
+                          color: "#716A5E" /* Atrium token: muted */,
                           cursor: "pointer",
                           fontWeight: 500,
                         }}
@@ -1035,9 +1040,9 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                     style={{
                       padding: "0.875rem 1rem",
                       background: T.color.white,
-                      borderRadius: "0.75rem",
-                      border: `1px solid ${T.color.cream}`,
-                      boxShadow: "0 1px 4px rgba(44,44,42,.04)",
+                      borderRadius: "1rem", // Atrium token: card radius
+                      border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+                      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 warm ink
                     }}
                   >
                     {/* Header row */}
@@ -1056,7 +1061,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                           fontFamily: T.font.body,
                           fontSize: "0.8125rem",
                           fontWeight: 600,
-                          color: T.color.charcoal,
+                          color: "#403B36" /* Atrium token: ink */,
                           flex: 1,
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -1071,8 +1076,8 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                     <div
                       style={{
                         fontFamily: T.font.body,
-                        fontSize: "0.75rem",
-                        color: T.color.muted,
+                        fontSize: "0.8125rem",
+                        color: "#716A5E" /* Atrium token: muted */,
                         marginBottom: share.placedInWingName ? "0.125rem" : "0.5rem",
                       }}
                     >
@@ -1083,7 +1088,7 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         style={{
                           fontFamily: T.font.body,
                           fontSize: "0.6875rem",
-                          color: T.color.sandstone,
+                          color: "#716A5E", // Atrium token: muted, full opacity
                           marginBottom: "0.5rem",
                         }}
                       >
@@ -1121,12 +1126,12 @@ export default function SharingSettingsPanel({ open, onClose }: SharingSettingsP
                         style={{
                           width: "100%",
                           padding: "0.375rem",
-                          borderRadius: "0.375rem",
-                          border: `1px solid ${T.color.sandstone}50`,
+                          borderRadius: "0.7rem", // Atrium token: small control
+                          border: "0.0625rem solid #E3D6BC", // Atrium token: hairline (was alpha-band)
                           background: "transparent",
                           fontFamily: T.font.body,
                           fontSize: "0.6875rem",
-                          color: T.color.walnut,
+                          color: "#716A5E" /* Atrium token: muted */,
                           cursor: "pointer",
                           fontWeight: 500,
                         }}
@@ -1169,8 +1174,10 @@ function EmptyState({
       <p
         style={{
           fontFamily: T.font.display,
-          fontSize: "1.125rem",
-          color: T.color.charcoal,
+          fontSize: "1.1875rem", // Atrium token: titleM
+          fontWeight: 600,
+          lineHeight: 1.15,
+          color: "#403B36" /* Atrium token: ink */,
           margin: "0 0 0.5rem",
         }}
       >
@@ -1180,9 +1187,9 @@ function EmptyState({
         style={{
           fontFamily: T.font.body,
           fontSize: "0.8125rem",
-          color: T.color.muted,
+          color: "#716A5E" /* Atrium token: muted */,
           margin: 0,
-          lineHeight: 1.6,
+          lineHeight: 1.4,
         }}
       >
         {subtitle}

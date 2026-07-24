@@ -212,21 +212,22 @@ export default function NotificationsPage() {
       }}>
         <h1 style={{
           fontFamily: T.font.display,
-          fontSize: "1.5rem",
+          fontSize: "1.375rem", // Atrium token titleL
           fontWeight: 600,
-          color: T.color.charcoal,
+          lineHeight: 1.15,
+          color: "#403B36", // Atrium ink
           margin: 0,
         }}>
           {t("title")}
           {unread > 0 && (
             <span style={{
               marginLeft: "0.5rem",
-              fontSize: "0.875rem",
+              fontSize: "0.8125rem", // Atrium meta
               fontWeight: 600,
-              color: T.color.terracotta,
-              background: `${T.color.terracotta}12`,
+              color: "#B85C38", // Atrium ember — unread
+              background: "rgba(184,92,56,0.11)",
               padding: "0.125rem 0.5rem",
-              borderRadius: "1rem",
+              borderRadius: "2rem",
             }}>
               {unread}
             </span>
@@ -238,14 +239,14 @@ export default function NotificationsPage() {
             style={{
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
-              color: T.color.terracotta,
-              background: `${T.color.terracotta}08`,
-              border: `0.0625rem solid ${T.color.terracotta}25`,
-              borderRadius: "0.5rem",
+              color: "#9A4F2A", // Atrium terracotta glyph
+              background: "rgba(154,79,42,0.06)",
+              border: "0.0625rem solid #E7D9C4", // Atrium terracotta tile border, opaque
+              borderRadius: "0.75rem",
               padding: "0.375rem 0.75rem",
               cursor: "pointer",
               fontWeight: 500,
-              transition: "all 0.15s",
+              transition: "all 0.2s ease",
             }}
           >
             {t("markAllRead")}
@@ -268,14 +269,14 @@ export default function NotificationsPage() {
               fontFamily: T.font.body,
               fontSize: "0.8125rem",
               fontWeight: activeTab === tab.key ? 600 : 500,
-              color: activeTab === tab.key ? T.color.white : T.color.charcoal,
+              color: activeTab === tab.key ? T.color.white : "#403B36", // Atrium ink
               background: activeTab === tab.key
-                ? `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`
+                ? "#B85C38" // Atrium ember, solid
                 : "rgba(255,255,255,0.6)",
               border: activeTab === tab.key
                 ? "none"
-                : `0.0625rem solid ${T.color.cream}`,
-              borderRadius: "1.25rem",
+                : "0.0625rem solid #E3D6BC", // Atrium hairline
+              borderRadius: "2rem",
               padding: "0.375rem 0.875rem",
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -297,8 +298,8 @@ export default function NotificationsPage() {
           <div style={{
             textAlign: "center",
             padding: "3rem 1rem",
-            color: T.color.muted,
-            fontSize: "0.875rem",
+            color: "#716A5E", // Atrium muted
+            fontSize: "0.8125rem",
           }}>
             {t("loading")}
           </div>
@@ -308,13 +309,13 @@ export default function NotificationsPage() {
           <div style={{
             textAlign: "center",
             padding: "4rem 1rem",
-            color: T.color.muted,
+            color: "#716A5E", // Atrium muted
           }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={T.color.cream} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: "0.75rem" }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E3D6BC" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: "0.75rem" }}>
               <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 01-3.46 0" />
             </svg>
-            <p style={{ fontSize: "0.9375rem", fontWeight: 500, color: T.color.charcoal, marginBottom: "0.25rem" }}>
+            <p style={{ fontSize: "0.9375rem", fontWeight: 500, color: "#403B36", marginBottom: "0.25rem" }}>
               {t("emptyTitle")}
             </p>
             <p style={{ fontSize: "0.8125rem" }}>{t(EMPTY_KEYS[activeTab])}</p>
@@ -329,10 +330,10 @@ export default function NotificationsPage() {
               {/* Date section header */}
               <div style={{
                 fontSize: "0.6875rem",
-                fontWeight: 600,
-                color: T.color.muted,
+                fontWeight: 700, // Atrium overline
+                color: "#716A5E", // Atrium muted
                 textTransform: "uppercase",
-                letterSpacing: "0.05em",
+                letterSpacing: "0.12em",
                 padding: "0.75rem 0.25rem 0.375rem",
                 marginTop: "0.25rem",
               }}>
@@ -342,6 +343,7 @@ export default function NotificationsPage() {
               {items.map((group) => (
                 <div
                   key={group.primary.id}
+                  className="np-anim"
                   onClick={() => handleNotificationClick(group)}
                   role="button"
                   tabIndex={0}
@@ -351,11 +353,12 @@ export default function NotificationsPage() {
                     gap: "0.75rem",
                     padding: "1rem",
                     marginBottom: "0.5rem",
-                    borderRadius: "0.75rem",
+                    borderRadius: "1rem",
                     background: group.primary.read ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.85)",
-                    border: `0.0625rem solid ${group.primary.read ? T.color.cream : T.color.terracotta + "25"}`,
+                    border: `0.0625rem solid ${group.primary.read ? "#E3D6BC" : "#E7D9C4"}`, // Atrium hairline / terracotta tile border
+                    boxShadow: group.primary.read ? "none" : "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium S1
                     cursor: "pointer",
-                    transition: "all 0.15s",
+                    transition: "all 0.2s ease",
                     animation: "fadeIn 0.3s ease both",
                   }}
                 >
@@ -369,9 +372,9 @@ export default function NotificationsPage() {
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{
-                      fontSize: "0.875rem",
+                      fontSize: "0.9375rem", // Atrium body
                       fontWeight: group.primary.read ? 500 : 600,
-                      color: T.color.charcoal,
+                      color: "#403B36", // Atrium ink
                       margin: 0,
                       lineHeight: 1.4,
                     }}>
@@ -383,7 +386,7 @@ export default function NotificationsPage() {
                     {group.grouped && group.count > 1 && (
                       <p style={{
                         fontSize: "0.6875rem",
-                        color: T.color.muted,
+                        color: "#716A5E", // Atrium muted
                         margin: "0.125rem 0 0",
                         fontStyle: "italic",
                       }}>
@@ -391,8 +394,8 @@ export default function NotificationsPage() {
                       </p>
                     )}
                     <p style={{
-                      fontSize: "0.75rem",
-                      color: T.color.muted,
+                      fontSize: "0.8125rem", // Atrium meta
+                      color: "#716A5E", // Atrium muted
                       margin: "0.25rem 0 0",
                     }}>
                       {timeAgo(group.primary.created_at, t)}
@@ -403,7 +406,7 @@ export default function NotificationsPage() {
                       width: "0.5rem",
                       height: "0.5rem",
                       borderRadius: "50%",
-                      background: T.color.terracotta,
+                      background: "#B85C38", // Atrium ember — unread
                       flexShrink: 0,
                       marginTop: "0.375rem",
                     }} />
@@ -418,12 +421,14 @@ export default function NotificationsPage() {
       {tutorialOpen && typeof document !== "undefined" && createPortal(
         <>
           <style>{`
-            @keyframes nudgeCardIn { from { opacity:0; transform:translate(-50%,-50%) scale(0.95); } to { opacity:1; transform:translate(-50%,-50%) scale(1); } }
+            @keyframes nudgeCardIn { from { opacity:0; transform:translate(-50%,calc(-50% + 0.375rem)); } to { opacity:1; transform:translate(-50%,-50%); } }
+            @media (prefers-reduced-motion: reduce) { .np-anim { animation: none !important; transition: none !important; } }
           `}</style>
           <div
-            style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,0.35)", pointerEvents:"auto" }}
+            style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(64,59,54,0.4)", pointerEvents:"auto" }} /* Atrium warm ink scrim */
           />
           <div
+            className="np-anim"
             style={{
               position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:1001,
               width: isMobile ? "calc(100vw - 2rem)" : "22rem", maxWidth:"24rem",
@@ -432,16 +437,16 @@ export default function NotificationsPage() {
             }}
           >
             <div style={{
-              background:"rgba(42,34,24,0.94)",
+              background:"rgba(46,42,38,0.94)", /* Atrium keystone dark #2E2A26 */
               backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
               borderRadius:"1rem", padding:"1.25rem 1.25rem 1rem",
-              border:"1px solid rgba(212,175,55,0.25)",
-              boxShadow:"0 1rem 3rem rgba(0,0,0,0.4)",
+              border:"0.0625rem solid rgba(227,214,188,0.25)", /* Atrium hairline on dark */
+              boxShadow:"0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium S2 */
               display:"flex", flexDirection:"column", gap:"0.75rem",
             }}>
               <div style={{
                 fontFamily:T.font.display, fontSize:"0.9375rem", fontWeight:600,
-                color:T.color.goldLight, letterSpacing:"0.02em",
+                color:"#FCFAF5", /* Atrium cream — title on dark */ letterSpacing:"0.02em",
               }}>
                 {t("tutorialTitle")}
               </div>
@@ -457,11 +462,11 @@ export default function NotificationsPage() {
                   <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
                     <div style={{
                       width:"0.375rem", height:"0.375rem", borderRadius:"50%", flexShrink:0, marginTop:"0.4375rem",
-                      background:`linear-gradient(135deg, ${T.color.gold}, ${T.color.terracotta})`,
+                      background:"#B85C38", /* Atrium ember, solid */
                     }} />
                     <span style={{
                       fontFamily:T.font.body, fontSize:"0.8125rem",
-                      color:"rgba(250,250,247,0.88)", lineHeight:1.5,
+                      color:"rgba(252,250,245,0.88)", /* Atrium cream base */ lineHeight:1.5,
                     }}>
                       {text}
                     </span>
@@ -469,8 +474,8 @@ export default function NotificationsPage() {
                 ))}
               </div>
               <div style={{
-                fontFamily:T.font.body, fontSize:"0.75rem",
-                color:"rgba(250,250,247,0.5)", fontStyle:"italic", marginTop:"0.125rem",
+                fontFamily:T.font.body, fontSize:"0.8125rem", /* Atrium meta */
+                color:"rgba(252,250,245,0.6)", fontStyle:"italic", marginTop:"0.125rem",
               }}>
                 {t("tutorialFooter")}
               </div>
@@ -480,7 +485,7 @@ export default function NotificationsPage() {
                 <button
                   onClick={closeTutorial}
                   style={{
-                    fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500, color:"rgba(250,250,247,0.55)",
+                    fontFamily:T.font.body, fontSize:"0.8125rem", fontWeight:500, color:"rgba(252,250,245,0.72)", /* Atrium on-dark secondary */
                     background:"transparent", border:"none", padding:"0.4375rem 0.5rem",
                     cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
                   }}
@@ -490,9 +495,9 @@ export default function NotificationsPage() {
                 <button
                   onClick={closeTutorial}
                   style={{
-                    fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:600, color:"#FFF",
-                    background:`linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-                    border:"none", borderRadius:"0.5rem", padding:"0.4375rem 1.125rem",
+                    fontFamily:T.font.body, fontSize:"0.8125rem", fontWeight:600, color:"#FCFAF5",
+                    background:"#B85C38", /* Atrium ember, solid */
+                    border:"none", borderRadius:"0.75rem", padding:"0.4375rem 1.125rem",
                     cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
                   }}
                 >

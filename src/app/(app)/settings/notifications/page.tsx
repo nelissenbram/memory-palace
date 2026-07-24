@@ -8,14 +8,14 @@ import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { isNative } from "@/lib/native/platform";
 import Toast, { type ToastData } from "@/components/ui/Toast";
 
-// ── Custom SVG Icons (Roman/Tuscan aesthetic) ──
+// ── Custom SVG Icons (Roman/Tuscan aesthetic) — glyphs in #9A4F2A /* Atrium token: terracotta glyph */ ──
 
 function IconBell() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2C12 2 12.5 2 13 2.5C13.5 3 14 4 14 5V5.5C16.5 6.5 18 9 18 12V16L20 18H4L6 16V12C6 9 7.5 6.5 10 5.5V5C10 4 10.5 3 11 2.5C11.5 2 12 2 12 2Z" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 18C10 19.1 10.9 20 12 20C13.1 20 14 19.1 14 18" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="12" cy="5" r="1" fill={T.color.gold} opacity="0.4" />
+      <path d="M12 2C12 2 12.5 2 13 2.5C13.5 3 14 4 14 5V5.5C16.5 6.5 18 9 18 12V16L20 18H4L6 16V12C6 9 7.5 6.5 10 5.5V5C10 4 10.5 3 11 2.5C11.5 2 12 2 12 2Z" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 18C10 19.1 10.9 20 12 20C13.1 20 14 19.1 14 18" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="5" r="1" fill="#9A4F2A" opacity="0.4" />
     </svg>
   );
 }
@@ -23,11 +23,11 @@ function IconBell() {
 function IconOnThisDay() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="4" width="18" height="17" rx="2" stroke={T.color.gold} strokeWidth="1.5" />
-      <path d="M3 9H21" stroke={T.color.gold} strokeWidth="1.5" />
-      <path d="M8 2V5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M16 2V5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M12 13L13.1 15.3L15.7 15.6L13.8 17.3L14.3 19.9L12 18.6L9.7 19.9L10.2 17.3L8.3 15.6L10.9 15.3L12 13Z" fill={T.color.gold} opacity="0.5" stroke={T.color.gold} strokeWidth="1" strokeLinejoin="round" />
+      <rect x="3" y="4" width="18" height="17" rx="2" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M3 9H21" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M8 2V5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M16 2V5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 13L13.1 15.3L15.7 15.6L13.8 17.3L14.3 19.9L12 18.6L9.7 19.9L10.2 17.3L8.3 15.6L10.9 15.3L12 13Z" fill="#9A4F2A" opacity="0.5" stroke="#9A4F2A" strokeWidth="1" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -35,11 +35,11 @@ function IconOnThisDay() {
 function IconTimeCapsule() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2C9 2 8 3.5 8 5V6H16V5C16 3.5 15 2 12 2Z" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="7" y="6" width="10" height="4" rx="1" stroke={T.color.gold} strokeWidth="1.5" />
-      <path d="M8 10L7 20C7 21 7.5 22 9 22H15C16.5 22 17 21 17 20L16 10" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 14V18" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="12" cy="14" r="1" fill={T.color.gold} opacity="0.5" />
+      <path d="M12 2C9 2 8 3.5 8 5V6H16V5C16 3.5 15 2 12 2Z" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="7" y="6" width="10" height="4" rx="1" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M8 10L7 20C7 21 7.5 22 9 22H15C16.5 22 17 21 17 20L16 10" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 14V18" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="14" r="1" fill="#9A4F2A" opacity="0.5" />
     </svg>
   );
 }
@@ -47,10 +47,10 @@ function IconTimeCapsule() {
 function IconMilestone() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2L14.5 7.5L20.5 8.2L16 12.4L17.2 18.3L12 15.5L6.8 18.3L8 12.4L3.5 8.2L9.5 7.5L12 2Z" stroke={T.color.gold} strokeWidth="1.5" strokeLinejoin="round" />
-      <circle cx="12" cy="10" r="2" fill={T.color.gold} opacity="0.3" />
-      <path d="M8 21H16" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M12 18V21" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 2L14.5 7.5L20.5 8.2L16 12.4L17.2 18.3L12 15.5L6.8 18.3L8 12.4L3.5 8.2L9.5 7.5L12 2Z" stroke="#9A4F2A" strokeWidth="1.5" strokeLinejoin="round" />
+      <circle cx="12" cy="10" r="2" fill="#9A4F2A" opacity="0.3" />
+      <path d="M8 21H16" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 18V21" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -58,11 +58,11 @@ function IconMilestone() {
 function IconFamily() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="9" cy="7" r="3" stroke={T.color.gold} strokeWidth="1.5" />
-      <circle cx="17" cy="7" r="2.5" stroke={T.color.gold} strokeWidth="1.5" />
-      <path d="M3 20C3 16.7 5.7 14 9 14C10.5 14 11.8 14.5 12.8 15.4" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M14 20C14 17.2 15.3 15 17 15C18.7 15 20 17.2 20 20" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M5 19L7 17L9 19L11 17" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+      <circle cx="9" cy="7" r="3" stroke="#9A4F2A" strokeWidth="1.5" />
+      <circle cx="17" cy="7" r="2.5" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M3 20C3 16.7 5.7 14 9 14C10.5 14 11.8 14.5 12.8 15.4" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M14 20C14 17.2 15.3 15 17 15C18.7 15 20 17.2 20 20" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5 19L7 17L9 19L11 17" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
     </svg>
   );
 }
@@ -70,11 +70,11 @@ function IconFamily() {
 function IconInterview() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="10" r="5" stroke={T.color.gold} strokeWidth="1.5" />
-      <path d="M12 7V10L14 11.5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 18C5 16 8 14.5 12 14.5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
-      <path d="M17 17L19 19" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M15 19L17 17L19 19" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="12" cy="10" r="5" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M12 7V10L14 11.5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 18C5 16 8 14.5 12 14.5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
+      <path d="M17 17L19 19" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M15 19L17 17L19 19" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -82,11 +82,11 @@ function IconInterview() {
 function IconWeeklySummary() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="4" y="3" width="16" height="18" rx="2" stroke={T.color.gold} strokeWidth="1.5" />
-      <path d="M8 8H16" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M8 12H14" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M8 16H12" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="17" cy="17" r="1.5" fill={T.color.gold} opacity="0.4" />
+      <rect x="4" y="3" width="16" height="18" rx="2" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M8 8H16" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 12H14" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M8 16H12" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="17" cy="17" r="1.5" fill="#9A4F2A" opacity="0.4" />
     </svg>
   );
 }
@@ -94,11 +94,11 @@ function IconWeeklySummary() {
 function IconScroll() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M6 3C4.9 3 4 3.9 4 5V19C4 20.1 4.9 21 6 21" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M6 3H18C19.1 3 20 3.9 20 5V17C20 18.1 19.1 19 18 19H8C6.9 19 6 19.9 6 21V3Z" stroke={T.color.gold} strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M10 8H16" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M10 12H15" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="17" cy="20" r="2" stroke={T.color.gold} strokeWidth="1.5" fill={T.color.gold} opacity="0.3" />
+      <path d="M6 3C4.9 3 4 3.9 4 5V19C4 20.1 4.9 21 6 21" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M6 3H18C19.1 3 20 3.9 20 5V17C20 18.1 19.1 19 18 19H8C6.9 19 6 19.9 6 21V3Z" stroke="#9A4F2A" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M10 8H16" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M10 12H15" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="17" cy="20" r="2" stroke="#9A4F2A" strokeWidth="1.5" fill="#9A4F2A" opacity="0.3" />
     </svg>
   );
 }
@@ -106,13 +106,13 @@ function IconScroll() {
 function IconCalendarTablet() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="3" width="18" height="18" rx="2" stroke={T.color.gold} strokeWidth="1.5" />
-      <path d="M3 8H21" stroke={T.color.gold} strokeWidth="1.5" />
-      <rect x="6" y="11" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.3" />
-      <rect x="10.5" y="11" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.3" />
-      <rect x="15" y="11" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.3" />
-      <rect x="6" y="15.5" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.2" />
-      <rect x="10.5" y="15.5" width="3" height="2.5" rx="0.5" fill={T.color.gold} opacity="0.2" />
+      <rect x="3" y="3" width="18" height="18" rx="2" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M3 8H21" stroke="#9A4F2A" strokeWidth="1.5" />
+      <rect x="6" y="11" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.3" />
+      <rect x="10.5" y="11" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.3" />
+      <rect x="15" y="11" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.3" />
+      <rect x="6" y="15.5" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.2" />
+      <rect x="10.5" y="15.5" width="3" height="2.5" rx="0.5" fill="#9A4F2A" opacity="0.2" />
     </svg>
   );
 }
@@ -120,13 +120,13 @@ function IconCalendarTablet() {
 function IconMemories() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="4" y="4" width="16" height="16" rx="2" stroke={T.color.gold} strokeWidth="1.5" />
-      <rect x="6" y="6" width="12" height="12" rx="1" stroke={T.color.gold} strokeWidth="1" opacity="0.4" />
-      <path d="M6 16L10 12L13 15L16 11L18 14" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M2 8C1.5 6 2 4 2 4" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-      <path d="M22 8C22.5 6 22 4 22 4" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-      <path d="M2 16C1.5 18 2 20 2 20" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
-      <path d="M22 16C22.5 18 22 20 22 20" stroke={T.color.gold} strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <rect x="4" y="4" width="16" height="16" rx="2" stroke="#9A4F2A" strokeWidth="1.5" />
+      <rect x="6" y="6" width="12" height="12" rx="1" stroke="#9A4F2A" strokeWidth="1" opacity="0.4" />
+      <path d="M6 16L10 12L13 15L16 11L18 14" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 8C1.5 6 2 4 2 4" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <path d="M22 8C22.5 6 22 4 22 4" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <path d="M2 16C1.5 18 2 20 2 20" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
+      <path d="M22 16C22.5 18 22 20 22 20" stroke="#9A4F2A" strokeWidth="1" strokeLinecap="round" opacity="0.4" />
     </svg>
   );
 }
@@ -134,13 +134,13 @@ function IconMemories() {
 function IconInfoPillar() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="8" y="6" width="8" height="14" stroke={T.color.gold} strokeWidth="1.5" />
-      <path d="M6 6H18" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M6 20H18" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M5 4H19" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M5 22H19" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="12" cy="11" r="1.5" fill={T.color.gold} opacity="0.5" />
-      <path d="M12 14V17" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <rect x="8" y="6" width="8" height="14" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M6 6H18" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M6 20H18" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5 4H19" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M5 22H19" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="11" r="1.5" fill="#9A4F2A" opacity="0.5" />
+      <path d="M12 14V17" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -148,11 +148,11 @@ function IconInfoPillar() {
 function IconSystemUpdates() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="8" stroke={T.color.gold} strokeWidth="1.5" />
-      <path d="M12 8V12L15 14" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 3L3 5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M19 3L21 5" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
-      <path d="M12 4V2" stroke={T.color.gold} strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="8" stroke="#9A4F2A" strokeWidth="1.5" />
+      <path d="M12 8V12L15 14" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 3L3 5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M19 3L21 5" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M12 4V2" stroke="#9A4F2A" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
@@ -371,7 +371,7 @@ export default function NotificationsPage() {
 
   if (!loaded) {
     return (
-      <div style={{ padding: "3rem", textAlign: "center", fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>
+      <div style={{ padding: "3rem", textAlign: "center", fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium token: muted */ }}>
         {t("loading") || "Loading..."}
       </div>
     );
@@ -388,14 +388,14 @@ export default function NotificationsPage() {
       {!isMobile && (
         <div style={{ marginBottom: "1.75rem" }}>
           <h2 style={{
-            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 0.5rem",
+            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600, lineHeight: 1.15,
+            color: "#403B36" /* Atrium token: ink */, margin: "0 0 0.5rem",
           }}>
             {t("title")}
           </h2>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-            margin: 0, lineHeight: 1.5,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" /* Atrium token: muted */,
+            margin: 0, lineHeight: 1.4,
           }}>
             {t("description")}
           </p>
@@ -409,12 +409,12 @@ export default function NotificationsPage() {
       {isUnsupported && (
         <div style={{
           padding: "1rem 1.25rem", borderRadius: "0.75rem", marginBottom: "1.25rem",
-          background: `${T.color.terracotta}08`,
-          border: `1px solid ${T.color.terracotta}20`,
+          background: "#FBF2EC" /* Atrium token: pre-mixed terracotta tint */,
+          border: "0.0625rem solid #E7D9C4" /* Atrium token: terracotta border */,
         }}>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
-            margin: 0, lineHeight: 1.5,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium token: ink */,
+            margin: 0, lineHeight: 1.4,
           }}>
             {t("browserUnsupported")}
           </p>
@@ -425,12 +425,12 @@ export default function NotificationsPage() {
       {isDenied && !isUnsupported && (
         <div style={{
           padding: "1rem 1.25rem", borderRadius: "0.75rem", marginBottom: "1.25rem",
-          background: `${T.color.terracotta}08`,
-          border: `1px solid ${T.color.terracotta}20`,
+          background: "#FBF2EC" /* Atrium token: pre-mixed terracotta tint */,
+          border: "0.0625rem solid #E7D9C4" /* Atrium token: terracotta border */,
         }}>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
-            margin: 0, lineHeight: 1.5,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium token: ink */,
+            margin: 0, lineHeight: 1.4,
           }}>
             {t("permissionDenied")}
           </p>
@@ -439,8 +439,8 @@ export default function NotificationsPage() {
       <div style={{
         background: T.color.white,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)" /* Atrium S1 + top highlight */,
         overflow: "hidden",
       }}>
         {/* Section header */}
@@ -448,10 +448,10 @@ export default function NotificationsPage() {
           padding: "1rem 1.5rem 0.5rem",
         }}>
           <h3 style={{
-            fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-            color: T.color.muted, margin: 0,
+            fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+            color: "#716A5E" /* Atrium token: overline voice */, margin: 0,
             textTransform: "uppercase" as const,
-            letterSpacing: "0.03125rem",
+            letterSpacing: "0.12em",
           }}>
             {t("pushSectionHeader")}
           </h3>
@@ -464,7 +464,7 @@ export default function NotificationsPage() {
         }}>
           <div style={{
             width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", flexShrink: 0,
-            background: prefs.pushEnabled ? `${T.color.gold}14` : T.color.warmStone,
+            background: prefs.pushEnabled ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : T.color.warmStone,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <IconBell />
@@ -472,13 +472,13 @@ export default function NotificationsPage() {
 
           <div style={{ flex: 1 }}>
             <h3 style={{
-              fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600,
-              color: T.color.charcoal, margin: "0 0 0.125rem",
+              fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+              color: "#403B36" /* Atrium token: ink */, margin: "0 0 0.125rem",
             }}>
               {t("pushNotifications")}
             </h3>
             <p style={{
-              fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: muted */,
               margin: 0,
             }}>
               {t("pushDescription")}
@@ -498,27 +498,27 @@ export default function NotificationsPage() {
           <>
             {PUSH_CATEGORIES.map((cat, i) => (
               <div key={cat.key}>
-                <div style={{ height: "0.0625rem", background: T.color.cream, margin: "0 1.5rem" }} />
+                <div style={{ height: "0.0625rem", background: "#E3D6BC" /* Atrium token: hairline */, margin: "0 1.5rem" }} />
                 <div style={{
                   padding: "0.875rem 1.5rem",
                   display: "flex", alignItems: "center", gap: "0.875rem",
                 }}>
                   <div style={{
-                    width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", flexShrink: 0,
-                    background: prefs[cat.key] ? `${T.color.gold}10` : T.color.warmStone,
+                    width: "2.25rem", height: "2.25rem", borderRadius: "0.7rem", flexShrink: 0,
+                    background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : T.color.warmStone,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {cat.icon}
                   </div>
                   <div style={{ flex: 1 }}>
                     <h4 style={{
-                      fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                      color: T.color.charcoal, margin: "0 0 0.0625rem",
+                      fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                      color: "#403B36" /* Atrium token: ink */, margin: "0 0 0.0625rem",
                     }}>
                       {t(cat.titleKey)}
                     </h4>
                     <p style={{
-                      fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: muted */,
                       margin: 0, lineHeight: 1.4,
                     }}>
                       {t(cat.descKey)}
@@ -544,8 +544,8 @@ export default function NotificationsPage() {
         marginTop: "1.5rem",
         background: T.color.white,
         borderRadius: "1rem",
-        border: `1px solid ${T.color.cream}`,
-        boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+        border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)" /* Atrium S1 + top highlight */,
         overflow: "hidden",
       }}>
         {/* Section header */}
@@ -553,10 +553,10 @@ export default function NotificationsPage() {
           padding: "1rem 1.5rem 0.5rem",
         }}>
           <h3 style={{
-            fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-            color: T.color.muted, margin: 0,
+            fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+            color: "#716A5E" /* Atrium token: overline voice */, margin: 0,
             textTransform: "uppercase" as const,
-            letterSpacing: "0.03125rem",
+            letterSpacing: "0.12em",
           }}>
             {t("emailSectionHeader")}
           </h3>
@@ -565,28 +565,28 @@ export default function NotificationsPage() {
         {EMAIL_CATEGORIES.map((cat, i) => (
           <div key={cat.key}>
             {i > 0 && (
-              <div style={{ height: "0.0625rem", background: T.color.cream, margin: "0 1.5rem" }} />
+              <div style={{ height: "0.0625rem", background: "#E3D6BC" /* Atrium token: hairline */, margin: "0 1.5rem" }} />
             )}
             <div style={{
               padding: "0.875rem 1.5rem",
               display: "flex", alignItems: "center", gap: "0.875rem",
             }}>
               <div style={{
-                width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", flexShrink: 0,
-                background: prefs[cat.key] ? `${T.color.gold}10` : T.color.warmStone,
+                width: "2.25rem", height: "2.25rem", borderRadius: "0.7rem", flexShrink: 0,
+                background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : T.color.warmStone,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {cat.icon}
               </div>
               <div style={{ flex: 1 }}>
                 <h4 style={{
-                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: T.color.charcoal, margin: "0 0 0.0625rem",
+                  fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+                  color: "#403B36" /* Atrium token: ink */, margin: "0 0 0.0625rem",
                 }}>
                   {t(cat.titleKey)}
                 </h4>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium token: muted */,
                   margin: 0, lineHeight: 1.4,
                 }}>
                   {t(cat.descKey)}
@@ -606,15 +606,15 @@ export default function NotificationsPage() {
       {/* Notification Schedule note */}
       <div style={{
         marginTop: "1.5rem", padding: "1rem 1.25rem", borderRadius: "0.75rem",
-        background: `${T.color.sage}08`,
-        border: `1px solid ${T.color.sage}15`,
+        background: "#EFF2E8" /* Atrium token: pre-mixed sage tray */,
+        border: "0.0625rem solid #DFE3D2" /* Atrium token: sage border */,
         display: "flex", alignItems: "flex-start", gap: "0.75rem",
       }}>
         <div style={{ flexShrink: 0, marginTop: "0.125rem" }}>
           <IconInfoPillar />
         </div>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut,
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" /* Atrium token: ink */,
           margin: 0, lineHeight: 1.5,
         }}>
           {t("scheduleNote")}
@@ -646,13 +646,14 @@ function ToggleSwitch({
       aria-checked={enabled}
       onClick={onChange}
       disabled={disabled}
+      className="np-toggle"
       style={{
         width: "3rem",
         height: "1.75rem",
         borderRadius: "0.875rem",
         border: "none",
         background: enabled
-          ? `linear-gradient(135deg, ${T.color.sage}, #5A7751)`
+          ? "linear-gradient(135deg, #56683C, #7A8C64)" /* Atrium token: canonical sage */
           : T.color.sandstone,
         position: "relative",
         cursor: disabled ? "not-allowed" : "pointer",
@@ -669,24 +670,24 @@ function ToggleSwitch({
           borderRadius: "0.6875rem",
           background: "#FFF",
           position: "absolute",
-          top: 3,
-          left: enabled ? "1.4375rem" : 3,
+          top: "0.1875rem",
+          left: enabled ? "1.4375rem" : "0.1875rem",
           transition: "left .2s ease",
-          boxShadow: "0 1px 4px rgba(0,0,0,.15)",
+          boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.15)" /* Atrium warm ink */,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
         {loading && (
-          <div style={{
-            width: "0.75rem", height: "0.75rem", border: `2px solid ${T.color.muted}40`,
-            borderTopColor: T.color.muted, borderRadius: "50%",
+          <div className="np-spin" style={{
+            width: "0.75rem", height: "0.75rem", border: "0.125rem solid rgba(113,106,94,0.25)" /* Atrium token: muted, pre-mixed */,
+            borderTopColor: "#716A5E", borderRadius: "50%",
             animation: "spin .6s linear infinite",
           }} />
         )}
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce) { .np-spin { animation: none !important; } .np-toggle, .np-toggle > div { transition: none !important; } } .np-toggle:focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem; } /* Atrium token: gold focus ring — the sanctioned gold use */`}</style>
     </button>
   );
 }

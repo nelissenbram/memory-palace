@@ -1047,7 +1047,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
     padding: "0.625rem 1.25rem",
     borderRadius: "0.75rem",
     fontFamily: T.font.body,
-    fontSize: "0.875rem",
+    fontSize: "0.9375rem",
     fontWeight: 600,
     cursor: "pointer",
     border: "none",
@@ -1055,17 +1055,17 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
     display: "inline-flex",
     alignItems: "center",
     gap: "0.5rem",
-    transition: "all 0.15s ease",
+    transition: "all 0.2s ease",
   };
 
   const zoomBtnStyle: React.CSSProperties = {
     width: isMobile ? "2rem" : "2.75rem",
     height: isMobile ? "2rem" : "2.75rem",
     borderRadius: isMobile ? "50%" : "0.75rem",
-    border: `1px solid ${T.color.sandstone}40`,
+    border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
     background: `${T.color.linen}E8`,
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
+    backdropFilter: "blur(0.75rem)",
+    WebkitBackdropFilter: "blur(0.75rem)",
     fontSize: isMobile ? "0.9375rem" : "1.25rem",
     cursor: "pointer",
     color: T.color.walnut,
@@ -1074,8 +1074,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
     justifyContent: "center",
     fontFamily: T.font.body,
     fontWeight: 600,
-    transition: "all 0.15s ease",
-    boxShadow: `0 0.125rem 0.5rem rgba(44,44,42,.08)`,
+    transition: "all 0.2s ease",
+    boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
     padding: 0,
   };
 
@@ -1337,6 +1337,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
 
   return (
     <div
+      className="ft-root"
       style={{
         height: "100dvh",
         maxHeight: "100dvh",
@@ -1349,17 +1350,20 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
       }}
     >
       {/* Header — NavigationBar-style glass morphism toolbar */}
+      {/* Atrium tokens: reduced-motion gate + gold focus-visible ring */}
+      <style>{`@media (prefers-reduced-motion: reduce){.ft-root,.ft-root *{transition:none!important;animation:none!important}}
+.ft-root :is(button,input,a,[tabindex]):focus-visible{outline:0.1875rem solid #D4AF37!important;outline-offset:0.1875rem}`}</style>
       {(isMobile || isCompact) && <style>{`.ft-mob-scroll::-webkit-scrollbar{display:none}`}</style>}
       <div
         style={{
           position: "sticky",
           top: 0,
           zIndex: 50,
-          borderBottom: `0.0625rem solid rgba(238,234,227,0.5)`,
+          borderBottom: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
           background: `${T.color.linen}C7`,
           backdropFilter: "blur(1.5rem) saturate(180%)",
           WebkitBackdropFilter: "blur(1.5rem) saturate(180%)",
-          boxShadow: "0 0.25rem 1.5rem rgba(44,44,42,0.07), 0 0.0625rem 0.125rem rgba(44,44,42,0.03)",
+          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
           flexShrink: 0,
         }}
       >
@@ -1380,9 +1384,9 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 <h1
                   style={{
                     fontFamily: T.font.display,
-                    fontSize: isMobile ? "1.0625rem" : "1.5rem",
-                    fontWeight: 500,
-                    color: T.color.charcoal,
+                    fontSize: isMobile ? "1.0625rem" : "1.375rem" /* Atrium titleL */,
+                    fontWeight: 600,
+                    color: "#403B36",
                     margin: 0,
                     lineHeight: 1.2,
                   }}
@@ -1390,7 +1394,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                   {t("title")}
                 </h1>
                 {!isMobile && (
-                  <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: 0 }}>
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: 0 }}>
                     {persons.length === 1
                       ? t("personCount", { count: String(persons.length) })
                       : t("peopleCount", { count: String(persons.length) })}
@@ -1400,7 +1404,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
             </div>
             {isMobile && persons.length > 0 && (
               <span style={{
-                fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
                 background: `${T.color.cream}88`, borderRadius: "0.75rem",
                 padding: "0.125rem 0.5rem", flexShrink: 0,
               }}>
@@ -1414,7 +1418,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
             <div style={{
               display: "flex",
               borderRadius: "1.5rem",
-              border: `0.0625rem solid rgba(238,234,227,0.5)`,
+              border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
               background: "rgba(255,255,255,0.35)",
               backdropFilter: "blur(0.5rem)",
               WebkitBackdropFilter: "blur(0.5rem)",
@@ -1436,14 +1440,14 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                       border: "none",
                       borderRadius: "1.25rem",
                       background: isActive
-                        ? `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.gold})`
+                        ? "linear-gradient(135deg, #B85C38, #9A4F2A)" /* Atrium token: ember->terracotta */
                         : "transparent",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                      boxShadow: isActive ? "0 0.125rem 0.5rem rgba(198,107,61,0.25)" : "none",
+                      transition: "all 0.25s ease",
+                      boxShadow: isActive ? "0 0.25rem 1rem rgba(64,59,54,0.07)" : "none", /* Atrium token S1 */
                     }}
                   >
                     {mode === "portrait" ? (
@@ -1489,9 +1493,9 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              border: `0.0625rem solid ${T.color.cream}`,
+              border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
               cursor: "pointer",
-              transition: "all 0.25s cubic-bezier(0.22, 1, 0.36, 1)",
+              transition: "all 0.25s ease",
               flexShrink: 0,
               padding: 0,
             }}
@@ -1517,8 +1521,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               whiteSpace: "nowrap" as const,
               scrollbarWidth: "none" as const,
               msOverflowStyle: "none" as const,
-              borderTop: `0.0625rem solid ${T.color.cream}66`,
-              background: `linear-gradient(180deg, ${T.color.sandstone}18 0%, ${T.color.cream}22 100%)`,
+              borderTop: "0.0625rem solid #E3D6BC", /* Atrium hairline */
+              background: "#F7F1E6", /* Atrium token: pre-mixed opaque tray, no alpha bands */
             } : {}),
           }}
         >
@@ -1541,10 +1545,10 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               gap: "0.25rem",
               padding: "0.375rem 0.75rem",
               borderRadius: "1rem",
-              border: `0.125rem solid ${T.color.gold}`,
-              background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.gold})`,
+              border: "0.125rem solid #B85C38" /* Atrium token: ember */,
+              background: "linear-gradient(135deg, #B85C38, #9A4F2A)" /* Atrium token: ember->terracotta */,
               color: T.color.white,
-              boxShadow: "0 0.125rem 0.75rem rgba(198,107,61,0.3)",
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
               fontFamily: T.font.body,
               fontWeight: 600,
               fontSize: "0.8125rem",
@@ -1572,9 +1576,9 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               gap: "0.25rem",
               padding: "0.375rem 0.75rem",
               borderRadius: "1rem",
-              border: `0.0625rem solid ${T.color.cream}`,
+              border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
               background: T.color.white,
-              color: persons.length < 2 ? T.color.muted : T.color.charcoal,
+              color: persons.length < 2 ? "#716A5E" : "#403B36",
               cursor: persons.length < 2 ? "default" : "pointer",
               fontFamily: T.font.body,
               fontWeight: 500,
@@ -1599,9 +1603,9 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 gap: "0.25rem",
                 padding: "0.375rem 0.75rem",
                 borderRadius: "1rem",
-                border: `0.0625rem solid ${T.color.cream}`,
+                border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
                 background: T.color.white,
-                color: T.color.charcoal,
+                color: "#403B36",
                 cursor: "pointer",
                 fontFamily: T.font.body,
                 fontWeight: 500,
@@ -1632,9 +1636,9 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                     backdropFilter: "blur(1rem)",
                     WebkitBackdropFilter: "blur(1rem)",
                     borderRadius: "1rem",
-                    border: `0.0625rem solid ${T.color.cream}`,
-                    borderTop: `0.125rem solid ${T.color.gold}`,
-                    boxShadow: "0 0.25rem 1.5rem rgba(0,0,0,0.06)",
+                    border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
+                    borderTop: "0.125rem solid #B85C38" /* Atrium token: ember */,
+                    boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token S2 */
                     padding: "0.25rem",
                     zIndex: 10,
                     minWidth: "11rem",
@@ -1661,11 +1665,11 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                         background: "transparent",
                         fontFamily: T.font.body,
                         fontSize: "0.8125rem",
-                        color: item.disabled ? T.color.muted : T.color.charcoal,
+                        color: item.disabled ? "#716A5E" : "#403B36",
                         cursor: item.disabled ? "default" : "pointer",
                         textAlign: "left" as const,
                         minHeight: "2.25rem",
-                        transition: "background 0.15s ease",
+                        transition: "background 0.2s ease",
                       }}
                     >
                       {item.label}
@@ -1675,10 +1679,10 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                     style={{
                       padding: "0.25rem 0.75rem 0.375rem",
                       fontFamily: T.font.body,
-                      fontSize: "0.625rem",
-                      color: T.color.muted,
+                      fontSize: "0.6875rem" /* Atrium overline size */,
+                      color: "#716A5E",
                       fontStyle: "italic",
-                      borderTop: `0.0625rem solid ${T.color.cream}`,
+                      borderTop: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
                       marginTop: "0.125rem",
                     }}
                   >
@@ -1710,9 +1714,9 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 gap: "0.25rem",
                 padding: "0.375rem 0.75rem",
                 borderRadius: "1rem",
-                border: `0.0625rem solid ${T.color.cream}`,
+                border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
                 background: T.color.white,
-                color: T.color.charcoal,
+                color: "#403B36",
                 cursor: "pointer",
                 fontFamily: T.font.body,
                 fontWeight: 500,
@@ -1748,7 +1752,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
         <>
           <div
             onClick={() => { setShowShareDialog(false); setLinkCopied(false); }}
-            style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 0, background: "rgba(0,0,0,0.3)", zIndex: 100 }}
+            style={{ position: "fixed", top: 0, right: 0, bottom: 0, left: 0, background: "rgba(64,59,54,0.3)", zIndex: 100 }}
           />
           <div
             style={{
@@ -1762,24 +1766,24 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               zIndex: 101,
               minWidth: isMobile ? "calc(100vw - 2rem)" : "24rem",
               maxWidth: "28rem",
-              boxShadow: "0 1rem 3rem rgba(44,44,42,.2)",
+              boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token S2 */
               fontFamily: T.font.body,
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", color: T.color.charcoal, margin: 0 }}>
+              <h3 style={{ fontFamily: T.font.display, fontSize: "1.0625rem" /* Atrium titleS */, fontWeight: 600, color: "#403B36", margin: 0 }}>
                 {t("shareLink")}
               </h3>
               <button
                 onClick={() => { setShowShareDialog(false); setLinkCopied(false); }}
                 style={{ background: "none", border: "none", cursor: "pointer", padding: "0.25rem" }}
               >
-                <CloseIcon size={18} color={T.color.muted} />
+                <CloseIcon size={18} color={"#716A5E"} />
               </button>
             </div>
 
             {shareLoading ? (
-              <p style={{ color: T.color.muted, fontSize: "0.875rem" }}>...</p>
+              <p style={{ color: "#716A5E", fontSize: "0.9375rem" }}>...</p>
             ) : activeShare ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                 <div style={{
@@ -1811,10 +1815,10 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                       flex: 1,
                       padding: "0.5rem 0.75rem",
                       borderRadius: "0.5rem",
-                      border: `1px solid ${T.color.sandstone}40`,
+                      border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
                       fontFamily: T.font.body,
-                      fontSize: "0.75rem",
-                      color: T.color.charcoal,
+                      fontSize: "0.8125rem",
+                      color: "#403B36",
                       background: T.color.cream,
                       minWidth: 0,
                     }}
@@ -1834,7 +1838,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                     style={{
                       ...btnStyle,
                       padding: "0.5rem 1rem",
-                      background: linkCopied ? T.color.sage : T.color.terracotta,
+                      background: linkCopied ? T.color.sage : "#B85C38" /* Atrium token: ember */,
                       color: T.color.white,
                       fontSize: "0.8125rem",
                       minHeight: "auto",
@@ -1858,7 +1862,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                     ...btnStyle,
                     background: "transparent",
                     color: T.color.error,
-                    border: `1px solid ${T.color.error}30`,
+                    border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
                     fontSize: "0.8125rem",
                     justifyContent: "center",
                     minHeight: "2.25rem",
@@ -1869,7 +1873,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 </button>
               </div>
             ) : (
-              <p style={{ color: T.color.muted, fontSize: "0.875rem" }}>{t("shareInactive")}</p>
+              <p style={{ color: "#716A5E", fontSize: "0.9375rem" }}>{t("shareInactive")}</p>
             )}
           </div>
         </>
@@ -1916,11 +1920,11 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               justifyContent: "center",
               gap: "0.75rem",
               padding: "0.5rem 1rem",
-              background: `${T.color.terracotta}15`,
-              borderBottom: `1px solid ${T.color.terracotta}30`,
+              background: "#F6EBE3" /* Atrium token: pre-mixed terracotta tray */,
+              borderBottom: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
               fontFamily: T.font.body,
-              fontSize: "0.875rem",
-              color: T.color.charcoal,
+              fontSize: "0.9375rem",
+              color: "#403B36" /* Atrium ink */,
             }}
           >
             <span style={{ fontWeight: 600 }}>
@@ -1931,11 +1935,11 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               style={{
                 padding: "0.25rem 0.75rem",
                 borderRadius: "0.5rem",
-                border: `1px solid ${T.color.terracotta}40`,
+                border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
                 background: T.color.white,
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
-                color: T.color.terracotta,
+                color: "#9A4F2A" /* Atrium token: terracotta glyph */,
                 cursor: "pointer",
                 fontWeight: 600,
               }}
@@ -1976,8 +1980,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               height: "100%",
               minHeight: "25rem",
               fontFamily: T.font.body,
-              fontSize: "1rem",
-              color: T.color.muted,
+              fontSize: "0.9375rem",
+              color: "#716A5E",
             }}
           >
             {t("loadingTree")}
@@ -2026,9 +2030,9 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
             <h2
               style={{
                 fontFamily: T.font.display,
-                fontSize: "1.625rem",
-                fontWeight: 500,
-                color: T.color.charcoal,
+                fontSize: "1.375rem" /* Atrium titleL */,
+                fontWeight: 600,
+                color: "#403B36",
                 textAlign: "center",
                 margin: 0,
                 lineHeight: 1.3,
@@ -2040,7 +2044,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
-                color: T.color.muted,
+                color: "#716A5E",
                 textAlign: "center",
                 maxWidth: "26.25rem",
                 lineHeight: 1.6,
@@ -2053,11 +2057,11 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               onClick={() => { setAddFormDefaults({}); setShowAddForm(true); }}
               style={{
                 ...btnStyle,
-                background: T.color.terracotta,
+                background: "#B85C38" /* Atrium token: ember */,
                 color: T.color.white,
-                fontSize: "1rem",
+                fontSize: "0.9375rem",
                 padding: "0.875rem 1.75rem",
-                boxShadow: `0 0.25rem 1rem rgba(198,107,61,.25)`,
+                boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)" /* Atrium token S1 */,
               }}
             >
               {t("addFirstPerson")}
@@ -2133,16 +2137,16 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               >
                 <stop
                   offset="0%"
-                  stopColor={T.color.terracotta}
+                  stopColor={"#B85C38"}
                   stopOpacity={0.65}
                 />
                 <stop
                   offset="100%"
-                  stopColor={T.color.terracotta}
+                  stopColor={"#B85C38"}
                   stopOpacity={0.5}
                 />
               </linearGradient>
-              {/* Second parent path — gold tint */}
+              {/* Second parent path — sage tint (Atrium: gold reserved for the palace) */}
               <linearGradient
                 id="couple-link-gradient-2"
                 x1="0"
@@ -2152,12 +2156,12 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               >
                 <stop
                   offset="0%"
-                  stopColor={T.color.gold}
+                  stopColor={"#56683C" /* Atrium token: sage */}
                   stopOpacity={0.6}
                 />
                 <stop
                   offset="100%"
-                  stopColor={T.color.goldLight}
+                  stopColor={"#7A8C64" /* Atrium token: sage light (gold reserved for the palace) */}
                   stopOpacity={0.45}
                 />
               </linearGradient>
@@ -2166,7 +2170,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                   dx="0"
                   dy="2"
                   stdDeviation="4"
-                  floodColor="rgba(44,44,42,0.08)"
+                  floodColor="rgba(64,59,54,0.07)"
                 />
               </filter>
             </defs>
@@ -2192,8 +2196,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                     const [pathL, pathR] = makeCoupleLinkPaths(link);
                     return (
                       <g key={`link-${ti}-${li}`}>
-                        <path d={pathL} fill="none" stroke={T.color.terracotta} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
-                        <path d={pathR} fill="none" stroke={T.color.gold} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+                        <path d={pathL} fill="none" stroke={"#B85C38"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+                        <path d={pathR} fill="none" stroke={"#7A8C64"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
                       </g>
                     );
                   }
@@ -2228,8 +2232,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                   const [pathL, pathR] = makeCoupleLinkPaths(link);
                   return (
                     <g key={`extra-pc-${i}`}>
-                      <path d={pathL} fill="none" stroke={T.color.terracotta} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
-                      <path d={pathR} fill="none" stroke={T.color.gold} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+                      <path d={pathL} fill="none" stroke={"#B85C38"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+                      <path d={pathR} fill="none" stroke={"#7A8C64"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
                     </g>
                   );
                 }
@@ -2285,8 +2289,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 padding: "0.125rem 0.5rem",
                 borderRadius: "0.375rem",
                 background: "rgba(255,255,255,0.7)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
+                backdropFilter: "blur(0.5rem)",
+                WebkitBackdropFilter: "blur(0.5rem)",
                 fontFamily: T.font.display,
                 fontSize: "0.6875rem",
                 fontStyle: "italic",
@@ -2294,7 +2298,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 pointerEvents: "none",
                 zIndex: 6,
                 whiteSpace: "nowrap",
-                border: `1px solid rgba(238,234,227,0.4)`,
+                border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
               }}
             >
               {genLabel}
@@ -2315,11 +2319,11 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                     width: "2.25rem",
                     height: "2.25rem",
                     borderRadius: "50%",
-                    border: `1px solid rgba(238,234,227,0.5)`,
+                    border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
                     background: "rgba(255,255,255,0.85)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
-                    boxShadow: "0 0.125rem 0.5rem rgba(44,44,42,0.1)",
+                    backdropFilter: "blur(0.5rem)",
+                    WebkitBackdropFilter: "blur(0.5rem)",
+                    boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -2330,7 +2334,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                   {/* Small legend icon — three colored lines */}
                   <svg width="16" height="16" viewBox="0 0 16 16">
                     <line x1="3" y1="4" x2="13" y2="4" stroke={T.color.walnut} strokeWidth={2} strokeLinecap="round" opacity={0.6} />
-                    <line x1="3" y1="8" x2="13" y2="8" stroke={T.color.terracotta} strokeWidth={2} strokeLinecap="round" opacity={0.7} />
+                    <line x1="3" y1="8" x2="13" y2="8" stroke={"#B85C38"} strokeWidth={2} strokeLinecap="round" opacity={0.7} />
                     <line x1="3" y1="12" x2="13" y2="12" stroke="#D4838A" strokeWidth={2} strokeLinecap="round" opacity={0.6} strokeDasharray="2 2" />
                   </svg>
                 </button>
@@ -2343,14 +2347,14 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                       left: 0,
                       borderRadius: "0.75rem",
                       background: "rgba(255,255,255,0.92)",
-                      backdropFilter: "blur(12px)",
-                      WebkitBackdropFilter: "blur(12px)",
-                      border: `1px solid rgba(238,234,227,0.5)`,
-                      boxShadow: "0 0.25rem 1rem rgba(44,44,42,0.12)",
+                      backdropFilter: "blur(0.75rem)",
+                      WebkitBackdropFilter: "blur(0.75rem)",
+                      border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
+                      boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token S2 */
                       padding: "0.5rem 0.75rem",
                       fontFamily: T.font.body,
                       fontSize: "0.6875rem",
-                      color: T.color.muted,
+                      color: "#716A5E",
                       display: "flex",
                       flexDirection: "column",
                       gap: "0.375rem",
@@ -2365,8 +2369,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                       <svg width="24" height="12" viewBox="0 0 24 12">
-                        <path d="M 2 2 Q 10 8, 22 6" fill="none" stroke={T.color.terracotta} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
-                        <path d="M 4 8 Q 14 2, 24 4" fill="none" stroke={T.color.gold} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+                        <path d="M 2 2 Q 10 8, 22 6" fill="none" stroke={"#B85C38"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+                        <path d="M 4 8 Q 14 2, 24 4" fill="none" stroke={"#7A8C64"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
                       </svg>
                       <span>{t("legendBothParents")}</span>
                     </div>
@@ -2388,14 +2392,14 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                   left: "1.25rem",
                   borderRadius: "0.75rem",
                   background: "rgba(255,255,255,0.8)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  border: `1px solid rgba(238,234,227,0.5)`,
-                  boxShadow: "0 0.125rem 0.5rem rgba(44,44,42,0.06)",
+                  backdropFilter: "blur(0.5rem)",
+                  WebkitBackdropFilter: "blur(0.5rem)",
+                  border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
+                  boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
                   zIndex: 10,
                   fontFamily: T.font.body,
                   fontSize: "0.6875rem",
-                  color: T.color.muted,
+                  color: "#716A5E",
                   padding: "0.5rem 0.75rem",
                   display: "flex",
                   flexDirection: "column",
@@ -2410,8 +2414,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   <svg width="24" height="12" viewBox="0 0 24 12">
-                    <path d="M 2 2 Q 10 8, 22 6" fill="none" stroke={T.color.terracotta} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
-                    <path d="M 4 8 Q 14 2, 24 4" fill="none" stroke={T.color.gold} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+                    <path d="M 2 2 Q 10 8, 22 6" fill="none" stroke={"#B85C38"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
+                    <path d="M 4 8 Q 14 2, 24 4" fill="none" stroke={"#7A8C64"} strokeWidth={3.5} strokeLinecap="round" opacity={0.7} />
                   </svg>
                   <span>{t("legendBothParents")}</span>
                 </div>
@@ -2436,10 +2440,10 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               transform: "translateX(-50%)",
               padding: "0.375rem 0.875rem",
               borderRadius: "0.5rem",
-              background: `${T.color.charcoal}B0`,
+              background: "#403B36B0" /* Atrium ink */,
               color: T.color.white,
               fontFamily: T.font.body,
-              fontSize: "0.75rem",
+              fontSize: "0.8125rem",
               whiteSpace: "nowrap",
               pointerEvents: "none",
               opacity: 0.6,
@@ -2482,7 +2486,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               aria-label={t("fitView")}
               style={{
                 ...zoomBtnStyle,
-                fontSize: isMobile ? "0.8125rem" : "0.875rem",
+                fontSize: isMobile ? "0.8125rem" : "0.9375rem",
               }}
               title={t("fitView")}
             >
@@ -2544,8 +2548,8 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
               zIndex: 99,
               background: T.color.white,
               borderRadius: "0.75rem",
-              border: `1px solid ${T.color.sandstone}40`,
-              boxShadow: "0 0.5rem 1.5rem rgba(44,44,42,.15)",
+              border: "0.0625rem solid #E3D6BC" /* Atrium hairline */,
+              boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token S2 */
               padding: "0.375rem",
               minWidth: "9rem",
             }}
@@ -2563,7 +2567,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
                   background: "transparent",
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
-                  color: T.color.charcoal,
+                  color: "#403B36",
                   cursor: "pointer",
                   textAlign: "left",
                   minHeight: "2.75rem",
@@ -2583,7 +2587,7 @@ export default function FamilyTreePage({ onClose }: { onClose?: () => void } = {
             style={{
               position: "fixed",
               top: 0, right: 0, bottom: 0, left: 0,
-              background: "rgba(42,34,24,.3)",
+              background: "rgba(64,59,54,0.3)" /* Atrium ink scrim */,
               zIndex: 99,
             }}
             onClick={() => setSelectedPerson(null)}

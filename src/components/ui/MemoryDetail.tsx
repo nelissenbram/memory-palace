@@ -24,7 +24,7 @@ import type { GeocodeSuggestion } from "@/lib/geocode";
 
 const Icon = ({ children, color }: { children: React.ReactNode; color?: string }) => (
   <svg width="20" height="20" viewBox="0 0 20 20" fill="none"
-    stroke={color || T.color.gold} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+    stroke={color || "#9A4F2A" /* Atrium token: terracotta glyph */} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
     style={{ flexShrink: 0 }}>
     {children}
   </svg>
@@ -43,7 +43,7 @@ const MapPinIcon = ({ color }: { color?: string }) => (
 );
 
 const TagIcon = ({ color }: { color?: string }) => (
-  <Icon color={color}><path d="M2 10V4a2 2 0 012-2h6l8 8-6 6-8-8z"/><circle cx="6" cy="6" r="1" fill={color || T.color.gold} stroke="none"/></Icon>
+  <Icon color={color}><path d="M2 10V4a2 2 0 012-2h6l8 8-6 6-8-8z"/><circle cx="6" cy="6" r="1" fill={color || "#9A4F2A" /* Atrium token: terracotta glyph */} stroke="none"/></Icon>
 );
 
 const FrameIcon = ({ color }: { color?: string }) => (
@@ -51,7 +51,7 @@ const FrameIcon = ({ color }: { color?: string }) => (
 );
 
 const PaletteIcon = ({ color }: { color?: string }) => (
-  <Icon color={color}><path d="M10 2a8 8 0 00-1 15.9c1 .1 1.5-.7 1.5-1.4 0-.5 0-1-.7-1.5-.4-.3-.5-.8-.5-1.2A1.8 1.8 0 0111 12c2.2 0 5-1 5-5A6 6 0 0010 2z"/><circle cx="6.5" cy="8" r="1" fill={color || T.color.gold} stroke="none"/><circle cx="9" cy="5.5" r="1" fill={color || T.color.gold} stroke="none"/><circle cx="12.5" cy="5.5" r="1" fill={color || T.color.gold} stroke="none"/><circle cx="14.5" cy="8" r="1" fill={color || T.color.gold} stroke="none"/></Icon>
+  <Icon color={color}><path d="M10 2a8 8 0 00-1 15.9c1 .1 1.5-.7 1.5-1.4 0-.5 0-1-.7-1.5-.4-.3-.5-.8-.5-1.2A1.8 1.8 0 0111 12c2.2 0 5-1 5-5A6 6 0 0010 2z"/><circle cx="6.5" cy="8" r="1" fill={color || "#9A4F2A" /* Atrium token: terracotta glyph */} stroke="none"/><circle cx="9" cy="5.5" r="1" fill={color || "#9A4F2A" /* Atrium token: terracotta glyph */} stroke="none"/><circle cx="12.5" cy="5.5" r="1" fill={color || "#9A4F2A" /* Atrium token: terracotta glyph */} stroke="none"/><circle cx="14.5" cy="8" r="1" fill={color || "#9A4F2A" /* Atrium token: terracotta glyph */} stroke="none"/></Icon>
 );
 
 const PeopleIcon = ({ color }: { color?: string }) => (
@@ -63,7 +63,7 @@ const EyeIcon = ({ color }: { color?: string }) => (
 );
 
 const DoorIcon = ({ color }: { color?: string }) => (
-  <Icon color={color}><rect x="4" y="2" width="12" height="16" rx="1.5"/><path d="M4 18h12"/><circle cx="13" cy="11" r="0.8" fill={color || T.color.gold} stroke="none"/><path d="M8 2v16"/></Icon>
+  <Icon color={color}><rect x="4" y="2" width="12" height="16" rx="1.5"/><path d="M4 18h12"/><circle cx="13" cy="11" r="0.8" fill={color || "#9A4F2A" /* Atrium token: terracotta glyph */} stroke="none"/><path d="M8 2v16"/></Icon>
 );
 
 const HourglassIcon = ({ color }: { color?: string }) => (
@@ -79,7 +79,7 @@ const TrashIcon = ({ color }: { color?: string }) => (
 );
 
 const CloseIcon = ({ color }: { color?: string }) => (
-  <Icon color={color || T.color.charcoal}><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></Icon>
+  <Icon color={color || "#403B36"}><line x1="5" y1="5" x2="15" y2="15"/><line x1="15" y1="5" x2="5" y2="15"/></Icon>
 );
 
 const ExpandIcon = ({ color }: { color?: string }) => (
@@ -96,7 +96,7 @@ const CheckIcon = ({ color }: { color?: string }) => (
 
 const ChevronIcon = ({ color, down }: { color?: string; down?: boolean }) => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
-    stroke={color || T.color.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+    stroke={color || "#716A5E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
     style={{ transform: down ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .2s ease", flexShrink: 0 }}>
     <polyline points="5 3 9 7 5 11"/>
   </svg>
@@ -152,12 +152,12 @@ const VISIBILITY_OPTIONS = ["private", "shared", "family", "public"] as const;
 function SavedToast({ visible }: { visible: boolean }) {
   const { t } = useTranslation("memoryDetail");
   return (
-    <div style={{
+    <div className="md-saved-toast" style={{
       position: "fixed", bottom: "2rem", left: "50%", transform: `translateX(-50%) translateY(${visible ? 0 : "1rem"})`,
       opacity: visible ? 1 : 0, transition: "all .3s ease",
-      background: T.color.charcoal, color: T.color.white, fontFamily: T.font.body,
+      background: "#403B36", color: T.color.white, fontFamily: T.font.body,
       fontSize: "0.8125rem", fontWeight: 600, padding: "0.5rem 1.25rem",
-      borderRadius: "2rem", boxShadow: "0 4px 20px rgba(0,0,0,.2)",
+      borderRadius: "2rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token S2 */
       display: "flex", alignItems: "center", gap: "0.375rem", zIndex: 200, pointerEvents: "none",
     }}>
       <CheckIcon color="#FFF" /> {t("saved")}
@@ -193,11 +193,11 @@ function ActionCard({ id, icon, title, value, isOpen, onToggle, accent, children
   return (
     <div style={{
       background: T.color.white,
-      border: `1px solid ${isOpen ? accent + "40" : T.color.cream}`,
+      border: `0.0625rem solid ${isOpen ? accent + "40" : "#E3D6BC"}`, /* Atrium hairline */
       borderRadius: "0.75rem",
       overflow: "hidden",
       transition: "border-color .2s ease, box-shadow .2s ease",
-      boxShadow: isOpen ? `0 2px 12px ${accent}12` : "none",
+      boxShadow: isOpen ? "0 0.25rem 1rem rgba(64,59,54,0.07)" : "none", /* Atrium S1 */
     }}>
       <button
         onClick={onToggle}
@@ -206,7 +206,7 @@ function ActionCard({ id, icon, title, value, isOpen, onToggle, accent, children
         style={{
           width: "100%", display: "flex", alignItems: "center", gap: "0.625rem",
           padding: "0.75rem 1rem", background: "none", border: "none", cursor: "pointer",
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
           textAlign: "left",
         }}
       >
@@ -214,16 +214,16 @@ function ActionCard({ id, icon, title, value, isOpen, onToggle, accent, children
         <span style={{ fontWeight: 600, flex: "0 0 auto" }}>{title}</span>
         <span style={{
           flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          color: T.color.muted, fontSize: "0.75rem", fontStyle: value ? "normal" : "italic",
+          color: "#716A5E", fontSize: "0.8125rem", fontStyle: value ? "normal" : "italic",
         }}>{value}</span>
         {extra && !isOpen && <span style={{ flexShrink: 0 }}>{extra}</span>}
-        <ChevronIcon color={isOpen ? accent : T.color.muted} down={isOpen} />
+        <ChevronIcon color={isOpen ? accent : "#716A5E"} down={isOpen} />
       </button>
       <div
         id={`action-${id}`}
         style={{
           maxHeight: isOpen ? "62.5rem" : "0", overflow: "hidden",
-          transition: "max-height .25s cubic-bezier(.23,1,.32,1)",
+          transition: "max-height .25s ease",
         }}
       >
         <div ref={contentRef} style={{ padding: "0 1rem 1rem" }}>
@@ -417,20 +417,20 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
 
   // ── Styles ──
   const labelStyle: React.CSSProperties = {
-    fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
-    letterSpacing: ".5px", textTransform: "uppercase", display: "block",
-    marginBottom: "0.375rem", fontWeight: 600,
+    fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
+    letterSpacing: "0.12em", textTransform: "uppercase", display: "block",
+    marginBottom: "0.375rem", fontWeight: 700,
   };
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", padding: "0.5rem 0.75rem", borderRadius: "0.5rem",
-    border: `1px solid ${T.color.cream}`, background: T.color.white,
-    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal,
+    width: "100%", padding: "0.5rem 0.75rem", borderRadius: "0.75rem",
+    border: "0.0625rem solid #E3D6BC", background: T.color.white, /* Atrium hairline */
+    fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
     outline: "none", boxSizing: "border-box",
   };
 
   const goldDivider: React.CSSProperties = {
-    height: "1px", background: `linear-gradient(90deg, transparent, ${T.color.gold}40, transparent)`,
+    height: "0.0625rem", background: "linear-gradient(90deg, rgba(154,79,42,0.35), transparent)", /* Atrium terracotta rule */
     margin: "0.75rem 0",
   };
 
@@ -443,7 +443,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
         aria-label={tc("close")}
         style={{
           position: "fixed", inset: 0,
-          background: "rgba(42,34,24,.45)", backdropFilter: "blur(12px)",
+          background: "rgba(42,34,24,.45)", backdropFilter: "blur(0.75rem)",
           zIndex: 50, animation: "mdFadeIn .25s ease",
         }}
       />
@@ -451,6 +451,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
       {/* Slide-in panel */}
       <div
         ref={containerRef}
+        className="md-detail"
         role="dialog"
         aria-modal="true"
         aria-label={t("panelTitle")}
@@ -463,8 +464,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
           background: T.color.linen,
           zIndex: 51,
           display: "flex", flexDirection: "column",
-          boxShadow: "-8px 0 40px rgba(44,44,42,.15)",
-          animation: isMobile ? "mdSlideUp .3s cubic-bezier(.23,1,.32,1)" : "mdSlideIn .3s cubic-bezier(.23,1,.32,1)",
+          boxShadow: "-0.5rem 0 1.5rem rgba(64,59,54,0.14)", /* Atrium S2, warm ink */
+          animation: isMobile ? "mdSlideUp .3s ease" : "mdSlideIn .3s ease",
           overflow: "hidden",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
@@ -476,12 +477,12 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
           paddingBottom: "0.75rem",
           paddingLeft: `max(1rem, env(safe-area-inset-left, 0px))`,
           paddingRight: `max(1rem, env(safe-area-inset-right, 0px))`,
-          borderBottom: `1px solid ${T.color.cream}`,
+          borderBottom: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           background: T.color.white,
           flexShrink: 0,
         }}>
           <div style={{
-            fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             flex: 1, marginRight: "0.5rem",
           }}>
@@ -492,7 +493,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
             aria-label={tc("close")}
             style={{
               background: "none", border: "none", cursor: "pointer",
-              padding: "0.25rem", borderRadius: "0.375rem",
+              padding: "0.25rem", borderRadius: "0.75rem", /* Atrium small-control radius */
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
@@ -539,12 +540,12 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   position: "absolute", inset: 0, display: "flex",
                   alignItems: "center", justifyContent: "center", zIndex: 1,
                 }}>
-                  <LockIcon color="rgba(255,220,150,.6)" />
+                  <LockIcon color="rgba(212,175,55,0.6)" /> {/* Atrium gold #D4AF37 — capsule qualifies for palace-gold register */}
                 </div>
                 <div style={{
                   position: "absolute", inset: 0,
-                  background: "radial-gradient(ellipse at center, rgba(255,220,150,.08) 0%, transparent 70%)",
-                  animation: "mdCapsuleShimmer 3s ease-in-out infinite",
+                  background: "radial-gradient(ellipse at center, rgba(212,175,55,0.08) 0%, transparent 70%)", /* Atrium gold */
+                  animation: "mdCapsuleShimmer 4s ease-in-out infinite",
                 }} />
               </>
             )}
@@ -563,10 +564,10 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
             {isRevealed && (
               <div style={{
                 position: "absolute", top: "0.75rem", right: "0.875rem",
-                background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
+                background: "#B85C38", /* Atrium ember */
                 color: "#FFF", fontFamily: T.font.body, fontSize: "0.6875rem",
-                fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: "0.5rem",
-                boxShadow: "0 2px 8px rgba(0,0,0,.2)", zIndex: 2,
+                fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: "0.75rem",
+                boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", zIndex: 2, /* S1 */
               }}>
                 {t("timeCapsuleOpened")}
               </div>
@@ -578,8 +579,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 onClick={() => setShowFullImage(true)}
                 style={{
                   position: "absolute", top: "0.75rem", left: "0.875rem",
-                  background: "rgba(42,34,24,.5)", backdropFilter: "blur(8px)",
-                  border: "1px solid rgba(255,255,255,.15)", borderRadius: "0.5rem",
+                  background: "rgba(42,34,24,.5)", backdropFilter: "blur(0.5rem)",
+                  border: "0.0625rem solid rgba(255,255,255,.15)", borderRadius: "0.75rem",
                   padding: "0.375rem 0.625rem", cursor: "pointer",
                   display: "flex", alignItems: "center", gap: "0.375rem",
                   color: "#FFF", fontFamily: T.font.body, fontSize: "0.6875rem",
@@ -596,8 +597,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 onClick={() => setImageEditing(true)}
                 style={{
                   position: "absolute", bottom: "0.75rem", right: "0.875rem",
-                  background: "rgba(42,34,24,.5)", backdropFilter: "blur(8px)",
-                  border: "1px solid rgba(255,255,255,.15)", borderRadius: "0.5rem",
+                  background: "rgba(42,34,24,.5)", backdropFilter: "blur(0.5rem)",
+                  border: "0.0625rem solid rgba(255,255,255,.15)", borderRadius: "0.75rem",
                   padding: "0.375rem 0.625rem", cursor: "pointer",
                   display: "flex", alignItems: "center", gap: "0.375rem",
                   color: "#FFF", fontFamily: T.font.body, fontSize: "0.6875rem",
@@ -615,15 +616,15 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
             {/* ── Locked capsule info ── */}
             {isLocked && (
               <div style={{
-                background: "linear-gradient(135deg, rgba(42,34,24,.06), rgba(200,168,104,.1))",
-                border: `1px solid ${T.color.cream}`, borderRadius: "0.75rem",
+                background: "linear-gradient(135deg, rgba(42,34,24,.06), rgba(201,154,46,0.1))", /* Atrium gold #C99A2E */
+                border: "0.0625rem solid #E3D6BC", borderRadius: "0.75rem", /* Atrium hairline */
                 padding: "1.25rem", marginBottom: "1.25rem", textAlign: "center",
               }}>
                 <div style={{ marginBottom: "0.625rem" }}>
-                  <LockIcon color={T.color.gold} />
+                  <LockIcon color="#9A4F2A" /> {/* Atrium terracotta glyph */}
                 </div>
                 <div style={{
-                  fontFamily: T.font.display, fontSize: "1.125rem", color: T.color.charcoal,
+                  fontFamily: T.font.display, fontSize: "1.1875rem", color: "#403B36",
                   marginBottom: "0.25rem",
                 }}>
                   {daysUntilReveal === 1
@@ -632,17 +633,17 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       ? t("opensInDays", { count: String(daysUntilReveal) })
                       : t("opensOn", { date: new Date(mem.revealDate! + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "long", day: "numeric", year: "numeric" }) })}
                 </div>
-                <div style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted }}>
+                <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
                   {t("capsuleSealed")}
                 </div>
                 {mem.resolution && (
                   <div style={{
                     marginTop: "0.75rem", padding: "0.625rem 0.875rem",
-                    borderRadius: "0.625rem", background: "rgba(74,103,65,.08)",
-                    border: `1px solid ${T.color.sage}30`,
+                    borderRadius: "0.625rem", background: "rgba(86,104,60,.08)", /* Atrium sage #56683C */
+                    border: `0.0625rem solid #56683C30`,
                   }}>
                     <div style={{
-                      fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", fontStyle: "italic",
+                      fontFamily: T.font.body, fontSize: "0.8125rem", fontStyle: "italic",
                       color: T.color.walnut, lineHeight: 1.5,
                     }}>
                       {t("resolutionGoal", { date: new Date(mem.revealDate! + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "long", day: "numeric", year: "numeric" }) })}
@@ -662,8 +663,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   onKeyDown={e => { if (e.key === "Enter") saveTitle(); if (e.key === "Escape") { setTitle(mem.title); setEditingTitle(false); } }}
                   autoFocus
                   style={{
-                    fontFamily: T.font.display, fontSize: "1.625rem", color: T.color.charcoal,
-                    background: "transparent", border: "none", borderBottom: `2px solid ${accent}`,
+                    fontFamily: T.font.display, fontSize: "1.625rem", color: "#403B36",
+                    background: "transparent", border: "none", borderBottom: `0.125rem solid ${accent}`,
                     width: "100%", outline: "none", padding: "0.25rem 0",
                     marginBottom: "0.5rem", boxSizing: "border-box",
                   }}
@@ -674,13 +675,13 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   title={t("clickToEdit")}
                   style={{
                     fontFamily: T.font.display, fontSize: "1.625rem", fontWeight: 600,
-                    color: T.color.charcoal, margin: "0 0 0.5rem 0",
+                    color: "#403B36", margin: "0 0 0.5rem 0",
                     cursor: "text", lineHeight: 1.3,
-                    borderBottom: "2px solid transparent",
-                    transition: "border-color .15s",
+                    borderBottom: "0.125rem solid transparent",
+                    transition: "border-color .2s ease",
                     display: "flex", alignItems: "baseline", gap: "0.5rem",
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = T.color.cream)}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = "#E3D6BC")} /* Atrium hairline, visible on linen */
                   onMouseLeave={e => (e.currentTarget.style.borderColor = "transparent")}
                 >
                   {mem.title}
@@ -703,8 +704,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   autoFocus
                   style={{
                     width: "100%", padding: "1rem", borderRadius: "0.75rem",
-                    border: `1px solid ${accent}40`, background: T.color.white,
-                    fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.charcoal,
+                    border: `0.0625rem solid ${accent}40`, background: T.color.white,
+                    fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36",
                     outline: "none", boxSizing: "border-box", marginBottom: "1.25rem",
                     resize: "vertical", lineHeight: 1.8, minHeight: "8rem",
                   }}
@@ -715,18 +716,18 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   title={t("clickToEdit")}
                   style={{
                     fontFamily: T.font.body, fontSize: "0.9375rem",
-                    color: (mem.desc || desc) ? T.color.charcoal : T.color.muted,
+                    color: (mem.desc || desc) ? "#403B36" : "#716A5E",
                     lineHeight: 1.8, marginBottom: "1.25rem", cursor: "text",
                     padding: "0.875rem 1rem", borderRadius: "0.75rem",
                     background: (mem.desc || desc) ? `${accent}06` : T.color.white,
-                    border: `1px solid ${(mem.desc || desc) ? `${accent}15` : T.color.cream}`,
+                    border: `0.0625rem solid ${(mem.desc || desc) ? `${accent}15` : "#E3D6BC"}`, /* Atrium hairline */
                     fontStyle: (mem.desc || desc) ? "normal" : "italic",
                     transition: "border-color .2s, background .2s, box-shadow .2s",
                     minHeight: (mem.desc || desc) ? "auto" : "3rem",
                     position: "relative",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${accent}30`; e.currentTarget.style.boxShadow = `0 2px 8px ${accent}08`; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = (mem.desc || desc) ? `${accent}15` : T.color.cream; e.currentTarget.style.boxShadow = "none"; }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${accent}30`; e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.07)"; /* Atrium S1 */ }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = (mem.desc || desc) ? `${accent}15` : "#E3D6BC"; e.currentTarget.style.boxShadow = "none"; }}
                 >
                   {(mem.desc || desc) ? (
                     <>
@@ -744,17 +745,17 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
             {!isLocked && mem.resolution && (
               <div style={{
                 marginBottom: "1rem", padding: "1rem", borderRadius: "0.75rem",
-                border: `1px solid ${T.color.sage}30`,
-                background: "linear-gradient(135deg, rgba(74,103,65,.06), rgba(74,103,65,.02))",
+                border: `0.0625rem solid #56683C30`,
+                background: "linear-gradient(135deg, rgba(86,104,60,.06), rgba(86,104,60,.02))", /* Atrium sage */
               }}>
-                <div style={{ ...labelStyle, color: T.color.sage }}>{t("resolutionLabel")}</div>
+                <div style={{ ...labelStyle, color: "#56683C" }}>{t("resolutionLabel")}</div>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
+                  fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36",
                   lineHeight: 1.5, marginBottom: "0.75rem",
                 }}>{mem.resolution.goal}</div>
                 {mem.resolution.targetDate && (
                   <div style={{
-                    fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
                     marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.375rem",
                   }}>
                     <span>{t("target")}</span>
@@ -764,7 +765,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                     {(() => {
                       const d = Math.ceil((new Date(mem.resolution.targetDate! + "T00:00:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24));
                       return d > 0
-                        ? <span style={{ color: T.color.sage, fontStyle: "italic" }}>{t("daysLeft", { count: String(d) })}</span>
+                        ? <span style={{ color: "#56683C", fontStyle: "italic" }}>{t("daysLeft", { count: String(d) })}</span>
                         : <span style={{ color: T.color.error, fontStyle: "italic" }}>{t("pastDue")}</span>;
                     })()}
                   </div>
@@ -772,12 +773,12 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {typeof mem.resolution.progress === "number" && (
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.375rem" }}>
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>{t("progress")}</span>
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: resProgress >= 100 ? T.color.success : T.color.sage }}>{resProgress}%</span>
+                      <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>{t("progress")}</span>
+                      <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: resProgress >= 100 ? T.color.success : "#56683C" }}>{resProgress}%</span>
                     </div>
                     <input type="range" min={0} max={100} value={resProgress}
                       onChange={e => setResProgress(Number(e.target.value))}
-                      style={{ width: "100%", accentColor: T.color.sage, marginBottom: "0.5rem" }}
+                      style={{ width: "100%", accentColor: "#56683C", marginBottom: "0.5rem" }}
                     />
                     <div style={{
                       width: "100%", height: "0.375rem", borderRadius: "0.1875rem",
@@ -787,7 +788,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         width: `${resProgress}%`, height: "100%", borderRadius: "0.1875rem",
                         background: resProgress >= 100
                           ? `linear-gradient(90deg, ${T.color.success}, #5A8751)`
-                          : `linear-gradient(90deg, ${T.color.sage}cc, ${T.color.sage})`,
+                          : "linear-gradient(90deg, #56683Ccc, #56683C)", /* Atrium sage */
                         transition: "width .3s ease",
                       }} />
                     </div>
@@ -796,10 +797,10 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         const updatedRes = { ...mem.resolution!, progress: resProgress };
                         autoSave({ resolution: updatedRes });
                       }} style={{
-                        width: "100%", padding: "0.5rem 0.875rem", borderRadius: "0.5rem",
-                        border: "none", background: T.color.sage, color: "#FFF",
-                        fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
-                        cursor: "pointer", transition: "all .15s",
+                        width: "100%", padding: "0.5rem 0.875rem", borderRadius: "0.75rem",
+                        border: "none", background: "#56683C", color: "#FFF",
+                        fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                        cursor: "pointer", transition: "all .2s ease",
                       }}>
                         {t("updateProgress")}
                       </button>
@@ -824,7 +825,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 <div style={{ gridColumn: isMobile ? undefined : "1 / -1" }}>
                   <ActionCard
                     id="context"
-                    icon={<QuillIcon color={openAction === "context" ? accent : T.color.gold} />}
+                    icon={<QuillIcon color={openAction === "context" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                     title={t("historicalContext")}
                     value={historicalContext ? historicalContext.slice(0, 40) + "..." : t("addContextCta")}
                     isOpen={openAction === "context"}
@@ -842,19 +843,19 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         <button onClick={() => { setHistoricalContext(""); autoSave({ historicalContext: "" }); }}
                           style={{
                             background: "none", border: "none", cursor: "pointer",
-                            fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted,
+                            fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E",
                             padding: 0, textDecoration: "underline",
                           }}>{t("remove")}</button>
                       </div>
                     ) : contextLoading ? (
                       <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
                         <div style={{
-                          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
                           display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem",
                         }}>
                           <span style={{
                             display: "inline-block", width: "0.875rem", height: "0.875rem",
-                            border: `2px solid ${T.color.sandstone}`, borderTopColor: "transparent",
+                            border: `0.125rem solid ${T.color.sandstone}`, borderTopColor: "transparent",
                             borderRadius: "50%", animation: "mdSpin 1s linear infinite",
                           }} />
                           {t("discoveringContext")}
@@ -862,14 +863,14 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       </div>
                     ) : contextError ? (
                       <div>
-                        <div role="alert" style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.error, marginBottom: "0.5rem" }}>{contextError}</div>
+                        <div role="alert" style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.error, marginBottom: "0.5rem" }}>{contextError}</div>
                         <button onClick={fetchHistoricalContext} style={{ ...inputStyle, cursor: "pointer", textAlign: "center", color: accent, fontWeight: 600 }}>{t("tryAgain")}</button>
                       </div>
                     ) : (
                       <button onClick={fetchHistoricalContext} style={{
                         width: "100%", padding: "0.625rem", fontFamily: T.font.body, fontSize: "0.8125rem",
-                        background: `${accent}08`, border: `1px dashed ${accent}40`,
-                        borderRadius: "0.5rem", cursor: "pointer", color: accent,
+                        background: `${accent}08`, border: `0.0625rem dashed ${accent}40`,
+                        borderRadius: "0.75rem", cursor: "pointer", color: accent,
                         display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                       }}>
                         <QuillIcon color={accent} /> {t("generateContext")}
@@ -881,7 +882,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {/* 2. Date */}
                 <ActionCard
                   id="date"
-                  icon={<CalendarIcon color={openAction === "date" ? accent : T.color.gold} />}
+                  icon={<CalendarIcon color={openAction === "date" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("dateLabel")}
                   value={memDate
                     ? new Date(memDate + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "short", day: "numeric", year: "numeric" })
@@ -906,7 +907,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {/* 3. Location */}
                 <ActionCard
                   id="location"
-                  icon={<MapPinIcon color={openAction === "location" ? accent : T.color.gold} />}
+                  icon={<MapPinIcon color={openAction === "location" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("locationLabel")}
                   value={locationName || t("addLocationCta")}
                   isOpen={openAction === "location"}
@@ -915,7 +916,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   extra={locationLat && locationLng ? (
                     <span style={{
                       display: "inline-flex", alignItems: "center", gap: "0.25rem",
-                      fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.success,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.success,
                     }}>
                       <MapPinIcon color={T.color.success} /> {t("hasCoordinates")}
                     </span>
@@ -959,9 +960,9 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       {showSuggestions && geocodeSuggestions.length > 0 && (
                         <div style={{
                           position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50,
-                          background: T.color.linen, border: `1px solid ${accent}40`,
-                          borderRadius: "0 0 0.5rem 0.5rem", boxShadow: "0 0.25rem 0.75rem rgba(0,0,0,0.15)",
-                          overflow: "hidden", marginTop: "-1px",
+                          background: T.color.linen, border: `0.0625rem solid ${accent}40`,
+                          borderRadius: "0 0 0.75rem 0.75rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium S2 overlay */
+                          overflow: "hidden", marginTop: "-0.0625rem",
                         }}>
                           {geocodeSuggestions.map((s, i) => (
                             <button
@@ -970,10 +971,10 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                               style={{
                                 display: "flex", alignItems: "center", gap: "0.375rem",
                                 width: "100%", padding: "0.5rem 0.625rem",
-                                background: "transparent", border: "none", borderBottom: i < geocodeSuggestions.length - 1 ? `1px solid ${accent}15` : "none",
+                                background: "transparent", border: "none", borderBottom: i < geocodeSuggestions.length - 1 ? `0.0625rem solid ${accent}15` : "none",
                                 cursor: "pointer", textAlign: "left",
-                                fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal,
-                                transition: "background 0.15s ease",
+                                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36",
+                                transition: "background 0.2s ease",
                               }}
                               onMouseEnter={e => (e.currentTarget.style.background = `${accent}10`)}
                               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
@@ -1044,9 +1045,9 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         }
                       }}
                       style={{
-                        padding: "0.5rem", fontFamily: T.font.body, fontSize: "0.75rem",
-                        background: `${accent}08`, border: `1px solid ${accent}30`,
-                        borderRadius: "0.5rem", cursor: "pointer", color: accent,
+                        padding: "0.5rem", fontFamily: T.font.body, fontSize: "0.8125rem",
+                        background: `${accent}08`, border: `0.0625rem solid ${accent}30`,
+                        borderRadius: "0.75rem", cursor: "pointer", color: accent,
                         display: "flex", alignItems: "center", justifyContent: "center", gap: "0.375rem",
                       }}
                     >
@@ -1058,7 +1059,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {/* 4. AI Labels */}
                 <ActionCard
                   id="labels"
-                  icon={<TagIcon color={openAction === "labels" ? accent : T.color.gold} />}
+                  icon={<TagIcon color={openAction === "labels" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("aiLabelsTitle")}
                   value={aiLabelResult || (mem as any).labels?.join(", ") || t("generateLabelsCta")}
                   isOpen={openAction === "labels"}
@@ -1068,12 +1069,12 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   {mem.type === "photo" && mem.dataUrl ? (
                     <div>
                       {aiLabelLoading ? (
-                        <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted }}>{t("aiLabelsLoading")}</p>
+                        <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>{t("aiLabelsLoading")}</p>
                       ) : aiLabelError ? (
-                        <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#c62828" }}>{aiLabelError}</p>
+                        <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.error }}>{aiLabelError}</p>
                       ) : aiLabelResult ? (
                         <div>
-                          <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, lineHeight: 1.5, margin: "0 0 0.5rem" }}>{aiLabelResult}</p>
+                          <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36", lineHeight: 1.5, margin: "0 0 0.5rem" }}>{aiLabelResult}</p>
                           <button
                             onClick={() => {
                               onUpdate(mem.id, { desc: (desc ? desc + "\n\n" : "") + aiLabelResult });
@@ -1081,9 +1082,9 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                               setAiLabelResult(null);
                             }}
                             style={{
-                              padding: "0.375rem 0.875rem", borderRadius: "0.375rem",
+                              padding: "0.375rem 0.875rem", borderRadius: "0.75rem",
                               background: accent, color: "#fff", border: "none",
-                              fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                              fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                               cursor: "pointer",
                             }}
                           >
@@ -1113,7 +1114,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                             }
                           }}
                           style={{
-                            padding: "0.5rem 1rem", borderRadius: "0.5rem",
+                            padding: "0.5rem 1rem", borderRadius: "0.75rem",
                             background: `linear-gradient(135deg, ${accent}, ${T.color.walnut})`,
                             color: "#fff", border: "none",
                             fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
@@ -1128,7 +1129,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       )}
                     </div>
                   ) : (
-                    <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, fontStyle: "italic" }}>
+                    <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontStyle: "italic" }}>
                       {t("aiLabelsPhotoOnly")}
                     </p>
                   )}
@@ -1137,7 +1138,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {/* 5. Display Type */}
                 <ActionCard
                   id="displayType"
-                  icon={<FrameIcon color={openAction === "displayType" ? accent : T.color.gold} />}
+                  icon={<FrameIcon color={openAction === "displayType" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("displayAs")}
                   value={t(DISPLAY_TYPES.find(d => d[0] === displayType)?.[1] || "typeFrame")}
                   isOpen={openAction === "displayType"}
@@ -1153,17 +1154,17 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                           autoSave({ type: val });
                         }}
                         style={{
-                          padding: "0.625rem 0.375rem", borderRadius: "0.5rem",
-                          border: displayType === val ? `2px solid ${accent}` : `1px solid ${T.color.cream}`,
+                          padding: "0.625rem 0.375rem", borderRadius: "0.75rem",
+                          border: displayType === val ? `0.125rem solid ${accent}` : "0.0625rem solid #E3D6BC", /* Atrium hairline */
                           background: displayType === val ? `${accent}10` : T.color.white,
-                          cursor: "pointer", textAlign: "center", transition: "all .15s",
+                          cursor: "pointer", textAlign: "center", transition: "all .2s ease",
                           display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem",
                         }}
                       >
-                        <DisplayIcon type={val} color={displayType === val ? accent : T.color.muted} />
+                        <DisplayIcon type={val} color={displayType === val ? accent : "#716A5E"} />
                         <div style={{
-                          fontFamily: T.font.body, fontSize: "0.5625rem",
-                          color: displayType === val ? accent : T.color.muted,
+                          fontFamily: T.font.body, fontSize: "0.6875rem",
+                          color: displayType === val ? accent : "#716A5E",
                           fontWeight: displayType === val ? 600 : 500,
                         }}>{t(labelKey)}</div>
                       </button>
@@ -1175,7 +1176,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {mem.dataUrl && (
                   <ActionCard
                     id="pictureEdit"
-                    icon={<PaletteIcon color={openAction === "pictureEdit" ? accent : T.color.gold} />}
+                    icon={<PaletteIcon color={openAction === "pictureEdit" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                     title={t("editImage")}
                     value={t("openEditor")}
                     isOpen={openAction === "pictureEdit"}
@@ -1187,7 +1188,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       style={{
                         width: "100%", padding: "0.75rem", fontFamily: T.font.body,
                         fontSize: "0.8125rem", fontWeight: 600, background: accent,
-                        border: "none", borderRadius: "0.5rem", cursor: "pointer",
+                        border: "none", borderRadius: "0.75rem", cursor: "pointer",
                         color: T.color.white, display: "flex", alignItems: "center",
                         justifyContent: "center", gap: "0.375rem",
                       }}
@@ -1200,7 +1201,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {/* 7. Tag People */}
                 <ActionCard
                   id="people"
-                  icon={<PeopleIcon color={openAction === "people" ? accent : T.color.gold} />}
+                  icon={<PeopleIcon color={openAction === "people" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("tagPeople")}
                   value={peopleTags.length > 0 ? peopleTags.join(", ") : t("addPeopleCta")}
                   isOpen={openAction === "people"}
@@ -1212,9 +1213,9 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem", marginBottom: "0.5rem" }}>
                         {peopleTags.map((p, i) => (
                           <span key={i} style={{
-                            fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
+                            fontFamily: T.font.body, fontSize: "0.8125rem",
                             background: `${accent}12`, color: accent,
-                            padding: "0.25rem 0.625rem", borderRadius: "1rem",
+                            padding: "0.25rem 0.625rem", borderRadius: "2rem", /* Atrium pill */
                             display: "flex", alignItems: "center", gap: "0.25rem",
                           }}>
                             {p}
@@ -1224,7 +1225,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                               autoSave({ people: next } as any);
                             }} style={{
                               background: "none", border: "none", cursor: "pointer",
-                              color: accent, fontSize: "0.875rem", padding: 0, lineHeight: 1,
+                              color: accent, fontSize: "0.9375rem", padding: 0, lineHeight: 1,
                             }}>&times;</button>
                           </span>
                         ))}
@@ -1256,8 +1257,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         }}
                         style={{
                           padding: "0.5rem 0.75rem", background: accent, color: "#FFF",
-                          border: "none", borderRadius: "0.5rem", cursor: "pointer",
-                          fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
+                          border: "none", borderRadius: "0.75rem", cursor: "pointer",
+                          fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                         }}
                       >+</button>
                     </div>
@@ -1267,7 +1268,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {/* 8. Visibility */}
                 <ActionCard
                   id="visibility"
-                  icon={<EyeIcon color={openAction === "visibility" ? accent : T.color.gold} />}
+                  icon={<EyeIcon color={openAction === "visibility" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("visibility")}
                   value={t(`vis${visibility.charAt(0).toUpperCase() + visibility.slice(1)}` as any)}
                   isOpen={openAction === "visibility"}
@@ -1283,17 +1284,17 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                           autoSave({ visibility: val });
                         }}
                         style={{
-                          padding: "0.625rem 0.375rem", borderRadius: "0.5rem",
-                          border: visibility === val ? `2px solid ${accent}` : `1px solid ${T.color.cream}`,
+                          padding: "0.625rem 0.375rem", borderRadius: "0.75rem",
+                          border: visibility === val ? `0.125rem solid ${accent}` : "0.0625rem solid #E3D6BC", /* Atrium hairline */
                           background: visibility === val ? `${accent}10` : T.color.white,
-                          cursor: "pointer", textAlign: "center", transition: "all .15s",
+                          cursor: "pointer", textAlign: "center", transition: "all .2s ease",
                           display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem",
                         }}
                       >
-                        <VisIcon vis={val} color={visibility === val ? accent : T.color.muted} />
+                        <VisIcon vis={val} color={visibility === val ? accent : "#716A5E"} />
                         <div style={{
-                          fontFamily: T.font.body, fontSize: "0.5625rem",
-                          color: visibility === val ? accent : T.color.muted,
+                          fontFamily: T.font.body, fontSize: "0.6875rem",
+                          color: visibility === val ? accent : "#716A5E",
                           fontWeight: visibility === val ? 600 : 500,
                         }}>
                           {t(`vis${val.charAt(0).toUpperCase() + val.slice(1)}` as any)}
@@ -1306,7 +1307,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {/* 9. Move to Room */}
                 <ActionCard
                   id="moveRoom"
-                  icon={<DoorIcon color={openAction === "moveRoom" ? accent : T.color.gold} />}
+                  icon={<DoorIcon color={openAction === "moveRoom" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("moveToRoom")}
                   value={room ? translateRoomName(room, tWings) : t("unknownRoom")}
                   isOpen={openAction === "moveRoom"}
@@ -1327,12 +1328,12 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                               border: "none", cursor: "pointer",
                               display: "flex", alignItems: "center", gap: "0.5rem",
                               fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                              color: T.color.charcoal,
+                              color: "#403B36",
                             }}
                           >
                             <WingIcon wingId={w.id} size={16} color={w.accent} />
                             <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(w, tWings)}</span>
-                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round"
+                            <svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke={"#716A5E"} strokeWidth="1.5" strokeLinecap="round"
                               style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
                               <path d="M4 2l4 4-4 4" />
                             </svg>
@@ -1354,14 +1355,13 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                                   background: isCurrent ? `${w.accent}08` : "transparent",
                                   border: "none", cursor: isCurrent ? "default" : "pointer",
                                   display: "flex", alignItems: "center", gap: "0.375rem",
-                                  fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
-                                  color: isCurrent ? T.color.muted : T.color.walnut,
-                                  opacity: isCurrent ? 0.6 : 1,
+                                  fontFamily: T.font.body, fontSize: "0.8125rem",
+                                  color: isCurrent ? "#716A5E" : T.color.walnut,
                                 }}
                               >
                                 <RoomIcon roomId={r.id} size={14} color={w.accent} />
                                 <span style={{ flex: 1, textAlign: "left" }}>{translateRoomName(r, tWings)}</span>
-                                {isCurrent && <span style={{ fontSize: "0.5625rem", fontWeight: 500, color: w.accent, textTransform: "uppercase" as const }}>{t("currentRoom")}</span>}
+                                {isCurrent && <span style={{ fontSize: "0.6875rem", fontWeight: 500, color: w.accent, textTransform: "uppercase" as const }}>{t("currentRoom")}</span>}
                               </button>
                             );
                           })}
@@ -1370,7 +1370,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                     })}
                   </div>
                   {movedToast && (
-                    <div style={{ fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, color: accent, marginTop: "0.5rem" }}>
+                    <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: accent, marginTop: "0.5rem" }}>
                       {t("memoryMoved")}
                     </div>
                   )}
@@ -1379,7 +1379,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {/* 10. Time Capsule */}
                 <ActionCard
                   id="timeCapsule"
-                  icon={<HourglassIcon color={openAction === "timeCapsule" ? accent : T.color.gold} />}
+                  icon={<HourglassIcon color={openAction === "timeCapsule" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("timeCapsuleTitle")}
                   value={revealDate
                     ? new Date(revealDate + "T00:00:00").toLocaleDateString(localeDateCodes[locale as Locale], { month: "short", day: "numeric", year: "numeric" })
@@ -1425,7 +1425,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                 {/* 11. Share */}
                 <ActionCard
                   id="share"
-                  icon={<ShareIcon color={openAction === "share" ? accent : T.color.gold} />}
+                  icon={<ShareIcon color={openAction === "share" ? accent : "#9A4F2A"} /* Atrium token: terracotta glyph */ />}
                   title={t("shareBtn")}
                   value={t("shareDesc")}
                   isOpen={openAction === "share"}
@@ -1437,7 +1437,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                     style={{
                       width: "100%", padding: "0.75rem", fontFamily: T.font.body,
                       fontSize: "0.8125rem", fontWeight: 600, background: accent,
-                      border: "none", borderRadius: "0.5rem", cursor: "pointer",
+                      border: "none", borderRadius: "0.75rem", cursor: "pointer",
                       color: T.color.white, display: "flex", alignItems: "center",
                       justifyContent: "center", gap: "0.375rem",
                     }}
@@ -1463,8 +1463,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         style={{
                           flex: 1, padding: "0.625rem", fontFamily: T.font.body,
                           fontSize: "0.8125rem", background: "transparent",
-                          border: `1px solid ${T.color.cream}`, borderRadius: "0.5rem",
-                          cursor: "pointer", color: T.color.muted,
+                          border: "0.0625rem solid #E3D6BC", borderRadius: "0.75rem", /* Atrium hairline */
+                          cursor: "pointer", color: "#716A5E",
                         }}
                       >{t("cancel")}</button>
                       <button
@@ -1472,7 +1472,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                         style={{
                           flex: 1, padding: "0.625rem", fontFamily: T.font.body,
                           fontSize: "0.8125rem", fontWeight: 600, background: T.color.error,
-                          border: "none", borderRadius: "0.5rem", cursor: "pointer",
+                          border: "none", borderRadius: "0.75rem", cursor: "pointer",
                           color: "#FFF",
                         }}
                       >{t("confirmDelete")}</button>
@@ -1483,7 +1483,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                       style={{
                         width: "100%", padding: "0.625rem", fontFamily: T.font.body,
                         fontSize: "0.8125rem", background: `${T.color.error}08`,
-                        border: `1px solid ${T.color.error}30`, borderRadius: "0.5rem",
+                        border: `0.0625rem solid ${T.color.error}30`, borderRadius: "0.75rem",
                         cursor: "pointer", color: T.color.error,
                       }}
                     >
@@ -1505,8 +1505,8 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
                   style={{
                     flex: 1, padding: "0.75rem", fontFamily: T.font.body,
                     fontSize: "0.8125rem", background: "transparent",
-                    border: `1px solid ${T.color.cream}`, borderRadius: "0.625rem",
-                    cursor: "pointer", color: T.color.muted,
+                    border: "0.0625rem solid #E3D6BC", borderRadius: "0.625rem", /* Atrium hairline */
+                    cursor: "pointer", color: "#716A5E",
                   }}
                 >{t("closeBtn")}</button>
               </div>
@@ -1519,6 +1519,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
       {showFullImage && mem.dataUrl && (
         <div
           onClick={() => setShowFullImage(false)}
+          className="md-detail"
           style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,.9)",
             zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
@@ -1528,7 +1529,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
           <img
             src={mem.dataUrl}
             alt={mem.title}
-            style={{ maxWidth: "95vw", maxHeight: "95vh", objectFit: "contain", borderRadius: "0.5rem" }}
+            style={{ maxWidth: "95vw", maxHeight: "95vh", objectFit: "contain", borderRadius: "0.75rem" }}
             onClick={e => e.stopPropagation()}
           />
           <button
@@ -1547,7 +1548,7 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
 
       {/* ── Image editor overlay ── */}
       {imageEditing && mem.dataUrl && (
-        <Suspense fallback={<div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,background:"rgba(0,0,0,.3)",backdropFilter:"blur(0.25rem)"}}><style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style><div style={{width:"2.5rem",height:"2.5rem",border:"0.1875rem solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite"}} /></div>}>
+        <Suspense fallback={<div style={{position:"fixed",inset:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,background:"rgba(0,0,0,.3)",backdropFilter:"blur(0.25rem)"}}><style>{`@keyframes spin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion: reduce){@keyframes spin{to{transform:none}}}`}</style><div style={{width:"2.5rem",height:"2.5rem",border:"0.1875rem solid rgba(255,255,255,.3)",borderTopColor:"#fff",borderRadius:"50%",animation:"spin 0.8s linear infinite"}} /></div>}>
         <ImageEditor
           dataUrl={mem.dataUrl}
           accent={accent}
@@ -1580,6 +1581,15 @@ export default function MemoryDetail({ mem, room, wing, onClose, onDelete, onUpd
         @keyframes mdSlideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }
         @keyframes mdCapsuleShimmer { 0%,100% { opacity: .3 } 50% { opacity: .8 } }
         @keyframes mdSpin { to { transform: rotate(360deg) } }
+        .md-detail :focus-visible { outline: 0.1875rem solid #D4AF37 !important; outline-offset: 0.1875rem; } /* Atrium gold focus ring */
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes mdFadeIn { from { opacity: 1 } }
+          @keyframes mdSlideIn { from { transform: none } }
+          @keyframes mdSlideUp { from { transform: none } }
+          @keyframes mdCapsuleShimmer { 0%,100% { opacity: .5 } 50% { opacity: .5 } }
+          @keyframes mdSpin { to { transform: none } }
+          .md-detail, .md-detail *, .md-saved-toast { transition: none !important; animation: none !important; }
+        }
       `}</style>
     </>
   );

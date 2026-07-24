@@ -40,12 +40,12 @@ export function KepCreationWizard() {
 
   return (
     <div style={{ maxWidth: "36rem", margin: "0 auto", padding: "1.5rem" }}>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: "0.5rem" }}>{t("wizardTitle")}</h1>
+      <h1 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, lineHeight: 1.15, color: "#403B36", marginBottom: "0.5rem" }}>{t("wizardTitle")}</h1>
 
       {/* Step indicator */}
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "2rem" }}>
         {WIZARD_STEPS.map((s, i) => (
-          <div key={s.id} style={{ flex: 1, height: "0.25rem", borderRadius: "0.125rem", background: i <= step ? T.color.terracotta : T.color.cream }} />
+          <div key={s.id} style={{ flex: 1, height: "0.25rem", borderRadius: "0.125rem", background: i <= step ? "#B85C38" : "#E3D6BC" }} />
         ))}
       </div>
 
@@ -59,7 +59,7 @@ export function KepCreationWizard() {
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: "2rem", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
         <button
           onClick={step === 0 ? () => router.back() : handleBack}
-          style={{ padding: "0.625rem 1.25rem", borderRadius: "0.375rem", background: T.color.warmStone, border: "none", cursor: "pointer", fontWeight: 500, minHeight: "2.75rem" }}
+          style={{ padding: "0.625rem 1.25rem", borderRadius: "0.75rem", background: T.color.warmStone, border: "none", cursor: "pointer", fontWeight: 500, color: "#403B36", minHeight: "2.75rem" }}
         >
           {t("wizardBack")}
         </button>
@@ -70,9 +70,9 @@ export function KepCreationWizard() {
             disabled={!canProceed}
             style={{
               padding: "0.625rem 1.25rem",
-              borderRadius: "0.375rem",
-              background: canProceed ? T.color.terracotta : T.color.sandstone,
-              color: "#fff",
+              borderRadius: "0.75rem",
+              background: canProceed ? "#B85C38" : T.color.sandstone,
+              color: "#FCFAF5",
               border: "none",
               cursor: canProceed ? "pointer" : "not-allowed",
               fontWeight: 600,
@@ -87,9 +87,9 @@ export function KepCreationWizard() {
             disabled={isCreating}
             style={{
               padding: "0.625rem 1.25rem",
-              borderRadius: "0.375rem",
-              background: T.color.terracotta,
-              color: "#fff",
+              borderRadius: "0.75rem",
+              background: "#B85C38",
+              color: "#FCFAF5",
               border: "none",
               cursor: "pointer",
               fontWeight: 600,
@@ -113,8 +113,8 @@ function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial
 
   return (
     <div>
-      <h2 style={{ fontSize: "1.125rem", marginBottom: "0.25rem" }}>{t("wizardStep1")}</h2>
-      <p style={{ color: T.color.muted, fontSize: "0.875rem", marginBottom: "1.25rem" }}>{t("wizardStep1Desc")}</p>
+      <h2 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, lineHeight: 1.15, color: "#403B36", marginBottom: "0.25rem" }}>{t("wizardStep1")}</h2>
+      <p style={{ color: "#716A5E", fontSize: "0.9375rem", lineHeight: 1.4, marginBottom: "1.25rem" }}>{t("wizardStep1Desc")}</p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
         {sources.map((s) => (
@@ -123,7 +123,7 @@ function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial
             onClick={() => update({ source_type: s.type, icon: SOURCE_ICONS[s.type] })}
             style={{
               cursor: "pointer",
-              border: data.source_type === s.type ? `2px solid ${T.color.terracotta}` : "2px solid transparent",
+              border: data.source_type === s.type ? "0.125rem solid #B85C38" : "0.125rem solid transparent",
               borderRadius: "1rem",
             }}
           >
@@ -132,7 +132,7 @@ function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial
                 <span style={{ fontSize: "2rem" }}>{s.icon}</span>
                 <div>
                   <div style={{ fontWeight: 600 }}>{s.type === "whatsapp" ? t("sourceWhatsapp") : t("sourcePhotos")}</div>
-                  <div style={{ fontSize: "0.875rem", color: T.color.muted, marginTop: "0.25rem" }}>{s.desc}</div>
+                  <div style={{ fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.25rem" }}>{s.desc}</div>
                 </div>
               </div>
             </TuscanCard>
@@ -146,12 +146,12 @@ function StepSource({ data, update, t }: { data: WizardData; update: (d: Partial
 function StepConfigure({ data, update, t }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string }) {
   return (
     <div>
-      <h2 style={{ fontSize: "1.125rem", marginBottom: "0.25rem" }}>{t("wizardStep2")}</h2>
-      <p style={{ color: T.color.muted, fontSize: "0.875rem", marginBottom: "1.25rem" }}>{t("wizardStep2Desc")}</p>
+      <h2 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, lineHeight: 1.15, color: "#403B36", marginBottom: "0.25rem" }}>{t("wizardStep2")}</h2>
+      <p style={{ color: "#716A5E", fontSize: "0.9375rem", lineHeight: 1.4, marginBottom: "1.25rem" }}>{t("wizardStep2Desc")}</p>
 
       {/* Name */}
       <div style={{ marginBottom: "1rem" }}>
-        <label style={{ fontSize: "0.875rem", fontWeight: 500, display: "block", marginBottom: "0.375rem" }}>{t("name")} *</label>
+        <label style={{ fontSize: "0.8125rem", fontWeight: 500, display: "block", marginBottom: "0.375rem" }}>{t("name")} *</label>
         <input
           value={data.name}
           onChange={(e) => update({ name: e.target.value })}
@@ -162,7 +162,7 @@ function StepConfigure({ data, update, t }: { data: WizardData; update: (d: Part
 
       {/* Description */}
       <div style={{ marginBottom: "1rem" }}>
-        <label style={{ fontSize: "0.875rem", fontWeight: 500, display: "block", marginBottom: "0.375rem" }}>{t("description")}</label>
+        <label style={{ fontSize: "0.8125rem", fontWeight: 500, display: "block", marginBottom: "0.375rem" }}>{t("description")}</label>
         <textarea
           value={data.description}
           onChange={(e) => update({ description: e.target.value })}
@@ -174,7 +174,7 @@ function StepConfigure({ data, update, t }: { data: WizardData; update: (d: Part
       {/* Photos-specific config */}
       {data.source_type === "photos" && (
         <div style={{ marginBottom: "1rem" }}>
-          <label style={{ fontSize: "0.875rem", fontWeight: 500, display: "block", marginBottom: "0.375rem" }}>{t("wizardDateRange")}</label>
+          <label style={{ fontSize: "0.8125rem", fontWeight: 500, display: "block", marginBottom: "0.375rem" }}>{t("wizardDateRange")}</label>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <input
               type="date"
@@ -198,15 +198,15 @@ function StepConfigure({ data, update, t }: { data: WizardData; update: (d: Part
 function StepRouting({ data, update, t }: { data: WizardData; update: (d: Partial<WizardData>) => void; t: (key: string, params?: Record<string, string>) => string }) {
   return (
     <div>
-      <h2 style={{ fontSize: "1.125rem", marginBottom: "0.25rem" }}>{t("wizardStep3")}</h2>
-      <p style={{ color: T.color.muted, fontSize: "0.875rem", marginBottom: "1.25rem" }}>{t("wizardStep3Desc")}</p>
+      <h2 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, lineHeight: 1.15, color: "#403B36", marginBottom: "0.25rem" }}>{t("wizardStep3")}</h2>
+      <p style={{ color: "#716A5E", fontSize: "0.9375rem", lineHeight: 1.4, marginBottom: "1.25rem" }}>{t("wizardStep3Desc")}</p>
 
       {/* Auto-route toggle */}
       <TuscanCard>
         <div style={{ padding: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontWeight: 500 }}>{t("autoRoute")}</div>
-            <div style={{ fontSize: "0.8125rem", color: T.color.muted, marginTop: "0.25rem" }}>{t("autoRouteDesc")}</div>
+            <div style={{ fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.25rem" }}>{t("autoRouteDesc")}</div>
           </div>
           <label style={{ position: "relative", display: "inline-block", width: "3rem", height: "1.5rem" }}>
             <input
@@ -219,9 +219,9 @@ function StepRouting({ data, update, t }: { data: WizardData; update: (d: Partia
               position: "absolute",
               cursor: "pointer",
               top: 0, left: 0, right: 0, bottom: 0,
-              background: data.auto_route_enabled ? T.color.terracotta : T.color.sandstone,
+              background: data.auto_route_enabled ? "#B85C38" : T.color.sandstone,
               borderRadius: "1.5rem",
-              transition: "0.2s",
+              transition: "0.2s ease",
             }}>
               <span style={{
                 position: "absolute",
@@ -229,9 +229,9 @@ function StepRouting({ data, update, t }: { data: WizardData; update: (d: Partia
                 width: "1.125rem",
                 left: data.auto_route_enabled ? "1.5rem" : "0.1875rem",
                 bottom: "0.1875rem",
-                background: "#fff",
+                background: "#FCFAF5",
                 borderRadius: "50%",
-                transition: "0.2s",
+                transition: "0.2s ease",
               }} />
             </span>
           </label>
@@ -244,22 +244,22 @@ function StepRouting({ data, update, t }: { data: WizardData; update: (d: Partia
 function StepReview({ data, t }: { data: WizardData; t: (key: string, params?: Record<string, string>) => string }) {
   return (
     <div>
-      <h2 style={{ fontSize: "1.125rem", marginBottom: "0.25rem" }}>{t("wizardStep4")}</h2>
-      <p style={{ color: T.color.muted, fontSize: "0.875rem", marginBottom: "1.25rem" }}>{t("wizardStep4Desc")}</p>
+      <h2 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, lineHeight: 1.15, color: "#403B36", marginBottom: "0.25rem" }}>{t("wizardStep4")}</h2>
+      <p style={{ color: "#716A5E", fontSize: "0.9375rem", lineHeight: 1.4, marginBottom: "1.25rem" }}>{t("wizardStep4Desc")}</p>
 
       <TuscanCard>
         <div style={{ padding: "1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem" }}>
             <span style={{ fontSize: "2rem" }}>{data.icon}</span>
             <div>
-              <div style={{ fontWeight: 600, fontSize: "1.125rem" }}>{data.name}</div>
-              {data.description && <div style={{ fontSize: "0.875rem", color: T.color.muted }}>{data.description}</div>}
+              <div style={{ fontWeight: 600, fontSize: "1.0625rem", color: "#403B36" }}>{data.name}</div>
+              {data.description && <div style={{ fontSize: "0.8125rem", color: "#716A5E" }}>{data.description}</div>}
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", fontSize: "0.875rem" }}>
-            <div><span style={{ color: T.color.muted }}>{t("wizardReviewSource")}:</span> {data.source_type === "whatsapp" ? "\u{1F4AC} WhatsApp" : "\u{1F4F8} Google Photos"}</div>
-            <div><span style={{ color: T.color.muted }}>{t("wizardReviewAutoRoute")}:</span> {data.auto_route_enabled ? `\u2705 ${t("wizardOn")}` : `\u274C ${t("wizardOff")}`}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", fontSize: "0.9375rem" }}>
+            <div><span style={{ color: "#716A5E" }}>{t("wizardReviewSource")}:</span> {data.source_type === "whatsapp" ? "\u{1F4AC} WhatsApp" : "\u{1F4F8} Google Photos"}</div>
+            <div><span style={{ color: "#716A5E" }}>{t("wizardReviewAutoRoute")}:</span> {data.auto_route_enabled ? `\u2705 ${t("wizardOn")}` : `\u274C ${t("wizardOff")}`}</div>
           </div>
         </div>
       </TuscanCard>
@@ -270,9 +270,9 @@ function StepReview({ data, t }: { data: WizardData; t: (key: string, params?: R
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.625rem 0.75rem",
-  borderRadius: "0.375rem",
-  border: `1px solid ${T.color.sandstone}`,
-  fontSize: "16px",
+  borderRadius: "0.75rem",
+  border: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
+  fontSize: "1rem", // keep >=16px so iOS Safari doesn't zoom on focus
   outline: "none",
   boxSizing: "border-box",
 };

@@ -49,7 +49,7 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
 
   return (
     <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} style={{
-      position: "fixed", inset: 0, zIndex: 200, background: "rgba(20,16,12,0.92)",
+      position: "fixed", inset: 0, zIndex: 200, background: "rgba(46,42,38,0.94)", /* Atrium token: warm-ink scrim (#2E2A26 register) */
       display: "flex", flexDirection: "column", alignItems: "center",
     }}>
       {/* Header */}
@@ -62,13 +62,13 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
           <span style={{ fontSize: "1.375rem" }}>{"\u{1F4E6}"}</span>
-          <span style={{ fontFamily: T.font.display, fontSize: "1.25rem", color: "#E8DCC8", letterSpacing: "0.03em" }}>
+          <span style={{ fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, lineHeight: 1.15, color: "#FCFAF5" }}>
             {t("title")}
           </span>
         </div>
         <button onClick={onClose} style={{
-          background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: "0.5rem", padding: "0.375rem 1rem", color: "#C8B898", cursor: "pointer",
+          background: "rgba(255,255,255,0.08)", border: "0.0625rem solid rgba(255,255,255,0.12)",
+          borderRadius: "0.75rem", padding: "0.375rem 1rem", color: "rgba(252,250,245,0.72)", cursor: "pointer",
           fontFamily: T.font.body, fontSize: "0.8125rem",
         }}>{t("close")}</button>
       </div>
@@ -82,12 +82,12 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
       }}>
         {mems.length === 0 ? (
           <div style={{
-            textAlign: "center", padding: "3.75rem 1.25rem", color: "#A89878",
+            textAlign: "center", padding: "3.75rem 1.25rem", color: "rgba(252,250,245,0.72)", /* Atrium token: keystone secondary */
             fontFamily: T.font.body, fontSize: "0.9375rem",
           }}>
             <p style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>{"\u{1F4E6}"}</p>
             <p>{t("empty")}</p>
-            <p style={{ fontSize: "0.8125rem", marginTop: "0.5rem", color: "#887858" }}>
+            <p style={{ fontSize: "0.8125rem", marginTop: "0.5rem", color: "rgba(252,250,245,0.55)" }}>
               {t("emptyDescription")}
             </p>
           </div>
@@ -96,7 +96,7 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
             {/* Active media player */}
             {activeMem && (
               <div style={{
-                background: "#1A1510", borderRadius: "0.75rem", overflow: "hidden", marginBottom: "1rem",
+                background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", borderRadius: "1rem", overflow: "hidden", marginBottom: "1rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium token: keystone surface, S2 */
               }}>
                 {(activeMem.type === "video" || activeMem.videoBlob) && activeMem.dataUrl && (
                   <video ref={videoRef} src={activeMem.dataUrl} controls autoPlay playsInline preload="metadata"
@@ -121,15 +121,15 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
                   </div>
                 )}
                 <div style={{ padding: "0.75rem 1rem" }}>
-                  <div style={{ fontFamily: T.font.display, fontSize: "1rem", color: "#E8DCC8" }}>
+                  <div style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, lineHeight: 1.15, color: "#FCFAF5" }}>
                     {activeMem.title}
                   </div>
                   {activeMem.desc && (
-                    <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#A89878", marginTop: "0.25rem" }}>
+                    <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", lineHeight: 1.4, color: "rgba(252,250,245,0.72)", marginTop: "0.25rem" }}>
                       {activeMem.desc}
                     </p>
                   )}
-                  <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#887858", marginTop: "0.375rem" }}>
+                  <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "rgba(252,250,245,0.55)", marginTop: "0.375rem" }}>
                     {localizeType(activeMem.type)} {activeMem.createdAt ? `\u00B7 ${new Date(activeMem.createdAt).toLocaleDateString(locale)}` : ""}
                   </div>
                 </div>
@@ -141,18 +141,18 @@ export default function StoragePlayerPanel({ onClose }: { onClose: () => void })
               {mems.map((mem) => (
                 <button key={mem.id} onClick={() => setActiveMem(mem)} style={{
                   display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.625rem 0.875rem", minHeight: "2.75rem",
-                  background: activeMem?.id === mem.id ? "rgba(200,168,88,0.15)" : "rgba(255,255,255,0.04)",
-                  border: activeMem?.id === mem.id ? "1px solid rgba(200,168,88,0.3)" : "1px solid transparent",
-                  borderRadius: "0.5rem", cursor: "pointer", textAlign: "left", width: "100%",
+                  background: activeMem?.id === mem.id ? "rgba(184,92,56,0.16)" : "rgba(255,255,255,0.04)", /* Atrium token: ember active */
+                  border: activeMem?.id === mem.id ? "0.0625rem solid rgba(184,92,56,0.45)" : "0.0625rem solid transparent",
+                  borderRadius: "0.75rem", cursor: "pointer", textAlign: "left", width: "100%",
                 }}>
-                  <MediaThumb mem={mem} size={2.25} borderRadius="0.375rem" iconSize={16} iconColor="#C8B898" />
+                  <MediaThumb mem={mem} size={2.25} borderRadius="0.375rem" iconSize={16} iconColor="rgba(252,250,245,0.72)" />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
-                      fontFamily: T.font.body, fontSize: "0.875rem",
-                      color: activeMem?.id === mem.id ? "#E8DCC8" : "#C8B898",
+                      fontFamily: T.font.body, fontSize: "0.9375rem",
+                      color: activeMem?.id === mem.id ? "#FCFAF5" : "rgba(252,250,245,0.72)",
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>{mem.title}</div>
-                    <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#887858" }}>
+                    <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "rgba(252,250,245,0.55)" }}>
                       {localizeType(mem.type)}
                     </div>
                   </div>

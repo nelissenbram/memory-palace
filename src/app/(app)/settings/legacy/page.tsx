@@ -86,44 +86,44 @@ function ConfirmModal({
       style={{
         position: "fixed", inset: 0, zIndex: 200,
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(44,44,42,.35)", backdropFilter: "blur(0.125rem)",
+        background: "rgba(64,59,54,0.35)" /* Atrium warm ink scrim */, backdropFilter: "blur(0.125rem)",
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div style={{
         background: T.color.linen, borderRadius: "1rem",
         padding: "1.75rem 2rem", maxWidth: "26rem", width: "90%",
-        boxShadow: "0 1rem 3rem rgba(44,44,42,.18)",
-        border: `1px solid ${T.color.cream}`,
+        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium S2
+        border: "0.0625rem solid #E3D6BC", // Atrium hairline
         animation: "fadeIn .2s ease",
       }}>
         <h4 style={{
-          fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
-          color: T.color.charcoal, margin: "0 0 0.75rem",
+          fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+          color: "#403B36", margin: "0 0 0.75rem",
         }}>
           {title}
         </h4>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted
           margin: "0 0 1.5rem", lineHeight: 1.6,
         }}>
           {body}
         </p>
         <div style={{ display: "flex", gap: "0.625rem", justifyContent: "flex-end" }}>
-          <button ref={cancelBtnRef} onClick={onCancel} style={{
-            padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
-            border: `1px solid ${T.color.cream}`, background: "transparent",
-            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
-            color: T.color.muted, cursor: "pointer", transition: "all .15s",
+          <button ref={cancelBtnRef} onClick={onCancel} className="legacy-focus-ring" style={{
+            padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+            border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: "transparent",
+            fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
+            color: "#716A5E", cursor: "pointer", transition: "all 0.2s ease",
           }}>
             {cancelLabel}
           </button>
-          <button ref={confirmBtnRef} onClick={onConfirm} style={{
-            padding: "0.625rem 1.25rem", borderRadius: "0.625rem",
+          <button ref={confirmBtnRef} onClick={onConfirm} className="legacy-focus-ring" style={{
+            padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
             border: "none",
-            background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
-            fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-            color: "#FFF", cursor: "pointer", transition: "all .15s",
+            background: "#B85C38", // Atrium ember
+            fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
+            color: "#FFF", cursor: "pointer", transition: "all 0.2s ease",
           }}>
             {confirmLabel}
           </button>
@@ -227,17 +227,17 @@ export default function LegacyPage() {
     return (
       <div style={{
         padding: "3rem", textAlign: "center",
-        fontFamily: T.font.body, fontSize: "1rem", color: T.color.muted,
+        fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted
         display: "flex", flexDirection: "column", alignItems: "center", gap: "0.75rem",
       }}>
         <div style={{
           width: "1.5rem", height: "1.5rem", borderRadius: "50%",
           border: `0.1875rem solid ${T.color.sandstone}`,
-          borderTopColor: T.color.terracotta,
+          borderTopColor: "#B85C38", // Atrium ember
           animation: "legacySpin 0.7s linear infinite",
         }} />
         {t("loading")}
-        <style>{`@keyframes legacySpin { to { transform: rotate(360deg); } }`}</style>
+        <style>{`@keyframes legacySpin { to { transform: rotate(360deg); } } @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }`}</style>
       </div>
     );
   }
@@ -253,13 +253,13 @@ export default function LegacyPage() {
       {!isMobile && (
         <div style={{ marginBottom: "2rem" }}>
           <h2 style={{
-            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 0.5rem",
+            fontFamily: T.font.display, fontSize: "1.75rem", fontWeight: 600,
+            color: "#403B36", margin: "0 0 0.5rem", // Atrium ink
           }}>
             {t("title")}
           </h2>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted
             margin: 0, lineHeight: 1.6,
           }}>
             {t("description")}
@@ -269,12 +269,12 @@ export default function LegacyPage() {
 
       {/* Warm intro callout */}
       <div style={{
-        padding: "1.25rem 1.5rem", borderRadius: "0.875rem", marginBottom: "1.75rem",
-        background: `linear-gradient(135deg, ${T.color.terracotta}08, ${T.color.walnut}06)`,
-        border: `1px solid ${T.color.terracotta}18`,
+        padding: "1.25rem 1.5rem", borderRadius: "1rem", marginBottom: "1.75rem",
+        background: "linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)", // Atrium terracotta tileBg
+        border: "0.0625rem solid #E7D9C4", // Atrium hairline
       }}>
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+          fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36", // Atrium ink
           margin: 0, lineHeight: 1.7,
         }}>
           {t("introCallout")}
@@ -307,11 +307,11 @@ export default function LegacyPage() {
         ].map((item) => (
           <span key={item.label} style={{
             display: "inline-flex", alignItems: "center", gap: "0.375rem",
-            padding: "0.3125rem 0.75rem", borderRadius: "1rem",
-            background: item.done ? `${T.color.sage}14` : `${T.color.sandstone}30`,
-            border: `1px solid ${item.done ? T.color.sage : T.color.sandstone}25`,
+            padding: "0.3125rem 0.75rem", borderRadius: "2rem",
+            background: item.done ? "#EFF2E8" : "#F2EDE4", // Atrium sage tray / linen
+            border: `0.0625rem solid ${item.done ? "#DFE3D2" : "#E3D6BC"}`, // Atrium hairline
             fontFamily: T.font.body, fontSize: "0.8125rem",
-            color: item.done ? T.color.sage : T.color.muted,
+            color: item.done ? "#56683C" : "#716A5E", // Atrium sage / muted
             fontWeight: 500,
           }}>
             <span aria-hidden="true">{item.done ? "\u2713" : "\u25CB"}</span>
@@ -323,20 +323,20 @@ export default function LegacyPage() {
       {/* Onboarding card (#4) */}
       {showOnboarding && contacts.length === 0 && messages.length === 0 && settings === null && (
         <div style={{
-          padding: "1.25rem 1.5rem", borderRadius: "0.875rem", marginBottom: "1.25rem",
-          background: `linear-gradient(135deg, ${T.color.sage}08, ${T.color.terracotta}06)`,
-          border: `1px solid ${T.color.sage}20`,
+          padding: "1.25rem 1.5rem", borderRadius: "1rem", marginBottom: "1.25rem",
+          background: "linear-gradient(160deg, #F2F5EA 0%, #FCFAF5 78%)", // Atrium sage tileBg
+          border: "0.0625rem solid #DFE3D2", // Atrium hairline
         }}>
           <h4 style={{
-            fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 0.75rem",
+            fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+            color: "#403B36", margin: "0 0 0.75rem", // Atrium ink
           }}>
             {t("onboardingTitle")}
           </h4>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem", marginBottom: "1rem" }}>
             {[t("onboardingStep1"), t("onboardingStep2"), t("onboardingStep3")].map((step) => (
               <p key={step} style={{
-                fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.walnut,
+                fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36", // Atrium ink
                 margin: 0, lineHeight: 1.6,
               }}>
                 {step}
@@ -346,10 +346,10 @@ export default function LegacyPage() {
           <button
             onClick={() => setShowOnboarding(false)}
             style={{
-              padding: "0.5rem 1rem", borderRadius: "0.5rem",
-              border: `1px solid ${T.color.cream}`, background: T.color.white,
+              padding: "0.5rem 1rem", borderRadius: "0.75rem",
+              border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: T.color.white,
               fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-              color: T.color.charcoal, cursor: "pointer", transition: "all .15s",
+              color: "#403B36", cursor: "pointer", transition: "all 0.2s ease",
             }}
           >
             {t("onboardingDismiss")}
@@ -407,12 +407,12 @@ export default function LegacyPage() {
             className="legacy-focus-ring"
             style={{
               padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
-              border: `1.5px solid ${activeSection === tab.key ? T.color.terracotta : T.color.cream}`,
-              background: activeSection === tab.key ? `${T.color.terracotta}10` : T.color.white,
-              fontFamily: T.font.body, fontSize: "0.875rem",
+              border: `0.0625rem solid ${activeSection === tab.key ? "#B85C38" : "#E3D6BC"}`, // Atrium ember / hairline
+              background: activeSection === tab.key ? "rgba(184,92,56,0.08)" : T.color.white,
+              fontFamily: T.font.body, fontSize: "0.9375rem",
               fontWeight: activeSection === tab.key ? 600 : 500,
-              color: activeSection === tab.key ? T.color.terracotta : T.color.charcoal,
-              cursor: "pointer", transition: "all .2s",
+              color: activeSection === tab.key ? "#9A4F2A" : "#403B36", // Atrium glyph / ink
+              cursor: "pointer", transition: "all 0.2s ease",
               display: "flex", alignItems: "center", gap: "0.5rem",
             }}
           >
@@ -420,10 +420,10 @@ export default function LegacyPage() {
             <span className="legacy-tab-short">{tab.shortLabel}</span>
             {tab.count !== null && (
               <span style={{
-                background: activeSection === tab.key ? T.color.terracotta : T.color.sandstone,
-                color: activeSection === tab.key ? "#FFF" : T.color.walnut,
-                borderRadius: "0.5rem", padding: "0.125rem 0.5rem",
-                fontSize: "0.75rem", fontWeight: 600,
+                background: activeSection === tab.key ? "#B85C38" : "#E3D6BC", // Atrium ember / hairline
+                color: activeSection === tab.key ? "#FCFAF5" : "#403B36",
+                borderRadius: "0.75rem", padding: "0.125rem 0.5rem",
+                fontSize: "0.6875rem", fontWeight: 600,
               }}>
                 {tab.count}
               </span>
@@ -467,16 +467,18 @@ export default function LegacyPage() {
       )}
 
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
         .legacy-tab-short { display: none; }
         @media (max-width: 600px) {
           .legacy-tab-full { display: none; }
           .legacy-tab-short { display: inline; }
         }
-        .legacy-focus-ring:focus {
-          border-color: ${T.color.terracotta} !important;
-          box-shadow: 0 0 0 0.1875rem ${T.color.terracotta}25 !important;
-          outline: none !important;
+        .legacy-focus-ring:focus-visible {
+          outline: 0.1875rem solid #D4AF37 !important;
+          outline-offset: 0.1875rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .legacy-focus-ring, [role=dialog] > div { animation: none !important; transition: none !important; }
         }
         ${settingsFocusStyle}
       `}</style>
@@ -637,14 +639,14 @@ function ContactsSection({
     <div style={{
       background: T.color.white,
       borderRadius: "1rem",
-      border: `1px solid ${T.color.cream}`,
+      border: "0.0625rem solid #E3D6BC", // Atrium hairline
       padding: "1.75rem 2rem",
-      boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium S1 + top highlight
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
-          color: T.color.charcoal, margin: 0,
+          fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
+          color: "#403B36", margin: 0, // Atrium ink
         }}>
           {t("contactsTitle")}
         </h3>
@@ -658,7 +660,7 @@ function ContactsSection({
         )}
       </div>
       <p style={{
-        fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+        fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted
         margin: "0 0 1.5rem", lineHeight: 1.6,
       }}>
         {t("contactsDesc")}
@@ -669,18 +671,18 @@ function ContactsSection({
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: showForm ? "1.5rem" : 0 }}>
           {contacts.map((c) => (
             <div key={c.id} style={{
-              padding: "1.125rem 1.375rem", borderRadius: "0.875rem",
+              padding: "1.125rem 1.375rem", borderRadius: "1rem",
               background: T.color.linen,
-              border: `1px solid ${T.color.cream}`,
+              border: "0.0625rem solid #E3D6BC", // Atrium hairline
               display: "flex", alignItems: "center", gap: "1rem",
             }}>
               {/* Avatar circle */}
               <div style={{
                 width: "3rem", height: "3rem", borderRadius: "1.5rem", flexShrink: 0,
-                background: `linear-gradient(135deg, ${T.color.terracotta}30, ${T.color.walnut}20)`,
+                background: "rgba(154,79,42,0.11)", // Atrium terracotta medallion
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600,
-                color: T.color.terracotta,
+                color: "#9A4F2A", // Atrium terracotta glyph
               }}>
                 {c.contact_name.charAt(0).toUpperCase()}
               </div>
@@ -688,33 +690,33 @@ function ContactsSection({
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                  color: T.color.charcoal,
+                  color: "#403B36", // Atrium ink
                 }}>
                   {c.contact_name}
                 </div>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
-                  marginTop: 2,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
+                  marginTop: "0.125rem",
                 }}>
                   {c.contact_email}
                   {c.relationship && (
-                    <span style={{ marginLeft: "0.625rem", color: T.color.walnut }}>
+                    <span style={{ marginLeft: "0.625rem", color: "#716A5E" /* Atrium muted */ }}>
                       {(() => { const rel = RELATIONSHIPS.find((r) => r.value === c.relationship); return rel ? t(rel.labelKey) : c.relationship; })()}
                     </span>
                   )}
                 </div>
                 <div style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
                   marginTop: "0.25rem",
                 }}>
                   {t("access")}: {(() => { const al = ACCESS_LEVELS.find((a) => a.value === c.access_level); return al ? t(al.labelKey) : c.access_level; })()}
                   {c.access_level === "wings_only" && c.wing_access && c.wing_access.length > 0 && (
-                    <span style={{ marginLeft: "0.375rem", color: T.color.muted }}>
+                    <span style={{ marginLeft: "0.375rem", color: "#716A5E" /* Atrium muted */ }}>
                       ({c.wing_access.map((w) => { const found = wings.find((wing) => wing.id === w); return found ? found.name : w; }).join(", ")})
                     </span>
                   )}
                   {c.access_level === "specific_rooms" && c.room_access && c.room_access.length > 0 && (
-                    <span style={{ marginLeft: "0.375rem", color: T.color.muted }}>
+                    <span style={{ marginLeft: "0.375rem", color: "#716A5E" /* Atrium muted */ }}>
                       ({c.room_access.length === 1 ? t("roomCountLabel", { count: "1" }) : t("roomCountLabelPlural", { count: String(c.room_access.length) })})
                     </span>
                   )}
@@ -743,17 +745,17 @@ function ContactsSection({
       {contacts.length === 0 && !showForm && (
         <div style={{
           padding: "2rem 1.5rem", textAlign: "center",
-          borderRadius: "0.875rem", background: T.color.linen,
-          border: `1px dashed ${T.color.sandstone}`,
+          borderRadius: "1rem", background: T.color.linen,
+          border: "0.0625rem dashed #E3D6BC", // Atrium hairline
         }}>
           <p style={{
-            fontFamily: T.font.display, fontSize: "1.125rem", color: T.color.walnut,
+            fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, color: "#403B36", // Atrium ink
             margin: "0 0 0.5rem",
           }}>
             {t("noContactsTitle")}
           </p>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted
             margin: "0 0 1rem", lineHeight: 1.6,
           }}>
             {t("noContactsDesc")}
@@ -770,14 +772,14 @@ function ContactsSection({
       {/* Add / Edit form */}
       {showForm && (
         <div style={{
-          padding: "1.5rem 1.75rem", borderRadius: "0.875rem",
+          padding: "1.5rem 1.75rem", borderRadius: "1rem",
           background: T.color.linen,
-          border: `1px solid ${T.color.cream}`,
+          border: "0.0625rem solid #E3D6BC", // Atrium hairline
           marginTop: contacts.length > 0 ? 0 : "1rem",
         }}>
           <h4 style={{
-            fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 1.25rem",
+            fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+            color: "#403B36", margin: "0 0 1.25rem", // Atrium ink
           }}>
             {editingId ? t("editContact") : t("addContactTitle")}
           </h4>
@@ -828,13 +830,13 @@ function ContactsSection({
                     aria-pressed={relationship === r.value}
                     disabled={saving}
                     style={{
-                      padding: "0.625rem 1rem", borderRadius: "0.625rem",
-                      border: `1.5px solid ${relationship === r.value ? T.color.terracotta : T.color.sandstone}`,
-                      background: relationship === r.value ? `${T.color.terracotta}12` : T.color.white,
-                      fontFamily: T.font.body, fontSize: "0.875rem",
+                      padding: "0.625rem 1rem", borderRadius: "0.75rem",
+                      border: `0.0625rem solid ${relationship === r.value ? "#B85C38" : "#E3D6BC"}`, // Atrium ember / hairline
+                      background: relationship === r.value ? "rgba(184,92,56,0.08)" : T.color.white,
+                      fontFamily: T.font.body, fontSize: "0.9375rem",
                       fontWeight: relationship === r.value ? 600 : 500,
-                      color: relationship === r.value ? T.color.terracotta : T.color.charcoal,
-                      cursor: saving ? "not-allowed" : "pointer", transition: "all .15s",
+                      color: relationship === r.value ? "#9A4F2A" : "#403B36", // Atrium glyph / ink
+                      cursor: saving ? "not-allowed" : "pointer", transition: "all 0.2s ease",
                       ...(saving ? { opacity: 0.6 } : {}),
                     }}
                   >
@@ -848,7 +850,7 @@ function ContactsSection({
             <div>
               <label id="legacy-access-level-label" style={labelStyle}>{t("accessLevel")}</label>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
                 margin: "0 0 0.625rem", lineHeight: 1.5,
               }}>
                 {t("accessLevelDesc")}
@@ -862,21 +864,21 @@ function ContactsSection({
                     disabled={saving}
                     style={{
                       padding: "0.875rem 1.125rem", borderRadius: "0.75rem", textAlign: "left",
-                      border: `1.5px solid ${accessLevel === a.value ? T.color.terracotta : T.color.sandstone}`,
-                      background: accessLevel === a.value ? `${T.color.terracotta}10` : T.color.white,
-                      cursor: saving ? "not-allowed" : "pointer", transition: "all .15s",
+                      border: `0.0625rem solid ${accessLevel === a.value ? "#B85C38" : "#E3D6BC"}`, // Atrium ember / hairline
+                      background: accessLevel === a.value ? "rgba(184,92,56,0.08)" : T.color.white,
+                      cursor: saving ? "not-allowed" : "pointer", transition: "all 0.2s ease",
                       ...(saving ? { opacity: 0.6 } : {}),
                     }}
                   >
                     <div style={{
                       fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
-                      color: accessLevel === a.value ? T.color.terracotta : T.color.charcoal,
+                      color: accessLevel === a.value ? "#9A4F2A" : "#403B36", // Atrium glyph / ink
                     }}>
                       {t(a.labelKey)}
                     </div>
                     <div style={{
-                      fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-                      marginTop: 2,
+                      fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
+                      marginTop: "0.125rem",
                     }}>
                       {t(a.descKey)}
                     </div>
@@ -904,14 +906,14 @@ function ContactsSection({
                         }}
                         aria-pressed={selected}
                         style={{
-                          padding: "0.625rem 1rem", borderRadius: "0.625rem",
+                          padding: "0.625rem 1rem", borderRadius: "0.75rem",
                           minHeight: "2.75rem",
-                          border: `1.5px solid ${selected ? T.color.sage : T.color.sandstone}`,
-                          background: selected ? `${T.color.sage}12` : T.color.white,
-                          fontFamily: T.font.body, fontSize: "0.875rem",
+                          border: `0.0625rem solid ${selected ? "#56683C" : "#E3D6BC"}`, // Atrium sage / hairline
+                          background: selected ? "rgba(86,104,60,0.12)" : T.color.white,
+                          fontFamily: T.font.body, fontSize: "0.9375rem",
                           fontWeight: selected ? 600 : 500,
-                          color: selected ? T.color.sage : T.color.charcoal,
-                          cursor: "pointer", transition: "all .15s",
+                          color: selected ? "#56683C" : "#403B36", // Atrium sage / ink
+                          cursor: "pointer", transition: "all 0.2s ease",
                         }}
                       >
                         {selected ? "\u2713 " : ""}{wing.name}
@@ -927,11 +929,11 @@ function ContactsSection({
               <div>
                 <label style={labelStyle}>{t("selectRooms")}</label>
                 {roomsLoading ? (
-                  <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */ }}>
                     {t("loadingRooms")}
                   </p>
                 ) : userRooms.length === 0 ? (
-                  <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>
+                  <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" /* Atrium muted */ }}>
                     {t("noRoomsFound")}
                   </p>
                 ) : (
@@ -944,7 +946,7 @@ function ContactsSection({
                         <div key={wing.id} style={{ marginBottom: "0.75rem" }}>
                           <div style={{
                             fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-                            color: T.color.walnut, marginBottom: "0.375rem",
+                            color: "#403B36", marginBottom: "0.375rem", // Atrium ink
                           }}>
                             {wingLabel}
                           </div>
@@ -963,14 +965,14 @@ function ContactsSection({
                                   }}
                                   aria-pressed={selected}
                                   style={{
-                                    padding: "0.625rem 1rem", borderRadius: "0.5rem",
+                                    padding: "0.625rem 1rem", borderRadius: "0.75rem",
                                     minHeight: "2.75rem",
-                                    border: `1.5px solid ${selected ? T.color.sage : T.color.sandstone}`,
-                                    background: selected ? `${T.color.sage}12` : T.color.white,
+                                    border: `0.0625rem solid ${selected ? "#56683C" : "#E3D6BC"}`, // Atrium sage / hairline
+                                    background: selected ? "rgba(86,104,60,0.12)" : T.color.white,
                                     fontFamily: T.font.body, fontSize: "0.8125rem",
                                     fontWeight: selected ? 600 : 500,
-                                    color: selected ? T.color.sage : T.color.charcoal,
-                                    cursor: "pointer", transition: "all .15s",
+                                    color: selected ? "#56683C" : "#403B36", // Atrium sage / ink
+                                    cursor: "pointer", transition: "all 0.2s ease",
                                   }}
                                 >
                                   {selected ? "\u2713 " : ""}{room.name}
@@ -1148,14 +1150,14 @@ function MessagesSection({
     <div style={{
       background: T.color.white,
       borderRadius: "1rem",
-      border: `1px solid ${T.color.cream}`,
+      border: "0.0625rem solid #E3D6BC", // Atrium hairline
       padding: "1.75rem 2rem",
-      boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium S1 + top highlight
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
         <h3 style={{
-          fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
-          color: T.color.charcoal, margin: 0,
+          fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
+          color: "#403B36", margin: 0, // Atrium ink
         }}>
           {t("messagesTitle")}
         </h3>
@@ -1166,7 +1168,7 @@ function MessagesSection({
         )}
       </div>
       <p style={{
-        fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+        fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted
         margin: "0 0 1.5rem", lineHeight: 1.6,
       }}>
         {t("messagesDesc")}
@@ -1177,25 +1179,25 @@ function MessagesSection({
         <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: showForm ? "1.5rem" : 0 }}>
           {messages.map((m) => (
             <div key={m.id} style={{
-              padding: "1.125rem 1.375rem", borderRadius: "0.875rem",
+              padding: "1.125rem 1.375rem", borderRadius: "1rem",
               background: T.color.linen,
-              border: `1px solid ${T.color.cream}`,
+              border: "0.0625rem solid #E3D6BC", // Atrium hairline
             }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 500,
-                    color: T.color.charcoal, marginBottom: "0.25rem",
+                    fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+                    color: "#403B36", marginBottom: "0.25rem", // Atrium ink
                   }}>
                     {m.subject || t("noSubject")}
                   </div>
                   <div style={{
-                    fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
                   }}>
                     {t("to")}: {m.recipient_email}
                   </div>
                   <div style={{
-                    fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.walnut,
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
                     marginTop: "0.25rem",
                   }}>
                     {t("delivery")}: {(() => { const d = DELIVERY_OPTIONS.find((d) => d.value === m.deliver_on); return d ? t(d.labelKey) : m.deliver_on; })()}
@@ -1205,10 +1207,9 @@ function MessagesSection({
                   </div>
                   {m.message_body && (
                     <p style={{
-                      fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
+                      fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted, full opacity
                       margin: "0.625rem 0 0", lineHeight: 1.6,
                       maxHeight: "5rem", overflow: "hidden",
-                      opacity: 0.75,
                     }}>
                       {m.message_body.slice(0, 200)}{m.message_body.length > 200 ? "..." : ""}
                     </p>
@@ -1232,17 +1233,17 @@ function MessagesSection({
       {messages.length === 0 && !showForm && (
         <div style={{
           padding: "2rem 1.5rem", textAlign: "center",
-          borderRadius: "0.875rem", background: T.color.linen,
-          border: `1px dashed ${T.color.sandstone}`,
+          borderRadius: "1rem", background: T.color.linen,
+          border: "0.0625rem dashed #E3D6BC", // Atrium hairline
         }}>
           <p style={{
-            fontFamily: T.font.display, fontSize: "1.125rem", color: T.color.walnut,
+            fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, color: "#403B36", // Atrium ink
             margin: "0 0 0.5rem",
           }}>
             {t("noMessagesTitle")}
           </p>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted
             margin: 0, lineHeight: 1.6,
           }}>
             {t("noMessagesDesc")}
@@ -1253,14 +1254,14 @@ function MessagesSection({
       {/* Message form */}
       {showForm && (
         <div style={{
-          padding: "1.5rem 1.75rem", borderRadius: "0.875rem",
+          padding: "1.5rem 1.75rem", borderRadius: "1rem",
           background: T.color.linen,
-          border: `1px solid ${T.color.cream}`,
+          border: "0.0625rem solid #E3D6BC", // Atrium hairline
           marginTop: messages.length > 0 ? 0 : "1rem",
         }}>
           <h4 style={{
-            fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 500,
-            color: T.color.charcoal, margin: "0 0 1.25rem",
+            fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600,
+            color: "#403B36", margin: "0 0 1.25rem", // Atrium ink
           }}>
             {editingId ? t("editMessage") : t("writeMessageTitle")}
           </h4>
@@ -1276,13 +1277,13 @@ function MessagesSection({
                       key={c.id}
                       onClick={() => setRecipientEmail(c.contact_email)}
                       style={{
-                        padding: "0.625rem 1rem", borderRadius: "0.5rem",
+                        padding: "0.625rem 1rem", borderRadius: "0.75rem",
                         minHeight: "2.75rem",
-                        border: `1px solid ${recipientEmail === c.contact_email ? T.color.terracotta : T.color.sandstone}`,
-                        background: recipientEmail === c.contact_email ? `${T.color.terracotta}12` : T.color.white,
+                        border: `0.0625rem solid ${recipientEmail === c.contact_email ? "#B85C38" : "#E3D6BC"}`, // Atrium ember / hairline
+                        background: recipientEmail === c.contact_email ? "rgba(184,92,56,0.08)" : T.color.white,
                         fontFamily: T.font.body, fontSize: "0.8125rem",
-                        color: recipientEmail === c.contact_email ? T.color.terracotta : T.color.charcoal,
-                        cursor: "pointer", transition: "all .15s",
+                        color: recipientEmail === c.contact_email ? "#9A4F2A" : "#403B36", // Atrium glyph / ink
+                        cursor: "pointer", transition: "all 0.2s ease",
                       }}
                     >
                       {c.contact_name}
@@ -1325,7 +1326,7 @@ function MessagesSection({
             <div>
               <label htmlFor="legacy-msg-body" style={labelStyle}>{t("yourMessage")}</label>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
                 margin: "0 0 0.5rem", lineHeight: 1.5,
               }}>
                 {t("messagePrompt")}
@@ -1362,13 +1363,13 @@ function MessagesSection({
                     aria-label={t(d.ariaKey)}
                     disabled={saving}
                     style={{
-                      padding: "0.75rem 1.125rem", borderRadius: "0.625rem", textAlign: "left",
-                      border: `1.5px solid ${deliverOn === d.value ? T.color.terracotta : T.color.sandstone}`,
-                      background: deliverOn === d.value ? `${T.color.terracotta}10` : T.color.white,
+                      padding: "0.75rem 1.125rem", borderRadius: "0.75rem", textAlign: "left",
+                      border: `0.0625rem solid ${deliverOn === d.value ? "#B85C38" : "#E3D6BC"}`, // Atrium ember / hairline
+                      background: deliverOn === d.value ? "rgba(184,92,56,0.08)" : T.color.white,
                       fontFamily: T.font.body, fontSize: "0.9375rem",
                       fontWeight: deliverOn === d.value ? 600 : 500,
-                      color: deliverOn === d.value ? T.color.terracotta : T.color.charcoal,
-                      cursor: saving ? "not-allowed" : "pointer", transition: "all .15s",
+                      color: deliverOn === d.value ? "#9A4F2A" : "#403B36", // Atrium glyph / ink
+                      cursor: saving ? "not-allowed" : "pointer", transition: "all 0.2s ease",
                       ...(saving ? { opacity: 0.6 } : {}),
                     }}
                   >
@@ -1378,7 +1379,7 @@ function MessagesSection({
               </div>
               {deliverOn === "immediately" && (
                 <p style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
                   margin: "0.5rem 0 0", lineHeight: 1.5, fontStyle: "italic",
                 }}>
                   {t("deliverImmediatelyNote")}
@@ -1500,18 +1501,18 @@ function SettingsSection({
     <div style={{
       background: T.color.white,
       borderRadius: "1rem",
-      border: `1px solid ${T.color.cream}`,
+      border: "0.0625rem solid #E3D6BC", // Atrium hairline
       padding: "1.75rem 2rem",
-      boxShadow: "0 2px 8px rgba(44,44,42,.04)",
+      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium S1 + top highlight
     }}>
       <h3 style={{
-        fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
-        color: T.color.charcoal, margin: "0 0 0.5rem",
+        fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
+        color: "#403B36", margin: "0 0 0.5rem", // Atrium ink
       }}>
         {t("settingsTitle")}
       </h3>
       <p style={{
-        fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.muted,
+        fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", // Atrium muted
         margin: "0 0 1.75rem", lineHeight: 1.6,
       }}>
         {t("settingsDesc")}
@@ -1520,13 +1521,13 @@ function SettingsSection({
       <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
         {/* Inactivity trigger */}
         <div style={{
-          padding: "1.25rem 1.5rem", borderRadius: "0.875rem",
+          padding: "1.25rem 1.5rem", borderRadius: "1rem",
           background: T.color.linen,
-          border: `1px solid ${T.color.cream}`,
+          border: "0.0625rem solid #E3D6BC", // Atrium hairline
         }}>
           <label htmlFor="legacy-inactivity-range" style={labelStyle}>{t("inactivityTrigger")}</label>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.charcoal,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36", // Atrium ink
             margin: "0 0 0.875rem", lineHeight: 1.6,
           }}>
             {t("inactivityDesc")}
@@ -1543,17 +1544,17 @@ function SettingsSection({
               aria-label={t("inactivitySliderLabel")}
               aria-valuetext={months === 1 ? t("monthLabel", { count: String(months) }) : t("monthsLabel", { count: String(months) })}
               disabled={saving}
-              style={{ flex: 1, accentColor: T.color.terracotta, ...(saving ? { pointerEvents: "none" as const, opacity: 0.6 } : {}) }}
+              style={{ flex: 1, accentColor: "#B85C38" /* Atrium ember */, ...(saving ? { pointerEvents: "none" as const, opacity: 0.6 } : {}) }}
             />
             <div style={{
-              fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600,
-              color: T.color.terracotta, minWidth: "5.625rem", textAlign: "center",
+              fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600,
+              color: "#9A4F2A", minWidth: "5.625rem", textAlign: "center", // Atrium terracotta glyph
             }}>
               {months !== 1 ? t("monthsLabel", { count: String(months) }) : t("monthLabel", { count: String(months) })}
             </div>
           </div>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
             margin: "0.625rem 0 0", lineHeight: 1.4,
           }}>
             {t("inactivityRecommendation")}
@@ -1562,20 +1563,20 @@ function SettingsSection({
 
         {/* Trusted verifier */}
         <div style={{
-          padding: "1.25rem 1.5rem", borderRadius: "0.875rem",
+          padding: "1.25rem 1.5rem", borderRadius: "1rem",
           background: T.color.linen,
-          border: `1px solid ${T.color.cream}`,
+          border: "0.0625rem solid #E3D6BC", // Atrium hairline
         }}>
           <label style={labelStyle}>{t("trustedVerifier")}</label>
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.9375rem", color: T.color.charcoal,
+            fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36", // Atrium ink
             margin: "0 0 0.875rem", lineHeight: 1.6,
           }}>
             {t("trustedVerifierDesc")}
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
             <div>
-              <label htmlFor="legacy-verifier-name" style={{ ...labelStyle, fontSize: "0.75rem" }}>{t("verifierName")}</label>
+              <label htmlFor="legacy-verifier-name" style={labelStyle}>{t("verifierName")}</label>
               <input
                 id="legacy-verifier-name"
                 type="text" value={verifierName}
@@ -1587,7 +1588,7 @@ function SettingsSection({
               />
             </div>
             <div>
-              <label htmlFor="legacy-verifier-email" style={{ ...labelStyle, fontSize: "0.75rem" }}>{t("verifierEmail")}</label>
+              <label htmlFor="legacy-verifier-email" style={labelStyle}>{t("verifierEmail")}</label>
               <input
                 id="legacy-verifier-email"
                 type="email" value={verifierEmail}
@@ -1605,21 +1606,21 @@ function SettingsSection({
         {/* Status indicator */}
         <div style={{
           padding: "1rem 1.25rem", borderRadius: "0.75rem",
-          background: `${T.color.sage}08`,
-          border: `1px solid ${T.color.sage}15`,
+          background: "#EFF2E8", // Atrium sage tray
+          border: "0.0625rem solid #DFE3D2", // Atrium hairline
           display: "flex", alignItems: "center", gap: "0.75rem",
         }}>
           <div style={{
             width: "0.625rem", height: "0.625rem", borderRadius: "0.3125rem",
-            background: settings?.status === "active" || !settings ? T.color.sage : T.color.terracotta,
+            background: settings?.status === "active" || !settings ? "#56683C" : "#B85C38", // Atrium sage / ember
           }} />
           <p style={{
-            fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.walnut,
+            fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium muted
             margin: 0, lineHeight: 1.5,
           }}>
             {t("statusLabel")}: <strong>{settings?.status === "triggered" ? t("statusTriggered") : settings?.status === "transferred" ? t("statusTransferred") : settings?.status === "partially_delivered" ? t("statusPartial") : t("statusActive")}</strong>
             {(!settings || settings.status === "active") && (
-              <span style={{ color: T.color.muted }}>
+              <span style={{ color: "#716A5E" /* Atrium muted */ }}>
                 {t("statusSafe")}
               </span>
             )}
@@ -1630,7 +1631,7 @@ function SettingsSection({
               disabled={saving}
               style={{
                 fontFamily: T.font.body, fontSize: "0.8125rem", padding: "0.375rem 0.75rem",
-                background: T.color.terracotta, color: "#fff", border: "none", borderRadius: "0.375rem",
+                background: "#B85C38" /* Atrium ember */, color: "#fff", border: "none", borderRadius: "0.75rem",
                 cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1,
               }}
             >
@@ -1677,17 +1678,17 @@ const isValidEmail = (email: string): boolean =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 const RequiredMark = () => (
-  <span aria-hidden="true" style={{ color: T.color.terracotta, marginLeft: "0.25rem" }}>*</span>
+  <span aria-hidden="true" style={{ color: "#9A4F2A" /* Atrium terracotta glyph */, marginLeft: "0.25rem" }}>*</span>
 );
 
 // ═══ Shared Styles ═══
 
 const labelStyle: React.CSSProperties = {
   fontFamily: T.font.body,
-  fontSize: "0.8125rem",
-  fontWeight: 600,
-  color: T.color.walnut,
-  letterSpacing: ".3px",
+  fontSize: "0.6875rem", // Atrium overline voice
+  fontWeight: 700,
+  color: "#716A5E", // Atrium muted
+  letterSpacing: "0.12em",
   textTransform: "uppercase" as const,
   display: "block",
   marginBottom: "0.5rem",
@@ -1697,11 +1698,11 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "0.875rem 1.125rem",
   borderRadius: "0.75rem",
-  border: `1.5px solid ${T.color.sandstone}`,
+  border: "0.0625rem solid #E3D6BC", // Atrium hairline
   background: T.color.white,
   fontFamily: T.font.body,
   fontSize: "0.9375rem",
-  color: T.color.charcoal,
+  color: "#403B36", // Atrium ink
   outline: "none",
   boxSizing: "border-box" as const,
   transition: "border-color .2s, box-shadow .2s",
@@ -1710,9 +1711,8 @@ const inputStyle: React.CSSProperties = {
 /* ── Global focus-visible ring for settings inputs ── */
 const settingsFocusStyle = `
   .mp-settings-input:focus-visible {
-    outline: 0.125rem solid ${T.color.terracotta};
-    outline-offset: 0.0625rem;
-    border-color: ${T.color.terracotta};
+    outline: 0.1875rem solid #D4AF37; /* Atrium gold focus ring */
+    outline-offset: 0.1875rem;
   }
 `;
 
@@ -1720,7 +1720,7 @@ const primaryBtnStyle: React.CSSProperties = {
   padding: "0.75rem 1.5rem",
   borderRadius: "0.75rem",
   border: "none",
-  background: `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`,
+  background: "#B85C38", // Atrium ember
   color: "#FFF",
   fontFamily: T.font.body,
   fontSize: "0.9375rem",
@@ -1732,9 +1732,9 @@ const primaryBtnStyle: React.CSSProperties = {
 const secondaryBtnStyle: React.CSSProperties = {
   padding: "0.75rem 1.5rem",
   borderRadius: "0.75rem",
-  border: `1px solid ${T.color.cream}`,
+  border: "0.0625rem solid #E3D6BC", // Atrium hairline
   background: "transparent",
-  color: T.color.muted,
+  color: "#716A5E", // Atrium muted
   fontFamily: T.font.body,
   fontSize: "0.9375rem",
   fontWeight: 500,
@@ -1745,13 +1745,13 @@ const secondaryBtnStyle: React.CSSProperties = {
 const smallBtnStyle: React.CSSProperties = {
   padding: "0.625rem 1.25rem",
   minHeight: "2.75rem",
-  borderRadius: "0.5rem",
-  border: `1px solid ${T.color.cream}`,
+  borderRadius: "0.75rem",
+  border: "0.0625rem solid #E3D6BC", // Atrium hairline
   background: T.color.white,
   fontFamily: T.font.body,
   fontSize: "0.8125rem",
   fontWeight: 500,
-  color: T.color.charcoal,
+  color: "#403B36", // Atrium ink
   cursor: "pointer",
-  transition: "all .15s",
+  transition: "all 0.2s ease",
 };

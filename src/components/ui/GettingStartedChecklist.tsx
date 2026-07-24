@@ -174,22 +174,24 @@ export default function GettingStartedChecklist({
           background: `${T.color.white}ee`,
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
-          border: `1px solid ${T.color.cream}`,
+          border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
           borderRadius: "1rem",
           padding: "0.625rem 1rem",
           cursor: "pointer",
-          boxShadow: "0 4px 16px rgba(44, 44, 42, 0.1)",
+          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)" /* Atrium token: S1 */,
           display: "flex",
           alignItems: "center",
           gap: "0.625rem",
-          animation: "fadeIn .4s ease",
-          transition: "transform .2s",
+          animation: "fadeIn .3s ease",
+          transition: "transform .2s ease, box-shadow .2s ease",
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.transform = "scale(1.03)";
+          (e.currentTarget as HTMLElement).style.transform = "translateY(-0.1875rem)";
+          (e.currentTarget as HTMLElement).style.boxShadow = "0 0.5rem 1.5rem rgba(64,59,54,0.14)"; /* Atrium token: S2 */
         }}
         onMouseLeave={(e) => {
           (e.currentTarget as HTMLElement).style.transform = "none";
+          (e.currentTarget as HTMLElement).style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.07)";
         }}
       >
         <div
@@ -197,7 +199,7 @@ export default function GettingStartedChecklist({
             width: "1.75rem",
             height: "1.75rem",
             borderRadius: "0.875rem",
-            background: `conic-gradient(${T.color.terracotta} ${progressPercent}%, ${T.color.cream} ${progressPercent}%)`,
+            background: `conic-gradient(#B85C38 ${progressPercent}%, #E3D6BC ${progressPercent}%)` /* Atrium token: ember + hairline track */,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -213,9 +215,9 @@ export default function GettingStartedChecklist({
               alignItems: "center",
               justifyContent: "center",
               fontFamily: T.font.body,
-              fontSize: "0.625rem",
+              fontSize: "0.6875rem" /* Atrium token: overline step */,
               fontWeight: 700,
-              color: T.color.terracotta,
+              color: "#9A4F2A" /* Atrium token: terracotta glyph */,
             }}
           >
             {completedCount}
@@ -224,9 +226,9 @@ export default function GettingStartedChecklist({
         <span
           style={{
             fontFamily: T.font.body,
-            fontSize: "0.75rem",
+            fontSize: "0.8125rem" /* Atrium token: meta */,
             fontWeight: 500,
-            color: T.color.walnut,
+            color: "#403B36" /* Atrium token: ink */,
           }}
         >
           {t("title")}
@@ -248,11 +250,11 @@ export default function GettingStartedChecklist({
         background: `${T.color.white}f5`,
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
-        borderRadius: "1.25rem",
-        border: `1px solid ${T.color.cream}`,
-        boxShadow: "0 8px 40px rgba(44, 44, 42, 0.14)",
+        borderRadius: "1rem" /* Atrium token: card radius */,
+        border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
+        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14), inset 0 0.0625rem 0 rgba(255,255,255,0.5)" /* Atrium token: S2 + top highlight */,
         padding: isMobile ? "1.25rem 1.125rem 1rem" : "1.375rem 1.25rem 1rem",
-        animation: "fadeUp .5s ease",
+        animation: "fadeUp .3s ease",
         overflow: "hidden",
       }}
     >
@@ -269,11 +271,11 @@ export default function GettingStartedChecklist({
           <h3
             style={{
               fontFamily: T.font.display,
-              fontSize: "1.125rem",
+              fontSize: "1.0625rem" /* Atrium token: titleS */,
               fontWeight: 600,
-              color: T.color.charcoal,
+              color: "#403B36" /* Atrium token: ink */,
               margin: 0,
-              lineHeight: 1.2,
+              lineHeight: 1.15,
             }}
           >
             {allDone ? t("allDone") : t("title")}
@@ -281,8 +283,8 @@ export default function GettingStartedChecklist({
           <p
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.75rem",
-              color: T.color.muted,
+              fontSize: "0.8125rem" /* Atrium token: meta */,
+              color: "#716A5E" /* Atrium token: muted */,
               margin: "0.25rem 0 0",
             }}
           >
@@ -300,7 +302,7 @@ export default function GettingStartedChecklist({
             border: "none",
             cursor: "pointer",
             fontSize: "1rem",
-            color: T.color.muted,
+            color: "#716A5E" /* Atrium token: muted */,
             padding: "0.25rem 0.5rem",
             lineHeight: 1,
             minWidth: "2.75rem",
@@ -318,7 +320,7 @@ export default function GettingStartedChecklist({
       <div
         style={{
           height: "0.25rem",
-          background: T.color.cream,
+          background: "#E3D6BC" /* Atrium token: hairline (track was cream-on-cream) */,
           borderRadius: "0.125rem",
           marginBottom: "1rem",
           overflow: "hidden",
@@ -329,10 +331,10 @@ export default function GettingStartedChecklist({
             height: "100%",
             width: `${progressPercent}%`,
             background: allDone
-              ? T.color.sage
-              : `linear-gradient(90deg, ${T.color.terracotta}, ${T.color.walnut})`,
+              ? "#56683C" /* Atrium token: sage */
+              : "linear-gradient(90deg, #9A4F2A, #B85C38)" /* Atrium token: terracotta -> ember */,
             borderRadius: "0.125rem",
-            transition: "width 0.5s ease",
+            transition: "width 0.3s ease",
           }}
         />
       </div>
@@ -352,24 +354,23 @@ export default function GettingStartedChecklist({
                 alignItems: "center",
                 gap: "0.75rem",
                 padding: "0.75rem 0.875rem",
-                borderRadius: "0.875rem",
-                border: `1.5px solid ${done ? `${T.color.sage}30` : T.color.cream}`,
-                background: done ? `${T.color.sage}08` : T.color.linen,
+                borderRadius: "0.85rem" /* Atrium token: small-control radius */,
+                border: `0.0625rem solid ${done ? "#DFE3D2" : "#E3D6BC"}` /* Atrium token: opaque hairlines */,
+                background: done ? "#EFF2E8" /* Atrium token: sage tray */ : T.color.linen,
                 cursor: done ? "default" : "pointer",
                 textAlign: "left",
-                transition: "all .2s",
-                opacity: done ? 0.7 : 1,
+                transition: "all .2s ease",
                 width: "100%",
               }}
               onMouseEnter={(e) => {
                 if (!done)
                   (e.currentTarget as HTMLElement).style.borderColor =
-                    T.color.terracotta;
+                    "#B85C38"; /* Atrium token: ember */
               }}
               onMouseLeave={(e) => {
                 if (!done)
                   (e.currentTarget as HTMLElement).style.borderColor =
-                    T.color.cream;
+                    "#E3D6BC";
               }}
             >
               {/* Checkbox / icon */}
@@ -379,12 +380,13 @@ export default function GettingStartedChecklist({
                   height: "2rem",
                   borderRadius: "0.625rem",
                   background: done
-                    ? `${T.color.sage}20`
-                    : `${T.color.terracotta}10`,
+                    ? "rgba(86,104,60,0.16)" /* Atrium token: sage medallion */
+                    : "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: done ? "1rem" : "1.125rem",
+                  color: "#56683C" /* Atrium token: sage glyph (checkmark) */,
                   flexShrink: 0,
                 }}
               >
@@ -395,8 +397,8 @@ export default function GettingStartedChecklist({
                   style={{
                     fontFamily: T.font.display,
                     fontSize: "0.9375rem",
-                    fontWeight: 500,
-                    color: done ? T.color.muted : T.color.charcoal,
+                    fontWeight: 600 /* Atrium token: display weight */,
+                    color: done ? "#716A5E" : "#403B36" /* Atrium tokens: muted / ink */,
                     textDecoration: done ? "line-through" : "none",
                     lineHeight: 1.3,
                   }}
@@ -407,8 +409,8 @@ export default function GettingStartedChecklist({
                   <div
                     style={{
                       fontFamily: T.font.body,
-                      fontSize: "0.75rem",
-                      color: T.color.muted,
+                      fontSize: "0.8125rem" /* Atrium token: meta */,
+                      color: "#716A5E" /* Atrium token: muted */,
                       lineHeight: 1.4,
                       marginTop: "0.125rem",
                     }}
@@ -422,7 +424,7 @@ export default function GettingStartedChecklist({
                   style={{
                     fontFamily: T.font.body,
                     fontSize: "0.6875rem",
-                    color: T.color.terracotta,
+                    color: "#9A4F2A" /* Atrium token: terracotta glyph */,
                     fontWeight: 500,
                     flexShrink: 0,
                   }}
@@ -446,8 +448,8 @@ export default function GettingStartedChecklist({
           onClick={handleDismiss}
           style={{
             fontFamily: T.font.body,
-            fontSize: "0.75rem",
-            color: `${T.color.muted}99`,
+            fontSize: "0.8125rem" /* Atrium token: meta */,
+            color: "#716A5E" /* Atrium token: muted, full opacity (no double-dimming) */,
             background: "none",
             border: "none",
             cursor: "pointer",

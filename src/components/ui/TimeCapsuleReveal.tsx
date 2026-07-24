@@ -221,8 +221,11 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
 
   return (
     <>
+    {/* Atrium token: reduced-motion gate for card entrances + row hovers */}
+    <style>{`@media (prefers-reduced-motion: reduce){ .tcr-anim { transition: none !important; } }`}</style>
     {/* Resolution reminders card */}
     {showReminders && <div
+      className="tcr-anim"
       style={{
         position: "absolute",
         bottom: isMobile ? (showReveals ? "17.5rem" : "5rem") : (showReveals ? "17rem" : "4.5rem"),
@@ -232,49 +235,51 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
         background: `linear-gradient(135deg, ${T.color.linen}f5, ${T.color.warmStone}f5)`,
         backdropFilter: "blur(16px)",
         borderRadius: "1rem",
-        border: `1px solid ${T.color.sage}40`,
-        boxShadow: `0 8px 40px rgba(74,103,65,.12), inset 0 1px 0 rgba(255,255,255,.6)`,
+        border: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
+        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S2 warm ink + top highlight
         padding: 0,
         overflow: "hidden",
         opacity: reminderVisible ? 1 : 0,
         transform: reminderVisible ? "translateY(0)" : "translateY(1.25rem)",
-        transition: "opacity .4s cubic-bezier(.23,1,.32,1), transform .4s cubic-bezier(.23,1,.32,1)",
+        transition: "opacity 0.3s ease, transform 0.3s ease",
         pointerEvents: reminderVisible ? "auto" : "none",
       }}
     >
-      <div style={{ height: 3, background: `linear-gradient(90deg, ${T.color.sage}, ${T.color.gold}, ${T.color.sage})` }} />
+      <div style={{ height: "0.1875rem", background: "linear-gradient(90deg, #56683C, #7A8C64)" /* Atrium token: sage, gold reserved for the palace */ }} />
       <div style={{ padding: "0.875rem 1.125rem 0.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <h4 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 500, color: T.color.sage, margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <h4 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, color: "#56683C", margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
             {t("resolutionReminder")}
           </h4>
-          <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, margin: "0.1875rem 0 0" }}>
+          <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: "0.1875rem 0 0" }}>
             {resolutionReminders.length} {resolutionReminders.length === 1 ? t("goalSingular") : t("goalPlural")} {resolutionReminders.length === 1 ? t("deadlineSingular") : t("deadlinePlural")}
           </p>
         </div>
-        <button onClick={handleDismissReminders} aria-label={tc("dismiss")} style={{ width: "1.625rem", height: "1.625rem", borderRadius: "0.8125rem", border: `1px solid ${T.color.sage}40`, background: `rgba(74,103,65,.08)`, color: T.color.muted, fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"\u2715"}</button>
+        <button onClick={handleDismissReminders} aria-label={tc("dismiss")} style={{ width: "1.625rem", height: "1.625rem", borderRadius: "0.8125rem", border: "0.0625rem solid #E3D6BC", background: "rgba(86,104,60,0.16)", color: "#716A5E", fontSize: "0.8125rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{"\u2715"}</button>
       </div>
       <div style={{ padding: "0 0.875rem 0.875rem" }}>
         {resolutionReminders.slice(0, 3).map((r, i) => (
           <button key={r.mem.id} onClick={() => { markReminderSeen([r.mem.id]); onNavigateToRoom(r.wingId, r.roomId); }}
-            style={{ width: "100%", display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.625rem 0.5rem", borderRadius: "0.625rem", border: "none", background: "transparent", cursor: "pointer", textAlign: "left", transition: "background .15s", borderTop: i > 0 ? `1px solid ${T.color.cream}` : "none" }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(74,103,65,.06)"; }}
+            className="tcr-anim"
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.625rem 0.5rem", borderRadius: "0.625rem", border: "none", background: "transparent", cursor: "pointer", textAlign: "left", transition: "background 0.2s ease", borderTop: i > 0 ? "0.0625rem solid #E3D6BC" : "none" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(86,104,60,0.06)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
-            <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem", background: `${T.color.sage}18`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.125rem" }}>
+            <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "0.625rem", background: "rgba(86,104,60,0.16)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.125rem" }}>
               {"\uD83C\uDFAF"}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.mem.resolution?.goal}</div>
-              <div style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginTop: "0.0625rem" }}>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#403B36", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.mem.resolution?.goal}</div>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.0625rem" }}>
                 {r.daysLeft} {r.daysLeft === 1 ? t("daySingular") : t("dayPlural")} {r.roomIcon} {r.roomName}
               </div>
             </div>
-            <div style={{ background: `linear-gradient(135deg, ${T.color.sage}, ${T.color.sage}cc)`, color: "#FFF", fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, padding: "0.3125rem 0.75rem", borderRadius: "0.5rem", whiteSpace: "nowrap", flexShrink: 0 }}>{t("view")}</div>
+            <div style={{ background: "#56683C", color: "#FCFAF5", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, padding: "0.3125rem 0.75rem", borderRadius: "2rem", whiteSpace: "nowrap", flexShrink: 0 }}>{t("view")}</div>
           </button>
         ))}
       </div>
     </div>}
     {showReveals && <div
+      className="tcr-anim"
       style={{
         position: "absolute",
         bottom: isMobile ? "5rem" : "4.5rem",
@@ -284,23 +289,23 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
         background: `linear-gradient(135deg, ${T.color.linen}f5, ${T.color.warmStone}f5)`,
         backdropFilter: "blur(16px)",
         borderRadius: "1rem",
-        border: "1px solid #7B68AE60",
+        border: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
         boxShadow:
-          "0 8px 40px rgba(123,104,174,.18), 0 0 24px rgba(123,104,174,.10), inset 0 1px 0 rgba(255,255,255,.6)",
+          "0 0.5rem 1.5rem rgba(64,59,54,0.14), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S2 warm ink + top highlight
         padding: 0,
         overflow: "hidden",
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(1.25rem)",
         transition:
-          "opacity .4s cubic-bezier(.23,1,.32,1), transform .4s cubic-bezier(.23,1,.32,1)",
+          "opacity 0.3s ease, transform 0.3s ease",
         pointerEvents: visible ? "auto" : "none",
       }}
     >
       {/* Accent bar */}
       <div
         style={{
-          height: 3,
-          background: "linear-gradient(90deg, #9B7DD4, #C8A868, #9B7DD4)",
+          height: "0.1875rem",
+          background: "linear-gradient(90deg, #9A4F2A, #B85C38)", // Atrium token: terracotta ember accent
         }}
       />
 
@@ -317,9 +322,9 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
           <h4
             style={{
               fontFamily: T.font.display,
-              fontSize: "1.25rem",
-              fontWeight: 500,
-              color: "#6B4E9B",
+              fontSize: "1.1875rem", // Atrium token: titleM
+              fontWeight: 600,
+              color: "#9A4F2A", // Atrium token: terracotta glyph
               margin: 0,
               letterSpacing: "0.01875rem",
               display: "flex",
@@ -333,8 +338,8 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
           <p
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.6875rem",
-              color: T.color.muted,
+              fontSize: "0.8125rem", // Atrium token: meta
+              color: "#716A5E",
               margin: "0.1875rem 0 0",
             }}
           >
@@ -349,10 +354,10 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
             width: "1.625rem",
             height: "1.625rem",
             borderRadius: "0.8125rem",
-            border: "1px solid #7B68AE40",
-            background: "rgba(123,104,174,.08)",
-            color: T.color.muted,
-            fontSize: "0.75rem",
+            border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
+            background: "rgba(154,79,42,0.11)", // Atrium token: terracotta medallion tint
+            color: "#716A5E",
+            fontSize: "0.8125rem",
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
@@ -370,6 +375,7 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
           <button
             key={r.mem.id}
             onClick={() => handleView(r)}
+            className="tcr-anim"
             style={{
               width: "100%",
               display: "flex",
@@ -381,12 +387,12 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
               background: "transparent",
               cursor: "pointer",
               textAlign: "left",
-              transition: "background .15s",
-              borderTop: i > 0 ? `1px solid ${T.color.cream}` : "none",
+              transition: "background 0.2s ease",
+              borderTop: i > 0 ? "0.0625rem solid #E3D6BC" : "none", // Atrium token: hairline
             }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.background =
-                "rgba(123,104,174,.06)";
+                "rgba(154,79,42,0.06)";
             }}
             onMouseLeave={(e) => {
               (e.currentTarget as HTMLElement).style.background = "transparent";
@@ -403,7 +409,7 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: `0 2px 8px hsl(${r.mem.hue},${r.mem.s}%,${r.mem.l}%,0.3)`,
+                boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 warm ink
                 position: "relative",
                 overflow: "hidden",
               }}
@@ -430,7 +436,7 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
                   fontWeight: 600,
-                  color: T.color.charcoal,
+                  color: "#403B36", // Atrium token: ink
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -441,8 +447,8 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
               <div
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: "0.6875rem",
-                  color: T.color.muted,
+                  fontSize: "0.8125rem", // Atrium token: meta
+                  color: "#716A5E",
                   marginTop: "0.0625rem",
                 }}
               >
@@ -453,13 +459,13 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
             {/* View button */}
             <div
               style={{
-                background: "linear-gradient(135deg, #9B7DD4, #7B68AE)",
-                color: "#FFF",
+                background: "#B85C38", // Atrium token: ember
+                color: "#FCFAF5",
                 fontFamily: T.font.body,
-                fontSize: "0.6875rem",
+                fontSize: "0.8125rem", // Atrium token: meta
                 fontWeight: 600,
                 padding: "0.3125rem 0.75rem",
-                borderRadius: "0.5rem",
+                borderRadius: "2rem", // Atrium token: pill
                 whiteSpace: "nowrap",
                 flexShrink: 0,
               }}
@@ -476,8 +482,8 @@ export default function TimeCapsuleReveal({ onNavigateToRoom }: TimeCapsuleRevea
           style={{
             padding: "0 1.125rem 0.75rem",
             fontFamily: T.font.body,
-            fontSize: "0.625rem",
-            color: "#9B7DD4",
+            fontSize: "0.8125rem", // Atrium token: meta
+            color: "#9A4F2A", // Atrium token: terracotta glyph
             textAlign: "center",
           }}
         >

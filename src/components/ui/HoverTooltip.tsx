@@ -19,7 +19,7 @@ export function WingTooltip({wing}: WingTooltipProps){
   const roomCount=getWingRooms(wing.id).length;
   // On mobile, position at bottom above potential bottom bar
   return(
-    <div style={{position:"absolute",bottom:isMobile?"5rem":"1.625rem",left:"50%",transform:"translateX(-50%)",background:`${T.color.white}ee`,backdropFilter:"blur(12px)",borderRadius:"0.875rem",padding:"0.75rem 1.375rem",border:`1px solid ${T.color.cream}`,boxShadow:"0 4px 24px rgba(44,44,42,.08)",display:"flex",alignItems:"center",gap:"0.75rem",animation:"fadeUp .2s ease",zIndex:20,pointerEvents:"none",maxWidth:isMobile?"calc(100vw - 2rem)":undefined}}>
+    <div style={{position:"absolute",bottom:isMobile?"5rem":"1.625rem",left:"50%",transform:"translateX(-50%)",background:`${T.color.white}ee`,backdropFilter:"blur(12px)",borderRadius:"0.875rem",padding:"0.75rem 1.375rem",border:`1px solid ${T.color.cream}`,boxShadow:"0 4px 24px rgba(64,59,54,.08)",display:"flex",alignItems:"center",gap:"0.75rem",animation:"fadeUp .2s ease",zIndex:20,pointerEvents:"none",maxWidth:isMobile?"calc(100vw - 2rem)":undefined}}>
       <span style={{display:"inline-flex",flexShrink:0}}><WingIcon wingId={wing.id} size={28} color={wing.accent} /></span>
       <div>
         <div style={{fontFamily:T.font.display,fontSize:"1.125rem",fontWeight:500,color:T.color.charcoal}}>{t("wingLabel", { name: tWings(wing.nameKey) || wing.name })}</div>
@@ -41,7 +41,7 @@ export function DoorTooltip({room,wingAccent,wingId}: DoorTooltipProps){
   const { t: tWings } = useTranslation("wings");
   const mc=(ROOM_MEMS[room.id]||[]).length;
   return(
-    <div style={{position:"absolute",bottom:isMobile?"5rem":"5rem",left:"50%",transform:"translateX(-50%)",background:`${T.color.white}ee`,backdropFilter:"blur(12px)",borderRadius:"0.875rem",padding:"0.75rem 1.375rem",border:`1px solid ${T.color.cream}`,boxShadow:"0 4px 24px rgba(44,44,42,.08)",display:"flex",alignItems:"center",gap:"0.75rem",animation:"fadeUp .2s ease",zIndex:20,pointerEvents:"none",maxWidth:isMobile?"calc(100vw - 2rem)":undefined}}>
+    <div style={{position:"absolute",bottom:isMobile?"5rem":"5rem",left:"50%",transform:"translateX(-50%)",background:`${T.color.white}ee`,backdropFilter:"blur(12px)",borderRadius:"0.875rem",padding:"0.75rem 1.375rem",border:`1px solid ${T.color.cream}`,boxShadow:"0 4px 24px rgba(64,59,54,.08)",display:"flex",alignItems:"center",gap:"0.75rem",animation:"fadeUp .2s ease",zIndex:20,pointerEvents:"none",maxWidth:isMobile?"calc(100vw - 2rem)":undefined}}>
       <span style={{display:"inline-flex",flexShrink:0}}><RoomIcon roomId={room.id} wingId={wingId} size={28} color={wingAccent||T.color.terracotta} /></span>
       <div>
         <div style={{fontFamily:T.font.display,fontSize:"1.125rem",fontWeight:500,color:T.color.charcoal}}>{(room.nameKey && tWings(room.nameKey)) || room.name}</div>

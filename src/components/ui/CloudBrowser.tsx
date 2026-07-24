@@ -14,7 +14,7 @@ export interface CloudItem {
 }
 
 const ChainLinkIcon = ({ size = "2.5rem", opacity = 0.5 }: { size?: string; opacity?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity }}>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="#716A5E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity }}>
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
   </svg>
@@ -107,7 +107,7 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
   return (
     <div role="presentation" onClick={onClose} style={{
       position: "fixed", inset: 0, zIndex: 9999,
-      background: "rgba(44,44,42,.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
+      background: "rgba(64,59,54,0.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)", // Atrium token: warm-ink scrim
       display: "flex", alignItems: "center", justifyContent: "center",
       paddingTop: "env(safe-area-inset-top, 0px)",
       paddingBottom: "env(safe-area-inset-bottom, 0px)",
@@ -115,26 +115,26 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
       paddingRight: "env(safe-area-inset-right, 0px)",
     }}>
       <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{
-        background: "rgba(255,255,255,.96)", backdropFilter: "blur(1.5rem) saturate(1.4)", WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
-        borderRadius: "1.25rem", boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18)", border: `0.0625rem solid ${T.color.cream}`,
+        background: "rgba(252,250,245,0.96)", backdropFilter: "blur(1.5rem) saturate(1.4)", WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)", // Atrium token: cream surface
+        borderRadius: "1rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", border: "0.0625rem solid #E3D6BC", // Atrium tokens: card radius, S2 overlay shadow, opaque hairline
         width: "min(36rem, 92vw)", maxHeight: "min(36rem, 85vh)", display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
         {/* Header */}
-        <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${T.color.cream}`, flexShrink: 0 }}>
+        <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: "0.0625rem solid #E3D6BC", flexShrink: 0 }}>{/* Atrium token: opaque hairline */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+              <h3 style={{ fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, color: "#403B36", margin: 0, lineHeight: 1.15 }}>{/* Atrium tokens: titleM, ink */}
                 {t("cloudBrowseTitle", { provider: providerLabel })}
               </h3>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: "0.25rem 0 0" }}>{/* Atrium tokens: meta, muted full-opacity */}
                 {status === "connected" ? t("cloudBrowseConnected", { count: String(items.length) }) : t("cloudBrowseLoading")}
               </p>
             </div>
-            <button onClick={onClose} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onClose} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", background: T.color.warmStone, color: "#716A5E", fontSize: "0.8125rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>{/* Atrium tokens: hairline, muted, meta */}
           </div>
           {status === "connected" && (
             <nav style={{ display: "flex", alignItems: "center", gap: "0.25rem", marginTop: "0.625rem", flexWrap: "wrap" }}>
-              <button onClick={() => navigateToFolder("")} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.25rem", fontFamily: T.font.body, fontSize: "0.75rem", color: currentPath ? T.color.terracotta : T.color.charcoal, fontWeight: currentPath ? 500 : 600, textDecoration: currentPath ? "underline" : "none" }}>
+              <button onClick={() => navigateToFolder("")} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.25rem", fontFamily: T.font.body, fontSize: "0.8125rem", color: currentPath ? "#9A4F2A" : "#403B36", fontWeight: currentPath ? 500 : 600, textDecoration: currentPath ? "underline" : "none" }}>{/* Atrium tokens: meta, terracotta glyph / ink */}
                 {t("cloudBreadcrumbRoot")}
               </button>
               {breadcrumbSegments.map((seg, i) => {
@@ -142,8 +142,8 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
                 const isLast = i === breadcrumbSegments.length - 1;
                 return (
                   <span key={segPath} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                    <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>/</span>
-                    <button onClick={() => !isLast && navigateToFolder(segPath)} style={{ background: "none", border: "none", cursor: isLast ? "default" : "pointer", padding: "0.125rem 0.25rem", fontFamily: T.font.body, fontSize: "0.75rem", color: isLast ? T.color.charcoal : T.color.terracotta, fontWeight: isLast ? 600 : 500, textDecoration: isLast ? "none" : "underline" }}>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>/</span>
+                    <button onClick={() => !isLast && navigateToFolder(segPath)} style={{ background: "none", border: "none", cursor: isLast ? "default" : "pointer", padding: "0.125rem 0.25rem", fontFamily: T.font.body, fontSize: "0.8125rem", color: isLast ? "#403B36" : "#9A4F2A", fontWeight: isLast ? 600 : 500, textDecoration: isLast ? "none" : "underline" }}>
                       {seg}
                     </button>
                   </span>
@@ -153,11 +153,11 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
           )}
           {status === "connected" && selectableItems.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "0.5rem" }}>
-              <button onClick={toggleSelectAll} style={{ background: "none", border: `0.0625rem solid ${T.color.cream}`, borderRadius: "0.375rem", padding: "0.25rem 0.625rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500, color: T.color.walnut }}>
+              <button onClick={toggleSelectAll} style={{ background: "none", border: "0.0625rem solid #E3D6BC", borderRadius: "0.75rem", padding: "0.25rem 0.625rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#403B36" }}>{/* Atrium tokens: hairline, small-control radius, meta, ink */}
                 {allSelectableSelected ? t("cloudDeselectAll") : t("cloudSelectAll")}
               </button>
               {selected.size > 0 && (
-                <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
                   {t("cloudItemsSelected", { count: String(selected.size) })}
                 </span>
               )}
@@ -169,35 +169,35 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
         <div className="mp-scroll" style={{ flex: 1, overflow: "auto", padding: "1.25rem 1.5rem" }}>
           {status === "loading" && (
             <div style={{ textAlign: "center", padding: "3rem 0" }}>
-              <div style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>{t("cloudBrowseLoading")}</div>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" }}>{t("cloudBrowseLoading")}</div>
             </div>
           )}
           {status === "not_connected" && (
             <div style={{ textAlign: "center", padding: "2rem 0" }}>
               <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "center" }}><ChainLinkIcon /></div>
-              <h4 style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.5rem" }}>
+              <h4 style={{ fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, color: "#403B36", margin: "0 0 0.5rem" }}>{/* Atrium tokens: titleS, ink */}
                 {t("cloudNotConnected", { provider: providerLabel })}
               </h4>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginBottom: "1.25rem", lineHeight: 1.5 }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginBottom: "1.25rem", lineHeight: 1.4 }}>
                 {t("cloudConnectExplain", { provider: providerLabel })}
               </p>
-              <button onClick={() => { window.location.href = config.connectUrl; }} style={{ padding: "0.625rem 1.5rem", borderRadius: "0.625rem", background: T.color.charcoal, color: T.color.linen, border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600, letterSpacing: "0.03em" }}>
+              <button onClick={() => { window.location.href = config.connectUrl; }} style={{ padding: "0.625rem 1.5rem", borderRadius: "0.75rem", background: "#403B36", color: "#FCFAF5", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, letterSpacing: "0.03em" }}>{/* Atrium tokens: small-control radius, ink on cream, body */}
                 {t("cloudConnectBtn", { provider: providerLabel })}
               </button>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginTop: "0.75rem" }}>{t("cloudConnectHint")}</p>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.75rem" }}>{t("cloudConnectHint")}</p>
             </div>
           )}
           {status === "error" && (
             <div style={{ textAlign: "center", padding: "2rem 0" }}>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>{t("cloudBrowseError")}</p>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" }}>{t("cloudBrowseError")}</p>
               {errorDetail && (
-                <pre style={{ fontFamily: "monospace", fontSize: "0.6875rem", color: T.color.terracotta, marginTop: "0.75rem", whiteSpace: "pre-wrap", wordBreak: "break-all", textAlign: "left", background: "rgba(0,0,0,.04)", padding: "0.75rem", borderRadius: "0.5rem" }}>{errorDetail}</pre>
+                <pre style={{ fontFamily: "monospace", fontSize: "0.8125rem", color: "#9A4F2A", marginTop: "0.75rem", whiteSpace: "pre-wrap", wordBreak: "break-all", textAlign: "left", background: "rgba(64,59,54,0.05)", padding: "0.75rem", borderRadius: "0.75rem" }}>{errorDetail}</pre>
               )}
             </div>
           )}
           {status === "connected" && items.length === 0 && (
             <div style={{ textAlign: "center", padding: "2rem 0" }}>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>{t("cloudBrowseEmpty")}</p>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E" }}>{t("cloudBrowseEmpty")}</p>
             </div>
           )}
           {status === "connected" && items.length > 0 && (
@@ -205,28 +205,28 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
               {items.map(item => {
                 if (item.isFolder) {
                   return (
-                    <button key={item.id} onClick={() => navigateToFolder(item.path)} style={{ position: "relative", borderRadius: "0.625rem", overflow: "hidden", border: `0.0625rem solid ${T.color.cream}`, background: T.color.linen, cursor: "pointer", aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.375rem", padding: 0 }}>
+                    <button key={item.id} onClick={() => navigateToFolder(item.path)} style={{ position: "relative", borderRadius: "0.75rem", overflow: "hidden", border: "0.0625rem solid #E3D6BC", background: T.color.linen, cursor: "pointer", aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.375rem", padding: 0 }}>{/* Atrium tokens: small-control radius, opaque hairline */}
                       <FolderIcon />
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.walnut, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: "90%", padding: "0 0.25rem" }}>{item.name}</span>
+                      <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block", maxWidth: "90%", padding: "0 0.25rem" }}>{item.name}</span>
                     </button>
                   );
                 }
                 const isSelected = selected.has(item.id);
                 return (
-                  <button key={item.id} onClick={() => toggleSelect(item.id)} style={{ position: "relative", borderRadius: "0.625rem", overflow: "hidden", border: isSelected ? `0.125rem solid ${T.color.terracotta}` : `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, cursor: "pointer", aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                  <button key={item.id} onClick={() => toggleSelect(item.id)} style={{ position: "relative", borderRadius: "0.75rem", overflow: "hidden", border: isSelected ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", background: T.color.warmStone, cursor: "pointer", aspectRatio: "1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 0 }}>{/* Atrium tokens: small-control radius, ember active border, opaque hairline */}
                     {item.thumbnailUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={item.thumbnailUrl} alt={item.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                     ) : (
-                      <svg width="2rem" height="2rem" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="1.5" style={{ opacity: 0.3 }}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+                      <svg width="2rem" height="2rem" viewBox="0 0 24 24" fill="none" stroke="#716A5E" strokeWidth="1.5" style={{ opacity: 0.3 }}><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
                     )}
                     {isSelected && (
-                      <div style={{ position: "absolute", top: "0.375rem", right: "0.375rem", width: "1.375rem", height: "1.375rem", borderRadius: "50%", background: T.color.terracotta, color: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0.125rem 0.25rem rgba(0,0,0,.2)" }}>
+                      <div style={{ position: "absolute", top: "0.375rem", right: "0.375rem", width: "1.375rem", height: "1.375rem", borderRadius: "50%", background: "#B85C38", color: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)" }}>{/* Atrium tokens: ember active, S1 warm-ink shadow */}
                         <svg width="0.75rem" height="0.75rem" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       </div>
                     )}
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,.45)", padding: "0.25rem 0.375rem" }}>
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.5625rem", color: "#FFF", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{item.name}</span>
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(64,59,54,0.55)", padding: "0.25rem 0.375rem" }}>{/* Atrium token: warm-ink scrim */}
+                      <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#FCFAF5", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>{item.name}</span>
                     </div>
                   </button>
                 );
@@ -236,14 +236,14 @@ export default function CloudBrowser({ provider, onClose, onImport }: CloudBrows
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "0.75rem 1.5rem", borderTop: `0.0625rem solid ${T.color.cream}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
+        <div style={{ padding: "0.75rem 1.5rem", borderTop: "0.0625rem solid #E3D6BC", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>{/* Atrium token: opaque hairline */}
+          <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
             {selected.size > 0 ? t("cloudSelected", { count: String(selected.size) }) : ""}
           </span>
           <div style={{ display: "flex", gap: "0.625rem" }}>
-            <button onClick={onClose} style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(44,44,42,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.walnut }}>{tc("cancel")}</button>
+            <button onClick={onClose} style={{ padding: "0.5rem 1rem", borderRadius: "0.75rem", background: "rgba(64,59,54,0.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#403B36" }}>{tc("cancel")}</button>{/* Atrium tokens: small-control radius, warm-ink tint, ink */}
             {selected.size > 0 && (
-              <button onClick={() => onImport(items.filter(i => selected.has(i.id)))} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.5rem", background: T.color.terracotta, color: "#FFF", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600 }}>
+              <button onClick={() => onImport(items.filter(i => selected.has(i.id)))} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.75rem", background: "#B85C38", color: "#FFF", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600 }}>{/* Atrium tokens: small-control radius, ember accent */}
                 {t("cloudImportSelected", { count: String(selected.size) })}
               </button>
             )}

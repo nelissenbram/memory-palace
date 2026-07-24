@@ -77,7 +77,7 @@ export default function PointsDisplay({ onClick }: { onClick?: () => void }) {
             position: "absolute", top: "100%", right: 0, marginTop: "0.5rem",
             width: "17.5rem", background: `${T.color.linen}f8`, backdropFilter: "blur(16px)",
             borderRadius: "0.875rem", border: `1px solid ${T.color.cream}`,
-            boxShadow: "0 0.5rem 2.5rem rgba(44,44,42,.18)", padding: "1rem",
+            boxShadow: "0 0.5rem 2.5rem rgba(64,59,54,.18)", padding: "1rem",
             zIndex: 99, animation: "fadeUp .25s ease",
           }}>
             {/* Header with level title */}

@@ -88,8 +88,8 @@ const QUIZ: QuizQuestion[] = [
 
 function PersonaIcon({ id, size = 28, color }: { id: string; size?: number; color: string }) {
   const s = {
-    width: size,
-    height: size,
+    width: `${size / 16}rem`,
+    height: `${size / 16}rem`,
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: color,
@@ -171,10 +171,10 @@ const DIM_LABEL_KEY: Record<Dimension, string> = {
 };
 
 const DIM_COLOR: Record<Dimension, string> = {
-  preserve: "#8B6914",
-  narrate: "#A0522D",
-  organize: "#6B8E23",
-  discover: "#4682B4",
+  preserve: "#8A6410", // Atrium token: ochre glyph
+  narrate: "#B85C38", // Atrium token: ember
+  organize: "#56683C", // Atrium token: sage
+  discover: "#9A4F2A", // Atrium token: terracotta glyph
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -210,6 +210,12 @@ export default function PersonaSelector({
   const [selectedPersona, setSelectedPersona] = useState<string | null>(currentPersona);
   const [flashIdx, setFlashIdx] = useState<number | null>(null);
   const [fadeIn, setFadeIn] = useState(true);
+
+  // Atrium token: motion gate — prefers-reduced-motion collapses transitions to none
+  const reducedMotion =
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // Sync external currentPersona changes
   useEffect(() => {
@@ -292,25 +298,25 @@ export default function PersonaSelector({
               width: "3rem",
               height: "3rem",
               borderRadius: "50%",
-              background: `${T.color.gold}18`,
-              border: `0.0625rem solid ${T.color.gold}40`,
+              background: "rgba(154,79,42,0.11)", // Atrium token: terracotta medallion
+              border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
             }}
           >
-            <PersonaIcon id={selectedPersona} size={24} color={T.color.gold} />
+            <PersonaIcon id={selectedPersona} size={24} color="#9A4F2A" />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.6875rem",
-                fontWeight: 600,
-                color: T.color.muted,
+                fontWeight: 700, // Atrium token: overline voice
+                color: "#716A5E", // Atrium token: muted ink
                 textTransform: "uppercase",
-                letterSpacing: "0.05em",
+                letterSpacing: "0.12em",
                 marginBottom: "0.125rem",
               }}
             >
@@ -319,10 +325,10 @@ export default function PersonaSelector({
             <div
               style={{
                 fontFamily: T.font.display,
-                fontSize: "1.125rem",
+                fontSize: "1.1875rem", // Atrium token: titleM
                 fontWeight: 600,
-                color: T.color.charcoal,
-                lineHeight: 1.3,
+                color: "#403B36", // Atrium token: ink
+                lineHeight: 1.15,
               }}
             >
               {t("resultTitle").replace("{type}", t(persona.labelKey))}
@@ -331,9 +337,9 @@ export default function PersonaSelector({
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
-                color: T.color.muted,
+                color: "#716A5E", // Atrium token: muted ink, full opacity
                 margin: "0.25rem 0 0",
-                lineHeight: 1.5,
+                lineHeight: 1.4,
               }}
             >
               {t(persona.descKey)}
@@ -351,7 +357,7 @@ export default function PersonaSelector({
                           fontFamily: T.font.body,
                           fontSize: "0.6875rem",
                           fontWeight: 600,
-                          color: T.color.muted,
+                          color: "#716A5E", // Atrium token: muted ink
                           width: "4.5rem",
                           textTransform: "capitalize",
                           flexShrink: 0,
@@ -364,7 +370,7 @@ export default function PersonaSelector({
                           flex: 1,
                           height: "0.375rem",
                           borderRadius: "0.1875rem",
-                          background: `${T.color.cream}`,
+                          background: "#E3D6BC", // Atrium token: hairline (was cream-on-cream)
                           overflow: "hidden",
                         }}
                       >
@@ -374,15 +380,15 @@ export default function PersonaSelector({
                             width: `${pct}%`,
                             borderRadius: "0.1875rem",
                             background: DIM_COLOR[dim],
-                            transition: "width 0.6s ease-out",
+                            transition: reducedMotion ? "none" : "width 0.3s ease",
                           }}
                         />
                       </div>
                       <div
                         style={{
                           fontFamily: T.font.body,
-                          fontSize: "0.625rem",
-                          color: T.color.muted,
+                          fontSize: "0.6875rem", // Atrium token: ramp floor
+                          color: "#716A5E", // Atrium token: muted ink
                           width: "2rem",
                           textAlign: "right",
                           flexShrink: 0,
@@ -400,16 +406,16 @@ export default function PersonaSelector({
             onClick={handleRetake}
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.75rem",
+              fontSize: "0.8125rem", // Atrium token: meta
               fontWeight: 600,
-              color: T.color.terracotta,
+              color: "#9A4F2A", // Atrium token: terracotta glyph
               background: "none",
-              border: `0.0625rem solid ${T.color.terracotta}30`,
-              borderRadius: "0.5rem",
+              border: "0.0625rem solid rgba(154,79,42,0.35)", // Atrium token: terracotta rule
+              borderRadius: "0.75rem", // Atrium token: small control
               padding: "0.375rem 0.75rem",
               cursor: "pointer",
               flexShrink: 0,
-              transition: "all 0.2s ease",
+              transition: reducedMotion ? "none" : "all 0.2s ease",
               alignSelf: "flex-start",
             }}
           >
@@ -433,10 +439,11 @@ export default function PersonaSelector({
         <h3
           style={{
             fontFamily: T.font.display,
-            fontSize: "1.25rem",
+            fontSize: "1.1875rem", // Atrium token: titleM
             fontWeight: 600,
-            color: T.color.charcoal,
+            color: "#403B36", // Atrium token: ink
             margin: 0,
+            lineHeight: 1.15,
             letterSpacing: "0.015em",
           }}
         >
@@ -445,10 +452,10 @@ export default function PersonaSelector({
         <div
           aria-hidden="true"
           style={{
-            height: "0.125rem",
+            height: "0.0625rem", // Atrium token: hairline rule
             width: "3.5rem",
             marginTop: "0.5rem",
-            background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight}, transparent)`,
+            background: "linear-gradient(90deg, rgba(154,79,42,0.35), transparent)", // Atrium token: zone rule
             borderRadius: "0.125rem",
           }}
         />
@@ -470,11 +477,11 @@ export default function PersonaSelector({
                 height: "0.5rem",
                 borderRadius: "0.25rem",
                 background: i < step
-                  ? T.color.gold
+                  ? "#B85C38" // Atrium token: ember (active state)
                   : i === step
-                    ? T.color.gold
-                    : `${T.color.gold}30`,
-                transition: "all 0.3s ease",
+                    ? "#B85C38"
+                    : "#E3D6BC", // Atrium token: hairline
+                transition: reducedMotion ? "none" : "all 0.3s ease",
               }}
             />
           ))}
@@ -482,7 +489,7 @@ export default function PersonaSelector({
             style={{
               fontFamily: T.font.body,
               fontSize: "0.6875rem",
-              color: T.color.muted,
+              color: "#716A5E", // Atrium token: muted ink
               marginLeft: "0.25rem",
             }}
           >
@@ -496,7 +503,7 @@ export default function PersonaSelector({
         style={{
           opacity: fadeIn ? 1 : 0,
           transform: fadeIn ? "translateX(0)" : "translateX(-0.5rem)",
-          transition: "opacity 0.25s ease, transform 0.25s ease",
+          transition: reducedMotion ? "none" : "opacity 0.25s ease, transform 0.25s ease",
         }}
       >
         <p
@@ -504,9 +511,9 @@ export default function PersonaSelector({
             fontFamily: T.font.display,
             fontSize: "0.9375rem",
             fontWeight: 500,
-            color: T.color.walnut,
+            color: "#403B36", // Atrium token: ink (was off-palette walnut)
             margin: "0 0 1.25rem",
-            lineHeight: 1.5,
+            lineHeight: 1.4,
           }}
         >
           {t(question.textKey)}
@@ -530,19 +537,19 @@ export default function PersonaSelector({
                   display: "block",
                   width: "100%",
                   padding: "1rem",
-                  borderRadius: "0.875rem",
-                  border: `0.0625rem solid ${isFlashed ? T.color.gold : T.color.cream}`,
-                  background: isFlashed ? `${T.color.gold}18` : T.color.white,
+                  borderRadius: "0.85rem", // Atrium token: small control
+                  border: `0.0625rem solid ${isFlashed ? "#B85C38" : "#E3D6BC"}`, // Atrium token: ember / hairline
+                  background: isFlashed ? "rgba(154,79,42,0.11)" : T.color.white, // Atrium token: terracotta tint
                   cursor: flashIdx === null ? "pointer" : "default",
                   textAlign: "left",
-                  transition: "all 0.2s ease",
+                  transition: reducedMotion ? "none" : "all 0.2s ease",
                   boxShadow: isFlashed
-                    ? `0 0.25rem 0.75rem rgba(0,0,0,0.06), 0 0 0 0.0625rem ${T.color.gold}30`
-                    : "0 0.0625rem 0.25rem rgba(0,0,0,0.03)",
+                    ? "0 0.5rem 1.5rem rgba(64,59,54,0.14), 0 0 0 0.0625rem rgba(154,79,42,0.35)" // Atrium token: S2 warm ink + rule ring
+                    : "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 warm ink
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
-                  color: isFlashed ? T.color.charcoal : T.color.walnut,
-                  lineHeight: 1.5,
+                  color: "#403B36", // Atrium token: ink
+                  lineHeight: 1.4,
                 }}
               >
                 {t(answer.labelKey)}

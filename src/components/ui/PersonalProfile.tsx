@@ -76,22 +76,6 @@ const KEYFRAMES = `
   from { opacity: 0; transform: translateY(0.5rem); }
   to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes pp-nodeFloat1 {
-  0%, 100% { transform: translate(0, 0); opacity: 0.25; }
-  50%      { transform: translate(0.75rem, -0.5rem); opacity: 0.5; }
-}
-@keyframes pp-nodeFloat2 {
-  0%, 100% { transform: translate(0, 0); opacity: 0.2; }
-  50%      { transform: translate(-0.5rem, 0.75rem); opacity: 0.45; }
-}
-@keyframes pp-nodeFloat3 {
-  0%, 100% { transform: translate(0, 0); opacity: 0.15; }
-  50%      { transform: translate(0.5rem, 0.5rem); opacity: 0.35; }
-}
-@keyframes pp-linePulse {
-  0%, 100% { opacity: 0.08; }
-  50%      { opacity: 0.18; }
-}
 @keyframes pp-barGrow {
   from { width: 0; }
 }
@@ -100,12 +84,22 @@ const KEYFRAMES = `
 }
 /* Interactive card hover via CSS class — injected so inline styles get hover */
 .pp-interactive-card:hover {
-  transform: scale(1.02) !important;
-  border-color: rgba(212,175,55,0.35) !important;
-  box-shadow: 0 0.125rem 0.75rem rgba(212,175,55,0.12) !important;
+  transform: translateY(-0.1875rem) !important;
+  border-color: rgba(184,92,56,0.5) !important;
+  box-shadow: 0 0.5rem 1.5rem rgba(64,59,54,0.14) !important; /* Atrium token: hover = lift + one ink shadow step; ember state, not gold */
 }
 .pp-interactive-card:active {
-  transform: scale(0.99) !important;
+  transform: translateY(0) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pp-anim { animation: none !important; }
+  .pp-interactive-card { transition: none !important; }
+  .pp-interactive-card:hover, .pp-interactive-card:active { transform: none !important; box-shadow: 0 0.25rem 1rem rgba(64,59,54,0.07) !important; } /* Atrium token: hold resting S1 */
+  .pp-focusable, .pp-trans { transition: none !important; transform: none !important; }
+}
+.pp-focusable:focus-visible {
+  outline: 0.1875rem solid #D4AF37;
+  outline-offset: 0.1875rem;
 }
 `;
 
@@ -114,21 +108,21 @@ const KEYFRAMES = `
    ═══════════════════════════════════════════════════════════════════ */
 
 function NeuralBackground() {
-  const nodes: { top: string; left: string; size: string; anim: string }[] = [
-    { top: "8%", left: "12%", size: "0.375rem", anim: "pp-nodeFloat1 6s ease-in-out infinite" },
-    { top: "15%", left: "85%", size: "0.25rem", anim: "pp-nodeFloat2 7s ease-in-out infinite 1s" },
-    { top: "55%", left: "8%", size: "0.3125rem", anim: "pp-nodeFloat3 8s ease-in-out infinite 0.5s" },
-    { top: "70%", left: "90%", size: "0.25rem", anim: "pp-nodeFloat1 7s ease-in-out infinite 2s" },
-    { top: "85%", left: "25%", size: "0.1875rem", anim: "pp-nodeFloat2 6s ease-in-out infinite 1.5s" },
-    { top: "30%", left: "92%", size: "0.25rem", anim: "pp-nodeFloat3 9s ease-in-out infinite 0.8s" },
-    { top: "90%", left: "75%", size: "0.3125rem", anim: "pp-nodeFloat1 8s ease-in-out infinite 3s" },
+  const nodes: { top: string; left: string; size: string }[] = [
+    { top: "8%", left: "12%", size: "0.375rem" },
+    { top: "15%", left: "85%", size: "0.25rem" },
+    { top: "55%", left: "8%", size: "0.3125rem" },
+    { top: "70%", left: "90%", size: "0.25rem" },
+    { top: "85%", left: "25%", size: "0.1875rem" },
+    { top: "30%", left: "92%", size: "0.25rem" },
+    { top: "90%", left: "75%", size: "0.3125rem" },
   ];
 
-  const lines: { top: string; left: string; width: string; angle: string; delay: string }[] = [
-    { top: "12%", left: "14%", width: "4.5rem", angle: "25deg", delay: "0s" },
-    { top: "60%", left: "6%", width: "3.5rem", angle: "-15deg", delay: "1s" },
-    { top: "78%", left: "72%", width: "5rem", angle: "40deg", delay: "2s" },
-    { top: "20%", left: "80%", width: "3rem", angle: "-35deg", delay: "0.5s" },
+  const lines: { top: string; left: string; width: string; angle: string }[] = [
+    { top: "12%", left: "14%", width: "4.5rem", angle: "25deg" },
+    { top: "60%", left: "6%", width: "3.5rem", angle: "-15deg" },
+    { top: "78%", left: "72%", width: "5rem", angle: "40deg" },
+    { top: "20%", left: "80%", width: "3rem", angle: "-35deg" },
   ];
 
   return (
@@ -152,8 +146,8 @@ function NeuralBackground() {
             width: n.size,
             height: n.size,
             borderRadius: "50%",
-            background: T.color.gold,
-            animation: n.anim,
+            background: "#B85C38", /* Atrium token: ember */
+            opacity: 0.3,
           }}
         />
       ))}
@@ -165,10 +159,10 @@ function NeuralBackground() {
             top: l.top,
             left: l.left,
             width: l.width,
-            height: "1px",
-            background: `linear-gradient(90deg, transparent, ${T.color.gold}30, transparent)`,
+            height: "0.0625rem",
+            background: `linear-gradient(90deg, transparent, rgba(184,92,56,0.19), transparent)`,
             transform: `rotate(${l.angle})`,
-            animation: `pp-linePulse 4s ease-in-out infinite ${l.delay}`,
+            opacity: 0.12,
           }}
         />
       ))}
@@ -189,27 +183,27 @@ function ProfileIcon({ size = 28 }: { size?: number }) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      {/* Head silhouette */}
-      <circle cx="16" cy="12" r="6" fill={T.color.gold} opacity={0.85} />
+      {/* Head silhouette — Atrium token: ember */}
+      <circle cx="16" cy="12" r="6" fill="#B85C38" opacity={0.85} />
       <path
         d="M8 28c0-4.418 3.582-8 8-8s8 3.582 8 8"
-        stroke={T.color.gold}
+        stroke="#B85C38"
         strokeWidth="2"
         strokeLinecap="round"
         fill="none"
       />
       {/* Neural nodes radiating out */}
-      <circle cx="4" cy="8" r="1.5" fill={T.color.goldLight} opacity={0.6} />
-      <circle cx="28" cy="8" r="1.5" fill={T.color.goldLight} opacity={0.6} />
-      <circle cx="6" cy="22" r="1.2" fill={T.color.goldLight} opacity={0.5} />
-      <circle cx="26" cy="22" r="1.2" fill={T.color.goldLight} opacity={0.5} />
-      <circle cx="16" cy="2" r="1.2" fill={T.color.goldLight} opacity={0.5} />
+      <circle cx="4" cy="8" r="1.5" fill="#B85C38" opacity={0.6} />
+      <circle cx="28" cy="8" r="1.5" fill="#B85C38" opacity={0.6} />
+      <circle cx="6" cy="22" r="1.2" fill="#B85C38" opacity={0.5} />
+      <circle cx="26" cy="22" r="1.2" fill="#B85C38" opacity={0.5} />
+      <circle cx="16" cy="2" r="1.2" fill="#B85C38" opacity={0.5} />
       {/* Connection lines */}
-      <line x1="10" y1="9" x2="5.5" y2="8" stroke={T.color.goldLight} strokeWidth="0.5" opacity={0.4} />
-      <line x1="22" y1="9" x2="26.5" y2="8" stroke={T.color.goldLight} strokeWidth="0.5" opacity={0.4} />
-      <line x1="16" y1="6" x2="16" y2="3.2" stroke={T.color.goldLight} strokeWidth="0.5" opacity={0.4} />
-      <line x1="10" y1="23" x2="7" y2="22" stroke={T.color.goldLight} strokeWidth="0.5" opacity={0.4} />
-      <line x1="22" y1="23" x2="25" y2="22" stroke={T.color.goldLight} strokeWidth="0.5" opacity={0.4} />
+      <line x1="10" y1="9" x2="5.5" y2="8" stroke="#B85C38" strokeWidth="0.5" opacity={0.4} />
+      <line x1="22" y1="9" x2="26.5" y2="8" stroke="#B85C38" strokeWidth="0.5" opacity={0.4} />
+      <line x1="16" y1="6" x2="16" y2="3.2" stroke="#B85C38" strokeWidth="0.5" opacity={0.4} />
+      <line x1="10" y1="23" x2="7" y2="22" stroke="#B85C38" strokeWidth="0.5" opacity={0.4} />
+      <line x1="22" y1="23" x2="25" y2="22" stroke="#B85C38" strokeWidth="0.5" opacity={0.4} />
     </svg>
   );
 }
@@ -237,7 +231,7 @@ function LifeChaptersCard({
   const maxCount = sorted[0]?.memoryCount ?? 1;
 
   return (
-    <div className="pp-interactive-card" style={interactiveCardStyle(isMobile)}>
+    <div className="pp-interactive-card pp-anim" style={interactiveCardStyle(isMobile)}>
       <h4 style={insightTitleStyle}>{label}</h4>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
         {sorted.map((w, i) => (
@@ -246,8 +240,8 @@ function LifeChaptersCard({
             style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: onWingClick ? "pointer" : undefined }}
             onClick={onWingClick ? (e) => { e.stopPropagation(); onWingClick(w.id); } : undefined}
           >
-            <span style={{ fontSize: "0.875rem", width: "1.25rem", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <WingIcon wingId={w.id} size={14} color={T.color.gold} />
+            <span style={{ fontSize: "0.8125rem", width: "1.25rem", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <WingIcon wingId={w.id} size={14} color="#B85C38" />
             </span>
             <div style={{ flex: 1, position: "relative", height: "0.5rem", borderRadius: "0.25rem", background: "rgba(255,255,255,0.08)" }}>
               <div
@@ -256,16 +250,17 @@ function LifeChaptersCard({
                   inset: 0,
                   borderRadius: "0.25rem",
                   width: `${Math.max(4, (w.memoryCount / maxCount) * 100)}%`,
-                  background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight})`,
+                  background: "linear-gradient(90deg, #9A4F2A, #B85C38)", /* Atrium token: terracotta */
                   animation: `pp-barGrow 0.8s ease-out ${0.3 + i * 0.1}s both`,
                 }}
+                className="pp-anim"
               />
             </div>
             <span
               style={{
                 fontFamily: T.font.body,
-                fontSize: "0.6875rem",
-                color: T.color.gold,
+                fontSize: "0.8125rem",
+                color: "#E8C255", /* Atrium token: gilt datum on ink */
                 minWidth: "1.5rem",
                 textAlign: "right",
                 fontWeight: 600,
@@ -278,9 +273,9 @@ function LifeChaptersCard({
       </div>
       {sorted[0] && (
         <p style={insightSummaryStyle}>
-          <span style={{ color: T.color.gold, fontWeight: 600 }}>{sorted[0].name}</span>{" "}
-          <WingIcon wingId={sorted[0].id} size={12} color={T.color.gold} />{" "}
-          <span style={{ color: T.color.linen, opacity: 0.7 }}>
+          <span style={{ color: "#E8C255", fontWeight: 600 }}>{sorted[0].name}</span>{" "}
+          <WingIcon wingId={sorted[0].id} size={12} color="#B85C38" />{" "}
+          <span style={{ color: "rgba(252,250,245,0.72)" }}>
             — {sorted[0].memoryCount} {t("profile.memoriesLabel")}
           </span>
         </p>
@@ -327,16 +322,16 @@ function MemoryStyleCard({
   const circumference = 2 * Math.PI * radius;
 
   const segments = [
-    { pct: visual / total, color: T.color.gold },
-    { pct: audio / total, color: T.color.terracotta },
-    { pct: text / total, color: T.color.sage },
+    { pct: visual / total, color: "#C99A2E" }, /* Atrium tokens: ochre / ember / sage light */
+    { pct: audio / total, color: "#B85C38" },
+    { pct: text / total, color: "#7A8C64" },
   ];
 
   let offset = 0;
 
   return (
     <div
-      className="pp-interactive-card"
+      className="pp-interactive-card pp-anim pp-focusable"
       style={interactiveCardStyle(isMobile)}
       onClick={onClick}
       role={onClick ? "button" : undefined}
@@ -378,6 +373,7 @@ function MemoryStyleCard({
                   strokeDasharray={`${dashLen} ${gapLen}`}
                   strokeDashoffset={-currentOffset}
                   strokeLinecap="butt"
+                  className="pp-anim"
                   style={{
                     "--pp-circumference": circumference,
                     animation: `pp-donutDraw 0.8s ease-out ${0.3 + i * 0.15}s both`,
@@ -390,9 +386,9 @@ function MemoryStyleCard({
         {/* Legend */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
           {[
-            { label: t("profile.photos"), count: visual, color: T.color.gold },
-            { label: t("profile.audio"), count: audio, color: T.color.terracotta },
-            { label: t("profile.text"), count: text, color: T.color.sage },
+            { label: t("profile.photos"), count: visual, color: "#C99A2E" },
+            { label: t("profile.audio"), count: audio, color: "#B85C38" },
+            { label: t("profile.text"), count: text, color: "#7A8C64" },
           ].map((item) => (
             <div
               key={item.label}
@@ -410,8 +406,8 @@ function MemoryStyleCard({
               <span
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: "0.6875rem",
-                  color: "rgba(255,255,255,0.7)",
+                  fontSize: "0.8125rem",
+                  color: "rgba(252,250,245,0.72)",
                 }}
               >
                 {item.label} ({item.count})
@@ -421,7 +417,7 @@ function MemoryStyleCard({
         </div>
       </div>
       <p style={insightSummaryStyle}>
-        <span style={{ color: T.color.gold, fontWeight: 600 }}>{storytellerLabel}</span>
+        <span style={{ color: "#E8C255", fontWeight: 600 }}>{storytellerLabel}</span>
       </p>
     </div>
   );
@@ -448,7 +444,7 @@ function CoverageMapCard({
   const filledCount = wingsData.filter((w) => w.memoryCount > 0).length;
 
   return (
-    <div className="pp-interactive-card" style={interactiveCardStyle(isMobile)}>
+    <div className="pp-interactive-card pp-anim" style={interactiveCardStyle(isMobile)}>
       <h4 style={insightTitleStyle}>{label}</h4>
       <div
         style={{
@@ -463,33 +459,34 @@ function CoverageMapCard({
           return (
             <div
               key={w.id}
+              className="pp-trans"
               title={`${w.name}: ${w.memoryCount}`}
               onClick={onWingClick ? (e) => { e.stopPropagation(); onWingClick(w.id); } : undefined}
               style={{
                 aspectRatio: "1",
                 borderRadius: "0.375rem",
                 background: filled
-                  ? `linear-gradient(135deg, ${T.color.gold}50, ${T.color.goldLight}30)`
+                  ? "linear-gradient(135deg, rgba(184,92,56,0.32), rgba(184,92,56,0.14))" /* Atrium token: ember */
                   : "rgba(255,255,255,0.05)",
-                border: `1px solid ${filled ? `${T.color.gold}40` : "rgba(255,255,255,0.08)"}`,
+                border: `0.0625rem solid ${filled ? "rgba(184,92,56,0.4)" : "rgba(255,255,255,0.08)"}`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "0.875rem",
+                fontSize: "0.8125rem",
                 cursor: onWingClick ? "pointer" : undefined,
                 transition: "background 0.3s ease, transform 0.2s ease",
               }}
             >
-              <WingIcon wingId={w.id} size={12} color={filled ? T.color.gold : "rgba(255,255,255,0.3)"} />
+              <WingIcon wingId={w.id} size={12} color={filled ? "#B85C38" : "rgba(252,250,245,0.35)"} />
             </div>
           );
         })}
       </div>
       <p style={insightSummaryStyle}>
-        <span style={{ color: T.color.gold, fontWeight: 600 }}>
+        <span style={{ color: "#E8C255" /* Atrium token: gilt datum on ink */, fontWeight: 600 }}>
           {filledCount} {t("profile.ofAreas")} {totalWings}
         </span>{" "}
-        <span style={{ color: T.color.linen, opacity: 0.7 }}>{t("profile.areasHaveMemories")}</span>
+        <span style={{ color: "rgba(252,250,245,0.72)" }}>{t("profile.areasHaveMemories")}</span>
       </p>
     </div>
   );
@@ -511,13 +508,13 @@ function DialogueIcon({ size = 32 }: { size?: number }) {
       {/* Left speech bubble */}
       <path
         d="M4 6C4 4.895 4.895 4 6 4H18C19.105 4 20 4.895 20 6V14C20 15.105 19.105 16 18 16H10L6 20V16H6C4.895 16 4 15.105 4 14V6Z"
-        fill={T.color.gold}
+        fill="#B85C38" /* Atrium token: ember */
         opacity={0.85}
       />
       {/* Right speech bubble */}
       <path
         d="M14 12C14 10.895 14.895 10 16 10H26C27.105 10 28 10.895 28 12V20C28 21.105 27.105 22 26 22H24V26L20 22H16C14.895 22 14 21.105 14 20V12Z"
-        fill={T.color.goldLight}
+        fill="#B85C38"
         opacity={0.7}
       />
       {/* Dot accents inside left bubble */}
@@ -549,10 +546,11 @@ function BaselineInterviewCTA({
   if (completed) {
     return (
       <div
+        className="pp-anim"
         style={{
-          background: `linear-gradient(135deg, rgba(212,175,55,0.08), rgba(212,175,55,0.03))`,
-          border: `1px solid ${T.color.gold}30`,
-          borderRadius: "0.75rem",
+          background: "linear-gradient(135deg, rgba(184,92,56,0.10), rgba(184,92,56,0.04))", /* Atrium token: ember tint */
+          border: "0.0625rem solid rgba(184,92,56,0.35)",
+          borderRadius: "1rem",
           padding: isMobile ? "1rem" : "1.25rem 1.5rem",
           marginBottom: "1.25rem",
           animation: "pp-fadeIn 0.5s ease-out 0.45s both",
@@ -565,7 +563,7 @@ function BaselineInterviewCTA({
               fontFamily: T.font.display,
               fontSize: "0.9375rem",
               fontWeight: 600,
-              color: T.color.gold,
+              color: "#FCFAF5", /* Atrium token: titles are cream on ink, never accent */
               margin: 0,
             }}
           >
@@ -577,11 +575,12 @@ function BaselineInterviewCTA({
             <p
               style={{
                 fontFamily: T.font.body,
-                fontSize: "0.75rem",
-                color: "rgba(255,255,255,0.5)",
+                fontSize: "0.6875rem", /* Atrium token: the one small-caps voice */
+                fontWeight: 700,
+                color: "rgba(252,250,245,0.72)",
                 margin: "0 0 0.375rem",
                 textTransform: "uppercase",
-                letterSpacing: "0.04em",
+                letterSpacing: "0.12em",
               }}
             >
               {t("baselineCta.completedSummaryLabel")}
@@ -589,10 +588,10 @@ function BaselineInterviewCTA({
             <p
               style={{
                 fontFamily: T.font.body,
-                fontSize: "0.875rem",
-                color: "rgba(255,255,255,0.75)",
+                fontSize: "0.9375rem",
+                color: "rgba(252,250,245,0.72)",
                 margin: 0,
-                lineHeight: 1.65,
+                lineHeight: 1.4,
                 fontStyle: "italic",
               }}
             >
@@ -607,18 +606,19 @@ function BaselineInterviewCTA({
   /* ── CTA state: invite user to take the interview ─────────── */
   return (
     <div
+      className="pp-anim"
       style={{
         position: "relative",
-        background: `linear-gradient(135deg, rgba(212,175,55,0.10), rgba(212,175,55,0.04), rgba(255,255,255,0.03))`,
-        border: `1px solid ${T.color.gold}35`,
-        borderRadius: "0.75rem",
+        background: "linear-gradient(135deg, rgba(184,92,56,0.10), rgba(184,92,56,0.04), rgba(252,250,245,0.03))", /* Atrium token: ember tint */
+        border: "0.0625rem solid rgba(184,92,56,0.4)",
+        borderRadius: "1rem",
         padding: isMobile ? "1.25rem 1rem" : "1.5rem 1.75rem",
         marginBottom: "1.25rem",
         animation: "pp-fadeIn 0.5s ease-out 0.45s both",
         overflow: "hidden",
       }}
     >
-      {/* Subtle gold corner glow */}
+      {/* Subtle ember corner glow */}
       <div
         aria-hidden="true"
         style={{
@@ -628,7 +628,7 @@ function BaselineInterviewCTA({
           width: "6rem",
           height: "6rem",
           borderRadius: "50%",
-          background: `radial-gradient(circle, ${T.color.gold}15, transparent 70%)`,
+          background: "radial-gradient(circle, rgba(184,92,56,0.10), transparent 70%)",
           pointerEvents: "none",
         }}
       />
@@ -648,9 +648,9 @@ function BaselineInterviewCTA({
               flexShrink: 0,
               width: "2.75rem",
               height: "2.75rem",
-              borderRadius: "0.625rem",
-              background: `linear-gradient(135deg, ${T.color.gold}20, ${T.color.goldLight}10)`,
-              border: `1px solid ${T.color.gold}25`,
+              borderRadius: "0.75rem",
+              background: "rgba(184,92,56,0.14)", /* Atrium token: ember medallion tint */
+              border: "0.0625rem solid rgba(184,92,56,0.25)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -674,8 +674,8 @@ function BaselineInterviewCTA({
             <span
               style={{
                 fontFamily: T.font.body,
-                fontSize: "0.75rem",
-                color: T.color.gold,
+                fontSize: "0.8125rem",
+                color: "#E8C255", /* Atrium token: gilt datum on ink */
                 fontWeight: 600,
                 letterSpacing: "0.02em",
               }}
@@ -689,10 +689,10 @@ function BaselineInterviewCTA({
         <p
           style={{
             fontFamily: T.font.body,
-            fontSize: "0.875rem",
-            color: "rgba(255,255,255,0.7)",
+            fontSize: "0.9375rem",
+            color: "rgba(252,250,245,0.72)",
             margin: "0 0 1.125rem",
-            lineHeight: 1.65,
+            lineHeight: 1.4,
             maxWidth: "32rem",
           }}
         >
@@ -703,35 +703,36 @@ function BaselineInterviewCTA({
         <button
           onClick={onStart}
           aria-label={t("baselineCta.button")}
+          className="pp-focusable"
           style={{
             fontFamily: T.font.body,
-            fontSize: "0.875rem",
+            fontSize: "0.9375rem",
             fontWeight: 600,
-            color: T.color.charcoal,
-            background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldLight})`,
+            color: "#FCFAF5",
+            background: "linear-gradient(135deg, #B85C38, #9A4F2A)", /* Atrium token: ember action */
             border: "none",
-            borderRadius: "0.5rem",
+            borderRadius: "0.75rem",
             padding: "0.6875rem 1.5rem",
             cursor: "pointer",
             transition: "transform 0.2s ease, box-shadow 0.2s ease",
-            boxShadow: `0 0.125rem 0.75rem ${T.color.gold}40`,
+            boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token: S1 */
             letterSpacing: "0.01em",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-0.0625rem)";
-            e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.gold}60`;
+            e.currentTarget.style.transform = "translateY(-0.1875rem)";
+            e.currentTarget.style.boxShadow = "0 0.75rem 1.75rem rgba(64,59,54,0.16)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = `0 0.125rem 0.75rem ${T.color.gold}40`;
+            e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.07)";
           }}
           onFocus={(e) => {
-            e.currentTarget.style.transform = "translateY(-0.0625rem)";
-            e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.gold}60`;
+            e.currentTarget.style.transform = "translateY(-0.1875rem)";
+            e.currentTarget.style.boxShadow = "0 0.75rem 1.75rem rgba(64,59,54,0.16)";
           }}
           onBlur={(e) => {
             e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = `0 0.125rem 0.75rem ${T.color.gold}40`;
+            e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.07)";
           }}
         >
           {t("baselineCta.button")}
@@ -748,9 +749,10 @@ function BaselineInterviewCTA({
 function insightCardStyle(isMobile: boolean): React.CSSProperties {
   return {
     background: "rgba(255,255,255,0.04)",
-    border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: "0.75rem",
+    border: "0.0625rem solid rgba(255,255,255,0.08)",
+    borderRadius: "1rem",
     padding: isMobile ? "0.875rem" : "1rem",
+    boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token: S1 rest, so hover S2 is one step */
     animation: "pp-fadeIn 0.5s ease-out 0.3s both",
   };
 }
@@ -767,14 +769,14 @@ const insightTitleStyle: React.CSSProperties = {
   fontFamily: T.font.display,
   fontSize: "0.9375rem",
   fontWeight: 600,
-  color: T.color.gold,
+  color: "#FCFAF5", /* Atrium token: titles are ink/cream, never accent */
   margin: "0 0 0.625rem",
   letterSpacing: "0.02em",
 };
 
 const insightSummaryStyle: React.CSSProperties = {
   fontFamily: T.font.body,
-  fontSize: "0.75rem",
+  fontSize: "0.8125rem",
   color: T.color.linen,
   margin: "0.5rem 0 0",
   lineHeight: 1.4,
@@ -865,10 +867,10 @@ export default function PersonalProfile({
             style={{
               fontFamily: T.font.body,
               fontSize: "0.9375rem",
-              color: "rgba(255,255,255,0.6)",
+              color: "rgba(252,250,245,0.72)",
               margin: 0,
               maxWidth: "20rem",
-              lineHeight: 1.6,
+              lineHeight: 1.4,
             }}
           >
             {t("profile.emptyState")}
@@ -876,35 +878,36 @@ export default function PersonalProfile({
           <button
             onClick={onStartInterview}
             aria-label={t("profile.helpAiLearn")}
+            className="pp-focusable"
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.875rem",
+              fontSize: "0.9375rem",
               fontWeight: 600,
-              color: T.color.charcoal,
-              background: `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldLight})`,
+              color: "#FCFAF5",
+              background: "linear-gradient(135deg, #B85C38, #9A4F2A)", /* Atrium token: ember action */
               border: "none",
-              borderRadius: "0.5rem",
+              borderRadius: "0.75rem",
               padding: "0.75rem 1.75rem",
               cursor: "pointer",
               marginTop: "0.5rem",
               transition: "transform 0.2s ease, box-shadow 0.2s ease",
-              boxShadow: `0 0.125rem 0.75rem ${T.color.gold}40`,
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token: S1 */
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-0.0625rem)";
-              e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.gold}60`;
+              e.currentTarget.style.transform = "translateY(-0.1875rem)";
+              e.currentTarget.style.boxShadow = "0 0.75rem 1.75rem rgba(64,59,54,0.16)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = `0 0.125rem 0.75rem ${T.color.gold}40`;
+              e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.07)";
             }}
             onFocus={(e) => {
-              e.currentTarget.style.transform = "translateY(-0.0625rem)";
-              e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${T.color.gold}60`;
+              e.currentTarget.style.transform = "translateY(-0.1875rem)";
+              e.currentTarget.style.boxShadow = "0 0.75rem 1.75rem rgba(64,59,54,0.16)";
             }}
             onBlur={(e) => {
               e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = `0 0.125rem 0.75rem ${T.color.gold}40`;
+              e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.07)";
             }}
           >
             {t("profile.helpAiLearn")}
@@ -935,7 +938,7 @@ export default function PersonalProfile({
           <h3
             style={{
               fontFamily: T.font.display,
-              fontSize: "1.25rem",
+              fontSize: "1.1875rem", /* Atrium token: titleM */
               fontWeight: 600,
               color: T.color.linen,
               margin: 0,
@@ -951,13 +954,14 @@ export default function PersonalProfile({
 
       {/* Subtitle */}
       <p
+        className="pp-anim"
         style={{
           position: "relative",
           fontFamily: T.font.body,
           fontSize: "0.8125rem",
-          color: "rgba(255,255,255,0.55)",
+          color: "rgba(252,250,245,0.72)",
           margin: "0 0 1.25rem",
-          lineHeight: 1.5,
+          lineHeight: 1.4,
           animation: "pp-fadeIn 0.5s ease-out 0.15s both",
         }}
       >
@@ -969,9 +973,9 @@ export default function PersonalProfile({
         aria-hidden="true"
         style={{
           position: "relative",
-          height: "0.125rem",
+          height: "0.0625rem",
           width: "3.5rem",
-          background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight}, transparent)`,
+          background: "linear-gradient(90deg, rgba(184,92,56,0.5), transparent)", /* Atrium token: section hairline rule, ember zone */
           borderRadius: "0.125rem",
           marginBottom: "1.25rem",
         }}
@@ -1013,11 +1017,12 @@ export default function PersonalProfile({
       {/* ── Wiki Summary (bio paragraph) ────────────────────────── */}
       {totalMemories > 0 && (
         <div
+          className="pp-anim"
           style={{
             position: "relative",
             background: "rgba(255,255,255,0.06)",
-            border: `1px solid ${T.color.gold}25`,
-            borderRadius: "0.75rem",
+            border: "0.0625rem solid rgba(184,92,56,0.3)", /* Atrium token: ember hairline */
+            borderRadius: "1rem",
             padding: isMobile ? "1rem" : "1.25rem 1.5rem",
             marginBottom: "1.25rem",
             animation: "pp-fadeIn 0.5s ease-out 0.45s both",
@@ -1027,9 +1032,9 @@ export default function PersonalProfile({
             style={{
               fontFamily: T.font.body,
               fontSize: "0.9375rem",
-              color: "rgba(255,255,255,0.8)",
+              color: "rgba(252,250,245,0.85)",
               margin: 0,
-              lineHeight: 1.7,
+              lineHeight: 1.4,
               fontStyle: "italic",
             }}
           >
@@ -1056,6 +1061,7 @@ export default function PersonalProfile({
 
       {/* ── Key Stats Row ──────────────────────────────────────── */}
       <div
+        className="pp-anim"
         style={{
           position: "relative",
           display: "grid",
@@ -1105,8 +1111,8 @@ function StatCell({
     <div
       style={{
         background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: "0.625rem",
+        border: "0.0625rem solid rgba(255,255,255,0.08)",
+        borderRadius: "0.75rem",
         padding: "0.75rem",
         textAlign: "center",
       }}
@@ -1114,10 +1120,10 @@ function StatCell({
       <div
         style={{
           fontFamily: isText ? T.font.body : T.font.display,
-          fontSize: isText ? "0.8125rem" : "1.5rem",
-          fontWeight: isText ? 600 : 300,
-          color: T.color.gold,
-          lineHeight: 1.2,
+          fontSize: isText ? "0.8125rem" : "1.375rem", /* Atrium token: titleL */
+          fontWeight: 600,
+          color: "#E8C255", /* Atrium token: gilt datum on ink */
+          lineHeight: 1.15,
           marginBottom: "0.25rem",
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -1129,10 +1135,11 @@ function StatCell({
       <div
         style={{
           fontFamily: T.font.body,
-          fontSize: "0.6875rem",
-          color: "rgba(255,255,255,0.5)",
+          fontSize: "0.6875rem", /* Atrium token: the one small-caps voice */
+          fontWeight: 700,
+          color: "rgba(252,250,245,0.72)",
           textTransform: "uppercase",
-          letterSpacing: "0.05em",
+          letterSpacing: "0.12em",
         }}
       >
         {label}

@@ -11,12 +11,12 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 
 // ─── Wing accent colors for icon strokes ───
 const WING_ACCENT: Record<string, string> = {
-  roots: "#C66B3D",
+  roots: "#9A4F2A", // Atrium token: terracotta glyph
   nest: "#B8926A",
   craft: "#8B7355",
-  travel: "#4A6741",
+  travel: "#56683C", // Atrium token: sage canonical
   passions: "#9B6B8E",
-  general: "#C4A962",
+  general: "#8A6410", // Atrium token: ochre glyph (gold reserved for the palace itself)
 };
 
 // ─── SVG icon paths keyed by template id (20x20 viewBox, stroke-based) ───
@@ -184,7 +184,7 @@ export function InterviewIcon({ templateId, wingId, size = 20 }: { templateId: s
 function CompletedCheckIcon({ size = 20 }: { size?: number }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 20 20"
-      fill="none" stroke="#4A6741" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      fill="none" stroke="#56683C" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
       <circle cx="10" cy="10" r="7" strokeWidth={1.25} />
       <polyline points="6.5,10 9,12.5 13.5,7.5" />
     </svg>
@@ -199,9 +199,10 @@ interface InterviewLibraryPanelProps {
 const WING_ORDER = ["roots", "nest", "craft", "travel", "passions", "general"];
 
 const difficultyColors: Record<string, { bg: string; text: string; labelKey: string }> = {
-  light: { bg: "#4A674118", text: "#6A8A62", labelKey: "difficultyLight" },
-  medium: { bg: "#C66B3D18", text: "#C66B3D", labelKey: "difficultyMedium" },
-  deep: { bg: "#7A5A9E18", text: "#9A7AB8", labelKey: "difficultyDeep" },
+  // Atrium tokens: sage / terracotta glyph / ink registers (no off-palette purple)
+  light: { bg: "rgba(86,104,60,0.16)", text: "#56683C", labelKey: "difficultyLight" },
+  medium: { bg: "rgba(154,79,42,0.11)", text: "#9A4F2A", labelKey: "difficultyMedium" },
+  deep: { bg: "rgba(64,59,54,0.08)", text: "#403B36", labelKey: "difficultyDeep" },
 };
 
 export default function InterviewLibraryPanel({ onClose, highlightWingId }: InterviewLibraryPanelProps) {
@@ -238,42 +239,46 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
   };
 
   return (
-    <div onClick={onClose} style={{
+    <div onClick={onClose} className="ilp-fade" style={{
       position: "fixed", inset: 0, background: "rgba(42,34,24,.5)",
       backdropFilter: "blur(8px)", zIndex: 56,
       opacity: fadeIn ? 1 : 0, transition: "opacity 0.3s ease",
     }}>
-      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} style={{
+      <div ref={containerRef} role="dialog" aria-modal="true" aria-label={t("title")} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} onClick={(e) => e.stopPropagation()} className="ilp-slide" style={{
         position: "absolute", right: 0, top: 0, bottom: 0,
         width: isMobile ? "100%" : "min(480px, 95vw)",
         background: `${T.color.linen}f8`, backdropFilter: "blur(20px)",
-        borderLeft: isMobile ? "none" : `1px solid ${T.color.cream}`,
+        borderLeft: isMobile ? "none" : "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
+        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2 overlay shadow
         overflowY: "auto",
-        animation: "slideInRight .3s cubic-bezier(.23,1,.32,1)",
+        animation: "slideInRight .3s ease",
       }}>
-        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}`}</style>
+        <style>{`@keyframes slideInRight{from{opacity:0;transform:translateX(2.5rem)}to{opacity:1;transform:translateX(0)}}
+.ilp-slide button:focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}
+.ilp-card:hover{transform:translateY(-0.1875rem);box-shadow:0 0.5rem 1.5rem rgba(64,59,54,0.14) !important}
+@media (prefers-reduced-motion: reduce){.ilp-fade{transition:none !important}.ilp-slide{animation:none !important}.ilp-card{transition:none !important}.ilp-card:hover{transform:none}}`}</style>
 
         {/* Header */}
         <div style={{
           position: "sticky", top: 0, zIndex: 2,
           background: `${T.color.linen}f0`, backdropFilter: "blur(16px)",
           padding: isMobile ? "1.25rem 1.25rem 1rem" : "1.5rem 1.75rem 1rem",
-          borderBottom: `1px solid ${T.color.cream}`,
+          borderBottom: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
             <div>
-              <h2 style={{ fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 500, color: T.color.charcoal, margin: 0 }}>
+              <h2 style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: "#403B36", lineHeight: 1.15, margin: 0 }}>
                 {t("title")}
               </h2>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: "0.25rem 0 0" }}>
                 {t("subtitle")}
               </p>
             </div>
             <button onClick={onClose} style={{
               width: isMobile ? "2.75rem" : "2.25rem", height: isMobile ? "2.75rem" : "2.25rem",
               borderRadius: isMobile ? "1.375rem" : "1.125rem",
-              border: `1px solid ${T.color.cream}`, background: T.color.warmStone,
-              color: T.color.muted, fontSize: isMobile ? "1rem" : "0.875rem",
+              border: "0.0625rem solid #E3D6BC", background: T.color.warmStone, // Atrium token: opaque hairline
+              color: "#716A5E", fontSize: isMobile ? "1rem" : "0.8125rem",
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
               minWidth: "2.75rem", minHeight: "2.75rem",
             }}>
@@ -299,9 +304,12 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
               return (
                 <div key={wingId} style={{ marginBottom: "1.75rem" }}>
                   <h3 style={{
-                    fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-                    color: T.color.walnut, margin: "0 0 0.75rem",
-                    textTransform: "uppercase", letterSpacing: "0.03125rem",
+                    // Atrium token: the one small-caps Overline voice + gradient hairline rule
+                    fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700,
+                    color: "#716A5E", margin: "0 0 0.75rem",
+                    textTransform: "uppercase", letterSpacing: "0.12em",
+                    paddingBottom: "0.375rem",
+                    background: "linear-gradient(90deg, rgba(113,106,94,0.35), transparent) left bottom / 100% 0.0625rem no-repeat",
                   }}>
                     {t(WING_ID_TO_LABEL_KEY[wingId] || wingId)}
                   </h3>
@@ -325,11 +333,11 @@ export default function InterviewLibraryPanel({ onClose, highlightWingId }: Inte
 function FilterTab({ label, active, onClick, highlight }: { label: string; active: boolean; onClick: () => void; highlight?: boolean }) {
   return (
     <button onClick={onClick} style={{
-      padding: "0.5rem 0.875rem", borderRadius: "1rem", border: "none", whiteSpace: "nowrap", minHeight: "2.75rem",
-      background: active ? T.color.charcoal : highlight ? `${T.color.terracotta}14` : T.color.warmStone,
-      color: active ? "#FFF" : highlight ? T.color.terracotta : T.color.walnut,
-      fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: active ? 600 : 500,
-      cursor: "pointer", transition: "all 0.2s",
+      padding: "0.5rem 0.875rem", borderRadius: "2rem", border: "none", whiteSpace: "nowrap", minHeight: "2.75rem", // Atrium token: pill radius
+      background: active ? "#403B36" : highlight ? "rgba(154,79,42,0.11)" : T.color.warmStone, // Atrium tokens: ink / terracotta tint
+      color: active ? "#FCFAF5" : highlight ? "#9A4F2A" : T.color.walnut,
+      fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: active ? 600 : 500,
+      cursor: "pointer", transition: "all 0.2s ease",
     }}>
       {label}
     </button>
@@ -348,17 +356,18 @@ function TemplateCard({ template, completion, onStart, isMobile, t }: {
   const isInProgress = completion?.status === "in_progress";
 
   return (
-    <div onClick={onStart} style={{
-      padding: isMobile ? "1rem" : "1rem 1.25rem", borderRadius: "0.875rem",
-      border: `1px solid ${isCompleted ? `${T.color.sage}30` : T.color.cream}`,
-      background: isCompleted ? `${T.color.sage}06` : T.color.white,
+    <div onClick={onStart} className="ilp-card" style={{
+      padding: isMobile ? "1rem" : "1rem 1.25rem", borderRadius: "1rem", // Atrium token: card radius
+      border: `0.0625rem solid ${isCompleted ? "#DFE3D2" : "#E3D6BC"}`, // Atrium tokens: sage tile border / opaque hairline
+      background: isCompleted ? "#F2F5EA" : T.color.white,
+      boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1 card shadow
       marginBottom: "0.625rem", cursor: "pointer",
-      transition: "transform 0.15s, box-shadow 0.15s",
+      transition: "transform 0.2s ease, box-shadow 0.2s ease",
       display: "flex", gap: "0.875rem", alignItems: "flex-start",
     }}>
       <div style={{
         width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem",
-        background: isCompleted ? `${T.color.sage}15` : T.color.warmStone,
+        background: isCompleted ? "rgba(86,104,60,0.16)" : T.color.warmStone, // Atrium token: sage medallion tint
         display: "flex", alignItems: "center", justifyContent: "center",
         flexShrink: 0,
       }}>
@@ -370,37 +379,37 @@ function TemplateCard({ template, completion, onStart, isMobile, t }: {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
           <h4 style={{
-            fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-            color: T.color.charcoal, margin: 0,
+            fontFamily: T.font.display, fontSize: "1.0625rem", fontWeight: 600, // Atrium token: titleS
+            color: "#403B36", lineHeight: 1.15, margin: 0,
           }}>
             {t(template.titleKey)}
           </h4>
           {isCompleted && (
             <>
               <span style={{
-                fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
-                color: T.color.sage, background: `${T.color.sage}15`,
-                padding: "0.125rem 0.5rem", borderRadius: "0.5rem",
+                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                color: "#56683C", background: "rgba(86,104,60,0.16)", // Atrium tokens: sage
+                padding: "0.125rem 0.5rem", borderRadius: "2rem",
               }}>{t("done")}</span>
               <span style={{
-                fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
-                color: T.color.terracotta, background: `${T.color.terracotta}15`,
-                padding: "0.125rem 0.5rem", borderRadius: "0.5rem",
+                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                color: "#9A4F2A", background: "rgba(154,79,42,0.11)", // Atrium tokens: terracotta glyph
+                padding: "0.125rem 0.5rem", borderRadius: "2rem",
               }}>{t("retake")}</span>
             </>
           )}
           {isInProgress && (
             <span style={{
-              fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
-              color: T.color.terracotta, background: `${T.color.terracotta}15`,
-              padding: "0.125rem 0.5rem", borderRadius: "0.5rem",
+              fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+              color: "#B85C38", background: "rgba(184,92,56,0.12)", // Atrium tokens: ember (active state)
+              padding: "0.125rem 0.5rem", borderRadius: "2rem",
             }}>{t("continueLabel")}</span>
           )}
         </div>
 
         <p style={{
-          fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
-          lineHeight: 1.5, margin: "0 0 0.5rem", overflow: "hidden",
+          fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", // Atrium token: muted (full opacity)
+          lineHeight: 1.4, margin: "0 0 0.5rem", overflow: "hidden",
           display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as any,
         }}>
           {t(template.descKey)}
@@ -410,14 +419,14 @@ function TemplateCard({ template, completion, onStart, isMobile, t }: {
           <span style={{
             fontFamily: T.font.body, fontSize: "0.6875rem",
             color: diff.text, background: diff.bg,
-            padding: "0.125rem 0.5rem", borderRadius: "0.5rem",
+            padding: "0.125rem 0.5rem", borderRadius: "2rem", // Atrium token: pill radius
           }}>
             {t(diff.labelKey)}
           </span>
-          <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.sandstone }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
             ~{template.estimatedTotalMinutes} {t("minutes")}
           </span>
-          <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.sandstone }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
             {template.questions.length} {t("questions")}
           </span>
         </div>

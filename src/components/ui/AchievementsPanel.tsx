@@ -10,7 +10,7 @@ import { shareAchievement } from "@/lib/native/share";
 
 /** Roman laurel wreath trophy icon for the panel header */
 function TrophyIcon({ size = 28 }: { size?: number }) {
-  const gold = T.color.gold;
+  const gold = "#8A6410"; // Atrium token: browned gold-lane glyph (true gilt reserved for the palace itself)
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
       {/* Cup body */}
@@ -32,7 +32,7 @@ function TrophyIcon({ size = 28 }: { size?: number }) {
 
 /** Roman padlock icon for locked achievements */
 function LockedBadgeIcon({ size = 20 }: { size?: number }) {
-  const grey = T.color.muted;
+  const grey = "#716A5E"; // Atrium token: muted ink, full opacity
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="4" y="9" width="12" height="8" rx="1.5" stroke={grey} strokeWidth="1.3" fill={`${grey}15`} />
@@ -85,7 +85,7 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 100,
-        background: "rgba(44,44,42,.55)", backdropFilter: "blur(12px)",
+        background: "rgba(64,59,54,0.55)", backdropFilter: "blur(12px)", // Atrium token: warm ink scrim
         display: "flex", alignItems: "center", justifyContent: "center",
         animation: "fadeIn .3s ease",
       }}
@@ -101,32 +101,32 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           height: isMobile ? "100%" : undefined,
           overflow: "auto",
           background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 100%)`,
-          borderRadius: isMobile ? 0 : "1.25rem",
-          border: isMobile ? "none" : `1px solid ${T.color.sandstone}44`,
-          boxShadow: isMobile ? "none" : `0 1.5rem 5rem rgba(44,44,42,.35)`,
+          borderRadius: isMobile ? 0 : "1rem",
+          border: isMobile ? "none" : "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
+          boxShadow: isMobile ? "none" : "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
           padding: isMobile ? "1.25rem 1rem 1rem" : "2rem 1.75rem 1.75rem",
           paddingTop: isMobile ? "max(1.25rem, env(safe-area-inset-top, 0px))" : undefined,
           paddingBottom: isMobile ? "max(1rem, env(safe-area-inset-bottom, 0px))" : undefined,
           paddingLeft: isMobile ? "max(1rem, env(safe-area-inset-left, 0px))" : undefined,
           paddingRight: isMobile ? "max(1rem, env(safe-area-inset-right, 0px))" : undefined,
-          animation: isMobile ? "fadeIn .2s ease" : "fadeUp .35s ease",
+          animation: isMobile ? "fadeIn .2s ease" : "fadeUp .3s ease",
         }}
       >
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <div style={{
-              width: "3rem", height: "3rem", borderRadius: "0.875rem",
-              background: `linear-gradient(135deg, ${T.color.goldLight}, ${T.color.goldDark})`,
+              width: "3rem", height: "3rem", borderRadius: "0.85rem",
+              background: "rgba(169,116,27,0.14)", // Atrium token: gold-lane medallion tint
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 0.25rem 1rem rgba(169,124,46,.3)",
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1
             }}><TrophyIcon size={28} /></div>
 
             <div>
-              <div style={{ fontFamily: T.font.display, fontSize: "1.5rem", fontWeight: 600, color: T.color.charcoal }}>
+              <div style={{ fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600, color: "#403B36", lineHeight: 1.15 }}>
                 {t("title")}
               </div>
-              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted }}>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
                 {t("unlocked", { earned: String(earned), total: String(total) })}
               </div>
             </div>
@@ -135,11 +135,11 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
             onClick={onClose}
             aria-label={t("close")}
             style={{
-              width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem", border: `1px solid ${T.color.cream}`,
+              width: "2.25rem", height: "2.25rem", borderRadius: "1.125rem", border: "0.0625rem solid #E3D6BC", // Atrium token: opaque hairline
               background: `${T.color.white}cc`, cursor: "pointer", fontSize: "1rem",
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: T.color.muted, fontFamily: T.font.body,
-              transition: "opacity .15s",
+              color: "#716A5E", fontFamily: T.font.body,
+              transition: "opacity 0.2s ease",
             }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
@@ -155,15 +155,15 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           aria-label={t("unlocked", { earned: String(earned), total: String(total) })}
           style={{
             width: "100%", height: "0.5rem", borderRadius: "0.25rem",
-            background: `${T.color.sandstone}33`, marginBottom: "1.75rem", overflow: "hidden",
+            background: "#E3D6BC", marginBottom: "1.75rem", overflow: "hidden", // Atrium token: opaque hairline band, no alpha track
           }}
         >
           <div style={{
             width: "100%", height: "100%", borderRadius: "0.25rem",
-            background: `linear-gradient(90deg, ${T.color.goldLight}, ${T.color.gold})`,
+            background: "linear-gradient(90deg, #A9741B, #8A6410)", // Atrium: browned gold-lane, true gilt reserved
             transform: `scaleX(${percentage / 100})`,
             transformOrigin: "left center",
-            transition: "transform .6s ease",
+            transition: "transform 0.3s ease",
           }} />
         </div>
 
@@ -173,14 +173,15 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           return (
             <div key={cat.key} style={{ marginBottom: "1.5rem" }}>
               <div style={{
-                fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600,
-                color: T.color.walnut, marginBottom: "0.75rem",
+                fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, // Atrium: one small-caps overline voice
+                letterSpacing: "0.12em", textTransform: "uppercase",
+                color: "#8A6410", marginBottom: "0.75rem",
                 display: "flex", alignItems: "center", gap: "0.5rem",
               }}>
                 <AchievementIcon id={cat.iconId} size={18} /> {t(cat.labelKey)}
               </div>
               <div role="list" style={{
-                display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(260px, 1fr))",
+                display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(16.25rem, 1fr))",
                 gap: "0.625rem",
               }}>
                 {items.map((ach) => (
@@ -203,9 +204,9 @@ export default function AchievementsPanel({ onClose, highlightId }: Props) {
           <div style={{
             position: "fixed", bottom: "2rem", left: "50%", transform: "translateX(-50%)",
             padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.charcoal, color: T.color.white,
+            background: "#403B36", color: T.color.white, // Atrium token: ink
             fontFamily: T.font.body, fontSize: "0.8125rem",
-            boxShadow: "0 0.5rem 1.5rem rgba(0,0,0,.25)",
+            boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
             zIndex: 110, animation: "fadeIn .2s ease",
           }}>
             {toast}
@@ -254,10 +255,10 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         justifyContent: "flex-start",
         gap: "0.75rem",
         padding: "0.75rem 0.875rem",
-        borderRadius: "0.875rem",
-        background: highlighted ? `${T.color.gold}18` : earned ? `${T.color.white}ee` : `${T.color.warmStone}88`,
-        border: highlighted ? `2px solid ${T.color.gold}88` : earned ? `1px solid ${T.color.gold}44` : `1px solid ${T.color.cream}`,
-        opacity: earned ? 1 : 0.6,
+        borderRadius: "1rem",
+        background: highlighted ? `${T.color.gold}18` : earned ? T.color.white : "#ECE5D8", // Atrium: pre-mixed opaque surfaces
+        border: highlighted ? "0.125rem solid #D4AF37" : earned ? "0.0625rem solid #E9DCBE" : "0.0625rem solid #E3D6BC", // gold = highlight frame only
+        opacity: 1, // Atrium: no colour+opacity double-dimming; muted ink carries the locked state
         transition: "all .2s ease",
         position: "relative",
         overflow: "hidden",
@@ -273,7 +274,7 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         flexShrink: 0,
         alignSelf: "center",
         background: earned
-          ? `linear-gradient(135deg, ${T.color.goldLight}22, ${T.color.gold}22)`
+          ? "rgba(169,116,27,0.14)" // Atrium token: gold-lane medallion tint
           : `${T.color.sandstone}22`,
         display: "flex",
         alignItems: "center",
@@ -292,17 +293,17 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
       }}>
         <div style={{
           fontFamily: T.font.display,
-          fontSize: "0.875rem",
+          fontSize: "0.9375rem",
           fontWeight: 600,
-          color: earned ? T.color.charcoal : T.color.muted,
-          lineHeight: 1.3,
+          color: earned ? "#403B36" : "#716A5E", // Atrium tokens: ink / muted
+          lineHeight: 1.15,
         }}>
           {t(achievement.titleKey)}
         </div>
         <div style={{
           fontFamily: T.font.body,
-          fontSize: "0.6875rem",
-          color: earned ? T.color.walnut : T.color.muted,
+          fontSize: "0.8125rem",
+          color: "#716A5E", // Atrium token: muted, full opacity
           lineHeight: 1.4,
         }}>
           {t(achievement.descKey)}
@@ -310,8 +311,8 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         {earned && earnedDate && (
           <div style={{
             fontFamily: T.font.body,
-            fontSize: "0.625rem",
-            color: T.color.goldLight,
+            fontSize: "0.8125rem",
+            color: "#8A6410", // Atrium token: gold-lane datum
             marginTop: "0.125rem",
             lineHeight: 1.3,
           }}>
@@ -326,17 +327,17 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
           aria-label={t("shareButton")}
           title={t("shareButton")}
           style={{
-            width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem",
-            border: `1px solid ${T.color.gold}44`,
-            background: `${T.color.goldLight}15`,
+            width: "1.75rem", height: "1.75rem", borderRadius: "0.7rem",
+            border: "0.0625rem solid #E9DCBE", // Atrium token: gold-lane border
+            background: "rgba(169,116,27,0.10)",
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, transition: "background .15s, opacity .15s",
+            flexShrink: 0, transition: "background 0.2s ease, opacity 0.2s ease",
           }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.goldLight}33`; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = `${T.color.goldLight}15`; }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(169,116,27,0.18)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "rgba(169,116,27,0.10)"; }}
         >
-          <ShareIcon size={14} color={T.color.gold} />
+          <ShareIcon size={14} color="#8A6410" />
         </button>
       )}
       {/* Earned shimmer */}
@@ -344,8 +345,8 @@ function AchievementCard({ achievement, earned, earnedDate, highlighted, onShare
         <div style={{
           position: "absolute", top: 0, right: 0,
           width: 0, height: 0,
-          borderLeft: "20px solid transparent",
-          borderTop: `20px solid ${T.color.gold}33`,
+          borderLeft: "1.25rem solid transparent",
+          borderTop: "1.25rem solid rgba(169,116,27,0.25)", // Atrium: browned gold-lane, true gilt reserved
         }} />
       )}
     </div>

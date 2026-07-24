@@ -33,7 +33,7 @@ export default function FirstMemoryPrompt({ wing, room, onUpload }: FirstMemoryP
         borderRadius: "1.5rem",
         padding: isMobile ? "2rem 1.75rem" : "2.5rem 2.75rem",
         border: `0.09375rem solid ${T.color.cream}`,
-        boxShadow: "0 1rem 4rem rgba(44,44,42,.18)",
+        boxShadow: "0 1rem 4rem rgba(64,59,54,.18)",
         maxWidth: isMobile ? "20rem" : "23.75rem",
         width: isMobile ? "calc(100vw - 3rem)" : "auto",
       }}>

@@ -50,23 +50,23 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
       <div ref={containerRef} role="dialog" aria-modal="true" aria-label={tTrack(track.nameKey)} onKeyDown={(e) => { if (e.key === "Escape") onClose(); handleKeyDown(e); }} style={{
         position: "relative", zIndex: 1,
         width: "95%", maxWidth: "32.5rem", maxHeight: "85vh",
-        background: T.color.linen, borderRadius: "1.25rem",
-        boxShadow: "0 1.5rem 5rem rgba(44,44,42,.3)",
-        border: `1px solid ${T.color.cream}`,
+        background: T.color.linen, borderRadius: "1rem",
+        boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token S2
+        border: "0.0625rem solid #E3D6BC", // Atrium hairline
         display: "flex", flexDirection: "column",
-        animation: "fadeUp .35s ease",
+        animation: "fadeUp .3s ease",
         overflow: "hidden",
       }}>
         {/* Header */}
         <div style={{
           padding: "1.5rem 1.5rem 1.25rem",
-          borderBottom: `1px solid ${T.color.cream}`,
+          borderBottom: "0.0625rem solid #E3D6BC", // Atrium hairline
           background: `linear-gradient(180deg, ${track.color}08 0%, ${T.color.linen} 100%)`,
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
               <div style={{
-                width: "3rem", height: "3rem", borderRadius: "0.875rem",
+                width: "3rem", height: "3rem", borderRadius: "0.85rem",
                 background: `${track.color}18`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "1.5rem",
@@ -74,18 +74,18 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
               <div>
                 <h2 style={{
                   fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
-                  color: T.color.charcoal, margin: 0,
+                  color: "#403B36", margin: 0, // Atrium ink
                 }}>{tTrack(track.nameKey)}</h2>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: 0,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: 0, // Atrium meta/muted
                 }}>{tTrack(track.descriptionKey)}</p>
               </div>
             </div>
             <button onClick={onClose} aria-label={t("close")} style={{
-              width: "2rem", height: "2rem", borderRadius: "1rem", border: `1px solid ${T.color.cream}`,
-              background: T.color.white, cursor: "pointer", fontSize: "1rem", color: T.color.muted,
+              width: "2rem", height: "2rem", borderRadius: "1rem", border: "0.0625rem solid #E3D6BC", // Atrium hairline
+              background: T.color.white, cursor: "pointer", fontSize: "1rem", color: "#716A5E",
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-              transition: "opacity .15s",
+              transition: "opacity .2s ease",
             }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.7"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
@@ -95,12 +95,12 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
           {/* Progress bar */}
           <div style={{ marginTop: "1rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.375rem" }}>
-              <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
+              <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
                 {progress.stepsCompleted.length} {t("of")} {track.steps.length} {t("completed")}
               </span>
               <span style={{
-                fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
-                color: isComplete ? T.color.sage : track.color,
+                fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+                color: isComplete ? "#56683C" : track.color, // Atrium sage
               }}>{pct}%</span>
             </div>
             <div
@@ -110,24 +110,24 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
               aria-valuemax={100}
               style={{
                 width: "100%", height: "0.5rem", borderRadius: "0.25rem",
-                background: `${T.color.sandstone}20`, overflow: "hidden",
+                background: "#EFE9DF", overflow: "hidden", // Atrium pre-mixed opaque (no alpha band)
               }}
             >
               <div style={{
                 width: `${pct}%`, height: "100%", borderRadius: "0.25rem",
                 background: isComplete
-                  ? `linear-gradient(90deg,${T.color.sage},${T.color.sage})`
+                  ? "#56683C" // Atrium sage
                   : `linear-gradient(90deg,${track.color}cc,${track.color})`,
-                transition: "width .8s ease",
+                transition: "width .3s ease",
               }} />
             </div>
           </div>
 
           {isComplete && (
             <div style={{
-              marginTop: "0.75rem", padding: "0.5rem 0.75rem", borderRadius: "0.5rem",
-              background: `${T.color.sage}10`, border: `1px solid ${T.color.sage}20`,
-              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.sage,
+              marginTop: "0.75rem", padding: "0.5rem 0.75rem", borderRadius: "0.75rem",
+              background: "#EFF2E8", border: "0.0625rem solid #DFE3D2", // Atrium sage tray + border
+              fontFamily: T.font.body, fontSize: "0.8125rem", color: "#56683C",
               textAlign: "center",
             }}>
               {t("trackCompleted", { points: String(track.completionBonus) })}
@@ -151,14 +151,14 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                   display: "flex", gap: "0.875rem", padding: "0.875rem 0.75rem",
                   borderRadius: "0.75rem",
                   background: isNext ? `${track.color}06` : "transparent",
-                  border: isNext ? `1px solid ${track.color}18` : "1px solid transparent",
+                  border: isNext ? `0.0625rem solid ${track.color}18` : "0.0625rem solid transparent",
                   animation: `fadeUp .3s ease ${i * 0.04}s both`,
                 }}
               >
                 {/* Step indicator */}
                 <div style={{
                   width: "1.75rem", height: "1.75rem", borderRadius: "0.875rem", flexShrink: 0,
-                  border: isDone ? "none" : `2px solid ${isNext ? track.color : T.color.sandstone}`,
+                  border: isDone ? "none" : `0.125rem solid ${isNext ? track.color : "#E3D6BC"}`, // Atrium hairline ink
                   background: isDone ? track.color : "transparent",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   transition: "all .3s ease",
@@ -171,8 +171,8 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                   )}
                   {!isDone && (
                     <span style={{
-                      fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600,
-                      color: isNext ? track.color : T.color.muted,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
+                      color: isNext ? track.color : "#716A5E",
                     }}>{i + 1}</span>
                   )}
                 </div>
@@ -181,18 +181,18 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: isDone ? 500 : 600,
-                    color: isDone ? T.color.muted : T.color.charcoal,
+                    color: isDone ? "#716A5E" : "#403B36", // Atrium muted / ink
                     textDecoration: "none",
                   }}>{tTrack(step.titleKey)}</div>
                   <div style={{
-                    fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
-                    lineHeight: 1.5, marginTop: "0.125rem",
+                    fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
+                    lineHeight: 1.4, marginTop: "0.125rem",
                   }}>{tTrack(step.descriptionKey)}</div>
 
                   {/* Hint for incomplete steps */}
                   {!isDone && (
                     <div style={{
-                      fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.walnut,
+                      fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", // Atrium muted (walnut is non-text ink)
                       marginTop: "0.375rem", fontStyle: "italic", lineHeight: 1.4,
                     }}>{tTrack(step.hintKey)}</div>
                   )}
@@ -202,13 +202,13 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                     <button
                       onClick={() => handleStepAction(step.navigateTo)}
                       style={{
-                        marginTop: "0.5rem", padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
+                        marginTop: "0.5rem", padding: "0.375rem 0.875rem", borderRadius: "0.75rem",
                         border: "none", minHeight: "2.75rem",
                         background: `linear-gradient(135deg,${track.color}cc,${track.color})`,
-                        color: "#FFF", fontFamily: T.font.body, fontSize: "0.75rem",
-                        fontWeight: 600, cursor: "pointer", transition: "transform .2s",
+                        color: "#FFF", fontFamily: T.font.body, fontSize: "0.8125rem",
+                        fontWeight: 600, cursor: "pointer", transition: "transform .2s ease",
                       }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.03)"; }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-0.1875rem)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.transform = "none"; }}
                     >
                       {step.navigateTo === "legacy" ? t("openLegacy") :
@@ -232,7 +232,7 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
                 {/* Points */}
                 <div style={{
                   fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
-                  color: isDone ? T.color.goldLight : `${T.color.sandstone}80`,
+                  color: isDone ? "#9A4F2A" : "#716A5E", // Atrium terracotta glyph / muted (gold reserved for the palace)
                   flexShrink: 0, paddingTop: "0.125rem",
                 }}>
                   {isDone ? `+${step.pointValue}` : `${step.pointValue} ${t("pts")}`}
@@ -244,14 +244,14 @@ export default function TrackDetailPanel({ trackId, onClose, onNavigate }: Track
 
         {/* Footer with total points for this track */}
         <div style={{
-          padding: "0.75rem 1.5rem", borderTop: `1px solid ${T.color.cream}`,
+          padding: "0.75rem 1.5rem", borderTop: "0.0625rem solid #E3D6BC", // Atrium hairline
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: `${T.color.warmStone}80`,
+          background: "#ECE5DA", // Atrium pre-mixed opaque (warmStone over linen)
         }}>
-          <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E" }}>
             {t("trackPointsEarned")}
           </span>
-          <span style={{ fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 700, color: T.color.goldLight }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 700, color: "#9A4F2A" }}>
             {progress.stepsCompleted.reduce((sum, stepId) => {
               const step = track.steps.find((s) => s.id === stepId);
               return sum + (step?.pointValue || 0);
