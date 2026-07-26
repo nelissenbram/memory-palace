@@ -1,0 +1,334 @@
+{
+  "changes": [
+    {
+      "rank": 1,
+      "zone": "tokens-foundation",
+      "kind": "design",
+      "title": "Create src/lib/libraryTokens.ts mirroring AtriumRelay exactly (RT ramp, SHADOW, ACCENT, HAIRLINE, TRAY, Overline) and import into all 5 files",
+      "spec": "New module duplicating AtriumRelay.tsx L84-135 verbatim: RT {overline 0.6875, meta 0.8125, body 0.9375, titleS 1.0625, titleM 1.1875, titleL 1.375, lhDisplay 1.15, lhBody 1.4}; SHADOW {0:'none',1:'0 0.25rem 1rem rgba(64,59,54,0.07)',2:'0 0.5rem 1.5rem rgba(64,59,54,0.14)'}, HOVER_SHADOW '0 0.75rem 1.75rem rgba(64,59,54,0.16)', TOP_HIGHLIGHT 'inset 0 0.0625rem 0 rgba(255,255,255,0.5)'; INK '#403B36', MUTED '#716A5E', EMBER_GLYPH '#9A4F2A', EMBER '#B85C38', GOLD '#D4AF37', HAIRLINE '#E3D6BC', TRAY_SANDSTONE '#F6EBE3'; the wing ACCENT record; and re-export the Overline component (import from AtriumRelay so it stays single-sourced, do not fork it). Import into LibraryView, LibrarySidebar, LibraryCards, LibrarySearch, LibraryAnimations. Add an in-file comment codifying the gold rule: wing-accent = identity/at-rest, EMBER #B85C38 = interactive/active state, GOLD #D4AF37 = palace-only (wing seals, focus rings, on-this-day, time-capsule seal).",
+      "why": "Every other change re-specifies the same hexes/shadows/ramp; a single shared module is the literal definition of cohesion and makes changes 2-30 mechanical rather than judgement calls. Verified: AtriumRelay L84-135 holds exactly these constants and exports Overline (L129).",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 2,
+      "zone": "wings-rooms-nav",
+      "kind": "both",
+      "title": "Re-token the wings/rooms nav onto INK & EMBER: kill generic gold, ship tray+hairline+warm-shadow grammar across sidebar + mobile bars",
+      "spec": "LibrarySidebar.tsx + mobile-bar block of LibraryView (~1139-1352): (1) replace the gold-shimmer H1 (LibrarySidebar 263-280: fontWeight 300, gold gradient, lsb-shimmer 4s infinite) with Fraunces 600 INK #403B36 lh1.15 + a small-caps Overline eyebrow above in MUTED #716A5E full-opacity; drop the infinite shimmer. (2) gold divider (297-315, 308) and all golden interior dividers become HAIRLINE #E3D6BC at 0.0625rem; a gilt hairline is used ONLY at the 'the palace itself' seam. (3) every '0.0625rem solid T.color.cream' -> '#E3D6BC'; the container cool shadow (256 '0.25rem 0 2rem rgba(44,44,42,0.04)') and all card shadows -> SHADOW1/2 + TOP_HIGHLIGHT on active. (4) charcoal->INK, walnut->MUTED, muted #857B70->#716A5E full opacity (remove 0.7/0.55 double-dimming on section labels + the search magnifier opacity 0.6 at 321). (5) 'W' section-label SVG gold stroke -> EMBER_GLYPH #9A4F2A; mobile 'All' pill gold-active -> INK text + EMBER ring; wing-active accent uses w.accent, never gold. (6) mobile tray gradients (1146/1271) + desktop wing bands -> opaque TRAY_SANDSTONE #F6EBE3. (7) active-pill scale(1.05) -> translateY(-0.1875rem)+SHADOW1; wrap lsb-shimmer/lsb-pill-enter/lsb-wing-enter in prefers-reduced-motion no-op.",
+      "why": "The nav is the persistent chrome in every Library state and today violates 'gold reserved for the palace' in ~5 places (shimmer H1, W-glyph, All-pill, dividers, progress) while running cool charcoal shadows. Confirmed at LibrarySidebar 256/271/308 and LibraryView 1169/1196. One disciplined pass makes the whole wings->rooms zone read as the same room as the Atrium.",
+      "effort": "medium",
+      "wow": 3
+    },
+    {
+      "rank": 3,
+      "zone": "cards",
+      "kind": "design",
+      "title": "Re-token the grid memory card: warm-ink shadows, ink title, hairline border, ember search-mark (retire cool rgba(44,44,42) + gold mark)",
+      "spec": "LibraryCards.tsx LibraryMemoryCard (365-923): (1) card box (442-463): border cream->#E3D6BC (hover keeps wing-accent+'40'); replace BOTH cool shadow strings (451-458) with SHADOW1 at rest, HOVER_SHADOW+TOP_HIGHLIGHT on hover; hover translateY(-0.25rem)->(-0.1875rem); transition 0.4s cubic-bezier->0.25s ease; keep rgba(255,255,255,0.72) blur (linen stays). (2) title (840-853): charcoal->#403B36, weight 700->600, keep 0.9375rem, drop letterSpacing. (3) subtitle/desc/location (856-909): muted/walnut->#716A5E full opacity; location 0.625rem->0.6875rem (meta floor). (4) HighlightText mark (359): T.color.gold+'55' bg -> 'rgba(154,79,42,0.18)', color inherit. (5) keep the per-memory bottom HSL strip (912-921) as intentional memory-hue signature, cap opacity. Guard room-card image scale(1.05) hover + card fade with prefers-reduced-motion.",
+      "why": "Grid is the default, densest surface; its shadow colour and title ink set the whole Library temperature. The cool rgba(44,44,42) shadows read grey/blue next to the Atrium's warm-ink cards and the gold search-mark is a direct palette violation. Verified at LibraryCards 450-458.",
+      "effort": "medium",
+      "wow": 3
+    },
+    {
+      "rank": 4,
+      "zone": "header-toolbar",
+      "kind": "design",
+      "title": "Rebuild LibraryHeader as an engraved ledger-plate: Overline eyebrow + Fraunces ink title + accent/gilt hairline rule",
+      "spec": "LibraryAnimations.tsx LibraryHeader (150-307): (1) title h2 (249-264): charcoal->#403B36, size isMobile?titleS(1.0625):titleM(1.1875), weight 600, lh1.15, drop letterSpacing. Move the inline 'Room' fragment (263, banned 0.875rem muted) OUT into an Overline ABOVE the h2 (0.6875/700/0.12em/uppercase) showing the wing name in the wing accent-glyph tone (#9A4F2A / #56683C, NEVER gold); h2 shows the room (or wing) name. (2) breadcrumb p (267-287): ->#716A5E full opacity, 0.75rem->0.8125rem, separators recolored. (3) back button (188-221): border cream->#E3D6BC, bg #FCFAF5, color #716A5E, 0.875rem->0.9375rem; remove scale(1.05) hover -> translateY(-0.1875rem)+SHADOW1; add :focus-visible outline 0.1875rem #D4AF37 offset 0.1875rem. (4) header plate: SHADOW1 + TOP_HIGHLIGHT, radius 1rem, keep linen-blur. (5) decorative bar (293-304): height 0.125rem->0.0625rem; at wing/room-root render gilt rule 'linear-gradient(to right,#D4AF37,rgba(212,175,55,0.35) 40%,transparent)' (wing seal); inside a room use the wing-accent rule so gold stays reserved. (6) cubic-bezier enters (206/232/242/260)->ease + reduced-motion no-op.",
+      "why": "The header is the first thing the eye lands on entering a room; the near-black title + grey breadcrumb + rainbow bar break continuity the instant you leave the Atrium. Overline+ink+gilt-rule is the exact mandated section-header grammar in a self-contained ~30-line edit.",
+      "effort": "low",
+      "wow": 3
+    },
+    {
+      "rank": 5,
+      "zone": "header-toolbar",
+      "kind": "both",
+      "title": "Ink & Ember the action bar: retire gold Import/Publish, make the view-switch a recessed tray, add always-on desktop sort",
+      "spec": "LibraryView.tsx: (A) Import button (1634-1662): gold gradient -> EMBER #B85C38 bg, #FCFAF5 text, radius 0.75rem, SHADOW1; remove spotlightPulse infinite (1653); hover translateY(-0.1875rem)+SHADOW2. (B) Publish (1531-1555): remove all gold -> border #E3D6BC, bg #FCFAF5, color #403B36 / #716A5E disabled. (C) writeStory/aiLabel/addLocation (1498-1530): walnut->#716A5E, active/spotlit -> EMBER #B85C38 glyph #9A4F2A, border->#E3D6BC; no-room state keeps full opacity #716A5E and shows the existing selectRoomFirst hint on tap (not dim-to-0.55); remove spotlightPulse (1524). (D) view-mode tray (1683-1702): wrap in recessed TRAY -> bg #F6EBE3, border #E3D6BC, radius 0.85rem, pad 0.25rem; selected chip bg #FCFAF5 + SHADOW1 + TOP_HIGHLIGHT (replace 1692/1695/1698 rgba(44,44,42) shadows), icon stroke selected #403B36 (1693/1696/1699) / unselected #716A5E; each btn radius 0.7rem, aria-pressed + focus ring. (E) FUNCTIONALITY: the switch is gated 'selectedRoom &&' (1683) with no desktop sort -> lift the switch to always render (over room-overview + search too) and add a compact sort dropdown reusing the mobileSortOpen markup (1407-1449) restyled: popup SHADOW2, border #E3D6BC, active item bg #F6EBE3 color #B85C38.",
+      "why": "Two gold buttons here directly break 'gold=palace' and out-shout the memories; the view-switch vanishing until a room is entered and mobile-only sort are real friction. Verified: switch gated at 1683, cool shadows at 1692-1698, no desktop sort exists. One edit removes the biggest palette violation AND closes the sort gap.",
+      "effort": "medium",
+      "wow": 3
+    },
+    {
+      "rank": 6,
+      "zone": "cards",
+      "kind": "design",
+      "title": "Re-token the list-view rows to card grammar: hairline border, ink title, meta ramp, warm hover lift",
+      "spec": "LibraryView.tsx list block (2277-2347): row border cream->#E3D6BC (selected keeps currentWing.accent); bg rgba(255,255,255,0.75) kept, selected->`${accent}0F`; radius 0.625rem->0.7rem; title span (2328-2338) 0.875rem(BANNED)->0.9375rem, charcoal->#403B36, weight 500->600; type sub-span (2339-2343) muted->#716A5E, keep 0.6875rem; add hover translateY(-0.1875rem)+SHADOW1 via onMouseEnter/Leave (rows are flat today); thumbnail radius 0.375rem->0.5rem + 0.0625rem #E3D6BC inset ring; selection checkbox border sandstone->#E3D6BC. Convert libCardEnter cubic-bezier->ease + reduced-motion no-op.",
+      "why": "List view still runs banned 0.875rem charcoal on cream borders with no hover affordance, so grid->list feels like leaving the design system. Bringing rows onto meta ramp + hairline + warm lift keeps the three views one continuous language.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 7,
+      "zone": "cards",
+      "kind": "design",
+      "title": "Re-token the timeline view: warm spine, gilt day-node frames, Fraunces ink date headers, hairline rows",
+      "spec": "LibraryView.tsx timeline block (2348-2431): (1) vertical line (2352-2355): gradient `${accent}44->cream` -> `${wingAccent}55->#E3D6BC`. (2) date-header dot (2373-2377): keep accent fill but ring -> '0 0 0 0.125rem #FCFAF5, 0 0 0 0.1875rem #D4AF37' so each day-node reads as a small gilt frame (licensed palace-gold, tying to on-this-day vocabulary); date label (2378-2384) charcoal->#403B36, keep display + 0.8125rem. (3) row button (2395-2403): border cream->#E3D6BC, selected `${accent}08`->`${accent}0F`, radius 0.625rem->0.7rem, add hover translateY(-0.1875rem)+SHADOW1; title (2412) charcoal->#403B36; desc/time (2416/2422) muted->#716A5E, desc 0.625rem->0.6875rem. (4) libCardEnter cubic-bezier->ease + reduced-motion no-op.",
+      "why": "Timeline is the most emotionally resonant view for reliving a life, yet uses charcoal-on-cream and a cool spine. A warm spine + gilt day-nodes aligns it AND previews the on-this-day gold vocabulary so all three views share one temperature.",
+      "effort": "low",
+      "wow": 3
+    },
+    {
+      "rank": 8,
+      "zone": "cards",
+      "kind": "design",
+      "title": "Re-token LibraryRoomCard (room-overview grid): warm-ink shadows, ink title + Overline, hairline, ember +Add, drop scale pops",
+      "spec": "LibraryCards.tsx LibraryRoomCard (93-332): (1) box (132-151): border cream->#E3D6BC (hover accent+'50'); replace both cool shadows (141-148) with SHADOW1 rest / HOVER_SHADOW+TOP_HIGHLIGHT hover; hover translateY(-0.25rem)->(-0.1875rem); 0.4s cubic-bezier->0.25s ease. (2) cover overlay gradients (177-187): rgba(44,44,42,...)->warm rgba(64,59,54,...). (3) +Add (208-245): keep EMBER family, remove scale(1.15)->translateY(-0.1875rem)+shadow step, add focus ring. (4) floating icon badge (273-293): shadow rgba(44,44,42,.12)->rgba(64,59,54,0.12); remove scale(1.08) hover. (5) title (303-317): charcoal->#403B36, weight 700->600, drop letterSpacing; inline 'Room' prefix (315, 0.8125rem muted)->Overline eyebrow above in wing accent-glyph tone. (6) count line (318-327): 0.75rem->0.8125rem, muted->#716A5E. Guard image scale(1.05) hover with reduced-motion.",
+      "why": "The room-overview grid is what you see the moment you open a wing; its temperature frames the whole browse. It repeats the exact cool-shadow/charcoal/scale-pop violations of the memory card; aligning it keeps the wing->room->memory descent seamless.",
+      "effort": "medium",
+      "wow": 3
+    },
+    {
+      "rank": 9,
+      "zone": "header-toolbar",
+      "kind": "both",
+      "title": "'On This Day' gilt-frame resurfacing strip in the header when memories match today's month+day",
+      "spec": "New presentational strip in LibraryView between the header/desktop-search block (~1485) and the room-tools toolbar (1487) so it spans mobile+desktop. Derive onThisDay from already-loaded memories (selected-room userMems, or prefetched rooms at __all__): match new Date(mem.date||mem.createdAt).getMonth()/getDate() to today; cap ~6; render nothing if empty (never scolding). Styling = sanctioned gilt frame: border 0.0625rem #D4AF37, bg 'linear-gradient(160deg,#FCF6E5 0%,#FCFAF5 78%)' (AtriumRelay ACCENT.gold.tileBg), radius 1rem, SHADOW1+TOP_HIGHLIGHT, pad 0.75rem 1rem. Lead with Overline '#8A6410' t('onThisDay') + year-delta meta ('3 years ago', 0.8125rem #716A5E). Then a horizontal scroll row (overflowX auto, scrollbar hidden, edge-fade mask like tools row 1490) of 3rem gilt-edged MediaThumb thumbs each opening setDetailPanelMem/detailMem. Motion: container libFadeIn 0.35s ease both, NO infinite loops; the shared 4s warmth breath may pulse box-shadow ONLY when reduced-motion is off, else static.",
+      "why": "The system explicitly names on-this-day gilt frames + warmth as the activation vocabulary already on the Atrium, and there is no On This Day anywhere in LibraryView (verified: zero matches). Highest-wow addition for the zone: it turns the Library into a place you return to daily and is the ONE sanctioned gold in the header.",
+      "effort": "medium",
+      "wow": 5
+    },
+    {
+      "rank": 10,
+      "zone": "wings-rooms-nav",
+      "kind": "both",
+      "title": "Warmth-lit wing seals: engraved medallion + ember/gilt glow reading each wing's recency (ports warmth.ts)",
+      "spec": "LibrarySidebar.tsx: per wing derive newest-memory date and call computeWarmthLevel(dates) from src/lib/warmth.ts -> 0 quiet /1 embers /2 candlelit. Restyle desktop icon circle (~472-492): base `linear-gradient(135deg,${w.accent}14,${w.accent}22)` on opaque cream, engraved inset ring 'inset 0 0 0 0.0625rem #E3D6BC' + TOP_HIGHLIGHT; layer warmth as OUTER boxShadow -> L2 '0 0 0.9rem rgba(212,175,55,0.32)' (gilt = palace lit, the licensed gold), L1 '0 0 0.7rem rgba(184,92,56,0.28)', L0 none. Only the L2 ring animates @keyframes lib-ember-breath{0%,100%{opacity:.7}50%{opacity:1}} at 4s (matching the Atrium's single breath), gated behind reduced-motion. Mobile pills: add a 0.375rem dot after the count badge colored EMBER (L1)/gilt (L2), hidden at L0. Repurpose the existing gold progress bar (528-551): recolor its fill to the warmth colour so 'fullness' and 'aliveness' share one gesture, or drop it for the ring.",
+      "why": "The brief names Family Embers + on-this-day gilt frames as the activation vocabulary, and warmth.ts (computeWarmthLevel, verified present, unused in Library) is entirely absent from this zone. A glowing seal makes the nav emotionally legible - you feel which parts of your life you've tended - porting the Atrium's signature warmth grammar with already-built data.",
+      "effort": "medium",
+      "wow": 5
+    },
+    {
+      "rank": 11,
+      "zone": "search-filter",
+      "kind": "both",
+      "title": "Persistent facet chip lane under search: media-type + gilt 'On This Day'/Has place/Described chips that survive room switches",
+      "spec": "LibraryView nav handlers (989/1090/1111/1169/1196/1289/1313) remove the unconditional setFilterType(null) so an active facet persists across navigation (clear query only on explicit clear - see r13). Render LibraryFilterBar (LibrarySearch.tsx 294-354) inline under the search row on mobile+desktop (absent from the shell today). Re-skin its Chip (357-416): border cream->#E3D6BC; inactive walnut->#716A5E; active bg raw accent -> EMBER #B85C38 with #FCFAF5 ink; radius 1rem->2rem (pills); shadow `0 1px 4px ${accent}30`->SHADOW1; hover translateY(-1px)->(-0.1875rem)+shadow step; count badge bg->'rgba(154,79,42,0.10)'; drop the scale spring in lsFilterChipIn (15-18) for opacity+translateY(0.375rem) + reduced-motion no-op; add focus ring. Add computed facet chips: onThisDay (month+day==today, GILT border 0.125rem #D4AF37 - the licensed gold), hasPlace (locationName truthy), described (desc.length>0); each an extra predicate in filteredRoomMems/crossWingResults.",
+      "why": "Filters are buried in an unused component, type-only, and evaporate on navigation (verified: setFilterType(null) in 8 handlers) - you cannot keep 'show me photos' active while moving rooms. Surfacing persistent facets (esp. the gilt On This Day tying into warmth) is the concrete curation+activation upgrade, earning the licensed gold in correct pill grammar.",
+      "effort": "medium",
+      "wow": 4
+    },
+    {
+      "rank": 12,
+      "zone": "header-toolbar",
+      "kind": "functionality",
+      "title": "Active-facet status line: dismissible query + type chips with live result count (shares the reset-removal with r11/r13)",
+      "spec": "After removing the query/filter resets in the nav handlers (shared with r11/r13), render in the shared header cluster (after LibraryHeader) - when (query||filterType) - a status line: small-caps Overline t('filtering') #716A5E, then dismissible pills (radius 2rem, bg #F6EBE3, border 0.0625rem #E3D6BC, color #403B36, meta 0.8125rem): a query chip ('\"{query}\"') and a type chip, each with an inline x clearing just that facet; trailing meta '{searchResultCount} results' #716A5E full opacity (reuse searchResultCount already passed to LibrarySearch at 1367/1480). Chips get focus ring + translateY(-0.1875rem) hover.",
+      "why": "Losing your search the instant you tap a room makes curating a lifetime frustrating; surfacing active filters as system-styled chips with a live count fixes the bug AND adds 'you are here / this is filtered' legibility. Overlaps r11 on reset-removal - do that once.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 13,
+      "zone": "wings-rooms-nav",
+      "kind": "functionality",
+      "title": "Stop nuking search on every tap; add live per-room memory counts to the mobile room bar",
+      "spec": "(1) LibraryView nav handlers (989/1090/1111/1169/1196/1289/1313, shared with r11/r12) keep query live; if a full reset is wanted on 'All' pills, gate it so a non-empty query is preserved (clear only filterType), enabling the 'search then browse rooms to narrow' loop; verify the search-results branch keys off query so it re-filters in the new scope. (2) mobile rooms bar (1308-1335): add a count badge inside each room pill after the name span, mirroring the desktop badge (LibrarySidebar 555-576): span minWidth 1.125rem, height 1.125rem, radius 2rem, bg `${wingAccent}18` inactive / `${accent}26` active, color #403B36 / accent, 0.6875rem/700, via the same count fn feeding the desktop sidebar; add it to the 'All' room pill (wing total); hide when count===0.",
+      "why": "Two concrete browsing gaps: search-context loss on navigation (verified: resets in every handler) is a curation dead-end, and count-blind mobile room pills make phone browsing guesswork. Both are small contained edits with outsized daily value and zero paradigm change. Coordinate the reset-removal with r11/r12.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 14,
+      "zone": "search-filter",
+      "kind": "design",
+      "title": "Retune the search field, Enter/Sort buttons, and sort popup onto INK & EMBER tokens",
+      "spec": "LibrarySearch.tsx: input (167-185) border '1px solid cream'->'0.0625rem #E3D6BC' (focus->wing accent), radius 1.5rem->0.85rem (control), desktop 0.875rem(BANNED)->0.9375rem, charcoal->#403B36, cool inset 'inset 0 1px 2px rgba(0,0,0,0.04)'->warm 'inset 0 0.0625rem 0.125rem rgba(64,59,54,0.05)', focus ring accent+'2E' kept. Magnifier + placeholder muted->#716A5E full opacity (drop the italic dimming ~175). Clear button (230-231) bg '#F0E4CE' color #716A5E. Kbd hint (264-268) border #E3D6BC color #716A5E 0.625rem->0.6875rem. Result badge (206-211) bg 'rgba(154,79,42,0.10)' color #9A4F2A. Both square action buttons: border cream->#E3D6BC, radius 0.85rem, focus ring + translateY(-0.1875rem) hover; sort popup shadow->SHADOW2, active item bg #F6EBE3 color #B85C38.",
+      "why": "The search cluster is the toolbar centerpiece and currently reads as a cool generic filter bar (pill-radius input, banned 0.875rem, cool insets, gold accents). Retuning to control-radius + ink + warm insets is essential cohesion and pairs with the r5 sort control and r11 facet lane.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 15,
+      "zone": "cards",
+      "kind": "design",
+      "title": "Warm the card media overlays + badges: retire rgba(44,44,42)/black on covers, unify play/type/date chips",
+      "spec": "LibraryCards.tsx media section (501-835): recolor every rgba(44,44,42,...) and rgba(0,0,0,...) overlay/vignette/glass to warm rgba(64,59,54,...) - the image vignette (528-537), video/audio scrims (554-558), the hover-tooltip bg (473 rgba(44,44,42,.92))->rgba(64,59,54,0.92), the relative-date badge (729-746) rgba(44,44,42,.5)->rgba(64,59,54,0.55) with #FCFAF5 text, and the type-icon badge (748-762) shadow. Play-button glass keeps white-on-scrim but drops the cool black shadow for warm ink. Type-icon badge color stays the wing accent. Date badge 0.5625rem->0.6875rem (meta floor). Keep per-memory HSL gradients for no-image tiles (intentional memory colour), just ensure text/scrims are warm.",
+      "why": "On photo-heavy walls the dark scrims and date/type chips are the second-most-visible ink after the card frame; leaving them cool-black undercuts the r3 warm-ink work. Finishing pass so every card - photo/video/audio/document - sits in one warm temperature.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 16,
+      "zone": "cards",
+      "kind": "design",
+      "title": "Kill infinite decorative loops across cards + empty state; convert cubic-bezier enters to ease + reduced-motion",
+      "spec": "LibraryCards.tsx KeyframesStyle (52-76): lc-wave, lc-float, lc-empty-float are infinite decorative loops (banned). Audio waveform (585-598) renders static bars at rest, animating lc-wave only while hovered AND behind prefers-reduced-motion no-op; retire lc-float on the hover tooltip (0s - remove the animation prop 482). LibraryAnimations.tsx empty state: libFloat 3-4s infinite on wing emoji (388) + room SVG (361) -> remove or gate behind reduced-motion; libScaleIn/libSlideUp cubic-bezier enters->ease. Replace cubic-bezier(0.22,1,0.36,1) EASE (17) with 'ease' for all >0 transitions, cap at 0.3s. Add one shared @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}} scoped to the library root.",
+      "why": "Motion budget is explicit: 0.2-0.3s ease, no spring/overshoot, no infinite decorative loops, every animation needs a reduced-motion fallback. Cards + empty state break all four rules (verified lc-wave/lc-float/lc-empty-float infinite). Makes the Library feel like the calm Atrium.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 17,
+      "zone": "header-toolbar",
+      "kind": "design",
+      "title": "Rebuild LibraryEmptyState in the parchment/engraved language: retire emoji, ink+Overline copy, ember CTA",
+      "spec": "LibraryAnimations.tsx LibraryEmptyState (309-end): replace the emoji WING_ICONS/ROOM_ICONS/magnifier (320-321, 382-408) with engraved-SVG language consistent with RelayVignettes.tsx/WingRoomIcons.tsx (an engraved room/frame/search glyph in #C9BCA0 line on parchment) - reuse a RelayVignette scene if one fits, else a simple engraved SVG. Title (413-424) charcoal->#403B36, display 600, 1.125rem->1.1875rem (titleM); add a small-caps Overline eyebrow above in #716A5E. Body copy->#716A5E full opacity 0.9375rem. Radial glow (343-350) accent+'08' kept but warm. Primary CTA -> EMBER #B85C38 bg, #FCFAF5 text, radius 0.75rem, SHADOW1, focus ring, translateY hover, NO scale. Remove libFloat infinite (see r16).",
+      "why": "Empty states are frequent for new users organising a fresh palace and are pure design surface; emoji + charcoal + floating loops read generic and break the engraved-parchment vignette language the system names as its illustration voice. Brings even 'nothing here yet' into the palace.",
+      "effort": "low",
+      "wow": 3
+    },
+    {
+      "rank": 18,
+      "zone": "wings-rooms-nav",
+      "kind": "both",
+      "title": "Gold focus rings + real hover elevation across every wing/room control",
+      "spec": "Add a shared className '.lib-nav-control' with a co-located <style> block in LibrarySidebar.tsx + LibraryView.tsx defining ':focus-visible{outline:0.1875rem solid #D4AF37;outline-offset:0.1875rem}' and ':hover{transform:translateY(-0.1875rem);box-shadow:SHADOW1->SHADOW2}'; apply to mobile wing pills (1194), room pills (1311), both 'All' pills (1168/1288), Enter-Palace + sort buttons (1372/1390), add-wing/add-room dashed pills, desktop wing buttons (LibrarySidebar 436) + room rows (664). On desktop the wing row lift -0.0625rem (464)->system -0.1875rem, swap its cool shadow (462)->SHADOW1. Wrap all transforms in prefers-reduced-motion no-op.",
+      "why": "Keyboard users get browser-default focus and pills feel dead on hover - both off-system. The gilt focus ring is the correct licensed place for palace-gold on controls, turning a compliance fix into a signature detail. Purely additive className + one style block per file, broad polish.",
+      "effort": "low",
+      "wow": 3
+    },
+    {
+      "rank": 19,
+      "zone": "header-toolbar",
+      "kind": "both",
+      "title": "Live memory-count datum in the header on the meta ramp with an Overline unit label",
+      "spec": "Add optional props memoryCount?:number and unitLabel?:string to LibraryHeaderProps (LibraryAnimations.tsx 138-148), passed from LibraryView (~1457-1467) using filteredRoomMems.length when a room is selected or the wing total otherwise. In the main row (180-291), after the Icon+Name block, add a flexShrink:0 right-aligned column: number in T.font.display, 1.1875rem (titleM), weight 600, color #9A4F2A (NOT gold), lh1.15, fontVariantNumeric 'tabular-nums'; beneath it an Overline (0.6875/700/0.12em/uppercase #716A5E) reading the translated 'memories' unit. Render only when memoryCount>0. On mobile drop the Overline, show just the tabular figure at titleS. Depends on r4.",
+      "why": "A count is the single most useful orienting datum for browsing a lifetime, and the system already treats datum+unit as a typographic tier (AtriumRelay RelayTile.datum). Fills the header's empty right edge with meaningful hierarchy and reinforces the Fraunces/Overline pairing.",
+      "effort": "low",
+      "wow": 3
+    },
+    {
+      "rank": 20,
+      "zone": "cards",
+      "kind": "design",
+      "title": "Section-header the content regions with small-caps Overline + gradient hairline rule (not boxed headers)",
+      "spec": "Wherever grid/list/timeline emit a group heading (room-overview 'Rooms' section, cross-wing search-results header, timeline date groups already partly styled), replace any boxed/charcoal heading with the system grammar: small-caps Overline (0.6875/700/0.12em/uppercase #716A5E) + gradient hairline rule 'linear-gradient(to right,#E3D6BC,transparent)' at 0.0625rem - reuse TuscanSectionHeader (imported LibraryCards 10) only if it already matches, else a 4-line inline component. Apply to the room-overview grid heading and the search-results count heading in LibraryView. Depends on r1 Overline export.",
+      "why": "The system mandates section headers be small-caps Overline + gradient hairline, not boxed. The Library's content regions lack a consistent heading grammar; adding the Atrium's lane-header cadence ties the card views to the shell and the Atrium in one gesture.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 21,
+      "zone": "wings-rooms-nav",
+      "kind": "design",
+      "title": "Rebuild the desktop sidebar type hierarchy onto the RT ramp (retire charcoal/walnut/0.875rem, full-opacity muted)",
+      "spec": "LibrarySidebar.tsx re-key text: subtitle (281-295) 0.75rem->0.8125rem muted->#716A5E; WINGS section label (~370-379) keep 0.12em/700 uppercase but gold->#716A5E full opacity, glyph SVG stroke gold->#716A5E; wing name span (~496-511) active 1.0625rem/idle 0.9375rem, weight active 600/idle 500, color->#403B36 (retire charcoal AND walnut; state carried by weight+shadow); wing count (512-526) 0.75rem->0.8125rem ->#716A5E; 'ROOMS IN {wing}' label (648-659) promote 0.5625rem/0.08em->Overline 0.6875rem/0.12em/700 #716A5E; room-item name (688-701) 0.75rem->0.8125rem #403B36 active / #716A5E idle; storage stats (886-908) 0.75rem->0.8125rem ->#716A5E, terracotta upgrade link #C66B3D->#9A4F2A; Atrium/Enter buttons (999/1036) 0.875rem(BANNED)->0.9375rem, charcoal->#403B36.",
+      "why": "The sidebar is entirely on legacy tokens - charcoal titles, walnut names, wrong-secondary muted, banned 0.875rem buttons, colour+opacity double-dimming on section labels (all forbidden). This is the typographic half of r2's colour pass; together they fully unify the desktop tree with the Atrium ramp.",
+      "effort": "medium",
+      "wow": 3
+    },
+    {
+      "rank": 22,
+      "zone": "search-filter",
+      "kind": "functionality",
+      "title": "A 'Sort by' covering date, oldest-first, title, type - the shared control for all views, persisted",
+      "spec": "Audit the sort options behind mobileSortOpen (LibraryView 1407-1449) + sort state; ensure the set covers newest-first (default), oldest-first, title A-Z, type, applied uniformly to grid (filteredRoomMems), list, and timeline (currently hard-sorts createdAt desc at 2357-2358 - make it respect the shared sort where sensible, or lock timeline chronological and disable the sort control with an aria note in timeline). Surface via the single sort dropdown from r5 so mobile+desktop share one control and state. Persist to localStorage alongside libraryViewMode (424/506 pattern).",
+      "why": "Curating a lifetime needs more than newest-first; oldest-first (relive from the beginning) and title/type are table-stakes. Consolidating into one persisted control (built in r5) closes the gap without new UI surface and prevents timeline/grid sort divergence. Verified: timeline hard-sorts at 2357-2358, viewMode already persists via localStorage.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 23,
+      "zone": "cards",
+      "kind": "functionality",
+      "title": "Bulk-action bar restyle + keyboard-friendly selection affordances in Ink & Ember",
+      "spec": "Locate the selection/bulk-action bar in LibraryView (selectMode/selectedMemIds, move/delete/publish batch). Re-token: bar bg linen + SHADOW2 + TOP_HIGHLIGHT, border-top 0.0625rem #E3D6BC, radius 1rem; primary (move/organise)->EMBER, secondary->quiet #716A5E outline, destructive delete->restrained terracotta #9A4F2A (never gold); selection checkboxes across list (2305-2316) + card views use accent fill with #E3D6BC idle border; add focus rings and 'Select all / Clear' as Overline-labelled text buttons. Count reads on meta ramp ('{n} selected' 0.8125rem #716A5E). Keep selected-card treatment consistent (accent border + `${accent}0F` wash).",
+      "why": "Organising is a first-class Library job and the bulk bar is where curation happens; today its controls are off-system and inconsistent between views. A cohesive, keyboard-accessible bulk bar makes mass-organising a lifetime feel deliberate and on-brand.",
+      "effort": "medium",
+      "wow": 2
+    },
+    {
+      "rank": 24,
+      "zone": "cards",
+      "kind": "functionality",
+      "title": "Cover-photo picker: let a room's cover be chosen from its memories (feeds LibraryRoomCard thumbUrl)",
+      "spec": "LibraryRoomCard already renders a thumbUrl (87/161-175) with no way to CHOOSE it - it falls back to a hue-gradient. Add a 'Set as room cover' action in MemoryDetail (or a hover action on a card in room view) that writes coverMemId/coverUrl onto the room (roomStore), and update the thumbUrl derivation feeding LibraryRoomCard to prefer it. Style the affordance as a quiet #716A5E control with an ember active state + gold focus ring; when set, show a tiny gilt 'cover' marker on that card. Fall back to newest-photo if unset (a sensible default is itself an improvement). Pairs with r8.",
+      "why": "Room covers are the visual anchors of the wing-overview grid; letting users curate which memory represents a room is a core organise/curate capability and makes the overview feel personal rather than randomly thumbnailed. Verified: thumbUrl exists at 87/161-175 with no picker.",
+      "effort": "medium",
+      "wow": 3
+    },
+    {
+      "rank": 25,
+      "zone": "header-toolbar",
+      "kind": "both",
+      "title": "Normalise the toolbar into one quiet rhythm: equal heights, gaps, control radii, single hairline base",
+      "spec": "After r5/r14 recolour the individual controls, audit the toolbar rhythm (room-tools row 1487-1579 + action bar 1626-1703): normalise all control heights to one value, gaps to 0.5rem, radii to the control band (0.7-0.85rem), and give the whole toolbar a single hairline base rule (0.0625rem #E3D6BC) instead of per-button borders where they crowd. Ensure the spotlight/onboarding highlight states (spotlightPulse refs removed in r5) use a static ember ring + SHADOW1, not infinite pulse. Confirm mobile + desktop toolbars share the same control tokens so the breakpoint switch is seamless.",
+      "why": "After the individual controls are recoloured they still need one rhythm (heights/gaps/radii) or the toolbar reads as a pile of differently-shaped buttons. A single quiet cadence is what makes the shell feel authored like the Atrium board rather than assembled.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 26,
+      "zone": "cards",
+      "kind": "functionality",
+      "title": "Empty-room 'first memory' invitation with engraved prompt + one-tap add",
+      "spec": "When a selected room has zero memories (the in-room empty branch feeding LibraryEmptyState type='room' at 2433-2439), render an inviting first-memory panel in the parchment language (building on r17): engraved room vignette, an Overline eyebrow, a warm one-line invitation ('This room is waiting for its first memory'), a prominent EMBER 'Add a memory' CTA opening the existing flow (setShowImportHub / setShowUpload). Calm, non-scolding, single CTA, gold focus ring, no infinite motion. Distinct from the search-empty state (keep that as a 'no results, clear filters' variant reusing the r12 chips). Depends on r17.",
+      "why": "The most common state for a fresh palace is empty rooms; turning that dead-end into a warm single-action invitation is a real onboarding/curation win and showcases the parchment language. Verified empty branch at 2433-2439.",
+      "effort": "low",
+      "wow": 3
+    },
+    {
+      "rank": 27,
+      "zone": "cards",
+      "kind": "functionality",
+      "title": "Detail-open transitions + adjacent-memory prev/next navigation for reliving in flow",
+      "spec": "When a memory opens (setDetailPanelMem/detailMem or MediaPlayer via setMediaPlayerIndex), pass the current ordered list (filteredRoomMems in the active sort) so MemoryDetail/RoomMediaPlayer can offer prev/next within the same room/scope; style prev/next as quiet #716A5E controls with gold focus rings + translateY hover, no scale. Ensure the open animation is a 0.25s ease fade/scale-in with reduced-motion fallback (not a spring). Lets a user step through a room's memories like turning pages without returning to the grid.",
+      "why": "Best-in-class 'reliving' means moving fluidly from one memory to the next; today opening a memory is a dead-end that bounces you back to the grid. Threading the ordered list into the detail view is a high-value functional upgrade that makes the Library feel like a curated album, and the calm transition keeps it on the motion budget.",
+      "effort": "medium",
+      "wow": 3
+    },
+    {
+      "rank": 28,
+      "zone": "search-filter",
+      "kind": "functionality",
+      "title": "Cross-wing search as a first-class scope: grouped, section-headered results with a scope toggle",
+      "spec": "Ensure cross-wing search (from __all__ or a global toggle) returns results grouped by wing->room with the r20 section-header grammar (Overline wing name + hairline rule) and a per-group count, each memory rendered with the LibraryMemoryCard subtitle breadcrumb (already supported, LibraryCards 856-871). Add a small scope toggle in the search cluster ('This room / This wing / Whole palace') as EMBER-active pills so users widen a search deliberately; persist last scope. Wire to the existing crossWingResults path so it reuses computed data. Depends on r20.",
+      "why": "Reliving a lifetime means finding a person or place across the whole palace, not one room. A grouped, breadcrumbed cross-wing result with an explicit scope toggle turns search from in-room filtering into real retrieval - a best-in-class capability - reusing existing components and r20 headers. Verified crossWingResults path exists (1739/1873/2019).",
+      "effort": "medium",
+      "wow": 3
+    },
+    {
+      "rank": 29,
+      "zone": "cards",
+      "kind": "design",
+      "title": "Retire remaining generic gold globally + codify wing-accent vs ember vs palace-gold semantics in-code",
+      "spec": "Sweep LibraryCards.tsx + LibraryView.tsx for remaining T.color.gold / goldDark / goldLight that are NOT 'the palace itself' (search mark 359 handled in r3; the locked time-capsule overlay 818-829 uses gold - that one IS 'the palace' framing a sealed memory, KEEP as gilt; any generic gold badge/border elsewhere -> EMBER or wing accent). Enforce via the r1 tokens: wing accent = identity/at-rest zone colour, EMBER #B85C38 = interactive/active, GOLD = palace-only (wing seals, focus rings, on-this-day, time-capsule seal). Add a brief code comment codifying this so future edits don't reintroduce generic gold.",
+      "why": "Cohesion is durable only if the gold-discipline rule is applied exhaustively and written down; scattered generic golds are exactly what made the Library drift. This audit closes the long tail and makes accent semantics unambiguous for future work.",
+      "effort": "low",
+      "wow": 2
+    },
+    {
+      "rank": 30,
+      "zone": "tokens-foundation",
+      "kind": "design",
+      "title": "Final acceptance sweep: eliminate every residual legacy token + verify radii and reduced-motion across all 5 files",
+      "spec": "After 1-29 land, grep LibraryView / LibrarySidebar / LibraryCards / LibrarySearch / LibraryAnimations for residual T.color.charcoal, T.color.walnut, any color+opacity double-dimming, rgba(44,44,42,...), rgba(0,0,0,...) shadows, fontSize '0.875rem', and 1px borders; replace each with r1 tokens (#403B36 / #716A5E full opacity / SHADOW / #E3D6BC / 0.9375rem / 0.0625rem). Verify radii in-band (cards 1rem, controls 0.7-0.85rem, pills 2rem) and every animation has a reduced-motion fallback. This is the acceptance pass guaranteeing zero legacy tokens remain.",
+      "why": "A cohesion overhaul is only 'done' when no legacy token survives; a final exhaustive sweep catches the inevitable stragglers the zone-by-zone passes miss and is the objective definition of 'the whole Library is unmistakably part of the elevated Atrium.'",
+      "effort": "medium",
+      "wow": 2
+    }
+  ],
+  "designNarrative": "The Library today reads as a competent but cool filing cabinet bolted onto a candlelit palace. Its chrome runs on legacy tokens the Atrium has already left behind, and I verified every one against the code: a fontWeight-300 gold-gradient H1 shimmering on a 4s infinite loop (LibrarySidebar 271-276), near-black T.color.charcoal titles, brown walnut secondary text, muted greys further dimmed with opacity, cool rgba(44,44,42,...) and pure-black card shadows (LibraryCards 451-458, LibraryView 1692-1698), invisible cream-on-cream hairlines, the banned 0.875rem type, spring cubic-beziers, three infinite decorative loops (waveform, float, empty-state bob), and — worst for cohesion — gold spent as a generic accent in at least five places: the shimmer H1, the WINGS glyph, the mobile All pill, the golden dividers (308), and the Import/Publish buttons. Gold is supposed to mean 'the palace itself.' Spending it on a filter button is the single loudest thing breaking continuity the instant you leave the Atrium.\n\nThe overhaul is DESIGN-COHESION-FIRST, and its spine is one shared token module (change 1) that duplicates AtriumRelay's exact RT ramp, three-step warm-ink SHADOW, wing ACCENT map, HAIRLINE #E3D6BC, TRAY sandstone, and the single Overline voice (all confirmed present at AtriumRelay L84-135) — so the Library literally cannot drift from the Atrium again. Everything downstream references it. From there the plan re-tokens the surfaces you actually look at, in order of visual weight: the persistent nav chrome (2), the default grid card (3), the header ledger-plate (4), and the action toolbar (5), then finishes the list and timeline views (6, 7) and the room-overview grid (8) so all three view modes and the wing→room→memory descent share one temperature. A tight semantic emerges and is codified in-code and swept exhaustively (29, 30): wing accent = identity/zone colour at rest, ember #B85C38 = interactive/active state, gold #D4AF37 = palace-only (wing seals, focus rings, on-this-day frames, the time-capsule seal at LibraryCards 818-829 which we deliberately KEEP as gilt because it frames a sealed memory). That written-down rule is what keeps the cohesion durable.\n\nCohesion alone would make a beautiful cabinet. The functional half makes it a place you return to and can actually curate a lifetime inside — and its signature moves port the Atrium's activation vocabulary directly rather than inventing new grammar. An On This Day gilt-frame resurfacing strip appears in the header when today's month+day matches (9), and warmth-lit wing seals glow ember/gilt by recency driven by the already-built-but-unused computeWarmthLevel from src/lib/warmth.ts (10) — I confirmed warmth.ts exports it and that the Library never calls it and has no On This Day anywhere. These are the two highest-wow additions and the only two sanctioned new golds. Around them, the plan fixes the genuine browsing friction I verified in code: search and filters are nuked on every single navigation tap (setFilterType(null) in eight handlers) and the view-mode switch is gated behind selectedRoom with no desktop sort at all — so we make facets persistent as a chip lane (11), surface active facets with a live count (12), add per-room counts to mobile pills (13), lift the view-switch to always render with a unified persisted sort (5, 22), and make cross-wing search a first-class grouped-and-scoped retrieval surface (28). The reliving loop is closed with room covers (24), a warm first-memory invitation for empty rooms (26), and prev/next adjacent-memory navigation so a room reads like an album you page through (27). The whole thing lands within the motion budget: three infinite loops removed, every cubic-bezier spring flattened to 0.2-0.3s ease, a single hover language of translateY(-0.1875rem)+one shadow step, gilt :focus-visible rings, and a blanket prefers-reduced-motion fallback (16). Read together, the 30 are one overhaul: the Library stops being a cool cabinet and becomes the same candlelit palace as the Atrium — and, for the first time, a place you want to come back to and can genuinely curate a lifetime inside.",
+  "phasing": [
+    "Pass 1 — Substrate (r1): create libraryTokens.ts mirroring AtriumRelay and wire imports into all five files. Nothing visual ships yet, but every later change becomes a mechanical token swap. Also drop the blanket prefers-reduced-motion root guard from r16 here so all subsequent motion inherits it.",
+    "Pass 2 — Chrome re-token (r2, r4, r21): the persistent nav (sidebar + mobile bars colour AND type ramp) and the header ledger-plate. This is the biggest single cohesion jump — the frame you see in every state stops being cool/gold-abusing. Kills the shimmer H1, gold dividers, charcoal/walnut, banned 0.875rem.",
+    "Pass 3 — The three views + cards (r3, r6, r7, r8, r15, r16): grid card, list rows, timeline, room-overview card, media overlays/badges, and the motion cleanup. After this the content area matches the chrome and all three view modes share one temperature.",
+    "Pass 4 — Toolbar & search re-token + core functional fixes (r5, r14, r12, r13, r25): Ink&Ember the action bar and search field, always-on view-switch + desktop sort, and the shared reset-removal that keeps search/filters alive across navigation with a live-count status line + mobile room counts. Design and the highest-value functional bug fix land together.",
+    "Pass 5 — Activation vocabulary (r9, r10, r11): On This Day gilt strip, warmth-lit wing seals via warmth.ts, and the persistent facet chip lane. The emotional heart — ports the Atrium's warmth/gilt grammar and is where the Library becomes a daily return.",
+    "Pass 6 — Curation & reliving depth (r22, r23, r24, r26, r27, r28): unified persisted sort, bulk-action bar, room-cover picker, empty-room invitation, prev/next detail navigation, cross-wing grouped search. The best-in-class functionality layer built on the now-consistent surfaces.",
+    "Pass 7 — Polish & acceptance (r17, r18, r19, r20, r29, r30): parchment empty state, gold focus rings + hover across all controls, header count datum, section-header grammar, exhaustive generic-gold retirement, and the final legacy-token sweep that certifies zero drift remains."
+  ],
+  "quickWins": [
+    "r1 — the shared token module: low effort, unblocks and de-risks everything else; ship it first even though it's invisible.",
+    "r4 — header ledger-plate rebuild: ~30-line self-contained edit, instantly signals 'same palace, deeper room' the moment you enter any view.",
+    "r3 — grid memory card re-token: the default/densest surface; swapping cool shadows + charcoal title + gold search-mark moves the whole Library's temperature in one file.",
+    "r6 / r7 — list + timeline re-token: low effort each, removes the banned 0.875rem and cool spine so switching view modes no longer feels like leaving the system.",
+    "r13 + r12 — stop nuking search on tap + active-facet status line: the single most-felt browsing bug fix (verified: resets in eight handlers), small contained edits.",
+    "r16 — motion cleanup + reduced-motion guard: removes three infinite loops and flattens springs; makes the Library instantly feel as calm as the Atrium.",
+    "r18 — gold focus rings + hover elevation: additive className + one style block per file; turns an a11y compliance fix into a signature palace-gold detail across the whole nav."
+  ],
+  "doNot": [
+    "Do NOT replace the wings→rooms + grid/list/timeline paradigm. The brief and constraints are explicit: improve in place. No masonry-only rewrite, no folder-tree replacement, no single infinite-scroll feed.",
+    "Do NOT fork the design tokens or the Overline component into a private Library copy that duplicates the values by hand. Import/re-export from AtriumRelay (r1) — a hand-copied fork is exactly the drift mechanism that created this problem.",
+    "Do NOT keep gold as a generic accent anywhere (Import/Publish/search-mark/All-pill/dividers/WINGS glyph). Gold is palace-only: wing seals, focus rings, on-this-day frames, the sealed time-capsule. Interactive/active state is EMBER #B85C38; zone identity is the wing accent. This is the one rule the whole overhaul hangs on.",
+    "Do NOT use colour+opacity double-dimming for secondary text (e.g. muted at opacity 0.7/0.55). Secondary is #716A5E at FULL opacity — the drafts correctly flag several existing violations in the sidebar section labels and search placeholder.",
+    "Do NOT keep or add infinite decorative loops (shimmer H1, lc-wave, lc-float, lc-empty-float, spotlightPulse) or scale-pop hovers (scale(1.05)/(1.08)/(1.15)) or spring cubic-beziers. The only sanctioned recurring motion is the single 4s warmth/ember breath, and only behind a reduced-motion guard.",
+    "Do NOT introduce 0.875rem anywhere, or 1px / cream-on-cream borders. Type sits on the RT ramp (meta floor 0.8125rem, body 0.9375rem); hairlines are opaque #E3D6BC at 0.0625rem.",
+    "Do NOT let the timeline and grid sort silently diverge. Either the timeline respects the shared sort or it locks to chronological and disables the control with an aria note (r22) — never two hidden sort behaviours.",
+    "Do NOT make any empty or quiet state scolding. On This Day renders nothing when empty (never 'no memories today'); empty rooms get a warm single-CTA invitation, matching warmth.ts's invitational-copy principle.",
+    "Do NOT over-invest in a brand-new illustration set for the empty state. Reuse RelayVignettes/WingRoomIcons engraved scenes (r17); a bespoke illustration commission is out of scope for an in-place inline-style overhaul."
+  ]
+}

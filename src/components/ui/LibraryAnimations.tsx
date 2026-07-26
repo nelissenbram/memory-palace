@@ -106,7 +106,7 @@ export function LibraryStyles() {
       }
       .lib-hover-lift:hover {
         transform: translateY(-0.25rem);
-        box-shadow: 0 0.5rem 1.5rem rgba(44, 44, 42, 0.1);
+        box-shadow: 0 0.5rem 1.5rem rgba(64,59,54, 0.1);
       }
 
       .lib-scrollbar-hide {
@@ -200,7 +200,7 @@ export function LibraryHeader({
               alignItems: "center",
               justifyContent: "center",
               fontSize: "0.875rem",
-              color: T.color.walnut,
+              color: "#716A5E",
               flexShrink: 0,
               transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
               animation: "libSlideRight 0.3s ease both",
@@ -251,7 +251,7 @@ export function LibraryHeader({
                 fontFamily: T.font.display,
                 fontSize: isMobile ? "1rem" : "1.25rem",
                 fontWeight: 600,
-                color: T.color.charcoal,
+                color: "#403B36",
                 margin: 0,
                 letterSpacing: "0.01em",
                 overflow: "hidden",
@@ -260,7 +260,7 @@ export function LibraryHeader({
                 animation: "libSlideRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both",
               }}
             >
-              {roomName ? <><span style={{ fontWeight: 500, color: T.color.muted, fontSize: "0.875rem", marginRight: "0.25rem" }}>{t("room")}</span>{roomName}</> : wingName}
+              {roomName ? <><span style={{ fontWeight: 500, color: "#716A5E", fontSize: "0.875rem", marginRight: "0.25rem" }}>{t("room")}</span>{roomName}</> : wingName}
             </h2>
 
             {/* Breadcrumb or description */}
@@ -268,7 +268,7 @@ export function LibraryHeader({
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.75rem",
-                color: T.color.muted,
+                color: "#716A5E",
                 margin: 0,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
@@ -415,7 +415,7 @@ export function LibraryEmptyState({ type, accent, onAdd, query }: LibraryEmptySt
           fontFamily: T.font.display,
           fontSize: "1.125rem",
           fontWeight: 500,
-          color: T.color.charcoal,
+          color: "#403B36",
           textAlign: "center",
           margin: 0,
           position: "relative",
@@ -435,7 +435,7 @@ export function LibraryEmptyState({ type, accent, onAdd, query }: LibraryEmptySt
         style={{
           fontFamily: T.font.body,
           fontSize: "0.875rem",
-          color: T.color.muted,
+          color: "#716A5E",
           textAlign: "center",
           margin: 0,
           maxWidth: "22rem",

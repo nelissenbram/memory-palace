@@ -193,7 +193,7 @@ export default function LibrarySidebar({
                   : "rgba(255,255,255,0.55)",
                 backdropFilter: active ? "none" : "blur(0.5rem)",
                 WebkitBackdropFilter: active ? "none" : "blur(0.5rem)",
-                color: active ? T.color.white : T.color.walnut,
+                color: active ? T.color.white : "#716A5E",
                 cursor: "pointer",
                 fontFamily: T.font.display,
                 fontSize: "0.8125rem",
@@ -204,7 +204,7 @@ export default function LibrarySidebar({
                 transition: `all 0.3s ${EASE_OUT_EXPO}`,
                 boxShadow: active
                   ? `0 0.25rem 0.75rem ${w.accent}40, inset 0 0.0625rem 0 rgba(255,255,255,0.15)`
-                  : "0 0.0625rem 0.25rem rgba(44,44,42,0.04)",
+                  : "0 0.0625rem 0.25rem rgba(64,59,54,0.04)",
                 transform: active ? "scale(1.05)" : "scale(1)",
                 animation: mounted
                   ? `lsb-pill-enter 0.4s ${EASE_OUT_EXPO} ${i * 0.05}s both`
@@ -253,7 +253,7 @@ export default function LibrarySidebar({
         overflowX: "hidden",
         overflowY: "auto",
         flexShrink: 0,
-        boxShadow: "0.25rem 0 2rem rgba(44,44,42,0.04)",
+        boxShadow: "0.25rem 0 2rem rgba(64,59,54,0.04)",
       }}
     >
       <style>{keyframes}</style>
@@ -263,17 +263,11 @@ export default function LibrarySidebar({
         <h1
           style={{
             fontFamily: T.font.display,
-            fontSize: "2rem",
-            fontWeight: 300,
+            fontSize: "1.375rem",
+            fontWeight: 600,
             margin: 0,
-            letterSpacing: "0.08em",
-            lineHeight: 1.1,
-            background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight}, ${T.color.gold})`,
-            backgroundSize: "200% auto",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            animation: "lsb-shimmer 4s linear infinite",
+            lineHeight: 1.15,
+            color: "#403B36",
           }}
         >
           {t("sidebarTitle")}
@@ -282,7 +276,7 @@ export default function LibrarySidebar({
           style={{
             fontFamily: T.font.body,
             fontSize: "0.75rem",
-            color: T.color.muted,
+            color: "#716A5E",
             margin: "0.5rem 0 0",
             letterSpacing: "0.02em",
             fontWeight: 500,
@@ -305,7 +299,7 @@ export default function LibrarySidebar({
           <div
             style={{
               height: "100%",
-              background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight}88, transparent)`,
+              background: "#E3D6BC",
               borderRadius: "0.0625rem",
               animation: mounted
                 ? `lsb-divider-reveal 0.8s ${EASE_OUT_EXPO} 0.15s both`
@@ -318,7 +312,7 @@ export default function LibrarySidebar({
       {/* P2 #11: Sidebar search */}
       <div style={{ padding: "0 1rem 0.375rem" }}>
         <div style={{ position: "relative" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: "0.5rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", opacity: 0.6 }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: "0.5rem", top: "50%", transform: "translateY(-50%)", pointerEvents: "none", opacity: 0.6 }}>
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
           <input
@@ -333,11 +327,11 @@ export default function LibrarySidebar({
               border: `0.0625rem solid ${T.color.cream}`,
               background: "rgba(255,255,255,0.5)",
               fontFamily: T.font.body, fontSize: "0.75rem",
-              color: T.color.charcoal, outline: "none",
+              color: "#403B36", outline: "none",
               boxSizing: "border-box" as const,
               transition: `border-color 0.2s ${EASE_OUT_EXPO}`,
             }}
-            onFocus={e => { e.currentTarget.style.borderColor = T.color.gold; }}
+            onFocus={e => { e.currentTarget.style.borderColor = "#B85C38"; }}
             onBlur={e => { e.currentTarget.style.borderColor = T.color.cream; }}
           />
           {sidebarQuery && (
@@ -349,7 +343,7 @@ export default function LibrarySidebar({
                 width: "1rem", height: "1rem", borderRadius: "50%",
                 background: T.color.cream, border: "none", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "0.5625rem", color: T.color.walnut, lineHeight: 1,
+                fontSize: "0.5625rem", color: "#716A5E", lineHeight: 1,
               }}
             >
               {"\u00D7"}
@@ -364,14 +358,14 @@ export default function LibrarySidebar({
         padding: "0.5rem 1rem 0.125rem",
       }}>
         {/* Wing icon */}
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.color.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.8, flexShrink: 0 }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9A4F2A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
           <path d="M2 17L12 2l10 15" /><path d="M2 17h20" /><path d="M7 17v4" /><path d="M17 17v4" />
         </svg>
         <span style={{
           fontFamily: T.font.body,
           fontSize: "0.625rem",
           fontWeight: 700,
-          color: T.color.gold,
+          color: "#9A4F2A",
           letterSpacing: "0.12em",
           textTransform: "uppercase" as const,
         }}>
@@ -386,12 +380,12 @@ export default function LibrarySidebar({
             aria-label={t("wingsTooltip")}
             style={{
               width: "0.875rem", height: "0.875rem", borderRadius: "50%",
-              background: tooltipOpen ? `${T.color.gold}30` : `${T.color.muted}15`,
-              border: `0.0625rem solid ${tooltipOpen ? T.color.gold : T.color.muted}44`,
+              background: tooltipOpen ? `rgba(184,92,56,0.19)` : `${"#716A5E"}15`,
+              border: `0.0625rem solid rgba(184,92,56,0.27)`,
               cursor: "pointer", padding: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
               fontFamily: T.font.body, fontSize: "0.5625rem", fontWeight: 600,
-              color: tooltipOpen ? T.color.gold : T.color.muted,
+              color: tooltipOpen ? "#B85C38" : "#716A5E",
               transition: `all 0.2s ${EASE_OUT_EXPO}`,
             }}
           >
@@ -401,11 +395,11 @@ export default function LibrarySidebar({
             <div style={{
               position: "absolute", left: "1.25rem", top: "-0.25rem", zIndex: 50,
               width: "12.5rem", padding: "0.625rem 0.75rem",
-              background: T.color.charcoal, color: T.color.linen,
+              background: "#403B36", color: T.color.linen,
               borderRadius: "0.5rem",
               fontFamily: T.font.body, fontSize: "0.75rem", lineHeight: 1.5,
               fontWeight: 500, letterSpacing: "0.01em",
-              boxShadow: "0 0.25rem 1rem rgba(44,44,42,0.25)",
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.25)",
               animation: `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both`,
             }}>
               {t("wingsTooltip")}
@@ -457,9 +451,9 @@ export default function LibrarySidebar({
                 textAlign: "left",
                 transition: `all 0.25s ${EASE_OUT_EXPO}`,
                 boxShadow: active
-                  ? `0 0.125rem 0.5rem rgba(44,44,42,0.06), inset 0 0 0 0.0625rem rgba(255,255,255,0.8)`
+                  ? `0 0.125rem 0.5rem rgba(64,59,54,0.06), inset 0 0 0 0.0625rem rgba(255,255,255,0.8)`
                   : hovered
-                    ? "0 0.0625rem 0.25rem rgba(44,44,42,0.03)"
+                    ? "0 0.0625rem 0.25rem rgba(64,59,54,0.03)"
                     : "none",
                 transform: hovered && !active ? "translateY(-0.0625rem)" : "none",
                 position: "relative",
@@ -498,7 +492,7 @@ export default function LibrarySidebar({
                     fontFamily: T.font.display,
                     fontSize: active ? "1rem" : "0.9375rem",
                     fontWeight: active ? 700 : 500,
-                    color: active ? T.color.charcoal : T.color.walnut,
+                    color: active ? "#403B36" : "#716A5E",
                     display: "block",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -513,7 +507,7 @@ export default function LibrarySidebar({
                   style={{
                     fontFamily: T.font.body,
                     fontSize: "0.75rem",
-                    color: T.color.muted,
+                    color: "#716A5E",
                     display: "block",
                     marginTop: "0.1875rem",
                     letterSpacing: "0.01em",
@@ -540,7 +534,7 @@ export default function LibrarySidebar({
                     style={{
                       height: "100%",
                       width: `${progressRatio * 100}%`,
-                      background: `linear-gradient(90deg, ${T.color.gold}, ${T.color.goldLight})`,
+                      background: "#B85C38",
                       borderRadius: "0.0625rem",
                       animation: mounted
                         ? `lsb-progress-fill 0.7s ${EASE_OUT_EXPO} ${index * 0.05 + 0.4}s both`
@@ -558,8 +552,8 @@ export default function LibrarySidebar({
                     minWidth: "1.375rem",
                     height: "1.375rem",
                     borderRadius: "0.6875rem",
-                    background: active ? `${w.accent}20` : `${T.color.muted}15`,
-                    color: active ? w.accent : T.color.muted,
+                    background: active ? `${w.accent}20` : `${"#716A5E"}15`,
+                    color: active ? w.accent : "#716A5E",
                     fontFamily: T.font.body,
                     fontSize: "0.625rem",
                     fontWeight: 700,
@@ -582,7 +576,7 @@ export default function LibrarySidebar({
                 style={{
                   width: "0.75rem", height: "0.75rem", borderRadius: "50%",
                   background: wingColors[w.id] || w.accent,
-                  border: `0.0625rem solid rgba(44,44,42,0.15)`,
+                  border: `0.0625rem solid rgba(64,59,54,0.15)`,
                   cursor: "pointer", flexShrink: 0,
                   transition: `all 0.2s ${EASE_OUT_EXPO}`,
                   transform: (hovered || active) ? "scale(1.15)" : "scale(1)",
@@ -596,7 +590,7 @@ export default function LibrarySidebar({
               <span
                 style={{
                   fontSize: "0.875rem",
-                  color: active ? (wingColors[w.id] || w.accent) : T.color.muted,
+                  color: active ? (wingColors[w.id] || w.accent) : "#716A5E",
                   opacity: hovered || active ? 1 : 0,
                   transform: hovered ? "translateX(0.125rem)" : "translateX(0)",
                   transition: `all 0.25s ${EASE_OUT_EXPO}`,
@@ -625,7 +619,7 @@ export default function LibrarySidebar({
                     }}
                     style={{
                       width: "1.125rem", height: "1.125rem", borderRadius: "50%",
-                      background: color, border: (wingColors[w.id] || w.accent) === color ? `0.125rem solid ${T.color.charcoal}` : `0.0625rem solid rgba(44,44,42,0.15)`,
+                      background: color, border: (wingColors[w.id] || w.accent) === color ? `0.125rem solid ${"#403B36"}` : `0.0625rem solid rgba(64,59,54,0.15)`,
                       cursor: "pointer", padding: 0, flexShrink: 0,
                       transition: `transform 0.15s ${EASE_OUT_EXPO}`,
                     }}
@@ -651,7 +645,7 @@ export default function LibrarySidebar({
                   fontFamily: T.font.body,
                   fontSize: "0.5625rem",
                   fontWeight: 600,
-                  color: T.color.muted,
+                  color: "#716A5E",
                   letterSpacing: "0.08em",
                   textTransform: "uppercase" as const,
                 }}>
@@ -684,12 +678,12 @@ export default function LibrarySidebar({
                       if (!isRoomActive) e.currentTarget.style.background = "transparent";
                     }}
                   >
-                    <RoomIcon roomId={room.id} size={14} color={T.color.muted} />
+                    <RoomIcon roomId={room.id} size={14} color={"#716A5E"} />
                     <span style={{
                       fontFamily: T.font.body,
                       fontSize: "0.75rem",
                       fontWeight: 500,
-                      color: T.color.walnut,
+                      color: "#716A5E",
                       letterSpacing: "0.01em",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
@@ -718,7 +712,7 @@ export default function LibrarySidebar({
               width: "100%",
               padding: "0.5rem 1rem",
               borderRadius: "0.625rem",
-              border: `0.0625rem solid ${sharedExpanded ? `${T.color.gold}44` : `${T.color.cream}88`}`,
+              border: `0.0625rem solid ${sharedExpanded ? `rgba(184,92,56,0.27)` : `${T.color.cream}88`}`,
               background: sharedExpanded ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.35)",
               backdropFilter: "blur(0.5rem)",
               WebkitBackdropFilter: "blur(0.5rem)",
@@ -726,7 +720,7 @@ export default function LibrarySidebar({
               fontFamily: T.font.body,
               fontSize: "0.75rem",
               fontWeight: 500,
-              color: T.color.muted,
+              color: "#716A5E",
               letterSpacing: "0.02em",
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               display: "flex",
@@ -748,7 +742,7 @@ export default function LibrarySidebar({
                     fontFamily: T.font.body,
                     fontSize: "0.5625rem",
                     fontWeight: 600,
-                    color: T.color.muted,
+                    color: "#716A5E",
                     letterSpacing: "0.08em",
                     textTransform: "uppercase" as const,
                   }}>
@@ -768,7 +762,7 @@ export default function LibrarySidebar({
                         cursor: "pointer",
                         transition: `all 0.2s ${EASE_OUT_EXPO}`,
                         background: selectedRoom === room.id ? "rgba(255,255,255,0.7)" : "transparent",
-                        borderLeft: selectedRoom === room.id ? `2px solid ${T.color.gold}` : "2px solid transparent",
+                        borderLeft: selectedRoom === room.id ? "0.125rem solid #B85C38" : "0.125rem solid transparent",
                       }}
                       onMouseEnter={e => { if (selectedRoom !== room.id) e.currentTarget.style.background = "rgba(255,255,255,0.5)"; }}
                       onMouseLeave={e => { if (selectedRoom !== room.id) e.currentTarget.style.background = "transparent"; }}
@@ -778,7 +772,7 @@ export default function LibrarySidebar({
                         fontFamily: T.font.body,
                         fontSize: "0.75rem",
                         fontWeight: 500,
-                        color: T.color.walnut,
+                        color: "#716A5E",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -807,7 +801,7 @@ export default function LibrarySidebar({
               width: "100%",
               padding: "0.5rem 1rem",
               borderRadius: "0.625rem",
-              border: `0.0625rem solid ${addWingHovered ? `${T.color.gold}66` : `${T.color.cream}88`}`,
+              border: `0.0625rem solid ${addWingHovered ? `rgba(184,92,56,0.4)` : `${T.color.cream}88`}`,
               background: addWingHovered
                 ? "linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6))"
                 : "rgba(255,255,255,0.35)",
@@ -817,7 +811,7 @@ export default function LibrarySidebar({
               fontFamily: T.font.body,
               fontSize: "0.75rem",
               fontWeight: 500,
-              color: addWingHovered ? T.color.charcoal : T.color.muted,
+              color: addWingHovered ? "#403B36" : "#716A5E",
               letterSpacing: "0.02em",
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               display: "flex",
@@ -825,11 +819,11 @@ export default function LibrarySidebar({
               justifyContent: "center",
               gap: "0.375rem",
               boxShadow: addWingHovered
-                ? `0 0.125rem 0.5rem rgba(44,44,42,0.06), 0 0 0.5rem ${T.color.gold}15`
+                ? `0 0.125rem 0.5rem rgba(64,59,54,0.06), 0 0 0.5rem rgba(184,92,56,0.12)`
                 : "none",
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addWingHovered ? T.color.gold : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addWingHovered ? "#9A4F2A" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
             {t("addWingLabel")}
           </button>
         </div>
@@ -846,7 +840,7 @@ export default function LibrarySidebar({
               width: "100%",
               padding: "0.5rem 1rem",
               borderRadius: "0.625rem",
-              border: `0.0625rem solid ${addRoomHovered ? `${T.color.gold}66` : `${T.color.cream}88`}`,
+              border: `0.0625rem solid ${addRoomHovered ? `rgba(184,92,56,0.4)` : `${T.color.cream}88`}`,
               background: addRoomHovered
                 ? "linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.6))"
                 : "rgba(255,255,255,0.35)",
@@ -856,7 +850,7 @@ export default function LibrarySidebar({
               fontFamily: T.font.body,
               fontSize: "0.75rem",
               fontWeight: 500,
-              color: addRoomHovered ? T.color.charcoal : T.color.muted,
+              color: addRoomHovered ? "#403B36" : "#716A5E",
               letterSpacing: "0.02em",
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               display: "flex",
@@ -864,11 +858,11 @@ export default function LibrarySidebar({
               justifyContent: "center",
               gap: "0.375rem",
               boxShadow: addRoomHovered
-                ? `0 0.125rem 0.5rem rgba(44,44,42,0.06), 0 0 0.5rem ${T.color.gold}15`
+                ? `0 0.125rem 0.5rem rgba(64,59,54,0.06), 0 0 0.5rem rgba(184,92,56,0.12)`
                 : "none",
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addRoomHovered ? T.color.gold : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={addRoomHovered ? "#9A4F2A" : "currentColor"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: `stroke 0.25s ${EASE_OUT_EXPO}` }}><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
             {t("addRoomLabel")}
           </button>
         </div>
@@ -887,7 +881,7 @@ export default function LibrarySidebar({
           style={{
             fontFamily: T.font.body,
             fontSize: "0.75rem",
-            color: T.color.muted,
+            color: "#716A5E",
             letterSpacing: "0.01em",
           }}
         >
@@ -897,7 +891,7 @@ export default function LibrarySidebar({
           style={{
             fontFamily: T.font.body,
             fontSize: "0.75rem",
-            color: T.color.muted,
+            color: "#716A5E",
             letterSpacing: "0.01em",
           }}
         >
@@ -970,7 +964,7 @@ export default function LibrarySidebar({
           <div
             style={{
               height: "100%",
-              background: `linear-gradient(90deg, transparent, ${T.color.gold}66, transparent)`,
+              background: `linear-gradient(90deg, transparent, rgba(184,92,56,0.4), transparent)`,
               borderRadius: "0.0625rem",
               animation: mounted
                 ? `lsb-divider-reveal 0.8s ${EASE_OUT_EXPO} 0.6s both`
@@ -992,8 +986,8 @@ export default function LibrarySidebar({
               background: atriumHovered
                 ? "rgba(255,255,255,0.85)"
                 : "rgba(255,255,255,0.65)",
-              color: T.color.charcoal,
-              border: `0.0625rem solid ${atriumHovered ? T.color.gold : T.color.cream}`,
+              color: "#403B36",
+              border: `0.0625rem solid ${atriumHovered ? "#B85C38" : "#E3D6BC"}`,
               cursor: "pointer",
               fontFamily: T.font.display,
               fontSize: "0.875rem",
@@ -1006,7 +1000,7 @@ export default function LibrarySidebar({
               transition: `all 0.25s ${EASE_OUT_EXPO}`,
               transform: atriumHovered ? "scale(1.01)" : "scale(1)",
               boxShadow: atriumHovered
-                ? "0 0.125rem 0.5rem rgba(44,44,42,0.06)"
+                ? "0 0.125rem 0.5rem rgba(64,59,54,0.06)"
                 : "none",
             }}
           >
@@ -1027,7 +1021,7 @@ export default function LibrarySidebar({
             width: "100%",
             padding: "0.8125rem 1rem",
             borderRadius: "0.625rem",
-            background: `linear-gradient(135deg, ${T.color.charcoal}, #3a3a38)`,
+            background: `linear-gradient(135deg, ${"#403B36"}, #3a3a38)`,
             color: T.color.linen,
             border: "0.0625rem solid transparent",
             borderImage: `linear-gradient(135deg, ${T.color.gold}88, ${T.color.goldLight}44, ${T.color.gold}88) 1`,
@@ -1043,10 +1037,10 @@ export default function LibrarySidebar({
             transition: `all 0.3s ${EASE_OUT_EXPO}`,
             transform: enterHovered ? "scale(1.02)" : "scale(1)",
             boxShadow: enterHovered
-              ? `0 0.375rem 1.25rem rgba(44,44,42,0.22), 0 0 0.75rem ${T.color.gold}18`
-              : "0 0.125rem 0.625rem rgba(44,44,42,0.12)",
+              ? `0 0.375rem 1.25rem rgba(64,59,54,0.22), 0 0 0.75rem ${T.color.gold}18`
+              : "0 0.125rem 0.625rem rgba(64,59,54,0.12)",
             outline: enterHovered
-              ? `0.0625rem solid ${T.color.gold}44`
+              ? `0.0625rem solid rgba(184,92,56,0.27)`
               : "none",
             outlineOffset: "0.0625rem",
           }}

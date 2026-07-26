@@ -46,14 +46,14 @@ interface CloudItem {
 }
 
 const ChainLinkIcon = ({ size = "2.5rem", opacity = 0.5 }: { size?: string; opacity?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity }}>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity }}>
     <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
     <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
   </svg>
 );
 
 const FolderIcon = () => (
-  <svg width="2.5rem" height="2.5rem" viewBox="0 0 24 24" fill={T.color.sandstone} stroke={T.color.walnut} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="2.5rem" height="2.5rem" viewBox="0 0 24 24" fill={T.color.sandstone} stroke={"#716A5E"} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
   </svg>
 );
@@ -155,7 +155,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 9999,
-        background: "rgba(44,44,42,.35)",
+        background: "rgba(64,59,54,.35)",
         backdropFilter: "blur(0.75rem)",
         WebkitBackdropFilter: "blur(0.75rem)",
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -169,7 +169,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
           backdropFilter: "blur(1.5rem) saturate(1.4)",
           WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
           borderRadius: "1.25rem",
-          boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18), 0 0.5rem 1.25rem rgba(44,44,42,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
+          boxShadow: "0 1.5rem 3rem rgba(64,59,54,.18), 0 0.5rem 1.25rem rgba(64,59,54,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
           border: `0.0625rem solid ${T.color.cream}`,
           width: "min(36rem, 92vw)",
           maxHeight: "min(36rem, 85vh)",
@@ -182,14 +182,14 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
         <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${T.color.cream}`, flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+              <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: "#403B36", margin: 0 }}>
                 {t("cloudBrowseTitle", { provider: providerLabel })}
               </h3>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", margin: "0.25rem 0 0" }}>
                 {status === "connected" ? t("cloudBrowseConnected", { count: String(items.length) }) : t("cloudBrowseLoading")}
               </p>
             </div>
-            <button onClick={onClose} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+            <button onClick={onClose} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: "#716A5E", fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
           </div>
 
           {/* Breadcrumb navigation */}
@@ -199,7 +199,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
                 onClick={() => navigateToFolder("")}
                 style={{
                   background: "none", border: "none", cursor: "pointer", padding: "0.125rem 0.25rem",
-                  fontFamily: T.font.body, fontSize: "0.75rem", color: currentPath ? T.color.terracotta : T.color.charcoal,
+                  fontFamily: T.font.body, fontSize: "0.75rem", color: currentPath ? T.color.terracotta : "#403B36",
                   fontWeight: currentPath ? 500 : 600, textDecoration: currentPath ? "underline" : "none",
                 }}
               >
@@ -210,14 +210,14 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
                 const isLast = i === breadcrumbSegments.length - 1;
                 return (
                   <span key={segPath} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                    <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>/</span>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E" }}>/</span>
                     <button
                       onClick={() => !isLast && navigateToFolder(segPath)}
                       style={{
                         background: "none", border: "none", cursor: isLast ? "default" : "pointer",
                         padding: "0.125rem 0.25rem",
                         fontFamily: T.font.body, fontSize: "0.75rem",
-                        color: isLast ? T.color.charcoal : T.color.terracotta,
+                        color: isLast ? "#403B36" : T.color.terracotta,
                         fontWeight: isLast ? 600 : 500,
                         textDecoration: isLast ? "none" : "underline",
                       }}
@@ -239,13 +239,13 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
                   background: "none", border: `0.0625rem solid ${T.color.cream}`, borderRadius: "0.375rem",
                   padding: "0.25rem 0.625rem", cursor: "pointer",
                   fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
-                  color: T.color.walnut,
+                  color: "#716A5E",
                 }}
               >
                 {allSelectableSelected ? t("cloudDeselectAll") : t("cloudSelectAll")}
               </button>
               {selected.size > 0 && (
-                <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E" }}>
                   {t("cloudItemsSelected", { count: String(selected.size) })}
                 </span>
               )}
@@ -257,7 +257,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
         <div style={{ flex: 1, overflow: "auto", padding: "1.25rem 1.5rem", contain: "layout" }}>
           {status === "loading" && (
             <div style={{ textAlign: "center", padding: "3rem 0" }}>
-              <div style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>{t("cloudBrowseLoading")}</div>
+              <div style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: "#716A5E" }}>{t("cloudBrowseLoading")}</div>
             </div>
           )}
 
@@ -266,17 +266,17 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
               <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "center" }}>
                 <ChainLinkIcon />
               </div>
-              <h4 style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.5rem" }}>
+              <h4 style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: "#403B36", margin: "0 0 0.5rem" }}>
                 {t("cloudNotConnected", { provider: providerLabel })}
               </h4>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, marginBottom: "1.25rem", lineHeight: 1.5 }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", marginBottom: "1.25rem", lineHeight: 1.5 }}>
                 {t("cloudConnectExplain", { provider: providerLabel })}
               </p>
               <button
                 onClick={() => { window.location.href = config.connectUrl; }}
                 style={{
                   padding: "0.625rem 1.5rem", borderRadius: "0.625rem",
-                  background: T.color.charcoal, color: T.color.linen,
+                  background: "#403B36", color: T.color.linen,
                   border: "none", cursor: "pointer",
                   fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
                   letterSpacing: "0.03em",
@@ -284,7 +284,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
               >
                 {t("cloudConnectBtn", { provider: providerLabel })}
               </button>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, marginTop: "0.75rem" }}>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", marginTop: "0.75rem" }}>
                 {t("cloudConnectHint")}
               </p>
             </div>
@@ -292,13 +292,13 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
 
           {status === "error" && (
             <div style={{ textAlign: "center", padding: "2rem 0" }}>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>{t("cloudBrowseError")}</p>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: "#716A5E" }}>{t("cloudBrowseError")}</p>
             </div>
           )}
 
           {status === "connected" && items.length === 0 && (
             <div style={{ textAlign: "center", padding: "2rem 0" }}>
-              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>{t("cloudBrowseEmpty")}</p>
+              <p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: "#716A5E" }}>{t("cloudBrowseEmpty")}</p>
             </div>
           )}
 
@@ -317,7 +317,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
                       }}>
                       <FolderIcon />
                       <span style={{
-                        fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.walnut,
+                        fontFamily: T.font.body, fontSize: "0.625rem", color: "#716A5E",
                         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         display: "block", maxWidth: "90%", padding: "0 0.25rem",
                       }}>{item.name}</span>
@@ -338,7 +338,7 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
                     {item.thumbnailUrl ? (
                       <img src={item.thumbnailUrl} alt={item.name} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                     ) : (
-                      <svg width="2rem" height="2rem" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="1.5" style={{ opacity: 0.3 }}>
+                      <svg width="2rem" height="2rem" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth="1.5" style={{ opacity: 0.3 }}>
                         <rect x="3" y="3" width="18" height="18" rx="2" />
                         <circle cx="8.5" cy="8.5" r="1.5" />
                         <path d="m21 15-5-5L5 21" />
@@ -369,12 +369,12 @@ function CloudBrowser({ provider, onClose, onImport, isMobile, t, tc }: {
 
         {/* Footer */}
         <div style={{ padding: "0.75rem 1.5rem", borderTop: `0.0625rem solid ${T.color.cream}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-          <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted }}>
+          <span style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E" }}>
             {selected.size > 0 ? t("cloudSelected", { count: String(selected.size) }) : ""}
           </span>
           <div style={{ display: "flex", gap: "0.625rem" }}>
             <button onClick={onClose}
-              style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(44,44,42,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.walnut }}>{tc("cancel")}</button>
+              style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(64,59,54,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#716A5E" }}>{tc("cancel")}</button>
             {selected.size > 0 && (
               <button
                 onClick={() => onImport(items.filter(i => selected.has(i.id)))}
@@ -1181,7 +1181,7 @@ export default function LibraryView() {
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.8125rem",
                       fontWeight: isAllActive ? 700 : 500,
-                      color: isAllActive ? T.color.gold : T.color.charcoal,
+                      color: isAllActive ? T.color.gold : "#403B36",
                     }}>
                       {t("allRooms")}
                     </span>
@@ -1205,10 +1205,10 @@ export default function LibraryView() {
                       transition: "all 0.2s ease",
                     }}
                   >
-                    <WingIcon wingId={w.id} size={14} color={isActive ? w.accent : T.color.muted} />
+                    <WingIcon wingId={w.id} size={14} color={isActive ? w.accent : "#716A5E"} />
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: isActive ? 700 : 500,
-                      color: isActive ? w.accent : T.color.charcoal,
+                      color: isActive ? w.accent : "#403B36",
                       whiteSpace: "nowrap",
                     }}>
                       {w.id === "attic" ? t("storageRoom") : translateWingName(w, tWings)}
@@ -1250,14 +1250,14 @@ export default function LibraryView() {
                   display: "inline-flex", alignItems: "center", gap: "0.25rem",
                   padding: "0.375rem 0.625rem",
                   borderRadius: "1rem",
-                  border: `0.0625rem dashed ${T.color.muted}55`,
+                  border: `0.0625rem dashed ${"#716A5E"}55`,
                   background: "transparent",
                   cursor: "pointer", flexShrink: 0,
                   minHeight: "2.125rem",
                 }}
                 aria-label={t("addWingLabel")}
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
               </button>
             </div>
 
@@ -1300,7 +1300,7 @@ export default function LibraryView() {
               >
                 <span style={{
                   fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: !selectedRoom ? 700 : 500,
-                  color: !selectedRoom ? currentWing.accent : T.color.charcoal,
+                  color: !selectedRoom ? currentWing.accent : "#403B36",
                 }}>
                   {t("allRooms")}
                 </span>
@@ -1322,10 +1322,10 @@ export default function LibraryView() {
                       transition: "all 0.2s ease",
                     }}
                   >
-                    <RoomIcon roomId={room.id} size={14} color={isActive ? currentWing.accent : T.color.muted} />
+                    <RoomIcon roomId={room.id} size={14} color={isActive ? currentWing.accent : "#716A5E"} />
                     <span style={{
                       fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: isActive ? 700 : 500,
-                      color: isActive ? currentWing.accent : T.color.charcoal,
+                      color: isActive ? currentWing.accent : "#403B36",
                       whiteSpace: "nowrap",
                     }}>
                       {translateRoomName(room, tWings)}
@@ -1340,14 +1340,14 @@ export default function LibraryView() {
                   display: "inline-flex", alignItems: "center", gap: "0.25rem",
                   padding: "0.375rem 0.625rem",
                   borderRadius: "1rem",
-                  border: `0.0625rem dashed ${T.color.muted}55`,
+                  border: `0.0625rem dashed ${"#716A5E"}55`,
                   background: "transparent",
                   cursor: "pointer", flexShrink: 0,
                   minHeight: "2.125rem",
                 }}
                 aria-label={t("addRoomLabel")}
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.color.muted} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
               </button>
             </div>
 
@@ -1399,7 +1399,7 @@ export default function LibraryView() {
                   transition: "all 0.2s ease",
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={mobileSortOpen ? currentWing.accent : T.color.walnut} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={mobileSortOpen ? currentWing.accent : "#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 6h18M6 12h12M9 18h6" />
                 </svg>
               </button>
@@ -1409,7 +1409,7 @@ export default function LibraryView() {
                   position: "absolute", top: "100%", right: "0.75rem", zIndex: 20,
                   background: T.color.white, borderRadius: "0.75rem",
                   border: `0.0625rem solid ${T.color.cream}`,
-                  boxShadow: "0 0.5rem 1.5rem rgba(44,44,42,0.12)",
+                  boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.12)",
                   padding: "0.375rem", minWidth: "10rem",
                   animation: "libFadeIn 0.15s ease both",
                 }}>
@@ -1426,7 +1426,7 @@ export default function LibraryView() {
                         transition: "background 0.15s ease",
                       }}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={sortMode === mode ? currentWing.accent : T.color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={sortMode === mode ? currentWing.accent : "#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         {mode === "newest" && <><path d="M12 5v14" /><path d="M19 12l-7 7-7-7" /></>}
                         {mode === "oldest" && <><path d="M12 19V5" /><path d="M5 12l7-7 7 7" /></>}
                         {mode === "alpha" && <><path d="M3 6h7M3 12h5M3 18h3" /><path d="M17 3l4 4-4 4" /><path d="M21 7H14" /></>}
@@ -1435,7 +1435,7 @@ export default function LibraryView() {
                       <span style={{
                         fontFamily: T.font.body, fontSize: "0.8125rem",
                         fontWeight: sortMode === mode ? 600 : 500,
-                        color: sortMode === mode ? currentWing.accent : T.color.charcoal,
+                        color: sortMode === mode ? currentWing.accent : "#403B36",
                       }}>
                         {t(`sort${mode.charAt(0).toUpperCase() + mode.slice(1)}` as "sortNewest")}
                       </span>
@@ -1507,10 +1507,10 @@ export default function LibraryView() {
               style={{
                 display: "flex", alignItems: "center", gap: isMobile ? "0.25rem" : "0.5rem",
                 padding: isMobile ? "0.375rem 0.625rem" : "0.5rem 1rem", borderRadius: "1.5rem",
-                border: `0.0625rem solid ${isSpotlit ? T.color.terracotta : selectedRoom ? T.color.cream : "rgba(44,44,42,.1)"}`,
+                border: `0.0625rem solid ${isSpotlit ? T.color.terracotta : selectedRoom ? T.color.cream : "rgba(64,59,54,.1)"}`,
                 background: isSpotlit ? "rgba(198,107,61,0.12)" : selectedRoom ? "rgba(255,255,255,0.78)" : "rgba(255,255,255,0.4)",
                 backdropFilter: "blur(0.5rem)",
-                color: isSpotlit ? T.color.terracotta : selectedRoom ? T.color.walnut : T.color.muted,
+                color: isSpotlit ? T.color.terracotta : selectedRoom ? "#716A5E" : "#716A5E",
                 cursor: selectedRoom || isSpotlit ? "pointer" : "default",
                 fontFamily: T.font.body, fontSize: isMobile ? "0.6875rem" : "0.8125rem", fontWeight: 600,
                 letterSpacing: "0.02em", whiteSpace: "nowrap", flexShrink: 0,
@@ -1518,7 +1518,7 @@ export default function LibraryView() {
                 transition: "all 0.2s ease",
                 boxShadow: isSpotlit
                   ? `0 0 0 0.1875rem ${T.color.terracotta}44, 0 0.25rem 1rem rgba(198,107,61,0.2)`
-                  : selectedRoom ? "0 0.0625rem 0.25rem rgba(44,44,42,0.06)" : "none",
+                  : selectedRoom ? "0 0.0625rem 0.25rem rgba(64,59,54,0.06)" : "none",
                 position: "relative",
                 zIndex: isSpotlit ? 10 : undefined,
                 animation: isSpotlit ? "spotlightPulse 1.5s ease-in-out infinite" : undefined,
@@ -1535,16 +1535,16 @@ export default function LibraryView() {
             style={{
               display: "flex", alignItems: "center", gap: isMobile ? "0.25rem" : "0.5rem",
               padding: isMobile ? "0.375rem 0.625rem" : "0.5rem 1rem", borderRadius: "1.5rem",
-              border: `0.0625rem solid ${(selectedRoom || (selectedWing && selectedWing !== "__all__")) ? `${T.color.gold}55` : "rgba(44,44,42,.1)"}`,
+              border: `0.0625rem solid ${(selectedRoom || (selectedWing && selectedWing !== "__all__")) ? `${T.color.gold}55` : "rgba(64,59,54,.1)"}`,
               background: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? `${T.color.gold}10` : "rgba(255,255,255,0.4)",
               backdropFilter: "blur(0.5rem)",
-              color: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? T.color.goldDark : T.color.muted,
+              color: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? T.color.goldDark : "#716A5E",
               cursor: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? "pointer" : "default",
               fontFamily: T.font.body, fontSize: isMobile ? "0.6875rem" : "0.8125rem", fontWeight: 600,
               letterSpacing: "0.02em", whiteSpace: "nowrap", flexShrink: 0,
               opacity: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? 1 : 0.55,
               transition: "all 0.2s ease",
-              boxShadow: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? "0 0.0625rem 0.25rem rgba(44,44,42,0.06)" : "none",
+              boxShadow: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? "0 0.0625rem 0.25rem rgba(64,59,54,0.06)" : "none",
             }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
@@ -1598,10 +1598,10 @@ export default function LibraryView() {
               animation: "libFadeIn 0.35s ease both",
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#403B36" }}>
                   {t("demoBannerTitle")}
                 </span>
-                <span style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted, marginLeft: "0.5rem" }}>
+                <span style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#716A5E", marginLeft: "0.5rem" }}>
                   {t("demoBannerDesc")}
                 </span>
               </div>
@@ -1639,7 +1639,7 @@ export default function LibraryView() {
                   padding: "0.375rem 0.875rem",
                   borderRadius: "0.5rem",
                   background: spotlightTarget === "importUpload"
-                    ? `linear-gradient(135deg, ${T.color.terracotta}, ${T.color.walnut})`
+                    ? `linear-gradient(135deg, ${T.color.terracotta}, ${"#716A5E"})`
                     : `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
                   border: spotlightTarget === "importUpload" ? `0.125rem solid ${T.color.terracotta}` : "none",
                   cursor: "pointer",
@@ -1670,7 +1670,7 @@ export default function LibraryView() {
                     border: `0.0625rem solid ${selectMode ? currentWing.accent : T.color.cream}`,
                     background: selectMode ? `${currentWing.accent}12` : T.color.white,
                     fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 500,
-                    color: selectMode ? currentWing.accent : T.color.walnut,
+                    color: selectMode ? currentWing.accent : "#716A5E",
                     cursor: "pointer", flexShrink: 0,
                   }}
                 >
@@ -1689,14 +1689,14 @@ export default function LibraryView() {
                 border: `0.0625rem solid ${T.color.cream}`,
                 flexShrink: 0,
               }}>
-                <button onClick={() => setViewMode("grid")} aria-label={t("gridView")} style={{ padding: "0.375rem", borderRadius: "0.375rem", border: "none", background: viewMode === "grid" ? T.color.white : "transparent", boxShadow: viewMode === "grid" ? "0 0.0625rem 0.25rem rgba(44,44,42,0.08)" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "grid" ? T.color.charcoal : T.color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                <button onClick={() => setViewMode("grid")} aria-label={t("gridView")} style={{ padding: "0.375rem", borderRadius: "0.375rem", border: "none", background: viewMode === "grid" ? T.color.white : "transparent", boxShadow: viewMode === "grid" ? "0 0.0625rem 0.25rem rgba(64,59,54,0.08)" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "grid" ? "#403B36" : "#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
                 </button>
-                <button onClick={() => setViewMode("list")} aria-label={t("listView")} style={{ padding: "0.375rem", borderRadius: "0.375rem", border: "none", background: viewMode === "list" ? T.color.white : "transparent", boxShadow: viewMode === "list" ? "0 0.0625rem 0.25rem rgba(44,44,42,0.08)" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "list" ? T.color.charcoal : T.color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                <button onClick={() => setViewMode("list")} aria-label={t("listView")} style={{ padding: "0.375rem", borderRadius: "0.375rem", border: "none", background: viewMode === "list" ? T.color.white : "transparent", boxShadow: viewMode === "list" ? "0 0.0625rem 0.25rem rgba(64,59,54,0.08)" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "list" ? "#403B36" : "#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                 </button>
-                <button onClick={() => setViewMode("timeline")} aria-label={t("timelineView")} style={{ padding: "0.375rem", borderRadius: "0.375rem", border: "none", background: viewMode === "timeline" ? T.color.white : "transparent", boxShadow: viewMode === "timeline" ? "0 0.0625rem 0.25rem rgba(44,44,42,0.08)" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "timeline" ? T.color.charcoal : T.color.muted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg>
+                <button onClick={() => setViewMode("timeline")} aria-label={t("timelineView")} style={{ padding: "0.375rem", borderRadius: "0.375rem", border: "none", background: viewMode === "timeline" ? T.color.white : "transparent", boxShadow: viewMode === "timeline" ? "0 0.0625rem 0.25rem rgba(64,59,54,0.08)" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s ease" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === "timeline" ? "#403B36" : "#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg>
                 </button>
               </div>
             )}
@@ -1706,7 +1706,7 @@ export default function LibraryView() {
           {crossWingResults && (
             <div style={{ animation: "libSlideUp 0.35s ease both" }}>
               <p style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
                 marginBottom: "1.25rem", letterSpacing: "0.02em",
               }}>
                 {t("searchResults", { count: String(crossWingResults.length), query })}
@@ -1761,7 +1761,7 @@ export default function LibraryView() {
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
                   <span style={{
                     fontFamily: T.font.display, fontSize: "1rem", fontWeight: 700,
-                    color: T.color.charcoal, letterSpacing: "0.02em",
+                    color: "#403B36", letterSpacing: "0.02em",
                   }}>
                     {t("aiSortTitle")}
                   </span>
@@ -1775,7 +1775,7 @@ export default function LibraryView() {
                   </span>
                 </div>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted,
+                  fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
                   margin: 0, lineHeight: 1.45,
                 }}>
                   {t("aiSortDesc")}
@@ -1811,12 +1811,12 @@ export default function LibraryView() {
                     background: "rgba(255,255,255,0.7)",
                     border: `0.0625rem solid ${T.color.cream}`,
                     cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem",
-                    fontWeight: 500, color: T.color.walnut, whiteSpace: "nowrap",
+                    fontWeight: 500, color: "#716A5E", whiteSpace: "nowrap",
                     transition: "all 0.25s ease",
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.background = T.color.white;
-                    e.currentTarget.style.borderColor = `${T.color.walnut}33`;
+                    e.currentTarget.style.borderColor = `${"#716A5E"}33`;
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.background = "rgba(255,255,255,0.7)";
@@ -1845,13 +1845,13 @@ export default function LibraryView() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{
                   fontFamily: T.font.display, fontSize: "0.875rem", fontWeight: 600,
-                  color: T.color.walnut, margin: "0 0 0.25rem 0",
+                  color: "#716A5E", margin: "0 0 0.25rem 0",
                 }}>
                   {t("comingSoon")}
                 </p>
                 <p style={{
                   fontFamily: T.font.body, fontSize: "0.8125rem",
-                  color: T.color.walnut, margin: 0, lineHeight: 1.5, opacity: 0.8,
+                  color: "#716A5E", margin: 0, lineHeight: 1.5, opacity: 0.8,
                 }}>
                   {showAiSortBanner ? t("aiSortComingSoon") : t("manualSortComingSoon")}
                 </p>
@@ -1860,7 +1860,7 @@ export default function LibraryView() {
                 onClick={() => { setShowAiSortBanner(false); setShowManualSortBanner(false); }}
                 style={{
                   background: "none", border: "none", cursor: "pointer",
-                  fontSize: "0.875rem", color: T.color.walnut, padding: "0.125rem 0.25rem",
+                  fontSize: "0.875rem", color: "#716A5E", padding: "0.125rem 0.25rem",
                   lineHeight: 1, borderRadius: "0.25rem", opacity: 0.6, flexShrink: 0,
                 }}
               >
@@ -1875,7 +1875,7 @@ export default function LibraryView() {
               {/* Wing welcome message */}
               <p style={{
                 fontFamily: T.font.body, fontSize: "0.875rem",
-                color: T.color.muted, margin: "0 0 1.25rem",
+                color: "#716A5E", margin: "0 0 1.25rem",
                 lineHeight: 1.6, letterSpacing: "0.01em",
                 animation: "libFadeIn 0.4s ease 0.1s both",
               }}>
@@ -1893,14 +1893,14 @@ export default function LibraryView() {
                 }}>
                   <h3 style={{
                     fontFamily: T.font.body, fontSize: "0.6875rem",
-                    fontWeight: 700, color: T.color.muted,
+                    fontWeight: 700, color: "#716A5E",
                     margin: 0, letterSpacing: "0.1em", textTransform: "uppercase",
                   }}>
                     {t("roomsIn")}
                   </h3>
                   <span style={{
                     fontFamily: T.font.display, fontSize: "1.125rem",
-                    fontWeight: 600, color: T.color.charcoal,
+                    fontWeight: 600, color: "#403B36",
                     letterSpacing: "0.03em",
                   }}>
                     {selectedWing === "__all__" ? t("allRooms") : currentWing.id === "attic" ? t("storageRoom") : translateWingName(currentWing, tWings)}
@@ -1976,7 +1976,7 @@ export default function LibraryView() {
                         e.currentTarget.style.borderColor = currentWing.accent;
                         e.currentTarget.style.background = "rgba(255,255,255,0.6)";
                         e.currentTarget.style.transform = "translateY(-0.125rem)";
-                        e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(44,44,42,0.06)";
+                        e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.06)";
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.borderColor = T.color.cream;
@@ -1988,7 +1988,7 @@ export default function LibraryView() {
                       <span style={{
                         fontSize: "1.5rem",
                         lineHeight: 1,
-                        color: T.color.muted,
+                        color: "#716A5E",
                         fontWeight: 300,
                       }}>
                         +
@@ -1997,7 +1997,7 @@ export default function LibraryView() {
                         fontFamily: T.font.body,
                         fontSize: "0.8125rem",
                         fontWeight: 500,
-                        color: T.color.muted,
+                        color: "#716A5E",
                         letterSpacing: "0.02em",
                       }}>
                         {t("addRoomLabel")}
@@ -2025,7 +2025,7 @@ export default function LibraryView() {
                   {/* Bulk actions (P1 #6) */}
                   {selectMode && (
                     <>
-                      <label style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, cursor: "pointer" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", cursor: "pointer" }}>
                         <input
                           type="checkbox"
                           checked={filteredRoomMems.length > 0 && selectedMemIds.size === filteredRoomMems.length}
@@ -2103,7 +2103,7 @@ export default function LibraryView() {
                             style={{
                               padding: "0.375rem 0.625rem", borderRadius: "0.5rem",
                               border: `0.0625rem solid ${T.color.cream}`, background: T.color.white,
-                              fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.charcoal,
+                              fontFamily: T.font.body, fontSize: "0.75rem", color: "#403B36",
                               outline: "none", width: "10rem",
                             }}
                             onKeyDown={e => {
@@ -2144,7 +2144,7 @@ export default function LibraryView() {
                             style={{
                               padding: "0.375rem 0.625rem", borderRadius: "0.5rem",
                               background: batchTagInput.trim() ? currentWing.accent : `${T.color.sandstone}40`,
-                              color: batchTagInput.trim() ? T.color.white : T.color.muted,
+                              color: batchTagInput.trim() ? T.color.white : "#716A5E",
                               border: "none", cursor: batchTagInput.trim() ? "pointer" : "default",
                               fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
                             }}
@@ -2171,7 +2171,7 @@ export default function LibraryView() {
                 }}>
                   <span style={{
                     fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
-                    color: T.color.charcoal, letterSpacing: "0.02em",
+                    color: "#403B36", letterSpacing: "0.02em",
                   }}>
                     {t("roomStatsTotal", { count: String(filteredRoomMems.length) })}
                   </span>
@@ -2179,9 +2179,9 @@ export default function LibraryView() {
                   {Object.entries(roomTypeCounts).map(([type, count]) => (
                     <span key={type} style={{
                       display: "inline-flex", alignItems: "center", gap: "0.1875rem",
-                      fontFamily: T.font.body, fontSize: "0.625rem", color: T.color.muted,
+                      fontFamily: T.font.body, fontSize: "0.625rem", color: "#716A5E",
                     }}>
-                      <TypeIcon type={type} size={11} color={T.color.muted} />
+                      <TypeIcon type={type} size={11} color={"#716A5E"} />
                       {count}
                     </span>
                   ))}
@@ -2329,7 +2329,7 @@ export default function LibraryView() {
                           display: "block",
                           fontSize: "0.875rem",
                           fontWeight: 500,
-                          color: T.color.charcoal,
+                          color: "#403B36",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -2337,7 +2337,7 @@ export default function LibraryView() {
                           {mem.title}
                         </span>
                         {mem.type && (
-                          <span style={{ fontSize: "0.6875rem", color: T.color.muted }}>
+                          <span style={{ fontSize: "0.6875rem", color: "#716A5E" }}>
                             {mem.type}
                           </span>
                         )}
@@ -2377,7 +2377,7 @@ export default function LibraryView() {
                               }} />
                               <span style={{
                                 fontFamily: T.font.display, fontSize: "0.8125rem",
-                                fontWeight: 600, color: T.color.charcoal,
+                                fontWeight: 600, color: "#403B36",
                                 letterSpacing: "0.02em",
                               }}>
                                 {dateStr}
@@ -2409,17 +2409,17 @@ export default function LibraryView() {
                               <Image src={mem.dataUrl} alt="" width={36} height={36} unoptimized style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.375rem", objectFit: "cover", flexShrink: 0 }} />
                             )}
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <span style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <span style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "#403B36", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {mem.title}
                               </span>
                               {mem.desc && (
-                                <span style={{ display: "block", fontSize: "0.625rem", color: T.color.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                <span style={{ display: "block", fontSize: "0.625rem", color: "#716A5E", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {mem.desc.slice(0, 80)}
                                 </span>
                               )}
                             </div>
                             {mem.createdAt && (
-                              <span style={{ fontSize: "0.625rem", color: T.color.muted, flexShrink: 0, whiteSpace: "nowrap" }}>
+                              <span style={{ fontSize: "0.625rem", color: "#716A5E", flexShrink: 0, whiteSpace: "nowrap" }}>
                                 {new Date(mem.createdAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
                               </span>
                             )}
@@ -2448,7 +2448,7 @@ export default function LibraryView() {
                 }}>
                   <p style={{
                     fontFamily: T.font.body, fontSize: "0.75rem",
-                    color: T.color.muted, margin: 0,
+                    color: "#716A5E", margin: 0,
                   }}>
                     {t("showingCount", { shown: String(Math.min(visibleMemCount, filteredRoomMems.length)), total: String(filteredRoomMems.length) })}
                   </p>
@@ -2460,9 +2460,9 @@ export default function LibraryView() {
                       border: `0.0625rem solid ${T.color.cream}`,
                       cursor: "pointer", fontFamily: T.font.body,
                       fontSize: "0.8125rem", fontWeight: 600,
-                      color: T.color.walnut, letterSpacing: "0.02em",
+                      color: "#716A5E", letterSpacing: "0.02em",
                       transition: "all 0.25s ease",
-                      boxShadow: "0 0.0625rem 0.25rem rgba(44,44,42,0.06)",
+                      boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.06)",
                     }}
                   >
                     {t("loadMore")}
@@ -2493,7 +2493,7 @@ export default function LibraryView() {
           width: isMobile ? "100vw" : "min(26rem, 40vw)",
           zIndex: 9998,
           background: T.color.white,
-          boxShadow: "-0.5rem 0 2rem rgba(44,44,42,0.15)",
+          boxShadow: "-0.5rem 0 2rem rgba(64,59,54,0.15)",
           display: "flex", flexDirection: "column",
           animation: "libSlideLeft 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
           overflow: "hidden",
@@ -2504,7 +2504,7 @@ export default function LibraryView() {
             padding: "1rem 1.25rem", borderBottom: `0.0625rem solid ${T.color.cream}`,
             display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0,
           }}>
-            <h3 style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+            <h3 style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: "#403B36", margin: 0 }}>
               {t("detailPanelTitle")}
             </h3>
             <button
@@ -2513,7 +2513,7 @@ export default function LibraryView() {
               style={{
                 width: "2rem", height: "2rem", borderRadius: "50%",
                 border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone,
-                color: T.color.muted, fontSize: "0.875rem", cursor: "pointer",
+                color: "#716A5E", fontSize: "0.875rem", cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
@@ -2541,7 +2541,7 @@ export default function LibraryView() {
             {/* Title */}
             <h4 style={{
               fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 700,
-              color: T.color.charcoal, margin: "0 0 0.75rem",
+              color: "#403B36", margin: "0 0 0.75rem",
               lineHeight: 1.3, letterSpacing: "0.01em",
             }}>
               {detailPanelMem.mem.title}
@@ -2550,21 +2550,21 @@ export default function LibraryView() {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem", marginBottom: "1rem" }}>
               {/* Type */}
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase" as const, letterSpacing: "0.05em", width: "4.5rem", flexShrink: 0 }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: "#716A5E", textTransform: "uppercase" as const, letterSpacing: "0.05em", width: "4.5rem", flexShrink: 0 }}>
                   {t("detailPanelType")}
                 </span>
-                <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal, display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                  <TypeIcon type={detailPanelMem.mem.type} size={14} color={T.color.charcoal} />
+                <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                  <TypeIcon type={detailPanelMem.mem.type} size={14} color={"#403B36"} />
                   {detailPanelMem.mem.type}
                 </span>
               </div>
               {/* Date */}
               {detailPanelMem.mem.createdAt && (
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase" as const, letterSpacing: "0.05em", width: "4.5rem", flexShrink: 0 }}>
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: "#716A5E", textTransform: "uppercase" as const, letterSpacing: "0.05em", width: "4.5rem", flexShrink: 0 }}>
                     {t("detailPanelDate")}
                   </span>
-                  <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.charcoal }}>
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#403B36" }}>
                     {new Date(detailPanelMem.mem.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
@@ -2572,20 +2572,20 @@ export default function LibraryView() {
               {/* Location */}
               {detailPanelMem.mem.locationName && (
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem" }}>
-                  <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase" as const, letterSpacing: "0.05em", width: "4.5rem", flexShrink: 0, paddingTop: "0.125rem" }}>
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: "#716A5E", textTransform: "uppercase" as const, letterSpacing: "0.05em", width: "4.5rem", flexShrink: 0, paddingTop: "0.125rem" }}>
                     {t("detailPanelLocation")}
                   </span>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: "0.25rem" }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.color.walnut} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: "0.0625rem" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={"#716A5E"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: "0.0625rem" }}>
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
                       <circle cx="12" cy="10" r="3"/>
                     </svg>
                     <div>
-                      <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal }}>
+                      <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#403B36" }}>
                         {detailPanelMem.mem.locationName}
                       </span>
                       {typeof detailPanelMem.mem.lat === "number" && typeof detailPanelMem.mem.lng === "number" && (
-                        <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, display: "block", marginTop: "0.0625rem" }}>
+                        <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", display: "block", marginTop: "0.0625rem" }}>
                           {detailPanelMem.mem.lat.toFixed(4)}, {detailPanelMem.mem.lng.toFixed(4)}
                         </span>
                       )}
@@ -2597,11 +2597,11 @@ export default function LibraryView() {
             {/* Description */}
             {detailPanelMem.mem.desc && (
               <div style={{ marginBottom: "1rem" }}>
-                <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: T.color.muted, textTransform: "uppercase" as const, letterSpacing: "0.05em", display: "block", marginBottom: "0.375rem" }}>
+                <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, color: "#716A5E", textTransform: "uppercase" as const, letterSpacing: "0.05em", display: "block", marginBottom: "0.375rem" }}>
                   {t("detailPanelDescription")}
                 </span>
                 <p style={{
-                  fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal,
+                  fontFamily: T.font.body, fontSize: "0.875rem", color: "#403B36",
                   margin: 0, lineHeight: 1.6, whiteSpace: "pre-wrap",
                 }}>
                   {detailPanelMem.mem.desc}
@@ -2632,9 +2632,9 @@ export default function LibraryView() {
               onClick={() => setDetailPanelMem(null)}
               style={{
                 padding: "0.5rem 1rem", borderRadius: "0.5rem",
-                background: "rgba(44,44,42,.06)", border: "none", cursor: "pointer",
+                background: "rgba(64,59,54,.06)", border: "none", cursor: "pointer",
                 fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-                color: T.color.walnut,
+                color: "#716A5E",
               }}
             >
               {tc("close")}
@@ -2716,12 +2716,12 @@ export default function LibraryView() {
       {pickerStatus !== "idle" && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 9999,
-          background: "rgba(44,44,42,.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
+          background: "rgba(64,59,54,.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <div style={{
             background: "rgba(255,255,255,.96)", borderRadius: "1.25rem",
-            boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18)", border: `0.0625rem solid ${T.color.cream}`,
+            boxShadow: "0 1.5rem 3rem rgba(64,59,54,.18)", border: `0.0625rem solid ${T.color.cream}`,
             padding: "2rem 2.5rem", textAlign: "center", maxWidth: "24rem", width: "min(24rem, 88vw)",
           }}>
             {pickerStatus === "opening" && (
@@ -2737,7 +2737,7 @@ export default function LibraryView() {
                     <circle cx="24" cy="24" r="3.5" fill={T.color.terracotta} data-gp-pulse=""/>
                   </svg>
                 </div>
-                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: "#403B36", margin: 0 }}>
                   {t("googlePhotosPickerOpening")}
                 </p>
               </>
@@ -2753,7 +2753,7 @@ export default function LibraryView() {
                     <circle cx="36" cy="16" r="2" fill={T.color.terracotta} opacity="0.5"/>
                   </svg>
                 </div>
-                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.75rem" }}>
+                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: "#403B36", margin: "0 0 0.75rem" }}>
                   Google Photos
                 </p>
                 <a
@@ -2769,7 +2769,7 @@ export default function LibraryView() {
                 >
                   {t("googlePhotosPickerOpenBtn")}
                 </a>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: T.color.muted, margin: 0 }}>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", margin: 0 }}>
                   {t("googlePhotosPickerWaiting")}
                 </p>
                 <button
@@ -2777,7 +2777,7 @@ export default function LibraryView() {
                   style={{
                     marginTop: "1rem", padding: "0.375rem 1rem", borderRadius: "0.375rem",
                     background: "transparent", border: `0.0625rem solid ${T.color.cream}`,
-                    cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted,
+                    cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E",
                   }}
                 >
                   {tc("cancel")}
@@ -2794,7 +2794,7 @@ export default function LibraryView() {
                     <path d="M18 20l-2 8h4l-2 8 10-12h-6l4-8h-8z" fill={T.color.terracotta} opacity="0.6"/>
                   </svg>
                 </div>
-                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: "#403B36", margin: 0 }}>
                   {t("googlePhotosPickerImporting")}
                 </p>
               </>
@@ -2808,7 +2808,7 @@ export default function LibraryView() {
                     <path d="M15 24l6 6 12-12" stroke={T.color.terracotta} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
                   </svg>
                 </div>
-                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.5rem" }}>
+                <p style={{ fontFamily: T.font.display, fontSize: "1rem", fontWeight: 600, color: "#403B36", margin: "0 0 0.5rem" }}>
                   {t("googlePhotosPickerDone", { count: String(pickerImportCount) })}
                 </p>
                 <button
@@ -2906,7 +2906,7 @@ export default function LibraryView() {
           onClick={() => setLightboxMem(null)}
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
-            background: "rgba(44,44,42,.75)",
+            background: "rgba(64,59,54,.75)",
             backdropFilter: "blur(1rem)",
             WebkitBackdropFilter: "blur(1rem)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -2970,7 +2970,7 @@ export default function LibraryView() {
           onClick={() => { setActiveToolPanel(null); setStoryText(""); }}
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
-            background: "rgba(44,44,42,.35)",
+            background: "rgba(64,59,54,.35)",
             backdropFilter: "blur(0.75rem)",
             WebkitBackdropFilter: "blur(0.75rem)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -2984,7 +2984,7 @@ export default function LibraryView() {
               backdropFilter: "blur(1.5rem) saturate(1.4)",
               WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
               borderRadius: "1.25rem",
-              boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18), 0 0.5rem 1.25rem rgba(44,44,42,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
+              boxShadow: "0 1.5rem 3rem rgba(64,59,54,.18), 0 0.5rem 1.25rem rgba(64,59,54,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
               border: `0.0625rem solid ${T.color.cream}`,
               width: "min(32rem, 90vw)",
               maxHeight: "min(36rem, 85vh)",
@@ -2995,12 +2995,12 @@ export default function LibraryView() {
           >
             <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${T.color.cream}`, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>
+                <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: "#403B36", margin: 0 }}>
                   {t("writeStoryTitle", { room: (() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : ""; })() })}
                 </h3>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>{t("writeStoryDesc")}</p>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", margin: "0.25rem 0 0" }}>{t("writeStoryDesc")}</p>
               </div>
-              <button onClick={() => { setActiveToolPanel(null); setStoryText(""); }} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+              <button onClick={() => { setActiveToolPanel(null); setStoryText(""); }} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: "#716A5E", fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
             </div>
             <div style={{ flex: 1, padding: "1rem 1.5rem", overflow: "auto" }}>
               <textarea
@@ -3012,14 +3012,14 @@ export default function LibraryView() {
                   width: "100%", minHeight: "12rem", padding: "0.875rem",
                   borderRadius: "0.75rem", border: `0.0625rem solid ${T.color.cream}`,
                   background: T.color.warmStone, fontFamily: T.font.body,
-                  fontSize: "0.875rem", color: T.color.charcoal, outline: "none",
+                  fontSize: "0.875rem", color: "#403B36", outline: "none",
                   resize: "vertical", lineHeight: 1.6,
                 }}
               />
             </div>
             <div style={{ padding: "0.75rem 1.5rem", borderTop: `0.0625rem solid ${T.color.cream}`, display: "flex", justifyContent: "flex-end", gap: "0.625rem", flexShrink: 0 }}>
               <button onClick={() => { setActiveToolPanel(null); setStoryText(""); }}
-                style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(44,44,42,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.walnut }}>{tc("cancel")}</button>
+                style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(64,59,54,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#716A5E" }}>{tc("cancel")}</button>
               <button
                 onClick={() => {
                   if (storyText.trim() && selectedRoom) {
@@ -3039,7 +3039,7 @@ export default function LibraryView() {
                 style={{
                   padding: "0.5rem 1.25rem", borderRadius: "0.5rem",
                   background: storyText.trim() ? currentWing.accent : `${T.color.sandstone}40`,
-                  color: storyText.trim() ? "#FFF" : T.color.muted,
+                  color: storyText.trim() ? "#FFF" : "#716A5E",
                   border: "none", cursor: storyText.trim() ? "pointer" : "default",
                   fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                 }}>{tc("save")}</button>
@@ -3078,33 +3078,33 @@ export default function LibraryView() {
         };
         const handleClosePanel = () => { setActiveToolPanel(null); setAiLabelProcessing(false); setAiLabelSelected(new Set()); setAiLabelResults({}); setAiLabelProgress(null); setAiLabelError(null); setAiLabelDone(false); setAiLabelEditing(null); };
         return (
-        <div role="button" tabIndex={0} onClick={handleClosePanel} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClosePanel(); } }} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(44,44,42,.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)", display: "flex", alignItems: "center", justifyContent: "center", animation: "libFadeIn 0.2s ease both" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "rgba(255,255,255,.96)", backdropFilter: "blur(1.5rem) saturate(1.4)", WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)", borderRadius: "1.25rem", boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18), 0 0.5rem 1.25rem rgba(44,44,42,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)", border: `0.0625rem solid ${T.color.cream}`, width: "min(32rem, 92vw)", maxHeight: "min(40rem, 88vh)", display: "flex", flexDirection: "column", overflow: "hidden", animation: "libSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both" }}>
+        <div role="button" tabIndex={0} onClick={handleClosePanel} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClosePanel(); } }} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(64,59,54,.35)", backdropFilter: "blur(0.75rem)", WebkitBackdropFilter: "blur(0.75rem)", display: "flex", alignItems: "center", justifyContent: "center", animation: "libFadeIn 0.2s ease both" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "rgba(255,255,255,.96)", backdropFilter: "blur(1.5rem) saturate(1.4)", WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)", borderRadius: "1.25rem", boxShadow: "0 1.5rem 3rem rgba(64,59,54,.18), 0 0.5rem 1.25rem rgba(64,59,54,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)", border: `0.0625rem solid ${T.color.cream}`, width: "min(32rem, 92vw)", maxHeight: "min(40rem, 88vh)", display: "flex", flexDirection: "column", overflow: "hidden", animation: "libSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both" }}>
             <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${T.color.cream}`, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>{t("aiLabelTitle")}</h3>
-                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>{t("aiLabelDesc", { count: String(photoMems.length) })}</p>
+                <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: "#403B36", margin: 0 }}>{t("aiLabelTitle")}</h3>
+                <p style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", margin: "0.25rem 0 0" }}>{t("aiLabelDesc", { count: String(photoMems.length) })}</p>
               </div>
-              <button onClick={handleClosePanel} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+              <button onClick={handleClosePanel} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: "#716A5E", fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
             </div>
             <div style={{ flex: 1, padding: "1.25rem 1.5rem", overflow: "auto" }}>
               {photoMems.length === 0 ? (
-                <div style={{ padding: "2rem 1rem", textAlign: "center" }}><p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.muted }}>{t("aiLabelNoPhotos")}</p></div>
+                <div style={{ padding: "2rem 1rem", textAlign: "center" }}><p style={{ fontFamily: T.font.body, fontSize: "0.875rem", color: "#716A5E" }}>{t("aiLabelNoPhotos")}</p></div>
               ) : (<>
                 {!aiLabelDone && !aiLabelProcessing && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                     <div style={{ display: "flex", gap: "0.75rem", fontFamily: T.font.body, fontSize: "0.75rem" }}>
-                      <span style={{ color: T.color.walnut }}>{t("aiLabelNeedsLabeling", { count: String(unlabeledPhotos.length) })}</span>
-                      {labeledPhotos.length > 0 && <span style={{ color: T.color.muted }}>{t("aiLabelAlreadyLabeled", { count: String(labeledPhotos.length) })}</span>}
+                      <span style={{ color: "#716A5E" }}>{t("aiLabelNeedsLabeling", { count: String(unlabeledPhotos.length) })}</span>
+                      {labeledPhotos.length > 0 && <span style={{ color: "#716A5E" }}>{t("aiLabelAlreadyLabeled", { count: String(labeledPhotos.length) })}</span>}
                     </div>
-                    <button onClick={() => { if (aiLabelSelected.size === photoMems.length) { setAiLabelSelected(new Set()); } else { setAiLabelSelected(new Set(photoMems.map(m => m.id))); } }} style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.walnut, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                    <button onClick={() => { if (aiLabelSelected.size === photoMems.length) { setAiLabelSelected(new Set()); } else { setAiLabelSelected(new Set(photoMems.map(m => m.id))); } }} style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
                       {aiLabelSelected.size === photoMems.length ? t("aiLabelDeselectAll") : t("aiLabelSelectAll")}
                     </button>
                   </div>
                 )}
                 {aiLabelProcessing && aiLabelProgress && (
                   <div style={{ marginBottom: "1rem" }}>
-                    <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: T.color.walnut, marginBottom: "0.375rem" }}>{t("aiLabelProgress", { current: String(aiLabelProgress.current), total: String(aiLabelProgress.total) })}</p>
+                    <p style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#716A5E", marginBottom: "0.375rem" }}>{t("aiLabelProgress", { current: String(aiLabelProgress.current), total: String(aiLabelProgress.total) })}</p>
                     <div style={{ height: "0.25rem", borderRadius: "0.125rem", background: T.color.cream, overflow: "hidden" }}>
                       <div style={{ height: "100%", borderRadius: "0.125rem", background: T.color.sandstone, transition: "width 0.3s ease", width: `${(aiLabelProgress.current / aiLabelProgress.total) * 100}%` }} />
                     </div>
@@ -3132,7 +3132,7 @@ export default function LibraryView() {
                           aria-pressed={isSelected}
                           style={{ position: "relative", borderRadius: "0.5rem", overflow: "hidden", aspectRatio: "1", cursor: aiLabelProcessing ? "default" : "pointer", outline: isSelected ? `0.125rem solid ${T.color.sandstone}` : "0.125rem solid transparent", outlineOffset: "-0.125rem", opacity: aiLabelProcessing && !isSelected ? 0.4 : 1, transition: "outline 0.15s ease, opacity 0.15s ease" }}>
                           <Image src={m.dataUrl || ""} alt={m.title} fill unoptimized style={{ objectFit: "cover" }} />
-                          <div style={{ position: "absolute", top: "0.25rem", left: "0.25rem", width: "1.125rem", height: "1.125rem", borderRadius: "0.25rem", background: isSelected ? T.color.sandstone : "rgba(255,255,255,.7)", border: isSelected ? "none" : `0.0625rem solid ${T.color.muted}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.6875rem", color: "#FFF", fontWeight: 700 }}>{isSelected && "\u2713"}</div>
+                          <div style={{ position: "absolute", top: "0.25rem", left: "0.25rem", width: "1.125rem", height: "1.125rem", borderRadius: "0.25rem", background: isSelected ? T.color.sandstone : "rgba(255,255,255,.7)", border: isSelected ? "none" : `0.0625rem solid ${"#716A5E"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.6875rem", color: "#FFF", fontWeight: 700 }}>{isSelected && "\u2713"}</div>
                           {hasDesc && (<div style={{ position: "absolute", top: "0.25rem", right: "0.25rem", width: "1rem", height: "1rem", borderRadius: "50%", background: "rgba(76,175,80,.85)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.5625rem", color: "#FFF" }}>{"\u2713"}</div>)}
                           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,.5)", padding: "0.125rem 0.25rem", fontSize: "0.5rem", color: "#FFF", fontFamily: T.font.body, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</div>
                         </div>
@@ -3150,20 +3150,20 @@ export default function LibraryView() {
                         <div key={memId} style={{ display: "flex", gap: "0.75rem", padding: "0.75rem", background: result.saved ? "rgba(76,175,80,.04)" : T.color.linen, borderRadius: "0.625rem", border: `0.0625rem solid ${result.saved ? "rgba(76,175,80,.2)" : T.color.cream}` }}>
                           <div style={{ width: "3.5rem", height: "3.5rem", borderRadius: "0.375rem", overflow: "hidden", flexShrink: 0, position: "relative" }}><Image src={mem.dataUrl || ""} alt={mem.title} fill unoptimized style={{ objectFit: "cover" }} /></div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 600, color: T.color.charcoal, margin: "0 0 0.25rem 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mem.title}</p>
+                            <p style={{ fontFamily: T.font.display, fontSize: "0.8125rem", fontWeight: 600, color: "#403B36", margin: "0 0 0.25rem 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{mem.title}</p>
                             {isEditing ? (
                               <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-                                <textarea value={aiLabelEditText} onChange={e => setAiLabelEditText(e.target.value)} style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: T.color.walnut, border: `0.0625rem solid ${T.color.cream}`, borderRadius: "0.375rem", padding: "0.375rem 0.5rem", resize: "vertical", minHeight: "2.5rem", background: "#FFF", outline: "none", lineHeight: 1.4, width: "100%" }} />
+                                <textarea value={aiLabelEditText} onChange={e => setAiLabelEditText(e.target.value)} style={{ fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E", border: `0.0625rem solid ${T.color.cream}`, borderRadius: "0.375rem", padding: "0.375rem 0.5rem", resize: "vertical", minHeight: "2.5rem", background: "#FFF", outline: "none", lineHeight: 1.4, width: "100%" }} />
                                 <div style={{ display: "flex", gap: "0.375rem" }}>
                                   <button onClick={() => { setAiLabelResults(prev => ({ ...prev, [memId]: { ...prev[memId], description: aiLabelEditText } })); setAiLabelEditing(null); }} style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600, padding: "0.25rem 0.625rem", borderRadius: "0.25rem", background: T.color.sandstone, color: "#FFF", border: "none", cursor: "pointer" }}>{t("aiLabelSave")}</button>
-                                  <button onClick={() => setAiLabelEditing(null)} style={{ fontFamily: T.font.body, fontSize: "0.6875rem", padding: "0.25rem 0.625rem", borderRadius: "0.25rem", background: "rgba(44,44,42,.06)", color: T.color.walnut, border: "none", cursor: "pointer" }}>{tc("cancel")}</button>
+                                  <button onClick={() => setAiLabelEditing(null)} style={{ fontFamily: T.font.body, fontSize: "0.6875rem", padding: "0.25rem 0.625rem", borderRadius: "0.25rem", background: "rgba(64,59,54,.06)", color: "#716A5E", border: "none", cursor: "pointer" }}>{tc("cancel")}</button>
                                 </div>
                               </div>
                             ) : (<>
-                              <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.walnut, margin: "0 0 0.25rem 0", lineHeight: 1.4 }}>{result.description}</p>
-                              {result.labels.length > 0 && (<div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginBottom: "0.375rem" }}>{result.labels.map((label, i) => (<span key={i} style={{ fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.0625rem 0.375rem", borderRadius: "0.25rem", background: `${T.color.sandstone}20`, color: T.color.walnut }}>{label}</span>))}</div>)}
+                              <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#716A5E", margin: "0 0 0.25rem 0", lineHeight: 1.4 }}>{result.description}</p>
+                              {result.labels.length > 0 && (<div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginBottom: "0.375rem" }}>{result.labels.map((label, i) => (<span key={i} style={{ fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.0625rem 0.375rem", borderRadius: "0.25rem", background: `${T.color.sandstone}20`, color: "#716A5E" }}>{label}</span>))}</div>)}
                               <div style={{ display: "flex", gap: "0.375rem" }}>
-                                <button onClick={() => { setAiLabelEditing(memId); setAiLabelEditText(result.description); }} style={{ fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.125rem 0.375rem", borderRadius: "0.25rem", background: "none", color: T.color.muted, border: `0.0625rem solid ${T.color.cream}`, cursor: "pointer" }}>{t("aiLabelEditDesc")}</button>
+                                <button onClick={() => { setAiLabelEditing(memId); setAiLabelEditText(result.description); }} style={{ fontFamily: T.font.body, fontSize: "0.625rem", padding: "0.125rem 0.375rem", borderRadius: "0.25rem", background: "none", color: "#716A5E", border: `0.0625rem solid ${T.color.cream}`, cursor: "pointer" }}>{t("aiLabelEditDesc")}</button>
                                 {!result.saved && (<button onClick={() => handleSaveResult(memId, result.description, result.labels)} style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "0.25rem", background: T.color.sandstone, color: "#FFF", border: "none", cursor: "pointer" }}>{t("aiLabelSave")}</button>)}
                                 {result.saved && (<span style={{ fontFamily: T.font.body, fontSize: "0.625rem", color: "#2e7d32", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.125rem" }}>{"\u2713"} {t("aiLabelSaved")}</span>)}
                               </div>
@@ -3177,11 +3177,11 @@ export default function LibraryView() {
               </>)}
             </div>
             <div style={{ padding: "0.75rem 1.5rem", borderTop: `0.0625rem solid ${T.color.cream}`, display: "flex", justifyContent: "flex-end", gap: "0.625rem", flexShrink: 0 }}>
-              <button onClick={handleClosePanel} style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(44,44,42,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.walnut }}>{tc("cancel")}</button>
+              <button onClick={handleClosePanel} style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(64,59,54,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#716A5E" }}>{tc("cancel")}</button>
               {!aiLabelDone ? (
-                <button disabled={aiLabelProcessing || aiLabelSelected.size === 0 || photoMems.length === 0} onClick={handleStartLabeling} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.5rem", background: (aiLabelProcessing || aiLabelSelected.size === 0) ? `${T.color.sandstone}40` : T.color.sandstone, color: (aiLabelProcessing || aiLabelSelected.size === 0) ? T.color.muted : "#FFF", border: "none", cursor: (aiLabelProcessing || aiLabelSelected.size === 0) ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: (aiLabelProcessing || aiLabelSelected.size === 0) ? 0.6 : 1, transition: "background 0.15s ease, opacity 0.15s ease" }}>{aiLabelProcessing ? t("aiLabelProcessing") : t("aiLabelStart")}</button>
+                <button disabled={aiLabelProcessing || aiLabelSelected.size === 0 || photoMems.length === 0} onClick={handleStartLabeling} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.5rem", background: (aiLabelProcessing || aiLabelSelected.size === 0) ? `${T.color.sandstone}40` : T.color.sandstone, color: (aiLabelProcessing || aiLabelSelected.size === 0) ? "#716A5E" : "#FFF", border: "none", cursor: (aiLabelProcessing || aiLabelSelected.size === 0) ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: (aiLabelProcessing || aiLabelSelected.size === 0) ? 0.6 : 1, transition: "background 0.15s ease, opacity 0.15s ease" }}>{aiLabelProcessing ? t("aiLabelProcessing") : t("aiLabelStart")}</button>
               ) : (
-                <button onClick={() => { Object.entries(aiLabelResults).forEach(([memId, result]) => { if (!result.saved) handleSaveResult(memId, result.description, result.labels); }); }} disabled={Object.values(aiLabelResults).every(r => r.saved)} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.5rem", background: Object.values(aiLabelResults).every(r => r.saved) ? `${T.color.sandstone}40` : T.color.sandstone, color: Object.values(aiLabelResults).every(r => r.saved) ? T.color.muted : "#FFF", border: "none", cursor: Object.values(aiLabelResults).every(r => r.saved) ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: Object.values(aiLabelResults).every(r => r.saved) ? 0.6 : 1 }}>{Object.values(aiLabelResults).every(r => r.saved) ? t("aiLabelSaved") : t("aiLabelSave")}</button>
+                <button onClick={() => { Object.entries(aiLabelResults).forEach(([memId, result]) => { if (!result.saved) handleSaveResult(memId, result.description, result.labels); }); }} disabled={Object.values(aiLabelResults).every(r => r.saved)} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.5rem", background: Object.values(aiLabelResults).every(r => r.saved) ? `${T.color.sandstone}40` : T.color.sandstone, color: Object.values(aiLabelResults).every(r => r.saved) ? "#716A5E" : "#FFF", border: "none", cursor: Object.values(aiLabelResults).every(r => r.saved) ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: Object.values(aiLabelResults).every(r => r.saved) ? 0.6 : 1 }}>{Object.values(aiLabelResults).every(r => r.saved) ? t("aiLabelSaved") : t("aiLabelSave")}</button>
               )}
             </div>
           </div>
@@ -3194,7 +3194,7 @@ export default function LibraryView() {
           onClick={() => { setActiveToolPanel(null); setLocationName(""); setLocationLat(""); setLocationLng(""); }}
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
-            background: "rgba(44,44,42,.35)",
+            background: "rgba(64,59,54,.35)",
             backdropFilter: "blur(0.75rem)",
             WebkitBackdropFilter: "blur(0.75rem)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -3208,7 +3208,7 @@ export default function LibraryView() {
               backdropFilter: "blur(1.5rem) saturate(1.4)",
               WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
               borderRadius: "1.25rem",
-              boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18), 0 0.5rem 1.25rem rgba(44,44,42,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
+              boxShadow: "0 1.5rem 3rem rgba(64,59,54,.18), 0 0.5rem 1.25rem rgba(64,59,54,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
               border: `0.0625rem solid ${T.color.cream}`,
               width: "min(26rem, 90vw)",
               display: "flex", flexDirection: "column",
@@ -3218,34 +3218,34 @@ export default function LibraryView() {
           >
             <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: `0.0625rem solid ${T.color.cream}`, flexShrink: 0, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: T.color.charcoal, margin: 0 }}>{t("addLocationTitle")}</h3>
-                <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.muted, margin: "0.25rem 0 0" }}>{t("addLocationDesc")}</p>
+                <h3 style={{ fontFamily: T.font.display, fontSize: "1.125rem", fontWeight: 600, color: "#403B36", margin: 0 }}>{t("addLocationTitle")}</h3>
+                <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#716A5E", margin: "0.25rem 0 0" }}>{t("addLocationDesc")}</p>
               </div>
-              <button onClick={() => { setActiveToolPanel(null); setLocationName(""); setLocationLat(""); setLocationLng(""); }} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: T.color.muted, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
+              <button onClick={() => { setActiveToolPanel(null); setLocationName(""); setLocationLat(""); setLocationLng(""); }} aria-label={tc("close")} style={{ width: "2rem", height: "2rem", borderRadius: "1rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, color: "#716A5E", fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>{"\u2715"}</button>
             </div>
             <div style={{ padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "0.875rem" }}>
               <div>
-                <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("locationNameLabel")}</label>
+                <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("locationNameLabel")}</label>
                 <input value={locationName} onChange={e => setLocationName(e.target.value)} placeholder={t("locationNamePlaceholder")} autoFocus
-                  style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, outline: "none" }} />
+                  style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: "#403B36", outline: "none" }} />
               </div>
               <div style={{ display: "flex", gap: "0.75rem" }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("latLabel")}</label>
+                  <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("latLabel")}</label>
                   <input value={locationLat} onChange={e => setLocationLat(e.target.value)} placeholder="52.3676"
-                    style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, outline: "none" }} />
+                    style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: "#403B36", outline: "none" }} />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: T.color.muted, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("lngLabel")}</label>
+                  <label style={{ fontFamily: T.font.body, fontSize: "0.6875rem", color: "#716A5E", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "0.25rem" }}>{t("lngLabel")}</label>
                   <input value={locationLng} onChange={e => setLocationLng(e.target.value)} placeholder="4.9041"
-                    style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: T.color.charcoal, outline: "none" }} />
+                    style={{ width: "100%", padding: "0.625rem 0.875rem", borderRadius: "0.625rem", border: `0.0625rem solid ${T.color.cream}`, background: T.color.warmStone, fontFamily: T.font.body, fontSize: "0.875rem", color: "#403B36", outline: "none" }} />
                 </div>
               </div>
-              <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: T.color.muted, margin: 0, lineHeight: 1.4 }}>{t("locationOptionalHint")}</p>
+              <p style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.6875rem", color: "#716A5E", margin: 0, lineHeight: 1.4 }}>{t("locationOptionalHint")}</p>
             </div>
             <div style={{ padding: "0.75rem 1.5rem", borderTop: `0.0625rem solid ${T.color.cream}`, display: "flex", justifyContent: "flex-end", gap: "0.625rem", flexShrink: 0 }}>
               <button onClick={() => { setActiveToolPanel(null); setLocationName(""); setLocationLat(""); setLocationLng(""); }}
-                style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(44,44,42,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: T.color.walnut }}>{tc("cancel")}</button>
+                style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", background: "rgba(64,59,54,.06)", border: "none", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500, color: "#716A5E" }}>{tc("cancel")}</button>
               <button
                 onClick={async () => {
                   if (locationName.trim() && selectedRoom) {
@@ -3280,7 +3280,7 @@ export default function LibraryView() {
                 style={{
                   padding: "0.5rem 1.25rem", borderRadius: "0.5rem",
                   background: locationName.trim() ? currentWing.accent : `${T.color.sandstone}40`,
-                  color: locationName.trim() ? "#FFF" : T.color.muted,
+                  color: locationName.trim() ? "#FFF" : "#716A5E",
                   border: "none", cursor: locationName.trim() ? "pointer" : "default",
                   fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
                 }}>{t("saveLocation")}</button>
@@ -3295,7 +3295,7 @@ export default function LibraryView() {
           onClick={() => { setMovingMem(null); setExpandedMoveWing(null); }}
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
-            background: "rgba(44,44,42,.35)",
+            background: "rgba(64,59,54,.35)",
             backdropFilter: "blur(0.75rem)",
             WebkitBackdropFilter: "blur(0.75rem)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -3309,7 +3309,7 @@ export default function LibraryView() {
               backdropFilter: "blur(1.5rem) saturate(1.4)",
               WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
               borderRadius: "1.25rem",
-              boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18), 0 0.5rem 1.25rem rgba(44,44,42,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
+              boxShadow: "0 1.5rem 3rem rgba(64,59,54,.18), 0 0.5rem 1.25rem rgba(64,59,54,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
               border: `0.0625rem solid ${T.color.cream}`,
               width: "min(26rem, 90vw)",
               maxHeight: "min(32rem, 80vh)",
@@ -3326,14 +3326,14 @@ export default function LibraryView() {
             }}>
               <h3 style={{
                 fontFamily: T.font.display, fontSize: "1.125rem",
-                fontWeight: 600, color: T.color.charcoal,
+                fontWeight: 600, color: "#403B36",
                 margin: 0, letterSpacing: "0.01em",
               }}>
                 {t("moveTo")}
               </h3>
               <p style={{
                 fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
-                color: T.color.muted, margin: "0.25rem 0 0",
+                color: "#716A5E", margin: "0.25rem 0 0",
                 letterSpacing: "0.02em",
               }}>
                 {t("selectRoom")} — <strong>{movingMem.mem.title}</strong>
@@ -3365,24 +3365,24 @@ export default function LibraryView() {
                         fontFamily: T.font.body,
                         fontSize: "0.875rem",
                         fontWeight: 600,
-                        color: T.color.charcoal,
+                        color: "#403B36",
                         letterSpacing: "0.01em",
                         transition: "background 0.2s ease",
                       }}
-                      onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = "rgba(44,44,42,.03)"; }}
+                      onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = "rgba(64,59,54,.03)"; }}
                       onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = isExpanded ? `${wing.accent}0A` : "transparent"; }}
                     >
                       <WingIcon wingId={wing.id} size={18} color={wing.accent} />
                       <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(wing, tWings)}</span>
                       <span style={{
-                        fontSize: "0.6875rem", color: T.color.muted,
+                        fontSize: "0.6875rem", color: "#716A5E",
                         fontWeight: 500,
                       }}>
                         {wRooms.length}
                       </span>
                       <svg
                         width="12" height="12" viewBox="0 0 12 12"
-                        fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round"
+                        fill="none" stroke={"#716A5E"} strokeWidth="1.5" strokeLinecap="round"
                         style={{
                           transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
                           transition: "transform 0.2s ease",
@@ -3413,7 +3413,7 @@ export default function LibraryView() {
                             fontFamily: T.font.body,
                             fontSize: "0.8125rem",
                             fontWeight: 500,
-                            color: isCurrent ? T.color.muted : T.color.walnut,
+                            color: isCurrent ? "#716A5E" : "#716A5E",
                             letterSpacing: "0.01em",
                             opacity: isCurrent ? 0.6 : 1,
                             transition: "background 0.15s ease",
@@ -3454,18 +3454,18 @@ export default function LibraryView() {
                 style={{
                   padding: "0.4375rem 1rem",
                   borderRadius: "0.5rem",
-                  background: "rgba(44,44,42,.06)",
+                  background: "rgba(64,59,54,.06)",
                   border: "none",
                   cursor: "pointer",
                   fontFamily: T.font.body,
                   fontSize: "0.8125rem",
                   fontWeight: 500,
-                  color: T.color.walnut,
+                  color: "#716A5E",
                   letterSpacing: "0.01em",
                   transition: "background 0.15s ease",
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(44,44,42,.1)"}
-                onMouseLeave={e => e.currentTarget.style.background = "rgba(44,44,42,.06)"}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(64,59,54,.1)"}
+                onMouseLeave={e => e.currentTarget.style.background = "rgba(64,59,54,.06)"}
               >
                 {tc("cancel")}
               </button>
@@ -3480,7 +3480,7 @@ export default function LibraryView() {
           onClick={() => { setBulkMoving(false); setExpandedMoveWing(null); }}
           style={{
             position: "fixed", inset: 0, zIndex: 9999,
-            background: "rgba(44,44,42,.35)",
+            background: "rgba(64,59,54,.35)",
             backdropFilter: "blur(0.75rem)",
             WebkitBackdropFilter: "blur(0.75rem)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -3494,7 +3494,7 @@ export default function LibraryView() {
               backdropFilter: "blur(1.5rem) saturate(1.4)",
               WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
               borderRadius: "1.25rem",
-              boxShadow: "0 1.5rem 3rem rgba(44,44,42,.18), 0 0.5rem 1.25rem rgba(44,44,42,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
+              boxShadow: "0 1.5rem 3rem rgba(64,59,54,.18), 0 0.5rem 1.25rem rgba(64,59,54,.08), inset 0 0.0625rem 0 rgba(255,255,255,.7)",
               border: `0.0625rem solid ${T.color.cream}`,
               width: "min(26rem, 90vw)",
               maxHeight: "min(32rem, 80vh)",
@@ -3510,14 +3510,14 @@ export default function LibraryView() {
             }}>
               <h3 style={{
                 fontFamily: T.font.display, fontSize: "1.125rem",
-                fontWeight: 600, color: T.color.charcoal,
+                fontWeight: 600, color: "#403B36",
                 margin: 0, letterSpacing: "0.01em",
               }}>
                 {t("moveSelected")}
               </h3>
               <p style={{
                 fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem",
-                color: T.color.muted, margin: "0.25rem 0 0",
+                color: "#716A5E", margin: "0.25rem 0 0",
                 letterSpacing: "0.02em",
               }}>
                 {t("bulkMoveDesc", { count: String(selectedMemIds.size) })}
@@ -3537,16 +3537,16 @@ export default function LibraryView() {
                         border: "none", cursor: "pointer",
                         display: "flex", alignItems: "center", gap: "0.625rem",
                         fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-                        color: T.color.charcoal, letterSpacing: "0.01em",
+                        color: "#403B36", letterSpacing: "0.01em",
                         transition: "background 0.2s ease",
                       }}
-                      onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = "rgba(44,44,42,.03)"; }}
+                      onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = "rgba(64,59,54,.03)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = isExpanded ? `${wing.accent}0A` : "transparent"; }}
                     >
                       <WingIcon wingId={wing.id} size={18} color={wing.accent} />
                       <span style={{ flex: 1, textAlign: "left" }}>{translateWingName(wing, tWings)}</span>
-                      <span style={{ fontSize: "0.6875rem", color: T.color.muted, fontWeight: 500 }}>{wRooms.length}</span>
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.color.muted} strokeWidth="1.5" strokeLinecap="round"
+                      <span style={{ fontSize: "0.6875rem", color: "#716A5E", fontWeight: 500 }}>{wRooms.length}</span>
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={"#716A5E"} strokeWidth="1.5" strokeLinecap="round"
                         style={{ transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease", flexShrink: 0 }}
                       ><path d="M4 2l4 4-4 4" /></svg>
                     </button>
@@ -3563,7 +3563,7 @@ export default function LibraryView() {
                             border: "none", cursor: isCurrent ? "default" : "pointer",
                             display: "flex", alignItems: "center", gap: "0.5rem",
                             fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-                            color: isCurrent ? T.color.muted : T.color.walnut,
+                            color: isCurrent ? "#716A5E" : "#716A5E",
                             letterSpacing: "0.01em", opacity: isCurrent ? 0.6 : 1,
                             transition: "background 0.15s ease",
                           }}
@@ -3594,12 +3594,12 @@ export default function LibraryView() {
                 onClick={() => { setBulkMoving(false); setExpandedMoveWing(null); }}
                 style={{
                   padding: "0.4375rem 1rem", borderRadius: "0.5rem",
-                  background: "rgba(44,44,42,.06)", border: "none", cursor: "pointer",
+                  background: "rgba(64,59,54,.06)", border: "none", cursor: "pointer",
                   fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
-                  color: T.color.walnut, letterSpacing: "0.01em", transition: "background 0.15s ease",
+                  color: "#716A5E", letterSpacing: "0.01em", transition: "background 0.15s ease",
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(44,44,42,.1)"}
-                onMouseLeave={e => e.currentTarget.style.background = "rgba(44,44,42,.06)"}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(64,59,54,.1)"}
+                onMouseLeave={e => e.currentTarget.style.background = "rgba(64,59,54,.06)"}
               >
                 {tc("cancel")}
               </button>
@@ -3625,7 +3625,7 @@ export default function LibraryView() {
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 10000,
-          background: "rgba(44,44,42,.88)",
+          background: "rgba(64,59,54,.88)",
           backdropFilter: "blur(0.75rem)",
           WebkitBackdropFilter: "blur(0.75rem)",
           color: T.color.linen,
@@ -3635,7 +3635,7 @@ export default function LibraryView() {
           fontSize: "0.8125rem",
           fontWeight: 500,
           letterSpacing: "0.02em",
-          boxShadow: "0 0.5rem 1.5rem rgba(44,44,42,.2)",
+          boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,.2)",
           animation: "libSlideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
         }}>
           {t("moved")}
