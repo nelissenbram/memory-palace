@@ -4302,7 +4302,8 @@
     "byMonth": "Mes",
     "byRoom": "Salas",
     "expandSidebar": "Mostrar alas",
-    "collapseSidebar": "Ocultar alas"
+    "collapseSidebar": "Ocultar alas",
+    "allYears": "Todos los años"
   },
   "atrium": {
     "goodMorning": "Buenos días",

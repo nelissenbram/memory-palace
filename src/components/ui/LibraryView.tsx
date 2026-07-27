@@ -442,6 +442,7 @@ export default function LibraryView() {
   const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const [libTimeOfDay, setLibTimeOfDay] = useState(() => getTimeOfDay());
   const [wallGroupBy, setWallGroupBy] = useState<"month" | "room">("month");
+  const [filterYear, setFilterYear] = useState<string>("");
   useEffect(() => { const id = setInterval(() => setLibTimeOfDay(getTimeOfDay()), 10 * 60 * 1000); return () => clearInterval(id); }, []);
   const [toolbarHint, setToolbarHint] = useState(false);
   const [storyText, setStoryText] = useState("");
@@ -865,6 +866,11 @@ export default function LibraryView() {
     for (const w of wings) for (const r of getWingRooms(w.id)) out.push(...getMemsForRoom(r.id));
     return out;
   }, [wings, getWingRooms, getMemsForRoom]);
+  const libYears = useMemo(() => {
+    const ys = new Set<string>();
+    for (const m of libAllMems) { const r = m.createdAt || (m as { date?: string }).date; if (r) { const y = new Date(r).getFullYear(); if (!Number.isNaN(y)) ys.add(String(y)); } }
+    return [...ys].sort((a, b) => b.localeCompare(a));
+  }, [libAllMems]);
   const memRoomMap = useMemo(() => {
     const m = new Map<string, { roomId: string; wingId: string }>();
     for (const w of wings) for (const r of getWingRooms(w.id)) for (const mem of getMemsForRoom(r.id)) m.set(mem.id, { roomId: r.id, wingId: w.id });
@@ -892,6 +898,7 @@ export default function LibraryView() {
     else if (facet === "described") mems = mems.filter(m => !!(m.desc || "").trim() || !!m.historicalContext);
     else if (facet === "onthisday") { const now = new Date(), mo = now.getMonth(), da = now.getDate(); mems = mems.filter(m => { const r = m.createdAt || (m as { date?: string }).date; if (!r) return false; const d = new Date(r); return !Number.isNaN(d.getTime()) && d.getMonth() === mo && d.getDate() === da; }); }
     else if (facet === "unplaced") mems = mems.filter(m => !memRoomMap.get(m.id)?.roomId);
+    if (filterYear) mems = mems.filter(m => { const r = m.createdAt || (m as { date?: string }).date; return r ? String(new Date(r).getFullYear()) === filterYear : false; });
     // Sort (P1 #7)
     mems = [...mems].sort((a, b) => {
       switch (sortMode) {
@@ -903,7 +910,7 @@ export default function LibraryView() {
       }
     });
     return mems;
-  }, [selectedRoom, selectedWing, libAllMems, allWingMems, getMemsForRoom, q, filterType, facet, memRoomMap, sortMode]);
+  }, [selectedRoom, selectedWing, libAllMems, allWingMems, getMemsForRoom, q, filterType, facet, filterYear, memRoomMap, sortMode]);
 
   // Backfill missing video thumbnails for the selected room (background, throttled)
   useThumbnailBackfill(selectedRoom, filteredRoomMems);
@@ -1535,6 +1542,7 @@ export default function LibraryView() {
                 accent={selectedWing === "__all__" ? "#9A4F2A" : currentWing.accent}
                 onBack={selectedRoom ? () => setSelectedRoom(null) : (selectedWing !== "__all__" ? () => setSelectedWing("__all__") : undefined)}
                 onAdd={selectedRoom ? () => setShowUploadFor({ wingId: selectedWing, roomId: selectedRoom }) : undefined}
+                count={filteredRoomMems.length}
                 isMobile={isMobile}
               />
             </div>
@@ -1568,7 +1576,7 @@ export default function LibraryView() {
             { key: "onthisday", label: t("onThisDay") !== "onThisDay" ? t("onThisDay") : "On this day", count: base.filter(isOtd).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.2 5.6L20 9.3l-4.4 3.7L17 19l-5-3.2L7 19l1.4-6L4 9.3l5.8-.7z"/></svg> },
             { key: "unplaced", label: t("facetUnplaced") !== "facetUnplaced" ? t("facetUnplaced") : "Unplaced", count: base.filter(m => !memRoomMap.get(m.id)?.roomId).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2.5"/></svg> },
           ];
-          const anyActive = !!facet || !!filterType || !!q;
+          const anyActive = !!facet || !!filterType || !!q || !!filterYear;
           const roomTools = ([{ key: "writeStory" as const, label: t("writeStory") }, { key: "aiLabel" as const, label: t("aiLabel") }, { key: "addLocation" as const, label: t("addLocation") }]);
           return (
             <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "nowrap", overflowX: "auto", scrollbarWidth: "none", padding: isMobile ? "0 0.5rem 0.5rem" : isCompact ? "0 1.25rem 0.5rem" : "0 2.5rem 0.55rem", maskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)" }}>
@@ -1585,10 +1593,17 @@ export default function LibraryView() {
                 );
               })}
               {anyActive && (
-                <button type="button" onClick={() => { setFacet(null); setFilterType(null); setQuery(""); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", minHeight: "1.9rem", padding: "0 0.5rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "transparent", color: "#716A5E", border: "0.0625rem solid #E3D6BC" }}>✕</button>
+                <button type="button" onClick={() => { setFacet(null); setFilterType(null); setQuery(""); setFilterYear(""); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", minHeight: "1.9rem", padding: "0 0.5rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "transparent", color: "#716A5E", border: "0.0625rem solid #E3D6BC" }}>✕</button>
               )}
 
               <span style={{ flex: 1, minWidth: "0.75rem" }} />
+
+              {libYears.length > 1 && (
+                <select value={filterYear} onChange={e => setFilterYear(e.target.value)} className="lib-pill" style={{ flexShrink: 0, minHeight: "1.9rem", padding: "0 0.6rem", borderRadius: "2rem", border: `0.0625rem solid ${filterYear ? "#B85C38" : "#E3D6BC"}`, background: filterYear ? "#B85C38" : "#FCFAF5", color: filterYear ? "#FCFAF5" : "#403B36", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, WebkitAppearance: "none", MozAppearance: "none", appearance: "none" }}>
+                  <option value="">{t("allYears") !== "allYears" ? t("allYears") : "All years"}</option>
+                  {libYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              )}
 
               {/* Rooms lens */}
               <div style={{ flexShrink: 0, display: "inline-flex", borderRadius: "2rem", border: "0.0625rem solid #E3D6BC", overflow: "hidden", background: "#FCFAF5" }}>

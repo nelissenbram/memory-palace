@@ -4302,7 +4302,8 @@
     "byMonth": "Month",
     "byRoom": "Rooms",
     "expandSidebar": "Show wings",
-    "collapseSidebar": "Hide wings"
+    "collapseSidebar": "Hide wings",
+    "allYears": "All years"
   },
   "atrium": {
     "goodMorning": "Good morning",

@@ -145,6 +145,8 @@ export interface LibraryHeaderProps {
   onBack?: () => void;
   onAdd?: () => void;
   isMobile: boolean;
+  /** memory count in the current scope — shown inline in the title bar */
+  count?: number;
 }
 
 export function LibraryHeader({
@@ -157,6 +159,7 @@ export function LibraryHeader({
   onBack,
   onAdd,
   isMobile,
+  count,
 }: LibraryHeaderProps) {
   const { t } = useTranslation("library");
 
@@ -261,6 +264,7 @@ export function LibraryHeader({
               }}
             >
               {roomName ? <><span style={{ fontWeight: 500, color: "#716A5E", fontSize: "0.875rem", marginRight: "0.25rem" }}>{t("room")}</span>{roomName}</> : wingName}
+              {count !== undefined && count > 0 && <span style={{ fontFamily: T.font.body, fontWeight: 600, fontSize: "0.8125rem", color: "#716A5E", marginLeft: "0.5rem", fontVariantNumeric: "tabular-nums" }}>· {count}</span>}
             </h2>
 
             {/* Breadcrumb or description */}
