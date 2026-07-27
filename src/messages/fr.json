@@ -4285,7 +4285,9 @@
     "gpOpenFailed": "Impossible d'ouvrir Google Photos",
     "gpUnknownError": "Erreur inconnue",
     "gpImportFailed": "Échec de l'importation",
-    "videoThumbnailOnly": "Miniature uniquement"
+    "videoThumbnailOnly": "Miniature uniquement",
+    "onThisDay": "Ce jour-là",
+    "yearsAgoShort": "a"
   },
   "atrium": {
     "goodMorning": "Bonjour",

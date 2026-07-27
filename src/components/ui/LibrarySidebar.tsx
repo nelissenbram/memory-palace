@@ -27,6 +27,8 @@ interface LibrarySidebarProps {
   onSelectRoom?: (roomId: string) => void;
   selectedRoom?: string | null;
   sharedWings?: { wingName: string; rooms: { id: string; name: string; icon: string }[] }[];
+  /** Per-wing warmth (0 quiet / 1 ember / 2 candlelit) — the seals glow by recency. */
+  wingWarmth?: Record<string, 0 | 1 | 2>;
 }
 
 const PLAN_LIMIT = 500;
@@ -53,6 +55,7 @@ export default function LibrarySidebar({
   onSelectRoom,
   selectedRoom,
   sharedWings,
+  wingWarmth,
 }: LibrarySidebarProps) {
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
@@ -130,6 +133,10 @@ export default function LibrarySidebar({
     @keyframes lsb-glow-pulse {
       0%, 100% { opacity: 0.5; }
       50% { opacity: 1; }
+    }
+    @keyframes lsb-seal-breath { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.08); } }
+    @media (prefers-reduced-motion: no-preference) {
+      .lsb-seal-breath { animation: lsb-seal-breath 4s ease-in-out infinite; }
     }
     .lsb-mobile-strip::-webkit-scrollbar { display: none; }
     .lsb-desktop-nav::-webkit-scrollbar { width: 0.25rem; }
@@ -462,28 +469,33 @@ export default function LibrarySidebar({
                   : "none",
               }}
             >
-              {/* Icon circle with accent glow */}
-              <div
-                style={{
-                  width: "2.375rem",
-                  height: "2.375rem",
-                  borderRadius: "50%",
-                  background: `linear-gradient(135deg, ${w.accent}18, ${w.accent}28)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  fontSize: "1.125rem",
-                  lineHeight: 1,
-                  transition: `all 0.3s ${EASE_OUT_EXPO}`,
-                  boxShadow:
-                    active || hovered
-                      ? `0 0 0.75rem ${w.accent}22`
-                      : "none",
-                }}
-              >
-                <WingIcon wingId={w.id} size={20} color={w.accent} />
-              </div>
+              {/* Engraved wing seal — warmth-lit medallion (r10): the palace
+                  breathes gilt when a wing is candlelit, embers when warm,
+                  quiet when untended. The one licensed gold in the nav. */}
+              {(() => {
+                const warm = wingWarmth?.[w.id] ?? 0;
+                const warmGlow = warm === 2 ? "0 0 0.9rem rgba(212,175,55,0.34)" : warm === 1 ? "0 0 0.7rem rgba(184,92,56,0.28)" : "none";
+                return (
+                  <div
+                    className={warm === 2 ? "lsb-seal-breath" : undefined}
+                    style={{
+                      width: "2.375rem",
+                      height: "2.375rem",
+                      borderRadius: "50%",
+                      background: `linear-gradient(135deg, ${w.accent}14, ${w.accent}22)`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      lineHeight: 1,
+                      transition: `all 0.3s ${EASE_OUT_EXPO}`,
+                      boxShadow: `inset 0 0 0 0.0625rem #E3D6BC, inset 0 0.0625rem 0 rgba(255,255,255,0.5)${warmGlow !== "none" ? ", " + warmGlow : ""}`,
+                    }}
+                  >
+                    <WingIcon wingId={w.id} size={20} color={w.accent} />
+                  </div>
+                );
+              })()}
 
               {/* Name + subtitle + progress */}
               <div style={{ flex: 1, minWidth: 0 }}>

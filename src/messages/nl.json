@@ -4287,7 +4287,9 @@
     "gpOpenFailed": "Kon Google Photos niet openen",
     "gpUnknownError": "Onbekende fout",
     "gpImportFailed": "Import mislukt",
-    "videoThumbnailOnly": "Alleen miniatuur"
+    "videoThumbnailOnly": "Alleen miniatuur",
+    "onThisDay": "Op deze dag",
+    "yearsAgoShort": "j geleden"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",

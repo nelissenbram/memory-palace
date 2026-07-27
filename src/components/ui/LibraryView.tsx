@@ -15,6 +15,9 @@ import type { Mem } from "@/lib/constants/defaults";
 import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import MemoryDetail from "@/components/ui/MemoryDetail";
+import { MediaThumb } from "@/components/ui/MediaThumb";
+import { computeWarmthLevel } from "@/lib/warmth";
+import { Overline } from "@/components/ui/AtriumRelay";
 import RoomMediaPlayer from "@/components/ui/RoomMediaPlayer";
 import UploadPanel from "@/components/ui/UploadPanel";
 import ImportHub from "@/components/ui/ImportHub";
@@ -896,6 +899,45 @@ export default function LibraryView() {
     return results.length > 0 ? results : null;
   }, [q, selectedRoom, wings, getWingRooms, getMemsForRoom]);
 
+  // ── Warmth per wing (ports src/lib/warmth.ts): the sidebar seals glow by
+  //    recency — quiet / ember / candlelit — like the Atrium board. ──
+  const wingWarmth = useMemo(() => {
+    const out: Record<string, 0 | 1 | 2> = {};
+    for (const w of wings) {
+      const dates: string[] = [];
+      for (const r of getWingRooms(w.id)) {
+        for (const m of getMemsForRoom(r.id)) {
+          const d = m.createdAt || (m as { date?: string }).date;
+          if (d) dates.push(d);
+        }
+      }
+      out[w.id] = computeWarmthLevel(dates);
+    }
+    return out;
+  }, [wings, getWingRooms, getMemsForRoom]);
+
+  // ── "On This Day": memories whose month+day match today (year differs). A
+  //    gilt resurfacing strip — the Library's emotional pull to come back. ──
+  const onThisDayMems = useMemo(() => {
+    const now = new Date();
+    const mo = now.getMonth(), da = now.getDate(), yr = now.getFullYear();
+    const out: { mem: Mem; wing: Wing; room: WingRoom; yearsAgo: number }[] = [];
+    for (const w of wings) {
+      for (const r of getWingRooms(w.id)) {
+        for (const m of getMemsForRoom(r.id)) {
+          const raw = m.createdAt || (m as { date?: string }).date;
+          if (!raw) continue;
+          const d = new Date(raw);
+          if (Number.isNaN(d.getTime())) continue;
+          if (d.getMonth() === mo && d.getDate() === da && d.getFullYear() !== yr) {
+            out.push({ mem: m, wing: w, room: r, yearsAgo: yr - d.getFullYear() });
+          }
+        }
+      }
+    }
+    return out.sort((a, b) => a.yearsAgo - b.yearsAgo).slice(0, 8);
+  }, [wings, getWingRooms, getMemsForRoom]);
+
   // Get unique types in room for filter chips + counts
   // Normalize display types for consistent categorization
   const normalizeDisplayType = (type: string) => {
@@ -1090,6 +1132,7 @@ export default function LibraryView() {
                 onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); setQuery(""); setFilterType(null); setMobileSidebarOpen(false); }}
                 onSelectRoom={(roomId: string) => { setSelectedRoom(roomId); setMobileSidebarOpen(false); }}
                 selectedRoom={selectedRoom}
+                wingWarmth={wingWarmth}
                 wingMemCount={wingMemCount}
                 onEnter3D={handleEnter3D}
                 isMobile={isMobile}
@@ -1111,6 +1154,7 @@ export default function LibraryView() {
           onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); setQuery(""); setFilterType(null); }}
           onSelectRoom={(roomId: string) => { setSelectedRoom(roomId); }}
           selectedRoom={selectedRoom}
+          wingWarmth={wingWarmth}
           wingMemCount={wingMemCount}
           onEnter3D={handleEnter3D}
           isMobile={isMobile}
@@ -1480,6 +1524,29 @@ export default function LibraryView() {
                 resultCount={searchResultCount}
                 isMobile={isMobile}
               />
+            </div>
+          </div>
+        )}
+
+        {/* ── ON THIS DAY — gilt resurfacing strip (renders nothing when empty,
+            never scolding); the Library's pull to return ── */}
+        {onThisDayMems.length > 0 && (
+          <div style={{ padding: isMobile ? "0 0.5rem 0.75rem" : isCompact ? "0 1.25rem 0.75rem" : "0 2.5rem 0.75rem" }}>
+            <div className="lib-otd" style={{ border: "0.0625rem solid #D4AF37", background: "linear-gradient(160deg, #FCF6E5 0%, #FCFAF5 78%)", borderRadius: "1rem", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", padding: "0.75rem 1rem" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.6rem", marginBottom: "0.6rem" }}>
+                <Overline color="#8A6410">{t("onThisDay", {}) !== "onThisDay" ? t("onThisDay", {}) : "On this day"}</Overline>
+                <span aria-hidden="true" style={{ flex: 1, height: "0.0625rem", background: "linear-gradient(90deg, rgba(212,175,55,0.5), transparent)" }} />
+              </div>
+              <div style={{ display: "flex", gap: "0.7rem", overflowX: "auto", paddingBottom: "0.15rem", scrollbarWidth: "none", maskImage: "linear-gradient(to right, transparent 0, #000 0.5rem, #000 calc(100% - 0.5rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 0.5rem, #000 calc(100% - 0.5rem), transparent 100%)" }}>
+                {onThisDayMems.map(({ mem, wing, room, yearsAgo }, i) => (
+                  <button key={mem.id + "_" + i} type="button" onClick={() => setDetailPanelMem({ mem, wingId: wing.id, roomId: room.id })} title={mem.title} style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.3rem", width: "3.25rem", background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+                    <span style={{ width: "3rem", height: "3rem", borderRadius: "0.6rem", overflow: "hidden", border: "0.125rem solid #D4AF37", boxShadow: "inset 0 0 0 0.0625rem #FCFAF5", flexShrink: 0 }}>
+                      <MediaThumb mem={mem} size="3rem" borderRadius="0.5rem" iconSize={16} />
+                    </span>
+                    <span style={{ fontFamily: T.font.body, fontSize: "0.625rem", fontWeight: 600, color: "#8A6410", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{yearsAgo}{t("yearsAgoShort", {}) !== "yearsAgoShort" ? t("yearsAgoShort", {}) : "y"}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
