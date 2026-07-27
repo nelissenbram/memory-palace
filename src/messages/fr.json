@@ -4295,7 +4295,9 @@
     "facetPlace": "Avec lieu",
     "facetDescribed": "Décrit",
     "facetUnplaced": "Sans salle",
-    "clearFilters": "Effacer"
+    "clearFilters": "Effacer",
+    "allMemories": "Tous les souvenirs",
+    "allMemoriesDesc": "Toute votre vie, les plus récents d’abord"
   },
   "atrium": {
     "goodMorning": "Bonjour",

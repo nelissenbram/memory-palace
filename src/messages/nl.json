@@ -4297,7 +4297,9 @@
     "facetPlace": "Met plaats",
     "facetDescribed": "Beschreven",
     "facetUnplaced": "Zonder kamer",
-    "clearFilters": "Wissen"
+    "clearFilters": "Wissen",
+    "allMemories": "Alle herinneringen",
+    "allMemoriesDesc": "Je hele leven, nieuwste eerst"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",

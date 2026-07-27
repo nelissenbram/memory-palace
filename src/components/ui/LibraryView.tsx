@@ -874,7 +874,7 @@ export default function LibraryView() {
     let mems: Mem[];
     if (selectedRoom) mems = getMemsForRoom(selectedRoom);
     else if (selectedWing === "__all__") mems = libAllMems;
-    else return [];
+    else mems = allWingMems; // a wing shows a wall of ALL its media
     if (q) mems = mems.filter(m =>
       m.title.toLowerCase().includes(q)
       || (m.desc || "").toLowerCase().includes(q)
@@ -898,7 +898,7 @@ export default function LibraryView() {
       }
     });
     return mems;
-  }, [selectedRoom, selectedWing, libAllMems, getMemsForRoom, q, filterType, facet, memRoomMap, sortMode]);
+  }, [selectedRoom, selectedWing, libAllMems, allWingMems, getMemsForRoom, q, filterType, facet, memRoomMap, sortMode]);
 
   // Backfill missing video thumbnails for the selected room (background, throttled)
   useThumbnailBackfill(selectedRoom, filteredRoomMems);
@@ -1156,8 +1156,8 @@ export default function LibraryView() {
               <LibrarySidebar
                 wings={wings}
                 selectedWing={selectedWing}
-                onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); setMobileSidebarOpen(false); }}
-                onSelectRoom={(roomId: string) => { setSelectedRoom(roomId); setMobileSidebarOpen(false); }}
+                onSelectWing={(wingId: string) => { if (selectedWing === wingId) { setSelectedWing("__all__"); } else { setSelectedWing(wingId); } setSelectedRoom(null); setMobileSidebarOpen(false); }}
+                onSelectRoom={(roomId: string) => { setSelectedRoom(selectedRoom === roomId ? null : roomId); setMobileSidebarOpen(false); }}
                 selectedRoom={selectedRoom}
                 wingWarmth={wingWarmth}
                 wingMemCount={wingMemCount}
@@ -1178,8 +1178,8 @@ export default function LibraryView() {
         <LibrarySidebar
           wings={wings}
           selectedWing={selectedWing}
-          onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); }}
-          onSelectRoom={(roomId: string) => { setSelectedRoom(roomId); }}
+          onSelectWing={(wingId: string) => { if (selectedWing === wingId) { setSelectedWing("__all__"); } else { setSelectedWing(wingId); } setSelectedRoom(null); }}
+          onSelectRoom={(roomId: string) => { setSelectedRoom(selectedRoom === roomId ? null : roomId); }}
           selectedRoom={selectedRoom}
           wingWarmth={wingWarmth}
           wingMemCount={wingMemCount}
@@ -1255,7 +1255,7 @@ export default function LibraryView() {
                 return (
                   <button
                     key={w.id}
-                    onClick={() => { setSelectedWing(w.id); setSelectedRoom(null); }}
+                    onClick={() => { if (selectedWing === w.id) { setSelectedWing("__all__"); setSelectedRoom(null); } else { setSelectedWing(w.id); setSelectedRoom(null); } }}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "0.25rem",
                       padding: "0.375rem 0.75rem",
@@ -1365,7 +1365,7 @@ export default function LibraryView() {
                 return (
                   <button
                     key={room.id}
-                    onClick={() => { setSelectedRoom(room.id); }}
+                    onClick={() => { setSelectedRoom(selectedRoom === room.id ? null : room.id); }}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "0.25rem",
                       padding: "0.375rem 0.75rem",
@@ -1512,11 +1512,11 @@ export default function LibraryView() {
               <LibraryHeader
                 wingIcon={currentWing.icon}
                 wingId={currentWing.id}
-                wingName={translateWingName(currentWing, tWings)}
-                wingDesc={currentWing.descKey ? tWings(currentWing.descKey) : currentWing.desc}
+                wingName={selectedWing === "__all__" ? (t("allMemories") !== "allMemories" ? t("allMemories") : "All Memories") : translateWingName(currentWing, tWings)}
+                wingDesc={selectedWing === "__all__" ? (t("allMemoriesDesc") !== "allMemoriesDesc" ? t("allMemoriesDesc") : "Your whole life, newest first") : (currentWing.descKey ? tWings(currentWing.descKey) : currentWing.desc)}
                 roomName={selectedRoom ? ((() => { const r = wingRooms.find(r => r.id === selectedRoom); return r ? translateRoomName(r, tWings) : undefined; })()) : undefined}
-                accent={currentWing.accent}
-                onBack={selectedRoom ? handleBackToRooms : undefined}
+                accent={selectedWing === "__all__" ? "#9A4F2A" : currentWing.accent}
+                onBack={selectedRoom ? () => setSelectedRoom(null) : (selectedWing !== "__all__" ? () => setSelectedWing("__all__") : undefined)}
                 onAdd={selectedRoom ? () => setShowUploadFor({ wingId: selectedWing, roomId: selectedRoom }) : undefined}
                 isMobile={isMobile}
               />
@@ -1983,7 +1983,7 @@ export default function LibraryView() {
           )}
 
           {/* Room list (when no room selected and no cross-wing search and no empty search) */}
-          {!selectedRoom && !crossWingResults && !q && selectedWing !== "__all__" && (
+          {false && !selectedRoom && !crossWingResults && !q && selectedWing !== "__all__" && (
             <div style={{ animation: "libFadeIn 0.35s ease both" }}>
               {/* Wing welcome message */}
               <p style={{
@@ -2129,7 +2129,7 @@ export default function LibraryView() {
           )}
 
           {/* Memory grid (when room selected) */}
-          {(selectedRoom || selectedWing === "__all__") && !crossWingResults && (
+          {!crossWingResults && (
             <div style={{ animation: "libSlideRight 0.35s cubic-bezier(0.22, 1, 0.36, 1) both" }}>
               {/* Bulk actions bar — only visible in select mode */}
               {selectMode && (
