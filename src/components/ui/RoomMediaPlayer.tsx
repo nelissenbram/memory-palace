@@ -206,7 +206,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                 style={{
                   maxWidth: "92%", maxHeight: "88%",
                   borderRadius: "0.5rem",
-                  boxShadow: "0 0.5rem 2rem rgba(0,0,0,0.4)",
+                  boxShadow: "0 0.5rem 2rem rgba(36,28,21,0.5)",
                 }}
               />
             ) : mem.thumbnailUrl ? (
@@ -215,10 +215,10 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
                   src={mem.thumbnailUrl || mem.dataUrl!}
                   alt={mem.title}
                   decoding="async"
-                  style={{ maxWidth: "92%", maxHeight: "88%", objectFit: "contain", borderRadius: "0.5rem", boxShadow: "0 0.5rem 2rem rgba(0,0,0,0.4)" }}
+                  style={{ maxWidth: "92%", maxHeight: "88%", objectFit: "contain", borderRadius: "0.5rem", boxShadow: "0 0.5rem 2rem rgba(36,28,21,0.5)" }}
                   draggable={false}
                 />
-                <div style={{ position: "absolute", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", padding: "0.375rem 0.875rem", borderRadius: "1rem", background: "rgba(0,0,0,0.6)", color: "rgba(255,255,255,0.7)", fontFamily: T.font.body, fontSize: "0.75rem" }}>
+                <div style={{ position: "absolute", bottom: "1.5rem", left: "50%", transform: "translateX(-50%)", padding: "0.375rem 0.875rem", borderRadius: "1rem", background: "rgba(36,28,21,0.65)", color: "rgba(255,255,255,0.7)", fontFamily: T.font.body, fontSize: "0.75rem" }}>
                   {t("videoThumbnailOnly")}
                 </div>
               </div>
@@ -371,7 +371,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
       onTouchEnd={handleTouchEnd}
       style={{
         position: "fixed", inset: 0, zIndex: 10000,
-        background: "rgba(0,0,0,0.92)",
+        background: "rgba(31,27,26,0.94)",
         display: "flex", flexDirection: "column",
         animation: "rmpFadeIn 0.2s ease both",
       }}
@@ -490,7 +490,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
         <div style={{
           flexShrink: 0,
           padding: isMobile ? "0.625rem 1rem 0.5rem" : "0.625rem 2rem 0.5rem",
-          background: "rgba(0,0,0,0.6)",
+          background: "rgba(36,28,21,0.72)",
           borderTop: "0.0625rem solid rgba(255,255,255,0.06)",
           display: "flex", alignItems: "flex-start", gap: isMobile ? "0.75rem" : "1.5rem",
         }}>
@@ -611,7 +611,7 @@ export default function RoomMediaPlayer({ memories, initialIndex, onClose, onEdi
         paddingBottom: `max(${isMobile ? "0.625rem" : "0.75rem"}, env(safe-area-inset-bottom, 0px))`,
         paddingLeft: `max(${isMobile ? "0.5rem" : "1rem"}, env(safe-area-inset-left, 0px))`,
         paddingRight: `max(${isMobile ? "0.5rem" : "1rem"}, env(safe-area-inset-right, 0px))`,
-        background: "rgba(0,0,0,0.5)",
+        background: "rgba(36,28,21,0.6)",
         borderTop: "0.0625rem solid rgba(255,255,255,0.06)",
       }}>
         <div

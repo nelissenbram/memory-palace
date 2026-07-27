@@ -9,6 +9,7 @@ import TuscanCard from "./TuscanCard";
 import PalaceLogo from "@/components/landing/PalaceLogo";
 import { WingIcon, RoomIcon } from "./WingRoomIcons";
 import { isIOS } from "@/lib/native/platform";
+import { CREAM, HAIRLINE, SHADOW, TOP_HIGHLIGHT, giltRule } from "@/lib/libraryTokens";
 
 interface LibrarySidebarProps {
   wings: Wing[];
@@ -179,7 +180,7 @@ export default function LibrarySidebar({
           background: "rgba(242,237,231,0.72)",
           backdropFilter: "blur(1.5rem)",
           WebkitBackdropFilter: "blur(1.5rem)",
-          borderBottom: `0.0625rem solid ${T.color.cream}`,
+          borderBottom: `0.0625rem solid ${HAIRLINE}`,
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
@@ -267,17 +268,14 @@ export default function LibrarySidebar({
         width: "17rem",
         minWidth: "17rem",
         height: "100%",
-        background:
-          "linear-gradient(180deg, rgba(250,250,247,0.88) 0%, rgba(242,237,231,0.92) 40%, rgba(238,234,227,0.90) 100%)",
-        backdropFilter: "blur(1.5rem)",
-        WebkitBackdropFilter: "blur(1.5rem)",
-        borderRight: `0.0625rem solid rgba(238,234,227,0.7)`,
+        background: "linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)",
+        borderRight: `0.0625rem solid ${HAIRLINE}`,
         display: "flex",
         flexDirection: "column",
         overflowX: "hidden",
         overflowY: "auto",
         flexShrink: 0,
-        boxShadow: "0.25rem 0 2rem rgba(64,59,54,0.04)",
+        boxShadow: "0.25rem 0 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
       }}
     >
       <style>{keyframes}</style>
@@ -323,7 +321,7 @@ export default function LibrarySidebar({
           <div
             style={{
               height: "100%",
-              background: "#E3D6BC",
+              background: giltRule,
               borderRadius: "0.0625rem",
               animation: mounted
                 ? `lsb-divider-reveal 0.8s ${EASE_OUT_EXPO} 0.15s both`
@@ -492,19 +490,19 @@ export default function LibrarySidebar({
                 width: "100%",
                 borderRadius: "0.75rem",
                 background: active
-                  ? T.color.white
+                  ? CREAM
                   : hovered
                     ? "rgba(255,255,255,0.55)"
                     : "transparent",
                 border: "none",
                 borderLeft: active
-                  ? `0.1875rem solid ${T.color.gold}`
+                  ? `0.1875rem solid ${w.accent}`
                   : "0.1875rem solid transparent",
                 cursor: "pointer",
                 textAlign: "left",
                 transition: `all 0.25s ${EASE_OUT_EXPO}`,
                 boxShadow: active
-                  ? `0 0.125rem 0.5rem rgba(64,59,54,0.06), inset 0 0 0 0.0625rem rgba(255,255,255,0.8)`
+                  ? `${SHADOW[1]}, ${TOP_HIGHLIGHT}`
                   : hovered
                     ? "0 0.0625rem 0.25rem rgba(64,59,54,0.03)"
                     : "none",

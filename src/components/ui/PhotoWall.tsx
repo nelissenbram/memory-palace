@@ -15,6 +15,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "re
 import { T } from "@/lib/theme";
 import { MediaThumb } from "./MediaThumb";
 import { packJustifiedRows, targetRowHeight, getAspect, setAspect, type PackedRow } from "@/lib/library/justify";
+import { CREAM, EMBER } from "@/lib/libraryTokens";
 import type { Mem } from "@/lib/constants/defaults";
 
 const GAP = 3; // px seams
@@ -236,7 +237,7 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
                       padding: 0, border: "none", borderRadius: 0, overflow: "hidden",
                       background: `linear-gradient(135deg, hsl(${item.hue ?? 32},${item.s ?? 30}%,${item.l ?? 78}%), hsl(${((item.hue ?? 32) + 20) % 360},${Math.max((item.s ?? 30) - 5, 15)}%,${Math.max((item.l ?? 78) - 10, 40)}%))`,
                       cursor: "pointer",
-                      boxShadow: selected ? "inset 0 0 0 0.1875rem #D4AF37" : "none",
+                      boxShadow: selected ? `inset 0 0 0 0.1875rem ${EMBER}` : "none",
                     }}
                   >
                     <span style={{ display: "block", width: "100%", height: "100%", opacity: selected ? 0.82 : 1, transition: "opacity 0.15s ease" }}>
@@ -246,8 +247,8 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
                       <span aria-hidden="true" style={{ position: "absolute", left: "0.3rem", bottom: "0.3rem", width: "0.4rem", height: "0.4rem", borderRadius: "50%", background: tileAccent(item.id) as string, boxShadow: "0 0 0 0.09375rem rgba(252,250,245,0.85)" }} />
                     ) : null}
                     {selected && (
-                      <span aria-hidden="true" style={{ position: "absolute", top: "0.375rem", right: "0.375rem", width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: "#D4AF37", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2E2A26" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      <span aria-hidden="true" style={{ position: "absolute", top: "0.375rem", right: "0.375rem", width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: EMBER, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={CREAM} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                       </span>
                     )}
                   </button>

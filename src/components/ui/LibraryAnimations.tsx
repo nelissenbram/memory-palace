@@ -3,6 +3,7 @@ import { T } from "@/lib/theme";
 import { useTranslation } from "@/lib/hooks/useTranslation";
 import { useIsMobile } from "@/lib/hooks/useIsMobile";
 import { WingIcon } from "./WingRoomIcons";
+import { accentRule } from "@/lib/libraryTokens";
 
 /* ═══════════════════════════════════════════════════════════════════════
    LibraryStyles — CSS keyframes + utility classes injected via <style>
@@ -123,9 +124,8 @@ export function LibraryStyles() {
       input:focus-visible,
       select:focus-visible,
       [role="button"]:focus-visible {
-        outline: 0.125rem solid #D4AF37;
-        outline-offset: 0.0625rem;
-        box-shadow: 0 0 0 0.1875rem rgba(212, 175, 55, 0.2);
+        outline: 0.1875rem solid #D4AF37;
+        outline-offset: 0.1875rem;
       }
     `}</style>
   );
@@ -170,9 +170,7 @@ export function LibraryHeader({
         display: "flex",
         flexDirection: "column",
         gap: 0,
-        background: "rgba(255, 255, 255, 0.85)",
-        backdropFilter: "blur(0.75rem)",
-        WebkitBackdropFilter: "blur(0.75rem)",
+        background: "transparent",
         flexShrink: 0,
         position: "relative",
         overflow: "hidden",
@@ -301,8 +299,8 @@ export function LibraryHeader({
           bottom: 0,
           left: 0,
           right: 0,
-          height: "0.125rem",
-          background: `linear-gradient(to right, ${accent}, ${accent}40, transparent)`,
+          height: "0.0625rem",
+          background: accentRule(accent),
           animation: "libFadeIn 0.6s ease 0.2s both",
         }}
       />

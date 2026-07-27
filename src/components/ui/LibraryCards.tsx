@@ -13,6 +13,7 @@ import { RoomIcon } from "./WingRoomIcons";
 /* ── Shared constants ── */
 
 import { TYPE_ICONS, TypeIcon } from "@/lib/constants/type-icons";
+import { CREAM, HAIRLINE, SHADOW, HOVER_SHADOW, TOP_HIGHLIGHT, HOVER_LIFT } from "@/lib/libraryTokens";
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_OUT = "cubic-bezier(0.0, 0, 0.2, 1)";
@@ -97,26 +98,14 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
   const [addHovered, setAddHovered] = useState(false);
   const [imgFailed, setImgFailed] = useState(false);
 
-  const coverGradient = useMemo(() => {
-    const h = room.coverHue;
-    return `linear-gradient(145deg,
-      hsl(${h}, 35%, 80%) 0%,
-      hsl(${(h + 20) % 360}, 30%, 74%) 40%,
-      hsl(${(h + 45) % 360}, 26%, 68%) 100%)`;
-  }, [room.coverHue]);
+  /* Cover tint derived from the wing accent (Atrium canon — no HSL drift) */
+  const coverGradient = useMemo(
+    () => `linear-gradient(160deg, ${accent}1F 0%, ${accent}14 45%, ${accent}0A 100%)`,
+    [accent],
+  );
 
-  /* Subtle tile pattern for no-image covers */
-  const patternBg = useMemo(() => {
-    const h = room.coverHue;
-    return {
-      background: coverGradient,
-      backgroundImage: `
-        radial-gradient(circle at 25% 25%, hsla(${h}, 20%, 95%, 0.12) 1px, transparent 1px),
-        radial-gradient(circle at 75% 75%, hsla(${h}, 20%, 95%, 0.08) 1px, transparent 1px)
-      `,
-      backgroundSize: "1.5rem 1.5rem",
-    };
-  }, [room.coverHue, coverGradient]);
+  /* Accent-tinted cover for no-image covers */
+  const patternBg = useMemo(() => ({ background: coverGradient }), [coverGradient]);
 
   return (
     <>
@@ -131,23 +120,16 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
         onMouseLeave={() => setHovered(false)}
         style={{
           borderRadius: "1rem",
-          background: "rgba(255, 255, 255, 0.72)",
-          backdropFilter: "blur(1.5rem) saturate(1.4)",
-          WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
+          background: `linear-gradient(160deg, ${accent}14 0%, ${CREAM} 78%)`,
           cursor: "pointer",
           overflow: "hidden",
           position: "relative",
-          border: `0.0625rem solid ${hovered ? accent + "50" : T.color.cream}`,
+          border: `0.0625rem solid ${HAIRLINE}`,
           boxShadow: hovered
-            ? `0 1.25rem 2.5rem rgba(64,59,54,.14),
-               0 0.5rem 1rem rgba(64,59,54,.07),
-               0 0 0 0.0625rem ${accent}18,
-               inset 0 0.0625rem 0 rgba(255,255,255,.7)`
-            : `0 0.0625rem 0.25rem rgba(64,59,54,.05),
-               0 0.25rem 0.75rem rgba(64,59,54,.04),
-               inset 0 0.0625rem 0 rgba(255,255,255,.5)`,
-          transform: hovered ? "translateY(-0.25rem)" : "translateY(0)",
-          transition: `all 0.4s ${EASE}`,
+            ? `${HOVER_SHADOW}, ${TOP_HIGHLIGHT}`
+            : `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
+          transform: hovered ? HOVER_LIFT : "translateY(0)",
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
         }}
       >
         {/* ── Cover area ── */}
@@ -441,23 +423,16 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
         onMouseLeave={() => setHovered(false)}
         style={{
           borderRadius: "1rem",
-          background: "rgba(255, 255, 255, 0.72)",
-          backdropFilter: "blur(1.5rem) saturate(1.4)",
-          WebkitBackdropFilter: "blur(1.5rem) saturate(1.4)",
+          background: `linear-gradient(160deg, ${accent}14 0%, ${CREAM} 78%)`,
           cursor: locked ? "default" : "pointer",
           overflow: "visible",
           position: "relative",
-          border: `0.0625rem solid ${hovered && !locked ? accent + "40" : T.color.cream}`,
+          border: `0.0625rem solid ${HAIRLINE}`,
           boxShadow: hovered && !locked
-            ? `0 1.25rem 2.5rem rgba(64,59,54,.12),
-               0 0.5rem 1rem rgba(64,59,54,.06),
-               0 0 1.5rem ${accentStrip}18,
-               inset 0 0.0625rem 0 rgba(255,255,255,.7)`
-            : `0 0.0625rem 0.25rem rgba(64,59,54,.05),
-               0 0.25rem 0.75rem rgba(64,59,54,.04),
-               inset 0 0.0625rem 0 rgba(255,255,255,.5)`,
-          transform: hovered && !locked ? "translateY(-0.25rem)" : "translateY(0)",
-          transition: `all 0.4s ${EASE}`,
+            ? `${HOVER_SHADOW}, ${TOP_HIGHLIGHT}`
+            : `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
+          transform: hovered && !locked ? HOVER_LIFT : "translateY(0)",
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
           opacity: locked ? 0.88 : 1,
           animation: animationIndex !== undefined ? `lc-card-fade-in 0.4s ${EASE} ${staggerDelay} both` : undefined,
         }}
