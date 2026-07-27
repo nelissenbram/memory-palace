@@ -4287,7 +4287,10 @@
     "gpImportFailed": "Échec de l'importation",
     "videoThumbnailOnly": "Miniature uniquement",
     "onThisDay": "Ce jour-là",
-    "yearsAgoShort": "a"
+    "yearsAgoShort": "a",
+    "emptyWingOverline": "Une aile attend",
+    "emptyRoomOverline": "Une salle vide",
+    "emptySearchOverline": "Aucun résultat"
   },
   "atrium": {
     "goodMorning": "Bonjour",

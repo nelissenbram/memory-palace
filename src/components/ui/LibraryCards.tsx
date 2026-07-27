@@ -231,7 +231,7 @@ export const LibraryRoomCard = React.memo(function LibraryRoomCard({ room, memCo
               boxShadow: addHovered
                 ? `0 0.25rem 0.75rem ${accent}60, 0 0 0 0.1875rem rgba(255,255,255,.3)`
                 : `0 0.125rem 0.375rem ${accent}30`,
-              transform: addHovered ? "scale(1.15)" : "scale(1)",
+              transform: addHovered ? "translateY(-0.1875rem)" : "translateY(0)",
               transition: `all 0.25s ${EASE}`,
               zIndex: 2,
               backdropFilter: "blur(0.25rem)",
@@ -590,7 +590,7 @@ export const LibraryMemoryCard = React.memo(function LibraryMemoryCard({ mem, ac
                   borderRadius: "0.125rem",
                   flexShrink: 0,
                   animation: hovered
-                    ? `lc-wave 1.2s ease-in-out ${bar.delay}s infinite`
+                    ? "none"
                     : "none",
                   transformOrigin: "center",
                   boxShadow: "0 0 0.375rem rgba(255,255,255,.15)",

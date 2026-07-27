@@ -4289,7 +4289,10 @@
     "gpImportFailed": "Import mislukt",
     "videoThumbnailOnly": "Alleen miniatuur",
     "onThisDay": "Op deze dag",
-    "yearsAgoShort": "j geleden"
+    "yearsAgoShort": "j geleden",
+    "emptyWingOverline": "Een vleugel wacht",
+    "emptyRoomOverline": "Een lege kamer",
+    "emptySearchOverline": "Geen resultaten"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",

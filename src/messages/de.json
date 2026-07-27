@@ -4287,7 +4287,10 @@
     "gpImportFailed": "Import fehlgeschlagen",
     "videoThumbnailOnly": "Nur Vorschaubild",
     "onThisDay": "An diesem Tag",
-    "yearsAgoShort": "J her"
+    "yearsAgoShort": "J her",
+    "emptyWingOverline": "Ein Flügel wartet",
+    "emptyRoomOverline": "Ein leerer Raum",
+    "emptySearchOverline": "Keine Treffer"
   },
   "atrium": {
     "goodMorning": "Guten Morgen",

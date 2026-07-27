@@ -2418,7 +2418,7 @@ export default function LibraryView() {
                   {/* Vertical line */}
                   <div style={{
                     position: "absolute", left: "0.5rem", top: 0, bottom: 0,
-                    width: "0.125rem", background: `linear-gradient(to bottom, ${currentWing.accent}44, ${T.color.cream})`,
+                    width: "0.125rem", background: `linear-gradient(to bottom, ${currentWing.accent}59, #E3D6BC)`,
                   }} />
                   {(() => {
                     const sorted = [...filteredRoomMems.slice(0, visibleMemCount)].sort((a, b) =>
@@ -2431,16 +2431,19 @@ export default function LibraryView() {
                       const showDate = dateStr !== lastDate;
                       if (showDate) lastDate = dateStr;
                       return (
-                        <div key={mem.id} style={{ marginBottom: "0.75rem", animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${Math.min(0.03 + i * 0.03, 0.25)}s both` }}>
+                        <div key={mem.id} style={{ marginBottom: "0.75rem", animation: `libCardEnter 0.35s ease ${Math.min(0.03 + i * 0.03, 0.25)}s both` }}>
                           {showDate && dateStr && (
                             <div style={{
                               display: "flex", alignItems: "center", gap: "0.5rem",
                               marginBottom: "0.375rem", marginLeft: "-1.75rem",
                             }}>
+                              {/* gilt day-node: each date reads as a small
+                                  palace frame (licensed gold), tying the
+                                  timeline to the on-this-day vocabulary */}
                               <div style={{
                                 width: "0.5rem", height: "0.5rem", borderRadius: "50%",
                                 background: currentWing.accent, flexShrink: 0,
-                                boxShadow: `0 0 0 0.125rem ${T.color.white}, 0 0 0 0.1875rem ${currentWing.accent}44`,
+                                boxShadow: `0 0 0 0.125rem #FCFAF5, 0 0 0 0.1875rem #D4AF37`,
                               }} />
                               <span style={{
                                 fontFamily: T.font.display, fontSize: "0.8125rem",

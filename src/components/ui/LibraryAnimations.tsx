@@ -317,174 +317,69 @@ export interface LibraryEmptyStateProps {
   query?: string;
 }
 
-const WING_ICONS = ["\uD83D\uDDBC\uFE0F", "\uD83C\uDFAC", "\uD83C\uDF99\uFE0F", "\uD83D\uDCDC"];
-const ROOM_ICONS = ["\uD83D\uDCF7", "\uD83C\uDFB5", "\uD83D\uDD2E"];
+
+function EngravedScene({ type }: { type: "wing" | "room" | "search" }) {
+  const INK = "#C9BCA0";
+  const GILT = "#D4AF37";
+  return (
+    <svg width="88" height="72" viewBox="0 0 88 72" fill="none" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M6 60h76M10 66h68" stroke={INK} strokeWidth="0.75" opacity="0.5" />
+      {type === "search" ? (
+        <>
+          <circle cx="38" cy="30" r="16" fill="#FCFAF5" stroke={INK} strokeWidth="1.6" />
+          <path d="M50 42l12 12" stroke={INK} strokeWidth="2" strokeLinecap="round" />
+          <path d="M30 26h16M30 32h11" stroke={INK} strokeWidth="1" opacity="0.6" />
+          <path d="M60 6l1.4 3.6L65 11l-3.6 1.4L60 16l-1.4-3.6L55 11l3.6-1.4z" fill={GILT} opacity="0.85" />
+        </>
+      ) : (
+        <>
+          <rect x="10" y="16" width="20" height="26" rx="1" fill="#FCFAF5" stroke={INK} strokeWidth="1.2" transform="rotate(-4 20 29)" />
+          <rect x="58" y="16" width="20" height="26" rx="1" fill="#FCFAF5" stroke={INK} strokeWidth="1.2" transform="rotate(4 68 29)" />
+          <rect x="32" y="12" width="24" height="30" rx="1.5" fill="#FCFAF5" stroke={GILT} strokeWidth="1.6" />
+          <path d="M37 30l4-4 3 2.5 4-4.5" stroke={INK} strokeWidth="1" opacity="0.55" fill="none" />
+          <circle cx="40" cy="21" r="2" fill={INK} opacity="0.4" />
+          <path d="M44 8l1.2 3L48 12l-2.8 1L44 16l-1.2-3L40 12l2.8-1z" fill={GILT} opacity="0.9" />
+        </>
+      )}
+    </svg>
+  );
+}
 
 export function LibraryEmptyState({ type, accent, onAdd, query }: LibraryEmptyStateProps) {
   const isMobile = useIsMobile();
   const { t } = useTranslation("library");
-
-  const icons = type === "wing" ? WING_ICONS : type === "room" ? ROOM_ICONS : [];
+  void accent;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: isMobile ? "2rem 1rem" : "4rem 1rem",
-        gap: "1rem",
-        position: "relative",
-        animation: "libFadeIn 0.4s ease both",
-      }}
-    >
-      {/* Subtle radial glow behind empty state */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: `radial-gradient(circle at 50% 40%, ${accent}08 0%, transparent 70%)`,
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* P2 #7: Animated SVG illustration for room empty state */}
-      {type === "room" && (
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-            marginBottom: "0.5rem",
-          }}
-        >
-          <svg width="5rem" height="5rem" viewBox="0 0 80 80" fill="none" style={{ animation: "libFloat 4s ease-in-out infinite" }}>
-            <rect x="15" y="20" width="50" height="40" rx="4" stroke={accent} strokeWidth="1.5" strokeDasharray="4 3" opacity="0.4" />
-            <path d="M30 40 L40 32 L50 40" stroke={accent} strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
-            <circle cx="35" cy="35" r="3" fill={accent} opacity="0.3" />
-            <line x1="25" y1="50" x2="55" y2="50" stroke={accent} strokeWidth="1" opacity="0.2" />
-            <line x1="28" y1="54" x2="52" y2="54" stroke={accent} strokeWidth="1" opacity="0.15" />
-          </svg>
-        </div>
-      )}
-
-      {/* Floating icons (wing / room — only for wing type now) */}
-      {type === "wing" && (
-        <div
-          style={{
-            display: "flex",
-            gap: "1.5rem",
-            marginBottom: "0.5rem",
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          {icons.map((icon, i) => (
-            <span
-              key={i}
-              style={{
-                fontSize: "2rem",
-                opacity: 0.35,
-                animation: `libFloat 3s ease-in-out ${i * 0.4}s infinite, libFadeIn 0.5s ease ${i * 0.1}s both`,
-              }}
-            >
-              {icon}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Search icon for search variant */}
-      {type === "search" && (
-        <span
-          style={{
-            fontSize: "2.5rem",
-            opacity: 0.3,
-            animation: "libScaleIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both",
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          {"\uD83D\uDD0D"}
-        </span>
-      )}
-
-      {/* Main text */}
-      <p
-        style={{
-          fontFamily: T.font.display,
-          fontSize: "1.125rem",
-          fontWeight: 500,
-          color: "#403B36",
-          textAlign: "center",
-          margin: 0,
-          position: "relative",
-          zIndex: 1,
-          animation: "libSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both",
-        }}
-      >
-        {type === "wing"
-          ? t("emptyWingTitle")
-          : type === "room"
-            ? t("emptyRoomAnimatedTitle")
-            : t("emptySearchTitle", { query: query || "" })}
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "2.5rem 1.25rem" : "4rem 1rem", gap: "0.85rem", position: "relative", animation: "libFadeIn 0.4s ease both" }}>
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 38%, rgba(212,175,55,0.07) 0%, transparent 68%)", pointerEvents: "none" }} />
+      <div style={{ position: "relative", zIndex: 1, marginBottom: "0.35rem" }}>
+        <EngravedScene type={type} />
+      </div>
+      <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#716A5E", position: "relative", zIndex: 1 }}>
+        {type === "wing" ? t("emptyWingOverline") : type === "room" ? t("emptyRoomOverline") : t("emptySearchOverline")}
+      </span>
+      <p style={{ fontFamily: T.font.display, fontSize: "1.1875rem", fontWeight: 600, lineHeight: 1.15, color: "#403B36", textAlign: "center", margin: 0, position: "relative", zIndex: 1, animation: "libSlideUp 0.5s ease 0.1s both" }}>
+        {type === "wing" ? t("emptyWingTitle") : type === "room" ? t("emptyRoomAnimatedTitle") : t("emptySearchTitle", { query: query || "" })}
       </p>
-
-      {/* Subtitle */}
-      <p
-        style={{
-          fontFamily: T.font.body,
-          fontSize: "0.875rem",
-          color: "#716A5E",
-          textAlign: "center",
-          margin: 0,
-          maxWidth: "22rem",
-          lineHeight: 1.5,
-          position: "relative",
-          zIndex: 1,
-          animation: "libSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both",
-        }}
-      >
-        {type === "wing"
-          ? t("emptyWingSubtitle")
-          : type === "room"
-            ? t("emptyRoomSubtitle")
-            : t("emptySearchSubtitle")}
+      <p style={{ fontFamily: T.font.body, fontSize: "0.9375rem", color: "#716A5E", textAlign: "center", margin: 0, maxWidth: "24rem", lineHeight: 1.4, position: "relative", zIndex: 1, animation: "libSlideUp 0.5s ease 0.2s both" }}>
+        {type === "wing" ? t("emptyWingSubtitle") : type === "room" ? t("emptyRoomSubtitle") : t("emptySearchSubtitle")}
       </p>
-
-      {/* CTA button — enhanced for room with animation */}
       {type !== "search" && onAdd && (
         <button
           onClick={onAdd}
-          style={{
-            padding: "0.625rem 1.5rem",
-            borderRadius: "0.5rem",
-            background: accent,
-            color: T.color.white,
-            border: "none",
-            cursor: "pointer",
-            fontFamily: T.font.display,
-            fontSize: "0.9375rem",
-            fontWeight: 500,
-            letterSpacing: "0.02em",
-            position: "relative",
-            zIndex: 1,
-            transition: "all 0.25s cubic-bezier(0.22, 1, 0.36, 1)",
-            boxShadow: `0 0.25rem 1rem ${accent}30`,
-            animation: "libSlideUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.3s both",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-0.125rem)";
-            e.currentTarget.style.boxShadow = `0 0.375rem 1.25rem ${accent}45`;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = `0 0.25rem 1rem ${accent}30`;
-          }}
+          className="lib-empty-cta"
+          style={{ marginTop: "0.35rem", padding: "0.7rem 1.6rem", borderRadius: "0.75rem", background: "#B85C38", color: "#FCFAF5", border: "none", cursor: "pointer", fontFamily: T.font.display, fontSize: "0.9375rem", fontWeight: 600, position: "relative", zIndex: 1, transition: "transform 0.2s ease, box-shadow 0.2s ease", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", animation: "libSlideUp 0.5s ease 0.3s both" }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-0.1875rem)"; e.currentTarget.style.boxShadow = "0 0.5rem 1.5rem rgba(64,59,54,0.14)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 0.25rem 1rem rgba(64,59,54,0.07)"; }}
         >
           {type === "room" ? t("emptyRoomAnimatedCta") : t("addFirst")}
         </button>
       )}
+      <style>{`
+        .lib-empty-cta:focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem; }
+        @media (prefers-reduced-motion: reduce) { .lib-empty-cta { transition: none !important; } }
+      `}</style>
     </div>
   );
 }
