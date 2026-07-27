@@ -73,10 +73,21 @@ export async function GET(
   }
 
   // Check ownership: file_path matches the video OR thumbnail_url references this path
-  // (thumbnails are uploaded as separate files but linked via thumbnail_url)
-  // Use admin client to bypass RLS — authorization is checked below
-  const { createAdminClient } = await import("@/lib/supabase/server");
-  const adminClient = createAdminClient();
+  // (thumbnails are uploaded as separate files but linked via thumbnail_url).
+  // Prefer the admin client (bypasses RLS for shared/published access); but on
+  // environments WITHOUT a service-role key (e.g. Vercel Preview deploys, where
+  // it is Production-only) fall back to the authenticated session client. RLS
+  // then scopes lookups to the user's OWN memories — which only REDUCES access,
+  // never grants it — so owners still see their own media on previews.
+  let adminClient = supabase;
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const { createAdminClient } = await import("@/lib/supabase/server");
+      adminClient = createAdminClient();
+    } catch (err) {
+      console.error("[media] admin client unavailable, using session client:", err);
+    }
+  }
 
   let { data: memory } = await adminClient
     .from("memories")
