@@ -17,7 +17,7 @@ import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import MemoryDetail from "@/components/ui/MemoryDetail";
 import { MediaThumb } from "@/components/ui/MediaThumb";
 import PhotoWall from "@/components/ui/PhotoWall";
-import { computeWarmthLevel } from "@/lib/warmth";
+import { computeWarmthLevel, getTimeOfDay, TIME_WASH } from "@/lib/warmth";
 import { Overline } from "@/components/ui/AtriumRelay";
 import RoomMediaPlayer from "@/components/ui/RoomMediaPlayer";
 import UploadPanel from "@/components/ui/UploadPanel";
@@ -440,6 +440,8 @@ export default function LibraryView() {
   const [showDemos, setShowDemos] = useState(() => demosVisible());
   const [activeToolPanel, setActiveToolPanel] = useState<"writeStory" | "aiLabel" | "addLocation" | null>(null);
   const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
+  const [libTimeOfDay, setLibTimeOfDay] = useState(() => getTimeOfDay());
+  useEffect(() => { const id = setInterval(() => setLibTimeOfDay(getTimeOfDay()), 10 * 60 * 1000); return () => clearInterval(id); }, []);
   const [toolbarHint, setToolbarHint] = useState(false);
   const [storyText, setStoryText] = useState("");
   const [aiLabelProcessing, setAiLabelProcessing] = useState(false);
@@ -1133,7 +1135,10 @@ export default function LibraryView() {
     <div style={{
       width: "100vw", height: "100dvh", display: "flex", flexDirection: isMobile ? "column" : "row",
       paddingTop: (isMobile || isCompact) ? "env(safe-area-inset-top, 0px)" : "4.5rem",
-      background: `linear-gradient(175deg, ${T.color.linen} 0%, ${T.color.warmStone} 55%, ${T.color.cream} 100%)`, fontFamily: T.font.body, overflow: "hidden",
+      // Atrium canvas: warm cream + the same time-of-day wash the home board
+      // breathes with (layered background so it always sits behind content).
+      background: `${TIME_WASH[libTimeOfDay]}, #FCFAF5`,
+      fontFamily: T.font.body, overflow: "hidden", position: "relative",
     }}>
       <LibraryStyles />
       <TuscanStyles />
