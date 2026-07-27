@@ -19,6 +19,46 @@ import type { Mem } from "@/lib/constants/defaults";
 
 const GAP = 3; // px seams
 
+/** Any browser-paintable image URL (data:image, http, blob, /api, /path). */
+function paintable(u: string | null | undefined): string | null {
+  if (!u) return null;
+  if (u.startsWith("data:audio")) return null;
+  if (u.startsWith("data:image") || u.startsWith("http") || u.startsWith("blob:") || u.startsWith("/")) return u;
+  return null;
+}
+/** Ordered image-source candidates for a tile — thumbnail first (lighter),
+ *  then the full/original. Restores images regardless of where they're stored. */
+function tileSources(mem: Mem): string[] {
+  const out: string[] = [];
+  const t = paintable(mem.thumbnailUrl);
+  const d = paintable(mem.dataUrl);
+  if (t) out.push(t);
+  if (d && d !== t) out.push(d);
+  return out;
+}
+
+/** Chromeless tile media: real <img> with source fallback, else the MediaThumb
+ *  type glyph (story/audio/document). Zero card/shadow/gradient in the path. */
+function TileMedia({ mem, iconSize }: { mem: Mem; iconSize: number }) {
+  const sources = React.useMemo(() => tileSources(mem), [mem]);
+  const [idx, setIdx] = useState(0);
+  const src = sources[idx];
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={() => setIdx((i) => i + 1)}
+        style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
+      />
+    );
+  }
+  return <MediaThumb mem={mem} size="100%" borderRadius="0" iconSize={iconSize} />;
+}
+
 interface PhotoWallProps {
   mems: Mem[];
   isMobile: boolean;
@@ -112,7 +152,7 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
                     }}
                   >
                     <span style={{ display: "block", width: "100%", height: "100%", opacity: selected ? 0.82 : 1, transition: "opacity 0.15s ease" }}>
-                      <MediaThumb mem={item as Mem} size="100%" borderRadius="0" iconSize={h > 130 ? 22 : 16} />
+                      <TileMedia mem={item as Mem} iconSize={h > 130 ? 22 : 16} />
                     </span>
                     {selected && (
                       <span aria-hidden="true" style={{ position: "absolute", top: "0.375rem", right: "0.375rem", width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: "#D4AF37", display: "flex", alignItems: "center", justifyContent: "center" }}>
