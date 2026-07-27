@@ -1545,37 +1545,64 @@ export default function LibraryView() {
           </div>
         )}
 
-        {/* ── FACET SHELF — persistent filters that compound over the wall;
-            wing/room are facets, these are the cross-cutting ones. Ember active,
-            never gold. Renders for both the unified wall and inside a room. ── */}
+        {/* ── CONTROL BAND — one compact row of colour-block icon-pills:
+            FILTER functions (left) + ACTION functions (right). Carries the
+            Atrium registers: sage green, gold, and the ink+gold keystone. ── */}
         {(() => {
-          const base: Mem[] = selectedRoom ? getMemsForRoom(selectedRoom) : (selectedWing === "__all__" ? libAllMems : allWingMems);
+          const base = selectedRoom ? getMemsForRoom(selectedRoom) : (selectedWing === "__all__" ? libAllMems : allWingMems);
           const now = new Date(), mo = now.getMonth(), da = now.getDate();
           const isOtd = (m: Mem) => { const r = m.createdAt || (m as { date?: string }).date; if (!r) return false; const d = new Date(r); return !Number.isNaN(d.getTime()) && d.getMonth() === mo && d.getDate() === da; };
-          const defs: { key: "place" | "described" | "onthisday" | "unplaced"; label: string; gilt?: boolean; count: number }[] = [
-            { key: "place", label: t("facetPlace") !== "facetPlace" ? t("facetPlace") : "Has place", count: base.filter(m => !!m.locationName).length },
-            { key: "described", label: t("facetDescribed") !== "facetDescribed" ? t("facetDescribed") : "Described", count: base.filter(m => !!(m.desc || "").trim() || !!m.historicalContext).length },
-            { key: "onthisday", label: t("onThisDay") !== "onThisDay" ? t("onThisDay") : "On this day", gilt: true, count: base.filter(isOtd).length },
-            { key: "unplaced", label: t("facetUnplaced") !== "facetUnplaced" ? t("facetUnplaced") : "Unplaced", count: base.filter(m => !memRoomMap.get(m.id)?.roomId).length },
+          type FDef = { key: "place" | "described" | "onthisday" | "unplaced"; label: string; count: number; tint: string; ink: string; fill: string; on: string; icon: React.ReactNode };
+          const defs: FDef[] = [
+            { key: "place", label: t("facetPlace") !== "facetPlace" ? t("facetPlace") : "Has place", count: base.filter(m => !!m.locationName).length, tint: "rgba(86,104,60,0.12)", ink: "#56683C", fill: "#56683C", on: "#DFE6D2", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> },
+            { key: "described", label: t("facetDescribed") !== "facetDescribed" ? t("facetDescribed") : "Described", count: base.filter(m => !!(m.desc || "").trim() || !!m.historicalContext).length, tint: "rgba(154,79,42,0.11)", ink: "#9A4F2A", fill: "#B85C38", on: "#FCFAF5", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg> },
+            { key: "onthisday", label: t("onThisDay") !== "onThisDay" ? t("onThisDay") : "On this day", count: base.filter(isOtd).length, tint: "rgba(201,154,46,0.14)", ink: "#8A6410", fill: "#C99A2E", on: "#2E2A26", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.2 5.6L20 9.3l-4.4 3.7L17 19l-5-3.2L7 19l1.4-6L4 9.3l5.8-.7z"/></svg> },
+            { key: "unplaced", label: t("facetUnplaced") !== "facetUnplaced" ? t("facetUnplaced") : "Unplaced", count: base.filter(m => !memRoomMap.get(m.id)?.roomId).length, tint: "rgba(64,59,54,0.07)", ink: "#403B36", fill: "#403B36", on: "#FCFAF5", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2.5"/></svg> },
           ];
           const anyActive = !!facet || !!filterType || !!q;
           return (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", overflowX: "auto", scrollbarWidth: "none", padding: isMobile ? "0 0.5rem 0.5rem" : isCompact ? "0 1.25rem 0.5rem" : "0 2.5rem 0.5rem", maskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "nowrap", overflowX: "auto", scrollbarWidth: "none", padding: isMobile ? "0 0.5rem 0.5rem" : isCompact ? "0 1.25rem 0.5rem" : "0 2.5rem 0.6rem", maskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)" }}>
               {defs.map(d => {
                 const active = facet === d.key;
                 const disabled = d.count === 0 && !active;
                 return (
-                  <button key={d.key} type="button" disabled={disabled} onClick={() => setFacet(active ? null : d.key)} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "2rem", padding: "0 0.75rem", borderRadius: "2rem", cursor: disabled ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: disabled ? 0.45 : 1, pointerEvents: disabled ? "none" : "auto", background: active ? "#B85C38" : "transparent", color: active ? "#FCFAF5" : "#403B36", border: active ? "0.0625rem solid #B85C38" : `0.0625rem solid ${d.gilt ? "#D4AF37" : "#E3D6BC"}` }}>
+                  <button key={d.key} type="button" disabled={disabled} onClick={() => setFacet(active ? null : d.key)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "2.1rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: disabled ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: disabled ? 0.4 : 1, pointerEvents: disabled ? "none" : "auto", background: active ? d.fill : d.tint, color: active ? d.on : d.ink, border: `0.0625rem solid ${active ? d.fill : "transparent"}` }}>
+                    <span style={{ display: "inline-flex", opacity: active ? 1 : 0.9 }}>{d.icon}</span>
                     {d.label}
-                    <span style={{ fontVariantNumeric: "tabular-nums", fontSize: "0.6875rem", fontWeight: 700, color: active ? "rgba(252,250,245,0.85)" : "#716A5E" }}>{d.count}</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums", fontSize: "0.6875rem", fontWeight: 700, opacity: 0.7 }}>{d.count}</span>
                   </button>
                 );
               })}
               {anyActive && (
-                <button type="button" onClick={() => { setFacet(null); setFilterType(null); setQuery(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.3rem", minHeight: "2rem", padding: "0 0.75rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, background: "transparent", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.4)" }}>
-                  {t("clearFilters") !== "clearFilters" ? t("clearFilters") : "Clear"} ✕
+                <button type="button" onClick={() => { setFacet(null); setFilterType(null); setQuery(""); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.3rem", minHeight: "2.1rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, background: "transparent", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.35)" }}>
+                  ✕ {t("clearFilters") !== "clearFilters" ? t("clearFilters") : "Clear"}
                 </button>
               )}
+
+              <span style={{ flex: 1, minWidth: "0.5rem" }} />
+
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button type="button" onClick={() => setToolsMenuOpen(o => !o)} aria-label={t("moreActions") !== "moreActions" ? t("moreActions") : "More"} className="lib-pill" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "2.1rem", padding: "0 0.7rem", borderRadius: "2rem", border: "0.0625rem solid #E3D6BC", background: "#FCFAF5", color: "#716A5E", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                  {t("moreActions") !== "moreActions" ? t("moreActions") : "More"}
+                </button>
+                {toolsMenuOpen && (
+                  <>
+                    <div onClick={() => setToolsMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                    <div role="menu" style={{ position: "absolute", top: "2.5rem", right: 0, minWidth: "12rem", zIndex: 41, background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", borderRadius: "0.85rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", overflow: "hidden", padding: "0.25rem" }}>
+                      {([{ key: "writeStory" as const, label: t("writeStory") }, { key: "aiLabel" as const, label: t("aiLabel") }, { key: "addLocation" as const, label: t("addLocation") }]).map(a => (
+                        <button key={a.key} type="button" onClick={() => { setToolsMenuOpen(false); if (selectedRoom) { setActiveToolPanel(a.key); } else { setToolbarHint(true); setTimeout(() => setToolbarHint(false), 2500); } }} style={{ display: "flex", width: "100%", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: "0.6rem", border: "none", background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500, color: selectedRoom ? "#403B36" : "#716A5E", textAlign: "left" }} onMouseEnter={e => { e.currentTarget.style.background = "#F6EBE3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>{a.label}</button>
+                      ))}
+                      <div style={{ height: "0.0625rem", background: "#E3D6BC", margin: "0.25rem 0.4rem" }} />
+                      <button type="button" onClick={() => { setToolsMenuOpen(false); setShowPublishModal(true); }} style={{ display: "flex", width: "100%", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: "0.6rem", border: "none", background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500, color: "#403B36", textAlign: "left" }} onMouseEnter={e => { e.currentTarget.style.background = "#F6EBE3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>{t("publish")}</button>
+                    </div>
+                  </>
+                )}
+              </div>
+              <button type="button" data-spotlight-id="importUpload" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "2.1rem", padding: "0 0.9rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)" }}>
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#E8C255" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>
+                {t("importButton")}
+              </button>
             </div>
           );
         })()}
@@ -1604,60 +1631,6 @@ export default function LibraryView() {
         )}
 
         {/* Room tools toolbar — always visible */}
-        <div data-nudge="library_tools" style={{ display: "flex", gap: isMobile ? "0.25rem" : "0.5rem", padding: isMobile ? "0.25rem 0.5rem 0.4rem" : isCompact ? "0.25rem 1.25rem 0.5rem" : "0.25rem 2.5rem 0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: (isMobile || isCompact) ? "auto" : undefined, scrollbarWidth: (isMobile || isCompact) ? "none" : undefined,
-          // Edge-fade hint: tools row scrolls off horizontally (compact/mobile only — desktop untouched)
-          ...((isMobile || isCompact) ? { maskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)" } : {}) }}>
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            <button type="button" onClick={() => setToolsMenuOpen(o => !o)} aria-label={t("moreActions") !== "moreActions" ? t("moreActions") : "More"} style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "2.25rem", padding: "0 0.85rem", borderRadius: "0.7rem", border: "0.0625rem solid #E3D6BC", background: "#FCFAF5", color: "#716A5E", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-              {t("moreActions") !== "moreActions" ? t("moreActions") : "More"}
-            </button>
-            {toolsMenuOpen && (
-              <>
-                <div onClick={() => setToolsMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-                <div role="menu" style={{ position: "absolute", top: "2.6rem", left: 0, minWidth: "12rem", zIndex: 41, background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", borderRadius: "0.85rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", overflow: "hidden", padding: "0.25rem" }}>
-                  {([
-                    { key: "writeStory" as const, label: t("writeStory") },
-                    { key: "aiLabel" as const, label: t("aiLabel") },
-                    { key: "addLocation" as const, label: t("addLocation") },
-                  ]).map(a => (
-                    <button key={a.key} type="button" onClick={() => { setToolsMenuOpen(false); if (selectedRoom) { setActiveToolPanel(a.key); } else { setToolbarHint(true); setTimeout(() => setToolbarHint(false), 2500); } }} style={{ display: "flex", width: "100%", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: "0.6rem", border: "none", background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500, color: selectedRoom ? "#403B36" : "#716A5E", textAlign: "left" }} onMouseEnter={e => { e.currentTarget.style.background = "#F6EBE3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                      {a.label}{!selectedRoom ? <span style={{ marginLeft: "auto", fontSize: "0.6875rem", color: "#9A4F2A" }}>{t("selectRoomFirst") !== "selectRoomFirst" ? "·" : "·"}</span> : null}
-                    </button>
-                  ))}
-                  <div style={{ height: "0.0625rem", background: "#E3D6BC", margin: "0.25rem 0.4rem" }} />
-                  <button type="button" onClick={() => { setToolsMenuOpen(false); setShowPublishModal(true); }} style={{ display: "flex", width: "100%", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: "0.6rem", border: "none", background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500, color: "#403B36", textAlign: "left" }} onMouseEnter={e => { e.currentTarget.style.background = "#F6EBE3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                    {t("publish")}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-          {toolbarHint && !selectedRoom && !spotlightTarget && (
-            <span style={{
-              fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.terracotta,
-              fontWeight: 500, animation: "libFadeIn 0.2s ease both",
-            }}>
-              {t("selectRoomFirst")}
-            </span>
-          )}
-          {spotlightTarget && (
-            <span
-              onClick={() => setSpotlightTarget(null)}
-              style={{
-                fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.terracotta,
-                fontWeight: 600, cursor: "pointer",
-                animation: "libFadeIn 0.3s ease both",
-                display: "flex", alignItems: "center", gap: "0.375rem",
-              }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-              {t("spotlightHint")}
-            </span>
-          )}
-        </div>
-
         {/* Content area */}
         <div data-nudge-scroll-lock style={{
           flex: 1, overflow: "auto",
@@ -1686,37 +1659,6 @@ export default function LibraryView() {
             animation: "libFadeIn 0.35s ease both",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              {/* Import button */}
-              <button
-                data-spotlight-id="importUpload"
-                onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: "0.375rem",
-                  padding: "0.375rem 0.875rem",
-                  borderRadius: "0.5rem",
-                  background: spotlightTarget === "importUpload"
-                    ? `linear-gradient(135deg, ${T.color.terracotta}, ${"#716A5E"})`
-                    : `linear-gradient(135deg, ${T.color.gold}, ${T.color.goldDark})`,
-                  border: spotlightTarget === "importUpload" ? `0.125rem solid ${T.color.terracotta}` : "none",
-                  cursor: "pointer",
-                  fontFamily: T.font.body, fontSize: "0.75rem",
-                  fontWeight: 600, color: T.color.white,
-                  letterSpacing: "0.02em",
-                  transition: "all 0.2s ease",
-                  boxShadow: spotlightTarget === "importUpload"
-                    ? `0 0 0 0.1875rem ${T.color.terracotta}44`
-                    : "0 0.0625rem 0.25rem rgba(212,175,55,0.2)",
-                  animation: spotlightTarget === "importUpload" ? "spotlightPulse 1.5s ease-in-out infinite" : undefined,
-                  flexShrink: 0,
-                }}
-              >
-                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M10 3v10M6 9l4 4 4-4" />
-                  <path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2" />
-                </svg>
-                {t("importButton")}
-              </button>
-
               {/* Select mode toggle — only when room has memories */}
               {selectedRoom && filteredRoomMems.length > 0 && (
                 <button
