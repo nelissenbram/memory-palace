@@ -14,7 +14,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { T } from "@/lib/theme";
 import { MediaThumb } from "./MediaThumb";
-import { packJustifiedRows, targetRowHeight, getAspect, type PackedRow } from "@/lib/library/justify";
+import { packJustifiedRows, targetRowHeight, getAspect, setAspect, type PackedRow } from "@/lib/library/justify";
 import type { Mem } from "@/lib/constants/defaults";
 
 const GAP = 3; // px seams
@@ -38,8 +38,9 @@ function tileSources(mem: Mem): string[] {
 }
 
 /** Chromeless tile media: real <img> with source fallback, else the MediaThumb
- *  type glyph (story/audio/document). Zero card/shadow/gradient in the path. */
-function TileMedia({ mem, iconSize }: { mem: Mem; iconSize: number }) {
+ *  type glyph (story/audio/document). On load it reports the real aspect ratio
+ *  so the wall re-packs to organic widths. Zero card/shadow/gradient. */
+function TileMedia({ mem, iconSize, onMeasured }: { mem: Mem; iconSize: number; onMeasured: (id: string, ar: number) => void }) {
   const sources = React.useMemo(() => tileSources(mem), [mem]);
   const [idx, setIdx] = useState(0);
   const src = sources[idx];
@@ -51,6 +52,10 @@ function TileMedia({ mem, iconSize }: { mem: Mem; iconSize: number }) {
         alt=""
         loading="lazy"
         decoding="async"
+        onLoad={(e) => {
+          const el = e.currentTarget;
+          if (el.naturalWidth > 0 && el.naturalHeight > 0) onMeasured(mem.id, el.naturalWidth / el.naturalHeight);
+        }}
         onError={() => setIdx((i) => i + 1)}
         style={{ display: "block", width: "100%", height: "100%", objectFit: "cover" }}
       />
@@ -98,6 +103,20 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
   // Fallback so a lagging/failed measurement never yields a blank wall.
   const effWidth = width > 0 ? width : (typeof window !== "undefined" ? Math.min(window.innerWidth - (isMobile ? 0 : 260), 1200) : 800);
 
+  // Real aspect ratios stream in as images decode; batch a single re-pack per
+  // frame so the wall settles from deterministic bricks to organic widths
+  // without layout thrash.
+  const [arVersion, setArVersion] = useState(0);
+  const pendingRepack = useRef(false);
+  const onMeasured = React.useCallback((id: string, ar: number) => {
+    const prev = getAspect(id);
+    setAspect(id, ar);
+    if (Math.abs(prev - ar) > 0.02 && !pendingRepack.current) {
+      pendingRepack.current = true;
+      requestAnimationFrame(() => { pendingRepack.current = false; setArVersion((v) => v + 1); });
+    }
+  }, []);
+
   // Group by month (newest first), preserving each memory's original index so
   // the viewer opens the right one.
   const sections = useMemo<Section[]>(() => {
@@ -124,8 +143,16 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
 
   const rowH = targetRowHeight(effWidth);
   const packed = useMemo(
-    () => sections.map((s) => ({ ...s, rows: packJustifiedRows(s.items, effWidth, rowH, GAP) as PackedRow<Mem & { ar: number; _i: number }>[] })),
-    [sections, effWidth, rowH],
+    // re-read getAspect at pack time so measured ratios (arVersion) take effect
+    () => sections.map((s) => ({
+      ...s,
+      rows: packJustifiedRows(
+        s.items.map((it) => ({ ...it, ar: getAspect(it.id, it.type) })),
+        effWidth, rowH, GAP,
+      ) as PackedRow<Mem & { ar: number; _i: number }>[],
+    })),
+    // arVersion intentionally in deps to re-pack when real ratios arrive
+    [sections, effWidth, rowH, arVersion],
   );
 
   return (
@@ -139,7 +166,7 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
             <span aria-hidden="true" style={{ flex: 1, height: "0.125rem", alignSelf: "center", background: "linear-gradient(90deg, #C99A2E, rgba(201,154,46,0.25) 45%, transparent)" }} />
           </div>
           {sec.rows.map((row, ri) => (
-            <div key={ri} style={{ display: "flex", gap: `${GAP}px`, marginBottom: `${GAP}px` }}>
+            <div key={ri} style={{ display: "flex", gap: `${GAP}px`, marginBottom: `${GAP}px`, contentVisibility: "auto", containIntrinsicSize: `${Math.round(effWidth)}px ${Math.round(row.height)}px` } as React.CSSProperties}>
               {row.tiles.map(({ item, w, h }) => {
                 const selected = selectedMemIds.has(item.id);
                 return (
@@ -160,7 +187,7 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
                     }}
                   >
                     <span style={{ display: "block", width: "100%", height: "100%", opacity: selected ? 0.82 : 1, transition: "opacity 0.15s ease" }}>
-                      <TileMedia mem={item as Mem} iconSize={h > 130 ? 22 : 16} />
+                      <TileMedia mem={item as Mem} iconSize={h > 130 ? 22 : 16} onMeasured={onMeasured} />
                     </span>
                     {selected && (
                       <span aria-hidden="true" style={{ position: "absolute", top: "0.375rem", right: "0.375rem", width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: "#D4AF37", display: "flex", alignItems: "center", justifyContent: "center" }}>

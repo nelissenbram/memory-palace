@@ -8,9 +8,11 @@ on mobile; Atrium palette.
 ## Phase 0 — DATA (blocker, must verify first)
 - [shipped] Robust tile source: thumbnail→original→warm-gradient with onError; synchronous width
   measure + fallback so the wall never renders blank.
-- [OPEN] Confirm real photos load on bram@elyphont.com. If still blank it is a data/CORS issue
-  (Supabase file_url not fetched or cross-origin blocked), NOT layout — needs the browser
-  console/network error to pinpoint.
+- [ROOT CAUSE FOUND + FIXED] Photos were blank on ALL previews because /api/media/[...path]
+  500'd: SUPABASE_SERVICE_ROLE_KEY is Production-only, so createAdminClient() failed on Preview.
+  Fixed: media route falls back to the authenticated session client (RLS-scoped) when the
+  service-role key is absent — owners see their own media on previews. Every prior Library
+  preview review was on a photo-less deploy; the design changes were landing, just invisible.
 
 ## Phase 1 — THE WALL  [SHIPPED]
 Il Muro chromeless justified photo wall; sticky gold month bands; MediaThumb/img tiles; list &

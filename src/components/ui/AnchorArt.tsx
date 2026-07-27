@@ -103,7 +103,7 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
       {/* Left wing windows with mullion crosses */}
       {[35, 55, 72].map((x) => (
         <React.Fragment key={`lw-${x}`}>
-          <rect x={x - 4} y={100} width="8" height="12" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="4 4 0 0" />
+          <rect x={x - 4} y={100} width="8" height="12" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="2" />
           {/* Mullion cross */}
           <line x1={x} y1={100} x2={x} y2={112} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
           <line x1={x - 4} y1={106} x2={x + 4} y2={106} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
@@ -115,7 +115,7 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
         </React.Fragment>
       ))}
       {/* Left wing door */}
-      <rect x="44" y="125" width="14" height="30" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="7 7 0 0" />
+      <rect x="44" y="125" width="14" height="30" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="7" />
       <ellipse cx="51" cy="135" rx="5" ry="10" fill="url(#windowWarmth)" opacity={windowGlow * 0.6}>
         <animate attributeName="opacity" values={`${windowGlow * 0.6};${windowGlow * 0.85};${windowGlow * 0.5};${windowGlow * 0.6}`} dur="4.6s" repeatCount="indefinite" />
       </ellipse>
@@ -143,7 +143,7 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
       {/* Right wing windows with mullion crosses */}
       {[231, 248, 265].map((x) => (
         <React.Fragment key={`rw-${x}`}>
-          <rect x={x - 4} y={100} width="8" height="12" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="4 4 0 0" />
+          <rect x={x - 4} y={100} width="8" height="12" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="2" />
           {/* Mullion cross */}
           <line x1={x} y1={100} x2={x} y2={112} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
           <line x1={x - 4} y1={106} x2={x + 4} y2={106} stroke={T.color.gold} strokeWidth="0.3" opacity="0.25" />
@@ -152,7 +152,7 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
           </ellipse>
         </React.Fragment>
       ))}
-      <rect x="242" y="125" width="14" height="30" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="7 7 0 0" />
+      <rect x="242" y="125" width="14" height="30" fill="none" stroke={T.color.gold} strokeWidth="0.6" opacity="0.4" rx="7" />
       <ellipse cx="249" cy="135" rx="5" ry="10" fill="url(#windowWarmth)" opacity={windowGlow * 0.6}>
         <animate attributeName="opacity" values={`${windowGlow * 0.6};${windowGlow * 0.45};${windowGlow * 0.8};${windowGlow * 0.6}`} dur="5.3s" repeatCount="indefinite" />
       </ellipse>
@@ -209,8 +209,8 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
       ))}
 
       {/* Central arch doorway */}
-      <rect x="135" y="105" width="30" height="50" fill="none" stroke={T.color.gold} strokeWidth="0.9" opacity="0.5" rx="15 15 0 0" />
-      <rect x="138" y="108" width="24" height="47" fill="none" stroke={T.color.gold} strokeWidth="0.4" opacity="0.25" rx="12 12 0 0" />
+      <rect x="135" y="105" width="30" height="50" fill="none" stroke={T.color.gold} strokeWidth="0.9" opacity="0.5" rx="15" />
+      <rect x="138" y="108" width="24" height="47" fill="none" stroke={T.color.gold} strokeWidth="0.4" opacity="0.25" rx="12" />
       {/* Door warm glow — hearth-flicker, quicker and livelier than windows */}
       <ellipse cx="150" cy="125" rx="10" ry="18" fill="url(#windowWarmth)" opacity={windowGlow * 0.8}>
         <animate attributeName="opacity" values={`${windowGlow * 0.8};${windowGlow * 1.15};${windowGlow * 0.7};${windowGlow * 1.05};${windowGlow * 0.85};${windowGlow * 0.8}`} keyTimes="0;0.2;0.45;0.65;0.85;1" dur="3.2s" repeatCount="indefinite" />
@@ -226,7 +226,7 @@ export function PalaceIllustration({ hover, warmth, timeOfDay }: {
       {/* Upper windows row with mullion crosses */}
       {[105, 125, 175, 195].map((x) => (
         <React.Fragment key={`uw-${x}`}>
-          <rect x={x - 4} y={72} width="8" height="11" fill="none" stroke={T.color.gold} strokeWidth="0.5" opacity="0.35" rx="4 4 0 0" />
+          <rect x={x - 4} y={72} width="8" height="11" fill="none" stroke={T.color.gold} strokeWidth="0.5" opacity="0.35" rx="2" />
           {/* Mullion cross */}
           <line x1={x} y1={72} x2={x} y2={83} stroke={T.color.gold} strokeWidth="0.25" opacity="0.2" />
           <line x1={x - 4} y1={77.5} x2={x + 4} y2={77.5} stroke={T.color.gold} strokeWidth="0.25" opacity="0.2" />
