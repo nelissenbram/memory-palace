@@ -82,11 +82,15 @@ interface PhotoWallProps {
   groupBy?: "month" | "room";
   /** room label for a memory, used by the Rooms lens */
   roomLabelOf?: (memId: string) => string;
+  /** HTML5 drag of a tile into a sidebar room (desktop pointer only) */
+  draggableTiles?: boolean;
+  onTileDragStart?: (memId: string) => void;
+  onTileDragEnd?: () => void;
 }
 
 type Section = { key: string; label: string; items: (Mem & { ar: number; _i: number })[] };
 
-export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent, groupBy = "month", roomLabelOf }: PhotoWallProps) {
+export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent, groupBy = "month", roomLabelOf, draggableTiles, onTileDragStart, onTileDragEnd }: PhotoWallProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
 
@@ -217,6 +221,14 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
                     aria-label={item.title}
                     onClick={() => (selectMode ? onToggleSelect(item.id) : onOpen(item._i))}
                     onContextMenu={(e) => { e.preventDefault(); onToggleSelect(item.id); }}
+                    draggable={!!draggableTiles && !selectMode}
+                    onDragStart={draggableTiles && !selectMode ? (e) => {
+                      e.dataTransfer.setData("application/x-mp-memory", item.id);
+                      e.dataTransfer.setData("text/plain", item.id);
+                      e.dataTransfer.effectAllowed = "move";
+                      onTileDragStart?.(item.id);
+                    } : undefined}
+                    onDragEnd={draggableTiles ? () => onTileDragEnd?.() : undefined}
                     className="il-muro-tile"
                     style={{
                       position: "relative", flex: row.last ? "0 0 auto" : "1 1 auto",

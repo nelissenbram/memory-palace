@@ -4239,6 +4239,7 @@
     "emptyRoomAnimatedTitle": "Deze kamer wacht op jou",
     "emptyRoomAnimatedCta": "Voeg je eerste herinnering toe",
     "roomStatsTotal": "{count} totaal",
+    "dragDropHint": "Laat de herinnering in een kamer vallen",
     "sidebarSearchPlaceholder": "Vleugels & kamers filteren...",
     "hoverPreviewNoDesc": "Geen beschrijving",
     "customizeColor": "Kleur aanpassen",

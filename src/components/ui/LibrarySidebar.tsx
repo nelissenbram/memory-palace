@@ -29,6 +29,15 @@ interface LibrarySidebarProps {
   sharedWings?: { wingName: string; rooms: { id: string; name: string; icon: string }[] }[];
   /** Per-wing warmth (0 quiet / 1 ember / 2 candlelit) — the seals glow by recency. */
   wingWarmth?: Record<string, 0 | 1 | 2>;
+  /** A memory tile is being dragged over the app: the active wing's rooms
+   *  auto-collapse and each wing spring-opens its rooms on drag-hover so the
+   *  memory can be dropped straight into the right room. */
+  dragActive?: boolean;
+  onDropMemory?: (roomId: string, memId: string) => void;
+}
+
+function readDragMemId(e: { dataTransfer: DataTransfer }): string {
+  return e.dataTransfer.getData("application/x-mp-memory") || e.dataTransfer.getData("text/plain");
 }
 
 const PLAN_LIMIT = 500;
@@ -56,6 +65,8 @@ export default function LibrarySidebar({
   selectedRoom,
   sharedWings,
   wingWarmth,
+  dragActive,
+  onDropMemory,
 }: LibrarySidebarProps) {
   const { t } = useTranslation("library");
   const { t: tc } = useTranslation("common");
@@ -72,6 +83,8 @@ export default function LibrarySidebar({
   const [sidebarQuery, setSidebarQuery] = useState("");
   const [colorPickerWing, setColorPickerWing] = useState<string | null>(null);
   const [sharedExpanded, setSharedExpanded] = useState(false);
+  const [dragWing, setDragWing] = useState<string | null>(null);
+  const [dragOverRoom, setDragOverRoom] = useState<string | null>(null);
   const [wingColors, setWingColors] = useState<Record<string, string>>(() => {
     if (typeof window !== "undefined") {
       try { return JSON.parse(localStorage.getItem("mp_wing_colors") || "{}"); } catch { return {}; }
@@ -83,6 +96,10 @@ export default function LibrarySidebar({
     const raf = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(raf);
   }, []);
+
+  useEffect(() => {
+    if (!dragActive) { setDragWing(null); setDragOverRoom(null); }
+  }, [dragActive]);
 
   const totalMemories = useMemo(
     () => wings.reduce((sum, w) => sum + wingMemCount(w.id), 0),
@@ -415,6 +432,25 @@ export default function LibrarySidebar({
         </div>
       </div>
 
+      {/* Drop hint while a memory is being dragged */}
+      {dragActive && (
+        <div style={{
+          margin: "0.25rem 1rem 0",
+          padding: "0.375rem 0.625rem",
+          borderRadius: "0.5rem",
+          border: "0.0625rem dashed rgba(184,92,56,0.45)",
+          background: "rgba(184,92,56,0.08)",
+          fontFamily: T.font.body,
+          fontSize: "0.6875rem",
+          fontWeight: 600,
+          color: "#9A4F2A",
+          letterSpacing: "0.02em",
+          animation: `lsb-wing-enter 0.2s ${EASE_OUT_EXPO} both`,
+        }}>
+          {t("dragDropHint")}
+        </div>
+      )}
+
       {/* ── Wing list ── */}
       <div
         style={{
@@ -431,6 +467,9 @@ export default function LibrarySidebar({
           const roomCount = getWingRooms(w.id).length;
           const memCount = wingMemCount(w.id);
           const progressRatio = Math.min(memCount / PROGRESS_BASELINE, 1);
+          // During a drag the room lists auto-collapse; only the drag-hovered
+          // wing spring-opens so the drop lands in the right room.
+          const roomsOpen = dragActive ? dragWing === w.id : active;
 
           return (
             <div key={w.id}>
@@ -438,7 +477,14 @@ export default function LibrarySidebar({
               onClick={() => onSelectWing(w.id)}
               onMouseEnter={() => setHoveredWing(w.id)}
               onMouseLeave={() => setHoveredWing(null)}
+              onDragOver={dragActive ? (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                if (dragWing !== w.id) setDragWing(w.id);
+              } : undefined}
               style={{
+                outline: dragActive && dragWing === w.id ? "0.0625rem dashed rgba(184,92,56,0.55)" : "none",
+                outlineOffset: "-0.0625rem",
                 display: "flex",
                 alignItems: "center",
                 gap: "0.75rem",
@@ -643,8 +689,8 @@ export default function LibrarySidebar({
               </div>
             )}
 
-            {/* ── Rooms sub-list for active wing ── */}
-            {active && roomCount > 0 && (
+            {/* ── Rooms sub-list for the active (or drag-hovered) wing ── */}
+            {roomsOpen && roomCount > 0 && (
               <>
                 {/* Divider between wing and rooms */}
                 <div style={{
@@ -666,6 +712,7 @@ export default function LibrarySidebar({
                 {/* Room items */}
                 {getWingRooms(w.id).map((room, ri) => {
                   const isRoomActive = selectedRoom === room.id;
+                  const isDropTarget = dragActive && dragOverRoom === room.id;
                   return (
                   <div
                     key={room.id}
@@ -673,21 +720,36 @@ export default function LibrarySidebar({
                     tabIndex={0}
                     onClick={() => onSelectRoom?.(room.id)}
                     onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectRoom?.(room.id); } }}
+                    onDragOver={dragActive ? e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverRoom !== room.id) setDragOverRoom(room.id);
+                    } : undefined}
+                    onDragLeave={dragActive ? () => setDragOverRoom(r => (r === room.id ? null : r)) : undefined}
+                    onDrop={dragActive ? e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const memId = readDragMemId(e);
+                      setDragOverRoom(null);
+                      setDragWing(null);
+                      if (memId) onDropMemory?.(room.id, memId);
+                    } : undefined}
                     style={{
                       display: "flex", alignItems: "center", gap: "0.5rem",
                       padding: "0.375rem 0.75rem 0.375rem 2.25rem",
                       borderRadius: "0.5rem",
                       cursor: "pointer",
                       transition: `all 0.2s ${EASE_OUT_EXPO}`,
-                      background: isRoomActive ? "rgba(255,255,255,0.7)" : "transparent",
-                      borderLeft: isRoomActive ? `2px solid ${w.accent}` : "2px solid transparent",
+                      background: isDropTarget ? "rgba(184,92,56,0.14)" : isRoomActive ? "rgba(255,255,255,0.7)" : "transparent",
+                      borderLeft: isDropTarget ? "2px solid #B85C38" : isRoomActive ? `2px solid ${w.accent}` : "2px solid transparent",
                       animation: mounted ? `lsb-wing-enter 0.3s ${EASE_OUT_EXPO} ${ri * 0.04 + 0.1}s both` : "none",
                     }}
                     onMouseEnter={e => {
                       if (!isRoomActive) e.currentTarget.style.background = "rgba(255,255,255,0.5)";
                     }}
                     onMouseLeave={e => {
-                      if (!isRoomActive) e.currentTarget.style.background = "transparent";
+                      if (!isRoomActive && !isDropTarget) e.currentTarget.style.background = "transparent";
                     }}
                   >
                     <RoomIcon roomId={room.id} size={14} color={"#716A5E"} />

@@ -4237,6 +4237,7 @@
     "emptyRoomAnimatedTitle": "This room is waiting for you",
     "emptyRoomAnimatedCta": "Add your first memory",
     "roomStatsTotal": "{count} total",
+    "dragDropHint": "Drop the memory in a room",
     "sidebarSearchPlaceholder": "Filter wings & rooms...",
     "hoverPreviewNoDesc": "No description",
     "customizeColor": "Customize color",

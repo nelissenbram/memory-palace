@@ -4237,6 +4237,7 @@
     "emptyRoomAnimatedTitle": "Dieser Raum wartet auf dich",
     "emptyRoomAnimatedCta": "Füge deine erste Erinnerung hinzu",
     "roomStatsTotal": "{count} insgesamt",
+    "dragDropHint": "Lege die Erinnerung in einem Raum ab",
     "sidebarSearchPlaceholder": "Flügel & Räume filtern...",
     "hoverPreviewNoDesc": "Keine Beschreibung",
     "customizeColor": "Farbe anpassen",

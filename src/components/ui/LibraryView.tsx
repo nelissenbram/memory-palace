@@ -473,6 +473,7 @@ export default function LibraryView() {
   const [lightboxMem, setLightboxMem] = useState<Mem | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [draggingMemId, setDraggingMemId] = useState<string | null>(null);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSortOpen, setMobileSortOpen] = useState(false);
@@ -991,17 +992,6 @@ export default function LibraryView() {
     return [...new Set(mems.map(m => normalizeDisplayType(m.type)))];
   }, [selectedRoom, getMemsForRoom]);
 
-  const roomTypeCounts = useMemo(() => {
-    if (!selectedRoom) return {};
-    const mems = getMemsForRoom(selectedRoom);
-    const counts: Record<string, number> = {};
-    for (const m of mems) {
-      const type = normalizeDisplayType(m.type);
-      counts[type] = (counts[type] || 0) + 1;
-    }
-    return counts;
-  }, [selectedRoom, getMemsForRoom]);
-
   // Result count for search badge
   const searchResultCount = useMemo(() => {
     if (!query) return undefined;
@@ -1117,6 +1107,22 @@ export default function LibraryView() {
     setTimeout(() => setMovedToast(false), 2200);
   }, [movingMem, moveMemory]);
 
+  // Drag & drop: tile → sidebar room. Source room comes from memRoomMap so it
+  // works from the unified wall, a wing wall or a room wall alike.
+  const handleTileDragStart = useCallback((memId: string) => {
+    setDraggingMemId(memId);
+    setSidebarCollapsed(false);
+  }, []);
+
+  const handleDropMemory = useCallback((roomId: string, memId: string) => {
+    setDraggingMemId(null);
+    const from = memRoomMap.get(memId)?.roomId;
+    if (!from || from === roomId) return;
+    moveMemory(from, roomId, memId);
+    setMovedToast(true);
+    setTimeout(() => setMovedToast(false), 2200);
+  }, [memRoomMap, moveMemory]);
+
   const handleBulkMoveToRoom = useCallback((targetRoomId: string) => {
     if (!selectedRoom || selectedMemIds.size === 0) return;
     for (const memId of selectedMemIds) {
@@ -1212,6 +1218,8 @@ export default function LibraryView() {
           sharedCount={sharedCount}
           onSharedClick={() => setShowSharedWithMe(true)}
           sharedWings={sharedWingsData}
+          dragActive={!!draggingMemId}
+          onDropMemory={handleDropMemory}
         />
         <button type="button" onClick={() => setSidebarCollapsed(true)} aria-label={t("collapseSidebar") !== "collapseSidebar" ? t("collapseSidebar") : "Hide wings"} title={t("collapseSidebar") !== "collapseSidebar" ? t("collapseSidebar") : "Hide wings"} style={{ position: "absolute", top: "1.25rem", right: "-0.75rem", zIndex: 6, width: "1.5rem", height: "1.5rem", borderRadius: "50%", background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#716A5E" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -2161,36 +2169,6 @@ export default function LibraryView() {
                 </div>
               </div>
               )}
-              {/* P2 #5: Memory statistics per room */}
-              {filteredRoomMems.length > 0 && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: "0.75rem",
-                  marginBottom: "0.75rem", flexWrap: "wrap",
-                  padding: "0.375rem 0.75rem",
-                  background: "rgba(255,255,255,0.55)",
-                  borderRadius: "0.5rem",
-                  border: `0.0625rem solid ${T.color.cream}`,
-                  animation: "libFadeIn 0.3s ease both",
-                }}>
-                  <span style={{
-                    fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 600,
-                    color: "#403B36", letterSpacing: "0.02em",
-                  }}>
-                    {t("roomStatsTotal", { count: String(filteredRoomMems.length) })}
-                  </span>
-                  <span style={{ width: "0.0625rem", height: "0.75rem", background: T.color.cream }} />
-                  {Object.entries(roomTypeCounts).map(([type, count]) => (
-                    <span key={type} style={{
-                      display: "inline-flex", alignItems: "center", gap: "0.1875rem",
-                      fontFamily: T.font.body, fontSize: "0.625rem", color: "#716A5E",
-                    }}>
-                      <TypeIcon type={type} size={11} color={"#716A5E"} />
-                      {count}
-                    </span>
-                  ))}
-                </div>
-              )}
-
               {/* Loading skeleton (P1 #10) — only show during brief loading */}
               {roomLoading && (
                 <div style={{
@@ -2245,6 +2223,9 @@ export default function LibraryView() {
                     monthLabel={(d) => d.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
                     undatedLabel={t("undated") !== "undated" ? t("undated") : "Undated"}
                     countLabel={(n) => `${n}`}
+                    draggableTiles={!isMobile}
+                    onTileDragStart={handleTileDragStart}
+                    onTileDragEnd={() => setDraggingMemId(null)}
                   />
                 ) : viewMode === "list" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }} role="list">

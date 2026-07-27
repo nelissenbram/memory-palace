@@ -4237,6 +4237,7 @@
     "emptyRoomAnimatedTitle": "Cette salle vous attend",
     "emptyRoomAnimatedCta": "Ajoutez votre premier souvenir",
     "roomStatsTotal": "{count} au total",
+    "dragDropHint": "Déposez le souvenir dans une pièce",
     "sidebarSearchPlaceholder": "Filtrer ailes & salles...",
     "hoverPreviewNoDesc": "Aucune description",
     "customizeColor": "Personnaliser la couleur",
