@@ -4291,7 +4291,11 @@
     "emptyWingOverline": "Une aile attend",
     "emptyRoomOverline": "Une salle vide",
     "emptySearchOverline": "Aucun résultat",
-    "undated": "Sans date"
+    "undated": "Sans date",
+    "facetPlace": "Avec lieu",
+    "facetDescribed": "Décrit",
+    "facetUnplaced": "Sans salle",
+    "clearFilters": "Effacer"
   },
   "atrium": {
     "goodMorning": "Bonjour",

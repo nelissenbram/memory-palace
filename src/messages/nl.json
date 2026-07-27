@@ -4293,7 +4293,11 @@
     "emptyWingOverline": "Een vleugel wacht",
     "emptyRoomOverline": "Een lege kamer",
     "emptySearchOverline": "Geen resultaten",
-    "undated": "Zonder datum"
+    "undated": "Zonder datum",
+    "facetPlace": "Met plaats",
+    "facetDescribed": "Beschreven",
+    "facetUnplaced": "Zonder kamer",
+    "clearFilters": "Wissen"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",

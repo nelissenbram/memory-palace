@@ -4291,7 +4291,11 @@
     "emptyWingOverline": "Ein Flügel wartet",
     "emptyRoomOverline": "Ein leerer Raum",
     "emptySearchOverline": "Keine Treffer",
-    "undated": "Ohne Datum"
+    "undated": "Ohne Datum",
+    "facetPlace": "Mit Ort",
+    "facetDescribed": "Beschrieben",
+    "facetUnplaced": "Ohne Raum",
+    "clearFilters": "Löschen"
   },
   "atrium": {
     "goodMorning": "Guten Morgen",

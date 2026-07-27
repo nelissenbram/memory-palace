@@ -415,6 +415,7 @@ export default function LibraryView() {
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
+  const [facet, setFacet] = useState<null | "place" | "described" | "onthisday" | "unplaced">(null);
   const [detailMem, setDetailMem] = useState<{ mem: Mem; wingId: string; roomId: string } | null>(null);
   const [showUploadFor, setShowUploadFor] = useState<{ wingId: string; roomId: string } | null>(null);
   const [movingMem, setMovingMem] = useState<{ mem: Mem; fromRoom: string } | null>(null);
@@ -458,7 +459,10 @@ export default function LibraryView() {
   const [hideComingSoon, setHideComingSoon] = useState(false);
   useEffect(() => { setHideComingSoon(isIOS()); }, []);
   const [visibleMemCount, setVisibleMemCount] = useState(50);
-  const [sortMode, setSortMode] = useState<"newest" | "oldest" | "alpha" | "type">("newest");
+  const [sortMode, setSortMode] = useState<"newest" | "oldest" | "alpha" | "type">(() => {
+    if (typeof window !== "undefined") { const v = localStorage.getItem("librarySortMode"); if (v === "newest" || v === "oldest" || v === "alpha" || v === "type") return v; }
+    return "newest";
+  });
   const [selectedMemIds, setSelectedMemIds] = useState<Set<string>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
   const [lightboxMem, setLightboxMem] = useState<Mem | null>(null);
@@ -510,6 +514,7 @@ export default function LibraryView() {
       localStorage.setItem("libraryViewMode", viewMode);
     }
   }, [viewMode]);
+  useEffect(() => { try { localStorage.setItem("librarySortMode", sortMode); } catch { /* full */ } }, [sortMode]);
 
   // Read spotlight flag from Atrium CTA navigation
   useEffect(() => {
@@ -878,6 +883,10 @@ export default function LibraryView() {
       || m.type.toLowerCase().includes(q)
     );
     if (filterType) mems = mems.filter(m => normalizeDisplayType(m.type) === filterType);
+    if (facet === "place") mems = mems.filter(m => !!m.locationName);
+    else if (facet === "described") mems = mems.filter(m => !!(m.desc || "").trim() || !!m.historicalContext);
+    else if (facet === "onthisday") { const now = new Date(), mo = now.getMonth(), da = now.getDate(); mems = mems.filter(m => { const r = m.createdAt || (m as { date?: string }).date; if (!r) return false; const d = new Date(r); return !Number.isNaN(d.getTime()) && d.getMonth() === mo && d.getDate() === da; }); }
+    else if (facet === "unplaced") mems = mems.filter(m => !memRoomMap.get(m.id)?.roomId);
     // Sort (P1 #7)
     mems = [...mems].sort((a, b) => {
       switch (sortMode) {
@@ -889,14 +898,14 @@ export default function LibraryView() {
       }
     });
     return mems;
-  }, [selectedRoom, selectedWing, libAllMems, getMemsForRoom, q, filterType, sortMode]);
+  }, [selectedRoom, selectedWing, libAllMems, getMemsForRoom, q, filterType, facet, memRoomMap, sortMode]);
 
   // Backfill missing video thumbnails for the selected room (background, throttled)
   useThumbnailBackfill(selectedRoom, filteredRoomMems);
 
   // Cross-wing search results
   const crossWingResults = useMemo(() => {
-    if (!q || selectedRoom) return null;
+    if (!q || selectedRoom || selectedWing === "__all__") return null;
     const results: { wing: Wing; room: WingRoom; mem: Mem }[] = [];
     for (const w of wings) {
       for (const r of getWingRooms(w.id)) {
@@ -915,7 +924,7 @@ export default function LibraryView() {
       }
     }
     return results.length > 0 ? results : null;
-  }, [q, selectedRoom, wings, getWingRooms, getMemsForRoom]);
+  }, [q, selectedRoom, selectedWing, wings, getWingRooms, getMemsForRoom]);
 
   // ── Warmth per wing (ports src/lib/warmth.ts): the sidebar seals glow by
   //    recency — quiet / ember / candlelit — like the Atrium board. ──
@@ -1529,6 +1538,41 @@ export default function LibraryView() {
             </div>
           </div>
         )}
+
+        {/* ── FACET SHELF — persistent filters that compound over the wall;
+            wing/room are facets, these are the cross-cutting ones. Ember active,
+            never gold. Renders for both the unified wall and inside a room. ── */}
+        {(() => {
+          const base: Mem[] = selectedRoom ? getMemsForRoom(selectedRoom) : (selectedWing === "__all__" ? libAllMems : allWingMems);
+          const now = new Date(), mo = now.getMonth(), da = now.getDate();
+          const isOtd = (m: Mem) => { const r = m.createdAt || (m as { date?: string }).date; if (!r) return false; const d = new Date(r); return !Number.isNaN(d.getTime()) && d.getMonth() === mo && d.getDate() === da; };
+          const defs: { key: "place" | "described" | "onthisday" | "unplaced"; label: string; gilt?: boolean; count: number }[] = [
+            { key: "place", label: t("facetPlace") !== "facetPlace" ? t("facetPlace") : "Has place", count: base.filter(m => !!m.locationName).length },
+            { key: "described", label: t("facetDescribed") !== "facetDescribed" ? t("facetDescribed") : "Described", count: base.filter(m => !!(m.desc || "").trim() || !!m.historicalContext).length },
+            { key: "onthisday", label: t("onThisDay") !== "onThisDay" ? t("onThisDay") : "On this day", gilt: true, count: base.filter(isOtd).length },
+            { key: "unplaced", label: t("facetUnplaced") !== "facetUnplaced" ? t("facetUnplaced") : "Unplaced", count: base.filter(m => !memRoomMap.get(m.id)?.roomId).length },
+          ];
+          const anyActive = !!facet || !!filterType || !!q;
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", overflowX: "auto", scrollbarWidth: "none", padding: isMobile ? "0 0.5rem 0.5rem" : isCompact ? "0 1.25rem 0.5rem" : "0 2.5rem 0.5rem", maskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)" }}>
+              {defs.map(d => {
+                const active = facet === d.key;
+                const disabled = d.count === 0 && !active;
+                return (
+                  <button key={d.key} type="button" disabled={disabled} onClick={() => setFacet(active ? null : d.key)} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "2rem", padding: "0 0.75rem", borderRadius: "2rem", cursor: disabled ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: disabled ? 0.45 : 1, pointerEvents: disabled ? "none" : "auto", background: active ? "#B85C38" : "transparent", color: active ? "#FCFAF5" : "#403B36", border: active ? "0.0625rem solid #B85C38" : `0.0625rem solid ${d.gilt ? "#D4AF37" : "#E3D6BC"}` }}>
+                    {d.label}
+                    <span style={{ fontVariantNumeric: "tabular-nums", fontSize: "0.6875rem", fontWeight: 700, color: active ? "rgba(252,250,245,0.85)" : "#716A5E" }}>{d.count}</span>
+                  </button>
+                );
+              })}
+              {anyActive && (
+                <button type="button" onClick={() => { setFacet(null); setFilterType(null); setQuery(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.3rem", minHeight: "2rem", padding: "0 0.75rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, background: "transparent", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.4)" }}>
+                  {t("clearFilters") !== "clearFilters" ? t("clearFilters") : "Clear"} ✕
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── ON THIS DAY — gilt resurfacing strip (renders nothing when empty,
             never scolding); the Library's pull to return ── */}
@@ -2301,6 +2345,7 @@ export default function LibraryView() {
                   <PhotoWall
                     mems={filteredRoomMems}
                     isMobile={isMobile}
+                    tileAccent={(id) => { const wid = memRoomMap.get(id)?.wingId; return wid ? (wings.find(w => w.id === wid)?.accent || null) : null; }}
                     selectMode={selectMode}
                     selectedMemIds={selectedMemIds}
                     onToggleSelect={(id) => setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; })}

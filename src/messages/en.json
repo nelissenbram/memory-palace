@@ -4291,7 +4291,11 @@
     "emptyWingOverline": "A wing awaits",
     "emptyRoomOverline": "An empty room",
     "emptySearchOverline": "No matches",
-    "undated": "Undated"
+    "undated": "Undated",
+    "facetPlace": "Has place",
+    "facetDescribed": "Described",
+    "facetUnplaced": "Unplaced",
+    "clearFilters": "Clear"
   },
   "atrium": {
     "goodMorning": "Good morning",

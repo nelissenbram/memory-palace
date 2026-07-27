@@ -76,11 +76,13 @@ interface PhotoWallProps {
   monthLabel: (d: Date) => string;
   undatedLabel: string;
   countLabel: (n: number) => string;
+  /** wing-accent provenance dot per memory — keeps "lives in a room" visible on the flat wall */
+  tileAccent?: (memId: string) => string | null;
 }
 
 type Section = { key: string; label: string; items: (Mem & { ar: number; _i: number })[] };
 
-export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel }: PhotoWallProps) {
+export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent }: PhotoWallProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
 
@@ -189,6 +191,9 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
                     <span style={{ display: "block", width: "100%", height: "100%", opacity: selected ? 0.82 : 1, transition: "opacity 0.15s ease" }}>
                       <TileMedia mem={item as Mem} iconSize={h > 130 ? 22 : 16} onMeasured={onMeasured} />
                     </span>
+                    {!selected && tileAccent && tileAccent(item.id) ? (
+                      <span aria-hidden="true" style={{ position: "absolute", left: "0.3rem", bottom: "0.3rem", width: "0.4rem", height: "0.4rem", borderRadius: "50%", background: tileAccent(item.id) as string, boxShadow: "0 0 0 0.09375rem rgba(252,250,245,0.85)" }} />
+                    ) : null}
                     {selected && (
                       <span aria-hidden="true" style={{ position: "absolute", top: "0.375rem", right: "0.375rem", width: "1.25rem", height: "1.25rem", borderRadius: "50%", background: "#D4AF37", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2E2A26" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
