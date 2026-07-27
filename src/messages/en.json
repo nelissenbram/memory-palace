@@ -4300,7 +4300,9 @@
     "allMemoriesDesc": "Your whole life, newest first",
     "moreActions": "More",
     "byMonth": "Month",
-    "byRoom": "Rooms"
+    "byRoom": "Rooms",
+    "expandSidebar": "Show wings",
+    "collapseSidebar": "Hide wings"
   },
   "atrium": {
     "goodMorning": "Good morning",

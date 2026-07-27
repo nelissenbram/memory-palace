@@ -4302,7 +4302,9 @@
     "allMemoriesDesc": "Je hele leven, nieuwste eerst",
     "moreActions": "Meer",
     "byMonth": "Maand",
-    "byRoom": "Kamers"
+    "byRoom": "Kamers",
+    "expandSidebar": "Vleugels tonen",
+    "collapseSidebar": "Vleugels verbergen"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",

@@ -4300,7 +4300,9 @@
     "allMemoriesDesc": "Toda tu vida, lo más reciente primero",
     "moreActions": "Más",
     "byMonth": "Mes",
-    "byRoom": "Salas"
+    "byRoom": "Salas",
+    "expandSidebar": "Mostrar alas",
+    "collapseSidebar": "Ocultar alas"
   },
   "atrium": {
     "goodMorning": "Buenos días",

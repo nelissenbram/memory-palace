@@ -471,6 +471,7 @@ export default function LibraryView() {
   const [selectMode, setSelectMode] = useState(false);
   const [lightboxMem, setLightboxMem] = useState<Mem | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [mobileSortOpen, setMobileSortOpen] = useState(false);
@@ -1181,7 +1182,12 @@ export default function LibraryView() {
             </div>
           </div>
         )
+      ) : sidebarCollapsed ? (
+        <button type="button" onClick={() => setSidebarCollapsed(false)} aria-label={t("expandSidebar") !== "expandSidebar" ? t("expandSidebar") : "Show wings"} title={t("expandSidebar") !== "expandSidebar" ? t("expandSidebar") : "Show wings"} style={{ flexShrink: 0, width: "2.25rem", alignSelf: "stretch", background: "transparent", border: "none", borderRight: "0.0625rem solid #E3D6BC", cursor: "pointer", display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "1.5rem", color: "#716A5E" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
       ) : (
+        <div style={{ position: "relative", flexShrink: 0, display: "flex" }}>
         <LibrarySidebar
           wings={wings}
           selectedWing={selectedWing}
@@ -1200,6 +1206,10 @@ export default function LibraryView() {
           onSharedClick={() => setShowSharedWithMe(true)}
           sharedWings={sharedWingsData}
         />
+        <button type="button" onClick={() => setSidebarCollapsed(true)} aria-label={t("collapseSidebar") !== "collapseSidebar" ? t("collapseSidebar") : "Hide wings"} title={t("collapseSidebar") !== "collapseSidebar" ? t("collapseSidebar") : "Hide wings"} style={{ position: "absolute", top: "1.25rem", right: "-0.75rem", zIndex: 6, width: "1.5rem", height: "1.5rem", borderRadius: "50%", background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#716A5E" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        </div>
       )}
 
       {/* ═══ MAIN CONTENT ═══ */}
@@ -1546,62 +1556,58 @@ export default function LibraryView() {
           </div>
         )}
 
-        {/* ── CONTROL BAND — one compact row of colour-block icon-pills:
-            FILTER functions (left) + ACTION functions (right). Carries the
-            Atrium registers: sage green, gold, and the ink+gold keystone. ── */}
+        {/* ── CONTROL BAND — small mono-colour FILTER pills (left) + distinct
+            ACTION pills (right, terracotta) + the ink+gold Import keystone. ── */}
         {(() => {
           const base = selectedRoom ? getMemsForRoom(selectedRoom) : (selectedWing === "__all__" ? libAllMems : allWingMems);
           const now = new Date(), mo = now.getMonth(), da = now.getDate();
           const isOtd = (m: Mem) => { const r = m.createdAt || (m as { date?: string }).date; if (!r) return false; const d = new Date(r); return !Number.isNaN(d.getTime()) && d.getMonth() === mo && d.getDate() === da; };
-          type FDef = { key: "place" | "described" | "onthisday" | "unplaced"; label: string; count: number; tint: string; ink: string; fill: string; on: string; icon: React.ReactNode };
-          const defs: FDef[] = [
-            { key: "place", label: t("facetPlace") !== "facetPlace" ? t("facetPlace") : "Has place", count: base.filter(m => !!m.locationName).length, tint: "rgba(86,104,60,0.12)", ink: "#56683C", fill: "#56683C", on: "#DFE6D2", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> },
-            { key: "described", label: t("facetDescribed") !== "facetDescribed" ? t("facetDescribed") : "Described", count: base.filter(m => !!(m.desc || "").trim() || !!m.historicalContext).length, tint: "rgba(154,79,42,0.11)", ink: "#9A4F2A", fill: "#B85C38", on: "#FCFAF5", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg> },
-            { key: "onthisday", label: t("onThisDay") !== "onThisDay" ? t("onThisDay") : "On this day", count: base.filter(isOtd).length, tint: "rgba(201,154,46,0.14)", ink: "#8A6410", fill: "#C99A2E", on: "#2E2A26", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.2 5.6L20 9.3l-4.4 3.7L17 19l-5-3.2L7 19l1.4-6L4 9.3l5.8-.7z"/></svg> },
-            { key: "unplaced", label: t("facetUnplaced") !== "facetUnplaced" ? t("facetUnplaced") : "Unplaced", count: base.filter(m => !memRoomMap.get(m.id)?.roomId).length, tint: "rgba(64,59,54,0.07)", ink: "#403B36", fill: "#403B36", on: "#FCFAF5", icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2.5"/></svg> },
+          const defs: { key: "place" | "described" | "onthisday" | "unplaced"; label: string; count: number; icon: React.ReactNode }[] = [
+            { key: "place", label: t("facetPlace") !== "facetPlace" ? t("facetPlace") : "Has place", count: base.filter(m => !!m.locationName).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> },
+            { key: "described", label: t("facetDescribed") !== "facetDescribed" ? t("facetDescribed") : "Described", count: base.filter(m => !!(m.desc || "").trim() || !!m.historicalContext).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg> },
+            { key: "onthisday", label: t("onThisDay") !== "onThisDay" ? t("onThisDay") : "On this day", count: base.filter(isOtd).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3l2.2 5.6L20 9.3l-4.4 3.7L17 19l-5-3.2L7 19l1.4-6L4 9.3l5.8-.7z"/></svg> },
+            { key: "unplaced", label: t("facetUnplaced") !== "facetUnplaced" ? t("facetUnplaced") : "Unplaced", count: base.filter(m => !memRoomMap.get(m.id)?.roomId).length, icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 2.5"/></svg> },
           ];
           const anyActive = !!facet || !!filterType || !!q;
+          const roomTools = ([{ key: "writeStory" as const, label: t("writeStory") }, { key: "aiLabel" as const, label: t("aiLabel") }, { key: "addLocation" as const, label: t("addLocation") }]);
           return (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "nowrap", overflowX: "auto", scrollbarWidth: "none", padding: isMobile ? "0 0.5rem 0.5rem" : isCompact ? "0 1.25rem 0.5rem" : "0 2.5rem 0.6rem", maskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "nowrap", overflowX: "auto", scrollbarWidth: "none", padding: isMobile ? "0 0.5rem 0.5rem" : isCompact ? "0 1.25rem 0.5rem" : "0 2.5rem 0.55rem", maskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)" }}>
+              {/* FILTERS — one colour, small */}
               {defs.map(d => {
                 const active = facet === d.key;
                 const disabled = d.count === 0 && !active;
                 return (
-                  <button key={d.key} type="button" disabled={disabled} onClick={() => setFacet(active ? null : d.key)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "2.1rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: disabled ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, opacity: disabled ? 0.4 : 1, pointerEvents: disabled ? "none" : "auto", background: active ? d.fill : d.tint, color: active ? d.on : d.ink, border: `0.0625rem solid ${active ? d.fill : "transparent"}` }}>
-                    <span style={{ display: "inline-flex", opacity: active ? 1 : 0.9 }}>{d.icon}</span>
+                  <button key={d.key} type="button" disabled={disabled} onClick={() => setFacet(active ? null : d.key)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.3rem", minHeight: "1.9rem", padding: "0 0.6rem", borderRadius: "2rem", cursor: disabled ? "default" : "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, opacity: disabled ? 0.4 : 1, pointerEvents: disabled ? "none" : "auto", background: active ? "#B85C38" : "transparent", color: active ? "#FCFAF5" : "#403B36", border: `0.0625rem solid ${active ? "#B85C38" : "#E3D6BC"}` }}>
+                    <span style={{ display: "inline-flex", opacity: 0.85 }}>{d.icon}</span>
                     {d.label}
-                    <span style={{ fontVariantNumeric: "tabular-nums", fontSize: "0.6875rem", fontWeight: 700, opacity: 0.7 }}>{d.count}</span>
+                    <span style={{ fontVariantNumeric: "tabular-nums", fontSize: "0.625rem", fontWeight: 700, opacity: 0.65 }}>{d.count}</span>
                   </button>
                 );
               })}
               {anyActive && (
-                <button type="button" onClick={() => { setFacet(null); setFilterType(null); setQuery(""); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.3rem", minHeight: "2.1rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, background: "transparent", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.35)" }}>
-                  ✕ {t("clearFilters") !== "clearFilters" ? t("clearFilters") : "Clear"}
-                </button>
+                <button type="button" onClick={() => { setFacet(null); setFilterType(null); setQuery(""); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", minHeight: "1.9rem", padding: "0 0.5rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "transparent", color: "#716A5E", border: "0.0625rem solid #E3D6BC" }}>✕</button>
               )}
 
-              <span style={{ flex: 1, minWidth: "0.5rem" }} />
+              <span style={{ flex: 1, minWidth: "0.75rem" }} />
 
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <button type="button" onClick={() => setToolsMenuOpen(o => !o)} aria-label={t("moreActions") !== "moreActions" ? t("moreActions") : "More"} className="lib-pill" style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "2.1rem", padding: "0 0.7rem", borderRadius: "2rem", border: "0.0625rem solid #E3D6BC", background: "#FCFAF5", color: "#716A5E", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
-                  {t("moreActions") !== "moreActions" ? t("moreActions") : "More"}
-                </button>
-                {toolsMenuOpen && (
-                  <>
-                    <div onClick={() => setToolsMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-                    <div role="menu" style={{ position: "absolute", top: "2.5rem", right: 0, minWidth: "12rem", zIndex: 41, background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", borderRadius: "0.85rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", overflow: "hidden", padding: "0.25rem" }}>
-                      {([{ key: "writeStory" as const, label: t("writeStory") }, { key: "aiLabel" as const, label: t("aiLabel") }, { key: "addLocation" as const, label: t("addLocation") }]).map(a => (
-                        <button key={a.key} type="button" onClick={() => { setToolsMenuOpen(false); if (selectedRoom) { setActiveToolPanel(a.key); } else { setToolbarHint(true); setTimeout(() => setToolbarHint(false), 2500); } }} style={{ display: "flex", width: "100%", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: "0.6rem", border: "none", background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500, color: selectedRoom ? "#403B36" : "#716A5E", textAlign: "left" }} onMouseEnter={e => { e.currentTarget.style.background = "#F6EBE3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>{a.label}</button>
-                      ))}
-                      <div style={{ height: "0.0625rem", background: "#E3D6BC", margin: "0.25rem 0.4rem" }} />
-                      <button type="button" onClick={() => { setToolsMenuOpen(false); setShowPublishModal(true); }} style={{ display: "flex", width: "100%", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: "0.6rem", border: "none", background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500, color: "#403B36", textAlign: "left" }} onMouseEnter={e => { e.currentTarget.style.background = "#F6EBE3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>{t("publish")}</button>
-                    </div>
-                  </>
-                )}
+              {/* Rooms lens */}
+              <div style={{ flexShrink: 0, display: "inline-flex", borderRadius: "2rem", border: "0.0625rem solid #E3D6BC", overflow: "hidden", background: "#FCFAF5" }}>
+                {([{ k: "month" as const, label: t("byMonth") !== "byMonth" ? t("byMonth") : "Month" }, { k: "room" as const, label: t("byRoom") !== "byRoom" ? t("byRoom") : "Rooms" }]).map(o => {
+                  const on = wallGroupBy === o.k;
+                  return <button key={o.k} type="button" onClick={() => setWallGroupBy(o.k)} className="lib-pill" style={{ minHeight: "1.9rem", padding: "0 0.7rem", border: "none", background: on ? "#403B36" : "transparent", color: on ? "#FCFAF5" : "#716A5E", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600 }}>{o.label}</button>;
+                })}
               </div>
-              <button type="button" data-spotlight-id="importUpload" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "2.1rem", padding: "0 0.9rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)" }}>
-                <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="#E8C255" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>
+
+              {/* ACTION pills — terracotta register, each its own pill */}
+              {showDemos && (
+                <button type="button" onClick={() => { setDemosHidden(true); setShowDemos(false); syncSettingsToServer(); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("demoBannerClear")}</button>
+              )}
+              {selectedRoom && roomTools.map(a => (
+                <button key={a.key} type="button" onClick={() => setActiveToolPanel(a.key)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{a.label}</button>
+              ))}
+              <button type="button" onClick={() => setShowPublishModal(true)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("publish")}</button>
+              <button type="button" data-spotlight-id="importUpload" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "1.9rem", padding: "0 0.85rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)" }}>
+                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#E8C255" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>
                 {t("importButton")}
               </button>
             </div>
@@ -1640,18 +1646,7 @@ export default function LibraryView() {
           animation: "libFadeIn 0.35s ease both",
         }}>
 
-          {/* Example-media notice — one slim line, not a padded box */}
-          {showDemos && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem", fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E" }}>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("demoBannerTitle")}</span>
-              <button
-                onClick={() => { setDemosHidden(true); setShowDemos(false); syncSettingsToServer(); }}
-                style={{ flexShrink: 0, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 700, color: "#9A4F2A", textDecoration: "underline" }}
-              >
-                {t("demoBannerClear")}
-              </button>
-            </div>
-          )}
+          {/* example-media clear is now an action pill in the control band */}
 
           {/* ═══ ACTION BAR: Import + Select + View toggle ═══ */}
           <div data-nudge="library_import" style={{
@@ -1734,14 +1729,8 @@ export default function LibraryView() {
             </div>
           )}
 
-          {/* Empty state for cross-wing search with no results (P1 #2) */}
-          {q && !selectedRoom && !crossWingResults && (
-            <LibraryEmptyState
-              type="search"
-              accent={currentWing.accent}
-              query={query || undefined}
-            />
-          )}
+          {/* (empty-search state removed here — the wall's own empty state below
+              handles no-results for every scope; this one double-rendered) */}
 
           {/* AI SMART SORT BAR - Attic wing only (hidden on iOS until shipped) */}
           {!hideComingSoon && !selectedRoom && !crossWingResults && selectedWing === "attic" && allWingMems.length > 0 && (
