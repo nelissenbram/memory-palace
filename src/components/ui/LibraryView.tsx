@@ -1189,23 +1189,14 @@ export default function LibraryView() {
               WebkitOverflowScrolling: "touch",
               whiteSpace: "nowrap",
               background: `linear-gradient(180deg, ${T.color.sandstone}18 0%, ${T.color.cream}22 100%)`,
-              backdropFilter: "blur(0.75rem)",
-              WebkitBackdropFilter: "blur(0.75rem)",
               flexShrink: 0,
               scrollbarWidth: "none",
               msOverflowStyle: "none",
-              borderBottom: `0.0625rem solid ${T.color.cream}88`,
+              borderBottom: `0.0625rem solid #E3D6BC`,
               // Edge-fade hint: content scrolls off horizontally (compact/mobile)
               maskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
               WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
             }}>
-              {/* "W" section label */}
-              <span style={{
-                fontFamily: T.font.display, fontSize: "0.6875rem", fontWeight: 700,
-                color: T.color.gold, letterSpacing: "0.04em",
-                flexShrink: 0, padding: "0 0.125rem",
-                opacity: 0.7,
-              }}>W</span>
               {/* "All" pill for wings */}
               {(() => {
                 const isAllActive = selectedWing === "__all__";
@@ -1322,13 +1313,6 @@ export default function LibraryView() {
               maskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
               WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)",
             }}>
-              {/* "R" section label */}
-              <span style={{
-                fontFamily: T.font.display, fontSize: "0.6875rem", fontWeight: 700,
-                color: currentWing.accent, letterSpacing: "0.04em",
-                flexShrink: 0, padding: "0 0.125rem",
-                opacity: 0.55,
-              }}>R</span>
               {/* "All" pill — shows all rooms in wing */}
               <button
                 onClick={() => { setSelectedRoom(null); setQuery(""); setFilterType(null); }}
