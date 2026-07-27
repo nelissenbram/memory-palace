@@ -411,7 +411,7 @@ export default function LibraryView() {
   const { addMemory, updateMemory, deleteMemory, moveMemory } = useMemoryStore();
 
   const wings = getWings();
-  const [selectedWing, setSelectedWing] = useState<string>(wings[0]?.id || "roots");
+  const [selectedWing, setSelectedWing] = useState<string>("__all__");
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
@@ -848,11 +848,28 @@ export default function LibraryView() {
     return wingRooms.flatMap(r => getMemsForRoom(r.id));
   }, [wingRooms, getMemsForRoom]);
 
+  // Every memory across the whole palace + a memId -> {roomId, wingId} index.
+  // Powers the unified "Il Muro" wall (default entry) and scope-agnostic reliving.
+  const libAllMems = useMemo(() => {
+    const out: Mem[] = [];
+    for (const w of wings) for (const r of getWingRooms(w.id)) out.push(...getMemsForRoom(r.id));
+    return out;
+  }, [wings, getWingRooms, getMemsForRoom]);
+  const memRoomMap = useMemo(() => {
+    const m = new Map<string, { roomId: string; wingId: string }>();
+    for (const w of wings) for (const r of getWingRooms(w.id)) for (const mem of getMemsForRoom(r.id)) m.set(mem.id, { roomId: r.id, wingId: w.id });
+    return m;
+  }, [wings, getWingRooms, getMemsForRoom]);
+
   // Filtered memories
   const q = query.toLowerCase();
   const filteredRoomMems = useMemo(() => {
-    if (!selectedRoom) return [];
-    let mems = getMemsForRoom(selectedRoom);
+    // Base scope: a selected room, else the whole library on "__all__", else
+    // empty (a specific wing with no room falls through to the room overview).
+    let mems: Mem[];
+    if (selectedRoom) mems = getMemsForRoom(selectedRoom);
+    else if (selectedWing === "__all__") mems = libAllMems;
+    else return [];
     if (q) mems = mems.filter(m =>
       m.title.toLowerCase().includes(q)
       || (m.desc || "").toLowerCase().includes(q)
@@ -872,7 +889,7 @@ export default function LibraryView() {
       }
     });
     return mems;
-  }, [selectedRoom, getMemsForRoom, q, filterType, sortMode]);
+  }, [selectedRoom, selectedWing, libAllMems, getMemsForRoom, q, filterType, sortMode]);
 
   // Backfill missing video thumbnails for the selected room (background, throttled)
   useThumbnailBackfill(selectedRoom, filteredRoomMems);
@@ -1130,7 +1147,7 @@ export default function LibraryView() {
               <LibrarySidebar
                 wings={wings}
                 selectedWing={selectedWing}
-                onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); setQuery(""); setFilterType(null); setMobileSidebarOpen(false); }}
+                onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); setMobileSidebarOpen(false); }}
                 onSelectRoom={(roomId: string) => { setSelectedRoom(roomId); setMobileSidebarOpen(false); }}
                 selectedRoom={selectedRoom}
                 wingWarmth={wingWarmth}
@@ -1152,7 +1169,7 @@ export default function LibraryView() {
         <LibrarySidebar
           wings={wings}
           selectedWing={selectedWing}
-          onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); setQuery(""); setFilterType(null); }}
+          onSelectWing={(wingId: string) => { setSelectedWing(wingId); setSelectedRoom(null); }}
           onSelectRoom={(roomId: string) => { setSelectedRoom(roomId); }}
           selectedRoom={selectedRoom}
           wingWarmth={wingWarmth}
@@ -1202,7 +1219,7 @@ export default function LibraryView() {
                 const isAllActive = selectedWing === "__all__";
                 return (
                   <button
-                    onClick={() => { setSelectedWing("__all__"); setSelectedRoom(null); setQuery(""); setFilterType(null); }}
+                    onClick={() => { setSelectedWing("__all__"); setSelectedRoom(null); }}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "0.25rem",
                       padding: "0.375rem 0.75rem",
@@ -1229,7 +1246,7 @@ export default function LibraryView() {
                 return (
                   <button
                     key={w.id}
-                    onClick={() => { setSelectedWing(w.id); setSelectedRoom(null); setQuery(""); setFilterType(null); }}
+                    onClick={() => { setSelectedWing(w.id); setSelectedRoom(null); }}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "0.25rem",
                       padding: "0.375rem 0.75rem",
@@ -1315,7 +1332,7 @@ export default function LibraryView() {
             }}>
               {/* "All" pill — shows all rooms in wing */}
               <button
-                onClick={() => { setSelectedRoom(null); setQuery(""); setFilterType(null); }}
+                onClick={() => { setSelectedRoom(null); }}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: "0.25rem",
                   padding: "0.375rem 0.75rem",
@@ -1339,7 +1356,7 @@ export default function LibraryView() {
                 return (
                   <button
                     key={room.id}
-                    onClick={() => { setSelectedRoom(room.id); setQuery(""); setFilterType(null); }}
+                    onClick={() => { setSelectedRoom(room.id); }}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: "0.25rem",
                       padding: "0.375rem 0.75rem",
@@ -1922,7 +1939,7 @@ export default function LibraryView() {
           )}
 
           {/* Room list (when no room selected and no cross-wing search and no empty search) */}
-          {!selectedRoom && !crossWingResults && !q && (
+          {!selectedRoom && !crossWingResults && !q && selectedWing !== "__all__" && (
             <div style={{ animation: "libFadeIn 0.35s ease both" }}>
               {/* Wing welcome message */}
               <p style={{
@@ -2068,7 +2085,7 @@ export default function LibraryView() {
           )}
 
           {/* Memory grid (when room selected) */}
-          {selectedRoom && !crossWingResults && (
+          {(selectedRoom || selectedWing === "__all__") && !crossWingResults && (
             <div style={{ animation: "libSlideRight 0.35s cubic-bezier(0.22, 1, 0.36, 1) both" }}>
               {/* Bulk actions bar — only visible in select mode */}
               {selectMode && (
@@ -2669,16 +2686,17 @@ export default function LibraryView() {
       {/* ═══ OVERLAY PANELS ═══ */}
 
       {/* Room media player */}
-      {mediaPlayerIndex !== null && selectedRoom && (
+      {mediaPlayerIndex !== null && (
         <RoomMediaPlayer
           memories={filteredRoomMems}
           initialIndex={mediaPlayerIndex}
           onClose={() => setMediaPlayerIndex(null)}
           onEdit={(mem) => {
             setMediaPlayerIndex(null);
-            setDetailMem({ mem, wingId: selectedWing, roomId: selectedRoom });
+            const loc = memRoomMap.get(mem.id);
+            setDetailMem({ mem, wingId: loc?.wingId || selectedWing, roomId: loc?.roomId || selectedRoom || "" });
           }}
-          onUpdate={(memId, updates) => updateMemory(selectedRoom, memId, updates)}
+          onUpdate={(memId, updates) => { const rid = memRoomMap.get(memId)?.roomId || selectedRoom; if (rid) updateMemory(rid, memId, updates); }}
         />
       )}
 

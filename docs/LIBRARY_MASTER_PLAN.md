@@ -51,3 +51,17 @@ timeline untouched; Load-more hidden for grid.
 
 ## Phase 7 — THUMBNAIL PIPELINE (backend follow-up)
 - Server-side ?w= resize + stored thumbnail_url for all photo types; front-end srcset/sizes.
+
+## ARCHITECTURE DECISION (2026-07-27, 50-agent benchmark) — full detail in LIBRARY_ARCHITECTURE_DECISION.json
+VERDICT: HYBRID. The Library DEFAULTS to one unified, unfiltered, reverse-chronological wall of
+every memory (Il Muro across all wings, zero taps to first photo). Wing/room demoted from a
+mandatory gate to in-place FACETS + a one-tap Rooms lens. Keep the wall a PURE river; never smear
+rooms/albums into the scroll (the iOS-18 mistake Apple walked back). 3D palace + storage model
+(roomId) untouched — rooms stay meaningful as lens + provenance.
+
+Phase A SHIPPED: default selectedWing='__all__'; filteredRoomMems unified over the whole library
+on __all__; content branch renders the wall on entry; destructive setQuery/setFilterType resets
+removed (filters compound); RoomMediaPlayer unbound from selectedRoom + per-mem room via memRoomMap
+(any tile opens as a pageable album). Wing tap still shows its room overview; room tap shows that
+room's wall. Remaining: B findability (full-lib search, shared sort, facet shelf, per-tile wing dot),
+C scale (virtualisation + jump-to-date scrubber), D reliving polish (parallax swipe, rooms-lens re-band).
