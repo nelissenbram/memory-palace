@@ -11,7 +11,7 @@
  * (zero layout shift) and content-visibility:auto for cheap paint at scale.
  */
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { T } from "@/lib/theme";
 import { MediaThumb } from "./MediaThumb";
 import { packJustifiedRows, targetRowHeight, getAspect, type PackedRow } from "@/lib/library/justify";
@@ -79,17 +79,24 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
 
+  // Measure synchronously before paint so tiles never sit behind a width==0
+  // guard; then keep in sync via ResizeObserver.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (el) setWidth(el.offsetWidth || el.getBoundingClientRect().width || 0);
+  }, []);
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width ?? 0;
-      setWidth((prev) => (Math.abs(prev - w) > 1 ? w : prev));
+      const w = entries[0]?.contentRect.width ?? el.offsetWidth ?? 0;
+      setWidth((prev) => (w > 0 && Math.abs(prev - w) > 1 ? w : prev));
     });
     ro.observe(el);
-    setWidth(el.getBoundingClientRect().width);
     return () => ro.disconnect();
   }, []);
+  // Fallback so a lagging/failed measurement never yields a blank wall.
+  const effWidth = width > 0 ? width : (typeof window !== "undefined" ? Math.min(window.innerWidth - (isMobile ? 0 : 260), 1200) : 800);
 
   // Group by month (newest first), preserving each memory's original index so
   // the viewer opens the right one.
@@ -115,10 +122,10 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
     });
   }, [mems, monthLabel, undatedLabel]);
 
-  const rowH = targetRowHeight(width || 1);
+  const rowH = targetRowHeight(effWidth);
   const packed = useMemo(
-    () => sections.map((s) => ({ ...s, rows: packJustifiedRows(s.items, width, rowH, GAP) as PackedRow<Mem & { ar: number; _i: number }>[] })),
-    [sections, width, rowH],
+    () => sections.map((s) => ({ ...s, rows: packJustifiedRows(s.items, effWidth, rowH, GAP) as PackedRow<Mem & { ar: number; _i: number }>[] })),
+    [sections, effWidth, rowH],
   );
 
   return (
@@ -131,8 +138,8 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
             <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E", fontVariantNumeric: "tabular-nums" }}>{countLabel(sec.items.length)}</span>
             <span aria-hidden="true" style={{ flex: 1, height: "0.125rem", alignSelf: "center", background: "linear-gradient(90deg, #C99A2E, rgba(201,154,46,0.25) 45%, transparent)" }} />
           </div>
-          {width > 0 && sec.rows.map((row, ri) => (
-            <div key={ri} style={{ display: "flex", gap: `${GAP}px`, marginBottom: `${GAP}px`, contentVisibility: "auto", containIntrinsicSize: `${Math.round(row.height)}px` } as React.CSSProperties}>
+          {sec.rows.map((row, ri) => (
+            <div key={ri} style={{ display: "flex", gap: `${GAP}px`, marginBottom: `${GAP}px` }}>
               {row.tiles.map(({ item, w, h }) => {
                 const selected = selectedMemIds.has(item.id);
                 return (
@@ -147,7 +154,8 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
                       position: "relative", flex: row.last ? "0 0 auto" : "1 1 auto",
                       width: `${w}px`, height: `${h}px`, minWidth: 0,
                       padding: 0, border: "none", borderRadius: 0, overflow: "hidden",
-                      background: "#EAE3D4", cursor: "pointer",
+                      background: `linear-gradient(135deg, hsl(${item.hue ?? 32},${item.s ?? 30}%,${item.l ?? 78}%), hsl(${((item.hue ?? 32) + 20) % 360},${Math.max((item.s ?? 30) - 5, 15)}%,${Math.max((item.l ?? 78) - 10, 40)}%))`,
+                      cursor: "pointer",
                       boxShadow: selected ? "inset 0 0 0 0.1875rem #D4AF37" : "none",
                     }}
                   >
