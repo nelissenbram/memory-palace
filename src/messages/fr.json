@@ -4298,7 +4298,9 @@
     "clearFilters": "Effacer",
     "allMemories": "Tous les souvenirs",
     "allMemoriesDesc": "Toute votre vie, les plus récents d’abord",
-    "moreActions": "Plus"
+    "moreActions": "Plus",
+    "byMonth": "Mois",
+    "byRoom": "Salles"
   },
   "atrium": {
     "goodMorning": "Bonjour",

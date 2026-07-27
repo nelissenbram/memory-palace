@@ -4300,7 +4300,9 @@
     "clearFilters": "Wissen",
     "allMemories": "Alle herinneringen",
     "allMemoriesDesc": "Je hele leven, nieuwste eerst",
-    "moreActions": "Meer"
+    "moreActions": "Meer",
+    "byMonth": "Maand",
+    "byRoom": "Kamers"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",

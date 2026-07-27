@@ -4298,7 +4298,9 @@
     "clearFilters": "Löschen",
     "allMemories": "Alle Erinnerungen",
     "allMemoriesDesc": "Dein ganzes Leben, neueste zuerst",
-    "moreActions": "Mehr"
+    "moreActions": "Mehr",
+    "byMonth": "Monat",
+    "byRoom": "Räume"
   },
   "atrium": {
     "goodMorning": "Guten Morgen",

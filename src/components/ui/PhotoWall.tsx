@@ -78,11 +78,15 @@ interface PhotoWallProps {
   countLabel: (n: number) => string;
   /** wing-accent provenance dot per memory — keeps "lives in a room" visible on the flat wall */
   tileAccent?: (memId: string) => string | null;
+  /** grouping: chronological month bands (default) or the Rooms lens (same tiles, re-banded by room) */
+  groupBy?: "month" | "room";
+  /** room label for a memory, used by the Rooms lens */
+  roomLabelOf?: (memId: string) => string;
 }
 
 type Section = { key: string; label: string; items: (Mem & { ar: number; _i: number })[] };
 
-export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent }: PhotoWallProps) {
+export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, onToggleSelect, onOpen, monthLabel, undatedLabel, countLabel, tileAccent, groupBy = "month", roomLabelOf }: PhotoWallProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [width, setWidth] = useState(0);
 
@@ -123,25 +127,34 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
   // the viewer opens the right one.
   const sections = useMemo<Section[]>(() => {
     const byKey = new Map<string, Section>();
+    const order: string[] = []; // preserve first-seen order for the room lens
     mems.forEach((mem, _i) => {
-      const raw = mem.createdAt || (mem as { date?: string }).date;
-      const d = raw ? new Date(raw) : null;
-      const valid = d && !Number.isNaN(d.getTime());
-      const key = valid ? `${d!.getFullYear()}-${String(d!.getMonth() + 1).padStart(2, "0")}` : "undated";
-      let sec = byKey.get(key);
-      if (!sec) {
-        sec = { key, label: valid ? monthLabel(d!) : undatedLabel, items: [] };
-        byKey.set(key, sec);
+      let key: string, label: string;
+      if (groupBy === "room") {
+        label = roomLabelOf ? roomLabelOf(mem.id) : undatedLabel;
+        key = label || "·";
+      } else {
+        const raw = mem.createdAt || (mem as { date?: string }).date;
+        const d = raw ? new Date(raw) : null;
+        const valid = d && !Number.isNaN(d.getTime());
+        key = valid ? `${d!.getFullYear()}-${String(d!.getMonth() + 1).padStart(2, "0")}` : "undated";
+        label = valid ? monthLabel(d!) : undatedLabel;
       }
+      let sec = byKey.get(key);
+      if (!sec) { sec = { key, label, items: [] }; byKey.set(key, sec); order.push(key); }
       sec.items.push({ ...(mem as Mem), ar: getAspect(mem.id, mem.type), _i });
     });
-    // undated last, others newest→oldest by key
+    if (groupBy === "room") {
+      // rooms in first-appearance order (mems already sorted), undated last
+      return order.map(k => byKey.get(k)!).sort((a, b) => (a.key === "·" ? 1 : b.key === "·" ? -1 : 0));
+    }
+    // month: undated last, others newest→oldest by key
     return [...byKey.values()].sort((a, b) => {
       if (a.key === "undated") return 1;
       if (b.key === "undated") return -1;
       return b.key.localeCompare(a.key);
     });
-  }, [mems, monthLabel, undatedLabel]);
+  }, [mems, monthLabel, undatedLabel, groupBy, roomLabelOf]);
 
   const rowH = targetRowHeight(effWidth);
   const packed = useMemo(
@@ -157,10 +170,36 @@ export default function PhotoWall({ mems, isMobile, selectMode, selectedMemIds, 
     [sections, effWidth, rowH, arVersion],
   );
 
+  // Jump-to-date scrubber: refs to each section so a tick can scroll to it.
+  const sectionEls = useRef<Map<string, HTMLElement>>(new Map());
+  const [scrubHover, setScrubHover] = useState<string | null>(null);
+
   return (
-    <div ref={containerRef} className="il-muro" style={{ width: "100%" }}>
+    <div ref={containerRef} className="il-muro" style={{ position: "relative", width: "100%" }}>
+      {/* right-edge jump-to-date rail (thumb-natural zone); hidden with <2 sections */}
+      {packed.length > 1 && (
+        <div className="il-muro-scrub" aria-hidden="true" style={{ position: "sticky", top: 0, float: "right", width: 0, height: 0, zIndex: 6 }}>
+          <div style={{ position: "absolute", right: isMobile ? "-0.1rem" : "-1.5rem", top: "0.5rem", display: "flex", flexDirection: "column", gap: "0.2rem", alignItems: "flex-end" }}>
+            {packed.map((sec) => (
+              <button
+                key={sec.key}
+                type="button"
+                onClick={() => sectionEls.current.get(sec.key)?.scrollIntoView({ block: "start", behavior: "smooth" })}
+                onMouseEnter={() => setScrubHover(sec.key)}
+                onMouseLeave={() => setScrubHover((h) => (h === sec.key ? null : h))}
+                style={{ display: "flex", alignItems: "center", gap: "0.4rem", justifyContent: "flex-end", background: "none", border: "none", padding: "0.15rem 0.2rem", cursor: "pointer" }}
+              >
+                {scrubHover === sec.key && (
+                  <span style={{ fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 700, color: "#403B36", background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", borderRadius: "0.4rem", padding: "0.1rem 0.4rem", whiteSpace: "nowrap", boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)" }}>{sec.label}</span>
+                )}
+                <span style={{ width: scrubHover === sec.key ? "0.75rem" : "0.5rem", height: "0.1875rem", borderRadius: "1rem", background: scrubHover === sec.key ? "#C99A2E" : "rgba(154,79,42,0.35)", transition: "width 0.15s ease, background 0.15s ease" }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {packed.map((sec) => (
-        <section key={sec.key} aria-label={sec.label}>
+        <section key={sec.key} aria-label={sec.label} ref={(el) => { if (el) sectionEls.current.set(sec.key, el); else sectionEls.current.delete(sec.key); }}>
           {/* sticky gold-underlined band — carries all the stripped metadata */}
           <div style={{ position: "sticky", top: 0, zIndex: 5, display: "flex", alignItems: "baseline", gap: "0.5rem", padding: "0.9rem 0 0.5rem", background: "linear-gradient(#FCFAF5 70%, rgba(252,250,245,0))" }}>
             <span style={{ fontFamily: T.font.display, fontWeight: 600, fontSize: "1.0625rem", lineHeight: 1.15, color: "#403B36" }}>{sec.label}</span>

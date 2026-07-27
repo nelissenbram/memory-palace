@@ -4298,7 +4298,9 @@
     "clearFilters": "Clear",
     "allMemories": "All Memories",
     "allMemoriesDesc": "Your whole life, newest first",
-    "moreActions": "More"
+    "moreActions": "More",
+    "byMonth": "Month",
+    "byRoom": "Rooms"
   },
   "atrium": {
     "goodMorning": "Good morning",

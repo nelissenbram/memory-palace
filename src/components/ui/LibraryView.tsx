@@ -441,6 +441,7 @@ export default function LibraryView() {
   const [activeToolPanel, setActiveToolPanel] = useState<"writeStory" | "aiLabel" | "addLocation" | null>(null);
   const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const [libTimeOfDay, setLibTimeOfDay] = useState(() => getTimeOfDay());
+  const [wallGroupBy, setWallGroupBy] = useState<"month" | "room">("month");
   useEffect(() => { const id = setInterval(() => setLibTimeOfDay(getTimeOfDay()), 10 * 60 * 1000); return () => clearInterval(id); }, []);
   const [toolbarHint, setToolbarHint] = useState(false);
   const [storyText, setStoryText] = useState("");
@@ -2231,6 +2232,8 @@ export default function LibraryView() {
                     mems={filteredRoomMems}
                     isMobile={isMobile}
                     tileAccent={(id) => { const wid = memRoomMap.get(id)?.wingId; return wid ? (wings.find(w => w.id === wid)?.accent || null) : null; }}
+                    groupBy={wallGroupBy}
+                    roomLabelOf={(id) => { const rid = memRoomMap.get(id)?.roomId; if (!rid) return t("undated") !== "undated" ? t("undated") : "Undated"; const wid = memRoomMap.get(id)?.wingId; const r = wid ? getWingRooms(wid).find(rr => rr.id === rid) : null; return r ? translateRoomName(r, tWings) : rid; }}
                     selectMode={selectMode}
                     selectedMemIds={selectedMemIds}
                     onToggleSelect={(id) => setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; })}
