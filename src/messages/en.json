@@ -4297,7 +4297,8 @@
     "facetUnplaced": "Unplaced",
     "clearFilters": "Clear",
     "allMemories": "All Memories",
-    "allMemoriesDesc": "Your whole life, newest first"
+    "allMemoriesDesc": "Your whole life, newest first",
+    "moreActions": "More"
   },
   "atrium": {
     "goodMorning": "Good morning",

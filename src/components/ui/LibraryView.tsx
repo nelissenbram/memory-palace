@@ -439,6 +439,7 @@ export default function LibraryView() {
   const [showImportHub, setShowImportHub] = useState(false);
   const [showDemos, setShowDemos] = useState(() => demosVisible());
   const [activeToolPanel, setActiveToolPanel] = useState<"writeStory" | "aiLabel" | "addLocation" | null>(null);
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const [toolbarHint, setToolbarHint] = useState(false);
   const [storyText, setStoryText] = useState("");
   const [aiLabelProcessing, setAiLabelProcessing] = useState(false);
@@ -1598,74 +1599,35 @@ export default function LibraryView() {
         )}
 
         {/* Room tools toolbar — always visible */}
-        <div data-nudge="library_tools" style={{ display: "flex", gap: isMobile ? "0.25rem" : "0.5rem", padding: isMobile ? "0.25rem 0.5rem 0.5rem" : isCompact ? "0.25rem 1.25rem 0.75rem" : "0.25rem 2.5rem 0.75rem", flexWrap: "nowrap", alignItems: "center", overflowX: (isMobile || isCompact) ? "auto" : undefined, scrollbarWidth: (isMobile || isCompact) ? "none" : undefined,
+        <div data-nudge="library_tools" style={{ display: "flex", gap: isMobile ? "0.25rem" : "0.5rem", padding: isMobile ? "0.25rem 0.5rem 0.4rem" : isCompact ? "0.25rem 1.25rem 0.5rem" : "0.25rem 2.5rem 0.5rem", flexWrap: "nowrap", alignItems: "center", overflowX: (isMobile || isCompact) ? "auto" : undefined, scrollbarWidth: (isMobile || isCompact) ? "none" : undefined,
           // Edge-fade hint: tools row scrolls off horizontally (compact/mobile only — desktop untouched)
           ...((isMobile || isCompact) ? { maskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 1.25rem, #000 calc(100% - 1.25rem), transparent 100%)" } : {}) }}>
-          {([
-            { key: "writeStory" as const, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> },
-            { key: "aiLabel" as const, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.09 6.26L20 10l-4.91 3.74L17.18 20 12 16.27 6.82 20l2.09-6.26L4 10l5.91-1.74z"/></svg> },
-            { key: "addLocation" as const, icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> },
-          ]).map(btn => {
-            const isSpotlit = spotlightTarget === btn.key;
-            return (
-            <button key={btn.key} data-spotlight-id={btn.key} onClick={() => {
-                if (isSpotlit) setSpotlightTarget(null);
-                if (selectedRoom) {
-                  setActiveToolPanel(btn.key);
-                } else {
-                  setToolbarHint(true);
-                  setTimeout(() => setToolbarHint(false), 2500);
-                }
-              }}
-              style={{
-                display: "flex", alignItems: "center", gap: isMobile ? "0.25rem" : "0.5rem",
-                padding: isMobile ? "0.375rem 0.625rem" : "0.5rem 1rem", borderRadius: "1.5rem",
-                border: `0.0625rem solid ${isSpotlit ? T.color.terracotta : selectedRoom ? T.color.cream : "rgba(64,59,54,.1)"}`,
-                background: isSpotlit ? "rgba(198,107,61,0.12)" : selectedRoom ? "rgba(255,255,255,0.78)" : "rgba(255,255,255,0.4)",
-                backdropFilter: "blur(0.5rem)",
-                color: isSpotlit ? T.color.terracotta : selectedRoom ? "#716A5E" : "#716A5E",
-                cursor: selectedRoom || isSpotlit ? "pointer" : "default",
-                fontFamily: T.font.body, fontSize: isMobile ? "0.6875rem" : "0.8125rem", fontWeight: 600,
-                letterSpacing: "0.02em", whiteSpace: "nowrap", flexShrink: 0,
-                opacity: isSpotlit ? 1 : selectedRoom ? 1 : 0.55,
-                transition: "all 0.2s ease",
-                boxShadow: isSpotlit
-                  ? `0 0 0 0.1875rem ${T.color.terracotta}44, 0 0.25rem 1rem rgba(198,107,61,0.2)`
-                  : selectedRoom ? "0 0.0625rem 0.25rem rgba(64,59,54,0.06)" : "none",
-                position: "relative",
-                zIndex: isSpotlit ? 10 : undefined,
-                animation: isSpotlit ? "spotlightPulse 1.5s ease-in-out infinite" : undefined,
-              }}>
-              {btn.icon}
-              {t(btn.key)}
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <button type="button" onClick={() => setToolsMenuOpen(o => !o)} aria-label={t("moreActions") !== "moreActions" ? t("moreActions") : "More"} style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "2.25rem", padding: "0 0.85rem", borderRadius: "0.7rem", border: "0.0625rem solid #E3D6BC", background: "#FCFAF5", color: "#716A5E", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+              {t("moreActions") !== "moreActions" ? t("moreActions") : "More"}
             </button>
-            );
-          })}
-          {/* Publish button */}
-          <button onClick={() => {
-            setShowPublishModal(true);
-          }}
-            style={{
-              display: "flex", alignItems: "center", gap: isMobile ? "0.25rem" : "0.5rem",
-              padding: isMobile ? "0.375rem 0.625rem" : "0.5rem 1rem", borderRadius: "1.5rem",
-              border: `0.0625rem solid ${(selectedRoom || (selectedWing && selectedWing !== "__all__")) ? `${T.color.gold}55` : "rgba(64,59,54,.1)"}`,
-              background: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? `${T.color.gold}10` : "rgba(255,255,255,0.4)",
-              backdropFilter: "blur(0.5rem)",
-              color: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? T.color.goldDark : "#716A5E",
-              cursor: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? "pointer" : "default",
-              fontFamily: T.font.body, fontSize: isMobile ? "0.6875rem" : "0.8125rem", fontWeight: 600,
-              letterSpacing: "0.02em", whiteSpace: "nowrap", flexShrink: 0,
-              opacity: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? 1 : 0.55,
-              transition: "all 0.2s ease",
-              boxShadow: (selectedRoom || (selectedWing && selectedWing !== "__all__")) ? "0 0.0625rem 0.25rem rgba(64,59,54,0.06)" : "none",
-            }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-              <polyline points="16 6 12 2 8 6" />
-              <line x1="12" y1="2" x2="12" y2="15" />
-            </svg>
-            {t("publish")}
-          </button>
+            {toolsMenuOpen && (
+              <>
+                <div onClick={() => setToolsMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                <div role="menu" style={{ position: "absolute", top: "2.6rem", left: 0, minWidth: "12rem", zIndex: 41, background: "#FCFAF5", border: "0.0625rem solid #E3D6BC", borderRadius: "0.85rem", boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", overflow: "hidden", padding: "0.25rem" }}>
+                  {([
+                    { key: "writeStory" as const, label: t("writeStory") },
+                    { key: "aiLabel" as const, label: t("aiLabel") },
+                    { key: "addLocation" as const, label: t("addLocation") },
+                  ]).map(a => (
+                    <button key={a.key} type="button" onClick={() => { setToolsMenuOpen(false); if (selectedRoom) { setActiveToolPanel(a.key); } else { setToolbarHint(true); setTimeout(() => setToolbarHint(false), 2500); } }} style={{ display: "flex", width: "100%", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: "0.6rem", border: "none", background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500, color: selectedRoom ? "#403B36" : "#716A5E", textAlign: "left" }} onMouseEnter={e => { e.currentTarget.style.background = "#F6EBE3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                      {a.label}{!selectedRoom ? <span style={{ marginLeft: "auto", fontSize: "0.6875rem", color: "#9A4F2A" }}>{t("selectRoomFirst") !== "selectRoomFirst" ? "·" : "·"}</span> : null}
+                    </button>
+                  ))}
+                  <div style={{ height: "0.0625rem", background: "#E3D6BC", margin: "0.25rem 0.4rem" }} />
+                  <button type="button" onClick={() => { setToolsMenuOpen(false); setShowPublishModal(true); }} style={{ display: "flex", width: "100%", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: "0.6rem", border: "none", background: "transparent", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500, color: "#403B36", textAlign: "left" }} onMouseEnter={e => { e.currentTarget.style.background = "#F6EBE3"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                    {t("publish")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           {toolbarHint && !selectedRoom && !spotlightTarget && (
             <span style={{
               fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: T.color.terracotta,
@@ -1694,42 +1656,18 @@ export default function LibraryView() {
         {/* Content area */}
         <div data-nudge-scroll-lock style={{
           flex: 1, overflow: "auto",
-          padding: isMobile ? "1.25rem 1rem" : "2rem 2.5rem",
+          padding: isMobile ? "0.5rem 1rem" : "0.75rem 2.5rem",
           paddingBottom: isMobile ? "calc(4.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
           animation: "libFadeIn 0.35s ease both",
         }}>
 
-          {/* ═══ CLEAR EXAMPLE MEDIA BANNER ═══ */}
+          {/* Example-media notice — one slim line, not a padded box */}
           {showDemos && (
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              gap: "0.75rem", marginBottom: "1.25rem",
-              padding: isMobile ? "0.75rem 1rem" : "0.75rem 1.25rem",
-              borderRadius: "0.75rem",
-              background: `linear-gradient(135deg, ${T.color.terracotta}0C, ${T.color.gold}08)`,
-              border: `0.0625rem solid ${T.color.terracotta}25`,
-              animation: "libFadeIn 0.35s ease both",
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600, color: "#403B36" }}>
-                  {t("demoBannerTitle")}
-                </span>
-                <span style={{ fontFamily: T.font.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#716A5E", marginLeft: "0.5rem" }}>
-                  {t("demoBannerDesc")}
-                </span>
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem", fontFamily: T.font.body, fontSize: "0.75rem", color: "#716A5E" }}>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("demoBannerTitle")}</span>
               <button
                 onClick={() => { setDemosHidden(true); setShowDemos(false); syncSettingsToServer(); }}
-                style={{
-                  flexShrink: 0,
-                  padding: "0.375rem 0.875rem", borderRadius: "0.5rem",
-                  border: `0.0625rem solid ${T.color.terracotta}40`,
-                  background: `${T.color.terracotta}10`, color: T.color.terracotta,
-                  fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600,
-                  cursor: "pointer", transition: "all 0.2s ease",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = `${T.color.terracotta}20`; }}
-                onMouseLeave={e => { e.currentTarget.style.background = `${T.color.terracotta}10`; }}
+                style={{ flexShrink: 0, background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 700, color: "#9A4F2A", textDecoration: "underline" }}
               >
                 {t("demoBannerClear")}
               </button>

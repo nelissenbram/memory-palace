@@ -4297,7 +4297,8 @@
     "facetUnplaced": "Sin sala",
     "clearFilters": "Borrar",
     "allMemories": "Todos los recuerdos",
-    "allMemoriesDesc": "Toda tu vida, lo más reciente primero"
+    "allMemoriesDesc": "Toda tu vida, lo más reciente primero",
+    "moreActions": "Más"
   },
   "atrium": {
     "goodMorning": "Buenos días",
