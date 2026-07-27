@@ -4290,7 +4290,8 @@
     "yearsAgoShort": "J her",
     "emptyWingOverline": "Ein Flügel wartet",
     "emptyRoomOverline": "Ein leerer Raum",
-    "emptySearchOverline": "Keine Treffer"
+    "emptySearchOverline": "Keine Treffer",
+    "undated": "Ohne Datum"
   },
   "atrium": {
     "goodMorning": "Guten Morgen",

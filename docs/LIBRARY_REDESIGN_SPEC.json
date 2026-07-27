@@ -1,0 +1,276 @@
+{
+  "winningDirection": "Il Muro — The Photo Wall. Delete the frosted-glass memory card entirely: the tile IS the photograph, packed edge-to-edge into justified time/room rows (Google-Photos greedy algorithm) in the Tuscan palette, with ALL metadata (title, date, room, location, type badge, move, accent strip) lifted out of the tile into thin gold-underlined sticky section bands and an on-tap viewer/sheet. Row-level virtualisation over pre-measured rows replaces the +50 Load-more so a 5000-memory room holds ~40-60 live images. Every change commits maximally to this one surface; the alternative directions (masonry, perf-lens variants) fold in as supporting facets, not competing layouts. The wings→rooms + grid/list/timeline paradigm survives — only the GRID surface is rebuilt.",
+  "vision": "Open any populated room and instead of a matrix of identical white glass pill-boxes you see an unbroken wall of your actual photographs — flush left and right, organic widths, tiny 2-3px seams, no borders, no shadows, no glass, no caption under any tile. Time and room context lives in a handful of low, sticky, gold-underlined bands (\"June 2020\", \"Roots · Childhood Home\") that fade into the cream as you scroll. On a phone the wall bleeds true edge-to-edge (zero side padding), rows are ~112px tall so 2-4 real photos fill the width, and the three stacked chrome strips (Wings + Rooms + Search/Sort) collapse into ONE 3rem sticky context bar (breadcrumb + search + sort) that auto-hides on scroll-down so the photos own the whole screen. Single-tap opens the viewer; long-press enters Photos-style multi-select with a gold inset outline. Scroll is buttery because there is zero backdrop-filter, zero box-shadow and zero gradient in the tile paint path, and only the ~20 on-screen rows are ever mounted regardless of library size. It reads unmistakably as a premium Tuscan Apple-Photos wall — dramatically different the instant it loads on a FULL library, behind no date/empty/activity condition.",
+  "beforeAfter": "BEFORE: a room of 200 memories renders 200 identical rgba(255,255,255,0.72) + backdrop-blur(1.5rem) slabs (LibraryCards L444-446), each a small fixed 4:3 window over a title/desc/location text block, a bottom HSL accent strip, a date pill and a type badge, in a rigid repeat(auto-fill,minmax(15rem,1fr)) grid (L2301) capped at 50 with a \"Load more\" button. The photos are tiny; the chrome dominates; every card looks the same. AFTER: the same 200 memories become one continuous justified photo wall — real aspect ratios, flush rows, 2-3px seams, no white boxes, no per-tile text, ~8 sticky gold-underlined month/room bands doing all the labelling, infinite smooth scroll with no button. The surface goes from \"wall of frames\" to \"wall of photographs\" the moment the room opens — the owner cannot miss it.",
+  "changes": [
+    {
+      "rank": 1,
+      "area": "card-treatment",
+      "title": "Il Muro tile: the memory IS the photo — 2-3 DOM nodes, zero panel/border/shadow/blur/text",
+      "spec": "Rewrite the LibraryMemoryCard body (LibraryCards.tsx L430-925) to at most three nodes: outer <button> cell + one media child (+ optional non-photo glyph). DELETE: glass background+backdropFilter (L444-446), border (L450), BOTH box-shadow branches (L451-458), the radial+linear vignette div (L529-537), the whole info block title/desc/location (L837-910), the bottom HSL accent strip (L913-921), the hover tooltip (L465-500), hover state (hovered/setHovered/moveHovered L367-368, scale(1.05) L520). Wrapper collapses to {position:relative;width:100%;height:100%;overflow:hidden;border:none;padding:0;background:#EAE3D4 flat cream placeholder (NOT per-mem HSL bgGradient L506);cursor:pointer;borderRadius:0}. Photo/video-thumb/audio-thumb: one next/Image or <img> objectFit:cover, keep loading=lazy decoding=async. Non-photo types delegate to MediaThumb (already borderless) at size:'100%' — DELETE the 5 inline gradient/waveform/parchment/quote fallback blocks (L578-702). Desktop hover affordance = one container-level CSS rule .il-muro button:hover{filter:brightness(1.06)} (GPU filter, no layout). Keep the locked time-capsule overlay (L806-834) as the ONLY conditional absolute child.",
+      "unconditionallyVisible": true,
+      "effort": "M",
+      "wow": 9,
+      "simplerHow": "Deletes ~470 of 925 lines: 5 media fallbacks, info block, tooltip, accent strip, both shadow ternaries, border, all hover/move state → one <img> or one MediaThumb.",
+      "fasterHow": "Per-tile paint drops from {backdrop-blur(1.5rem) + 2 box-shadows + radial vignette + 2 text reflows + accent gradient} to a single composited bitmap. Nodes/tile ~14→2-3; 1000 memories go ~14k→~2-3k nodes. backdrop-filter is the #1 mobile scroll-jank source — removed from every tile."
+    },
+    {
+      "rank": 2,
+      "area": "grid-system",
+      "title": "Greedy justified-row packer (Google-Photos algorithm) replacing the uniform 4:3 grid",
+      "spec": "New pure helper src/lib/library/justify.ts: packJustifiedRows(mems, containerWidth, targetRowHeight, gap) → rows[{mems, height}]. Replace the CSS grid block (LibraryView.tsx L2299-2303). Aspect ratio per mem resolved by priority: (1) module-level Map<id,number> cache populated on first decode; (2) type fallback — photo/painting/album/video=1.5 (3:2), audio/document/interview/orb/case/text=1.0 (square) — stored so first paint is deterministic. Algorithm: accumulate tiles tracking sumAR; row natural height h=(containerWidth-gap*(n-1))/sumAR; commit when h<=targetRowHeight, each tile width=ar*h. Emit rows as display:flex; gap with children flexBasis in px, flex-grow:0 → flush left+right, organic widths, one measurement pass. List (L2344) and timeline (L2503) views stay exactly as-is — only the grid surface is rebuilt.",
+      "unconditionallyVisible": true,
+      "effort": "M",
+      "wow": 9,
+      "simplerHow": "One ~40-line pure function replaces the CSS grid template AND removes all per-card aspect-ratio/min-height boxing — the row height IS the tile height.",
+      "fasterHow": "Deterministic fallback ratios → first paint needs zero image decodes and zero layout shift. Greedy O(n) over the current window only (pairs with virtualisation)."
+    },
+    {
+      "rank": 3,
+      "area": "grid-system",
+      "title": "Sticky gold-underlined time/room section bands carrying all the stripped metadata",
+      "spec": "Group filteredRoomMems before packing: single-room view → month bucket new Date(mem.createdAt).toISOString().slice(0,7); cross-room/search/wing view → room name. Pack each group independently so rows never straddle a header. Header = one flex row, NO card/box/shadow: Fraunces 1.0625rem ink #403B36 label + muted #716A5E count 0.8125rem, a 2px gold #C99A2E underline (gold is palace-only, correct here), position:sticky;top:0;background:linear-gradient(#FCFAF5,rgba(252,250,245,0));padding:1rem 0 0.5rem;z-index:5;backdrop-filter:none. Reuse the already-imported TuscanSectionHeader (LibraryCards L10) ONLY if it renders shadowless; else inline ~8 lines. These bands absorb the title/date/room the tile no longer shows.",
+      "unconditionallyVisible": true,
+      "effort": "M",
+      "wow": 8,
+      "simplerHow": "Consolidates 3 per-card text blocks + 2 badges into ONE band per ~20-40 tiles: a 200-photo room drops from ~200 title/date subtrees to ~8 bands.",
+      "fasterHow": "Massive node reduction; sticky bands are cheap (no blur); per-group packing keeps each pack() input small so windowing appends whole months without re-packing earlier ones."
+    },
+    {
+      "rank": 4,
+      "area": "performance",
+      "title": "Row-level virtualisation over packed rows — retire slice(0,visibleMemCount)+Load-more",
+      "spec": "Because pack() emits rows with known heights, total content height and every row Y-offset are known without measuring the DOM. Delete visibleMemCount state (L459), its refs (L1032/L2005/L2526), the slice (L2304/L2346), the entire Load-more block (L2513-2541) and showingCount. Read scrollTop from the scroll container onScroll throttled to one rAF (never setState-per-event). Compute firstVisibleRow/lastVisibleRow via binary search over a prefix-sum of row heights, render rows [first-4 .. last+4] (4-row overscan) positioned via a top spacer of preceding heights + bottom spacer of following heights (real scrollbar). No react-window dependency (~0 KB) — pre-measured rows make it a ~60-line inline virtualiser. Fallback: if rows.length<60, render all rows directly.",
+      "unconditionallyVisible": false,
+      "effort": "L",
+      "wow": 8,
+      "simplerHow": "Deletes visibleMemCount state, the +50 button and showingCount — scroll replaces manual pagination; no external lib.",
+      "fasterHow": "A 2000-photo room mounts ~20 rows (~40 tiles) at any time instead of growing to 50/100/150…. Constant DOM = constant paint/GC; pre-measured rows need zero getBoundingClientRect on scroll."
+    },
+    {
+      "rank": 5,
+      "area": "performance",
+      "title": "Kill backdrop-filter blur, dual box-shadows and vignette everywhere in the grid path",
+      "spec": "Sweep every backdrop-filter/WebkitBackdropFilter in the grid render path and remove: tile glass (L445-446), room-card glass (L135-136), date badge (L733), type badge (L754), move button (L780-781), play badges (L566-567, L631-632, L715-716), shared badge (L252-253), floating room icon (L282-283). Remove all box-shadow branches on tiles/room cards (L451-458, L141-148) — separation is now the 2-3px gap. Placeholder before decode = flat T.color.hairline cream (never per-mem HSL bgGradient L506). Drop transition:all 0.4s (L460/L150).",
+      "unconditionallyVisible": true,
+      "effort": "S",
+      "wow": 6,
+      "simplerHow": "Net deletion of ~30 style lines; no hovered-vs-rest shadow ternary, no vignette element, no per-tile gradient rasterisation.",
+      "fasterHow": "Removes the single costliest mobile paint (per-frame backdrop resampling + forced compositor layer per blurred element), all box-shadow rasterisation and multi-stop radial gradients. Scroll goes from layer-thrash to plain bitmap compositing."
+    },
+    {
+      "rank": 6,
+      "area": "card-treatment",
+      "title": "Defer ALL metadata to tap (viewer) + long-press (bottom sheet) — nothing renders under the tile",
+      "spec": "Tap keeps the existing setMediaPlayerIndex(i) (L2336) as primary open — title/date/room/desc/location live there and in the section bands. Delete per-tile title (L840-853), subtitle/desc (L856-886), location (L889-909), relative-date badge (L729-746), type badge (L749-762) and Move button (L764-803). Desktop scan affordance = one container-level ::after caption on :hover/:focus-visible driven by data-title + a bottom scrim (one pseudo-element, zero DOM, zero mobile cost). Mobile long-press = pointerdown + 450ms timer (cancel on pointermove>8px) opens a compact bottom Sheet with title/date/room/location/move/delete for that one tile. Non-photo tiles get ONE tiny flat glyph bottom-left (rgba(64,59,54,.55), ~1rem, no blur) reusing TypeIcon; photos are self-evident; video keeps one flat play triangle.",
+      "unconditionallyVisible": true,
+      "effort": "M",
+      "wow": 8,
+      "simplerHow": "Removes the entire per-tile info block + 2 floating badges + move button; the viewer already exists as the metadata home, so only a thin mobile Sheet is new; desktop caption is a pseudo-element, not a component.",
+      "fasterHow": "Eliminates 5+ text/badge nodes and 2 more backdrop-blur badges per tile — ~5000 fewer nodes and ~2000 fewer blur surfaces on 1000 tiles; no per-tile font layout at first paint."
+    },
+    {
+      "rank": 7,
+      "area": "grid-system",
+      "title": "Single measured-container-width responsive row-height ladder (no breakpoints)",
+      "spec": "Replace isMobile grid branching (L2262/L2301) with containerWidth from a ResizeObserver on the scroll ref (throttled to one rAF). Continuous ladder: rowH=Math.round(clamp(containerWidth*0.30,112,200)) → 360px≈112px (2-4/row), 768px≈150px (4-6/row), 1200px≈180px (6-8/row), capped 200px. Flat px gap = containerWidth<600?2:3. Side padding: <600px → 0 (true edge-to-edge bleed); desktop → paddingInline:1.5rem. Pass containerWidth-paddingInline*2 to the packer. One number drives every viewport.",
+      "unconditionallyVisible": true,
+      "effort": "S",
+      "wow": 7,
+      "simplerHow": "Kills scattered isMobile ternaries and implicit page-padding dependence — one clamp() defines density.",
+      "fasterHow": "rAF-throttled ResizeObserver avoids resize-storm re-packs; a continuous clamp means rotating a phone never crosses a breakpoint that remounts the grid; flat px gaps skip rem→px resolution in the hot loop."
+    },
+    {
+      "rank": 8,
+      "area": "card-treatment",
+      "title": "Non-photo tiles become clean square 1:1 gradient+glyph cells that slot into rows",
+      "spec": "Audio/document/text/interview/orb/case tiles report ratio 1.0 to the packer (per #2 fallback) and render as MediaThumb at 100% — a single flat Tuscan gradient (warmth.ts palette, NOT the loud per-mem HSL) with one centred TypeIcon and a small bottom-left type glyph. No waveform animation, no fake parchment text-lines (delete LibraryCards L578-666). They read instantly as 'not a photo' without any panel or caption, and their square shape packs cleanly beside landscape photos.",
+      "unconditionallyVisible": true,
+      "effort": "S",
+      "wow": 5,
+      "simplerHow": "Deletes ~90 lines of waveform/parchment/fake-line markup; one MediaThumb branch covers all non-photo types.",
+      "fasterHow": "No animated waveform bars, no multi-div fake-text blocks — non-photo tiles become one gradient div + one icon."
+    },
+    {
+      "rank": 9,
+      "area": "chrome-simplification",
+      "title": "Collapse the 3 stacked mobile strips (Wings + Rooms + Search/Sort) into ONE 3rem context bar",
+      "spec": "The mobile branch (LibraryView L1178-1496) stacks the Wings bar (L1184-1306), Rooms bar (L1309-1396) and Search+Sort bar (L1398-1495) — ~9.5rem of chrome + 2 live blur layers (L1191-1192, L1517) above the photos on a 360px phone. Replace with a SINGLE 3rem sticky bar: [chevron breadcrumb 'Wing / Room' opening the existing sidebar drawer setMobileSidebarOpen(true) (drawer already at L1117-1149)] + [flex:1 search input] + [sort glyph reusing popup L1451-1494]. Delete both horizontal-scroll pill rows from the default view (wing/room switching moves into the built drawer). Flat opaque background:T.color.cream, no backdrop-filter, no mask-image edge-fades.",
+      "unconditionallyVisible": true,
+      "effort": "M",
+      "wow": 7,
+      "simplerHow": "One bar instead of three; nav reuses the built drawer instead of two duplicated scroll strips — net deletion (3 hairlines→1, no duplicate 'All' pills, no W/R letter labels L1201-1207/L1324-1330).",
+      "fasterHow": "Removes 2 backdrop-blur(0.75rem) layers that repaint every scroll frame, 2 mask-image gradients, and dozens of pill <button> nodes from initial DOM/paint."
+    },
+    {
+      "rank": 10,
+      "area": "chrome-simplification",
+      "title": "Auto-hide the context bar on scroll-down, reveal on scroll-up (Photos-style)",
+      "spec": "On the scroll region (main L1172, wall wrapper) add a rAF-throttled scroll listener comparing last vs current scrollTop; toggle transform:translateY(-100%) on the single bar with transition:transform 0.2s ease, will-change:transform. Transform-only (no reflow). Pin visible whenever scrollTop<4rem so the wall top always shows chrome. This is the single most visible 'it feels like Apple Photos' cue and is unconditional — fires on every full library the moment you scroll.",
+      "unconditionallyVisible": true,
+      "effort": "S",
+      "wow": 8,
+      "simplerHow": "Pure transform toggle on the one remaining bar (depends on #9) — no extra DOM/components.",
+      "fasterHow": "Compositor-only animation; gives the full viewport height to the wall while scrolling so more photos are on screen per frame, and the hidden bar isn't repainted."
+    },
+    {
+      "rank": 11,
+      "area": "card-treatment",
+      "title": "Real-aspect-ratio measure via one-shot onLoad, rAF-batched single re-pack",
+      "spec": "In LibraryView add ratioRef=useRef(new Map<string,number>()) + a ratioTick state. On photo/video-thumb tiles pass onLoad={e=>onRatio(mem.id, e.currentTarget.naturalWidth/e.currentTarget.naturalHeight)} measured ONCE (guard: if cache has id, return). Non-photo predicates (LibraryCards L374-379) report 1 immediately. onRatio writes the cache; if measured ar differs >5% from the cached fallback, schedule ONE requestAnimationFrame (debounced ~200ms) that bumps ratioTick so 30 images loading cause ONE re-pack, not 30. Because the packer sizes each row to width at a fixed height, a late correction only nudges one row, never a full-page reflow.",
+      "unconditionallyVisible": false,
+      "effort": "M",
+      "wow": 7,
+      "simplerHow": "One Map + one onLoad callback; no image pre-fetch, no server dimension pipeline, no new Mem field (confirmed Mem has no w/h, defaults.ts L1-31). Square-by-default means audio/doc/text never shift.",
+      "fasterHow": "Single rAF-batched re-pack instead of per-image reflow; ratio read from the already-decoding thumbnail (no extra fetch/decode)."
+    },
+    {
+      "rank": 12,
+      "area": "card-treatment",
+      "title": "Selection = CSS state on the tile (gold inset outline + dim + corner tick), not a per-tile overlay div",
+      "spec": "Replace the per-tile checkbox div mounted for all visible tiles when selectMode flips (LibraryView L2310-2326). Add aria-pressed/data-selected on the tile button; one injected CSS rule handles selected state: outline:0.1875rem solid #C99A2E (gold = palace focus/seal/selection); outline-offset:-0.1875rem (inset, doesn't disturb the 2-3px gap); filter:brightness(0.72). A single gold circular SVG tick (1.25rem, top-right) renders ONLY when selected. Entering/leaving selectMode toggles an attribute — changes NO DOM. Reuse existing setSelectedMemIds Set (L2312/L2334); mobile long-press (from #6) also enters selectMode.",
+      "unconditionallyVisible": false,
+      "effort": "S",
+      "wow": 7,
+      "simplerHow": "One CSS rule + one conditional tick replaces a per-tile absolutely-positioned checkbox div and its inline style object.",
+      "fasterHow": "Zero extra nodes on unselected tiles; entering selectMode over 1000 tiles adds 0 nodes (vs 1000 checkbox divs). outline+filter are GPU-composited, don't reflow neighbours."
+    },
+    {
+      "rank": 13,
+      "area": "card-treatment",
+      "title": "De-glass the LibrarySidebar + LibraryRoomCard covers to match the wall",
+      "spec": "Apply the same de-glassing to LibrarySidebar room/wing cards and LibraryRoomCard (LibraryCards L124-152): drop backdrop-filter blur (L135-136), both box-shadow branches (L141-148), the warm overlay gradient (L177-187) and the floating icon blur badge (L282-283). Room cover becomes a flat photo + flat cream fallback; selection/hover = a 2px gold underline or brightness filter, not a shadow lift. Keeps the nav structurally identical (wings→rooms preserved) but visually consistent with the chromeless wall.",
+      "unconditionallyVisible": true,
+      "effort": "S",
+      "wow": 5,
+      "simplerHow": "Reuses the same 4-property wrapper pattern as the tile; deletes the shadow ternaries and gradient overlay from the room card.",
+      "fasterHow": "Removes blur/shadow from every room card in the sidebar/drawer — cheaper to paint when the drawer opens on mobile."
+    },
+    {
+      "rank": 14,
+      "area": "chrome-simplification",
+      "title": "Fold the tools toolbar + Import/Select/View bar into one Import button + a kebab sheet",
+      "spec": "Between header and wall sit two more rows: the tools toolbar (L1554-1577: writeStory/aiLabel/addLocation with overflow-x scroll + mask-image fade L1557) and the action bar (L1693-1770: Import + Select + 3-button View toggle). These tools are no-ops unless a room is selected (L1567-1572 flash a hint). Keep ONLY the primary Import button inline; move writeStory/aiLabel/addLocation/Select behind a single 2.5rem kebab opening one lazily-mounted bottom sheet.",
+      "unconditionallyVisible": true,
+      "effort": "M",
+      "wow": 5,
+      "simplerHow": "Two rows → one Import + one kebab; removes the overflow-x scroller, its mask-image gradients and the per-button hint plumbing from the always-on surface.",
+      "fasterHow": "Fewer always-mounted buttons and one fewer scroll container; the sheet mounts only on tap, so the default wall skips 4 pills + a masked scroll row."
+    },
+    {
+      "rank": 15,
+      "area": "chrome-simplification",
+      "title": "Demote the grid/list/timeline segmented control to one low-chrome text toggle",
+      "spec": "The 3-button segmented control (L1750-1769) carries a container border (L1756), an inner white active chip and 3 active-state box-shadows (L1759/1762/1765) + 3 inline SVGs. Since the wall is now the strong default, replace with a single text control cycling Wall → List → Timeline. viewMode state + localStorage persistence (L425-511) untouched — only the control UI shrinks. On mobile place it inside the kebab sheet (#14) so the wall view has zero visible view-switch chrome.",
+      "unconditionallyVisible": true,
+      "effort": "S",
+      "wow": 4,
+      "simplerHow": "Removes a 3-button segmented control + border + 3 active shadows for one text control; no state-model change.",
+      "fasterHow": "Eliminates active-tab box-shadow paints and 3 always-mounted SVG buttons; on mobile moves entirely into a lazily-mounted sheet."
+    },
+    {
+      "rank": 16,
+      "area": "performance",
+      "title": "content-visibility:auto on rows as the zero-JS paint safety net",
+      "spec": "On each justified ROW wrapper (packer output replacing L2299-2343) set contentVisibility:'auto' and containIntrinsicSize:`${row.height}px 100%`. Because every row height is precomputed, containIntrinsicSize is exact → the browser skips rendering/painting off-screen rows with zero layout shift, even inside the overscan window. One style property, complements the JS virtualiser (#4).",
+      "unconditionallyVisible": false,
+      "effort": "S",
+      "wow": 5,
+      "simplerHow": "One CSS property per row; no logic.",
+      "fasterHow": "Second, browser-native layer of off-screen skipping on top of virtualisation — cheap insurance against paint of rows the JS window keeps mounted."
+    },
+    {
+      "rank": 17,
+      "area": "performance",
+      "title": "Right-sized responsive thumbnails via srcset/sizes; prefer thumbnailUrl; stop shipping full-res",
+      "spec": "Today photos render next/Image src=mem.dataUrl fill sizes='280px' unoptimized (LibraryCards L513-525) — sizes is hardcoded to the OLD 15rem grid and unoptimized fires for every data:/api: URL so the browser downloads the FULL original into a ~180px tile. Fix via a shared helper thumbUrl(mem,w) used by the tile and MediaThumb (L34-36): (1) prefer mem.thumbnailUrl ?? mem.dataUrl (Mem already has thumbnailUrl, defaults.ts L11); (2) for /api/ URLs append ?w=360&q=70 and build srcset `url?w=180 180w, url?w=360 360w, url?w=540 540w` with sizes from real layout (mobile '50vw', desktop '(max-width:768px) 40vw, 200px'); (3) keep unoptimized ONLY for genuine inline data: URLs. If the API can't resize yet, correct sizes/srcset alone roughly halves bytes; the ?w= param is the follow-up.",
+      "unconditionallyVisible": false,
+      "effort": "M",
+      "wow": 5,
+      "simplerHow": "One shared thumbUrl(mem,w) replaces ad-hoc src logic in two files; unoptimized shrinks to a single startsWith('data:') check.",
+      "fasterHow": "Stops decoding full-resolution originals into ~180px cells — the biggest mobile network/decode cost; correct srcset lets the browser pick the smallest DPR candidate, cutting bytes/decode by ~an order of magnitude and reducing iOS Safari tile eviction/reload."
+    },
+    {
+      "rank": 18,
+      "area": "performance",
+      "title": "Kill the per-card staggered entrance animation on the wall",
+      "spec": "Delete the per-item libCardEnter stagger (LibraryView L2306 `${Math.min(0.03+i*0.03,0.25)}s`) and the lc-card-fade-in animation (LibraryCards L462, keyframe L67) on grid tiles. On a virtualised wall tiles mount/unmount constantly during scroll — a mount animation makes recycled rows flicker and forces per-tile compositor work. Optionally keep ONE cheap container-level 0.2s fade on the whole wall's first paint only.",
+      "unconditionallyVisible": false,
+      "effort": "S",
+      "wow": 4,
+      "simplerHow": "Removes the animationIndex plumbing threaded through LibraryMemoryCard and the grid map.",
+      "fasterHow": "No per-tile animation on scroll recycling → no flicker, no per-tile will-change layer; recycled rows appear instantly."
+    },
+    {
+      "rank": 19,
+      "area": "performance",
+      "title": "Route scroll + resize through ONE shared rAF scheduler, never setState-per-event",
+      "spec": "The virtualiser (#4), auto-hide bar (#10) and ResizeObserver ladder (#7) all react to scroll/resize. Route them through ONE shared rAF-scheduled handler that reads scrollTop/clientWidth once per frame and updates a single derived state object — never a setState per scroll or resize event. Use passive:true listeners.",
+      "unconditionallyVisible": false,
+      "effort": "S",
+      "wow": 4,
+      "simplerHow": "One scheduler instead of three independent listeners each calling setState.",
+      "fasterHow": "Caps React re-renders at one-per-frame under fast flicks; passive listeners keep scrolling off the main thread; avoids layout thrash from multiple getBoundingClientRect reads."
+    },
+    {
+      "rank": 20,
+      "area": "grid-system",
+      "title": "Last-row handling: leave the final short row left-aligned at target height, never stretch",
+      "spec": "In the packer, a trailing row that never reaches target height (h>targetRowHeight) must NOT be scaled up to fill width (that produces jarring oversized end tiles). Render it left-aligned with tiles at exactly targetRowHeight and their natural widths (flex-grow:0). Apply the same rule per section band so each month/room ends cleanly. Matches Apple/Google Photos and keeps the wall calm.",
+      "unconditionallyVisible": true,
+      "effort": "S",
+      "wow": 4,
+      "simplerHow": "A single branch in the pure packer; no consumer changes.",
+      "fasterHow": "Avoids re-scaling a row's tiles on every append during incremental windowing."
+    },
+    {
+      "rank": 21,
+      "area": "grid-system",
+      "title": "Search + wing + cross-room results reuse the same wall packer (one render path)",
+      "spec": "LibrarySearch results and cross-room/wing views currently fall into the same card grid. Route them through the identical justified packer grouped by room name (per #3) so searching produces the same photo wall, not a different card layout. Keep HighlightText (LibraryCards L350-363) only inside the tap-sheet/viewer title, not on the tile (tiles have no text now).",
+      "unconditionallyVisible": true,
+      "effort": "S",
+      "wow": 4,
+      "simplerHow": "One render path for room/search/wing/cross-room views instead of per-context card variants; HighlightText drops from the tile entirely.",
+      "fasterHow": "Search results virtualise and de-chrome exactly like the room wall — no separate heavier code path."
+    },
+    {
+      "rank": 22,
+      "area": "performance",
+      "title": "Hoist KeyframesStyle to one module-level mount + prune dead keyframes",
+      "spec": "KeyframesStyle (LibraryCards L52-77) currently renders inside every card (L123 room card, L432 memory card) so N cards emit N <style id='library-cards-keyframes'> tags. Mount it once at the LibraryView shell (or a useEffect injecting the <style> once by id). With the tile rewrite most keyframes are dead: prune lc-card-fade-in (gone per #18), lc-wave and lc-float; keep only skeleton lc-shimmer + lc-empty-float still referenced.",
+      "unconditionallyVisible": false,
+      "effort": "S",
+      "wow": 3,
+      "simplerHow": "One <style> instead of one-per-card; prune dead keyframes now that fallbacks, stagger and waveform are gone.",
+      "fasterHow": "Removes N duplicate <style> nodes and their de-dupe churn from the virtualised list where tiles mount/unmount on scroll."
+    }
+  ],
+  "performancePlan": [
+    "Target: 60fps scroll on a mid-range Android over a 2000+ memory room, and first-wall-paint with zero layout shift.",
+    "Node budget: tile goes from ~14-16 DOM nodes to 2-3 (cell + img + optional glyph). A 200-photo room: ~200 title/date subtrees → ~8 section bands. Verify with DevTools element count before/after.",
+    "Paint budget: ZERO backdrop-filter, ZERO box-shadow, ZERO multi-stop gradient in the grid render path. Audit every backdrop-filter/WebkitBackdropFilter occurrence in LibraryCards.tsx (L445,135,733,754,780,566,631,715,252,282) + the mobile bars (L1191,1517) and confirm none survive in the wall path.",
+    "Live-DOM budget: row virtualisation caps mounted rows at viewport ± 4-row overscan (~20 rows) regardless of library size. content-visibility:auto on each row is the browser-native backstop.",
+    "Layout-shift budget: deterministic aspect-ratio fallbacks (1.5 photo / 1.0 non-photo) mean first paint needs zero decodes; a single rAF-debounced re-pack (~200ms) coalesces all onLoad ratio corrections into ONE reflow after images settle.",
+    "Network/decode budget: prefer mem.thumbnailUrl; serve ~360px (2x DPR of ~180px rows) via ?w=&q=70 on /api/ URLs with a real srcset; keep unoptimized only for inline data: URLs. THUMBNAIL PIPELINE is a backend dependency — until it lands, interim win is correct sizes/srcset + capped request width, which still roughly halves bytes.",
+    "Event budget: single shared rAF scheduler for scroll (virtualiser + auto-hide bar) and resize (row-height ladder); passive:true listeners; never setState-per-event.",
+    "Measure & prove: capture a Performance trace scrolling the same full room before/after — expect elimination of per-frame 'Composite Layers'/'Update Layer Tree' cost from backdrop-filter and a flat, constant scripting cost from virtualisation. This is the owner's 'buttery on a phone' proof."
+  ],
+  "phasing": [
+    "Phase 1 — THE VISIBLE WALL (ships the wow, one PR): #1 chromeless tile, #2 justified packer, #3 section bands, #6 defer metadata, #5 delete blur/shadow/vignette, #7 responsive ladder, #8 non-photo squares, #20 last-row. After Phase 1 the owner opens a full room and sees a dramatically different photo wall — unconditionally, no date/empty/activity trigger. This first pass ALONE makes the difference obvious.",
+    "Phase 2 — PERFORMANCE (same cycle, before prod merge): #4 row virtualisation, #11 rAF-batched ratio re-pack, #16 content-visibility, #18 kill stagger, #22 hoist/prune keyframes, #19 shared rAF scheduler. Phases 1+2 are the mandate; ship together so the visible wall never regresses on unbounded DOM.",
+    "Phase 3 — MOBILE CHROME & POLISH: #9 single context bar, #10 auto-hide on scroll, #12 CSS selection, #13 de-glass sidebar, #14 kebab tools, #15 text view-toggle, #21 unified search/wing wall.",
+    "Phase 4 — THUMBNAIL PIPELINE (backend follow-up): #17 server-side ?w= resize + stored thumbnailUrl for all photo types. Front-end srcset ships in Phase 3 and degrades gracefully until the API resizes — do NOT block Phase 1 on it."
+  ],
+  "doNot": [
+    "Do NOT keep any conditional wow (on-this-day date match, wing-glow on recent activity, parchment-when-empty). Every change must be visible on a FULL library the instant it loads — that is the exact trap the owner called out twice.",
+    "Do NOT do another token-only pass (shadow hex, ink color). The owner has explicitly rejected invisible token swaps; this must be structural — delete the glass panel, delete the grid template.",
+    "Do NOT reintroduce backdrop-filter/blur anywhere in the wall or its badges — it is the single costliest mobile paint and the primary scroll-jank source.",
+    "Do NOT render any metadata (title/date/room/desc/location/accent-strip) under a tile — it lives only in section bands + the tap sheet/viewer. Duplicating it defeats the node reduction and the calm photo-first look.",
+    "Do NOT add react-window or any virtualisation dependency — pre-measured packed rows make a ~60-line inline virtualiser trivial and keep the bundle lean.",
+    "Do NOT throw away wings→rooms or the grid/list/timeline paradigm — only the GRID surface is rebuilt; list and timeline stay as lean text rows.",
+    "Do NOT stretch the final short row of a section to fill width — left-align at target height (Apple/Google Photos behaviour), or the wall looks broken at the bottom of every month.",
+    "Do NOT keep hover-only affordances (Move button opacity:0-until-hover) as the sole interaction — they are dead on touch; use tap-to-open + long-press-to-select as first-class.",
+    "Do NOT block Phase 1 on the thumbnail backend — ship correct srcset/sizes now and let the ?w= pipeline follow in Phase 4."
+  ]
+}

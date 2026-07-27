@@ -4290,7 +4290,8 @@
     "yearsAgoShort": "y ago",
     "emptyWingOverline": "A wing awaits",
     "emptyRoomOverline": "An empty room",
-    "emptySearchOverline": "No matches"
+    "emptySearchOverline": "No matches",
+    "undated": "Undated"
   },
   "atrium": {
     "goodMorning": "Good morning",

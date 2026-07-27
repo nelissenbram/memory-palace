@@ -16,6 +16,7 @@ import type { Wing, WingRoom } from "@/lib/constants/wings";
 import { translateWingName, translateRoomName } from "@/lib/constants/wings";
 import MemoryDetail from "@/components/ui/MemoryDetail";
 import { MediaThumb } from "@/components/ui/MediaThumb";
+import PhotoWall from "@/components/ui/PhotoWall";
 import { computeWarmthLevel } from "@/lib/warmth";
 import { Overline } from "@/components/ui/AtriumRelay";
 import RoomMediaPlayer from "@/components/ui/RoomMediaPlayer";
@@ -2296,51 +2297,17 @@ export default function LibraryView() {
               )}
               {!roomLoading && filteredRoomMems.length > 0 ? (
                 viewMode === "grid" ? (
-                  <div role="list" style={{
-                  display: "grid",
-                  gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(auto-fill, minmax(15rem, 1fr))",
-                  gap: "1.25rem",
-                }}>
-                  {filteredRoomMems.slice(0, visibleMemCount).map((mem, i) => (
-                    <div key={mem.id} role="listitem" style={{
-                      animation: `libCardEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) ${Math.min(0.03 + i * 0.03, 0.25)}s both`,
-                      position: "relative",
-                    }}>
-                      {/* Select checkbox overlay (P1 #6) */}
-                      {selectMode && (
-                        <div
-                          onClick={(e) => { e.stopPropagation(); setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(mem.id)) next.delete(mem.id); else next.add(mem.id); return next; }); }}
-                          style={{
-                            position: "absolute", top: "0.5rem", left: "0.5rem", zIndex: 10,
-                            width: "1.5rem", height: "1.5rem", borderRadius: "0.375rem",
-                            background: selectedMemIds.has(mem.id) ? currentWing.accent : "rgba(255,255,255,0.85)",
-                            border: `0.0625rem solid ${selectedMemIds.has(mem.id) ? currentWing.accent : T.color.sandstone}`,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            cursor: "pointer", transition: "all 0.15s ease",
-                          }}
-                        >
-                          {selectedMemIds.has(mem.id) && (
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                          )}
-                        </div>
-                      )}
-                      <LibraryMemoryCard
-                        mem={mem}
-                        accent={currentWing.accent}
-                        searchQuery={query || undefined}
-                        animationIndex={i}
-                        onClick={() => {
-                          if (selectMode) {
-                            setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(mem.id)) next.delete(mem.id); else next.add(mem.id); return next; });
-                          } else {
-                            setMediaPlayerIndex(i);
-                          }
-                        }}
-                        onMove={(m) => setMovingMem({ mem: m, fromRoom: selectedRoom! })}
-                      />
-                    </div>
-                  ))}
-                </div>
+                  <PhotoWall
+                    mems={filteredRoomMems}
+                    isMobile={isMobile}
+                    selectMode={selectMode}
+                    selectedMemIds={selectedMemIds}
+                    onToggleSelect={(id) => setSelectedMemIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; })}
+                    onOpen={(i) => setMediaPlayerIndex(i)}
+                    monthLabel={(d) => d.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+                    undatedLabel={t("undated") !== "undated" ? t("undated") : "Undated"}
+                    countLabel={(n) => `${n}`}
+                  />
                 ) : viewMode === "list" ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }} role="list">
                   {filteredRoomMems.slice(0, visibleMemCount).map((mem, i) => (
@@ -2509,8 +2476,9 @@ export default function LibraryView() {
                 />
               ) : null}
 
-              {/* Load more pagination */}
-              {filteredRoomMems.length > visibleMemCount && (
+              {/* Load more pagination — list/timeline only; the grid wall
+                  renders every row (content-visibility keeps it cheap) */}
+              {viewMode !== "grid" && filteredRoomMems.length > visibleMemCount && (
                 <div style={{
                   display: "flex", flexDirection: "column", alignItems: "center",
                   gap: "0.5rem", marginTop: "1.5rem",

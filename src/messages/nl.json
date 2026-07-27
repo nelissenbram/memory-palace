@@ -4292,7 +4292,8 @@
     "yearsAgoShort": "j geleden",
     "emptyWingOverline": "Een vleugel wacht",
     "emptyRoomOverline": "Een lege kamer",
-    "emptySearchOverline": "Geen resultaten"
+    "emptySearchOverline": "Geen resultaten",
+    "undated": "Zonder datum"
   },
   "atrium": {
     "goodMorning": "Goedemorgen",
