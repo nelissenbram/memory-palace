@@ -212,6 +212,9 @@ export default function NotificationsPage() {
       minHeight: "100dvh",
       background: CREAM,
       fontFamily: T.font.body,
+      // Clear the fixed NavigationBar: the desktop top bar (~3.5rem) otherwise
+      // overlaps the "Activity" title; mobile's bar is at the bottom (safe-area top).
+      paddingTop: isMobile ? "env(safe-area-inset-top, 0px)" : "3.5rem",
       paddingBottom: isMobile ? "calc(4.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
     }}>
       <div className="np-board" style={{

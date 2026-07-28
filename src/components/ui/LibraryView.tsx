@@ -1393,7 +1393,9 @@ export default function LibraryView() {
       )}
 
       {/* ═══ MAIN CONTENT ═══ */}
-      <main data-nudge="library_room_bar" style={{
+      {/* (no data-nudge here — anchoring the tutorial to the whole <main>
+          highlighted the entire screen; the room bar carries its own anchor) */}
+      <main style={{
         flex: 1, display: "flex", flexDirection: "column",
         overflow: "hidden", minWidth: 0,
         animation: "libFadeIn 0.4s ease both",
@@ -1832,7 +1834,7 @@ export default function LibraryView() {
             </div>
 
             {/* ── Row 2: ACTION pills — terracotta register ── */}
-            <div style={bandRowStyle}>
+            <div data-nudge="library_tools" style={bandRowStyle}>
               {showDemos && (
                 <button type="button" onClick={() => { setDemosHidden(true); setShowDemos(false); syncSettingsToServer(); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("demoBannerClear")}</button>
               )}

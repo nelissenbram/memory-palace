@@ -208,6 +208,13 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
       if (!el) return false;
       const rect = el.getBoundingClientRect();
       if (rect.width === 0 && rect.height === 0) return false;
+      // Safety net: if the anchor is container-sized (e.g. a whole <main> or a
+      // full-height column), a cutout ring around it highlights "everything"
+      // and reads as a broken/nonsensical selection. Show a centered card
+      // instead — the copy still explains the feature without a wrong ring.
+      if (rect.width > window.innerWidth * 0.82 && rect.height > window.innerHeight * 0.6) {
+        setTargetBox(null); setPos({ top: 0, left: 0 }); setVisible(true); return true;
+      }
       if (rect.top > window.innerHeight - remToPx(3.125) || rect.bottom < 0) {
         el.scrollIntoView({ behavior: "smooth", block: "center" });
         return false;
@@ -352,25 +359,31 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
   const isBridge = !!BRIDGE_TARGET[activeNudge];
   const ctaLabel = isBridge ? t("tryIt") : t("next");
 
-  // ── Playful yellow sticky-note palette (warm paper, amber→ember accents) ──
-  const cardBg = "linear-gradient(165deg, #FFF6CE 0%, #FCE79A 100%)";
-  const cardBorder = "#EAD07A";
-  const cardShadow = "0 0.75rem 2rem rgba(120,92,20,0.22), inset 0 0.0625rem 0 rgba(255,255,255,0.65)";
-  const NOTE_INK = "#4A3B16";    // title
-  const NOTE_BODY = "#5C4B20";   // body text
-  const NOTE_MUTED = "#8A763A";  // footer / skip
-  const NOTE_DOT = "linear-gradient(135deg, #E8A93A, #B85C38)"; // amber→ember bullet
+  // ── Playful annotation palette — the landing page's margin-note voice:
+  //    gold italic text + hand-drawn arrows on a warm dark scrap. ──
+  const cardBg = "linear-gradient(160deg, #2A2018 0%, #201811 100%)";
+  const cardBorder = "rgba(212,175,55,0.35)";
+  const cardShadow = "0 0.75rem 2rem rgba(0,0,0,0.42), inset 0 0.0625rem 0 rgba(212,175,55,0.12)";
+  const GOLD = "#D4AF37";        // the playful yellow (landing L.accentDark)
+  const GOLD_BRIGHT = "#E8C766";
+  const NOTE_INK = GOLD_BRIGHT;  // title / playful text → gold
+  const NOTE_BODY = "rgba(250,247,235,0.9)";   // secondary / bullet text → warm cream
+  const NOTE_MUTED = "rgba(232,215,180,0.55)"; // footer / skip
+  const NOTE_DOT = `linear-gradient(135deg, ${GOLD}, #B85C38)`; // gold→ember bullet
   const cardInAnim = "nudgeCardIn .3s ease both";
   const cardOutAnim = "nudgeCardOut .2s ease forwards";
-  // A small folded-corner detail — the sticky-note signature.
-  const cornerFold = (
-    <span aria-hidden="true" style={{
-      position: "absolute", top: 0, right: 0,
-      width: "1.25rem", height: "1.25rem",
-      background: "linear-gradient(225deg, rgba(120,92,20,0.18) 0%, rgba(120,92,20,0) 60%)",
-      borderBottomLeftRadius: "0.375rem",
-    }} />
-  );
+  // Playful gold italic style for the primary tutorial line (landing voice).
+  const playfulText: React.CSSProperties = { fontFamily: T.font.display, fontStyle: "italic", fontWeight: 500, color: GOLD_BRIGHT, letterSpacing: "0.01em" };
+  // Hand-drawn curved arrow (the landing "peiltje") — dir points it at the target.
+  const HandArrow = ({ dir }: { dir: "up" | "down" | "left" | "right" }) => {
+    const tf = dir === "up" ? "scaleY(-1)" : dir === "left" ? "scale(-1,1)" : dir === "right" ? "none" : "none";
+    return (
+      <svg width="34" height="26" viewBox="0 0 34 26" aria-hidden="true" style={{ transform: tf, overflow: "visible" }}>
+        <path d="M4 2 C 10 16, 20 20, 29 22 M23 20 l7 2 -4 -6" fill="none" stroke={GOLD} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      </svg>
+    );
+  };
+  const cornerFold = null;
 
   // ── Palace Walk Intro ──
   if (activeNudge === PALACE_WALK) {
@@ -394,7 +407,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             display:"flex", flexDirection:"column", gap:"0.75rem",
           }}>
             {cornerFold}
-            <div style={{ fontFamily:T.font.display, fontSize:"0.9375rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.02em" }}>
+            <div style={{ fontFamily:T.font.display, fontStyle:"italic", fontSize:"1.0625rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.01em" }}>
               {t("palaceWalkTitle")}
             </div>
             <div style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:NOTE_BODY, lineHeight:1.6 }}>
@@ -579,7 +592,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             display:"flex", flexDirection:"column", gap:"0.75rem",
           }}>
             {cornerFold}
-            <div style={{ fontFamily:T.font.display, fontSize:"0.9375rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.02em" }}>
+            <div style={{ fontFamily:T.font.display, fontStyle:"italic", fontSize:"1.0625rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.01em" }}>
               {title}
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.4375rem" }}>
@@ -649,7 +662,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             display:"flex", flexDirection:"column", gap:"0.75rem",
           }}>
             {cornerFold}
-            <div style={{ fontFamily:T.font.display, fontSize:"0.9375rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.02em" }}>
+            <div style={{ fontFamily:T.font.display, fontStyle:"italic", fontSize:"1.0625rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.01em" }}>
               {title}
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.4375rem" }}>
@@ -721,7 +734,7 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
             display:"flex", flexDirection:"column", gap:"0.75rem",
           }}>
             {cornerFold}
-            <div style={{ fontFamily:T.font.display, fontSize:"0.9375rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.02em" }}>
+            <div style={{ fontFamily:T.font.display, fontStyle:"italic", fontSize:"1.0625rem", fontWeight:600, color:NOTE_INK, letterSpacing:"0.01em" }}>
               {title}
             </div>
             <div style={{ display:"flex", flexDirection:"column", gap:"0.4375rem" }}>
@@ -831,22 +844,30 @@ export default function NudgeProvider({ page, palaceView, onNavigateEntrance, on
           ? (isCenteredFallback ? "nudgeCenterOut .2s ease forwards" : "nudgeFadeOut .2s ease forwards")
           : (isCenteredFallback ? "nudgeCenterIn .3s ease both" : "nudgeFadeIn .3s ease both"),
       }}>
+        {/* Hand-drawn arrow (landing "peiltje") pointing at the highlighted element */}
+        {!isCenteredFallback && (() => {
+          const p = config.position;
+          const box: React.CSSProperties = p === "top"
+            ? { top: "100%", left: "1.5rem", marginTop: "0.1rem" }
+            : p === "right"
+              ? { right: "100%", top: "0.5rem", marginRight: "0.1rem" }
+              : p === "left"
+                ? { left: "100%", top: "0.5rem", marginLeft: "0.1rem" }
+                : { bottom: "100%", left: "1.5rem", marginBottom: "0.1rem" }; // bottom
+          const dir = p === "top" ? "down" : p === "right" ? "left" : p === "left" ? "right" : "up";
+          return <span style={{ position: "absolute", pointerEvents: "none", ...box }}><HandArrow dir={dir as "up" | "down" | "left" | "right"} /></span>;
+        })()}
         <div style={{
           background:cardBg,
           borderRadius:"0.875rem", padding:"0.875rem 1rem",
           border:`1px solid ${cardBorder}`, boxShadow:cardShadow,
           display:"flex", flexDirection:"column", gap:"0.5rem", position:"relative", overflow:"hidden",
+          transform:"rotate(-1deg)",
         }}>
           {cornerFold}
-          <div style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
-            <div style={{
-              width:"0.375rem", height:"0.375rem", borderRadius:"50%", flexShrink:0, marginTop:"0.4375rem",
-              background:NOTE_DOT,
-            }} />
-            <span style={{ fontFamily:T.font.body, fontSize:"0.8125rem", color:NOTE_BODY, lineHeight:1.5 }}>
-              {t(config.messageKey)}
-            </span>
-          </div>
+          <span style={{ ...playfulText, fontSize: isMobile ? "0.9375rem" : "1rem", lineHeight:1.35 }}>
+            {t(config.messageKey)}
+          </span>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginTop:"0.125rem" }}>
             <button onClick={(e) => { e.stopPropagation(); handleSkip(); }} style={{
               fontFamily:T.font.body, fontSize:"0.75rem", fontWeight:500, color:NOTE_MUTED,
