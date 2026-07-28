@@ -19,15 +19,15 @@ export const useSettingsTourStore = create<SettingsTourState>((set) => ({
   setOpen: (v) => set({ open: v }),
 }));
 
+// Mirrors the collapsed 7-item settings nav: Cookies folded into Security,
+// Connections folded under Profile — so no separate tutorial bullets for them.
 const FEATURE_KEYS = [
   { titleKey: "feat_profile_title", descKey: "feat_profile_desc" },
   { titleKey: "feat_family_title", descKey: "feat_family_desc" },
   { titleKey: "feat_subscription_title", descKey: "feat_subscription_desc" },
-  { titleKey: "feat_connections_title", descKey: "feat_connections_desc" },
   { titleKey: "feat_notifications_title", descKey: "feat_notifications_desc" },
   { titleKey: "feat_legacy_title", descKey: "feat_legacy_desc" },
   { titleKey: "feat_security_title", descKey: "feat_security_desc" },
-  { titleKey: "feat_cookies_title", descKey: "feat_cookies_desc" },
 ] as const;
 
 interface Props {

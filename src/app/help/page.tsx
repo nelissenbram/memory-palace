@@ -10,7 +10,17 @@ import PalaceLogo from "@/components/landing/PalaceLogo";
 import { isIOS } from "@/lib/native/platform";
 
 const F = T.font;
-const C = T.color;
+// Re-skin the whole /help page to the app canon by remapping the local color
+// tokens: cream canvas, ink/muted text, hairline borders, ember interactive.
+// Gold stays (ceremonial: the ticket-ID chip). Everything reads through C.*.
+const C = {
+  ...T.color,
+  linen: "#FCFAF5",     // page canvas → cream
+  charcoal: "#403B36",  // primary text → ink
+  walnut: "#716A5E",    // secondary text → muted
+  sandstone: "#E3D6BC", // borders/hairlines
+  terracotta: "#B85C38",// interactive/CTA → ember
+};
 
 export default function HelpPage() {
   const router = useRouter();
@@ -343,8 +353,8 @@ export default function HelpPage() {
             rel="noopener noreferrer"
             style={{
               display: "inline-flex", alignItems: "center", gap: "0.5rem",
-              padding: "0.625rem 1.5rem", background: "#FF4500",
-              color: "#FFF", borderRadius: "0.5rem", textDecoration: "none",
+              padding: "0.625rem 1.5rem", background: C.terracotta,
+              color: "#FCFAF5", borderRadius: "0.5rem", textDecoration: "none",
               fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
               transition: "opacity 0.2s",
             }}
