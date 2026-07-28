@@ -1,7 +1,7 @@
 "use server";
 
 import { unstable_cache } from "next/cache";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient, createAdminOrAnonClient, hasServiceRoleKey } from "@/lib/supabase/server";
 
 export interface DirectoryPalace {
   user_id: string;
@@ -29,7 +29,7 @@ export interface ExploreRails {
 const TRENDING_DAYS = 7;
 const RAIL_LIMIT = 12;
 
-type AdminClient = ReturnType<typeof createAdminClient>;
+type AdminClient = ReturnType<typeof createAdminOrAnonClient>;
 
 function recentCutoffIso(): string {
   const d = new Date();
@@ -194,7 +194,7 @@ async function enrichPalaces(
  * user filtering is applied per-request by the caller (Apple Guideline 1.2).
  */
 async function fetchExploreRailsUncached(): Promise<ExploreRails> {
-  const supabase = createAdminClient();
+  const supabase = createAdminOrAnonClient();
 
   const { data: featuredRows, error: featuredError } = await supabase
     .from("featured_palaces")
@@ -257,7 +257,18 @@ const getExploreRailsCached = unstable_cache(
  * the caller must apply blocked-user filtering per request.
  */
 export async function getExploreRails(): Promise<ExploreRails> {
-  return getExploreRailsCached();
+  try {
+    return await getExploreRailsCached();
+  } catch (e) {
+    // Preview deploys have no service-role key: degrade to empty rails
+    // (RLS may hide the underlying tables) instead of the error boundary.
+    // In Production real errors still surface.
+    if (!hasServiceRoleKey()) {
+      console.warn("[explore] rails degraded — no service-role key (preview deploy?):", e);
+      return { featured: [], trending: [], newest: [] };
+    }
+    throw e;
+  }
 }
 
 /** Search public palaces by name or username */
@@ -265,7 +276,7 @@ export async function searchPalaces(
   query: string,
   limit = 20
 ): Promise<DirectoryPalace[]> {
-  const supabase = createAdminClient();
+  const supabase = createAdminOrAnonClient();
   const q = query.trim().toLowerCase();
   if (!q || q.length < 2) return [];
 
@@ -301,9 +312,25 @@ export async function getFollowingPalaces(
   limit = 12,
   blockedIds?: string[]
 ): Promise<FollowingPalace[]> {
+  try {
+    return await getFollowingPalacesInner(limit, blockedIds);
+  } catch (e) {
+    // Preview deploys (no service key): degrade to empty instead of erroring
+    if (!hasServiceRoleKey()) {
+      console.warn("[explore] following degraded — no service-role key (preview deploy?):", e);
+      return [];
+    }
+    throw e;
+  }
+}
+
+async function getFollowingPalacesInner(
+  limit: number,
+  blockedIds?: string[]
+): Promise<FollowingPalace[]> {
   // Need user-scoped client for auth, admin client for cross-user reads
   const userClient = await createClient();
-  const supabase = createAdminClient();
+  const supabase = createAdminOrAnonClient();
   const { data: { user } } = await userClient.auth.getUser();
   if (!user) return [];
 

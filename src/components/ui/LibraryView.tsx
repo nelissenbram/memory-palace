@@ -1128,23 +1128,29 @@ export default function LibraryView() {
     };
   }, [memRoomMap, wings, getWingRooms, t, tWings]);
 
-  // Room-scoped spotlight targets (AI label / write story / location) only
-  // render their pill inside a room — auto-enter the fullest room so the
-  // Atrium CTA actually lands on a pulsing control instead of nothing.
+  // The fullest room — target when a room-scoped tool is invoked from the
+  // unified All-Memories wall (tool panels need a room to work in).
+  const pickFullestRoom = useCallback((): string | null => {
+    let best: string | null = null, bestCount = -1;
+    for (const w of wings) for (const r of getWingRooms(w.id)) {
+      const c = getMemsForRoom(r.id).length;
+      if (c > bestCount) { bestCount = c; best = r.id; }
+    }
+    return best;
+  }, [wings, getWingRooms, getMemsForRoom]);
+
+  // Room-scoped spotlight targets (AI label / write story / location):
+  // auto-enter the fullest room so the Atrium CTA lands on a live control.
   useEffect(() => {
     if (!spotlightTarget || selectedRoom) return;
     if (spotlightTarget === "aiLabel" || spotlightTarget === "writeStory" || spotlightTarget === "addLocation") {
-      let best: string | null = null, bestCount = -1;
-      for (const w of wings) for (const r of getWingRooms(w.id)) {
-        const c = getMemsForRoom(r.id).length;
-        if (c > bestCount) { bestCount = c; best = r.id; }
-      }
+      const best = pickFullestRoom();
       if (best) {
         if (roomWingMap[best]) setSelectedWing(roomWingMap[best]);
         setSelectedRoom(best);
       }
     }
-  }, [spotlightTarget, selectedRoom, wings, getWingRooms, getMemsForRoom, roomWingMap]);
+  }, [spotlightTarget, selectedRoom, pickFullestRoom, roomWingMap]);
 
   const { setShowSharedWithMe } = useUIPanelStore();
   const globalShowImportHub = useUIPanelStore((s) => s.showImportHub);
@@ -1832,8 +1838,19 @@ export default function LibraryView() {
                   {t("addMemory")}
                 </button>
               )}
-              {selectedRoom && roomTools.map(a => (
-                <button key={a.key} type="button" data-spotlight-id={a.key} onClick={() => { setActiveToolPanel(a.key); if (spotlightTarget === a.key) setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === a.key ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>{a.label}</button>
+              {/* Tool pills are always visible — from the All wall they
+                  auto-enter the fullest room (the panels are room-scoped) */}
+              {roomTools.map(a => (
+                <button key={a.key} type="button" data-spotlight-id={a.key} onClick={() => {
+                  if (!selectedRoom) {
+                    const r = pickFullestRoom();
+                    if (!r) return;
+                    if (roomWingMap[r]) setSelectedWing(roomWingMap[r]);
+                    setSelectedRoom(r);
+                  }
+                  setActiveToolPanel(a.key);
+                  if (spotlightTarget === a.key) setSpotlightTarget(null);
+                }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)", animation: spotlightTarget === a.key ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>{a.label}</button>
               ))}
               <button type="button" onClick={() => setShowPublishModal(true)} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("publish")}</button>
               <button type="button" data-spotlight-id="importUpload" onClick={() => { setShowImportHub(true); if (spotlightTarget === "importUpload") setSpotlightTarget(null); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.4rem", minHeight: "1.9rem", padding: "0 0.85rem", borderRadius: "2rem", background: "linear-gradient(165deg, #403B36 0%, #2E2A26 100%)", border: "0.0625rem solid rgba(212,175,55,0.55)", color: "#FCFAF5", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.14)", animation: spotlightTarget === "importUpload" ? "spotlightPulse 1.2s ease-in-out infinite" : undefined }}>

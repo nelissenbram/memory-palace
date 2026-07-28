@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient, createAdminOrAnonClient } from "@/lib/supabase/server";
 import { isIOSRequest } from "@/lib/auth/plan-limits";
 import MeClient from "./MeClient";
 
@@ -28,8 +28,9 @@ export default async function MePage() {
   if (!user) redirect("/login");
 
   // Visitors uses the admin client (palace_visits rows belong to the visitor
-  // under RLS) — scoped strictly to the authed keeper's own owner_id.
-  const admin = createAdminClient();
+  // under RLS) — scoped strictly to the authed keeper's own owner_id. On
+  // Preview deploys (no service key) this degrades to a count of 0.
+  const admin = createAdminOrAnonClient();
 
   const [profileRes, wingsRes, memoriesRes, visitorsRes] = await Promise.all([
     supabase

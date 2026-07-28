@@ -14,6 +14,30 @@ export function createAdminClient() {
   );
 }
 
+/** True when the service-role key is configured (Production; Preview deploys don't carry it). */
+export function hasServiceRoleKey(): boolean {
+  return !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+}
+
+/**
+ * Admin client when the service-role key exists, else an anon-key client with
+ * no cookie binding (safe inside unstable_cache). On Preview deploys — where
+ * SUPABASE_SERVICE_ROLE_KEY is absent — createAdminClient() would THROW at
+ * construction ("supabaseKey is required"); this degrades to RLS-visible data
+ * instead of crashing the whole server render.
+ */
+export function createAdminOrAnonClient() {
+  if (hasServiceRoleKey()) return createAdminClient();
+  return createRawClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+      db: { schema: "public" },
+    }
+  );
+}
+
 export async function createClient() {
   const cookieStore = await cookies();
 
