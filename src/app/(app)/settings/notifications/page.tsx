@@ -464,7 +464,7 @@ export default function NotificationsPage() {
         }}>
           <div style={{
             width: "2.75rem", height: "2.75rem", borderRadius: "0.75rem", flexShrink: 0,
-            background: prefs.pushEnabled ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : T.color.warmStone,
+            background: prefs.pushEnabled ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : "#F6EBE3" /* Atrium token: recessed tray */,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <IconBell />
@@ -505,7 +505,7 @@ export default function NotificationsPage() {
                 }}>
                   <div style={{
                     width: "2.25rem", height: "2.25rem", borderRadius: "0.7rem", flexShrink: 0,
-                    background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : T.color.warmStone,
+                    background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : "#F6EBE3" /* Atrium token: recessed tray */,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     {cat.icon}
@@ -573,7 +573,7 @@ export default function NotificationsPage() {
             }}>
               <div style={{
                 width: "2.25rem", height: "2.25rem", borderRadius: "0.7rem", flexShrink: 0,
-                background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : T.color.warmStone,
+                background: prefs[cat.key] ? "rgba(154,79,42,0.11)" /* Atrium token: terracotta medallion */ : "#F6EBE3" /* Atrium token: recessed tray */,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {cat.icon}
@@ -606,8 +606,8 @@ export default function NotificationsPage() {
       {/* Notification Schedule note */}
       <div style={{
         marginTop: "1.5rem", padding: "1rem 1.25rem", borderRadius: "0.75rem",
-        background: "#EFF2E8" /* Atrium token: pre-mixed sage tray */,
-        border: "0.0625rem solid #DFE3D2" /* Atrium token: sage border */,
+        background: "#F6EBE3" /* Atrium token: recessed tray */,
+        border: "0.0625rem solid #E3D6BC" /* Atrium token: hairline */,
         display: "flex", alignItems: "flex-start", gap: "0.75rem",
       }}>
         <div style={{ flexShrink: 0, marginTop: "0.125rem" }}>
@@ -653,8 +653,8 @@ function ToggleSwitch({
         borderRadius: "0.875rem",
         border: "none",
         background: enabled
-          ? "linear-gradient(135deg, #56683C, #7A8C64)" /* Atrium token: canonical sage */
-          : T.color.sandstone,
+          ? "#B85C38" /* Atrium token: ember — interactive ON */
+          : "#E3D6BC" /* Atrium token: hairline track */,
         position: "relative",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.5 : 1,
@@ -673,7 +673,7 @@ function ToggleSwitch({
           top: "0.1875rem",
           left: enabled ? "1.4375rem" : "0.1875rem",
           transition: "left .2s ease",
-          boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.15)" /* Atrium warm ink */,
+          boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.14)" /* Atrium warm ink */,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

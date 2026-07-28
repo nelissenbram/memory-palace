@@ -86,12 +86,12 @@ function ConfirmModal({
       style={{
         position: "fixed", inset: 0, zIndex: 200,
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(64,59,54,0.35)" /* Atrium warm ink scrim */, backdropFilter: "blur(0.125rem)",
+        background: "rgba(64,59,54,0.35)" /* Atrium warm ink scrim */,
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div style={{
-        background: T.color.linen, borderRadius: "1rem",
+        background: "#FCFAF5" /* cream */, borderRadius: "1rem",
         padding: "1.75rem 2rem", maxWidth: "26rem", width: "90%",
         boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium S2
         border: "0.0625rem solid #E3D6BC", // Atrium hairline
@@ -111,7 +111,7 @@ function ConfirmModal({
         </p>
         <div style={{ display: "flex", gap: "0.625rem", justifyContent: "flex-end" }}>
           <button ref={cancelBtnRef} onClick={onCancel} className="legacy-focus-ring" style={{
-            padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+            padding: "0.625rem 1.25rem", minHeight: "2.75rem", borderRadius: "0.75rem",
             border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: "transparent",
             fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
             color: "#716A5E", cursor: "pointer", transition: "all 0.2s ease",
@@ -119,7 +119,7 @@ function ConfirmModal({
             {cancelLabel}
           </button>
           <button ref={confirmBtnRef} onClick={onConfirm} className="legacy-focus-ring" style={{
-            padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
+            padding: "0.625rem 1.25rem", minHeight: "2.75rem", borderRadius: "0.75rem",
             border: "none",
             background: "#B85C38", // Atrium ember
             fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600,
@@ -232,7 +232,7 @@ export default function LegacyPage() {
       }}>
         <div style={{
           width: "1.5rem", height: "1.5rem", borderRadius: "50%",
-          border: `0.1875rem solid ${T.color.sandstone}`,
+          border: "0.1875rem solid #E3D6BC", // Atrium hairline
           borderTopColor: "#B85C38", // Atrium ember
           animation: "legacySpin 0.7s linear infinite",
         }} />
@@ -271,7 +271,7 @@ export default function LegacyPage() {
       <div style={{
         padding: "1.25rem 1.5rem", borderRadius: "1rem", marginBottom: "1.75rem",
         background: "linear-gradient(160deg, #FBF2EC 0%, #FCFAF5 78%)", // Atrium terracotta tileBg
-        border: "0.0625rem solid #E7D9C4", // Atrium hairline
+        border: "0.0625rem solid #E3D6BC", // Atrium hairline
       }}>
         <p style={{
           fontFamily: T.font.body, fontSize: "0.9375rem", color: "#403B36", // Atrium ink
@@ -308,7 +308,7 @@ export default function LegacyPage() {
           <span key={item.label} style={{
             display: "inline-flex", alignItems: "center", gap: "0.375rem",
             padding: "0.3125rem 0.75rem", borderRadius: "2rem",
-            background: item.done ? "#EFF2E8" : "#F2EDE4", // Atrium sage tray / linen
+            background: item.done ? "#EFF2E8" : "#FCFAF5", // Atrium sage tray / cream
             border: `0.0625rem solid ${item.done ? "#DFE3D2" : "#E3D6BC"}`, // Atrium hairline
             fontFamily: T.font.body, fontSize: "0.8125rem",
             color: item.done ? "#56683C" : "#716A5E", // Atrium sage / muted
@@ -346,7 +346,7 @@ export default function LegacyPage() {
           <button
             onClick={() => setShowOnboarding(false)}
             style={{
-              padding: "0.5rem 1rem", borderRadius: "0.75rem",
+              padding: "0.5rem 1rem", minHeight: "2.75rem", borderRadius: "0.75rem",
               border: "0.0625rem solid #E3D6BC" /* Atrium hairline */, background: T.color.white,
               fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 500,
               color: "#403B36", cursor: "pointer", transition: "all 0.2s ease",
@@ -406,7 +406,7 @@ export default function LegacyPage() {
             tabIndex={activeSection === tab.key ? 0 : -1}
             className="legacy-focus-ring"
             style={{
-              padding: "0.75rem 1.25rem", borderRadius: "0.75rem",
+              padding: "0.75rem 1.25rem", minHeight: "2.75rem", borderRadius: "0.75rem",
               border: `0.0625rem solid ${activeSection === tab.key ? "#B85C38" : "#E3D6BC"}`, // Atrium ember / hairline
               background: activeSection === tab.key ? "rgba(184,92,56,0.08)" : T.color.white,
               fontFamily: T.font.body, fontSize: "0.9375rem",
@@ -637,7 +637,7 @@ function ContactsSection({
       />
     )}
     <div style={{
-      background: T.color.white,
+      background: "#FFFFFF", // Atrium card
       borderRadius: "1rem",
       border: "0.0625rem solid #E3D6BC", // Atrium hairline
       padding: "1.75rem 2rem",
@@ -672,7 +672,7 @@ function ContactsSection({
           {contacts.map((c) => (
             <div key={c.id} style={{
               padding: "1.125rem 1.375rem", borderRadius: "1rem",
-              background: T.color.linen,
+              background: "#FCFAF5", // cream inset
               border: "0.0625rem solid #E3D6BC", // Atrium hairline
               display: "flex", alignItems: "center", gap: "1rem",
             }}>
@@ -745,7 +745,7 @@ function ContactsSection({
       {contacts.length === 0 && !showForm && (
         <div style={{
           padding: "2rem 1.5rem", textAlign: "center",
-          borderRadius: "1rem", background: T.color.linen,
+          borderRadius: "1rem", background: "#FCFAF5", // cream inset
           border: "0.0625rem dashed #E3D6BC", // Atrium hairline
         }}>
           <p style={{
@@ -773,7 +773,7 @@ function ContactsSection({
       {showForm && (
         <div style={{
           padding: "1.5rem 1.75rem", borderRadius: "1rem",
-          background: T.color.linen,
+          background: "#FCFAF5", // cream inset
           border: "0.0625rem solid #E3D6BC", // Atrium hairline
           marginTop: contacts.length > 0 ? 0 : "1rem",
         }}>
@@ -830,7 +830,7 @@ function ContactsSection({
                     aria-pressed={relationship === r.value}
                     disabled={saving}
                     style={{
-                      padding: "0.625rem 1rem", borderRadius: "0.75rem",
+                      padding: "0.625rem 1rem", minHeight: "2.75rem", borderRadius: "0.75rem",
                       border: `0.0625rem solid ${relationship === r.value ? "#B85C38" : "#E3D6BC"}`, // Atrium ember / hairline
                       background: relationship === r.value ? "rgba(184,92,56,0.08)" : T.color.white,
                       fontFamily: T.font.body, fontSize: "0.9375rem",
@@ -992,7 +992,7 @@ function ContactsSection({
             <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.375rem" }}>
               <button onClick={handleSave} disabled={saving} style={{
                 ...primaryBtnStyle,
-                ...(saving ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                ...(saving ? { background: "#EEE9DF", color: "#716A5E", cursor: "not-allowed" } : {}), // Atrium disabled
               }}>
                 {saving ? tc("saving") : editingId ? tc("save") : t("addContact")}
               </button>
@@ -1148,7 +1148,7 @@ function MessagesSection({
       />
     )}
     <div style={{
-      background: T.color.white,
+      background: "#FFFFFF", // Atrium card
       borderRadius: "1rem",
       border: "0.0625rem solid #E3D6BC", // Atrium hairline
       padding: "1.75rem 2rem",
@@ -1180,7 +1180,7 @@ function MessagesSection({
           {messages.map((m) => (
             <div key={m.id} style={{
               padding: "1.125rem 1.375rem", borderRadius: "1rem",
-              background: T.color.linen,
+              background: "#FCFAF5", // cream inset
               border: "0.0625rem solid #E3D6BC", // Atrium hairline
             }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem" }}>
@@ -1233,7 +1233,7 @@ function MessagesSection({
       {messages.length === 0 && !showForm && (
         <div style={{
           padding: "2rem 1.5rem", textAlign: "center",
-          borderRadius: "1rem", background: T.color.linen,
+          borderRadius: "1rem", background: "#FCFAF5", // cream inset
           border: "0.0625rem dashed #E3D6BC", // Atrium hairline
         }}>
           <p style={{
@@ -1255,7 +1255,7 @@ function MessagesSection({
       {showForm && (
         <div style={{
           padding: "1.5rem 1.75rem", borderRadius: "1rem",
-          background: T.color.linen,
+          background: "#FCFAF5", // cream inset
           border: "0.0625rem solid #E3D6BC", // Atrium hairline
           marginTop: messages.length > 0 ? 0 : "1rem",
         }}>
@@ -1403,7 +1403,7 @@ function MessagesSection({
             <div style={{ display: "flex", gap: "0.625rem", marginTop: "0.375rem" }}>
               <button onClick={handleSave} disabled={saving} style={{
                 ...primaryBtnStyle,
-                ...(saving ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+                ...(saving ? { background: "#EEE9DF", color: "#716A5E", cursor: "not-allowed" } : {}), // Atrium disabled
               }}>
                 {saving ? tc("saving") : editingId ? tc("save") : t("saveMessage")}
               </button>
@@ -1499,7 +1499,7 @@ function SettingsSection({
       />
     )}
     <div style={{
-      background: T.color.white,
+      background: "#FFFFFF", // Atrium card
       borderRadius: "1rem",
       border: "0.0625rem solid #E3D6BC", // Atrium hairline
       padding: "1.75rem 2rem",
@@ -1522,7 +1522,7 @@ function SettingsSection({
         {/* Inactivity trigger */}
         <div style={{
           padding: "1.25rem 1.5rem", borderRadius: "1rem",
-          background: T.color.linen,
+          background: "#FCFAF5", // cream inset
           border: "0.0625rem solid #E3D6BC", // Atrium hairline
         }}>
           <label htmlFor="legacy-inactivity-range" style={labelStyle}>{t("inactivityTrigger")}</label>
@@ -1564,7 +1564,7 @@ function SettingsSection({
         {/* Trusted verifier */}
         <div style={{
           padding: "1.25rem 1.5rem", borderRadius: "1rem",
-          background: T.color.linen,
+          background: "#FCFAF5", // cream inset
           border: "0.0625rem solid #E3D6BC", // Atrium hairline
         }}>
           <label style={labelStyle}>{t("trustedVerifier")}</label>
@@ -1630,7 +1630,7 @@ function SettingsSection({
               onClick={() => setShowRetryModal(true)}
               disabled={saving}
               style={{
-                fontFamily: T.font.body, fontSize: "0.8125rem", padding: "0.375rem 0.75rem",
+                fontFamily: T.font.body, fontSize: "0.8125rem", padding: "0.375rem 0.75rem", minHeight: "2.75rem",
                 background: "#B85C38" /* Atrium ember */, color: "#fff", border: "none", borderRadius: "0.75rem",
                 cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.6 : 1,
               }}
@@ -1647,7 +1647,7 @@ function SettingsSection({
             disabled={!hasChanges || saving}
             style={{
               ...primaryBtnStyle,
-              opacity: !hasChanges || saving ? 0.5 : 1,
+              ...(!hasChanges || saving ? { background: "#EEE9DF", color: "#716A5E" } : {}), // Atrium disabled
               cursor: !hasChanges || saving ? "default" : "pointer",
             }}
           >
@@ -1718,6 +1718,7 @@ const settingsFocusStyle = `
 
 const primaryBtnStyle: React.CSSProperties = {
   padding: "0.75rem 1.5rem",
+  minHeight: "2.75rem",
   borderRadius: "0.75rem",
   border: "none",
   background: "#B85C38", // Atrium ember
@@ -1731,6 +1732,7 @@ const primaryBtnStyle: React.CSSProperties = {
 
 const secondaryBtnStyle: React.CSSProperties = {
   padding: "0.75rem 1.5rem",
+  minHeight: "2.75rem",
   borderRadius: "0.75rem",
   border: "0.0625rem solid #E3D6BC", // Atrium hairline
   background: "transparent",

@@ -19,14 +19,15 @@ import ExportPanel from "@/components/settings/ExportPanel";
 import { requestPasswordReset, deleteAccount } from "@/lib/auth/profile-actions";
 
 const F = T.font;
-const C = T.color;
 
 /* Atrium tokens (INK & EMBER) — inlined from the elevation system */
 const INK = "#403B36"; // titles / body-strong
 const MUTED = "#716A5E"; // secondary text, full opacity
-const TERRA = "#9A4F2A"; // terracotta glyph
-const SAGE = "#56683C"; // sage glyph
+const TERRA = "#9A4F2A"; // terracotta glyph / at-rest accent
+const EMBER = "#B85C38"; // interactive / active
+const SAGE = "#56683C"; // sage glyph (success register)
 const HAIRLINE = "#E3D6BC"; // opaque hairline
+const CREAM = "#FCFAF5"; // flat page cream / recessed panels
 
 /* ─── Category icons (compact versions for settings context) ─── */
 
@@ -111,10 +112,10 @@ function PreferencesIcon({ size = 24 }: { size?: number }) {
 function AnalyticsIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <rect x="5" y="5" width="22" height="22" rx="3" fill={C.walnut} opacity="0.08" stroke={C.walnut} strokeWidth="1.5" />
-      <rect x="9" y="16" width="3" height="7" rx="0.75" fill={C.walnut} opacity="0.4" />
-      <rect x="14.5" y="12" width="3" height="11" rx="0.75" fill={C.walnut} opacity="0.6" />
-      <rect x="20" y="9" width="3" height="14" rx="0.75" fill={C.walnut} opacity="0.8" />
+      <rect x="5" y="5" width="22" height="22" rx="3" fill={MUTED} opacity="0.08" stroke={MUTED} strokeWidth="1.5" />
+      <rect x="9" y="16" width="3" height="7" rx="0.75" fill={MUTED} opacity="0.4" />
+      <rect x="14.5" y="12" width="3" height="11" rx="0.75" fill={MUTED} opacity="0.6" />
+      <rect x="20" y="9" width="3" height="14" rx="0.75" fill={MUTED} opacity="0.8" />
     </svg>
   );
 }
@@ -147,7 +148,7 @@ function Toggle({
         borderRadius: "0.8125rem",
         border: "none",
         cursor: disabled ? "not-allowed" : "pointer",
-        background: checked ? SAGE : C.sandstone,
+        background: checked ? EMBER : HAIRLINE,
         position: "relative",
         transition: "background 0.2s ease",
         opacity: disabled ? 0.6 : 1,
@@ -157,12 +158,12 @@ function Toggle({
         width: "1.25rem",
         height: "1.25rem",
         borderRadius: "50%",
-        background: C.white,
+        background: "#FFFFFF",
         position: "absolute",
         top: "0.1875rem",
         left: checked ? "1.5625rem" : "0.1875rem",
         transition: "left 0.2s ease",
-        boxShadow: "0 0.0625rem 0.1875rem rgba(64,59,54,0.15)", // Atrium warm ink
+        boxShadow: "0 0.0625rem 0.25rem rgba(64,59,54,0.14)", // Atrium warm ink
       }} />
     </button>
   );
@@ -272,7 +273,7 @@ const SECTIONS: SectionDef[] = [
 /* ─── Shared card recipe ─── */
 
 const cardStyle: React.CSSProperties = {
-  background: C.white,
+  background: "#FFFFFF",
   borderRadius: "1rem",
   border: `0.0625rem solid ${HAIRLINE}`,
   padding: "1.5rem 1.75rem",
@@ -285,7 +286,7 @@ const inputStyle: React.CSSProperties = {
   padding: "0.875rem 1.125rem",
   borderRadius: "0.75rem",
   border: `0.0625rem solid ${HAIRLINE}`,
-  background: C.white,
+  background: "#FFFFFF",
   fontFamily: T.font.body,
   fontSize: "0.9375rem",
   color: INK,
@@ -396,7 +397,7 @@ export default function SecuritySettingsPage() {
         }}>
           <span aria-hidden="true">{toast.type === "success" ? "✓" : "⚠"}</span>
           {toast.message}
-          <button onClick={() => setToast(null)} aria-label={tc("close")} style={{
+          <button onClick={() => setToast(null)} aria-label={tc("close")} className="mp-security-focus" style={{
             background: "none", border: "none", color: "#FFF",
             fontSize: "0.9375rem", cursor: "pointer", marginLeft: "0.5rem", opacity: 0.7,
           }}>{"✕"}</button>
@@ -446,15 +447,16 @@ export default function SecuritySettingsPage() {
           </div>
           <button
             onClick={handlePasswordReset}
+            className="mp-security-btn"
             style={{
               padding: "0.75rem 1.5rem",
-              borderRadius: "0.625rem",
+              borderRadius: "0.75rem",
               border: `0.0625rem solid ${HAIRLINE}`,
-              background: C.white,
+              background: "transparent",
               fontFamily: F.body,
               fontSize: "0.9375rem",
               fontWeight: 500,
-              color: INK,
+              color: MUTED,
               cursor: "pointer",
               transition: "all 0.2s ease",
               flexShrink: 0,
@@ -500,7 +502,7 @@ export default function SecuritySettingsPage() {
                 color: MUTED, lineHeight: 1.4, margin: 0,
                 padding: "0.875rem 1rem",
                 borderRadius: "0.75rem",
-                background: C.linen,
+                background: CREAM,
                 border: `0.0625rem solid ${HAIRLINE}`,
               }}>
                 {tck(cat.descriptionKey)}
@@ -529,6 +531,7 @@ export default function SecuritySettingsPage() {
         <button
           onClick={() => setBrochureOpen((o) => !o)}
           aria-expanded={brochureOpen}
+          className="mp-security-btn"
           style={{
             width: "100%",
             display: "flex", alignItems: "center", gap: "0.75rem",
@@ -580,7 +583,7 @@ export default function SecuritySettingsPage() {
                     <div key={ii} style={{
                       padding: "0.75rem 1rem",
                       borderRadius: "0.75rem",
-                      background: C.linen,
+                      background: CREAM,
                       border: `0.0625rem solid ${HAIRLINE}`,
                     }}>
                       <h4 style={{
@@ -636,11 +639,11 @@ export default function SecuritySettingsPage() {
 
       {/* ── 7. Danger Zone — last (GDPR Art. 17, terracotta register, never gold) ── */}
       <div style={{
-        background: C.white,
+        background: "#FFFFFF",
         borderRadius: "1rem",
         border: "0.0625rem solid #EFD3D3", /* Atrium pre-mixed: danger 25% on white */
         padding: "1.75rem 2rem",
-        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium S1 */
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium S1 + top highlight */
       }}>
         <h3 style={{
           fontFamily: F.display, fontSize: "1.1875rem", fontWeight: 600,
@@ -658,6 +661,7 @@ export default function SecuritySettingsPage() {
         {!deleteConfirm ? (
           <button
             onClick={() => setDeleteConfirm(true)}
+            className="mp-security-danger-btn"
             style={{
               padding: "0.875rem 1.75rem",
               borderRadius: "0.75rem",
@@ -721,9 +725,10 @@ export default function SecuritySettingsPage() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={deleteText !== ts("deleteConfirmWord") || deleting}
+                className="mp-security-focus"
                 style={{
                   padding: "0.75rem 1.5rem",
-                  borderRadius: "0.625rem",
+                  borderRadius: "0.75rem",
                   border: "none",
                   background:
                     deleteText === ts("deleteConfirmWord") && !deleting
@@ -751,15 +756,16 @@ export default function SecuritySettingsPage() {
                   setDeleteConfirm(false);
                   setDeleteText("");
                 }}
+                className="mp-security-btn"
                 style={{
                   padding: "0.75rem 1.5rem",
-                  borderRadius: "0.625rem",
+                  borderRadius: "0.75rem",
                   border: `0.0625rem solid ${HAIRLINE}`,
-                  background: C.white,
+                  background: "transparent",
                   fontFamily: F.body,
                   fontSize: "0.9375rem",
                   fontWeight: 500,
-                  color: INK,
+                  color: MUTED,
                   cursor: "pointer",
                   transition: "all 0.2s ease",
                   minHeight: "2.75rem",
@@ -779,7 +785,18 @@ export default function SecuritySettingsPage() {
           .mp-cookie-toggle, .mp-cookie-toggle > div { transition: none !important; }
           .mp-security-chevron { transition: none !important; }
         }
+        @media (hover: hover) {
+          .mp-security-btn:hover { background: rgba(154,79,42,0.07) !important; }
+          .mp-security-danger-btn:hover { background: #FAF1F1 !important; } /* danger 8% on white */
+        }
+        .mp-security-btn:active { background: rgba(154,79,42,0.12) !important; }
         .mp-cookie-toggle:focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem; }
+        .mp-security-btn:focus-visible,
+        .mp-security-danger-btn:focus-visible,
+        .mp-security-focus:focus-visible {
+          outline: 0.1875rem solid #D4AF37; /* Atrium gold focus ring */
+          outline-offset: 0.1875rem;
+        }
         .mp-settings-input:focus-visible {
           outline: 0.1875rem solid #D4AF37; /* Atrium gold focus ring */
           outline-offset: 0.1875rem;

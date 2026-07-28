@@ -11,6 +11,7 @@ import { useTranslation } from "@/lib/hooks/useTranslation";
 import NavigationBar from "@/components/ui/NavigationBar";
 import { usePalaceStore } from "@/lib/stores/palaceStore";
 import SettingsTutorial, { useSettingsTutorial } from "@/components/ui/SettingsTutorial";
+import { CREAM, INK, MUTED, EMBER, EMBER_GLYPH, HAIRLINE, SHADOW, TOP_HIGHLIGHT } from "@/lib/libraryTokens";
 
 function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
   const s = {
@@ -141,6 +142,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const setNavMode = usePalaceStore((s) => s.setNavMode);
   const [tourOpen, setTourOpen] = useSettingsTutorial();
 
+  // i18n fallback — "backToMe" works before the locale files land.
+  const meLabel = tc("backToMe") !== "backToMe" ? tc("backToMe") : "Me";
+
   return (
     <>
     {signingOut && <SignOutOverlay />}
@@ -151,7 +155,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
       WebkitOverflowScrolling: "touch",
       paddingTop: stacked ? 0 : "3.5rem",
       paddingBottom: stacked ? "calc(3.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
-      background: `linear-gradient(165deg, ${T.color.linen} 0%, ${T.color.warmStone} 50%, ${T.color.sandstone}40 100%)`,
+      background: CREAM,
       zIndex: 1,
     }}>
       {/* Desktop NavigationBar — "Me" tab highlighted */}
@@ -174,29 +178,29 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           display: "flex",
           alignItems: "center",
           gap: "1rem",
-          borderBottom: `1px solid ${T.color.cream}`,
-          background: `${T.color.linen}e0`,
-          backdropFilter: "blur(12px)",
+          borderBottom: `0.0625rem solid ${HAIRLINE}`,
+          background: CREAM,
         }}>
-          <Link href="/atrium" style={{
+          <Link href="/atrium" className="mp-set-back" style={{
             display: "flex", alignItems: "center", gap: "0.5rem",
-            textDecoration: "none", color: T.color.muted,
+            minHeight: "2.75rem",
+            textDecoration: "none", color: MUTED,
             fontFamily: T.font.body,
             fontSize: "0.8125rem",
             transition: "color .2s",
           }}>
-            <span style={{ fontSize: "1.125rem" }}>{"\u2190"}</span>
+            <span style={{ fontSize: "1.125rem" }} aria-hidden="true">{"\u2190"}</span>
             {tc("backToPalace")}
           </Link>
-          <div style={{ width: 1, height: "1.25rem", background: T.color.cream }} />
+          <div style={{ width: "0.0625rem", height: "1.25rem", background: HAIRLINE }} />
           <h1 style={{
-            fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 500,
-            color: T.color.charcoal, margin: 0,
+            fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
+            color: INK, margin: 0, lineHeight: 1.15,
           }}>
             {tc("settings")}
           </h1>
           <div style={{ flex: 1 }} />
-          <span style={{ fontSize: "0.625rem", color: T.color.muted, opacity: 0.5 }}>v0610a</span>
+          <span style={{ fontSize: "0.625rem", color: MUTED, opacity: 0.5 }}>v0610a</span>
         </header>
       )}
 
@@ -215,23 +219,37 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             zIndex: 10,
             overflowX: "auto",
             whiteSpace: "nowrap",
-            borderBottom: `1px solid ${T.color.cream}`,
-            background: T.color.white,
+            borderBottom: `0.0625rem solid ${HAIRLINE}`,
+            background: CREAM,
             padding: "0.25rem 0.5rem",
             paddingTop: "calc(0.25rem + env(safe-area-inset-top, 0px))",
             WebkitOverflowScrolling: "touch",
           }}>
+            {/* Quiet back-to-Me door — the settings world continues the Me page */}
+            <Link href="/me" className="mp-set-back" style={{
+              display: "inline-flex", alignItems: "center", gap: "0.375rem",
+              minHeight: "2.75rem",
+              padding: "0.625rem 0.875rem",
+              borderRadius: "0.625rem",
+              textDecoration: "none",
+              color: MUTED,
+              fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
+              transition: "color .15s",
+            }}>
+              <span aria-hidden="true">{"←"}</span>
+              {meLabel}
+            </Link>
             {filteredItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
               return (
-                <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} style={{
+                <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} className="mp-set-tab" style={{
                   display: "inline-flex", alignItems: "center", gap: "0.375rem",
                   minHeight: "2.75rem",
                   padding: "0.625rem 1rem",
                   borderRadius: "0.625rem",
                   textDecoration: "none",
-                  background: isActive ? `${T.color.terracotta}10` : "transparent",
-                  color: isActive ? T.color.terracotta : T.color.charcoal,
+                  background: isActive ? "rgba(154,79,42,0.07)" : "transparent",
+                  color: isActive ? EMBER : INK,
                   fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: isActive ? 600 : 500,
                   transition: "all .15s",
                 }}>
@@ -243,6 +261,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             {/* Sign Out button – last item in tab bar on mobile */}
             <button
               onClick={handleSignOut}
+              className="mp-set-tab"
               style={{
                 display: "inline-flex", alignItems: "center", gap: "0.375rem",
                 minHeight: "2.75rem",
@@ -250,7 +269,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
                 borderRadius: "0.625rem",
                 border: "none",
                 background: "transparent",
-                color: T.color.muted,
+                color: MUTED,
                 fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                 cursor: "pointer",
                 transition: "all .15s",
@@ -281,29 +300,51 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             flexShrink: 0,
             alignSelf: "flex-start",
           }}>
+            {/* Quiet back-to-Me door — the settings world continues the Me page */}
+            <Link href="/me" className="mp-set-back" style={{
+              display: "inline-flex", alignItems: "center", gap: "0.5rem",
+              minHeight: "2.75rem",
+              padding: "0.25rem 0.5rem",
+              marginBottom: "0.375rem",
+              textDecoration: "none",
+              color: MUTED,
+              fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
+              transition: "color .15s",
+            }}>
+              <span aria-hidden="true">{"←"}</span>
+              {meLabel}
+            </Link>
             <div style={{
-              background: T.color.white,
+              background: "#FFFFFF",
               borderRadius: "1rem",
-              border: `1px solid ${T.color.cream}`,
-              padding: "0.5rem",
-              boxShadow: "0 2px 8px rgba(64,59,54,.04)",
+              border: `0.0625rem solid ${HAIRLINE}`,
+              boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
+              overflow: "hidden",
               display: "flex",
               flexDirection: "column",
             }}>
               {filteredItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
-                  <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} style={{
-                    display: "flex", alignItems: "center", gap: "0.625rem",
-                    padding: "0.75rem 0.875rem", borderRadius: "0.625rem",
+                  <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} className="mp-set-door" style={{
+                    display: "flex", alignItems: "center", gap: "0.75rem",
+                    minHeight: "3rem",
+                    padding: "0.75rem 1rem",
                     textDecoration: "none",
-                    background: isActive ? `${T.color.terracotta}10` : "transparent",
-                    color: isActive ? T.color.terracotta : T.color.charcoal,
+                    background: isActive ? "rgba(154,79,42,0.07)" : "transparent",
+                    boxShadow: isActive ? `inset 0.1875rem 0 0 ${EMBER}` : "none",
+                    borderBottom: `0.0625rem solid ${HAIRLINE}`,
+                    color: isActive ? EMBER : INK,
                     fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: isActive ? 600 : 500,
                     transition: "all .15s",
                   }}>
-                    <SettingsIcon name={item.iconKey} size={16} />
-                    {tc(item.labelKey)}
+                    <span style={{ color: isActive ? EMBER : EMBER_GLYPH, display: "inline-flex", flexShrink: 0 }}>
+                      <SettingsIcon name={item.iconKey} size={16} />
+                    </span>
+                    <span style={{ flex: 1 }}>{tc(item.labelKey)}</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
                   </Link>
                 );
               })}
@@ -311,21 +352,25 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               <div style={{ flex: 1 }} />
               <button
                 onClick={handleSignOut}
+                className="mp-set-door"
                 style={{
-                  display: "flex", alignItems: "center", gap: "0.625rem",
-                  padding: "0.75rem 0.875rem", borderRadius: "0.625rem",
+                  display: "flex", alignItems: "center", gap: "0.75rem",
+                  minHeight: "3rem",
+                  padding: "0.75rem 1rem",
                   border: "none",
                   background: "transparent",
-                  color: T.color.muted,
+                  color: MUTED,
                   fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                   cursor: "pointer",
                   transition: "all .15s",
                   width: "100%",
-                  marginTop: "0.25rem",
+                  textAlign: "left",
                 }}
               >
-                <SettingsIcon name="signOut" size={16} />
-                {tc("signOut")}
+                <span style={{ display: "inline-flex", flexShrink: 0 }}>
+                  <SettingsIcon name="signOut" size={16} />
+                </span>
+                <span style={{ flex: 1 }}>{tc("signOut")}</span>
               </button>
             </div>
           </nav>
@@ -336,6 +381,19 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </section>
         </div>
       )}
+      {/* Canon hover / pressed / focus states (hover only where hover exists) */}
+      <style>{`
+        @media (hover: hover) {
+          .mp-set-door:hover { background: rgba(154,79,42,0.07) !important; }
+          .mp-set-tab:hover { background: rgba(154,79,42,0.07) !important; }
+          .mp-set-back:hover { color: ${EMBER} !important; }
+        }
+        .mp-set-door:active, .mp-set-tab:active { background: rgba(154,79,42,0.12) !important; }
+        .mp-set-door:focus-visible, .mp-set-tab:focus-visible, .mp-set-back:focus-visible {
+          outline: 0.1875rem solid #D4AF37;
+          outline-offset: -0.1875rem;
+        }
+      `}</style>
       {/* Mobile-specific style overrides — tighter cards, full-width buttons, 16px inputs */}
       {isMobile && (
         <style>{`

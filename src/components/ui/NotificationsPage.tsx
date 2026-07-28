@@ -18,6 +18,17 @@ import {
   type GroupedNotification,
   type DateSection,
 } from "@/lib/utils/notification-grouping";
+import {
+  INK,
+  MUTED,
+  EMBER,
+  EMBER_GLYPH,
+  HAIRLINE,
+  CREAM,
+  GOLD,
+  SHADOW,
+  TOP_HIGHLIGHT,
+} from "@/lib/libraryTokens";
 
 const TUTORIAL_KEY = "mp_activity_tutorial_v1";
 
@@ -34,21 +45,21 @@ function timeAgo(dateStr: string, t: (key: string, params?: Record<string, strin
 }
 
 const EMOJI: Record<string, string> = {
-  new_contribution: "\u270E", // ✎
-  achievement:      "\u269C", // ⚜
-  family_invite:    "\u2766", // ❦
-  share_accepted:   "\u2766", // ❦
-  on_this_day:      "\u2767", // ❧
-  welcome:          "\u2727", // ✧
-  reminder:         "\u29D7", // ⧗
-  system:           "\u2756", // ❖
-  kep_capture:      "\uD83D\uDCF8", // 📸
-  new_follower:     "\u2726", // ✦
-  collab_invite:    "\u2694", // ⚔
-  comment_reply:    "\u270E", // ✎
-  reaction:         "\u2764", // ❤
-  palace_visit:     "\u21E8", // ⇨
-  followed_published: "\u2726", // ✦
+  new_contribution: "✎", // ✎
+  achievement:      "⚜", // ⚜
+  family_invite:    "❦", // ❦
+  share_accepted:   "❦", // ❦
+  on_this_day:      "❧", // ❧
+  welcome:          "✧", // ✧
+  reminder:         "⧗", // ⧗
+  system:           "❖", // ❖
+  kep_capture:      "📸", // 📸
+  new_follower:     "✦", // ✦
+  collab_invite:    "⚔", // ⚔
+  comment_reply:    "✎", // ✎
+  reaction:         "❤", // ❤
+  palace_visit:     "⇨", // ⇨
+  followed_published: "✦", // ✦
 };
 
 function getTranslatedMessage(
@@ -199,106 +210,115 @@ export default function NotificationsPage() {
     <div style={{
       width: "100%",
       minHeight: "100dvh",
-      background: `linear-gradient(175deg, ${T.color.linen} 0%, ${T.color.warmStone} 55%, ${T.color.cream} 100%)`,
+      background: CREAM,
       fontFamily: T.font.body,
       paddingBottom: isMobile ? "calc(4.5rem + env(safe-area-inset-bottom, 0px))" : "2rem",
     }}>
-      {/* Header */}
-      <div style={{
-        padding: isMobile ? "1.25rem 1rem 0.75rem" : "2rem 2.5rem 1rem",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-      }}>
-        <h1 style={{
-          fontFamily: T.font.display,
-          fontSize: "1.375rem", // Atrium token titleL
-          fontWeight: 600,
-          lineHeight: 1.15,
-          color: "#403B36", // Atrium ink
-          margin: 0,
-        }}>
-          {t("title")}
-          {unread > 0 && (
-            <span style={{
-              marginLeft: "0.5rem",
-              fontSize: "0.8125rem", // Atrium meta
-              fontWeight: 600,
-              color: "#B85C38", // Atrium ember — unread
-              background: "rgba(184,92,56,0.11)",
-              padding: "0.125rem 0.5rem",
-              borderRadius: "2rem",
-            }}>
-              {unread}
-            </span>
-          )}
-        </h1>
-        {unread > 0 && (
-          <button
-            onClick={() => markAllRead()}
-            style={{
-              fontFamily: T.font.body,
-              fontSize: "0.8125rem",
-              color: "#9A4F2A", // Atrium terracotta glyph
-              background: "rgba(154,79,42,0.06)",
-              border: "0.0625rem solid #E7D9C4", // Atrium terracotta tile border, opaque
-              borderRadius: "0.75rem",
-              padding: "0.375rem 0.75rem",
-              cursor: "pointer",
-              fontWeight: 500,
-              transition: "all 0.2s ease",
-            }}
-          >
-            {t("markAllRead")}
-          </button>
-        )}
-      </div>
-
-      {/* Filter tabs */}
-      <div style={{
-        display: "flex",
-        gap: "0.375rem",
-        padding: isMobile ? "0 1rem 0.75rem" : "0 2.5rem 1rem",
-        overflowX: "auto",
-      }}>
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setTab(tab.key)}
-            style={{
-              fontFamily: T.font.body,
-              fontSize: "0.8125rem",
-              fontWeight: activeTab === tab.key ? 600 : 500,
-              color: activeTab === tab.key ? T.color.white : "#403B36", // Atrium ink
-              background: activeTab === tab.key
-                ? "#B85C38" // Atrium ember, solid
-                : "rgba(255,255,255,0.6)",
-              border: activeTab === tab.key
-                ? "none"
-                : "0.0625rem solid #E3D6BC", // Atrium hairline
-              borderRadius: "2rem",
-              padding: "0.375rem 0.875rem",
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              transition: "all 0.2s",
-            }}
-          >
-            {t(tab.labelKey)}
-          </button>
-        ))}
-      </div>
-
-      {/* Notification list */}
-      <div style={{
+      <div className="np-board" style={{
         maxWidth: "40rem",
         margin: "0 auto",
-        padding: isMobile ? "0 0.75rem" : "0 2.5rem",
+        padding: isMobile ? "0 1rem" : "0 1.25rem",
       }}>
+        {/* Header */}
+        <div style={{
+          padding: isMobile ? "1.25rem 0 0.75rem" : "2rem 0 1rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.75rem",
+        }}>
+          <h1 style={{
+            fontFamily: T.font.display,
+            fontSize: "1.375rem", // canon titleL
+            fontWeight: 600,
+            lineHeight: 1.15,
+            color: INK,
+            margin: 0,
+          }}>
+            {t("title")}
+            {unread > 0 && (
+              <span style={{
+                marginLeft: "0.5rem",
+                fontSize: "0.8125rem", // canon meta
+                fontWeight: 600,
+                fontVariantNumeric: "tabular-nums",
+                color: EMBER, // ember — unread
+                background: "rgba(184,92,56,0.11)",
+                padding: "0.125rem 0.5rem",
+                borderRadius: "2rem",
+              }}>
+                {unread}
+              </span>
+            )}
+          </h1>
+          {unread > 0 && (
+            <button
+              onClick={() => markAllRead()}
+              className="np-quiet"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: T.font.body,
+                fontSize: "0.875rem",
+                fontWeight: 600,
+                color: MUTED,
+                background: "transparent",
+                border: `0.0625rem solid ${T.color.warmStone}`,
+                borderRadius: "2rem",
+                minHeight: "2.75rem",
+                padding: "0 1.25rem",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {t("markAllRead")}
+            </button>
+          )}
+        </div>
+
+        {/* Filter tabs — Explore pill grammar */}
+        <div style={{
+          display: "flex",
+          gap: "0.5rem",
+          padding: "0 0 1rem",
+          overflowX: "auto",
+        }}>
+          {TABS.map((tab) => {
+            const active = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setTab(tab.key)}
+                aria-pressed={active}
+                className="np-pill"
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.875rem",
+                  fontWeight: active ? 600 : 500,
+                  color: active ? EMBER : MUTED,
+                  background: "transparent",
+                  border: `0.0625rem solid ${active ? EMBER : T.color.warmStone}`,
+                  borderRadius: "2rem",
+                  minHeight: "2.75rem",
+                  padding: "0 1.25rem",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                {t(tab.labelKey)}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Notification list */}
         {loading && notifications.length === 0 && (
           <div style={{
             textAlign: "center",
             padding: "3rem 1rem",
-            color: "#716A5E", // Atrium muted
+            color: MUTED,
             fontSize: "0.8125rem",
           }}>
             {t("loading")}
@@ -309,16 +329,16 @@ export default function NotificationsPage() {
           <div style={{
             textAlign: "center",
             padding: "4rem 1rem",
-            color: "#716A5E", // Atrium muted
+            color: MUTED,
           }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#E3D6BC" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: "0.75rem" }}>
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={HAIRLINE} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: "0.75rem" }} aria-hidden="true">
               <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.73 21a2 2 0 01-3.46 0" />
             </svg>
-            <p style={{ fontSize: "0.9375rem", fontWeight: 500, color: "#403B36", marginBottom: "0.25rem" }}>
+            <p style={{ fontFamily: T.font.display, fontSize: "1.25rem", fontWeight: 600, color: INK, margin: "0 0 0.375rem" }}>
               {t("emptyTitle")}
             </p>
-            <p style={{ fontSize: "0.8125rem" }}>{t(EMPTY_KEYS[activeTab])}</p>
+            <p style={{ fontSize: "0.875rem", margin: 0 }}>{t(EMPTY_KEYS[activeTab])}</p>
           </div>
         )}
 
@@ -327,23 +347,38 @@ export default function NotificationsPage() {
           if (!items || items.length === 0) return null;
           return (
             <div key={sectionKey}>
-              {/* Date section header */}
+              {/* Date section header — canon overline: dot + small caps + fading rule */}
               <div style={{
-                fontSize: "0.6875rem",
-                fontWeight: 700, // Atrium overline
-                color: "#716A5E", // Atrium muted
-                textTransform: "uppercase",
-                letterSpacing: "0.12em",
-                padding: "0.75rem 0.25rem 0.375rem",
-                marginTop: "0.25rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                margin: "1rem 0 0.625rem",
               }}>
-                {t(DATE_SECTION_KEYS[sectionKey])}
+                <span aria-hidden="true" style={{
+                  width: "0.6rem", height: "0.6rem", borderRadius: "50%",
+                  background: EMBER_GLYPH, flexShrink: 0,
+                }} />
+                <span style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.6875rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: EMBER_GLYPH,
+                  whiteSpace: "nowrap",
+                }}>
+                  {t(DATE_SECTION_KEYS[sectionKey])}
+                </span>
+                <span aria-hidden="true" style={{
+                  flex: 1, height: "0.0625rem",
+                  background: `linear-gradient(90deg, ${HAIRLINE}, transparent)`,
+                }} />
               </div>
 
               {items.map((group) => (
                 <div
                   key={group.primary.id}
-                  className="np-anim"
+                  className="np-row"
                   onClick={() => handleNotificationClick(group)}
                   role="button"
                   tabIndex={0}
@@ -353,13 +388,12 @@ export default function NotificationsPage() {
                     gap: "0.75rem",
                     padding: "1rem",
                     marginBottom: "0.5rem",
+                    minHeight: "2.75rem",
                     borderRadius: "1rem",
-                    background: group.primary.read ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.85)",
-                    border: `0.0625rem solid ${group.primary.read ? "#E3D6BC" : "#E7D9C4"}`, // Atrium hairline / terracotta tile border
-                    boxShadow: group.primary.read ? "none" : "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium S1
+                    background: group.primary.read ? CREAM : "#FFFFFF",
+                    border: `0.0625rem solid ${HAIRLINE}`,
+                    boxShadow: group.primary.read ? "none" : `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
                     cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    animation: "fadeIn 0.3s ease both",
                   }}
                 >
                   <span style={{
@@ -367,14 +401,15 @@ export default function NotificationsPage() {
                     lineHeight: 1,
                     flexShrink: 0,
                     marginTop: "0.125rem",
-                  }}>
-                    {EMOJI[group.primary.type] || "\u2726"}
+                    color: EMBER_GLYPH,
+                  }} aria-hidden="true">
+                    {EMOJI[group.primary.type] || "✦"}
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{
-                      fontSize: "0.9375rem", // Atrium body
+                      fontSize: "0.9375rem", // canon body
                       fontWeight: group.primary.read ? 500 : 600,
-                      color: "#403B36", // Atrium ink
+                      color: INK,
                       margin: 0,
                       lineHeight: 1.4,
                     }}>
@@ -386,7 +421,7 @@ export default function NotificationsPage() {
                     {group.grouped && group.count > 1 && (
                       <p style={{
                         fontSize: "0.6875rem",
-                        color: "#716A5E", // Atrium muted
+                        color: MUTED,
                         margin: "0.125rem 0 0",
                         fontStyle: "italic",
                       }}>
@@ -394,8 +429,8 @@ export default function NotificationsPage() {
                       </p>
                     )}
                     <p style={{
-                      fontSize: "0.8125rem", // Atrium meta
-                      color: "#716A5E", // Atrium muted
+                      fontSize: "0.8125rem", // canon meta
+                      color: MUTED,
                       margin: "0.25rem 0 0",
                     }}>
                       {timeAgo(group.primary.created_at, t)}
@@ -406,7 +441,7 @@ export default function NotificationsPage() {
                       width: "0.5rem",
                       height: "0.5rem",
                       borderRadius: "50%",
-                      background: "#B85C38", // Atrium ember — unread
+                      background: EMBER, // ember — unread
                       flexShrink: 0,
                       marginTop: "0.375rem",
                     }} />
@@ -418,35 +453,66 @@ export default function NotificationsPage() {
         })}
       </div>
 
+      {/* One guarded entrance + CSS-only hover + gold focus rings */}
+      <style>{`
+        .np-row, .np-pill, .np-quiet { transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; }
+        @media (hover: hover) {
+          .np-row:hover { background: rgba(154,79,42,0.07) !important; }
+          .np-pill:hover, .np-quiet:hover { border-color: ${EMBER}; color: ${EMBER}; }
+        }
+        .np-row:active { background: rgba(154,79,42,0.12) !important; }
+        .np-pill:active, .np-quiet:active { opacity: 0.8; }
+        .np-row:focus-visible, .np-pill:focus-visible, .np-quiet:focus-visible {
+          outline: 0.1875rem solid ${GOLD};
+          outline-offset: 0.1875rem;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+          .np-board { animation: np-rise 0.35s ease-out both; }
+        }
+        @keyframes np-rise { from { opacity: 0; transform: translateY(0.375rem); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) {
+          .np-board, .np-row, .np-pill, .np-quiet { animation: none !important; transition: none !important; }
+        }
+      `}</style>
+
       {tutorialOpen && typeof document !== "undefined" && createPortal(
         <>
           <style>{`
-            @keyframes nudgeCardIn { from { opacity:0; transform:translate(-50%,calc(-50% + 0.375rem)); } to { opacity:1; transform:translate(-50%,-50%); } }
-            @media (prefers-reduced-motion: reduce) { .np-anim { animation: none !important; transition: none !important; } }
+            @media (prefers-reduced-motion: no-preference) {
+              .np-tutorial-card { animation: npNudgeCardIn 0.3s ease both; }
+            }
+            @keyframes npNudgeCardIn { from { opacity:0; transform:translate(-50%,calc(-50% + 0.375rem)); } to { opacity:1; transform:translate(-50%,-50%); } }
+            @media (prefers-reduced-motion: reduce) { .np-tutorial-card { animation: none !important; } }
+            @media (hover: hover) {
+              .np-tutorial-skip:hover { color: ${INK}; }
+              .np-tutorial-cta:hover { box-shadow: ${SHADOW[2]}; }
+            }
+            .np-tutorial-skip:focus-visible, .np-tutorial-cta:focus-visible {
+              outline: 0.1875rem solid ${GOLD};
+              outline-offset: 0.1875rem;
+            }
           `}</style>
           <div
-            style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(64,59,54,0.4)", pointerEvents:"auto" }} /* Atrium warm ink scrim */
+            style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(64,59,54,0.4)", pointerEvents:"auto" }} /* warm-ink scrim */
           />
           <div
-            className="np-anim"
+            className="np-tutorial-card"
             style={{
               position:"fixed", top:"50%", left:"50%", transform:"translate(-50%,-50%)", zIndex:1001,
               width: isMobile ? "calc(100vw - 2rem)" : "22rem", maxWidth:"24rem",
               maxHeight: "calc(100dvh - 4rem)", overflowY: "auto",
-              animation: "nudgeCardIn .3s ease both",
             }}
           >
             <div style={{
-              background:"rgba(46,42,38,0.94)", /* Atrium keystone dark #2E2A26 */
-              backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)",
+              background:"#FFFFFF",
               borderRadius:"1rem", padding:"1.25rem 1.25rem 1rem",
-              border:"0.0625rem solid rgba(227,214,188,0.25)", /* Atrium hairline on dark */
-              boxShadow:"0 0.5rem 1.5rem rgba(64,59,54,0.14)", /* Atrium S2 */
+              border:`0.0625rem solid ${HAIRLINE}`,
+              boxShadow:`${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
               display:"flex", flexDirection:"column", gap:"0.75rem",
             }}>
               <div style={{
-                fontFamily:T.font.display, fontSize:"0.9375rem", fontWeight:600,
-                color:"#FCFAF5", /* Atrium cream — title on dark */ letterSpacing:"0.02em",
+                fontFamily:T.font.display, fontSize:"1.0625rem", fontWeight:600,
+                color:INK, lineHeight:1.15,
               }}>
                 {t("tutorialTitle")}
               </div>
@@ -462,11 +528,11 @@ export default function NotificationsPage() {
                   <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:"0.625rem" }}>
                     <div style={{
                       width:"0.375rem", height:"0.375rem", borderRadius:"50%", flexShrink:0, marginTop:"0.4375rem",
-                      background:"#B85C38", /* Atrium ember, solid */
-                    }} />
+                      background:EMBER,
+                    }} aria-hidden="true" />
                     <span style={{
                       fontFamily:T.font.body, fontSize:"0.8125rem",
-                      color:"rgba(252,250,245,0.88)", /* Atrium cream base */ lineHeight:1.5,
+                      color:MUTED, lineHeight:1.5,
                     }}>
                       {text}
                     </span>
@@ -474,8 +540,8 @@ export default function NotificationsPage() {
                 ))}
               </div>
               <div style={{
-                fontFamily:T.font.body, fontSize:"0.8125rem", /* Atrium meta */
-                color:"rgba(252,250,245,0.6)", fontStyle:"italic", marginTop:"0.125rem",
+                fontFamily:T.font.body, fontSize:"0.8125rem", /* canon meta */
+                color:MUTED, fontStyle:"italic", marginTop:"0.125rem",
               }}>
                 {t("tutorialFooter")}
               </div>
@@ -484,21 +550,28 @@ export default function NotificationsPage() {
               }}>
                 <button
                   onClick={closeTutorial}
+                  className="np-tutorial-skip"
                   style={{
-                    fontFamily:T.font.body, fontSize:"0.8125rem", fontWeight:500, color:"rgba(252,250,245,0.72)", /* Atrium on-dark secondary */
-                    background:"transparent", border:"none", padding:"0.4375rem 0.5rem",
-                    cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
+                    display:"inline-flex", alignItems:"center", justifyContent:"center",
+                    fontFamily:T.font.body, fontSize:"0.875rem", fontWeight:500, color:MUTED,
+                    background:"transparent", border:"none",
+                    minHeight:"2.75rem", padding:"0 0.75rem",
+                    cursor:"pointer",
                   }}
                 >
                   {t("tutorialSkip")}
                 </button>
                 <button
                   onClick={closeTutorial}
+                  className="np-tutorial-cta"
                   style={{
-                    fontFamily:T.font.body, fontSize:"0.8125rem", fontWeight:600, color:"#FCFAF5",
-                    background:"#B85C38", /* Atrium ember, solid */
-                    border:"none", borderRadius:"0.75rem", padding:"0.4375rem 1.125rem",
-                    cursor:"pointer", transition:"all .2s", letterSpacing:"0.02em",
+                    display:"inline-flex", alignItems:"center", justifyContent:"center",
+                    fontFamily:T.font.body, fontSize:"0.875rem", fontWeight:600, color:CREAM,
+                    background:EMBER,
+                    border:"none", borderRadius:"2rem",
+                    minHeight:"2.75rem", padding:"0 1.375rem",
+                    cursor:"pointer",
+                    boxShadow: SHADOW[1],
                   }}
                 >
                   {t("tutorialGotIt")}

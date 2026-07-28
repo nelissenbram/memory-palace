@@ -1,5 +1,6 @@
 {
   "common": {
+    "backToMe": "Yo",
     "somethingWentWrong": "Algo salió mal. Inténtalo de nuevo.",
     "back": "Atrás",
     "continue": "Continuar",

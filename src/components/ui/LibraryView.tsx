@@ -1765,8 +1765,11 @@ export default function LibraryView() {
           ];
           const anyActive = !!facet || !!filterType || !!q || !!filterYear;
           const roomTools = ([{ key: "writeStory" as const, label: t("writeStory") }, { key: "aiLabel" as const, label: t("aiLabel") }, { key: "addLocation" as const, label: t("addLocation") }]);
+          const bandRowStyle: React.CSSProperties = { display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "nowrap", overflowX: "auto", scrollbarWidth: "none", maskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)" };
           return (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "nowrap", overflowX: "auto", scrollbarWidth: "none", padding: isMobile ? "0 0.5rem 0.5rem" : isCompact ? "0 1.25rem 0.5rem" : "0 2.5rem 0.55rem", maskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)", WebkitMaskImage: "linear-gradient(to right, transparent 0, #000 0.75rem, #000 calc(100% - 0.75rem), transparent 100%)" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", padding: isMobile ? "0 0.5rem 0.5rem" : isCompact ? "0 1.25rem 0.5rem" : "0 2.5rem 0.55rem" }}>
+            {/* ── Row 1: filters + view controls ── */}
+            <div style={bandRowStyle}>
               {/* FILTERS — one colour, small */}
               {defs.map(d => {
                 const active = facet === d.key;
@@ -1826,7 +1829,10 @@ export default function LibraryView() {
                 })}
               </div>
 
-              {/* ACTION pills — terracotta register, each its own pill */}
+            </div>
+
+            {/* ── Row 2: ACTION pills — terracotta register ── */}
+            <div style={bandRowStyle}>
               {showDemos && (
                 <button type="button" onClick={() => { setDemosHidden(true); setShowDemos(false); syncSettingsToServer(); }} className="lib-pill" style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "0.35rem", minHeight: "1.9rem", padding: "0 0.7rem", borderRadius: "2rem", cursor: "pointer", fontFamily: T.font.body, fontSize: "0.75rem", fontWeight: 600, background: "rgba(154,79,42,0.07)", color: "#9A4F2A", border: "0.0625rem solid rgba(154,79,42,0.25)" }}>{t("demoBannerClear")}</button>
               )}
@@ -1857,6 +1863,7 @@ export default function LibraryView() {
                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#E8C255" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3v10M6 9l4 4 4-4"/><path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/></svg>
                 {t("importButton")}
               </button>
+            </div>
             </div>
           );
         })()}

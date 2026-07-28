@@ -14,6 +14,21 @@ import {
   buildGroupMessage,
   type NotificationTab,
 } from "@/lib/utils/notification-grouping";
+import {
+  INK,
+  MUTED,
+  EMBER,
+  EMBER_GLYPH,
+  HAIRLINE,
+  CREAM,
+  GOLD,
+  TRAY,
+  SHADOW,
+  TOP_HIGHLIGHT,
+} from "@/lib/libraryTokens";
+
+const EMBER_WASH = "rgba(154,79,42,0.07)";
+const UNREAD_WASH = "rgba(184,92,56,0.06)";
 
 function timeAgo(dateStr: string, t: (key: string, params?: Record<string, string>) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -28,20 +43,20 @@ function timeAgo(dateStr: string, t: (key: string, params?: Record<string, strin
 }
 
 const ICON_MAP: Record<string, string> = {
-  new_contribution: "\u270E",
-  achievement:      "\u269C",
-  family_invite:    "\u2766",
-  on_this_day:      "\u2767",
-  welcome:          "\u2727",
-  reminder:         "\u29D7",
-  system:           "\u2756",
-  kep_capture:      "\uD83D\uDCF8",
-  new_follower:     "\u2726",
-  collab_invite:    "\u2694",
-  comment_reply:    "\u270E",
-  reaction:         "\u2764",
-  palace_visit:     "\u21E8",
-  followed_published: "\u2726",
+  new_contribution: "✎",
+  achievement:      "⚜",
+  family_invite:    "❦",
+  on_this_day:      "❧",
+  welcome:          "✧",
+  reminder:         "⧗",
+  system:           "❖",
+  kep_capture:      "📸",
+  new_follower:     "✦",
+  collab_invite:    "⚔",
+  comment_reply:    "✎",
+  reaction:         "❤",
+  palace_visit:     "⇨",
+  followed_published: "✦",
 };
 
 export default function NotificationBell() {
@@ -145,16 +160,16 @@ export default function NotificationBell() {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "0.875rem 1rem 0.625rem",
-          borderBottom: `1px solid ${T.color.cream}`,
+          borderBottom: `0.0625rem solid ${HAIRLINE}`,
           flexShrink: 0,
         }}
       >
         <span
           style={{
             fontFamily: T.font.display,
-            fontSize: "0.9375rem",
+            fontSize: "1.0625rem",
             fontWeight: 600,
-            color: T.color.charcoal,
+            color: INK,
           }}
         >
           {t("title")}
@@ -163,8 +178,10 @@ export default function NotificationBell() {
               marginLeft: "0.375rem",
               fontSize: "0.6875rem",
               fontWeight: 600,
-              color: T.color.terracotta,
-              background: `${T.color.terracotta}12`,
+              fontFamily: T.font.body,
+              fontVariantNumeric: "tabular-nums",
+              color: EMBER,
+              background: "rgba(184,92,56,0.11)",
               padding: "0.0625rem 0.375rem",
               borderRadius: "0.625rem",
             }}>
@@ -175,11 +192,13 @@ export default function NotificationBell() {
         {count > 0 && (
           <button
             onClick={() => markAllRead()}
+            className="mp-bell-quiet"
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.6875rem",
-              color: T.color.terracotta,
-              background: "none",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              color: EMBER,
+              background: "transparent",
               border: "none",
               cursor: "pointer",
               padding: "0.125rem 0.375rem",
@@ -189,13 +208,6 @@ export default function NotificationBell() {
               alignItems: "center",
               justifyContent: "center",
               borderRadius: "0.375rem",
-              transition: "background .15s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.background = `${T.color.terracotta}12`;
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = "none";
             }}
           >
             {t("markAllRead")}
@@ -203,38 +215,43 @@ export default function NotificationBell() {
         )}
       </div>
 
-      {/* Mobile filter tabs */}
+      {/* Mobile filter tabs — Explore pill grammar */}
       {isMobile && (
         <div style={{
           display: "flex",
-          gap: "0.375rem",
+          gap: "0.5rem",
           padding: "0.5rem 1rem",
-          borderBottom: `1px solid ${T.color.cream}`,
+          borderBottom: `0.0625rem solid ${HAIRLINE}`,
           flexShrink: 0,
           overflowX: "auto",
         }}>
-          {(["all", "yourPalace", "following", "system"] as NotificationTab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setMobileTab(tab)}
-              style={{
-                fontFamily: T.font.body,
-                fontSize: "0.6875rem",
-                fontWeight: mobileTab === tab ? 600 : 500,
-                color: mobileTab === tab ? T.color.white : T.color.walnut,
-                background: mobileTab === tab ? T.color.terracotta : `${T.color.sandstone}20`,
-                border: "none",
-                borderRadius: "1rem",
-                padding: "0.3125rem 0.625rem",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                minHeight: "1.75rem",
-                transition: "background .15s, color .15s",
-              }}
-            >
-              {t(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}` as "tabAll")}
-            </button>
-          ))}
+          {(["all", "yourPalace", "following", "system"] as NotificationTab[]).map((tab) => {
+            const active = mobileTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setMobileTab(tab)}
+                aria-pressed={active}
+                className="mp-bell-pill"
+                style={{
+                  fontFamily: T.font.body,
+                  fontSize: "0.8125rem",
+                  fontWeight: active ? 600 : 500,
+                  color: active ? EMBER : MUTED,
+                  background: "transparent",
+                  border: `0.0625rem solid ${active ? EMBER : T.color.warmStone}`,
+                  borderRadius: "2rem",
+                  padding: "0 1rem",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  minHeight: "2.75rem",
+                  flexShrink: 0,
+                }}
+              >
+                {t(`tab${tab.charAt(0).toUpperCase() + tab.slice(1)}` as "tabAll")}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -247,7 +264,7 @@ export default function NotificationBell() {
               textAlign: "center",
               fontFamily: T.font.body,
               fontSize: "0.75rem",
-              color: T.color.muted,
+              color: MUTED,
             }}
           >
             {t("loading")}
@@ -256,14 +273,15 @@ export default function NotificationBell() {
 
         {!loading && notifications.length === 0 && (
           <div style={{ padding: "2rem 1rem", textAlign: "center" }}>
-            <div style={{ fontSize: "1.75rem", marginBottom: "0.5rem", opacity: 0.5 }}>
-              {"\u2726"}
+            <div style={{ fontSize: "1.75rem", marginBottom: "0.5rem", color: EMBER_GLYPH, opacity: 0.5 }}>
+              {"✦"}
             </div>
             <div
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.8125rem",
-                color: T.color.muted,
+                color: INK,
+                fontWeight: 500,
               }}
             >
               {t("noNew")}
@@ -272,9 +290,8 @@ export default function NotificationBell() {
               style={{
                 fontFamily: T.font.body,
                 fontSize: "0.6875rem",
-                color: T.color.muted,
+                color: MUTED,
                 marginTop: "0.25rem",
-                opacity: 0.7,
               }}
             >
               {t("emptyDesc")}
@@ -286,26 +303,19 @@ export default function NotificationBell() {
           <button
             key={group.primary.id}
             onClick={() => handleItemClick(group)}
+            className={group.primary.read ? "mp-bell-row" : "mp-bell-row mp-bell-row-unread"}
             style={{
               display: "flex",
               alignItems: "flex-start",
               gap: "0.625rem",
               width: "100%",
+              minHeight: "2.75rem",
               padding: "0.625rem 1rem",
               border: "none",
-              background: group.primary.read ? "transparent" : `${T.color.terracotta}06`,
+              background: group.primary.read ? "transparent" : UNREAD_WASH,
               cursor: "pointer",
               textAlign: "left",
-              transition: "background .15s",
-              borderLeft: group.primary.read ? "3px solid transparent" : `3px solid ${T.color.terracotta}`,
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.background = `${T.color.sandstone}18`;
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = group.primary.read
-                ? "transparent"
-                : `${T.color.terracotta}06`;
+              borderLeft: group.primary.read ? "0.1875rem solid transparent" : `0.1875rem solid ${EMBER}`,
             }}
           >
             {/* Icon */}
@@ -314,9 +324,8 @@ export default function NotificationBell() {
                 width: "2rem",
                 height: "2rem",
                 borderRadius: "0.625rem",
-                background: group.primary.read
-                  ? `${T.color.sandstone}18`
-                  : `${T.color.terracotta}12`,
+                background: group.primary.read ? TRAY : "rgba(184,92,56,0.12)",
+                color: EMBER_GLYPH,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -324,8 +333,9 @@ export default function NotificationBell() {
                 flexShrink: 0,
                 marginTop: "0.0625rem",
               }}
+              aria-hidden="true"
             >
-              {ICON_MAP[group.primary.type] || "\u2726"}
+              {ICON_MAP[group.primary.type] || "✦"}
             </div>
 
             {/* Content */}
@@ -333,9 +343,9 @@ export default function NotificationBell() {
               <div
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: "0.75rem",
+                  fontSize: "0.8125rem",
                   fontWeight: group.primary.read ? 500 : 600,
-                  color: group.primary.read ? T.color.muted : T.color.charcoal,
+                  color: group.primary.read ? MUTED : INK,
                   lineHeight: 1.4,
                 }}
               >
@@ -347,8 +357,8 @@ export default function NotificationBell() {
               <div
                 style={{
                   fontFamily: T.font.body,
-                  fontSize: "0.625rem",
-                  color: T.color.muted,
+                  fontSize: "0.6875rem",
+                  color: MUTED,
                   marginTop: "0.125rem",
                 }}
               >
@@ -363,7 +373,7 @@ export default function NotificationBell() {
                   width: "0.375rem",
                   height: "0.375rem",
                   borderRadius: "0.1875rem",
-                  background: T.color.terracotta,
+                  background: EMBER,
                   flexShrink: 0,
                   marginTop: "0.375rem",
                 }}
@@ -376,8 +386,8 @@ export default function NotificationBell() {
       {/* Footer — See all activity link */}
       {notifications.length > 0 && (
         <div style={{
-          borderTop: `1px solid ${T.color.cream}`,
-          padding: "0.5rem 1rem",
+          borderTop: `0.0625rem solid ${HAIRLINE}`,
+          padding: "0.25rem 1rem",
           textAlign: "center",
           flexShrink: 0,
         }}>
@@ -390,23 +400,21 @@ export default function NotificationBell() {
                 router.push("/palace?notifications=1");
               }
             }}
+            className="mp-bell-quiet"
             style={{
               fontFamily: T.font.body,
-              fontSize: "0.6875rem",
+              fontSize: "0.75rem",
               fontWeight: 600,
-              color: T.color.terracotta,
-              background: "none",
+              color: EMBER,
+              background: "transparent",
               border: "none",
               cursor: "pointer",
-              padding: "0.25rem 0.5rem",
+              minHeight: "2.75rem",
+              padding: "0.25rem 0.75rem",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
               borderRadius: "0.375rem",
-              transition: "background .15s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.background = `${T.color.terracotta}08`;
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = "none";
             }}
           >
             {t("seeAllActivity")}
@@ -418,6 +426,32 @@ export default function NotificationBell() {
 
   return (
     <div ref={panelRef} style={{ position: "relative", zIndex: 100 }}>
+      {/* One motion voice + hover language, all guarded */}
+      <style>{`
+        .mp-bell-btn, .mp-bell-row, .mp-bell-pill, .mp-bell-quiet { transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease, transform 0.2s ease; }
+        @media (hover: hover) {
+          .mp-bell-btn:hover { transform: scale(1.05); }
+          .mp-bell-row:hover { background: ${EMBER_WASH} !important; }
+          .mp-bell-pill:hover { border-color: ${EMBER}; color: ${EMBER}; }
+          .mp-bell-quiet:hover { background: ${EMBER_WASH}; }
+        }
+        .mp-bell-row:active { background: rgba(154,79,42,0.12) !important; }
+        .mp-bell-pill:active, .mp-bell-quiet:active { opacity: 0.8; }
+        .mp-bell-btn:focus-visible, .mp-bell-row:focus-visible, .mp-bell-pill:focus-visible, .mp-bell-quiet:focus-visible {
+          outline: 0.1875rem solid ${GOLD};
+          outline-offset: 0.1875rem;
+        }
+        .mp-bell-row:focus-visible { outline-offset: -0.1875rem; }
+        @media (prefers-reduced-motion: no-preference) {
+          .mp-bell-panel { animation: mpBellPanelIn 0.25s ease both; }
+        }
+        @keyframes mpBellPanelIn { from { opacity: 0; transform: translateY(0.375rem); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) {
+          .mp-bell-btn, .mp-bell-panel, .mp-bell-row, .mp-bell-pill, .mp-bell-quiet { animation: none !important; transition: none !important; }
+          .mp-bell-btn:hover { transform: none !important; }
+        }
+      `}</style>
+
       {/* Bell button */}
       <button
         onClick={toggle}
@@ -425,28 +459,20 @@ export default function NotificationBell() {
         aria-label={count > 0 ? t("title") + ` (${count})` : t("title")}
         aria-haspopup="true"
         aria-expanded={open}
+        className="mp-bell-btn"
         style={{
           width: isMobile ? "2.75rem" : "2.25rem",
           height: isMobile ? "2.75rem" : "2.25rem",
           borderRadius: isMobile ? "1.375rem" : "1.125rem",
-          border: `0.0625rem solid ${open ? T.color.sandstone : "#E3D6BC"}`,
-          background: open ? `${T.color.sandstone}30` : `${T.color.white}ee`,
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
+          border: `0.0625rem solid ${open ? EMBER : HAIRLINE}`,
+          background: open ? TRAY : CREAM,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
           position: "relative",
-          transition: "transform .2s, background .2s",
           boxShadow: "none",
           pointerEvents: "auto",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.transform = "scale(1.05)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.transform = "none";
         }}
       >
         {/* Bell SVG */}
@@ -459,7 +485,7 @@ export default function NotificationBell() {
         >
           <path
             d="M8 1.5C5.5 1.5 4 3.5 4 5.5V8L3 10H13L12 8V5.5C12 3.5 10.5 1.5 8 1.5Z"
-            stroke={T.color.walnut}
+            stroke={INK}
             strokeWidth="1.2"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -467,7 +493,7 @@ export default function NotificationBell() {
           />
           <path
             d="M6.5 10.5C6.5 11.3 7.2 12 8 12C8.8 12 9.5 11.3 9.5 10.5"
-            stroke={T.color.walnut}
+            stroke={INK}
             strokeWidth="1.2"
             strokeLinecap="round"
             fill="none"
@@ -492,14 +518,14 @@ export default function NotificationBell() {
                   minWidth: "1rem",
                   height: "1rem",
                   borderRadius: "0.5rem",
-                  background: T.color.terracotta,
-                  border: `0.09375rem solid ${T.color.linen}`,
+                  background: EMBER,
+                  border: `0.09375rem solid ${CREAM}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontSize: "0.5625rem",
                   fontWeight: 700,
-                  color: "#FFF",
+                  color: CREAM,
                   padding: "0 0.1875rem",
                   fontFamily: T.font.body,
                 }}
@@ -517,8 +543,8 @@ export default function NotificationBell() {
                   width: "0.5rem",
                   height: "0.5rem",
                   borderRadius: "50%",
-                  background: "#B85C38",
-                  border: `0.09375rem solid ${T.color.linen}`,
+                  background: EMBER,
+                  border: `0.09375rem solid ${CREAM}`,
                 }}
               />
             )}
@@ -535,7 +561,7 @@ export default function NotificationBell() {
             style={{
               position: "fixed",
               inset: 0,
-              background: "rgba(0,0,0,0.3)",
+              background: "rgba(64,59,54,0.4)", /* warm-ink scrim */
               zIndex: 98,
             }}
           />
@@ -544,27 +570,25 @@ export default function NotificationBell() {
             role="dialog"
             aria-modal="true"
             aria-label={t("title")}
+            className="mp-bell-panel"
             style={{
               position: "fixed",
               bottom: "calc(3.5rem + env(safe-area-inset-bottom, 0px))",
               left: 0,
               right: 0,
               maxHeight: "65dvh",
-              background: `${T.color.linen}f8`,
-              backdropFilter: "blur(16px)",
-              WebkitBackdropFilter: "blur(16px)",
+              background: "#FFFFFF",
               borderRadius: "1rem 1rem 0 0",
-              border: `1px solid ${T.color.cream}`,
+              border: `0.0625rem solid ${HAIRLINE}`,
               borderBottom: "none",
-              boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
+              boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
               overflow: "hidden",
               zIndex: 99,
-              animation: "fadeUp .25s ease",
             }}
           >
             {/* Drag handle */}
             <div style={{ display: "flex", justifyContent: "center", padding: "0.5rem 0 0.25rem" }}>
-              <div style={{ width: "2rem", height: "0.1875rem", borderRadius: "0.125rem", background: T.color.sandstone }} />
+              <div style={{ width: "2rem", height: "0.1875rem", borderRadius: "0.125rem", background: HAIRLINE }} />
             </div>
             {dropdownContent}
           </div>
@@ -577,20 +601,18 @@ export default function NotificationBell() {
         <div
           role="dialog"
           aria-label={t("title")}
+          className="mp-bell-panel"
           style={{
             position: "absolute",
             top: "2.75rem",
             right: 0,
             width: "20rem",
             maxHeight: "25rem",
-            background: `${T.color.linen}f8`,
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
+            background: "#FFFFFF",
             borderRadius: "1rem",
-            border: `1px solid ${T.color.cream}`,
-            boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)",
+            border: `0.0625rem solid ${HAIRLINE}`,
+            boxShadow: `${SHADOW[2]}, ${TOP_HIGHLIGHT}`,
             overflow: "hidden",
-            animation: "fadeUp .2s ease",
           }}
         >
           {dropdownContent}

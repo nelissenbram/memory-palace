@@ -414,7 +414,7 @@ export default function ProfilePage() {
               readOnly
               style={{
                 ...inputStyle,
-                background: T.color.warmStone,
+                background: "#F6EBE3", /* Atrium tray (read-only) */
                 color: "#716A5E" /* Atrium muted */,
                 cursor: "not-allowed",
               }}
@@ -455,7 +455,7 @@ export default function ProfilePage() {
                 marginTop: "0.625rem",
                 padding: "0.625rem 1rem",
                 borderRadius: "0.75rem",
-                background: T.color.linen,
+                background: "#FCFAF5" /* Atrium panel */,
                 border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
               }}>
                 <span style={{
@@ -526,7 +526,7 @@ export default function ProfilePage() {
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen,
+            background: "#FCFAF5" /* Atrium panel */,
             border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
@@ -566,7 +566,7 @@ export default function ProfilePage() {
                 height: "1.75rem",
                 borderRadius: "0.875rem",
                 border: "none",
-                background: isPublic ? "#56683C" /* Atrium sage */ : T.color.sandstone,
+                background: isPublic ? "#B85C38" /* Atrium ember = active */ : "#E3D6BC" /* Atrium off track */,
                 cursor: isPublicSaving ? "wait" : "pointer",
                 position: "relative",
                 transition: "background .2s",
@@ -618,7 +618,7 @@ export default function ProfilePage() {
                     padding: "0.875rem 1rem",
                     borderRadius: "0.75rem",
                     border: `0.125rem solid ${styleEra === era && !isComingSoon ? (era === "roman" ? T.era.roman.secondary : T.era.renaissance.accent) : "#E3D6BC"}`, /* Atrium hairline */
-                    background: styleEra === era && !isComingSoon ? "#F6EBE3" /* Atrium terracotta tray, pre-mixed */ : T.color.linen,
+                    background: styleEra === era && !isComingSoon ? "#F6EBE3" /* Atrium terracotta tray, pre-mixed */ : "#FCFAF5" /* Atrium panel */,
                     cursor: isComingSoon ? "default" : "pointer",
                     opacity: isComingSoon ? 0.55 : 1,
                     textAlign: "left",
@@ -649,7 +649,7 @@ export default function ProfilePage() {
               display: "flex", alignItems: "center", justifyContent: "space-between",
               gap: "0.75rem", minHeight: "2.75rem",
               padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
-              background: T.color.linen,
+              background: "#FCFAF5" /* Atrium panel */,
               border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
             }}>
               <span style={{
@@ -683,6 +683,7 @@ export default function ProfilePage() {
             disabled={!hasChanges || saving}
             style={{
               padding: "0.875rem 2rem",
+              minHeight: "2.75rem",
               borderRadius: "0.75rem",
               border: "none",
               background:
@@ -708,6 +709,7 @@ export default function ProfilePage() {
               }}
               style={{
                 padding: "0.875rem 1.5rem",
+                minHeight: "2.75rem",
                 borderRadius: "0.75rem",
                 border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                 background: "transparent",
@@ -793,7 +795,7 @@ export default function ProfilePage() {
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-            background: T.color.linen,
+            background: "#FCFAF5" /* Atrium panel */,
             border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           }}>
             <div style={{ marginRight: "1rem" }}>
@@ -827,7 +829,7 @@ export default function ProfilePage() {
                 height: "1.75rem",
                 borderRadius: "0.875rem",
                 border: "none",
-                background: aiConsent ? "#56683C" /* Atrium sage */ : T.color.sandstone,
+                background: aiConsent ? "#B85C38" /* Atrium ember = active */ : "#E3D6BC" /* Atrium off track */,
                 cursor: aiSaving ? "wait" : "pointer",
                 position: "relative",
                 transition: "background .2s",
@@ -877,7 +879,7 @@ export default function ProfilePage() {
                 padding: "0.875rem 1.5rem",
                 borderRadius: "0.75rem",
                 border: `0.125rem solid ${locale === l ? "#B85C38" : "#E3D6BC"}`, /* Atrium ember / hairline */
-                background: locale === l ? "#F6EBE3" /* terracotta tray */ : T.color.linen,
+                background: locale === l ? "#F6EBE3" /* terracotta tray */ : "#FCFAF5" /* Atrium panel */,
                 cursor: "pointer",
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
@@ -941,8 +943,8 @@ export default function ProfilePage() {
                   gap: "0.5rem",
                   padding: "1rem 0.75rem",
                   borderRadius: "0.75rem",
-                  border: isSelected ? "0.125rem solid #56683C" : "0.0625rem solid #E3D6BC", /* Atrium sage / hairline */
-                  background: isSelected ? "#EFF2E8" /* Atrium sage tray */ : T.color.linen,
+                  border: isSelected ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", /* Atrium ember / hairline */
+                  background: isSelected ? "#F6EBE3" /* Atrium terracotta tray */ : "#FCFAF5" /* Atrium panel */,
                   cursor: "pointer",
                   transition: "all .2s",
                   position: "relative",
@@ -952,7 +954,7 @@ export default function ProfilePage() {
                   <span style={{
                     position: "absolute", top: "0.5rem", right: "0.5rem",
                     width: "1.25rem", height: "1.25rem", borderRadius: "50%",
-                    background: "#56683C" /* Atrium sage */, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: "#B85C38" /* Atrium ember */, display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke={T.color.white} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M2.5 6l2.5 2.5 4.5-5" />
@@ -1001,7 +1003,7 @@ export default function ProfilePage() {
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           padding: "1.125rem 1.25rem", borderRadius: "0.75rem",
-          background: T.color.linen,
+          background: "#FCFAF5" /* Atrium panel */,
           border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           marginBottom: daylightEnabled ? "0.75rem" : 0,
         }}>
@@ -1028,7 +1030,7 @@ export default function ProfilePage() {
               height: "1.75rem",
               borderRadius: "0.875rem",
               border: "none",
-              background: daylightEnabled ? "#56683C" /* Atrium sage — matches other switches */ : T.color.sandstone,
+              background: daylightEnabled ? "#B85C38" /* Atrium ember = active — matches other switches */ : "#E3D6BC" /* Atrium off track */,
               cursor: "pointer",
               position: "relative",
               transition: "background .2s",
@@ -1074,7 +1076,7 @@ export default function ProfilePage() {
                       padding: "0.25rem 0.75rem",
                       borderRadius: "0.5rem",
                       border: `0.0625rem solid ${isAuto ? "rgba(154,79,42,0.35)" : "#E3D6BC"}`, /* Atrium terracotta / hairline */
-                      background: isAuto ? "#F6EBE3" : T.color.linen,
+                      background: isAuto ? "#F6EBE3" : "#FCFAF5" /* Atrium panel */,
                       cursor: "pointer",
                       fontFamily: T.font.body,
                       fontSize: "0.8125rem",

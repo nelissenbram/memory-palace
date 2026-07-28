@@ -265,11 +265,11 @@ function ConnectionsContent() {
 
             return (
               <div key={provider.id} style={{
-                background: T.color.white,
+                background: "#FFFFFF",
                 borderRadius: "1rem",
                 border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
                 padding: isMobile ? "1rem" : "1.25rem 1.5rem",
-                boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", // Atrium token: S1
+                boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", // Atrium token: S1 + top highlight
                 transition: "all .2s ease",
                 ...(isComingSoon ? { opacity: 0.5, cursor: "not-allowed", pointerEvents: "none" as const } : {}),
               }}>
@@ -279,7 +279,7 @@ function ConnectionsContent() {
                     width: "3.25rem", height: "3.25rem", borderRadius: "0.85rem", flexShrink: 0,
                     background: isConnected
                       ? `${provider.accentColor}12`
-                      : T.color.warmStone,
+                      : "#F6EBE3", // Atrium token: recessed tray
                     display: "flex", alignItems: "center", justifyContent: "center",
                     border: isConnected ? `0.125rem solid ${provider.accentColor}25` : "none",
                   }}>
@@ -310,7 +310,7 @@ function ConnectionsContent() {
                         <span style={{
                           display: "inline-flex", alignItems: "center",
                           padding: "0.1875rem 0.625rem", borderRadius: "2rem",
-                          background: "#F2EDE4", // Atrium: pre-mixed linen, no alpha band
+                          background: "#F6EBE3", // Atrium token: recessed tray
                           color: "#716A5E",
                           fontFamily: T.font.body, fontSize: "0.6875rem", fontWeight: 500,
                           fontStyle: "italic",
@@ -351,6 +351,7 @@ function ConnectionsContent() {
                       <button
                         onClick={() => setConfirmDisconnect(provider.id)}
                         disabled={disconnecting === provider.id}
+                        className="conn-danger"
                         style={{
                           padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
                           border: `0.0625rem solid #A63D3D33`,
@@ -366,6 +367,7 @@ function ConnectionsContent() {
                     ) : (
                       <a
                         href={provider.connectUrl}
+                        className="conn-primary"
                         style={{
                           display: "inline-flex", alignItems: "center", justifyContent: "center",
                           padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
@@ -406,7 +408,7 @@ function ConnectionsContent() {
       {/* Apple Photos note */}
       <div style={{
         marginTop: "1rem", padding: "1rem 1.25rem", borderRadius: "0.75rem",
-        background: T.color.warmStone,
+        background: "#F6EBE3", // Atrium token: recessed tray
         border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
         display: "flex", alignItems: "center", gap: "0.875rem",
       }}>
@@ -437,6 +439,12 @@ function ConnectionsContent() {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
         @media (prefers-reduced-motion: reduce) { .conn-fade { animation: none !important; } .conn-page * { transition: none !important; } }
+        @media (hover: hover) {
+          .conn-primary:hover { box-shadow: 0 0.25rem 1rem rgba(64,59,54,0.14); }
+          .conn-secondary:hover { background: rgba(154,79,42,0.07) !important; }
+          .conn-danger:hover:not(:disabled) { background: rgba(166,61,61,0.12) !important; }
+        }
+        .conn-secondary:active { background: rgba(154,79,42,0.12) !important; }
         .conn-page a:focus-visible, .conn-page button:focus-visible { outline: 0.1875rem solid #D4AF37; outline-offset: 0.1875rem; }
       `}</style>
     </div>
@@ -497,12 +505,12 @@ function ConfirmModal({
       style={{
         position: "fixed", inset: 0, zIndex: 200,
         display: "flex", alignItems: "center", justifyContent: "center",
-        background: "rgba(64,59,54,0.35)", backdropFilter: "blur(0.125rem)", // Atrium token: warm ink scrim
+        background: "rgba(64,59,54,0.35)", // Atrium token: warm ink scrim
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onCancel(); }}
     >
       <div className="conn-fade" style={{
-        background: T.color.linen, borderRadius: "1rem",
+        background: "#FCFAF5", borderRadius: "1rem", // Atrium token: cream
         padding: "1.75rem 2rem", maxWidth: "26rem", width: "90%",
         boxShadow: "0 0.5rem 1.5rem rgba(64,59,54,0.14)", // Atrium token: S2
         border: "0.0625rem solid #E3D6BC", // Atrium token: hairline
@@ -521,7 +529,7 @@ function ConfirmModal({
           {body}
         </p>
         <div style={{ display: "flex", gap: "0.625rem", justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{
+          <button onClick={onCancel} className="conn-secondary" style={{
             padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
             border: "0.0625rem solid #E3D6BC", background: "transparent", // Atrium token: hairline
             fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 500,
@@ -530,7 +538,7 @@ function ConfirmModal({
           }}>
             {cancelLabel}
           </button>
-          <button ref={confirmBtnRef} onClick={onConfirm} style={{
+          <button ref={confirmBtnRef} onClick={onConfirm} className="conn-danger" style={{
             padding: "0.625rem 1.25rem", borderRadius: "0.75rem",
             border: "0.0625rem solid #A63D3D33",
             background: "#A63D3D10",

@@ -327,7 +327,7 @@ export default function FamilyPage() {
         background: T.color.white,
         borderRadius: "1rem",
         border: isExpanded ? "0.125rem solid #B85C38" : "0.0625rem solid #E3D6BC", /* Atrium: ember active / hairline */
-        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium token S1 + top highlight */
         marginBottom: "1rem",
         overflow: "hidden",
         transition: "border-color .2s",
@@ -350,8 +350,10 @@ export default function FamilyPage() {
             <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0 }}>
               <button
                 onClick={() => setShowDeleteConfirm(null)}
+                className="mp-fam-quiet"
                 style={{
                   padding: "0.5rem 1rem",
+                  minHeight: "2.75rem",
                   borderRadius: "0.75rem",
                   border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                   background: T.color.white,
@@ -370,6 +372,7 @@ export default function FamilyPage() {
                 disabled={deletingGroupId === grp.id}
                 style={{
                   padding: "0.5rem 1rem",
+                  minHeight: "2.75rem",
                   borderRadius: "0.75rem",
                   border: "none",
                   background: deletingGroupId === grp.id ? `${T.color.error}60` : T.color.error,
@@ -392,7 +395,7 @@ export default function FamilyPage() {
         {isEditing && (
           <div style={{
             padding: "1rem 1.5rem",
-            background: T.color.linen,
+            background: "#FCFAF5", /* Atrium token: cream */
             borderBottom: "0.0625rem solid #E3D6BC", /* Atrium hairline */
             display: "flex", alignItems: "center", gap: "0.625rem",
           }}>
@@ -414,10 +417,11 @@ export default function FamilyPage() {
               disabled={!editGroupName.trim() || renamingSaving}
               style={{
                 padding: "0.625rem 1.25rem",
+                minHeight: "2.75rem",
                 borderRadius: "0.75rem",
                 border: "none",
                 background: !editGroupName.trim() || renamingSaving
-                  ? `${T.color.sandstone}60`
+                  ? "#EEE9DF" /* Atrium disabled */
                   : "#B85C38", /* Atrium token: ember (active) */
                 color: !editGroupName.trim() || renamingSaving ? "#716A5E" : "#FFF",
                 fontFamily: T.font.body,
@@ -432,8 +436,10 @@ export default function FamilyPage() {
             </button>
             <button
               onClick={() => { setEditingGroupId(null); setEditGroupName(""); }}
+              className="mp-fam-quiet"
               style={{
                 padding: "0.625rem 1rem",
+                minHeight: "2.75rem",
                 borderRadius: "0.75rem",
                 border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                 background: "transparent",
@@ -597,6 +603,7 @@ export default function FamilyPage() {
                   }}
                   style={{
                     padding: "0.75rem 1.75rem",
+                    minHeight: "2.75rem",
                     borderRadius: "0.75rem",
                     border: "none",
                     background: "linear-gradient(135deg, #B85C38, #9A4F2A)", /* Atrium ember register */
@@ -617,7 +624,7 @@ export default function FamilyPage() {
             {canManage && (
               <div style={{
                 padding: "1.25rem 1.375rem",
-                background: T.color.linen,
+                background: "#FCFAF5", /* Atrium token: cream */
                 borderRadius: "0.875rem",
                 border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                 marginBottom: "1.25rem",
@@ -645,10 +652,11 @@ export default function FamilyPage() {
                     disabled={!inviteEmail.trim() || !inviteEmail.includes("@") || inviting}
                     style={{
                       padding: "0.875rem 1.5rem",
+                      minHeight: "2.75rem",
                       borderRadius: "0.75rem",
                       border: "none",
                       background: !inviteEmail.trim() || inviting
-                        ? `${T.color.sandstone}60`
+                        ? "#EEE9DF" /* Atrium disabled */
                         : "#B85C38", /* Atrium token: ember (active) */
                       color: !inviteEmail.trim() || inviting ? "#716A5E" : "#FFF",
                       fontFamily: T.font.body,
@@ -699,8 +707,10 @@ export default function FamilyPage() {
 
                 <button
                   onClick={() => handleCopyInviteLink(grp.id)}
+                  className="mp-fam-quiet"
                   style={{
                     padding: "0.5rem 1rem",
+                    minHeight: "2.75rem",
                     borderRadius: "0.75rem",
                     border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                     background: T.color.white,
@@ -770,6 +780,7 @@ export default function FamilyPage() {
                             disabled={resendingId === member.id}
                             style={{
                               padding: "0.375rem 0.75rem",
+                              minHeight: "2.75rem",
                               borderRadius: "0.75rem",
                               border: `0.0625rem solid ${"#9A4F2A"}30`,
                               background: T.color.white,
@@ -797,7 +808,7 @@ export default function FamilyPage() {
                               cursor: "pointer",
                               display: "flex", alignItems: "center", justifyContent: "center",
                               transition: "all .2s ease",
-                              minWidth: "2.5rem", minHeight: "2.5rem",
+                              minWidth: "2.75rem", minHeight: "2.75rem",
                             }}
                           >
                             {"\u2715"}
@@ -817,7 +828,7 @@ export default function FamilyPage() {
                 fontFamily: T.font.body, fontSize: "0.8125rem", color: "#716A5E",
                 margin: "0 0 1rem", lineHeight: 1.5, fontStyle: "italic",
                 padding: "1rem 1.25rem",
-                background: T.color.linen,
+                background: "#FCFAF5", /* Atrium token: cream */
                 borderRadius: "0.75rem",
                 border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
               }}>
@@ -829,7 +840,7 @@ export default function FamilyPage() {
                 <div key={member.id} role="listitem" style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "0.875rem 1.125rem", borderRadius: "0.75rem",
-                  background: T.color.linen,
+                  background: "#FCFAF5", /* Atrium token: cream */
                   border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -1052,7 +1063,7 @@ export default function FamilyPage() {
             borderRadius: "1rem",
             border: `0.125rem solid ${"#9A4F2A"}30`,
             padding: "1.75rem 2rem",
-            boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
+            boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium token S1 + top highlight */
             marginBottom: "1rem",
           }}>
             <h3 style={{
@@ -1072,9 +1083,10 @@ export default function FamilyPage() {
               disabled={saving}
               style={{
                 padding: "0.875rem 2rem",
+                minHeight: "2.75rem",
                 borderRadius: "0.75rem",
                 border: "none",
-                background: saving ? `${T.color.sandstone}60` : `linear-gradient(135deg, #B85C38, #9A4F2A)`,
+                background: saving ? "#EEE9DF" /* Atrium disabled */ : `linear-gradient(135deg, #B85C38, #9A4F2A)`,
                 color: saving ? "#716A5E" : "#FFF",
                 fontFamily: T.font.body,
                 fontSize: "0.9375rem",
@@ -1106,7 +1118,7 @@ export default function FamilyPage() {
           borderRadius: "1rem",
           border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           padding: "1.75rem 2rem",
-          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
+          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium token S1 + top highlight */
           marginBottom: "1.5rem",
         }}>
           <h3 style={{
@@ -1142,10 +1154,11 @@ export default function FamilyPage() {
               disabled={!groupName.trim() || saving}
               style={{
                 padding: "0.875rem 2rem",
+                minHeight: "2.75rem",
                 borderRadius: "0.75rem",
                 border: "none",
                 background: !groupName.trim() || saving
-                  ? `${T.color.sandstone}60`
+                  ? "#EEE9DF" /* Atrium disabled */
                   : `linear-gradient(135deg, #B85C38, #9A4F2A)`,
                 color: !groupName.trim() || saving ? "#716A5E" : "#FFF",
                 fontFamily: T.font.body,
@@ -1160,8 +1173,10 @@ export default function FamilyPage() {
             {hasGroups && (
               <button
                 onClick={() => { setShowCreateForm(false); setGroupName(""); }}
+                className="mp-fam-quiet"
                 style={{
                   padding: "0.875rem 1.5rem",
+                  minHeight: "2.75rem",
                   borderRadius: "0.75rem",
                   border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
                   background: "transparent",
@@ -1196,6 +1211,7 @@ export default function FamilyPage() {
                 onClick={() => setShowCreateForm(true)}
                 style={{
                   padding: "0.5rem 1rem",
+                  minHeight: "2.75rem",
                   borderRadius: "0.75rem",
                   border: `0.09375rem solid ${"#9A4F2A"}40`,
                   background: `${"#9A4F2A"}08`,
@@ -1271,7 +1287,7 @@ export default function FamilyPage() {
               borderRadius: "1rem",
               border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
               padding: "1.25rem 1.5rem",
-              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07)", /* Atrium token S1 */
+              boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)", /* Atrium token S1 + top highlight */
               marginBottom: "1.5rem",
               display: "flex", alignItems: "center", gap: "1rem",
               minHeight: "2.75rem",
@@ -1307,7 +1323,7 @@ export default function FamilyPage() {
           {/* Info footer */}
           <div style={{
             padding: "1rem 1.25rem",
-            background: T.color.linen, /* pre-mixed opaque, ≈ warmStone@50% on cream */
+            background: "#F6EBE3", /* Atrium token: recessed tray */
             borderRadius: "0.75rem",
             border: "0.0625rem solid #E3D6BC", /* Atrium hairline */
           }}>
@@ -1330,6 +1346,14 @@ export default function FamilyPage() {
       <style>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-0.5rem); } to { opacity: 1; transform: translateY(0); } }
         @media (prefers-reduced-motion: reduce) { [role="status"], [role="alert"] { animation: none; } }
+        @media (hover: hover) {
+          .mp-fam-quiet:hover { background: rgba(154,79,42,0.07) !important; }
+        }
+        .mp-fam-quiet:active { background: rgba(154,79,42,0.12) !important; }
+        .mp-fam-quiet:focus-visible {
+          outline: 0.1875rem solid #D4AF37; /* Atrium token: gold focus ring */
+          outline-offset: 0.1875rem;
+        }
         ${settingsFocusStyle}
       `}</style>
     </div>

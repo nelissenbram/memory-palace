@@ -15,7 +15,6 @@ import CancelFlow from "@/components/ui/CancelFlow";
 import InviteFlow from "@/components/social/InviteFlow";
 
 const F = T.font;
-const C = T.color;
 
 interface SubscriptionData {
   plan: PlanId;
@@ -293,7 +292,7 @@ export default function SubscriptionPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: "3rem", textAlign: "center", fontFamily: F.body, fontSize: "1rem", color: C.muted }}>
+      <div style={{ padding: "3rem", textAlign: "center", fontFamily: F.body, fontSize: "1rem", color: "#716A5E" }}>
         {t("loading")}
       </div>
     );
@@ -310,16 +309,16 @@ export default function SubscriptionPage() {
   const hasStripeAccount = !!sub?.stripe_customer_id;
 
   const statusLabel: Record<string, { text: string; color: string }> = {
-    active: { text: t("statusActive"), color: C.sage },
-    trialing: { text: t("statusTrialing"), color: C.terracotta },
-    past_due: { text: t("statusPastDue"), color: C.error },
-    canceled: { text: t("statusCanceled"), color: C.muted },
+    active: { text: t("statusActive"), color: "#56683C" },
+    trialing: { text: t("statusTrialing"), color: "#B85C38" },
+    past_due: { text: t("statusPastDue"), color: "#C05050" },
+    canceled: { text: t("statusCanceled"), color: "#716A5E" },
   };
 
   const currentStatus = statusLabel[sub?.status || "active"] || statusLabel.active;
 
   return (
-    <div>
+    <div className="mp-sub-page">
       {/* Toast */}
       {toast && (
         <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />
@@ -341,12 +340,12 @@ export default function SubscriptionPage() {
         <div style={{ marginBottom: "2rem" }}>
           <h2 style={{
             fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500,
-            color: C.charcoal, margin: "0 0 0.5rem",
+            color: "#403B36", margin: "0 0 0.5rem",
           }}>
             {t("title")}
           </h2>
           <p style={{
-            fontFamily: F.body, fontSize: "0.9375rem", color: C.muted,
+            fontFamily: F.body, fontSize: "0.9375rem", color: "#716A5E",
             margin: 0, lineHeight: 1.5,
           }}>
             {t("description")}
@@ -356,11 +355,11 @@ export default function SubscriptionPage() {
 
       {/* Current Plan Card */}
       <div style={{
-        background: C.white,
+        background: "#FFFFFF",
         borderRadius: "1rem",
-        border: `1px solid ${C.cream}`,
+        border: "0.0625rem solid #E3D6BC",
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(64,59,54,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
         marginBottom: "1.5rem",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
@@ -368,7 +367,7 @@ export default function SubscriptionPage() {
             <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.375rem" }}>
               <h3 style={{
                 fontFamily: F.display, fontSize: "1.5rem", fontWeight: 500,
-                color: C.charcoal, margin: 0,
+                color: "#403B36", margin: 0,
               }}>
                 {t("plan", { name: tp(currentPlan.nameKey) })}
               </h3>
@@ -380,25 +379,25 @@ export default function SubscriptionPage() {
                 fontFamily: F.body,
                 fontSize: "0.75rem",
                 fontWeight: 600,
-                letterSpacing: "0.3px",
+                letterSpacing: "0.02em",
               }}>
                 {currentStatus.text}
               </span>
             </div>
-            <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: C.muted, margin: 0 }}>
+            <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: "#716A5E", margin: 0 }}>
               {sub?.plan === "free" ? t("taglineFree") : sub?.plan === "keeper" ? t("taglineKeeper") : t("taglineGuardian")}
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
             {currentPlan.price > 0 ? (
               <>
-                <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: C.charcoal }}>
+                <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: "#403B36" }}>
                   {formatPrice(convertPrice(interval === "monthly" ? currentPlan.monthlyPrice : currentPlan.price, currency), currency)}
                 </div>
-                <div style={{ fontSize: "0.8125rem", color: C.muted }}>{t("perMonth")}</div>
+                <div style={{ fontSize: "0.8125rem", color: "#716A5E" }}>{t("perMonth")}</div>
               </>
             ) : (
-              <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: C.charcoal }}>
+              <div style={{ fontFamily: F.display, fontSize: "1.75rem", fontWeight: 500, color: "#403B36" }}>
                 {t("free")}
               </div>
             )}
@@ -407,9 +406,9 @@ export default function SubscriptionPage() {
 
         {/* Period end */}
         {sub?.current_period_end && (
-          <p style={{ fontFamily: F.body, fontSize: "0.8125rem", color: C.muted, marginBottom: "1rem" }}>
+          <p style={{ fontFamily: F.body, fontSize: "0.8125rem", color: "#716A5E", marginBottom: "1rem" }}>
             {sub.status === "trialing" ? t("trialEnds") : t("nextBilling")}:{" "}
-            <strong style={{ color: C.charcoal }}>
+            <strong style={{ color: "#403B36" }}>
               {new Date(sub.current_period_end).toLocaleDateString(localeDateCodes[locale as Locale], {
                 day: "numeric",
                 month: "long",
@@ -428,13 +427,15 @@ export default function SubscriptionPage() {
                 <button
                   onClick={handleManageBilling}
                   disabled={portalLoading}
+                  className="mp-sub-secondary"
                   style={{
+                    minHeight: "2.75rem",
                     padding: "0.75rem 1.5rem",
                     borderRadius: "0.75rem",
-                    border: `1px solid ${C.cream}`,
-                    background: C.white,
+                    border: "0.0625rem solid #E3D6BC",
+                    background: "transparent",
                     fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                    color: C.charcoal,
+                    color: "#716A5E",
                     cursor: portalLoading ? "wait" : "pointer",
                     transition: "all .15s",
                   }}
@@ -443,13 +444,15 @@ export default function SubscriptionPage() {
                 </button>
                 <button
                   onClick={() => setShowCancelFlow(true)}
+                  className="mp-sub-secondary"
                   style={{
+                    minHeight: "2.75rem",
                     padding: "0.75rem 1.5rem",
                     borderRadius: "0.75rem",
-                    border: `1px solid ${C.cream}`,
+                    border: "0.0625rem solid #E3D6BC",
                     background: "none",
                     fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
-                    color: C.muted,
+                    color: "#716A5E",
                     cursor: "pointer",
                     transition: "all .15s",
                   }}
@@ -460,18 +463,19 @@ export default function SubscriptionPage() {
             )}
             {isPaid && isApple && (
               <>
-                <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: C.muted, margin: 0 }}>
+                <p style={{ fontFamily: F.body, fontSize: "0.875rem", color: "#716A5E", margin: 0 }}>
                   {t("manageInSettings") || "Manage or cancel your subscription through the App Store."}
                 </p>
                 <button
                   onClick={() => { manageSubscriptions(); }}
                   style={{
+                    minHeight: "2.75rem",
                     padding: "0.75rem 1.5rem",
                     borderRadius: "0.75rem",
                     border: "none",
-                    background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                    background: "linear-gradient(135deg, #B85C38, #9A4F2A)",
                     fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                    color: C.white,
+                    color: "#FCFAF5",
                     cursor: "pointer",
                     transition: "all .15s",
                   }}
@@ -481,13 +485,15 @@ export default function SubscriptionPage() {
                 <button
                   onClick={handleRestore}
                   disabled={portalLoading}
+                  className="mp-sub-secondary"
                   style={{
+                    minHeight: "2.75rem",
                     padding: "0.75rem 1.5rem",
                     borderRadius: "0.75rem",
-                    border: `1px solid ${C.cream}`,
-                    background: C.white,
+                    border: "0.0625rem solid #E3D6BC",
+                    background: "transparent",
                     fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
-                    color: C.muted,
+                    color: "#716A5E",
                     cursor: portalLoading ? "wait" : "pointer",
                     transition: "all .15s",
                   }}
@@ -505,12 +511,13 @@ export default function SubscriptionPage() {
                   onClick={() => handleUpgrade("keeper")}
                   disabled={!!upgradeLoading}
                   style={{
+                    minHeight: "2.75rem",
                     padding: "0.75rem 1.5rem",
                     borderRadius: "0.75rem",
                     border: "none",
-                    background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                    background: upgradeLoading ? "#EEE9DF" : "linear-gradient(135deg, #B85C38, #9A4F2A)",
                     fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                    color: upgradeLoading ? C.muted : C.white,
+                    color: upgradeLoading ? "#716A5E" : "#FCFAF5",
                     cursor: upgradeLoading ? "wait" : "pointer",
                     transition: "all .15s",
                   }}
@@ -526,13 +533,15 @@ export default function SubscriptionPage() {
                   <button
                     onClick={handleManageBilling}
                     disabled={portalLoading}
+                    className="mp-sub-secondary"
                     style={{
+                      minHeight: "2.75rem",
                       padding: "0.75rem 1.5rem",
                       borderRadius: "0.75rem",
-                      border: `1px solid ${C.cream}`,
-                      background: C.white,
+                      border: "0.0625rem solid #E3D6BC",
+                      background: "transparent",
                       fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
-                      color: C.muted,
+                      color: "#716A5E",
                       cursor: portalLoading ? "wait" : "pointer",
                       transition: "all .15s",
                     }}
@@ -544,13 +553,15 @@ export default function SubscriptionPage() {
                   <button
                     onClick={handleRestore}
                     disabled={portalLoading}
+                    className="mp-sub-secondary"
                     style={{
+                      minHeight: "2.75rem",
                       padding: "0.75rem 1.5rem",
                       borderRadius: "0.75rem",
-                      border: `1px solid ${C.cream}`,
-                      background: C.white,
+                      border: "0.0625rem solid #E3D6BC",
+                      background: "transparent",
                       fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 500,
-                      color: C.muted,
+                      color: "#716A5E",
                       cursor: portalLoading ? "wait" : "pointer",
                       transition: "all .15s",
                     }}
@@ -567,12 +578,13 @@ export default function SubscriptionPage() {
                 onClick={() => handleUpgrade("guardian")}
                 disabled={!!upgradeLoading}
                 style={{
+                  minHeight: "2.75rem",
                   padding: "0.75rem 1.5rem",
                   borderRadius: "0.75rem",
                   border: "none",
-                  background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                  background: upgradeLoading ? "#EEE9DF" : "linear-gradient(135deg, #B85C38, #9A4F2A)",
                   fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: upgradeLoading ? C.muted : C.white,
+                  color: upgradeLoading ? "#716A5E" : "#FCFAF5",
                   cursor: upgradeLoading ? "wait" : "pointer",
                   transition: "all .15s",
                 }}
@@ -590,7 +602,7 @@ export default function SubscriptionPage() {
         {/* On iOS the app is free-tier only — state it plainly so the free
             state reads as intentional (Apple Guideline 3.1.1). */}
         {isApple && (
-          <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.875rem" : "0.8125rem", color: C.muted, lineHeight: 1.6, margin: "0.5rem 0 0" }}>
+          <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.875rem" : "0.8125rem", color: "#716A5E", lineHeight: 1.6, margin: "0.5rem 0 0" }}>
             {t("iosFreeNote") !== "iosFreeNote" ? t("iosFreeNote") : "The Memory Palace is free to use on iPhone and iPad, with all core features included."}
           </p>
         )}
@@ -599,16 +611,16 @@ export default function SubscriptionPage() {
             the auto-renew notice (an IAP-only requirement) is omitted; the
             terms/privacy links stay. */}
         {(isFree || sub?.plan === "keeper") && (
-          <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: `1px solid ${C.cream}` }}>
+          <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: "0.0625rem solid #E3D6BC" }}>
             {isApple && IAP_ENABLED && (
-              <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: C.muted, lineHeight: 1.6, margin: "0 0 0.5rem" }}>
+              <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#716A5E", lineHeight: 1.6, margin: "0 0 0.5rem" }}>
                 {t("autoRenewNotice")}
               </p>
             )}
-            <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: C.muted, margin: 0 }}>
-              <a href="/terms" style={{ color: C.terracotta, textDecoration: "none" }}>{t("disclosureTerms")}</a>
+            <p style={{ fontFamily: F.body, fontSize: isMobile ? "0.8125rem" : "0.75rem", color: "#716A5E", margin: 0 }}>
+              <a href="/terms" style={{ color: "#B85C38", textDecoration: "none" }}>{t("disclosureTerms")}</a>
               {"  ·  "}
-              <a href="/privacy" style={{ color: C.terracotta, textDecoration: "none" }}>{t("disclosurePrivacy")}</a>
+              <a href="/privacy" style={{ color: "#B85C38", textDecoration: "none" }}>{t("disclosurePrivacy")}</a>
             </p>
           </div>
         )}
@@ -616,16 +628,16 @@ export default function SubscriptionPage() {
 
       {/* Usage Stats */}
       <div style={{
-        background: C.white,
+        background: "#FFFFFF",
         borderRadius: "1rem",
-        border: `1px solid ${C.cream}`,
+        border: "0.0625rem solid #E3D6BC",
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(64,59,54,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
         marginBottom: "1.5rem",
       }}>
         <h3 style={{
           fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
-          color: C.charcoal, margin: "0 0 1.25rem",
+          color: "#403B36", margin: "0 0 1.25rem",
         }}>
           {t("yourUsage")}
         </h3>
@@ -638,12 +650,12 @@ export default function SubscriptionPage() {
                 display: "flex", justifyContent: "space-between",
                 marginBottom: "0.375rem",
               }}>
-                <span style={{ fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500, color: C.charcoal }}>
+                <span style={{ fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500, color: "#403B36" }}>
                   {t("storageUsed")}
                 </span>
                 <span style={{
                   fontFamily: F.body, fontSize: "0.8125rem",
-                  color: !limits.storageMb || limits.storageMb === -1 ? C.muted : (usage.storageMb / limits.storageMb > 0.8 ? C.terracotta : C.muted),
+                  color: !limits.storageMb || limits.storageMb === -1 ? "#716A5E" : (usage.storageMb / limits.storageMb > 0.8 ? "#B85C38" : "#716A5E"),
                   fontWeight: !limits.storageMb || limits.storageMb === -1 ? 500 : (usage.storageMb / limits.storageMb > 0.8 ? 600 : 500),
                 }}>
                   {usage.storageMb >= 1024
@@ -669,17 +681,17 @@ export default function SubscriptionPage() {
                 style={{
                   height: "0.375rem",
                   borderRadius: 3,
-                  background: `${C.sandstone}30`,
+                  background: "#F6EBE3",
                   overflow: "hidden",
                 }}
               >
-                <div style={{
+                <div className="mp-sub-progress" style={{
                   height: "100%",
                   borderRadius: 3,
                   width: limits.storageMb === -1 ? "0%" : `${Math.min(100, limits.storageMb > 0 ? (usage.storageMb / limits.storageMb) * 100 : 0)}%`,
                   background: limits.storageMb !== -1 && usage.storageMb / limits.storageMb > 0.8
-                    ? `linear-gradient(90deg, ${C.terracotta}, ${C.error})`
-                    : `linear-gradient(90deg, ${C.sage}, ${C.sage}cc)`,
+                    ? "linear-gradient(90deg, #B85C38, #C05050)"
+                    : "linear-gradient(90deg, #56683C, rgba(86,104,60,0.8))",
                   transition: "width 0.5s ease",
                 }} />
               </div>
@@ -694,17 +706,17 @@ export default function SubscriptionPage() {
             marginTop: "1.25rem",
             padding: "1rem 1.25rem",
             borderRadius: "0.75rem",
-            background: `${C.terracotta}08`,
-            border: `1px solid ${C.terracotta}20`,
+            background: "rgba(154,79,42,0.07)",
+            border: "0.0625rem solid rgba(154,79,42,0.12)",
           }}>
             <p style={{
-              fontFamily: F.body, fontSize: "0.875rem", color: C.charcoal,
+              fontFamily: F.body, fontSize: "0.875rem", color: "#403B36",
               margin: 0, lineHeight: 1.5,
             }}>
               {t("nearLimitWarning")}{" "}
               <button onClick={() => handleUpgrade("keeper")} disabled={!!upgradeLoading} style={{
                 background: "none", border: "none", padding: 0,
-                color: upgradeLoading ? C.muted : C.terracotta, fontWeight: 600, textDecoration: "underline",
+                color: upgradeLoading ? "#716A5E" : "#B85C38", fontWeight: 600, textDecoration: "underline",
                 fontFamily: F.body, fontSize: "0.875rem", cursor: upgradeLoading ? "wait" : "pointer",
               }}>
                 {upgradeLoading === "keeper" ? t("upgrading") : t("upgradeToKeeper")}
@@ -722,20 +734,20 @@ export default function SubscriptionPage() {
           iOS IAP is re-enabled, revisit to show plans with working IAP buttons. */}
       {!nativeApp && (
       <div style={{
-        background: C.white,
+        background: "#FFFFFF",
         borderRadius: "1rem",
-        border: `1px solid ${C.cream}`,
+        border: "0.0625rem solid #E3D6BC",
         padding: "1.75rem 2rem",
-        boxShadow: "0 2px 8px rgba(64,59,54,.04)",
+        boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
       }}>
         <h3 style={{
           fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
-          color: C.charcoal, margin: "0 0 0.375rem",
+          color: "#403B36", margin: "0 0 0.375rem",
         }}>
           {t("allPlans")}
         </h3>
         <p style={{
-          fontFamily: F.body, fontSize: "0.875rem", color: C.muted,
+          fontFamily: F.body, fontSize: "0.875rem", color: "#716A5E",
           margin: "0 0 1.25rem", lineHeight: 1.5,
         }}>
           {t("comparePlans")}
@@ -753,24 +765,25 @@ export default function SubscriptionPage() {
           <div
             style={{
               display: "inline-flex",
-              borderRadius: 12,
-              background: `${C.warmStone}`,
-              padding: 4,
+              borderRadius: "0.75rem",
+              background: "#F6EBE3",
+              padding: "0.25rem",
               gap: 0,
             }}
           >
             <button
               onClick={() => setInterval("monthly")}
               style={{
-                padding: "10px 24px",
-                borderRadius: 10,
+                minHeight: "2.75rem",
+                padding: "0.625rem 1.5rem",
+                borderRadius: "0.625rem",
                 border: "none",
                 background: interval === "monthly"
-                  ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
+                  ? "linear-gradient(135deg, #B85C38, #9A4F2A)"
                   : "transparent",
-                color: interval === "monthly" ? C.white : C.walnut,
+                color: interval === "monthly" ? "#FCFAF5" : "#716A5E",
                 fontFamily: F.body,
-                fontSize: 14,
+                fontSize: "0.875rem",
                 fontWeight: 600,
                 cursor: "pointer",
                 transition: "all 0.2s",
@@ -781,34 +794,35 @@ export default function SubscriptionPage() {
             <button
               onClick={() => setInterval("annual")}
               style={{
-                padding: "10px 24px",
-                borderRadius: 10,
+                minHeight: "2.75rem",
+                padding: "0.625rem 1.5rem",
+                borderRadius: "0.625rem",
                 border: "none",
                 background: interval === "annual"
-                  ? `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`
+                  ? "linear-gradient(135deg, #B85C38, #9A4F2A)"
                   : "transparent",
-                color: interval === "annual" ? C.white : C.walnut,
+                color: interval === "annual" ? "#FCFAF5" : "#716A5E",
                 fontFamily: F.body,
-                fontSize: 14,
+                fontSize: "0.875rem",
                 fontWeight: 600,
                 cursor: "pointer",
                 transition: "all 0.2s",
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
+                gap: "0.5rem",
               }}
             >
               {tPricing("annual") !== "annual" ? tPricing("annual") : "Annual"}
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: "0.6875rem",
                   fontWeight: 700,
-                  padding: "2px 8px",
-                  borderRadius: 8,
+                  padding: "0.125rem 0.5rem",
+                  borderRadius: "0.5rem",
                   background: interval === "annual"
                     ? "rgba(255,255,255,0.25)"
-                    : `${C.terracotta}18`,
-                  color: interval === "annual" ? C.white : C.terracotta,
+                    : "rgba(154,79,42,0.12)",
+                  color: interval === "annual" ? "#FCFAF5" : "#B85C38",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -822,15 +836,16 @@ export default function SubscriptionPage() {
             aria-label={tPricing("currency")}
             style={{
               background: "none",
-              border: `1px solid ${C.sandstone}60`,
+              border: "0.0625rem solid #E3D6BC",
               borderRadius: "0.5rem",
+              minHeight: "2.75rem",
               padding: "0.5rem 1.75rem 0.5rem 0.625rem",
               fontSize: "0.8125rem",
               fontFamily: F.body,
               fontWeight: 600,
-              color: C.walnut,
+              color: "#716A5E",
               cursor: "pointer",
-              letterSpacing: "0.5px",
+              letterSpacing: "0.03em",
               transition: "border-color 0.2s, color 0.2s",
               appearance: "none",
               WebkitAppearance: "none" as const,
@@ -861,33 +876,33 @@ export default function SubscriptionPage() {
                   justifyContent: "space-between",
                   padding: "1rem 1.25rem",
                   borderRadius: "0.75rem",
-                  background: isCurrent ? `${C.terracotta}08` : C.linen,
-                  border: isCurrent ? `1.5px solid ${C.terracotta}30` : `1px solid ${C.cream}`,
+                  background: isCurrent ? "rgba(154,79,42,0.07)" : "#FCFAF5",
+                  border: isCurrent ? "0.09375rem solid rgba(154,79,42,0.35)" : "0.0625rem solid #E3D6BC",
                 }}
               >
                 <div>
                   <div style={{
                     fontFamily: F.body, fontSize: "0.9375rem", fontWeight: 600,
-                    color: C.charcoal, display: "flex", alignItems: "center", gap: "0.5rem",
+                    color: "#403B36", display: "flex", alignItems: "center", gap: "0.5rem",
                   }}>
                     {tp(plan.nameKey)}
                     {isCurrent && (
                       <span style={{
                         fontSize: "0.6875rem", fontWeight: 600,
                         padding: "2px 0.5rem", borderRadius: "0.375rem",
-                        background: `${C.terracotta}18`, color: C.terracotta,
+                        background: "rgba(154,79,42,0.12)", color: "#B85C38",
                       }}>
                         {t("current")}
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: "0.8125rem", color: C.muted, marginTop: "0.25rem" }}>
+                  <div style={{ fontSize: "0.8125rem", color: "#716A5E", marginTop: "0.25rem" }}>
                     {plan.featureKeys.slice(0, 3).map(translateFeatureKey).join(" \u2022 ")}
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0, marginLeft: "1rem" }}>
                   <div style={{ textAlign: "right" }}>
-                    <div style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: C.charcoal }}>
+                    <div style={{ fontFamily: F.display, fontSize: "1.125rem", fontWeight: 500, color: "#403B36" }}>
                       {plan.price === 0 ? t("free") : `${formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}/${t("perMonthShort")}`}
                     </div>
                   </div>
@@ -896,12 +911,13 @@ export default function SubscriptionPage() {
                       onClick={() => handleUpgrade(planId)}
                       disabled={!!upgradeLoading}
                       style={{
+                        minHeight: "2.75rem",
                         padding: "0.5rem 1rem",
                         borderRadius: "0.5rem",
                         border: "none",
-                        background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                        background: upgradeLoading ? "#EEE9DF" : "linear-gradient(135deg, #B85C38, #9A4F2A)",
                         fontFamily: F.body, fontSize: "0.8125rem", fontWeight: 600,
-                        color: upgradeLoading ? C.muted : C.white,
+                        color: upgradeLoading ? "#716A5E" : "#FCFAF5",
                         cursor: upgradeLoading ? "wait" : "pointer",
                         transition: "all .15s",
                         whiteSpace: "nowrap",
@@ -923,8 +939,9 @@ export default function SubscriptionPage() {
                 onClick={() => setShowFullComparison(prev => !prev)}
                 style={{
                   background: "none", border: "none", padding: 0,
+                  minHeight: "2.75rem",
                   fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                  color: C.terracotta, cursor: "pointer",
+                  color: "#B85C38", cursor: "pointer",
                 }}
               >
                 {showFullComparison ? t("hideFullComparison") : t("viewFullComparison")} {showFullComparison ? "\u2191" : "\u2192"}
@@ -951,18 +968,18 @@ export default function SubscriptionPage() {
                     <div
                       key={planId}
                       style={{
-                        background: C.white,
+                        background: "#FFFFFF",
                         borderRadius: "1rem",
                         border: isHighlighted
-                          ? `2px solid ${C.terracotta}`
+                          ? "0.125rem solid #B85C38"
                           : isCurrent
-                            ? `1.5px solid ${C.terracotta}30`
-                            : `1px solid ${C.sandstone}50`,
+                            ? "0.09375rem solid rgba(154,79,42,0.35)"
+                            : "0.0625rem solid #E3D6BC",
                         padding: (isMobile || isCompact) ? "1.5rem 1.25rem" : "1.75rem 1.5rem",
                         position: "relative",
                         boxShadow: isHighlighted
-                          ? "0 0.5rem 2rem rgba(198,107,61,0.15)"
-                          : "0 0.125rem 0.75rem rgba(0,0,0,0.04)",
+                          ? "0 0.5rem 1.5rem rgba(64,59,54,0.14)"
+                          : "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
                         transform: isHighlighted && !isMobile && !isCompact ? "scale(1.03)" : undefined,
                       }}
                     >
@@ -973,14 +990,14 @@ export default function SubscriptionPage() {
                           top: "-0.8125rem",
                           left: "50%",
                           transform: "translateX(-50%)",
-                          background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                          color: C.white,
+                          background: "linear-gradient(135deg, #B85C38, #9A4F2A)",
+                          color: "#FCFAF5",
                           fontFamily: F.body,
                           fontSize: "0.6875rem",
                           fontWeight: 600,
                           padding: "0.3125rem 0.875rem",
                           borderRadius: "1rem",
-                          letterSpacing: "0.5px",
+                          letterSpacing: "0.03em",
                           whiteSpace: "nowrap",
                         }}>
                           {t("mostPopular")}
@@ -992,7 +1009,7 @@ export default function SubscriptionPage() {
                         fontFamily: F.display,
                         fontSize: "1.25rem",
                         fontWeight: 500,
-                        color: C.charcoal,
+                        color: "#403B36",
                         margin: 0,
                         marginTop: isHighlighted ? "0.375rem" : 0,
                         marginBottom: "0.1875rem",
@@ -1001,7 +1018,7 @@ export default function SubscriptionPage() {
                       </h4>
                       <p style={{
                         fontSize: "0.8125rem",
-                        color: C.muted,
+                        color: "#716A5E",
                         margin: "0 0 1rem",
                         lineHeight: 1.5,
                       }}>
@@ -1020,7 +1037,7 @@ export default function SubscriptionPage() {
                             fontFamily: F.display,
                             fontSize: "2rem",
                             fontWeight: 500,
-                            color: C.charcoal,
+                            color: "#403B36",
                           }}>
                             {t("free")}
                           </span>
@@ -1030,13 +1047,13 @@ export default function SubscriptionPage() {
                               fontFamily: F.display,
                               fontSize: "2rem",
                               fontWeight: 500,
-                              color: C.charcoal,
+                              color: "#403B36",
                             }}>
                               {formatPrice(convertPrice(interval === "monthly" ? plan.monthlyPrice : plan.price, currency), currency)}
                             </span>
                             <span style={{
                               fontSize: "0.8125rem",
-                              color: C.muted,
+                              color: "#716A5E",
                             }}>
                               /{t("perMonthShort")}
                             </span>
@@ -1050,13 +1067,13 @@ export default function SubscriptionPage() {
                           width: "100%",
                           padding: "0.6875rem 1rem",
                           borderRadius: "0.75rem",
-                          border: `1.5px solid ${C.terracotta}30`,
-                          background: `${C.terracotta}08`,
+                          border: "0.09375rem solid rgba(154,79,42,0.35)",
+                          background: "rgba(154,79,42,0.07)",
                           textAlign: "center",
                           fontFamily: F.body,
                           fontSize: "0.875rem",
                           fontWeight: 600,
-                          color: C.terracotta,
+                          color: "#B85C38",
                           marginBottom: "1.25rem",
                         }}>
                           {t("currentPlanBadge")}
@@ -1067,11 +1084,12 @@ export default function SubscriptionPage() {
                           disabled={!!upgradeLoading}
                           style={{
                             width: "100%",
+                            minHeight: "2.75rem",
                             padding: "0.6875rem 1rem",
                             borderRadius: "0.75rem",
                             border: "none",
-                            background: upgradeLoading ? `${C.sandstone}60` : `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
-                            color: upgradeLoading ? C.muted : C.white,
+                            background: upgradeLoading ? "#EEE9DF" : "linear-gradient(135deg, #B85C38, #9A4F2A)",
+                            color: upgradeLoading ? "#716A5E" : "#FCFAF5",
                             fontFamily: F.body,
                             fontSize: "0.875rem",
                             fontWeight: 600,
@@ -1100,7 +1118,7 @@ export default function SubscriptionPage() {
                               alignItems: "center",
                               gap: "0.5rem",
                               fontSize: "0.8125rem",
-                              color: C.charcoal,
+                              color: "#403B36",
                               lineHeight: 1.4,
                             }}
                           >
@@ -1109,13 +1127,13 @@ export default function SubscriptionPage() {
                               height: "1.125rem",
                               borderRadius: "50%",
                               background: isHighlighted
-                                ? `${C.terracotta}18`
-                                : `${C.sage}15`,
+                                ? "rgba(154,79,42,0.12)"
+                                : "rgba(86,104,60,0.1)",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                               fontSize: "0.625rem",
-                              color: isHighlighted ? C.terracotta : C.sage,
+                              color: isHighlighted ? "#B85C38" : "#56683C",
                               flexShrink: 0,
                             }}>
                               {"\u2713"}
@@ -1138,21 +1156,21 @@ export default function SubscriptionPage() {
           can't apply to Apple IAP, so surfacing them on iOS steers off-platform (3.1.1) */}
       {referralCode && !isApple && (
         <div style={{
-          background: C.white,
+          background: "#FFFFFF",
           borderRadius: "1rem",
-          border: `1px solid ${C.cream}`,
+          border: "0.0625rem solid #E3D6BC",
           padding: "1.75rem 2rem",
-          boxShadow: "0 2px 8px rgba(64,59,54,.04)",
+          boxShadow: "0 0.25rem 1rem rgba(64,59,54,0.07), inset 0 0.0625rem 0 rgba(255,255,255,0.5)",
           marginTop: "1.5rem",
         }}>
           <h3 style={{
             fontFamily: F.display, fontSize: "1.25rem", fontWeight: 500,
-            color: C.charcoal, margin: "0 0 0.375rem",
+            color: "#403B36", margin: "0 0 0.375rem",
           }}>
             {t("referralTitle")}
           </h3>
           <p style={{
-            fontFamily: F.body, fontSize: "0.875rem", color: C.muted,
+            fontFamily: F.body, fontSize: "0.875rem", color: "#716A5E",
             margin: "0 0 1.25rem", lineHeight: 1.5,
           }}>
             {t("referralDesc")}
@@ -1165,19 +1183,19 @@ export default function SubscriptionPage() {
           }}>
             <div>
               <div style={{
-                fontFamily: F.body, fontSize: "0.6875rem", fontWeight: 600,
-                color: C.muted, textTransform: "uppercase", letterSpacing: "0.5px",
+                fontFamily: F.body, fontSize: "0.6875rem", fontWeight: 700,
+                color: "#716A5E", textTransform: "uppercase", letterSpacing: "0.12em",
                 marginBottom: "0.25rem",
               }}>
                 {t("referralCode")}
               </div>
               <div style={{
                 fontFamily: "monospace", fontSize: "1.25rem", fontWeight: 700,
-                color: C.charcoal, letterSpacing: "2px",
+                color: "#403B36", letterSpacing: "0.125rem",
                 padding: "0.5rem 1rem",
-                background: C.linen,
+                background: "#FCFAF5",
                 borderRadius: "0.5rem",
-                border: `1px solid ${C.cream}`,
+                border: "0.0625rem solid #E3D6BC",
                 userSelect: "all",
               }}>
                 {referralCode}
@@ -1185,9 +1203,9 @@ export default function SubscriptionPage() {
             </div>
 
             <div style={{
-              fontFamily: F.body, fontSize: "0.875rem", color: C.muted,
+              fontFamily: F.body, fontSize: "0.875rem", color: "#716A5E",
               padding: "0.5rem 0.75rem",
-              background: `${C.sage}12`,
+              background: "rgba(86,104,60,0.08)",
               borderRadius: "0.5rem",
             }}>
               {t("referralCount", { count: String(referralCount) })}
@@ -1203,13 +1221,15 @@ export default function SubscriptionPage() {
                   showToast(t("referralCopied"), "success");
                 });
               }}
+              className="mp-sub-secondary"
               style={{
+                minHeight: "2.75rem",
                 padding: "0.75rem 1.5rem",
                 borderRadius: "0.75rem",
-                border: `1px solid ${C.cream}`,
-                background: C.white,
+                border: "0.0625rem solid #E3D6BC",
+                background: "transparent",
                 fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                color: C.charcoal,
+                color: "#716A5E",
                 cursor: "pointer",
                 transition: "all .15s",
                 display: "flex", alignItems: "center", gap: "0.5rem",
@@ -1233,12 +1253,13 @@ export default function SubscriptionPage() {
                   }).catch(() => {});
                 }}
                 style={{
+                  minHeight: "2.75rem",
                   padding: "0.75rem 1.5rem",
                   borderRadius: "0.75rem",
                   border: "none",
-                  background: `linear-gradient(135deg, ${C.terracotta}, ${C.walnut})`,
+                  background: "linear-gradient(135deg, #B85C38, #9A4F2A)",
                   fontFamily: F.body, fontSize: "0.875rem", fontWeight: 600,
-                  color: C.white,
+                  color: "#FCFAF5",
                   cursor: "pointer",
                   transition: "all .15s",
                   display: "flex", alignItems: "center", gap: "0.5rem",
@@ -1257,13 +1278,15 @@ export default function SubscriptionPage() {
 
             <button
               onClick={() => setShowInviteFlow(true)}
+              className="mp-sub-secondary"
               style={{
+                minHeight: "2.75rem",
                 padding: "0.75rem 1.5rem",
                 borderRadius: "0.75rem",
-                border: `1px solid ${C.cream}`,
-                background: C.white,
+                border: "0.0625rem solid #E3D6BC",
+                background: "transparent",
                 fontFamily: F.body, fontSize: "0.875rem", fontWeight: 500,
-                color: C.charcoal,
+                color: "#716A5E",
                 cursor: "pointer",
                 transition: "all .15s",
                 display: "flex", alignItems: "center", gap: "0.5rem",
@@ -1292,7 +1315,7 @@ export default function SubscriptionPage() {
             <div style={{ marginTop: "1.5rem" }}>
               <h4 style={{
                 fontFamily: F.display, fontSize: "1rem", fontWeight: 500,
-                color: C.charcoal, margin: "0 0 0.75rem",
+                color: "#403B36", margin: "0 0 0.75rem",
               }}>
                 {t("referralRewardsTitle")}
               </h4>
@@ -1306,8 +1329,8 @@ export default function SubscriptionPage() {
                       justifyContent: "space-between",
                       padding: "0.75rem 1rem",
                       borderRadius: "0.625rem",
-                      background: reward.redeemed ? `${C.sandstone}15` : `${C.sage}10`,
-                      border: `1px solid ${reward.redeemed ? C.sandstone : C.sage}30`,
+                      background: reward.redeemed ? "#F6EBE3" : "rgba(86,104,60,0.07)",
+                      border: `0.0625rem solid ${reward.redeemed ? "rgba(227,214,188,0.7)" : "rgba(86,104,60,0.25)"}`,
                       flexWrap: "wrap",
                       gap: "0.5rem",
                     }}
@@ -1317,8 +1340,8 @@ export default function SubscriptionPage() {
                         fontFamily: "monospace",
                         fontSize: "0.9375rem",
                         fontWeight: 700,
-                        color: reward.redeemed ? C.muted : C.charcoal,
-                        letterSpacing: "1px",
+                        color: reward.redeemed ? "#716A5E" : "#403B36",
+                        letterSpacing: "0.0625rem",
                         textDecoration: reward.redeemed ? "line-through" : "none",
                       }}>
                         {reward.promo_code}
@@ -1326,7 +1349,7 @@ export default function SubscriptionPage() {
                       <div style={{
                         fontFamily: F.body,
                         fontSize: isMobile ? "0.8125rem" : "0.75rem",
-                        color: C.muted,
+                        color: "#716A5E",
                         marginTop: "0.125rem",
                       }}>
                         {t("referralRewardHint")}
@@ -1343,8 +1366,8 @@ export default function SubscriptionPage() {
                         fontWeight: 600,
                         padding: "0.25rem 0.5rem",
                         borderRadius: "0.375rem",
-                        background: reward.redeemed ? `${C.muted}18` : `${C.sage}18`,
-                        color: reward.redeemed ? C.muted : C.sage,
+                        background: reward.redeemed ? "rgba(113,106,94,0.12)" : "rgba(86,104,60,0.12)",
+                        color: reward.redeemed ? "#716A5E" : "#56683C",
                       }}>
                         {reward.redeemed ? t("referralRewardRedeemed") : t("referralRewardStatus")}
                       </span>
@@ -1355,15 +1378,17 @@ export default function SubscriptionPage() {
                               showToast(t("referralCopied"), "success");
                             });
                           }}
+                          className="mp-sub-secondary"
                           style={{
+                            minHeight: "2.75rem",
                             padding: "0.375rem 0.75rem",
                             borderRadius: "0.375rem",
-                            border: `1px solid ${C.cream}`,
-                            background: C.white,
+                            border: "0.0625rem solid #E3D6BC",
+                            background: "transparent",
                             fontFamily: F.body,
                             fontSize: "0.75rem",
                             fontWeight: 500,
-                            color: C.charcoal,
+                            color: "#716A5E",
                             cursor: "pointer",
                           }}
                         >
@@ -1382,6 +1407,23 @@ export default function SubscriptionPage() {
           )}
         </div>
       )}
+
+      {/* Canon hover / focus / reduced-motion states (style-only) */}
+      <style>{`
+        @media (hover: hover) {
+          .mp-sub-secondary:hover { background: rgba(154,79,42,0.07) !important; }
+        }
+        .mp-sub-secondary:active { background: rgba(154,79,42,0.12) !important; }
+        .mp-sub-page a:focus-visible,
+        .mp-sub-page button:focus-visible,
+        .mp-sub-page select:focus-visible {
+          outline: 0.1875rem solid #D4AF37;
+          outline-offset: 0.125rem;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .mp-sub-page *, .mp-sub-progress { transition: none !important; animation: none !important; }
+        }
+      `}</style>
     </div>
   );
 }
