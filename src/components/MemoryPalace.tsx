@@ -801,12 +801,13 @@ export default function MemoryPalace(){
   }, [achToast, earnedAchCount]);
 
   // ── URL ↔ navMode mapping ──
-  const modeToPath = (mode: string, settings?: boolean) => {
-    if (settings) return "/me";
+  // /me is now its own Next.js route (the identity page), no longer an in-SPA
+  // overlay — modeToPath never maps to it and pathToMode never claims it.
+  const modeToPath = (mode: string, _settings?: boolean) => {
     return mode === "3d" ? "/palace" : mode === "library" ? "/library" : "/atrium";
   };
   const pathToMode = (p: string): "atrium" | "library" | "3d" | null => {
-    if (p === "/atrium" || p === "/me") return "atrium";
+    if (p === "/atrium") return "atrium";
     if (p === "/library") return "library";
     if (p === "/palace") return "3d";
     return null;
@@ -830,24 +831,19 @@ export default function MemoryPalace(){
         setNavMode(mode);
         prevNavModeRef.current = mode;
       }
-      const settings = e.state?.showSettings || window.location.pathname === "/me";
-      setShowSettings(!!settings);
-      prevShowSettingsRef.current = !!settings;
+      const settings = !!e.state?.showSettings;
+      setShowSettings(settings);
+      prevShowSettingsRef.current = settings;
     };
     // Detect initial state from URL path
     const initialPath = window.location.pathname;
-    const isMe = initialPath === "/me";
     const initialMode = pathToMode(initialPath);
     if (initialMode && initialMode !== navMode) {
       setNavMode(initialMode);
       prevNavModeRef.current = initialMode;
     }
-    if (isMe) {
-      setShowSettings(true);
-      prevShowSettingsRef.current = true;
-    }
     // Seed current state so first Back works
-    window.history.replaceState({ navMode: initialMode || navMode, showSettings: isMe }, "", modeToPath(initialMode || navMode, isMe));
+    window.history.replaceState({ navMode: initialMode || navMode, showSettings: false }, "", modeToPath(initialMode || navMode));
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -995,7 +991,10 @@ export default function MemoryPalace(){
     onToolsClick: () => setShowTools(!showTools),
     toolsOpen: showTools,
     onNotifications: () => { setShowNotificationsPage(true); setShowSettings(false); },
-    onSettings: () => { setShowSettings(true); setShowNotificationsPage(false); },
+    // No onSettings override → the Me tab routes to /me (the identity landing)
+    // from every mode. Previously it opened the old SettingsInline overlay,
+    // which is why Me from atrium/library "landed on the old page" while Me
+    // from Explore (no override) correctly went to /me.
     onModeChange: (mode: string) => {
       setShowNotificationsPage(false); setShowSettings(false);
       setNavMode(mode as any);
@@ -1102,7 +1101,7 @@ export default function MemoryPalace(){
     onToolsClick: () => setShowTools(!showTools),
     toolsOpen: showTools,
     onNotifications: () => { setShowNotificationsPage(true); setShowSettings(false); },
-    onSettings: () => { setShowSettings(true); setShowNotificationsPage(false); },
+    // No onSettings override → Me routes to /me from every mode (see earlyNavBarProps).
     onModeChange: (mode: string) => {
       setShowNotificationsPage(false); setShowSettings(false);
       setNavMode(mode as any);

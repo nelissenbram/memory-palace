@@ -393,6 +393,13 @@
     "ariaEditCorridorPaintings": "Modifier les peintures du couloir"
   },
   "settings": {
+    "navDescProfile": "Votre nom, photo et page publique",
+    "navDescFamily": "Les personnes avec qui vous bâtissez le palais",
+    "navDescSubscription": "Votre forfait et facturation",
+    "navDescSharing": "Qui peut voir vos ailes",
+    "navDescNotifications": "E-mails et rappels en douceur",
+    "navDescLegacy": "Ce que deviendra votre palais un jour",
+    "navDescSecurity": "Mot de passe, confidentialité et vos données",
     "connectionsRowDesc": "Gérez les services photo et cloud connectés pour importer des souvenirs",
     "meStatsMemories": "Souvenirs",
     "meStatsVisitors": "Visiteurs",

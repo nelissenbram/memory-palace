@@ -114,15 +114,15 @@ function SettingsIcon({ name, size = 16 }: { name: string; size?: number }) {
  * - All /settings/* sub-pages remain canonical deep-link targets for /me.
  */
 const NAV_ITEMS = [
-  { href: "/settings/profile", labelKey: "profile", iconKey: "profile" },
-  { href: "/settings/family", labelKey: "family", iconKey: "family" },
+  { href: "/settings/profile", labelKey: "profile", iconKey: "profile", descKey: "navDescProfile", descFallback: "Your name, photo and public page" },
+  { href: "/settings/family", labelKey: "family", iconKey: "family", descKey: "navDescFamily", descFallback: "The people you build the palace with" },
   // iOS is free-tier only (Apple 3.1.1) — hide the Subscription tab and its
   // link to the billing/plan page inside the native app.
-  { href: "/settings/subscription", labelKey: "subscription", iconKey: "subscription", hideInNative: true },
-  { href: "/settings/sharing", labelKey: "sharingSettings", iconKey: "sharing" },
-  { href: "/settings/notifications", labelKey: "alerts", iconKey: "notifications" },
-  { href: "/settings/legacy", labelKey: "legacy", iconKey: "legacy" },
-  { href: "/settings/security", labelKey: "security", iconKey: "security" },
+  { href: "/settings/subscription", labelKey: "subscription", iconKey: "subscription", hideInNative: true, descKey: "navDescSubscription", descFallback: "Your plan and billing" },
+  { href: "/settings/sharing", labelKey: "sharingSettings", iconKey: "sharing", descKey: "navDescSharing", descFallback: "Who can see your wings" },
+  { href: "/settings/notifications", labelKey: "alerts", iconKey: "notifications", descKey: "navDescNotifications", descFallback: "Emails and gentle reminders" },
+  { href: "/settings/legacy", labelKey: "legacy", iconKey: "legacy", descKey: "navDescLegacy", descFallback: "What becomes of your palace one day" },
+  { href: "/settings/security", labelKey: "security", iconKey: "security", descKey: "navDescSecurity", descFallback: "Password, privacy and your data" },
 ] as const;
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {
@@ -135,15 +135,17 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const stacked = isMobile || isCompact;
   const { signingOut, handleSignOut } = useSignOut();
   const { t: tc } = useTranslation("common");
+  const { t: ts } = useTranslation("settings");
+  const navDesc = (item: { descKey: string; descFallback: string }) => {
+    const v = ts(item.descKey);
+    return v !== item.descKey ? v : item.descFallback;
+  };
 
   const settingsRouter = useRouter();
   const filteredItems = NAV_ITEMS.filter((item) => !("hideInNative" in item && item.hideInNative && isIOS()));
   const navMode = usePalaceStore((s) => s.navMode);
   const setNavMode = usePalaceStore((s) => s.setNavMode);
   const [tourOpen, setTourOpen] = useSettingsTutorial();
-
-  // i18n fallback — "backToMe" works before the locale files land.
-  const meLabel = tc("backToMe") !== "backToMe" ? tc("backToMe") : "Me";
 
   return (
     <>
@@ -168,41 +170,8 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           activeTab="me"
         />
       )}
-      {/* Top bar — desktop only (pushed below NavigationBar) */}
-      {!isMobile && (
-        <header style={{
-          paddingTop: "1.5rem",
-          paddingLeft: "1.75rem",
-          paddingRight: "1.75rem",
-          paddingBottom: "1rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "1rem",
-          borderBottom: `0.0625rem solid ${HAIRLINE}`,
-          background: CREAM,
-        }}>
-          <Link href="/atrium" className="mp-set-back" style={{
-            display: "flex", alignItems: "center", gap: "0.5rem",
-            minHeight: "2.75rem",
-            textDecoration: "none", color: MUTED,
-            fontFamily: T.font.body,
-            fontSize: "0.8125rem",
-            transition: "color .2s",
-          }}>
-            <span style={{ fontSize: "1.125rem" }} aria-hidden="true">{"\u2190"}</span>
-            {tc("backToPalace")}
-          </Link>
-          <div style={{ width: "0.0625rem", height: "1.25rem", background: HAIRLINE }} />
-          <h1 style={{
-            fontFamily: T.font.display, fontSize: "1.375rem", fontWeight: 600,
-            color: INK, margin: 0, lineHeight: 1.15,
-          }}>
-            {tc("settings")}
-          </h1>
-          <div style={{ flex: 1 }} />
-          <span style={{ fontSize: "0.625rem", color: MUTED, opacity: 0.5 }}>v0610a</span>
-        </header>
-      )}
+      {/* No page-title header and no back button — the NavigationBar (Me tab)
+          is the nav; each sub-page carries its own title. */}
 
       {stacked ? (
         /* ── Stacked layout: tab bar on top + content below (phones + iPad portrait) ── */
@@ -225,31 +194,19 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             paddingTop: "calc(0.25rem + env(safe-area-inset-top, 0px))",
             WebkitOverflowScrolling: "touch",
           }}>
-            {/* Quiet back-to-Me door — the settings world continues the Me page */}
-            <Link href="/me" className="mp-set-back" style={{
-              display: "inline-flex", alignItems: "center", gap: "0.375rem",
-              minHeight: "2.75rem",
-              padding: "0.625rem 0.875rem",
-              borderRadius: "0.625rem",
-              textDecoration: "none",
-              color: MUTED,
-              fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 600,
-              transition: "color .15s",
-            }}>
-              <span aria-hidden="true">{"←"}</span>
-              {meLabel}
-            </Link>
             {filteredItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
               return (
                 <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} className="mp-set-tab" style={{
-                  display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                  display: "inline-flex", alignItems: "center", gap: "0.4rem",
                   minHeight: "2.75rem",
-                  padding: "0.625rem 1rem",
-                  borderRadius: "0.625rem",
+                  padding: "0.5rem 1rem",
+                  margin: "0.25rem 0.125rem",
+                  borderRadius: "1.5rem",
                   textDecoration: "none",
-                  background: isActive ? "rgba(154,79,42,0.07)" : "transparent",
-                  color: isActive ? EMBER : INK,
+                  background: isActive ? EMBER : "transparent",
+                  border: `0.0625rem solid ${isActive ? EMBER : HAIRLINE}`,
+                  color: isActive ? "#FCFAF5" : INK,
                   fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: isActive ? 600 : 500,
                   transition: "all .15s",
                 }}>
@@ -263,11 +220,12 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
               onClick={handleSignOut}
               className="mp-set-tab"
               style={{
-                display: "inline-flex", alignItems: "center", gap: "0.375rem",
+                display: "inline-flex", alignItems: "center", gap: "0.4rem",
                 minHeight: "2.75rem",
-                padding: "0.625rem 1rem",
-                borderRadius: "0.625rem",
-                border: "none",
+                padding: "0.5rem 1rem",
+                margin: "0.25rem 0.125rem",
+                borderRadius: "1.5rem",
+                border: `0.0625rem solid ${HAIRLINE}`,
                 background: "transparent",
                 color: MUTED,
                 fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
@@ -286,110 +244,134 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
           </section>
         </div>
       ) : (
-        /* ── Desktop layout: sidebar + content side-by-side (unchanged) ── */
+        /* ── Desktop layout: premium sidebar + content side-by-side ── */
         <div style={{
           display: "flex",
-          maxWidth: 1100,
+          maxWidth: 1180,
           margin: "0 auto",
-          padding: "2rem 1.75rem",
-          gap: "2rem",
+          padding: "2.25rem 1.75rem 3rem",
+          gap: "2.5rem",
         }}>
-          {/* Sidebar */}
+          {/* Sidebar — a designed nav, not a plain list: icon medallions,
+              one-line descriptions, warm active state. */}
           <nav aria-label={tc("settingsNavigation")} style={{
-            width: "13.75rem",
+            width: "19rem",
             flexShrink: 0,
             alignSelf: "flex-start",
+            position: "sticky",
+            top: "5rem",
           }}>
-            {/* Quiet back-to-Me door — the settings world continues the Me page */}
-            <Link href="/me" className="mp-set-back" style={{
-              display: "inline-flex", alignItems: "center", gap: "0.5rem",
-              minHeight: "2.75rem",
-              padding: "0.25rem 0.5rem",
-              marginBottom: "0.375rem",
-              textDecoration: "none",
-              color: MUTED,
-              fontFamily: T.font.body, fontSize: "0.8125rem", fontWeight: 600,
-              transition: "color .15s",
-            }}>
-              <span aria-hidden="true">{"←"}</span>
-              {meLabel}
-            </Link>
             <div style={{
               background: "#FFFFFF",
-              borderRadius: "1rem",
+              borderRadius: "1.25rem",
               border: `0.0625rem solid ${HAIRLINE}`,
               boxShadow: `${SHADOW[1]}, ${TOP_HIGHLIGHT}`,
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
+              padding: "0.5rem",
+              gap: "0.125rem",
             }}>
               {filteredItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                 return (
                   <Link key={item.href} href={item.href} aria-current={isActive ? "page" : undefined} className="mp-set-door" style={{
-                    display: "flex", alignItems: "center", gap: "0.75rem",
-                    minHeight: "3rem",
-                    padding: "0.75rem 1rem",
+                    position: "relative",
+                    display: "flex", alignItems: "center", gap: "0.875rem",
+                    minHeight: "3.5rem",
+                    padding: "0.625rem 0.75rem",
+                    borderRadius: "0.875rem",
                     textDecoration: "none",
-                    background: isActive ? "rgba(154,79,42,0.07)" : "transparent",
-                    boxShadow: isActive ? `inset 0.1875rem 0 0 ${EMBER}` : "none",
-                    borderBottom: `0.0625rem solid ${HAIRLINE}`,
-                    color: isActive ? EMBER : INK,
-                    fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: isActive ? 600 : 500,
-                    transition: "all .15s",
+                    background: isActive ? "rgba(184,92,56,0.08)" : "transparent",
+                    transition: "background .15s",
                   }}>
-                    <span style={{ color: isActive ? EMBER : EMBER_GLYPH, display: "inline-flex", flexShrink: 0 }}>
-                      <SettingsIcon name={item.iconKey} size={16} />
+                    {/* Active left rule */}
+                    {isActive && (
+                      <span aria-hidden="true" style={{
+                        position: "absolute", left: 0, top: "0.75rem", bottom: "0.75rem",
+                        width: "0.1875rem", borderRadius: "0 0.1875rem 0.1875rem 0",
+                        background: EMBER,
+                      }} />
+                    )}
+                    {/* Icon medallion */}
+                    <span aria-hidden="true" style={{
+                      width: "2.25rem", height: "2.25rem", borderRadius: "50%",
+                      flexShrink: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      background: isActive ? EMBER : "rgba(184,92,56,0.09)",
+                      color: isActive ? "#FCFAF5" : EMBER_GLYPH,
+                      boxShadow: isActive ? "inset 0 0.0625rem 0 rgba(255,255,255,0.25)" : "none",
+                      transition: "background .15s, color .15s",
+                    }}>
+                      <SettingsIcon name={item.iconKey} size={17} />
                     </span>
-                    <span style={{ flex: 1 }}>{tc(item.labelKey)}</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={MUTED} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{
+                        display: "block",
+                        fontFamily: T.font.body, fontSize: "0.9375rem",
+                        fontWeight: 600,
+                        color: isActive ? EMBER : INK,
+                        lineHeight: 1.2,
+                      }}>{tc(item.labelKey)}</span>
+                      <span style={{
+                        display: "block",
+                        fontFamily: T.font.body, fontSize: "0.75rem",
+                        color: MUTED, marginTop: "0.125rem", lineHeight: 1.3,
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>{navDesc(item)}</span>
+                    </span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isActive ? EMBER : "#C9BCA6"} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
                       <path d="m9 18 6-6-6-6" />
                     </svg>
                   </Link>
                 );
               })}
-              {/* Sign Out button – bottom of sidebar on desktop */}
-              <div style={{ flex: 1 }} />
+              {/* Divider + Sign Out */}
+              <div style={{ height: "0.0625rem", background: HAIRLINE, margin: "0.375rem 0.75rem" }} />
               <button
                 onClick={handleSignOut}
                 className="mp-set-door"
                 style={{
-                  display: "flex", alignItems: "center", gap: "0.75rem",
+                  display: "flex", alignItems: "center", gap: "0.875rem",
                   minHeight: "3rem",
-                  padding: "0.75rem 1rem",
+                  padding: "0.625rem 0.75rem",
+                  borderRadius: "0.875rem",
                   border: "none",
                   background: "transparent",
                   color: MUTED,
-                  fontFamily: T.font.body, fontSize: "0.875rem", fontWeight: 500,
                   cursor: "pointer",
-                  transition: "all .15s",
+                  transition: "background .15s",
                   width: "100%",
                   textAlign: "left",
                 }}
               >
-                <span style={{ display: "inline-flex", flexShrink: 0 }}>
-                  <SettingsIcon name="signOut" size={16} />
+                <span aria-hidden="true" style={{
+                  width: "2.25rem", height: "2.25rem", borderRadius: "50%", flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: "rgba(113,106,94,0.10)", color: MUTED,
+                }}>
+                  <SettingsIcon name="signOut" size={17} />
                 </span>
-                <span style={{ flex: 1 }}>{tc("signOut")}</span>
+                <span style={{ flex: 1, fontFamily: T.font.body, fontSize: "0.9375rem", fontWeight: 600, color: INK }}>{tc("signOut")}</span>
               </button>
             </div>
           </nav>
 
-          {/* Content */}
-          <section style={{ flex: 1, minWidth: 0 }}>
+          {/* Content — comfortable reading measure for a 60+ audience */}
+          <section style={{ flex: 1, minWidth: 0, maxWidth: "46rem" }}>
             {children}
           </section>
         </div>
       )}
-      {/* Canon hover / pressed / focus states (hover only where hover exists) */}
+      {/* Canon hover / pressed / focus states (hover only where hover exists;
+          never override an active [aria-current] ember pill/door) */}
       <style>{`
         @media (hover: hover) {
-          .mp-set-door:hover { background: rgba(154,79,42,0.07) !important; }
-          .mp-set-tab:hover { background: rgba(154,79,42,0.07) !important; }
-          .mp-set-back:hover { color: ${EMBER} !important; }
+          .mp-set-door:not([aria-current="page"]):hover { background: rgba(184,92,56,0.08) !important; }
+          .mp-set-tab:not([aria-current="page"]):hover { background: rgba(184,92,56,0.08) !important; border-color: rgba(184,92,56,0.4) !important; }
         }
-        .mp-set-door:active, .mp-set-tab:active { background: rgba(154,79,42,0.12) !important; }
-        .mp-set-door:focus-visible, .mp-set-tab:focus-visible, .mp-set-back:focus-visible {
+        .mp-set-door:not([aria-current="page"]):active, .mp-set-tab:not([aria-current="page"]):active { background: rgba(184,92,56,0.14) !important; }
+        .mp-set-door:focus-visible, .mp-set-tab:focus-visible {
           outline: 0.1875rem solid #D4AF37;
           outline-offset: -0.1875rem;
         }

@@ -393,6 +393,13 @@
     "ariaEditCorridorPaintings": "Editar pinturas del corredor"
   },
   "settings": {
+    "navDescProfile": "Tu nombre, foto y página pública",
+    "navDescFamily": "Las personas con quienes construyes el palacio",
+    "navDescSubscription": "Tu plan y facturación",
+    "navDescSharing": "Quién puede ver tus alas",
+    "navDescNotifications": "Correos y recordatorios suaves",
+    "navDescLegacy": "Qué será de tu palacio algún día",
+    "navDescSecurity": "Contraseña, privacidad y tus datos",
     "connectionsRowDesc": "Gestiona los servicios de fotos y nube conectados para importar recuerdos",
     "meStatsMemories": "Recuerdos",
     "meStatsVisitors": "Visitantes",

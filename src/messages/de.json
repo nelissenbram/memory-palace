@@ -393,6 +393,13 @@
     "ariaEditCorridorPaintings": "Korridorgemälde bearbeiten"
   },
   "settings": {
+    "navDescProfile": "Ihr Name, Foto und öffentliche Seite",
+    "navDescFamily": "Die Menschen, mit denen Sie den Palast bauen",
+    "navDescSubscription": "Ihr Tarif und Ihre Abrechnung",
+    "navDescSharing": "Wer Ihre Flügel sehen kann",
+    "navDescNotifications": "E-Mails und sanfte Erinnerungen",
+    "navDescLegacy": "Was eines Tages mit Ihrem Palast geschieht",
+    "navDescSecurity": "Passwort, Privatsphäre und Ihre Daten",
     "connectionsRowDesc": "Verbundene Foto- und Cloud-Dienste zum Importieren von Erinnerungen verwalten",
     "meStatsMemories": "Erinnerungen",
     "meStatsVisitors": "Besucher",

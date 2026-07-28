@@ -393,6 +393,13 @@
     "ariaEditCorridorPaintings": "Edit corridor paintings"
   },
   "settings": {
+    "navDescProfile": "Your name, photo and public page",
+    "navDescFamily": "The people you build the palace with",
+    "navDescSubscription": "Your plan and billing",
+    "navDescSharing": "Who can see your wings",
+    "navDescNotifications": "Emails and gentle reminders",
+    "navDescLegacy": "What becomes of your palace one day",
+    "navDescSecurity": "Password, privacy and your data",
     "connectionsRowDesc": "Manage connected photo and cloud services for importing memories",
     "meStatsMemories": "Memories",
     "meStatsVisitors": "Visitors",

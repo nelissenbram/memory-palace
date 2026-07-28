@@ -393,6 +393,13 @@
     "ariaEditCorridorPaintings": "Gangschilderijen bewerken"
   },
   "settings": {
+    "navDescProfile": "Je naam, foto en openbare pagina",
+    "navDescFamily": "De mensen met wie je het paleis bouwt",
+    "navDescSubscription": "Je abonnement en facturatie",
+    "navDescSharing": "Wie je vleugels kan zien",
+    "navDescNotifications": "E-mails en zachte herinneringen",
+    "navDescLegacy": "Wat er ooit met je paleis gebeurt",
+    "navDescSecurity": "Wachtwoord, privacy en je gegevens",
     "connectionsRowDesc": "Beheer gekoppelde foto- en clouddiensten voor het importeren van herinneringen",
     "meStatsMemories": "Herinneringen",
     "meStatsVisitors": "Bezoekers",
